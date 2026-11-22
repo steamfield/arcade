@@ -22,7 +22,8 @@ This is the repo's first full game and its reference layout: logic in feature fo
 - Tick order and determinism rules are in the header of `src/logic/world.ts`.
 - Rivals steer by a distance-to-finish field (`race/flowfield.ts`); placing uses a separate uniform-cost field so places don't flicker.
 - The race ends when you finish, 10 s after the third rival finishes (you DNF), or at 5 minutes.
-- Rivals get mild catch-up: a little slower when far ahead of you, a little faster when far behind (`ai/rival.ts` `CATCH_UP`).
+- Rivals out-swim you (about 1.5x your swim force) but kick and burst rarely, so your kicks and power-ups are how you win. Catch-up scales their swim force by 0.03 per tile of gap, between 0.6x when far ahead of you and 1.15x when far behind (`ai/rival.ts` `CATCH_UP`). Rivals steer around urchins and jellies they can see coming (`ai/avoid.ts`).
+- Difficulty is measured by `logic/difficulty.test.ts` on 30 seeds: an expert bot wins with the lead rival within 8 s in at least 21, and a novice bot (loose steering, occasional kicks, no items) places 3rd or 4th in at least 21 and finishes within 1.3x the winner's time in at least 24. On seeds 1-200 the tuning measures 86%, 100% and 100%.
 - Logic never calls `Math.sin`, `cos`, `atan2`, `hypot`, `exp`, `pow` or `log`: engines may approximate them, and a seeded race must replay identically on Chromium and WebKit. Use `src/logic/num.ts`.
 
 ## Power-ups
@@ -63,10 +64,14 @@ Every sprite is palette-indexed pixel text in `engine/art/sprites/`, drawn at bo
 
 `engine/fx/` turns logic events into particles and camera shake; racer squash, invulnerability flicker and the 2x Puffer live in the racer and power-up views. Effects run per logic tick from events, use their own cosmetic rng (never `world.rngs`), and never change logic state. Shake only ever moves the camera for the player's own hits, shield pops (lighter) and cannonball impacts, capped at 4 px. Reduced motion turns shake off, holds particles still, swaps the flicker for a steady half alpha, drops squash and the place flash, and shows the lantern ring at full reach.
 
+## The course
+
+About 90 s for a good player, 616 columns in five sections: the reef (columns 0-94, the opening the power-up scenarios rely on); the current highway (95-246: a current tunnel up top or a kelp bed with clams below, then a floor-current hall); the jelly field (247-364: jellies bobbing high and low in step); the urchin gauntlet (365-466: an urchin-lined tube or clean roads over and under, with a clam pair at its exit); and the coral gate and final drop (467-615: smash the 2-tile gate with a Puffer or climb over it, then ride a downward current to the finish at column 611).
+
 ## Course format
 
 ASCII in `src/logic/level/levels.ts`, documented in `src/logic/level/parse.ts`.
 
 ## Scenarios
 
-`countdown-holds-racers`, `race-to-finish`, `results-after-finish`, `results-ignores-early-kick`, `dnf-results`, `race-again`, `results-to-title`, `title-best`, `clam-stack`, `hit-pops-newest`, `cannonball-combo`, `audio-plays`. The top route most share is `TOP_ROUTE` in `scenarios/kit.ts`; it threads past the urchin at (32, 4). Power-up scenarios pin a seed because clam rolls depend on it.
+`countdown-holds-racers`, `race-to-finish`, `results-after-finish`, `results-ignores-early-kick`, `dnf-results`, `race-again`, `results-to-title`, `title-best`, `clam-stack`, `hit-pops-newest`, `cannonball-combo`, `audio-plays`. The top route most share is `TOP_ROUTE` in `scenarios/kit.ts`, a recorded no-kick run on seed 1 that finishes the whole course; any change to the course or rival tuning means re-recording it. Idle scenarios wait `IDLE_TO_RESULTS`, which the race limit guarantees. Power-up scenarios pin a seed because clam rolls depend on it.
