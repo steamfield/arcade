@@ -44,9 +44,9 @@ A hit (urchin `*`, jelly `j`, bubble, puffer, flash) takes your shield if you ho
 ## Scenes and launch parameters
 
 - `boot`: builds every texture (`engine/art/index.ts`), then routes.
-- `title`: Race, Sound (mute) and Motion (reduced motion) options, and your best time and place when you have one. Settings save at once and apply for the session even if the save fails; a fresh save follows the OS reduced-motion preference.
-- `race`: 3-2-1-GO countdown, then the race. HUD: big place, timer, kick-ready pip, three power-up slots with the burst cooldown ring, combo names, status captions, and a progress strip with one marker per racer (Pip yellow circle, Tess green square, Squib purple triangle, Bo orange diamond). The camera follows you with a deadzone and lookahead. 90 ticks after the race ends you go to results.
-- `results`: standings with names and times (DNF if not finished), your row highlighted, "New best!" or "Best time not saved", then Race again or Title.
+- `title`: the logo over the swimming cast, Race, Sound (mute) and Motion (reduced motion) buttons, PRESS A on touch screens only, and your best time and place when you have one. Settings save at once and apply for the session even if the save fails; a fresh save follows the OS reduced-motion preference.
+- `race`: 3-2-1-GO countdown, then the race, with FINAL STRETCH and FINISH splashes. HUD (laid out in `UI.md`): place with your portrait (hidden during the countdown; pops up or down on a change), timer, a progress strip with each racer's head, and a well with kick, burst (a dim ring while it recharges) and three stack slots (empty ones show a dot). Combo names appear beside you, clear of your sprite. The camera follows you with a deadzone and lookahead. 90 ticks after the race ends you go to results.
+- `results`: a podium with medals for the top three, standings with names and times revealed row by row (DNF if not finished), your row in sun with your head beside it, a NEW BEST or BEST NOT SAVED readout, then Race again or Title.
 - Menus ignore kick for their first 20 ticks, so a kick still being pressed from the race can't skip the results.
 - `?scene=race` (or `?scene=play`) skips the title. `?seed=7` changes rival behaviour. Each race is seeded with `seed + races in the save`, so a rematch plays differently while a test run still repeats exactly.
 - `?debug=1` draws hitboxes from logic state and shows the tick and your tile.
