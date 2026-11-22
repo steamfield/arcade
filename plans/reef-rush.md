@@ -174,7 +174,7 @@ Depends on: phase 2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/powerups/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/modifiers.ts | contracts | | opus | running | deliver/reef-rush-3a | |
+| a | M | games/reef-rush/src/logic/powerups/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/modifiers.ts | contracts | | opus | merged | deliver/reef-rush-3a | |
 | b | M | games/reef-rush/src/logic/hazards/, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/ai/steer.ts, games/reef-rush/src/logic/race/flowfield.ts, games/reef-rush/src/logic/race/coral.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/ai/rival.test.ts, games/reef-rush/scenarios/dnf-results.ts | contracts | | opus | running | deliver/reef-rush-3b | |
 | c | M | games/reef-rush/src/engine/view/pickup-view.ts, games/reef-rush/src/engine/view/hazard-view.ts, games/reef-rush/src/engine/view/powerup-view.ts, games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/scenes/race.ts, games/reef-rush/scenarios/clam-stack.ts, games/reef-rush/scenarios/cannonball-combo.ts, games/reef-rush/scenarios/hit-pops-newest.ts | contracts | | sonnet | merged | deliver/reef-rush-3c | |
 
