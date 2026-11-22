@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { POWER_UP_KINDS } from '../../logic/types.ts';
 import { ICON_SHEETS } from '../art/ui/icons.ts';
 import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { PanelPalette } from '../art/ui/palette.ts';
-import { comboCentreY, isPlacePopping, NOT_READY_ALPHA, type PlaceTrack, trackPlace, wellLayout } from './hud.ts';
+import {
+  comboCentreY,
+  isPlacePopping,
+  NOT_READY_ALPHA,
+  type PlaceTrack,
+  POWER_UP_ICON,
+  trackPlace,
+  wellLayout,
+} from './hud.ts';
 
 describe('the place panel', () => {
   it('does not pop when the race starts, even though logic re-places everyone at GO', () => {
@@ -109,5 +118,15 @@ describe('a dimmed well icon', () => {
       const dimmed = blend(colour, well, NOT_READY_ALPHA);
       expect(contrast(dimmed, well), `#${colour.toString(16)}`).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+describe('the well\u2019s power-up icons', () => {
+  const frames = ICON_SHEETS.find((sheet) => sheet.key === UiTex.icons)?.frames ?? [];
+
+  it('draws an icon for every kind, and no two kinds share one', () => {
+    const drawn = new Set(frames.map((frame) => frame.name));
+    for (const kind of POWER_UP_KINDS) expect(drawn.has(POWER_UP_ICON[kind]), kind).toBe(true);
+    expect(new Set(POWER_UP_KINDS.map((kind) => POWER_UP_ICON[kind])).size).toBe(POWER_UP_KINDS.length);
   });
 });

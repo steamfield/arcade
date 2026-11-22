@@ -9,6 +9,7 @@
 import type { EventSink, Rng, Stamped } from '@arcade/core';
 import { FINAL_STRETCH_AT } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import { attackSfx } from './attack-sfx.ts';
 import type { AudioPort } from './index.ts';
 import type { Song } from './notation.ts';
 import type { Sequencer } from './sequencer.ts';
@@ -134,6 +135,10 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
         return sfx('coral');
       case 'menu.selected':
         return sfx('menu.confirm');
+      default: {
+        const attack = attackSfx(event);
+        if (attack) sfx(attack);
+      }
     }
   };
 

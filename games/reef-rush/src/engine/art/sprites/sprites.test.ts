@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { CHARACTER_IDS } from '../../../logic/types.ts';
+import { CHARACTER_IDS, POWER_UP_KINDS } from '../../../logic/types.ts';
+import { POWER_UP_TEX } from '../../view/powerup-view.ts';
 import { Frame, Tex, TileIndex } from '../keys.ts';
 import { BackdropPalette, HazardPalette, WATER_BANDS } from '../palettes.ts';
 import { measureFrames, type NamedFrame } from '../pixel.ts';
+import { RIPTIDE_TILE } from './attack.ts';
 import { ART_SHEETS } from './index.ts';
 import { CharacterPalette, RACER_SHEETS } from './racers.ts';
 
@@ -31,6 +33,9 @@ describe('world art data', () => {
       expect(frameNames(key), key).toEqual(twoStroke);
     }
     expect(frameNames(Tex.clam)).toEqual([Frame.clamClosed, Frame.clamOpen]);
+    expect(frameNames(Tex.squid)).toEqual([Frame.a, Frame.b, Frame.squidLatched]);
+    expect(frameNames(Tex.riptideStreak)).toEqual(twoStroke);
+    expect(frameNames(Tex.undertowStreak)).toEqual(twoStroke);
     expect(frameNames(Tex.kickPip)).toEqual([Frame.pipReady, Frame.pipCooling]);
     expect(frameNames(Tex.hudMarker)).toEqual([
       Frame.markerCircle,
@@ -45,6 +50,24 @@ describe('world art data', () => {
     expect(tiles?.frames.map((frame) => frame.name)).toEqual(['rock', 'coral']);
     expect(tiles?.frames.length).toBe(Object.keys(TileIndex).length);
     expect(measureFrames(Tex.tiles, tiles?.frames ?? [])).toEqual({ width: 16, height: 16 });
+  });
+
+  it('draws every held power-up as a 12x12 icon, the attack kinds included', () => {
+    for (const kind of POWER_UP_KINDS) {
+      const key = POWER_UP_TEX[kind];
+      expect(frameNames(key), kind).toEqual([Frame.a]);
+      expect(measureFrames(key, sheetFor(key)?.frames ?? []), kind).toEqual({ width: 12, height: 12 });
+    }
+    // No two kinds share art, so a loose pickup says which power-up it is.
+    expect(new Set(POWER_UP_KINDS.map((kind) => POWER_UP_TEX[kind])).size).toBe(POWER_UP_KINDS.length);
+  });
+
+  it('sizes the squid and its latched pose like a racer, and the lane tile to the grid', () => {
+    expect(measureFrames(Tex.squid, sheetFor(Tex.squid)?.frames ?? [])).toEqual({ width: 16, height: 12 });
+    expect(measureFrames(Tex.riptideStreak, sheetFor(Tex.riptideStreak)?.frames ?? [])).toEqual({
+      width: RIPTIDE_TILE,
+      height: RIPTIDE_TILE,
+    });
   });
 
   it('keeps racers within 16x12 so they fit around their 12x10 bodies', () => {

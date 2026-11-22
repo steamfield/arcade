@@ -56,12 +56,16 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | Place change arrow | 6, 34, 9, 9 | `arrowUp` / `arrowDown`, under the place panel |
 | Timer | 66, 6, 52, 15 | `inset` panel; text centred, top at y 10 |
 | Kick / power-up well | 66, 23, 61, 17 (72 wide for a stack of 4) | `inset` panel; icons at y 27 and x 70, 81, 92, 103, 114 (kick, burst, a stack of 3). The well has one slot per power-up the player can hold (`stackMaxFor`), each 11 px further right, so Nib's fourth slot sits at x 125 and the well ends at x 137, under the strip and clear of the back link (`wellLayout` in `hud.ts`). Kick and burst show at 50% opacity when not ready (`hud.test.ts` holds that to 3:1 on the well). While the burst recharges a 1 px `dim` ring around it (x 80-90, y 26-36) fills clockwise from top centre; a ready burst is the icon at full opacity with no ring. An empty slot shows a 3x3 `dim` socket at its centre. No divider: x 90-91 is the ring's column and the gap |
-| Progress strip | 122, 6, 112, 15 | `inset` panel; 7x7 `ui-heads` at y 10, travelling over x 126-223 |
+| Progress strip | 122, 6, 112, 15 | `inset` panel; 7x7 `ui-heads` at y 10, travelling over x 126-223. Heads that would sit closer than 5 px are fanned out to 5 px apart (`spreadHeads` in `race-progress.ts`): the player's head keeps its true spot and draws on top, rivals move away from it, and a pack at the start fans right and a pack at the finish fans left so none leaves the strip |
 | Finish flag | 236, 9, 9, 9 | `finishFlag` at the strip's end, clear of the back link |
 | Splash | centred on (160, 62) | display at 2x, `outline: true`; countdown and DNF in foam (coral isn't allowed over the water), GO / FINAL STRETCH / FINISH in sun; the widest (FINAL STRETCH) covers x 53-267, y 50-74 |
-| Caption | centred on (160, 45) | text, foam, outlined: TRAPPED!, STUNNED!, SLOWED BY INK, or an off-screen bubble's direction |
+| Caption | centred on (160, 45) | text, foam, outlined: TRAPPED!, STUNNED!, LOCKED ON! (a Homing Squid has locked on the player), SLOWED BY INK, or an off-screen bubble's direction. Empty while a squid is latched, when KICK! takes the spot |
+| Lock-on arrow | `MARKER_BOUNDS` x 8-312, y 52-172 | `warnArrow` (9x9 coral wedge, foam rim) turned to the nearest 45 degrees toward the squid hunting the player. On the screen's edge when the squid is off-screen, 14 px short of it when in view. Never inside a touch zone (it slides along the edge to the nearest clear point: up from the d-pad, up from the A/B buttons). Blinks 14 ticks on, 6 off (3 Hz); steady under reduced motion. Paired with the LOCKED ON! caption and a rising three-ping sfx, so colour is never the only signal |
+| KICK! prompt | centred on (160, 45) | display, sun, outlined, while a squid is latched on the player; swaps sun and foam every 10 ticks (steady sun under reduced motion). On touch screens `PRESS A` in foam text sits at (160, 58), since A is the kick button |
 | Darkness | whole screen, over a dark zone's columns | `view/dark-view.ts`: a near-black veil (90%) under the HUD layer, faded in over 32 px at each end of the zone, with a light pool cut around every racer (player 64 px, leaning up to 16 px ahead along their velocity; rival 28; +32 holding a Glow Lantern; four 4 px rings of falling light at the edge), so at top speed a hazard is lit about 0.35 s before contact. Urchins (coral, 55%) and jellies (lilac, 60%) in a zone show a 5x5 glint above the veil. A player who sees in the dark (`racerSeesInDark`, Selene) gets only a 30% tint. One screen-sized render texture, redrawn only while a zone is on screen and the tick or scroll changed; numbers in `view/dark-math.ts` |
 | Combo name | centred on x 168, y follows the player | display for 10 ticks then text, sun, outlined. x 168 is the middle of the safe column (x 108-228). Its nearest edge stays 16 px from the player's body centre (half an inflated puffer plus 4), above the player when that fits under the caption line, else below, always within y 50-174 (`comboCentreY`) |
+
+Held power-ups in the well, 9x9 with a foam rim: Jet Fins (fin), Bubble Shield (ring), Puffer (spiny fish), Ink Sac (drop), Glow Lantern (lamp), Homing Squid (upright orange squid), Riptide (green swell peaks), Undertow (violet arrow pulling left), Mimic (lilac octopus with gold eyes). Each has a 12x12 world twin (the same rows padded, dark outline) for loose pickups and clam pops.
 
 ```
  6       62 66        118 122                      234 236   248
@@ -72,6 +76,22 @@ Every rect below stays clear of all three zones on every device, so the layout n
                    FINAL STRETCH        (centred on 160,62)
  (d-pad x<108, y>=76)                      (A/B x>=228, y>=118)
 ```
+
+## Attack power-ups in the water
+
+Drawn from world state by `view/attack-view.ts` (squids, lanes, decoys) and `view/powerup-view.ts` (what happens to a racer). Art is in `art/sprites/attack.ts` and `art/sprites/powerups.ts`.
+
+| Thing | Look | Motion | Reduced motion |
+| --- | --- | --- | --- |
+| Homing Squid | 16x12 orange-red squid, white eye, trailing arms, drawn to the nearest 22.5 degrees of its heading (flipped, never upside down, when heading left) | two-frame swim, 6 ticks a frame | holds frame a |
+| Latched squid | the same squid's latched pose over the racer (mantle on the head, arms across the body), above the racer sprite | squirms 1 px every 6 ticks | still |
+| Riptide lane | the lane's box washed 16% green with a foam line on each long side, and 16x16 streak tiles running along the flow (rotated to the axis), over any current beneath; fades over its last 30 ticks | streaks shift half a tile every 8 ticks | frame a |
+| Mimic decoy | the owner's own racer sprite at 72-90% opacity with a cool tint (`0xcfe8ff`), swimming; blinks at 40% for its last 45 ticks | shimmers on a 48-tick cycle | steady 80% (40% when expiring) |
+| Undertow pull | three violet speed lines on the side the racer faces, 15 px from its centre, for as long as `status.undertow` runs | two-frame flicker, 4 ticks a frame | holds frame a |
+
+Event effects: a squid fired puffs bubbles at its owner; a shake-off pops bubbles on the racer; a squid that fizzles leaves an ink puff where it was; a new Riptide strings bubbles along its lane; Undertow trails bubbles from each racer it pulls; a popped decoy bursts into droplets. Sounds are in `audio/sfx.ts`, chosen by `audio/attack-sfx.ts`.
+
+Review captures: `?stage=<name>` on the race URL (`debug-stage.ts`) puts staged state in the world before the first frame: `icons-a`, `icons-b`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow`. It only writes plain world state the views read, and is inert without the query.
 
 ## Title
 

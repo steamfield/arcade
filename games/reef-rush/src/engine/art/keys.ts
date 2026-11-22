@@ -33,6 +33,16 @@ export const Tex = {
   puffer: 'powerup-puffer',
   inkSac: 'powerup-ink-sac',
   glowLantern: 'powerup-glow-lantern',
+  homingSquid: 'powerup-homing-squid',
+  riptide: 'powerup-riptide',
+  undertow: 'powerup-undertow',
+  mimic: 'powerup-mimic',
+  /** The Homing Squid in the water (16x12, swim and latched frames), not its held icon. */
+  squid: 'squid',
+  /** One 16x16 tile of a Riptide lane, streaks pointing right; the view rotates it to the lane. */
+  riptideStreak: 'riptide-streak',
+  /** Speed lines drawn ahead of a racer Undertow is pulling back. */
+  undertowStreak: 'undertow-streak',
   inkCloud: 'ink-cloud',
   bubble: 'bubble',
   looseGlow: 'loose-glow',
@@ -50,6 +60,7 @@ export const Frame = {
   /** Two-frame cycles: racer swim strokes, kelp sway, current flow, jelly pulse. */
   a: 'a',
   b: 'b',
+  squidLatched: 'latched',
   clamClosed: 'closed',
   clamOpen: 'open',
   markerCircle: 'circle',

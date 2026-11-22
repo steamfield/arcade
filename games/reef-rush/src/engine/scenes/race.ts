@@ -1,7 +1,7 @@
 /**
  * The race screen. It assembles the views (backdrop, course, pickups, hazards,
- * racers and their power-up effects, the darkness over dark zones, HUD, camera,
- * debug overlay) over the runtime's world and syncs them every rendered frame.
+ * the attack power-ups in the water, racers and their power-up effects, the darkness
+ * over dark zones, HUD, camera, debug overlay) over the runtime's world and syncs them every rendered frame.
  * Event-driven visuals arrive through the runtime's per-tick listener.
  * Ticking, input and the move to results all happen in the runtime.
  */
@@ -9,8 +9,10 @@ import { TICK_HZ } from '@arcade/core';
 import Phaser from 'phaser';
 import { playerOf } from '../../logic/racers.ts';
 import type { World } from '../../logic/types.ts';
+import { applyStage, readStage } from '../debug-stage.ts';
 import { createFx } from '../fx/index.ts';
 import type { Runtime } from '../runtime.ts';
+import { createAttackView } from '../view/attack-view.ts';
 import { createBackdrop } from '../view/backdrop.ts';
 import { followRacer } from '../view/camera.ts';
 import { createDarkView } from '../view/dark-view.ts';
@@ -40,6 +42,8 @@ export class RaceScene extends Phaser.Scene {
   create(): void {
     const world = this.rt.world;
     if (!world) throw new Error('The race scene started without a world; start races with Runtime.startRace()');
+    const stage = readStage();
+    if (stage) applyStage(world, stage);
     this.views = this.createViews(world);
     this.rt.entered('race');
   }
@@ -56,6 +60,7 @@ export class RaceScene extends Phaser.Scene {
     const { reducedMotion } = this.rt.settings;
     const pickups = createPickupView(this, world.level, reducedMotion);
     const hazards = createHazardView(this, world.level, reducedMotion);
+    const attacks = createAttackView(this, reducedMotion);
     const racers = world.racers.map((racer) => ({
       racer,
       view: createRacerView(this, racer, reducedMotion),
@@ -86,6 +91,7 @@ export class RaceScene extends Phaser.Scene {
       backdrop.update(current.tick);
       pickups.sync(current, current.tick);
       hazards.sync(current, current.tick);
+      attacks.sync(current, current.tick);
       for (const { racer, view, effects } of racers) {
         view.sync(racer, current.tick);
         effects.sync(racer, current.tick);
