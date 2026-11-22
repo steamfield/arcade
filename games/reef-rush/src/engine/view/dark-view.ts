@@ -1,24 +1,40 @@
 /**
  * Darkness over the course's dark zones (`level.dark`, inclusive tile-column
- * ranges): a near-black veil across each zone's columns on screen, faded in
- * over its first and last tiles, with a pool of light cut around every racer.
- * A racer holding a Glow Lantern carries a bigger pool. A player whose ability
- * is Moonlight (Selene) sees through the dark, so for them the veil is only a
- * light tint that says "this is a dark zone".
+ * ranges, merged once): a near-black veil across each zone's columns on
+ * screen, faded in at its ends, with a pool of light cut around every racer.
+ * The player's pool is the widest and leans ahead along their velocity, and a
+ * Glow Lantern holder's is bigger still. Urchins and jellies inside a zone
+ * show a faint glint above the veil, so a hazard reads before it is lit. A
+ * player who sees in the dark (`racerSeesInDark`, Selene's Moonlight) gets
+ * only a light tint that says "this is a dark zone".
  *
- * Cheap on phones by design: one screen-sized render texture, redrawn per
- * frame only while a zone is on screen, with a handful of rectangle fills and
- * one erase stamp per racer from light textures built once. Nothing is done
- * per pixel per frame. It draws under the HUD layer, so the HUD always shows.
+ * Cheap on phones by design: one screen-sized render texture, redrawn only
+ * while a zone is on screen and only when the tick or the scroll changed,
+ * with a handful of rectangle fills and one erase stamp per racer from light
+ * textures built at create. Nothing is done per pixel per frame and the
+ * per-frame path allocates nothing. It draws under the HUD layer, so the HUD
+ * always shows. The numbers live in `dark-math.ts`.
  *
  * Light pools flicker by a pixel or two, changing at most three times a second
  * (the UI.md flash rule), timed from the world tick so captures repeat; under
  * reduced motion the pools hold still and the darkness is otherwise the same.
  */
 import Phaser from 'phaser';
-import { CHARACTERS } from '../../logic/characters.ts';
+import { racerSeesInDark } from '../../logic/abilities.ts';
 import { playerOf } from '../../logic/racers.ts';
-import { type Racer, TILE, type World } from '../../logic/types.ts';
+import { TILE, type Vec, type World } from '../../logic/types.ts';
+import {
+  FADE,
+  fadeSteps,
+  flicker,
+  leadOffset,
+  lightOpacity,
+  lightRadius,
+  mergeZones,
+  reachableRadii,
+  type Span,
+  spansOnScreen,
+} from './dark-math.ts';
 import { Layer } from './layers.ts';
 
 /** The darkness view; `sync` redraws it from the world each frame. */
@@ -31,104 +47,121 @@ const DARK_COLOUR = 0x020616;
 /** Veil opacity in the dark, and for a player who sees through it (only a tint). */
 const DARK_ALPHA = 0.9;
 const SEE_THROUGH_ALPHA = 0.3;
-/** A zone fades in over this many steps of this many px at each end, so it reads as a trench, not a wall. */
-const FADE = { steps: 4, px: 8 } as const;
-
-/** Light pool radii in px: the player sees further than a rival's glow shows; a lantern adds reach. */
-const LIGHT_RADIUS = { player: 48, rival: 28, lanternBonus: 32 } as const;
-/** A pool's edge is four rings this wide, each letting through less light. */
-const LIGHT_RING_PX = 4;
-const LIGHT_RINGS = 4;
-/** The flicker changes a pool's radius at most once per this many ticks (three times a second). */
-const FLICKER_TICKS = 20;
-/** How far a flicker may shrink a pool, in px. */
-const FLICKER_PX = 2;
+/** Over every world layer and effect, under the HUD so it never hides a readout. */
+const VEIL_DEPTH = Layer.hud - 1;
+/** Hazard glints sit between the veil and the HUD. */
+const GLINT_DEPTH = Layer.hud - 0.5;
+/** Each glint: a 5x5 plus with a bright centre, in the hazard's warning colour, faint. */
+const GLINTS = {
+  urchin: { key: 'dark-glint-urchin', colour: 0xff8a7a, alpha: 0.55 },
+  jelly: { key: 'dark-glint-jelly', colour: 0xe0b8ff, alpha: 0.6 },
+} as const;
+/** Stamping a light pool erases it from the veil. */
+const ERASE_STAMP = { blendMode: Phaser.BlendModes.ERASE } as const;
 
 /** Adds the darkness for `world`'s course to `scene`. With no dark zones it draws nothing. */
 export function createDarkView(scene: Phaser.Scene, world: World, reducedMotion: boolean): DarkView {
-  const zones = world.level.dark;
+  const zones = mergeZones(world.level.dark);
   if (zones.length === 0) return { sync() {} };
+  // Every pool texture up front, so the first lantern pickup in the dark doesn't hitch.
+  const lightKeys = new Map(reachableRadii().map((radius) => [radius, ensureLightTexture(scene, radius)]));
+  addGlints(scene, world, zones);
   const camera = scene.cameras.main;
   const { width, height } = camera;
   const veil = scene.add
     .renderTexture(0, 0, width, height)
     .setOrigin(0, 0)
     .setScrollFactor(0)
-    // Over every world layer and effect, under the HUD so it never hides a readout.
-    .setDepth(Layer.hud - 1)
+    .setDepth(VEIL_DEPTH)
     .setVisible(false);
-  const seesThrough = CHARACTERS[playerOf(world).character].ability === 'moonlight';
+  const seesThrough = racerSeesInDark(playerOf(world));
   const alpha = seesThrough ? SEE_THROUGH_ALPHA : DARK_ALPHA;
+  const spans: Span[] = [];
+  const drawn = { tick: -1, left: Number.NaN, top: Number.NaN };
 
   return {
     sync(current) {
       // The scroll, not worldView: the camera was just moved this frame and worldView catches up only at render.
       const left = Math.round(camera.scrollX);
       const top = Math.round(camera.scrollY);
-      const spans = zones.map(([from, to]) => ({ left: from * TILE - left, right: (to + 1) * TILE - left }));
-      const onScreen = spans.filter((span) => span.right > 0 && span.left < width);
-      veil.setVisible(onScreen.length > 0);
-      if (onScreen.length === 0) return;
+      // Racers only move on ticks, so with the same tick and scroll the last drawing still stands.
+      if (current.tick === drawn.tick && left === drawn.left && top === drawn.top) return;
+      drawn.tick = current.tick;
+      drawn.left = left;
+      drawn.top = top;
+      const count = spansOnScreen(zones, left, width, spans);
+      veil.setVisible(count > 0);
+      if (count === 0) return;
       veil.clear();
-      for (const span of onScreen) fillZone(veil, span, height, alpha);
+      for (let index = 0; index < count; index++) {
+        const span = spans[index];
+        if (span) fillZone(veil, span, height, alpha);
+      }
       if (!seesThrough) {
-        current.racers.forEach((racer, index) => {
-          const radius = lightRadius(racer) - flicker(current.tick, index, reducedMotion);
-          const { x, y, w, h } = racer.body;
-          veil.stamp(
-            ensureLightTexture(scene, radius),
-            undefined,
-            Math.round(x + w / 2) - left,
-            Math.round(y + h / 2) - top,
-            {
-              blendMode: Phaser.BlendModes.ERASE,
-            },
-          );
-        });
+        for (let index = 0; index < current.racers.length; index++) {
+          const racer = current.racers[index];
+          if (!racer) continue;
+          const isPlayer = racer.id === 'player';
+          const reach = lightRadius(isPlayer, racer.stack.includes('glowLantern'));
+          const key = lightKeys.get(reach - flicker(current.tick, index, reducedMotion));
+          if (!key) continue;
+          const { x, y, w, h, vx, vy } = racer.body;
+          // Only the player's pool leans ahead: it's what they steer by.
+          const cx = Math.round(x + w / 2) + (isPlayer ? leadOffset(vx) : 0) - left;
+          const cy = Math.round(y + h / 2) + (isPlayer ? leadOffset(vy) : 0) - top;
+          veil.stamp(key, undefined, cx, cy, ERASE_STAMP);
+        }
       }
       veil.render();
     },
   };
 }
 
-/** Fills one zone's on-screen columns: full veil in the middle, stepping down to nothing at each end. */
-function fillZone(
-  veil: Phaser.GameObjects.RenderTexture,
-  span: { left: number; right: number },
-  height: number,
-  alpha: number,
-): void {
-  const fade = FADE.steps * FADE.px;
-  veil.fill(DARK_COLOUR, alpha, span.left + fade, 0, Math.max(0, span.right - span.left - 2 * fade), height);
-  for (let step = 0; step < FADE.steps; step++) {
-    const stepAlpha = (alpha * (step + 1)) / (FADE.steps + 1);
+/** Fills one zone's columns: full veil in the middle, stepping down to nothing at each end, fewer steps when narrow. */
+function fillZone(veil: Phaser.GameObjects.RenderTexture, span: Span, height: number, alpha: number): void {
+  const steps = fadeSteps(span.right - span.left);
+  const fade = steps * FADE.px;
+  veil.fill(DARK_COLOUR, alpha, span.left + fade, 0, span.right - span.left - 2 * fade, height);
+  for (let step = 0; step < steps; step++) {
+    const stepAlpha = (alpha * (step + 1)) / (steps + 1);
     veil.fill(DARK_COLOUR, stepAlpha, span.left + step * FADE.px, 0, FADE.px, height);
     veil.fill(DARK_COLOUR, stepAlpha, span.right - (step + 1) * FADE.px, 0, FADE.px, height);
   }
 }
 
-/** How far a racer's light reaches: the player's own, a rival's, plus the lantern's reach if it holds one. */
-function lightRadius(racer: Racer): number {
-  const base = racer.id === 'player' ? LIGHT_RADIUS.player : LIGHT_RADIUS.rival;
-  return base + (racer.stack.includes('glowLantern') ? LIGHT_RADIUS.lanternBonus : 0);
-}
-
 /**
- * How many px the racer at `index` loses to flicker at `tick`: 0 to FLICKER_PX, changing at most
- * every FLICKER_TICKS, each racer out of step with the others. Always 0 under reduced motion.
+ * A faint glint over every urchin and jelly home inside a dark zone, above the veil. They're placed
+ * once: urchins never move, and a jelly bobs only a few px around its home.
  */
-function flicker(tick: number, index: number, reducedMotion: boolean): number {
-  if (reducedMotion) return 0;
-  const step = Math.floor(tick / FLICKER_TICKS) + index * 5;
-  // A fixed shuffle of shrink amounts, so the light wavers without a visible rhythm.
-  const pattern = [0, 1, 0, 2, 1, 0, 0, 1, 2, 0, 1];
-  return Math.min(FLICKER_PX, pattern[step % pattern.length] ?? 0);
+function addGlints(scene: Phaser.Scene, world: World, zones: readonly (readonly [number, number])[]): void {
+  const inZone = (tile: Vec) => zones.some(([from, to]) => tile.x >= from && tile.x <= to);
+  const place = (tiles: readonly Vec[], glint: (typeof GLINTS)[keyof typeof GLINTS]) => {
+    const key = ensureGlintTexture(scene, glint.key, glint.colour);
+    for (const tile of tiles.filter(inZone)) {
+      scene.add
+        .image(tile.x * TILE + TILE / 2, tile.y * TILE + TILE / 2, key)
+        .setAlpha(glint.alpha)
+        .setDepth(GLINT_DEPTH);
+    }
+  };
+  place(world.level.urchins, GLINTS.urchin);
+  place(world.level.jellies, GLINTS.jelly);
+}
+
+/** The 5x5 glint texture in `colour`, built once per game. */
+function ensureGlintTexture(scene: Phaser.Scene, key: string, colour: number): string {
+  if (scene.textures.exists(key)) return key;
+  const graphics = scene.make.graphics({}, false);
+  graphics.fillStyle(colour, 1).fillRect(2, 0, 1, 5).fillRect(0, 2, 5, 1);
+  graphics.fillStyle(0xffffff, 1).fillRect(2, 2, 1, 1);
+  graphics.generateTexture(key, 5, 5);
+  graphics.destroy();
+  return key;
 }
 
 /**
- * The light pool texture for `radius`, built the first time it is needed and kept for the game:
- * opaque inside, then rings of falling opacity to the edge. Erasing with it cuts the pool out of
- * the veil. Textures are global, so a later race reuses it.
+ * The light pool texture for `radius`, built once and kept for the game: opaque inside, then rings
+ * of falling opacity to the edge. Erasing with it cuts the pool out of the veil.
  *
  * @throws {Error} When Phaser refuses to make the canvas texture.
  */
@@ -150,11 +183,4 @@ function ensureLightTexture(scene: Phaser.Scene, radius: number): string {
   context.putImageData(image, 0, 0);
   texture.refresh();
   return key;
-}
-
-/** How much of the veil the pool removes `distance` px from its centre: all of it inside, less in each outer ring, none past the edge. */
-function lightOpacity(distance: number, radius: number): number {
-  const ringsIn = Math.ceil((radius - distance) / LIGHT_RING_PX);
-  if (ringsIn <= 0) return 0;
-  return Math.min(1, ringsIn / LIGHT_RINGS);
 }

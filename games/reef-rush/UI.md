@@ -60,7 +60,7 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | Finish flag | 236, 9, 9, 9 | `finishFlag` at the strip's end, clear of the back link |
 | Splash | centred on (160, 62) | display at 2x, `outline: true`; countdown and DNF in foam (coral isn't allowed over the water), GO / FINAL STRETCH / FINISH in sun; the widest (FINAL STRETCH) covers x 53-267, y 50-74 |
 | Caption | centred on (160, 45) | text, foam, outlined: TRAPPED!, STUNNED!, SLOWED BY INK, or an off-screen bubble's direction |
-| Darkness | whole screen, over a dark zone's columns | `view/dark-view.ts`: a near-black veil (90%) under the HUD layer, faded in over 32 px at each end of the zone, with a light pool cut around every racer (player 48 px, rival 28, +32 holding a Glow Lantern; four 4 px rings of falling light at the edge). A Moonlight player (Selene) gets only a 30% tint. One screen-sized render texture, redrawn only while a zone is on screen |
+| Darkness | whole screen, over a dark zone's columns | `view/dark-view.ts`: a near-black veil (90%) under the HUD layer, faded in over 32 px at each end of the zone, with a light pool cut around every racer (player 64 px, leaning up to 16 px ahead along their velocity; rival 28; +32 holding a Glow Lantern; four 4 px rings of falling light at the edge), so at top speed a hazard is lit about 0.35 s before contact. Urchins (coral, 55%) and jellies (lilac, 60%) in a zone show a 5x5 glint above the veil. A player who sees in the dark (`racerSeesInDark`, Selene) gets only a 30% tint. One screen-sized render texture, redrawn only while a zone is on screen and the tick or scroll changed; numbers in `view/dark-math.ts` |
 | Combo name | centred on x 168, y follows the player | display for 10 ticks then text, sun, outlined. x 168 is the middle of the safe column (x 108-228). Its nearest edge stays 16 px from the player's body centre (half an inflated puffer plus 4), above the player when that fits under the caption line, else below, always within y 50-174 (`comboCentreY`) |
 
 ```
@@ -107,7 +107,7 @@ All three buttons are 80 wide so the fins line up; 80 is the widest that keeps t
 | Grid cells | from 22, 28; 66x22; 4 px between columns, 2 between rows | 4x2 in `CHARACTER_IDS` order: rows y 28-49 and 52-73. `raised`, the cursor's cell `accent` with its name in sun; 16x16 portrait at (+3, +3), short name in foam at (+22, +8). The top-right cell (x 232-297) starts below the back link; the bottom row ends above the d-pad zone |
 | Card | 110, 78, 188, 40 | `raised`; right edge on the grid's, bottom at y 117 above the A/B zone. Portrait at 2x (32x32) at (114, 82); text column x 150-293 (`CARD_TEXT_WIDTH` 144): full name in display sun at y 83, ability in foam at y 98, blurb in dim at y 107. `character-select.test.ts` holds every line to the column |
 | Preview | 144, 128, 32, 24 | the picked racer's sprite at 2x, centred on (160, 140), swimming in place |
-| Footer | 114, 159, 92, 15 | `inset` readout: kick icon at (122, 162) + RACE, burst icon at (164, 162) + BACK, words in foam 11 px right of their icons |
+| Footer | 114, 159, 92, 15 | `inset` readout: kick icon at (122, 162) + RACE, burst icon at (164, 162) + BACK, words in foam 11 px right of their icons. On touch screens (the PRESS A rule) the icons give way to the button letters A and B in sun |
 
 The card, preview and footer stay in the safe column (x 108-228) below the grid, except the card's right part, which ends above the A/B zone.
 

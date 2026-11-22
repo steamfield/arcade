@@ -4,7 +4,8 @@
  * cursor in a gold frame with its name in sun), a card for that character
  * (its portrait at 2x, full name, ability and a one-line blurb), the picked
  * racer swimming in place under the card, and a footer showing kick races and
- * burst goes back. Everything sits clear of the back link, d-pad and A/B zones.
+ * burst goes back (as the A and B buttons on touch screens). Everything sits
+ * clear of the back link, d-pad and A/B zones.
  *
  * The runtime moves the cursor and starts the race; this scene only draws
  * `rt.selectedCharacter`. Motion is timed from the runtime tick and reads
@@ -42,7 +43,7 @@ const CARD_ABILITY_Y = 98;
 const CARD_BLURB_Y = 107;
 /** The picked racer at 2x (32x24), centred in the safe column between the card and the footer. */
 const PREVIEW = { x: 160, y: 140, scale: 2 } as const;
-/** An inset readout at the bottom of the safe column: kick icon RACE, burst icon BACK. */
+/** An inset readout at the bottom of the safe column: kick icon RACE, burst icon BACK; A RACE, B BACK on touch. */
 const FOOTER = { x: 114, y: 159, w: 92, h: 15 } as const;
 const FOOTER_ICON_Y = 162;
 const FOOTER_TEXT_Y = 163;
@@ -50,6 +51,8 @@ const FOOTER_KICK_X = 122;
 const FOOTER_BURST_X = 164;
 /** Icon to its word. */
 const FOOTER_WORD_DX = 11;
+/** On touch a 5 px button letter stands in the 9 px icon's place, centred in it. */
+const FOOTER_LETTER_DX = 2;
 
 /** UI.md "Motion": on each move the card's text drops 2 px into place over 6 ticks, staying inside the frame. */
 const CARD_DROP = { px: 2, ticks: 6 } as const;
@@ -167,14 +170,28 @@ function addCard(scene: Phaser.Scene): Card {
   };
 }
 
-/** The footer readout: the kick icon and RACE, the burst icon and BACK. */
+/**
+ * The footer readout: the kick icon and RACE, the burst icon and BACK. On a touch screen it names
+ * the on-screen buttons instead, A RACE and B BACK, with the letters in sun.
+ */
 function addFooter(scene: Phaser.Scene): void {
   createPanel(scene, FOOTER.x, FOOTER.y, FOOTER.w, FOOTER.h, 'inset');
-  for (const [x, icon, word] of [
-    [FOOTER_KICK_X, IconFrame.kick, 'RACE'],
-    [FOOTER_BURST_X, IconFrame.burst, 'BACK'],
+  const touch = isTouchScreen();
+  for (const [x, icon, letter, word] of [
+    [FOOTER_KICK_X, IconFrame.kick, 'A', 'RACE'],
+    [FOOTER_BURST_X, IconFrame.burst, 'B', 'BACK'],
   ] as const) {
-    scene.add.image(x, FOOTER_ICON_Y, UiTex.icons, icon).setOrigin(0, 0);
+    if (touch) createLabel(scene, x + FOOTER_LETTER_DX, FOOTER_TEXT_Y, letter, { tone: 'sun' });
+    else scene.add.image(x, FOOTER_ICON_Y, UiTex.icons, icon).setOrigin(0, 0);
     createLabel(scene, x + FOOTER_WORD_DX, FOOTER_TEXT_Y, word, { tone: 'foam' });
   }
+}
+
+/**
+ * Whether the on-screen touch controls are up, by the rule `@arcade/input` mounts them by and the
+ * title's PRESS A uses: the shell's `?touch=1`, or a coarse pointer.
+ */
+function isTouchScreen(): boolean {
+  const forced = new URLSearchParams(window.location.search).get('touch') === '1';
+  return forced || window.matchMedia('(pointer: coarse)').matches;
 }
