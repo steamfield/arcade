@@ -124,6 +124,7 @@ Save v2: `{ best: { ticks: number; place: number } | null, races: number, settin
 
 ### Phase 1: race logic on the first reef section (MVP)
 
+Scaffold: be3d297
 Demo: `pnpm arcade dev reef-rush`, press A on the title, swim the first section against three rivals (template-style placeholder rendering adapted to the new world), see the finish text. Headless: `pnpm arcade see reef-rush --scenario race-to-finish --at 0,200,end` and `pnpm --filter game-reef-rush exec vitest run src/logic/world.test.ts`.
 Test cases:
 - parse: reads every tile character (`#` rock, `C` coral, `~` kelp, `> < ^ v` currents, `.` water, `1-4` starts, `F` finish, `o` pearl, `?` clam, `*` urchin, `j` jellyfish); start and object tiles are water; dark zones pass through.
@@ -140,8 +141,8 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/level/parse.ts, games/reef-rush/src/logic/level/query.ts, games/reef-rush/src/logic/swim/physics.ts, games/reef-rush/src/logic/swim/collide.ts | contracts, templates/phaser-2d/src/logic/world.ts | games/reef-rush/src/logic/level/parse.test.ts, games/reef-rush/src/logic/level/query.test.ts, games/reef-rush/src/logic/swim/physics.test.ts, games/reef-rush/src/logic/swim/collide.test.ts | opus | pending | | level and swim tests pass, typecheck passes |
-| b | M | games/reef-rush/src/logic/race/flowfield.ts, games/reef-rush/src/logic/race/standings.ts, games/reef-rush/src/logic/ai/rival.ts | contracts | games/reef-rush/src/logic/race/flowfield.test.ts, games/reef-rush/src/logic/race/standings.test.ts, games/reef-rush/src/logic/ai/rival.test.ts | opus | pending | | race and rival tests pass, typecheck passes |
+| a | M | games/reef-rush/src/logic/level/parse.ts, games/reef-rush/src/logic/level/query.ts, games/reef-rush/src/logic/swim/physics.ts, games/reef-rush/src/logic/swim/collide.ts | contracts, templates/phaser-2d/src/logic/world.ts | games/reef-rush/src/logic/level/parse.test.ts, games/reef-rush/src/logic/level/query.test.ts, games/reef-rush/src/logic/swim/physics.test.ts, games/reef-rush/src/logic/swim/collide.test.ts | opus | running | deliver/reef-rush-1a | level and swim tests pass, typecheck passes |
+| b | M | games/reef-rush/src/logic/race/flowfield.ts, games/reef-rush/src/logic/race/standings.ts, games/reef-rush/src/logic/ai/rival.ts | contracts | games/reef-rush/src/logic/race/flowfield.test.ts, games/reef-rush/src/logic/race/standings.test.ts, games/reef-rush/src/logic/ai/rival.test.ts | opus | running | deliver/reef-rush-1b | race and rival tests pass, typecheck passes |
 
 Inline (orchestrator, in the scaffold and while lanes run): types, events, save v2 and fixtures, world.ts and world.test.ts, levels.ts first section, profiles.ts, template engine adapted to the new world API, scenarios, smoke, DESIGN.md and game.json, deleting the template's coin files.
 
