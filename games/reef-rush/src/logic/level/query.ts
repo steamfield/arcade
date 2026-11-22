@@ -2,7 +2,7 @@
  * Read-only questions about a Level's tiles: what is at a tile, what is solid,
  * which tiles a body covers, and what the water does at a body's centre.
  */
-import { type Body, type Cell, type Environment, type Level, TILE, type Vec } from '../types.ts';
+import { type Body, type Box, type Cell, type Environment, type Level, TILE, type Vec } from '../types.ts';
 
 const CURRENT_DIRECTIONS: ReadonlyMap<Cell, Vec> = new Map([
   ['current-right', { x: 1, y: 0 }],
@@ -32,7 +32,7 @@ export function isSolid(level: Level, broken: ReadonlySet<number>, tx: number, t
  * Inclusive tile range a body overlaps.
  * A tile the body only touches along an edge is not included.
  */
-export function bodyTiles(body: Body): { left: number; right: number; top: number; bottom: number } {
+export function bodyTiles(body: Box): { left: number; right: number; top: number; bottom: number } {
   return {
     left: Math.floor(body.x / TILE),
     right: Math.ceil((body.x + body.w) / TILE) - 1,
@@ -42,7 +42,7 @@ export function bodyTiles(body: Body): { left: number; right: number; top: numbe
 }
 
 /** True when a body overlaps a tile by any positive area. */
-export function overlapsTile(body: Body, tx: number, ty: number): boolean {
+export function overlapsTile(body: Box, tx: number, ty: number): boolean {
   return (
     body.x < (tx + 1) * TILE && body.x + body.w > tx * TILE && body.y < (ty + 1) * TILE && body.y + body.h > ty * TILE
   );

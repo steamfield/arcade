@@ -2,7 +2,10 @@ import { createRng, EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
 import { parseLevel } from '../level/parse.ts';
-import type { Intent, Racer, RacerId, TickInput, World } from '../types.ts';
+import { updateProgress } from '../race/standings.ts';
+import { noItems } from '../racers.ts';
+import { placeOnTile, raceOn } from '../test-world.ts';
+import type { Intent, PowerUpKind, Racer, RacerId, TickInput, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 import { RIVAL_PROFILES } from './profiles.ts';
 import { CATCH_UP, catchUpMul, rivalIntent } from './rival.ts';
@@ -172,9 +175,36 @@ describe('getting unstuck', () => {
   });
 });
 
+describe('stunned or trapped', () => {
+  it('never starts a recovery swim, and resets the count of still ticks toward being stuck', () => {
+    const { world } = lanes();
+    racing(world);
+    const still = (r: Racer) => {
+      r.body.vx = 0;
+      r.body.vy = 0;
+    };
+    const before = intents(world, 'tess', 20, still);
+    const stunned = intents(world, 'tess', 40, (r) => {
+      still(r);
+      r.status.stunned = 5;
+    });
+    const trapped = intents(world, 'tess', 40, (r) => {
+      still(r);
+      r.status.stunned = 0;
+      r.status.trapped = 5;
+    });
+    const freed = intents(world, 'tess', 25, (r) => {
+      still(r);
+      r.status.trapped = 0;
+    });
+
+    expect([...before, ...stunned, ...trapped, ...freed].some(sideways)).toBe(false);
+  });
+});
+
 describe('catch-up', () => {
   const pair = (rivalProgress: number, playerProgress: number) => {
-    const base = { facing: 1 as const, kickCooldown: 0, place: 1, finished: null, ai: null };
+    const base = { facing: 1 as const, kickCooldown: 0, place: 1, finished: null, ai: null, ...noItems() };
     const body = { x: 0, y: 0, vx: 0, vy: 0, w: 12, h: 10 };
     const rival: Racer = { ...base, id: 'tess', body, progress: rivalProgress, profile: RIVAL_PROFILES.tess };
     const player: Racer = { ...base, id: 'player', body, progress: playerProgress, profile: RIVAL_PROFILES.tess };
@@ -219,5 +249,175 @@ describe('kicking while getting unstuck', () => {
 
     expect(recovery).toHaveLength(20);
     expect(recovery.filter((i) => i.kick)).toEqual([]);
+  });
+});
+
+/** Open water with the finish on the right, so a rival in the middle aims straight right. */
+const ARENA = `
+  #######################
+  #1...................F#
+  #....................F#
+  #....................F#
+  #....................F#
+  #2...................F#
+  #....................F#
+  #....................F#
+  #....................F#
+  #3..................4F#
+  #######################
+`;
+
+/**
+ * Tess's lane is blocked by coral two tiles ahead; going round means doubling back and down,
+ * so the smash field runs through the coral and the steer field goes the other way.
+ */
+const CORAL_LANE = `
+  ##################
+  #1..2.C.........F#
+  #.################
+  #3..............F#
+  #4..............F#
+  ##################
+`;
+
+type Spots = Partial<Record<RacerId, [number, number]>>;
+
+/**
+ * Tess holding `kinds` with item aggression `aggression`. By default she sits mid-arena at (10, 5)
+ * and everyone else is about 10 tiles away; `spots` moves racers to other tiles.
+ */
+function itemScene(kinds: PowerUpKind[], spots: Spots = {}, aggression = 1, ascii = ARENA) {
+  const { world } = raceOn(ascii);
+  const defaults: Spots = ascii === ARENA ? { tess: [10, 5], player: [1, 1], squib: [1, 9], bo: [19, 9] } : {};
+  for (const [id, [tx, ty]] of Object.entries({ ...defaults, ...spots }) as [RacerId, [number, number]][]) {
+    placeOnTile(racer(world, id), tx, ty);
+  }
+  updateProgress(world);
+  const tess = racer(world, 'tess');
+  tess.stack = kinds;
+  tess.profile = { ...tess.profile, itemAggression: aggression };
+  const decide = (ticks = 1) => Array.from({ length: ticks }, () => rivalIntent(world, tess, world.rngs['ai.tess']));
+  return { world, tess, decide };
+}
+
+const bursts = (intents: Intent[]) => intents.filter((intent) => intent.burst).length;
+
+describe('using items', () => {
+  it('drops ink on a racer close behind', () => {
+    expect(bursts(itemScene(['inkSac'], { player: [7, 5] }).decide())).toBe(1);
+  });
+
+  it('keeps its ink when nobody is within 4 tiles behind', () => {
+    expect(bursts(itemScene(['inkSac'], { player: [4, 5] }).decide())).toBe(0);
+  });
+
+  it('fires a bubble at a racer ahead within 6 tiles in its aim', () => {
+    expect(bursts(itemScene(['bubbleShield'], { player: [14, 5] }).decide())).toBe(1);
+  });
+
+  it('holds its bubble when the near racer is behind it', () => {
+    expect(bursts(itemScene(['bubbleShield'], { player: [7, 5] }).decide())).toBe(0);
+  });
+
+  it('flashes its lantern with a racer within 4 tiles', () => {
+    expect(bursts(itemScene(['glowLantern'], { player: [10, 2] }).decide())).toBe(1);
+  });
+
+  it('saves its lantern when every racer is further than 4 tiles', () => {
+    expect(bursts(itemScene(['glowLantern']).decide())).toBe(0);
+  });
+
+  it('inflates its puffer for coral on its smash path within 3 tiles', () => {
+    expect(bursts(itemScene(['puffer'], {}, 1, CORAL_LANE).decide())).toBe(1);
+  });
+
+  it('keeps its puffer with no coral in reach', () => {
+    expect(bursts(itemScene(['puffer']).decide())).toBe(0);
+  });
+
+  it('steers by the smash field through coral while holding a puffer, and around it without', () => {
+    const [withPuffer] = itemScene(['puffer'], {}, 0, CORAL_LANE).decide();
+    const [without] = itemScene([], {}, 0, CORAL_LANE).decide();
+
+    expect(withPuffer?.move.x).toBeGreaterThan(0.5);
+    expect(without?.move.x).toBeLessThan(0);
+  });
+
+  it('steers around coral while its puffer burst cools down', () => {
+    const { tess, decide } = itemScene(['puffer'], {}, 0, CORAL_LANE);
+    tess.burstCooldown = 100;
+
+    expect(decide()[0]?.move.x).toBeLessThan(0);
+  });
+
+  it('steers through coral while inflated, even with its burst cooling down', () => {
+    const { tess, decide } = itemScene(['puffer'], {}, 0, CORAL_LANE);
+    tess.burstCooldown = 100;
+    tess.status.inflated = 30;
+
+    expect(decide()[0]?.move.x).toBeGreaterThan(0.5);
+  });
+
+  it('never bursts while swimming sideways to get unstuck', () => {
+    const { tess, decide } = itemScene(['jetFin']);
+    const pinned = Array.from({ length: 60 }, () => {
+      tess.body.vx = 0;
+      tess.body.vy = 0;
+      return decide()[0] as Intent;
+    });
+    const recovering = pinned.filter(sideways);
+
+    expect(recovering.length).toBeGreaterThan(0);
+    expect(recovering.filter((intent) => intent.burst)).toEqual([]);
+    expect(pinned.filter((intent) => !sideways(intent)).every((intent) => intent.burst)).toBe(true);
+  });
+
+  it('aims into the coral itself once it reaches it holding a puffer', () => {
+    const [atCoral] = itemScene(['puffer'], { tess: [5, 1] }, 0, CORAL_LANE).decide();
+
+    expect(atCoral?.move.x).toBeGreaterThan(0.5);
+  });
+
+  it('dashes with 5 clear tiles straight ahead', () => {
+    expect(bursts(itemScene(['jetFin']).decide())).toBe(1);
+  });
+
+  it('holds its dash with a wall 3 tiles ahead', () => {
+    expect(bursts(itemScene(['jetFin'], { tess: [18, 5] }).decide())).toBe(0);
+  });
+
+  it('bursts on about itemAggression of its eligible ticks', () => {
+    // Kept swimming, so it never sits still long enough to start a recovery swim (which holds bursts).
+    const swimming = (aggression: number) => {
+      const { tess, decide } = itemScene(['glowLantern'], { player: [10, 2] }, aggression);
+      return Array.from({ length: 400 }, () => {
+        tess.body.vx = 60;
+        return decide()[0] as Intent;
+      });
+    };
+    const half = bursts(swimming(0.5));
+    const never = bursts(swimming(0));
+
+    expect(half / 400).toBeGreaterThan(0.35);
+    expect(half / 400).toBeLessThan(0.65);
+    expect(never).toBe(0);
+  });
+
+  it('never bursts while its burst cools down', () => {
+    const { tess, decide } = itemScene(['glowLantern'], { player: [10, 2] });
+    tess.burstCooldown = 10;
+
+    expect(bursts(decide(100))).toBe(0);
+  });
+
+  it('draws the same randomness each tick whatever it holds', () => {
+    const draws = (kinds: PowerUpKind[]) => {
+      const { world, tess } = itemScene(kinds, { player: [10, 2] });
+      const rng = createRng(99);
+      for (let i = 0; i < 50; i++) rivalIntent(world, tess, rng);
+      return rng.state();
+    };
+
+    expect(draws(['glowLantern', 'jetFin'])).toBe(draws([]));
   });
 });

@@ -8,6 +8,7 @@
  * is an EntryCost run through the same search.
  */
 import { cellAt, tileIndex } from '../level/query.ts';
+import { length } from '../num.ts';
 import { type Body, type Cell, type FlowFields, type Level, TILE, type Vec } from '../types.ts';
 import { PriorityQueue } from './priority-queue.ts';
 
@@ -128,7 +129,7 @@ function distancesToFinish(level: Level, broken: ReadonlySet<number>, cost: Entr
       if (!isOpen(fromX, fromY)) continue;
       if (!cornerIsClear({ x: tx, y: ty }, offset, isOpen)) continue;
       const move = { x: -offset.x, y: -offset.y };
-      const reached = settled + Math.hypot(move.x, move.y) * entry(tx, ty, move);
+      const reached = settled + length(move.x, move.y) * entry(tx, ty, move);
       const fromIndex = tileIndex(level, fromX, fromY);
       if (reached >= (distance[fromIndex] ?? 0)) continue;
       distance[fromIndex] = reached;

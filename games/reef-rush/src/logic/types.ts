@@ -62,14 +62,18 @@ export interface Level {
   dark: [from: number, to: number][];
 }
 
-/** An axis-aligned box in world pixels with its velocity in pixels per second. */
-export interface Body {
+/** An axis-aligned box in world pixels: top-left corner and size. */
+export interface Box {
   x: number;
   y: number;
-  vx: number;
-  vy: number;
   w: number;
   h: number;
+}
+
+/** A racer's box in world pixels with its velocity in pixels per second. */
+export interface Body extends Box {
+  vx: number;
+  vy: number;
 }
 
 /** What the water does to a body at its centre this tick. */
@@ -126,6 +130,39 @@ export interface Finish {
   overshoot: number;
 }
 
+/** The five power-ups. A racer holds each kind at most once. */
+export type PowerUpKind = 'jetFin' | 'bubbleShield' | 'puffer' | 'inkSac' | 'glowLantern';
+
+/** Every power-up kind, in a fixed order that clam rolls and tests iterate. */
+export const POWER_UP_KINDS: readonly PowerUpKind[] = ['jetFin', 'bubbleShield', 'puffer', 'inkSac', 'glowLantern'];
+
+/** Named pairs of held power-ups whose bursts change each other. Pairs are listed in `powerups/tuning.ts`. */
+export type ComboName = 'cannonball' | 'inkTrail' | 'seekerBubble' | 'inkBomb' | 'comet';
+
+/** What hurt a racer. Urchins and jellies have no owner; the rest come from another racer's burst. */
+export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash';
+
+/**
+ * Timed conditions on a racer, each a count of ticks left (0 = off). `tickStatuses` (status.ts)
+ * takes one off every counter at the end of each tick the racer is in play.
+ */
+export interface RacerStatus {
+  /** Input ignored (intent idle). */
+  stunned: number;
+  /** Hits do nothing. */
+  invulnerable: number;
+  /** Inside another racer's ink: swims at half force. */
+  slowed: number;
+  /** Inside a bubble: input ignored, floats straight up. */
+  trapped: number;
+  /** Puffer burst: larger hitbox that breaks coral and hits racers, urchin-proof. */
+  inflated: number;
+  /** Jet Fins burst: velocity held along `dashDir`. A landed hit ends it (`applyHit` sets 0). */
+  dashing: number;
+  /** Pearl boost: swims with more force. */
+  boost: number;
+}
+
 export interface Racer {
   id: RacerId;
   body: Body;
@@ -140,6 +177,20 @@ export interface Racer {
   /** Null for the player unless a bot drives it in tests. */
   ai: AiMemory | null;
   profile: RivalProfile;
+  /** Held power-ups, oldest first: at most STACK_MAX, never two of a kind. */
+  stack: PowerUpKind[];
+  /** Ticks until the next burst is allowed; 0 means ready. Shared by every held power-up. */
+  burstCooldown: number;
+  /** Pearls collected this race. */
+  pearls: number;
+  status: RacerStatus;
+  /** Unit direction of the current dash; meaningful only while `status.dashing` is above 0. */
+  dashDir: Vec;
+  /**
+   * Combos fixed when the current dash was fired, so gaining or losing a kind mid-dash never
+   * starts one; empty when no dash is running. A hit that knocks off half of a pair removes it.
+   */
+  dashCombos: ComboName[];
 }
 
 export type RacePhase = 'countdown' | 'racing' | 'finished';
@@ -181,9 +232,63 @@ export const RNG_SALTS = {
   'ai.tess': 0x51a7e102,
   'ai.squib': 0x51a7e103,
   'ai.bo': 0x51a7e104,
+  pickups: 0x51a7e105,
+  hazards: 0x51a7e106,
 } as const;
 
 export type RngStream = keyof typeof RNG_SALTS;
+
+/** A clam on the course. It opens when touched, then stays shut for `closedFor` ticks. */
+export interface Clam {
+  tile: Vec;
+  /** Ticks until it can open again; 0 means ready. */
+  closedFor: number;
+}
+
+/** A power-up knocked off a racer, drifting up until someone grabs it or it expires. */
+export interface LoosePowerUp {
+  kind: PowerUpKind;
+  /** Centre in world pixels. */
+  x: number;
+  y: number;
+  /** Ticks before anyone can grab it. */
+  grabDelay: number;
+  /** Ticks until it disappears. */
+  ttl: number;
+}
+
+/** An ink cloud: a circle that slows every racer inside it except its owner. */
+export interface InkCloud {
+  /** Centre in world pixels. */
+  x: number;
+  y: number;
+  radius: number;
+  ttl: number;
+  owner: RacerId;
+}
+
+/** A Bubble Shield burst in flight: traps the first other racer it touches. */
+export interface Bubble {
+  /** Centre in world pixels. */
+  x: number;
+  y: number;
+  /** Velocity in px/s. */
+  vx: number;
+  vy: number;
+  ttl: number;
+  owner: RacerId;
+  /** Steers toward a racer ahead (the seekerBubble combo). */
+  seeking: boolean;
+}
+
+/** A jellyfish bobbing around its home tile. */
+export interface Jelly {
+  home: Vec;
+  /** Ticks into its bob cycle; frozen while stunned. */
+  phase: number;
+  /** Ticks left stunned (0 = active): a stunned jelly neither moves nor stings. */
+  stunned: number;
+}
 
 export interface World {
   level: Level;
@@ -197,4 +302,13 @@ export interface World {
   events: EventSink<GameEvent>;
   /** Pairs of racers currently touching, keyed "a|b" in RACER_IDS order. */
   contacts: Set<string>;
+  /** One per `level.clams`, same order. */
+  clams: Clam[];
+  /** Indices into `level.pearls` already collected; each pearl is taken once per race. */
+  pearlsTaken: Set<number>;
+  loose: LoosePowerUp[];
+  inks: InkCloud[];
+  bubbles: Bubble[];
+  /** One per `level.jellies`, same order. */
+  jellies: Jelly[];
 }

@@ -1,13 +1,19 @@
 /**
- * Computer-driven swimming: a racer's Intent each tick from the steer field,
- * its profile, its memory and its own random stream.
+ * Computer-driven swimming: a racer's Intent each tick from the steer field
+ * (the smash field while it holds a Puffer it can use: inflated, or its burst
+ * ready), its profile, its memory and its own random stream.
  *
- * Every call draws exactly three numbers from the racer's rng (wobble, kick
- * roll, recovery side) whether or not they are used, so one racer's choices
- * never shift the rest of its stream.
+ * A stunned or trapped rival can't act, so its stuck counter resets and it
+ * starts no recovery swim; a rival recovering from being stuck never bursts.
+ *
+ * Every call draws exactly four numbers from the racer's rng, in this order,
+ * whether or not they are used: wobble, kick roll, recovery side, item roll.
+ * So one racer's choices, and what it holds, never shift the rest of its stream.
  */
 import type { Rng } from '@arcade/core';
+import { cos, length, sin } from '../num.ts';
 import type { AiMemory, Intent, Racer, Vec, World } from '../types.ts';
+import { wantsBurst } from './items.ts';
 import { steerDirection } from './steer.ts';
 
 /** Bounds of the catch-up multiplier on swim force, and its slope per tile of gap to the player. */
@@ -29,6 +35,7 @@ interface Draws {
   wobble: number;
   kick: number;
   side: number;
+  item: number;
 }
 
 /** Fresh memory for a racer at the start line. */
@@ -45,22 +52,42 @@ export function createAiMemory(): AiMemory {
 export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
   const memory = racer.ai;
   if (!memory) throw new Error(`rivalIntent needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
-  const draws: Draws = { wobble: rng.next(), kick: rng.next(), side: rng.next() };
+  const draws: Draws = { wobble: rng.next(), kick: rng.next(), side: rng.next(), item: rng.next() };
 
   replanAim(world, racer, memory);
   stepWobble(memory, racer.profile.wobble, draws.wobble);
   const aim = wobbledAim(memory);
-  const recovery = world.race.phase === 'racing' ? recoveryMove(racer, memory, draws.side) : null;
-  // A recovering rival is sliding off a wall, not racing, so it saves its kick for the aim.
+  const recovery = canRecover(world, racer, memory) ? recoveryMove(racer, memory, draws.side) : null;
+  // A recovering rival is sliding off a wall, not racing, so it saves its kick and burst for the aim.
   const kick = recovery === null && wantsKick(racer, aim, draws.kick);
-  return { move: recovery ?? aim, kick, burst: false };
+  const burst = recovery === null && wantsBurst(world, racer, aim, draws.item);
+  return { move: recovery ?? aim, kick, burst };
 }
 
-/** Re-reads the steer field every `reactionTicks`, so slower rivals react later to the course. */
+/**
+ * Stuck recovery runs only while racing and free to swim. A stunned or trapped rival sits still
+ * through no fault of its steering, so that time resets its stuck count instead.
+ */
+function canRecover(world: World, racer: Racer, memory: AiMemory): boolean {
+  if (world.race.phase !== 'racing') return false;
+  if (racer.status.stunned > 0 || racer.status.trapped > 0) {
+    memory.stuckTicks = 0;
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Re-reads its field every `reactionTicks`, so slower rivals react later to the course. A rival
+ * holding a Puffer that is inflated or ready to burst reads the smash field and aims through
+ * coral, which its inflate breaks; while the burst cools down it steers around like everyone else.
+ */
 function replanAim(world: World, racer: Racer, memory: AiMemory): void {
   if (memory.replanIn <= 0) {
     const { fields, level, broken } = world;
-    memory.aim = steerDirection(fields.steer, fields, level, broken, racer.body, LOOKAHEAD_TILES);
+    const smash = racer.stack.includes('puffer') && (racer.status.inflated > 0 || racer.burstCooldown === 0);
+    const field = smash ? fields.smash : fields.steer;
+    memory.aim = steerDirection(field, fields, level, broken, racer.body, LOOKAHEAD_TILES, smash);
     memory.replanIn = racer.profile.reactionTicks;
   }
   memory.replanIn--;
@@ -73,9 +100,9 @@ function stepWobble(memory: AiMemory, bound: number, draw: number): void {
 }
 
 function wobbledAim(memory: AiMemory): Vec {
-  const cos = Math.cos(memory.wobble);
-  const sin = Math.sin(memory.wobble);
-  return { x: memory.aim.x * cos - memory.aim.y * sin, y: memory.aim.x * sin + memory.aim.y * cos };
+  const c = cos(memory.wobble);
+  const s = sin(memory.wobble);
+  return { x: memory.aim.x * c - memory.aim.y * s, y: memory.aim.x * s + memory.aim.y * c };
 }
 
 /**
@@ -84,7 +111,7 @@ function wobbledAim(memory: AiMemory): Vec {
  */
 function recoveryMove(racer: Racer, memory: AiMemory, sideDraw: number): Vec | null {
   if (memory.recoverTicks === 0) {
-    const speed = Math.hypot(racer.body.vx, racer.body.vy);
+    const speed = length(racer.body.vx, racer.body.vy);
     memory.stuckTicks = speed < STUCK_SPEED ? memory.stuckTicks + 1 : 0;
     if (memory.stuckTicks < STUCK_TICKS) return null;
     memory.stuckTicks = 0;
@@ -105,7 +132,7 @@ function sidewaysFrom(aim: Vec, facing: 1 | -1, side: 1 | -1): Vec {
 function wantsKick(racer: Racer, aim: Vec, roll: number): boolean {
   if (racer.kickCooldown > 0) return false;
   const { vx, vy } = racer.body;
-  const speed = Math.hypot(vx, vy);
+  const speed = length(vx, vy);
   if (speed === 0) return false;
   const alignment = (aim.x * vx + aim.y * vy) / speed;
   return alignment > KICK_ALIGNMENT && roll < racer.profile.kickSkill;
