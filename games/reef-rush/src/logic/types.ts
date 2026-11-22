@@ -424,8 +424,18 @@ export interface Jelly {
   stunned: number;
 }
 
+/**
+ * How hard the rivals race. 'hard' is the tuning the per-character difficulty tests measure;
+ * 'normal' and 'easy' soften it (the knobs live in `difficulty-level.ts`). Easy is meant for a
+ * young child: winnable without frustration.
+ */
+export type Difficulty = 'easy' | 'normal' | 'hard';
+export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
+
 export interface World {
   level: Level;
+  /** Fixed for the race. */
+  difficulty: Difficulty;
   fields: FlowFields;
   /** Tile indices of coral broken this race. Only `breakCoral` (race/coral.ts) changes it. */
   broken: ReadonlySet<number>;

@@ -3,7 +3,7 @@ import { isNewBest, recordResult } from './records.ts';
 import { NEW_GAME, type SaveData } from './save.ts';
 import type { RaceResult } from './types.ts';
 
-const settings = { muted: true, reducedMotion: false };
+const settings = { muted: true, reducedMotion: false, difficulty: 'easy' as const };
 /** A saved pick other than the default, so a test sees it carried through. */
 const character = 'gil' as const;
 

@@ -48,6 +48,7 @@ import { moveBody, separateRacers } from './swim/collide.ts';
 import { applyIntent, SWIM } from './swim/physics.ts';
 import {
   type CharacterId,
+  type Difficulty,
   type Intent,
   type Level,
   type MoveModifiers,
@@ -71,6 +72,8 @@ export interface WorldOptions {
   endsWhen?: 'player' | 'everyone';
   /** Who the player races as. Default 'rudy'. The rivals are drawn from the rest by seed. */
   character?: CharacterId;
+  /** How hard the rivals race. Default 'hard', so tests that don't say keep the tuning they were written against; the engine always passes the saved setting. */
+  difficulty?: Difficulty;
 }
 
 const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
@@ -103,6 +106,7 @@ export function createWorld(level: Level, events: EventSink<GameEvent>, options:
   const recentEvents: GameEvent[] = [];
   const world: World = {
     level,
+    difficulty: options.difficulty ?? 'hard',
     fields,
     broken,
     racers: RACER_IDS.map((id, index) => createRacer(level, id, index, characters[index] ?? player, options.playerBot)),

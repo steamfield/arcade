@@ -31,10 +31,29 @@ describe('save compatibility', () => {
       data: {
         best: { ticks: 2712, place: 2 },
         races: 3,
-        settings: { muted: false, reducedMotion: null },
+        settings: { muted: false, reducedMotion: null, difficulty: 'easy' },
         character: 'rudy',
       },
     });
+  });
+
+  it('upgrades a v3 save to the easy difficulty, keeping everything else', async () => {
+    const saves = await freshStore();
+    const result = await saves.importJson('main', readFileSync(new URL('save-v3.json', fixturesDir), 'utf8'));
+    expect(result).toEqual({
+      kind: 'ok',
+      migratedFrom: 3,
+      data: {
+        best: { ticks: 2712, place: 2 },
+        races: 3,
+        settings: { muted: false, reducedMotion: null, difficulty: 'easy' },
+        character: 'selene',
+      },
+    });
+  });
+
+  it('starts a new save on easy', () => {
+    expect(NEW_GAME.settings.difficulty).toBe('easy');
   });
 
   it('keeps the picked character through a save and a load', async () => {

@@ -5,9 +5,9 @@
  */
 import type { Migrations } from '@arcade/core';
 import { z } from 'zod';
-import { CHARACTER_IDS, type CharacterId } from './types.ts';
+import { CHARACTER_IDS, type CharacterId, DIFFICULTIES, type Difficulty } from './types.ts';
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 export const SaveSchema = z.object({
   /** Fastest finish, with the place it earned. Only finished races count. */
@@ -18,6 +18,8 @@ export const SaveSchema = z.object({
     muted: z.boolean(),
     /** Null follows the OS prefers-reduced-motion setting. */
     reducedMotion: z.boolean().nullable(),
+    /** How hard the rivals race; a new save starts on easy. */
+    difficulty: z.enum(DIFFICULTIES as [Difficulty, ...Difficulty[]]),
   }),
   /** The character picked last on the select screen; races and the select cursor start from it. */
   character: z.enum(CHARACTER_IDS as [CharacterId, ...CharacterId[]]),
@@ -28,16 +30,23 @@ export type SaveData = z.infer<typeof SaveSchema>;
 export const NEW_GAME: SaveData = {
   best: null,
   races: 0,
-  settings: { muted: false, reducedMotion: null },
+  settings: { muted: false, reducedMotion: null, difficulty: 'easy' },
   character: 'rudy',
 };
 
+/** The v3 shape, before difficulty levels: settings had only sound and motion. */
+type SaveDataV3 = Omit<SaveData, 'settings'> & { settings: Omit<SaveData['settings'], 'difficulty'> };
 /** The v2 shape, before the roster: everything in v3 but the picked character. */
-type SaveDataV2 = Omit<SaveData, 'character'>;
+type SaveDataV2 = Omit<SaveDataV3, 'character'>;
 
 export const migrations: Migrations = {
   // v1 was the template's coin-collecting save. Nothing in it carries over to a race.
   1: (): SaveDataV2 => ({ best: null, races: 0, settings: { muted: false, reducedMotion: null } }),
   // v2 predates the roster; everyone raced as the hero, Rudy.
-  2: (old): SaveData => ({ ...(old as SaveDataV2), character: 'rudy' }),
+  2: (old): SaveDataV3 => ({ ...(old as SaveDataV2), character: 'rudy' }),
+  // v3 predates difficulty levels. Everyone starts on easy, like a new save; the title screen changes it.
+  3: (old): SaveData => {
+    const v3 = old as SaveDataV3;
+    return { ...v3, settings: { ...v3.settings, difficulty: 'easy' } };
+  },
 };
