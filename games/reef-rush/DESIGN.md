@@ -30,7 +30,7 @@ On the select screen the arrows (d-pad) move around the grid, kick races as the 
 
 ## Roster
 
-You race as one of eight characters; the race fills the three rival slots with three of the other seven, drawn by seed from the `roster` random stream (`pickRivals` in `logic/characters.ts`). Characters are data in fixed slots (`player`, `tess`, `squib`, `bo`), so tick order, random streams and tie-breaks never depend on who is picked. Abilities are not implemented yet: every hook in `logic/abilities.ts` is a no-op, every character races with a placeholder profile (the tuned Tess, Squib and Bo values, cycled), and the art reuses the four original racers. Each rival slot draws from the characters holding its old profile, so races play as they did before the roster.
+You race as one of eight characters; the race fills the three rival slots with three of the other seven, drawn by seed from the `roster` random stream (`pickRivals` in `logic/characters.ts`). Characters are data in fixed slots (`player`, `tess`, `squib`, `bo`), so tick order, random streams and tie-breaks never depend on who is picked. Abilities are not implemented yet: every hook in `logic/abilities.ts` is a no-op, every character races with a placeholder profile (the tuned Tess, Squib and Bo values, cycled). Each character has its own art (`art/sprites/racers.ts`, portraits and heads in `art/ui/portraits.ts`). Each rival slot draws from the characters holding its old profile, so races play as they did before the roster.
 
 | Character | Look | Ability (planned) |
 | --- | --- | --- |
@@ -80,7 +80,7 @@ A hit (urchin `*`, jelly `j`, bubble, puffer, flash) takes your shield if you ho
 
 ## Art and audio
 
-Every sprite is palette-indexed pixel text in `engine/art/sprites/`, drawn at boot by `art/pixel.ts` (at most 4 colours per frame; racers and hazards hold 3:1 contrast against every water band, enforced in `sprites.test.ts`). The UI kit (fonts, panels, icons, portraits, logo) lives in `engine/art/ui/`. Sound is a four-voice chip synth (`audio/synth.ts`, `sequencer.ts`); songs are written in a small text notation (`audio/notation.ts`, songs in `audio/songs/`) and parsed at load, so a malformed song fails tests. The race theme speeds up for the final stretch.
+Every sprite is palette-indexed pixel text in `engine/art/sprites/`, drawn at boot by `art/pixel.ts` (at most 4 colours per frame; hazards and each racer's main colour hold 3:1 contrast against every water band, and at least a quarter of every racer frame's pixels do, spread over most of its height, enforced in `sprites.test.ts`). The UI kit (fonts, panels, icons, portraits, logo) lives in `engine/art/ui/`. Sound is a four-voice chip synth (`audio/synth.ts`, `sequencer.ts`); songs are written in a small text notation (`audio/notation.ts`, songs in `audio/songs/`) and parsed at load, so a malformed song fails tests. The race theme speeds up for the final stretch.
 
 ## Effects
 

@@ -130,7 +130,7 @@ The card, preview and footer stay in the safe column (x 108-228) below the grid,
 | 1st plinth | 140, 44, 40, 32 | `accent`; portrait at (152, 27); medal at (154, 47) |
 | 2nd plinth | 96, 50, 40, 26 | `raised`; portrait at (108, 33); medal at (110, 53) |
 | 3rd plinth | 184, 56, 40, 20 | `raised`; portrait at (196, 39); medal at (198, 59) |
-| Standing rows | 120, 80, 107, 7, pitch 10 | "4TH  SQUIB 0:24.46"; rivals in foam, the player in sun, all outlined; the player's character's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 116 (117 with its outline) |
+| Standing rows | 120, 80, 107, 7, pitch 10 | "4TH  BARON 0:24.46"; rivals in foam, the player in sun, all outlined; the player's character's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 116 (117 with its outline) |
 | Ribbon | 114, 120, 92, 15 | `inset`, so it reads as a readout and never as a selected button; "NEW BEST" in sun or "BEST NOT SAVED" in coral, otherwise hidden |
 | Race again | 122, 139, 76, 15 | button |
 | Title | 122, 158, 76, 15 | button; cursor fin at x 111-119 |
@@ -142,7 +142,7 @@ The card, preview and footer stay in the safe column (x 108-228) below the grid,
          +------+| (1)  |
          | (2)  ||      |+------+
          +------++------+| (3)  |
- (d-pad)       1ST  SQUIB 0:14.78
+ (d-pad)       1ST  BARON 0:14.78
                2ND  TESS  0:14.96 ...
             @  4TH  PIP   0:24.46
             [   NEW BEST   ]

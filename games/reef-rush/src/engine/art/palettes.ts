@@ -6,12 +6,13 @@
  * in the middle, and the water and backdrop stay dark, blue and low in
  * saturation. Each racer's main colour (and the urchin's body) holds at least
  * 3:1 contrast against every water band, so the water is kept dark enough for
- * that to hold at the surface. Racers also differ in brightness so they stay
- * apart in grayscale: Pip lightest, then Squib, Tess, and Bo darkest.
+ * that to hold at the surface. The eight characters' palettes live with their
+ * sprites in `sprites/racers.ts` (`CharacterPalette`); shape, not brightness,
+ * tells them apart.
  */
 import type { Palette } from './pixel.ts';
 
-/** Racer palettes: outline, main, light, accent. */
+/** The original four racers' palettes, now used only by the HUD marker sheet (`sprites/hud.ts`). */
 export const RacerPalette = {
   /** Brass helmet and suit, pale yellow glints, dark glass porthole. */
   pip: [0x2a1a08, 0xffd050, 0xfff0b8, 0x16405e],
