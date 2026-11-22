@@ -1,9 +1,9 @@
 /**
  * Held-stack effects drawn on a racer, read from `racer.stack` and `racer.status`:
- * a shield ring while Bubble Shield is held, an inflated halo during a Puffer burst,
- * a dash streak behind a Jet Fins dash, a pulse while invulnerable (at most three
- * flashes per second, steady under reduced motion) and a ring that expands from a
- * Glow Lantern flash. Everything is an overlay: the racer's own sprite belongs to
+ * a shield ring while Bubble Shield is held, the Puffer itself blown up to twice its
+ * size around the racer during a Puffer burst, a dash streak behind a Jet Fins dash
+ * and a ring that expands from a Glow Lantern flash. Everything is an overlay: the
+ * racer's own sprite (including its invulnerability flicker) belongs to
  * `racer-view.ts`. Overlays are created once and only reconfigured each frame.
  */
 import type { Stamped } from '@arcade/core';
@@ -31,27 +31,24 @@ export interface PowerupView {
   sync(racer: Racer, tick: number): void;
 }
 
-/** A full invulnerability pulse (on, then off) lasts this long: 3 flashes per second at 60 ticks per second. */
-const PULSE_TICKS = 20;
 const FLASH_RING_TICKS = 15;
 const SHIELD_SCALE = 2;
-const INFLATED_DIAMETER = 20;
+/** The 12 px Puffer icon at a whole-number scale: 24 px, just around the 20 px inflated hitbox. */
+const INFLATED_SCALE = 2;
 const GLOW_DIAMETER = 16;
 const STREAK_LENGTH = 40;
-const INFLATED_TINT = 0xe0a030;
 const STREAK_TINT = 0x7fdbff;
 const FLASH_TINT = 0xf0e060;
 
-/** Creates the overlays for one racer. `reducedMotion` makes the pulse steady and drops the flash ring. */
+/** Creates the overlays for one racer. `reducedMotion` shows the flash ring at its full reach, fading, instead of growing. */
 export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reducedMotion: boolean): PowerupView {
   const overlay = (texture: TexKey, depth: number) =>
     scene.add.image(0, 0, texture, Frame.a).setDepth(depth).setVisible(false);
   const shield = overlay(Tex.bubble, Layer.player + 0.5)
     .setScale(SHIELD_SCALE)
     .setAlpha(0.6);
-  const inflated = overlay(Tex.looseGlow, Layer.racers - 0.5).setTint(INFLATED_TINT);
+  const inflated = overlay(Tex.puffer, Layer.racers - 0.5).setScale(INFLATED_SCALE);
   const streak = overlay(Tex.looseGlow, Layer.racers - 0.5).setTint(STREAK_TINT);
-  const pulse = overlay(Tex.looseGlow, Layer.player + 0.25);
   const flashRing = overlay(Tex.looseGlow, Layer.player + 0.25).setTint(FLASH_TINT);
   let flashedAt = Number.NEGATIVE_INFINITY;
 
@@ -65,10 +62,11 @@ export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reduced
       const { status } = racer;
 
       shield.setVisible(racer.stack.includes('bubbleShield')).setPosition(x, y);
-      inflated.setVisible(status.inflated > 0).setPosition(x, y);
-      if (status.inflated > 0) inflated.setScale(INFLATED_DIAMETER / GLOW_DIAMETER).setAlpha(0.7);
+      inflated
+        .setVisible(status.inflated > 0)
+        .setPosition(x, y)
+        .setFlipX(racer.facing < 0);
       showStreak(streak, racer, x, y);
-      showPulse(pulse, status.invulnerable, x, y, reducedMotion);
       showFlashRing(flashRing, tick - flashedAt, x, y, reducedMotion);
     },
   };
@@ -87,24 +85,10 @@ function showStreak(streak: Phaser.GameObjects.Image, racer: Racer, x: number, y
     .setAlpha(0.6);
 }
 
-/** White glow that is on for half of each PULSE_TICKS while invulnerable; steady and dimmer under reduced motion. */
-function showPulse(
-  pulse: Phaser.GameObjects.Image,
-  invulnerableTicks: number,
-  x: number,
-  y: number,
-  reducedMotion: boolean,
-): void {
-  const lit = reducedMotion || invulnerableTicks % PULSE_TICKS >= PULSE_TICKS / 2;
-  pulse.setVisible(invulnerableTicks > 0 && lit);
-  if (invulnerableTicks > 0)
-    pulse
-      .setPosition(x, y)
-      .setScale(1.2)
-      .setAlpha(reducedMotion ? 0.3 : 0.6);
-}
-
-/** A ring growing to the flash range over FLASH_RING_TICKS. Not shown under reduced motion. */
+/**
+ * A ring growing to the flash range over FLASH_RING_TICKS. Under reduced motion it appears at
+ * the full range at once and only fades, so the flash's reach still reads.
+ */
 function showFlashRing(
   ring: Phaser.GameObjects.Image,
   ticksSince: number,
@@ -112,12 +96,13 @@ function showFlashRing(
   y: number,
   reducedMotion: boolean,
 ): void {
-  const active = !reducedMotion && ticksSince >= 0 && ticksSince < FLASH_RING_TICKS;
+  const active = ticksSince >= 0 && ticksSince < FLASH_RING_TICKS;
   ring.setVisible(active);
   if (!active) return;
   const progress = ticksSince / FLASH_RING_TICKS;
+  const reach = reducedMotion ? 1 : progress;
   ring
     .setPosition(x, y)
-    .setScale((progress * FLASH.rangeTiles * TILE * 2) / GLOW_DIAMETER)
-    .setAlpha(0.5 * (1 - progress));
+    .setScale((reach * FLASH.rangeTiles * TILE * 2) / GLOW_DIAMETER)
+    .setAlpha((reducedMotion ? 0.35 : 0.5) * (1 - progress));
 }

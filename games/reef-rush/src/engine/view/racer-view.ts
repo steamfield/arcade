@@ -1,9 +1,13 @@
 /**
  * One racer's sprite, synced from logic state: whole-pixel position, a flip for
- * facing, a two-frame swim stroke that quickens with speed, and a short squash
- * when a kick fires. All timing is counted in logic ticks so captures repeat.
+ * facing, a two-frame swim stroke that quickens with speed, a squash-then-stretch
+ * when a kick fires, a flicker while invulnerable (3 Hz, the WCAG ceiling) and,
+ * for the player, a one-off white flash on gaining a place. All timing is counted
+ * in logic ticks so captures repeat. Under reduced motion the sprite holds its
+ * shape, shows invulnerability as a steady see-through look and skips the flash;
+ * the kick puff and place-up sparkles in `fx/` still carry those moments.
  */
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
 import type { Racer, RacerId } from '../../logic/types.ts';
 import { Frame, Tex, type TexKey } from '../art/keys.ts';
 import { Layer } from './layers.ts';
@@ -13,7 +17,7 @@ export interface RacerView {
   /**
    * Moves the sprite to `racer`'s current state.
    *
-   * @param tick The world tick, which drives the stroke and squash timing.
+   * @param tick The world tick, which drives the stroke, squash, flicker and flash timing.
    */
   sync(racer: Racer, tick: number): void;
 }
@@ -24,30 +28,55 @@ const TEXTURE: Record<RacerId, TexKey> = { player: Tex.player, tess: Tex.tess, s
 const DRIFT_SPEED = 15;
 const SPRINT_SPEED = 90;
 
-const SQUASH_TICKS = 8;
-/** Widest squash at the moment of a kick: 30% wider and 30% shorter, easing back to 1. */
-const SQUASH_AMOUNT = 0.3;
+/** A kick squashes the sprite along its swim axis for SQUASH_TICKS, then stretches it and eases back by KICK_TICKS. */
+const SQUASH_TICKS = 3;
+const KICK_TICKS = 11;
+const SQUASH_AMOUNT = 0.2;
+const STRETCH_AMOUNT = 0.25;
 
-/** Adds `racer`'s sprite to `scene`. The player draws above the rivals. */
-export function createRacerView(scene: Phaser.Scene, racer: Racer): RacerView {
+/** One on-off flicker cycle while invulnerable: 20 ticks is 3 per second at 60 ticks per second. */
+const FLICKER_TICKS = 20;
+const FLICKER_DIM_ALPHA = 0.25;
+/** Reduced motion shows invulnerability as this steady alpha instead of flickering. */
+const STEADY_INVULNERABLE_ALPHA = 0.55;
+
+/** The place-up flash fills the sprite white for this many ticks, once. */
+const PLACE_FLASH_TICKS = 4;
+const FLASH_COLOUR = 0xffffff;
+
+/**
+ * Adds `racer`'s sprite to `scene`. The player draws above the rivals.
+ *
+ * @param reducedMotion Drops the squash and stretch and the place-up flash, and holds the
+ *   invulnerability look steady instead of flickering. Defaults to full motion.
+ */
+export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion = false): RacerView {
   const sprite = scene.add
     .sprite(0, 0, TEXTURE[racer.id], Frame.a)
     .setDepth(racer.id === 'player' ? Layer.player : Layer.racers);
   let lastCooldown = racer.kickCooldown;
   let kickedAt = Number.NEGATIVE_INFINITY;
+  let lastPlace = racer.place;
+  let placeGainedAt = Number.NEGATIVE_INFINITY;
 
   return {
     sync(current, tick) {
       // A cooldown that went up since the last sync means a kick fired in between.
       if (current.kickCooldown > lastCooldown) kickedAt = tick;
       lastCooldown = current.kickCooldown;
+      if (current.place < lastPlace) placeGainedAt = tick;
+      lastPlace = current.place;
 
       const { body } = current;
       sprite.setPosition(Math.round(body.x + body.w / 2), Math.round(body.y + body.h / 2));
       sprite.setFlipX(current.facing < 0);
       sprite.setFrame(strokeFrame(Math.hypot(body.vx, body.vy), tick));
-      const squash = squashAt(tick - kickedAt);
-      sprite.setScale(1 + squash, 1 - squash);
+      const stretch = reducedMotion ? 0 : kickStretchAt(tick - kickedAt);
+      sprite.setScale(1 + stretch, 1 - stretch);
+      sprite.setAlpha(invulnerableAlpha(current.status.invulnerable, reducedMotion));
+      const flashing = !reducedMotion && current.id === 'player' && tick - placeGainedAt < PLACE_FLASH_TICKS;
+      if (flashing) sprite.setTint(FLASH_COLOUR).setTintMode(Phaser.TintModes.FILL);
+      else sprite.clearTint();
     },
   };
 }
@@ -62,8 +91,20 @@ function ticksPerStrokeFrame(speed: number): number {
   return 7;
 }
 
-/** Squash amount `ticksSinceKick` after a kick: full at 0, gone by SQUASH_TICKS. */
-function squashAt(ticksSinceKick: number): number {
-  if (ticksSinceKick < 0 || ticksSinceKick >= SQUASH_TICKS) return 0;
-  return SQUASH_AMOUNT * (1 - ticksSinceKick / SQUASH_TICKS);
+/**
+ * Horizontal stretch `ticksSinceKick` after a kick (the vertical scale moves the other way):
+ * negative (squashed short and tall, gathering) for SQUASH_TICKS, then a stretch long and thin
+ * that eases back to nothing by KICK_TICKS.
+ */
+function kickStretchAt(ticksSinceKick: number): number {
+  if (ticksSinceKick < 0 || ticksSinceKick >= KICK_TICKS) return 0;
+  if (ticksSinceKick < SQUASH_TICKS) return -SQUASH_AMOUNT;
+  return STRETCH_AMOUNT * (1 - (ticksSinceKick - SQUASH_TICKS) / (KICK_TICKS - SQUASH_TICKS));
+}
+
+/** Sprite alpha for `invulnerableTicks` left: dim for half of each flicker cycle, or steadily see-through. */
+function invulnerableAlpha(invulnerableTicks: number, reducedMotion: boolean): number {
+  if (invulnerableTicks <= 0) return 1;
+  if (reducedMotion) return STEADY_INVULNERABLE_ALPHA;
+  return invulnerableTicks % FLICKER_TICKS < FLICKER_TICKS / 2 ? FLICKER_DIM_ALPHA : 1;
 }
