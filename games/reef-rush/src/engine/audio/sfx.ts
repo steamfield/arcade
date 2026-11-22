@@ -22,7 +22,7 @@ export type SfxKey =
   | 'burst'
   | 'combo.cannonball'
   | 'combo.inkTrail'
-  | 'combo.seekerBubble'
+  | 'combo.lanternBubble'
   | 'combo.inkBomb'
   | 'combo.comet'
   | 'hit'
@@ -117,7 +117,7 @@ const SFX: Record<SfxKey, readonly Part[]> = {
   burst: [hiss('bandpass', 3000, 0, 0.2, 0.4, { sweepTo: 500 }), pulse(48, 0, 0.15, 0.3, { duty: 0.125, slide: 12 })],
   'combo.cannonball': [tri(43, 0.05, 0.2, 0.6, { slide: -7 }), hiss('lowpass', 500, 0.05, 0.12, 0.4)],
   'combo.inkTrail': [pulse(70, 0.05, 0.08, 0.3, { duty: 0.125 }), pulse(65, 0.13, 0.12, 0.3, { duty: 0.125 })],
-  'combo.seekerBubble': [pulse(84, 0.05, 0.08, 0.3, { duty: 0.25 }), pulse(91, 0.13, 0.2, 0.3, { vibrato: true })],
+  'combo.lanternBubble': [pulse(84, 0.05, 0.08, 0.3, { duty: 0.25 }), pulse(91, 0.13, 0.2, 0.3, { vibrato: true })],
   'combo.inkBomb': [tri(40, 0.05, 0.25, 0.6), hiss('lowpass', 300, 0.05, 0.2, 0.45)],
   'combo.comet': arpeggio([88, 93, 96], 0.04, 0.3, 0.125).map((part) => ({ ...part, offset: part.offset + 0.05 })),
   hit: [hiss('lowpass', 2000, 0, 0.08, 0.5), pulse(64, 0, 0.12, 0.35, { slide: -7 })],

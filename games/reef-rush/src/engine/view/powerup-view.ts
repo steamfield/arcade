@@ -21,6 +21,11 @@ export const POWER_UP_TEX: Record<PowerUpKind, TexKey> = {
   puffer: Tex.puffer,
   inkSac: Tex.inkSac,
   glowLantern: Tex.glowLantern,
+  // Placeholder art until lane 7/b draws the attack kinds.
+  homingSquid: Tex.inkSac,
+  riptide: Tex.jetFin,
+  undertow: Tex.puffer,
+  mimic: Tex.bubbleShield,
 };
 
 /** One racer's held-stack overlays. */

@@ -10,6 +10,15 @@
  * null when a bubble hits a wall or runs out of time. `racer.hit` is only emitted for
  * hits that land (invulnerable racers ignore hits); `shield.popped` means a Bubble
  * Shield absorbed one.
+ *
+ * Phase 7 events (attack power-ups; nothing emits them until lane 7/a): `squid.spawned.target`
+ * is the racer it locked on at launch, or null when it swims straight; `squid.locked` fires on
+ * every new lock including retargets, with `target` 'decoy' when it picked a Mimic decoy;
+ * `squid.latched {id, by}` is a contact that landed on racer `id`; `squid.dodged` is a kick that
+ * made it miss; `squid.lost` is a squid that expired, hit a wall, lost its lock in ink or was
+ * absorbed by a shield; `racer.shaken` ends a latch early from kicks. `undertow.fired.pulled`
+ * lists the racers given `status.undertow`. `decoy.popped.by` is null when the decoy simply
+ * expires. `powerup.lost` cause `used` is a one-use power-up (Undertow) consumed by its burst.
  */
 import type { ComboName, HitCause, PowerUpKind, RacerId } from './types.ts';
 
@@ -24,7 +33,7 @@ export type GameEvent =
   | { type: 'race.finished'; standings: RacerId[]; playerPlace: number; playerTicks: number | null }
   | { type: 'clam.opened'; id: RacerId; index: number; kind: PowerUpKind }
   | { type: 'powerup.gained'; id: RacerId; kind: PowerUpKind }
-  | { type: 'powerup.lost'; id: RacerId; kind: PowerUpKind; cause: 'hit' | 'full' }
+  | { type: 'powerup.lost'; id: RacerId; kind: PowerUpKind; cause: 'hit' | 'full' | 'used' }
   | { type: 'loose.spawned'; kind: PowerUpKind }
   | { type: 'loose.grabbed'; id: RacerId; kind: PowerUpKind }
   | { type: 'pearl.collected'; id: RacerId; index: number; total: number }
@@ -36,4 +45,14 @@ export type GameEvent =
   | { type: 'flash.fired'; id: RacerId }
   | { type: 'racer.hit'; id: RacerId; cause: HitCause; by: RacerId | null }
   | { type: 'shield.popped'; id: RacerId }
-  | { type: 'racer.stunned'; id: RacerId };
+  | { type: 'racer.stunned'; id: RacerId }
+  | { type: 'squid.spawned'; owner: RacerId; target: RacerId | null }
+  | { type: 'squid.locked'; owner: RacerId; target: RacerId | 'decoy' }
+  | { type: 'squid.latched'; id: RacerId; by: RacerId }
+  | { type: 'squid.dodged'; id: RacerId }
+  | { type: 'squid.lost'; owner: RacerId }
+  | { type: 'racer.shaken'; id: RacerId }
+  | { type: 'riptide.spawned'; owner: RacerId }
+  | { type: 'undertow.fired'; id: RacerId; pulled: RacerId[] }
+  | { type: 'decoy.spawned'; owner: RacerId }
+  | { type: 'decoy.popped'; owner: RacerId; by: RacerId | null };

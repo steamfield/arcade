@@ -6,11 +6,12 @@
  * - jetFin: `status.dashing = DASH.ticks`, `dashDir` = unit input (facing when none), velocity set to
  *   DASH.speed along it on the firing tick and held there by `driveDash` while dashing.
  * - bubbleShield: pushes a Bubble at the racer's centre moving BUBBLE.speed along the same aim, ttl
- *   BUBBLE.ttlTicks, `seeking` when the seekerBubble combo is held; emits `bubble.spawned`.
+ *   BUBBLE.ttlTicks, `seeking` when the lanternBubble combo is held; emits `bubble.spawned`.
  * - puffer: `status.inflated = INFLATE.ticks`.
  * - inkSac: pushes an InkCloud of INK.radius INK.behind px behind the racer's centre (opposite its
  *   facing), ttl INK.ttlTicks; emits `ink.spawned`.
  * - glowLantern: `flashAround(world, racer)` (hazards/contacts.ts).
+ * - homingSquid, riptide, undertow, mimic: nothing yet (phase 7 scaffold; lane 7/a adds them).
  * Combo changes (`combosIn`): cannonball keeps the racer inflated for the whole dash; inkTrail drops
  * a cloud every INK.trailEveryTicks of the dash, from the firing tick, instead of one; inkBomb makes
  * the cloud INK.bombRadius and centred on the racer; comet flashes on the firing tick and again on
@@ -62,7 +63,7 @@ export function fireBurst(world: World, racer: Racer, move: Vec): boolean {
         startDash(racer, aim, combos);
         break;
       case 'bubbleShield':
-        fireBubble(world, racer, aim, combos.includes('seekerBubble'));
+        fireBubble(world, racer, aim, combos.includes('lanternBubble'));
         break;
       case 'puffer':
         racer.status.inflated = INFLATE.ticks;
@@ -72,6 +73,12 @@ export function fireBurst(world: World, racer: Racer, move: Vec): boolean {
         break;
       case 'glowLantern':
         flashAround(world, racer);
+        break;
+      case 'homingSquid':
+      case 'riptide':
+      case 'undertow':
+      case 'mimic':
+        // Scaffold: the attack kinds roll at clam weight 0 and have no burst effect until lane 7/a.
         break;
     }
   }
