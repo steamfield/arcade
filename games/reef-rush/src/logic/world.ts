@@ -3,26 +3,39 @@
  * things happen in each tick; every rule lives in the module it calls.
  *
  * Tick order: clock; intents for every unfinished racer from the start-of-tick
- * state (in RACER_IDS order); each unfinished racer's swimming and movement
- * (RACER_IDS order); one pass of separation over unfinished racers; progress,
+ * state (in RACER_IDS order), idle while stunned or trapped; each unfinished
+ * racer's swimming, dash, trapped float and movement (RACER_IDS order); one pass
+ * of separation over unfinished racers; then the phase 3 systems for unfinished
+ * racers only: bursts (from intents), projectiles and inks, jellies, contacts
+ * (hits), pickups (clams, pearls, loose), status counters; then progress,
  * finishes, places, race end. Finished racers are out of play: they stay where
- * they crossed the line and nobody bumps them.
+ * they crossed the line, nobody bumps them, and they never gain, lose or burst.
  */
 import { createRng, type EventSink } from '@arcade/core';
 import { PLAYER_PROFILE, RIVAL_PROFILES } from './ai/profiles.ts';
 import { createAiMemory, rivalIntent } from './ai/rival.ts';
 import type { GameEvent } from './events.ts';
+import { resolveContacts } from './hazards/contacts.ts';
+import { moveJellies } from './hazards/jellies.ts';
+import { advanceProjectiles } from './hazards/projectiles.ts';
 import { LevelError } from './level/parse.ts';
 import { sampleEnvironment } from './level/query.ts';
 import { modifiersFor } from './modifiers.ts';
+import { openClams } from './pickups/clams.ts';
+import { updateLoose } from './pickups/loose.ts';
+import { collectPearls } from './pickups/pearls.ts';
+import { driveDash, fireBursts, sustainBursts } from './powerups/burst.ts';
+import { bumpMass } from './powerups/passives.ts';
 import { buildFlowFields, unreachableStarts } from './race/flowfield.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
-import { activeRacers, playerOf } from './racers.ts';
+import { activeRacers, centreOf, noItems, playerOf } from './racers.ts';
+import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
 import { moveBody, separateRacers } from './swim/collide.ts';
 import { applyIntent, SWIM } from './swim/physics.ts';
 import {
   type Intent,
   type Level,
+  type MoveModifiers,
   RACER_IDS,
   type Racer,
   type RacerId,
@@ -44,7 +57,8 @@ export interface WorldOptions {
 const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
 /**
- * Sets up a race on `level` at the countdown's first tick.
+ * Sets up a race on `level` at the countdown's first tick, with every clam ready, every pearl
+ * in play, jellies at their homes and nothing held or in flight.
  *
  * @param events Usually the engine's EventLog, so one stream holds race, menu and save events.
  * @throws {LevelError} When a start tile cannot reach the finish without breaking coral.
@@ -72,6 +86,12 @@ export function createWorld(level: Level, events: EventSink<GameEvent>, options:
     rngs: createRngs(options.seed),
     events,
     contacts: new Set(),
+    clams: level.clams.map((tile) => ({ tile: { ...tile }, closedFor: 0 })),
+    pearlsTaken: new Set(),
+    loose: [],
+    inks: [],
+    bubbles: [],
+    jellies: level.jellies.map((home) => ({ home: { ...home }, phase: 0, stunned: 0 })),
   };
   // Catch-up reads progress on the first racing tick, before stepWorld updates it.
   updateProgress(world);
@@ -100,6 +120,7 @@ function createRacer(level: Level, id: RacerId, index: number, playerBot: RivalP
     finished: null,
     ai: isHuman ? null : createAiMemory(),
     profile,
+    ...noItems(),
   };
 }
 
@@ -118,14 +139,23 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   if (advanceClock(world)) return;
 
   const racing = activeRacers(world);
-  const intents = racing.map((racer) => intentFor(world, racer, input));
+  // Every racer's intent is asked for even while it can't act, so AI rng draws per tick never vary.
+  const intents = racing.map((racer) => controlledIntent(racer, intentFor(world, racer, input)));
   const player = playerOf(world);
   racing.forEach((racer, index) => {
-    const env = sampleEnvironment(world.level, racer.body);
-    applyIntent(racer, intents[index] ?? IDLE, env, modifiersFor(racer, player), world.events, dt);
-    moveBody(racer.body, world.level, world.broken, dt);
+    swim(world, racer, intents[index] ?? IDLE, modifiersFor(racer, player), dt);
   });
-  separateRacers(racing, world.contacts, world.events);
+  separateRacers(racing, world.contacts, world.events, bumpMass);
+
+  fireBursts(world, racing, intents);
+  sustainBursts(world, racing);
+  advanceProjectiles(world, racing, dt);
+  moveJellies(world);
+  resolveContacts(world, racing);
+  openClams(world, racing);
+  collectPearls(world, racing);
+  updateLoose(world, racing, dt);
+  for (const racer of racing) tickStatuses(racer);
 
   updateProgress(world);
   recordFinishes(world);
@@ -138,10 +168,17 @@ function intentFor(world: World, racer: Racer, input: TickInput): Intent {
   return rivalIntent(world, racer, world.rngs[`ai.${racer.id}`]);
 }
 
-/** Small, stable view for the CLI summary and scenario assertions. */
+/** One racer's velocity for the tick (swimming, then a dash or a trapped float overriding it), then its move. */
+function swim(world: World, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
+  applyIntent(racer, intent, sampleEnvironment(world.level, racer.body), mods, world.events, dt);
+  driveDash(racer);
+  floatTrapped(racer);
+  moveBody(racer.body, world.level, world.broken, dt);
+}
+
+/** Small, stable view for the CLI summary and scenario assertions. `stack` lists held power-ups oldest first. */
 export function summarize(world: World) {
   const player = playerOf(world);
-  const centre = centreTile(player);
   return {
     tick: world.tick,
     phase: world.race.phase,
@@ -149,13 +186,16 @@ export function summarize(world: World) {
     place: `${player.place}/${world.racers.length}`,
     progress: Number.isFinite(player.progress) ? Math.round(player.progress) : null,
     finished: player.finished !== null,
-    player: { tile: centre, kickReady: player.kickCooldown === 0 },
+    player: { tile: centreTile(player), kickReady: player.kickCooldown === 0 },
+    stack: [...player.stack],
+    pearls: player.pearls,
+    stunned: player.status.stunned > 0,
   };
 }
 
 function centreTile(racer: Racer): [number, number] {
-  const { body } = racer;
-  return [Math.floor((body.x + body.w / 2) / TILE), Math.floor((body.y + body.h / 2) / TILE)];
+  const centre = centreOf(racer);
+  return [Math.floor(centre.x / TILE), Math.floor(centre.y / TILE)];
 }
 
 const CELL_CHAR = {
@@ -171,15 +211,37 @@ const CELL_CHAR = {
 
 const RACER_CHAR: Record<RacerId, string> = { player: '@', tess: 'T', squib: 'S', bo: 'B' };
 
-/** The course as text with racers drawn at their centre tiles. Readable in test failures and `arcade see --ascii`. */
+/**
+ * Characters for things on the course, by "x,y" tile: `*` urchin, `o` pearl still in play,
+ * `?` clam ready to open, `_` clam shut after opening, `j` jelly (at its home tile).
+ * Later entries win, so a jelly shows over the tile it bobs around.
+ */
+function itemChars(world: World): Map<string, string> {
+  const { level } = world;
+  return new Map([
+    ...level.urchins.map((tile): [string, string] => [`${tile.x},${tile.y}`, '*']),
+    ...level.pearls.flatMap((tile, index): [string, string][] =>
+      world.pearlsTaken.has(index) ? [] : [[`${tile.x},${tile.y}`, 'o']],
+    ),
+    ...world.clams.map(({ tile, closedFor }): [string, string] => [`${tile.x},${tile.y}`, closedFor > 0 ? '_' : '?']),
+    ...world.jellies.map(({ home }): [string, string] => [`${home.x},${home.y}`, 'j']),
+  ]);
+}
+
+/**
+ * The course as text: racers (`@ T S B`) at their centre tiles over items (see `itemChars`) over
+ * tiles in the level's own characters, with broken coral shown as water. Readable in test failures
+ * and `arcade see --ascii`.
+ */
 export function toAscii(world: World): string {
   const racerAt = new Map(world.racers.map((racer) => [centreTile(racer).join(','), RACER_CHAR[racer.id]]));
+  const items = itemChars(world);
   return world.level.cells
     .map((row, y) =>
       row
         .map((cell, x) => {
-          const racer = racerAt.get(`${x},${y}`);
-          if (racer) return racer;
+          const shown = racerAt.get(`${x},${y}`) ?? items.get(`${x},${y}`);
+          if (shown) return shown;
           if (x === world.level.finishX && cell === 'water') return 'F';
           if (cell === 'coral' && world.broken.has(y * world.level.width + x)) return '.';
           return CELL_CHAR[cell];

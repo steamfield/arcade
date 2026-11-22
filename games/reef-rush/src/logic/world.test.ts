@@ -1,11 +1,13 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import { BOT_PROFILES } from './ai/profiles.ts';
 import type { GameEvent } from './events.ts';
 import { OCEAN_LEVEL } from './level/levels.ts';
 import { LevelError, parseLevel } from './level/parse.ts';
 import { COUNTDOWN_TICKS, DNF_GRACE_TICKS, RACE_LIMIT_TICKS } from './race/standings.ts';
+import { eventsIn, hold, placeAt, raceOn, racerOf, step, tileCentre } from './test-world.ts';
 import { type RacerId, RNG_SALTS, type RngStream, type TickInput, type Vec } from './types.ts';
-import { createWorld, stepWorld } from './world.ts';
+import { createWorld, stepWorld, summarize, toAscii } from './world.ts';
 
 const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
@@ -119,5 +121,152 @@ describe('random streams', () => {
         owner.set(draws, `${stream} at seed ${seed}`);
       }
     }
+  });
+});
+
+/** A full race on the ocean course with the expert bot driving the player, items and all. */
+function expertRace(seed: number) {
+  const log = new EventLog<GameEvent>(100_000);
+  const world = createWorld(parseLevel(OCEAN_LEVEL), log, { seed, playerBot: BOT_PROFILES.expert });
+  while (world.race.phase !== 'finished' && world.tick <= COUNTDOWN_TICKS + RACE_LIMIT_TICKS) {
+    log.tick = world.tick;
+    stepWorld(world, IDLE, TICK_DT);
+  }
+  return { world, log };
+}
+
+describe('races with power-ups', () => {
+  it('still end with the expert bot finishing', () => {
+    const { world } = expertRace(2);
+
+    expect(world.race.phase).toBe('finished');
+    expect(world.racers.find((r) => r.id === 'player')?.finished).not.toBeNull();
+  });
+
+  it('repeat exactly with the same seed', () => {
+    expect(expertRace(5).log.all()).toEqual(expertRace(5).log.all());
+  });
+
+  it('run pickups and hazards inside the step: a pearl, then a clam, then an urchin', () => {
+    const { world, log } = raceOn(`
+      ####################
+      #1.o.?.*..........F#
+      ####################
+      #2................F#
+      ####################
+      #3................F#
+      ####################
+      #4................F#
+      ####################
+    `);
+
+    step(world, log, 120, hold({ x: 1, y: 0 }));
+    const types = eventsIn(log, 'pearl.collected', 'clam.opened', 'racer.hit').map((event) => event.type);
+
+    expect(types.slice(0, 3)).toEqual(['pearl.collected', 'clam.opened', 'racer.hit']);
+  });
+});
+
+/** One walled lane per racer, so nothing but the test's own setup touches anyone. */
+const LANES = `
+  ####################
+  #1................F#
+  ####################
+  #2...?*...........F#
+  ####################
+  #3................F#
+  ####################
+  #4................F#
+  ####################
+`;
+
+describe('finished racers and items', () => {
+  it('never gain or lose power-ups, even parked on a clam and an urchin', () => {
+    const { world, log } = raceOn(LANES);
+    const tess = racerOf(world, 'tess');
+    placeAt(tess, { x: 6 * 16, y: tileCentre(5, 3).y });
+    tess.finished = { tick: 0, place: 1, overshoot: 0 };
+    tess.stack = ['jetFin'];
+
+    step(world, log, 300);
+
+    const tessEvents = eventsIn(log).filter((event) => 'id' in event && event.id === 'tess');
+    expect(tessEvents).toEqual([]);
+    expect(tess.stack).toEqual(['jetFin']);
+    expect(world.clams[0]?.closedFor).toBe(0);
+  });
+});
+
+describe('statuses in the step', () => {
+  it('a stunned racer ignores its input', () => {
+    const { world, log } = raceOn(LANES);
+    const player = racerOf(world, 'player');
+    player.status.stunned = 30;
+
+    step(world, log, 1, hold({ x: 1, y: 0 }, { kick: true }));
+
+    expect(player.body.vx).toBe(0);
+    expect(eventsIn(log, 'racer.kicked')).toEqual([]);
+  });
+
+  it('a trapped racer floats straight up at 30 px/s whatever it presses', () => {
+    const { world, log } = raceOn(LANES);
+    const player = racerOf(world, 'player');
+    const y = player.body.y;
+    player.status.trapped = 30;
+
+    step(world, log, 1, hold({ x: 1, y: 1 }, { kick: true }));
+
+    expect(player.body.vx).toBe(0);
+    expect(player.body.vy).toBe(-30);
+    expect(player.body.y).toBeCloseTo(y - 0.5, 6);
+    expect(eventsIn(log, 'racer.kicked')).toEqual([]);
+  });
+
+  it('counters and the burst cooldown run down one per tick and stop at 0', () => {
+    const { world, log } = raceOn(LANES);
+    const player = racerOf(world, 'player');
+    player.status = { ...player.status, stunned: 5, invulnerable: 5, trapped: 5 };
+    player.burstCooldown = 5;
+    const counters = () => [
+      player.status.stunned,
+      player.status.invulnerable,
+      player.status.trapped,
+      player.burstCooldown,
+    ];
+
+    step(world, log, 3);
+    expect(counters()).toEqual([2, 2, 2, 2]);
+    step(world, log, 3);
+    expect(counters()).toEqual([0, 0, 0, 0]);
+  });
+});
+
+describe('summary and ASCII', () => {
+  it('summarize reports the player stack, pearls and stun', () => {
+    const { world } = raceOn(LANES);
+    const player = racerOf(world, 'player');
+    player.stack = ['jetFin', 'puffer'];
+    player.pearls = 2;
+    player.status.stunned = 3;
+
+    expect(summarize(world)).toMatchObject({ stack: ['jetFin', 'puffer'], pearls: 2, stunned: true });
+  });
+
+  it('toAscii shows ready and shut clams, pearls in play, urchins and jellies', () => {
+    const { world } = raceOn(`
+      ##########
+      #1.?o*j.F#
+      #2......F#
+      #3......F#
+      #4......F#
+      ##########
+    `);
+    const row = () => toAscii(world).split('\n')[1];
+
+    expect(row()).toBe('#@.?o*j.F#');
+    world.pearlsTaken.add(0);
+    world.clams = world.clams.map((clam) => ({ ...clam, closedFor: 10 }));
+    expect(row()).toBe('#@._.*j.F#');
   });
 });

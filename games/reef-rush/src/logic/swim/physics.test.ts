@@ -2,6 +2,7 @@ import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_PROFILE } from '../ai/profiles.ts';
 import type { GameEvent } from '../events.ts';
+import { noItems } from '../racers.ts';
 import type { Environment, MoveModifiers, Racer, Vec } from '../types.ts';
 import { applyIntent, BASE_MODIFIERS, SWIM } from './physics.ts';
 
@@ -23,6 +24,7 @@ function makeRacer(): Racer {
     finished: null,
     ai: null,
     profile: PLAYER_PROFILE,
+    ...noItems(),
   };
 }
 

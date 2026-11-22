@@ -8,6 +8,7 @@
  */
 import type { Rng } from '@arcade/core';
 import type { AiMemory, Intent, Racer, Vec, World } from '../types.ts';
+import { wantsBurst } from './items.ts';
 import { steerDirection } from './steer.ts';
 
 /** Bounds of the catch-up multiplier on swim force, and its slope per tile of gap to the player. */
@@ -53,7 +54,10 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
   const recovery = world.race.phase === 'racing' ? recoveryMove(racer, memory, draws.side) : null;
   // A recovering rival is sliding off a wall, not racing, so it saves its kick for the aim.
   const kick = recovery === null && wantsKick(racer, aim, draws.kick);
-  return { move: recovery ?? aim, kick, burst: false };
+  // Scaffold wiring: lane 3/b moves the item roll into Draws so it is taken every tick, holding or not.
+  // Today nobody holds anything during a race, so this draw never happens and seeded races are unchanged.
+  const burst = racer.stack.length > 0 && wantsBurst(world, racer, aim, rng.next());
+  return { move: recovery ?? aim, kick, burst };
 }
 
 /** Re-reads the steer field every `reactionTicks`, so slower rivals react later to the course. */

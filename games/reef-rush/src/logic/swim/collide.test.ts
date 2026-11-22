@@ -4,6 +4,7 @@ import { PLAYER_PROFILE } from '../ai/profiles.ts';
 import type { GameEvent } from '../events.ts';
 import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
+import { noItems } from '../racers.ts';
 import { type Body, type Level, type Racer, type RacerId, TILE } from '../types.ts';
 import { moveBody, separateRacers } from './collide.ts';
 import { SWIM } from './physics.ts';
@@ -117,6 +118,7 @@ function racer(id: RacerId, x: number, mass = 1): Racer {
     finished: null,
     ai: null,
     profile: { ...PLAYER_PROFILE, id, mass },
+    ...noItems(),
   };
 }
 

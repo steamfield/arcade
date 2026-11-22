@@ -97,19 +97,28 @@ function resolveY(body: Body, level: Level, broken: ReadonlySet<number>): void {
  * Pushes overlapping racers apart in one pass over pairs (i < j) in array order,
  * splitting the push by mass and exchanging half the relative velocity on that axis.
  * `contacts` holds "a|b" keys of touching pairs; `racer.bumped` fires only when a contact starts.
+ *
+ * @param massOf The mass each racer bumps with; its profile's unless held power-ups change it.
  */
-export function separateRacers(racers: Racer[], contacts: Set<string>, events: EventSink<GameEvent>): void {
+export function separateRacers(
+  racers: Racer[],
+  contacts: Set<string>,
+  events: EventSink<GameEvent>,
+  massOf: MassOf = (racer) => racer.profile.mass,
+): void {
   for (let i = 0; i < racers.length; i++) {
     for (let j = i + 1; j < racers.length; j++) {
       const first = racers[i];
       const second = racers[j];
-      if (first && second) separatePair(first, second, contacts, events);
+      if (first && second) separatePair(first, second, contacts, events, massOf);
     }
   }
 }
 
+type MassOf = (racer: Racer) => number;
+
 /** Separates one pair and keeps its contact bookkeeping current. */
-function separatePair(a: Racer, b: Racer, contacts: Set<string>, events: EventSink<GameEvent>): void {
+function separatePair(a: Racer, b: Racer, contacts: Set<string>, events: EventSink<GameEvent>, massOf: MassOf): void {
   const key = contactKey(a, b);
   const penetration = {
     x: overlapLength(a.body.x, a.body.w, b.body.x, b.body.w),
@@ -124,8 +133,9 @@ function separatePair(a: Racer, b: Racer, contacts: Set<string>, events: EventSi
   if (penetration.x === 0 || penetration.y === 0) return;
 
   const axis = penetration.x <= penetration.y ? 'x' : 'y';
-  pushApart(a, b, axis, penetration[axis]);
-  shareClosingSpeed(a, b, axis);
+  const masses = { a: massOf(a), b: massOf(b) };
+  pushApart(a, b, masses, axis, penetration[axis]);
+  shareClosingSpeed(a, b, masses, axis);
   if (contacts.has(key)) return;
   contacts.add(key);
   const [first, second] = inRacerOrder(a, b);
@@ -139,6 +149,12 @@ function overlapLength(startA: number, sizeA: number, startB: number, sizeB: num
 
 type Axis = 'x' | 'y';
 
+/** The bump masses of a pair being separated. */
+interface Masses {
+  a: number;
+  b: number;
+}
+
 /** +1 when b's centre is further along the axis than a's, else -1 (ties push b forward). */
 function directionFromAToB(a: Body, b: Body, axis: Axis): 1 | -1 {
   const size = axis === 'x' ? 'w' : 'h';
@@ -146,25 +162,25 @@ function directionFromAToB(a: Body, b: Body, axis: Axis): 1 | -1 {
 }
 
 /** Moves the two bodies apart by `depth`, the lighter one further. */
-function pushApart(a: Racer, b: Racer, axis: Axis, depth: number): void {
+function pushApart(a: Racer, b: Racer, masses: Masses, axis: Axis, depth: number): void {
   const direction = directionFromAToB(a.body, b.body, axis);
-  const totalMass = a.profile.mass + b.profile.mass;
-  a.body[axis] -= direction * depth * (b.profile.mass / totalMass);
-  b.body[axis] += direction * depth * (a.profile.mass / totalMass);
+  const totalMass = masses.a + masses.b;
+  a.body[axis] -= direction * depth * (masses.b / totalMass);
+  b.body[axis] += direction * depth * (masses.a / totalMass);
 }
 
 /**
  * While the pair is closing on the axis, takes away their closing speed: each loses a share
  * weighted by the other's mass fraction, so equal racers lose half each and the heavier one less.
  */
-function shareClosingSpeed(a: Racer, b: Racer, axis: Axis): void {
+function shareClosingSpeed(a: Racer, b: Racer, masses: Masses, axis: Axis): void {
   const velocity = axis === 'x' ? 'vx' : 'vy';
   const direction = directionFromAToB(a.body, b.body, axis);
   const closing = (a.body[velocity] - b.body[velocity]) * direction;
   if (closing <= 0) return;
-  const totalMass = a.profile.mass + b.profile.mass;
-  a.body[velocity] -= direction * closing * (b.profile.mass / totalMass);
-  b.body[velocity] += direction * closing * (a.profile.mass / totalMass);
+  const totalMass = masses.a + masses.b;
+  a.body[velocity] -= direction * closing * (masses.b / totalMass);
+  b.body[velocity] += direction * closing * (masses.a / totalMass);
 }
 
 /** The pair ordered by RACER_IDS, so keys and events don't depend on array order. */
