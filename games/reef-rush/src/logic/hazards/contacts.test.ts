@@ -74,6 +74,21 @@ describe('jellies', () => {
   });
 });
 
+describe('a flashed jelly', () => {
+  it('stings nobody for its whole 45-tick stun, then stings again', () => {
+    const { world, log, player, contacts } = setup();
+    const jelly = world.jellies[0] as Jelly;
+    jelly.stunned = 45;
+    placeAt(player, jellyCentre(jelly));
+
+    for (let i = 0; i < 45; i++) contacts();
+    expect(eventsIn(log)).toEqual([]);
+
+    contacts();
+    expect(eventsIn(log, 'racer.hit')).toEqual([{ type: 'racer.hit', id: 'player', cause: 'jelly', by: null }]);
+  });
+});
+
 describe('bubbles', () => {
   it('trap the other racer they touch for 60 ticks and pop', () => {
     const { world, log, tess, contacts } = setup();
@@ -108,6 +123,23 @@ describe('bubbles', () => {
     contacts();
 
     expect(eventsIn(log)).toEqual([]);
+    expect(world.bubbles).toEqual([bubble]);
+  });
+});
+
+describe('contact order', () => {
+  it('lets an urchin land first, so a bubble on the same racer flies on', () => {
+    const { world, log, player, contacts } = setup();
+    placeOnTile(player, 4, 2);
+    const bubble = bubbleOn(world, 'tess', 'player');
+
+    contacts();
+
+    expect(eventsIn(log)).toEqual([
+      { type: 'racer.hit', id: 'player', cause: 'urchin', by: null },
+      { type: 'racer.stunned', id: 'player' },
+    ]);
+    expect(player.status.trapped).toBe(0);
     expect(world.bubbles).toEqual([bubble]);
   });
 });

@@ -1,8 +1,9 @@
 import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import { updateProgress } from '../race/standings.ts';
 import { activeRacers, centreOf } from '../racers.ts';
-import { eventsIn, raceOn, racerOf, tileCentre } from '../test-world.ts';
-import type { World } from '../types.ts';
+import { eventsIn, placeOnTile, raceOn, racerOf, tileCentre } from '../test-world.ts';
+import type { RacerId, World } from '../types.ts';
 import { advanceProjectiles } from './projectiles.ts';
 
 /** A long open row (row 2) for bubbles to fly along, clear of the starts in column 1. */
@@ -51,6 +52,53 @@ describe('bubbles in flight', () => {
 
     expect(world.bubbles).toEqual([]);
     expect(eventsIn(log)).toEqual([{ type: 'bubble.popped', by: null }]);
+  });
+});
+
+type Spots = Record<RacerId, [number, number]>;
+
+/**
+ * A seeking bubble of the player's at tile (10, 2) flying right, with racers on `spots`, after one
+ * tick of flight. Returns its velocity: straight right means it found no target, up or down shows
+ * which way its target lies.
+ */
+function seekOnce(spots: Spots, finished: RacerId[] = []) {
+  const { world, advance } = setup();
+  for (const [id, [tx, ty]] of Object.entries(spots) as [RacerId, [number, number]][]) {
+    placeOnTile(racerOf(world, id), tx, ty);
+  }
+  updateProgress(world);
+  for (const id of finished) racerOf(world, id).finished = { tick: 1, place: 1, overshoot: 0 };
+  world.bubbles = [{ ...tileCentre(10, 2), vx: 150, vy: 0, ttl: 90, owner: 'player', seeking: true }];
+  advance();
+  const bubble = world.bubbles[0];
+  return { vx: bubble?.vx, vy: bubble?.vy };
+}
+
+describe('seeking bubbles', () => {
+  it('chase the racer nearest the bubble, not the one nearest their owner', () => {
+    // Tess is 2.2 tiles from the bubble and 9.5 from the player; Squib 4.5 and 3.
+    const turn = seekOnce({ player: [3, 4], tess: [12, 1], squib: [6, 4], bo: [2, 4] });
+
+    expect(turn.vy).toBeLessThan(0);
+  });
+
+  it('fly straight past racers behind their owner or more than 8 tiles off', () => {
+    const turn = seekOnce({ player: [10, 2], tess: [5, 1], squib: [19, 4], bo: [4, 4] });
+
+    expect(turn).toEqual({ vx: 150, vy: 0 });
+  });
+
+  it('pick the earlier racer in RACER_IDS order between two equally near', () => {
+    const turn = seekOnce({ player: [3, 2], tess: [12, 1], squib: [12, 3], bo: [2, 4] });
+
+    expect(turn.vy).toBeLessThan(0);
+  });
+
+  it('never chase a racer that has finished', () => {
+    const turn = seekOnce({ player: [3, 2], tess: [12, 1], squib: [2, 3], bo: [2, 4] }, ['tess']);
+
+    expect(turn).toEqual({ vx: 150, vy: 0 });
   });
 });
 

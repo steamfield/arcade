@@ -9,7 +9,7 @@ import { BUBBLE, FLASH } from '../powerups/tuning.ts';
 import { activeRacers, centreOf, hitbox } from '../racers.ts';
 import { type Box, type Racer, TILE, type Vec, type World } from '../types.ts';
 import { applyHit } from './hits.ts';
-import { jellyCentre } from './jellies.ts';
+import { jellyCentre, wearOffStuns } from './jellies.ts';
 import { JELLY } from './tuning.ts';
 
 /**
@@ -19,6 +19,8 @@ import { JELLY } from './tuning.ts';
  * - a bubble owned by another racer whose BUBBLE.size box overlaps its hitbox, unless it's
  *   invulnerable, pops (`bubble.popped {by: id}`, removed) and hits it (cause 'bubble', by the owner);
  * - an inflated other racer whose hitbox overlaps its hitbox hits it (cause 'puffer', by that racer).
+ * Then stunned jellies' stuns wear off by one tick (`wearOffStuns`), so a jelly flashed for
+ * FLASH.stunTicks stings nobody for that many contact passes.
  */
 export function resolveContacts(world: World, racers: readonly Racer[]): void {
   for (const racer of racers) {
@@ -28,6 +30,7 @@ export function resolveContacts(world: World, racers: readonly Racer[]): void {
     touchBubbles(world, racer, box);
     touchPuffers(world, racer, box, racers);
   }
+  wearOffStuns(world);
 }
 
 /**
@@ -38,7 +41,12 @@ export function resolveContacts(world: World, racers: readonly Racer[]): void {
 export function flashAround(world: World, racer: Racer): void {
   world.events.emit({ type: 'flash.fired', id: racer.id });
   const from = centreOf(racer);
-  const inRange = (point: Vec) => Math.hypot(point.x - from.x, point.y - from.y) <= FLASH.rangeTiles * TILE;
+  const range = FLASH.rangeTiles * TILE;
+  const inRange = (point: Vec) => {
+    const dx = point.x - from.x;
+    const dy = point.y - from.y;
+    return dx * dx + dy * dy <= range * range;
+  };
   for (const other of activeRacers(world)) {
     if (other.id !== racer.id && inRange(centreOf(other))) applyHit(world, other, 'flash', racer.id, from);
   }

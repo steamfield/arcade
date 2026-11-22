@@ -51,16 +51,16 @@ describe('bobbing', () => {
 
 describe('a stunned jelly', () => {
   it('stays put until its stun runs out, then bobs on', () => {
-    const { world } = raceOn(POOL);
+    const { world, log } = raceOn(POOL);
     const jelly = world.jellies[0] as Jelly;
     jelly.stunned = 10;
     const before = jellyCentre(jelly);
 
-    for (let i = 0; i < 10; i++) moveJellies(world);
+    step(world, log, 10);
     expect(jellyCentre(jelly)).toEqual(before);
     expect(jelly.stunned).toBe(0);
 
-    moveJellies(world);
+    step(world, log, 1);
     expect(jellyCentre(jelly)).not.toEqual(before);
   });
 });

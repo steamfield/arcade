@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { centreOf } from '../racers.ts';
-import { eventsIn, raceOn, racerOf, step } from '../test-world.ts';
+import { eventsIn, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
 import type { Vec } from '../types.ts';
 import { applyHit } from './hits.ts';
 
@@ -99,5 +99,28 @@ describe('a bubble hit', () => {
     const { world, player, offset } = setup();
 
     expect(() => applyHit(world, player, 'bubble', null, offset(-8, 0))).toThrow(/has no owner/);
+  });
+
+  it('needs the owner even when the racer would ignore the hit', () => {
+    const { world, player, offset } = setup();
+    player.status.invulnerable = 20;
+
+    expect(() => applyHit(world, player, 'bubble', null, offset(-8, 0))).toThrow(/has no owner/);
+  });
+});
+
+describe('a hit during a dash', () => {
+  it('ends the dash, so the racer moves away from the source on the next tick', () => {
+    const { world, log, player, offset, hit } = setup();
+    placeOnTile(player, 9, 1);
+    player.status.dashing = 12;
+    player.dashDir = { x: 1, y: 0 };
+    player.body.vx = 200;
+
+    hit(offset(8, 0));
+    step(world, log, 1);
+
+    expect(player.status.dashing).toBe(0);
+    expect(player.body.vx).toBeLessThan(0);
   });
 });

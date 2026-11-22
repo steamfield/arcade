@@ -8,6 +8,7 @@
  * side of the aim. Jet Fins need the whole body to slide 5 tiles along the aim.
  */
 import { cellAt, isSolid } from '../level/query.ts';
+import { length } from '../num.ts';
 import { FLASH } from '../powerups/tuning.ts';
 import { activeRacers, centreOf } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
@@ -19,8 +20,8 @@ export const ITEM_USE = {
   inkBehindTiles: 4,
   /** Bubble: a racer ahead within this many tiles... */
   bubbleAheadTiles: 6,
-  /** ...and within about 30 degrees of the aim (cosine of the half-angle). */
-  aimConeCos: Math.cos(Math.PI / 6),
+  /** ...and within 30 degrees of the aim: cos(30°), written out so no engine trig runs. */
+  aimConeCos: 0.8660254037844386,
   /** Lantern: any racer as close as the flash reaches. */
   lanternTiles: FLASH.rangeTiles,
   /** Puffer: unbroken coral within this many steps down the smash field. */
@@ -66,17 +67,19 @@ function othersNear(world: World, racer: Racer, tiles: number): Racer[] {
   const from = centreOf(racer);
   return activeRacers(world).filter((other) => {
     if (other.id === racer.id) return false;
-    const to = centreOf(other);
-    return Math.hypot(to.x - from.x, to.y - from.y) <= tiles * TILE;
+    const dx = centreOf(other).x - from.x;
+    const dy = centreOf(other).y - from.y;
+    const reach = tiles * TILE;
+    return dx * dx + dy * dy <= reach * reach;
   });
 }
 
 function inAimCone(racer: Racer, aim: Vec, other: Racer): boolean {
   const from = centreOf(racer);
   const to = centreOf(other);
-  const length = Math.hypot(to.x - from.x, to.y - from.y) * Math.hypot(aim.x, aim.y);
-  if (length === 0) return false;
-  return ((to.x - from.x) * aim.x + (to.y - from.y) * aim.y) / length >= ITEM_USE.aimConeCos;
+  const lengths = length(to.x - from.x, to.y - from.y) * length(aim.x, aim.y);
+  if (lengths === 0) return false;
+  return ((to.x - from.x) * aim.x + (to.y - from.y) * aim.y) / lengths >= ITEM_USE.aimConeCos;
 }
 
 function coralOnSmashPath(world: World, racer: Racer): boolean {

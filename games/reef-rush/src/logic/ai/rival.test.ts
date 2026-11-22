@@ -175,6 +175,33 @@ describe('getting unstuck', () => {
   });
 });
 
+describe('stunned or trapped', () => {
+  it('never starts a recovery swim, and resets the count of still ticks toward being stuck', () => {
+    const { world } = lanes();
+    racing(world);
+    const still = (r: Racer) => {
+      r.body.vx = 0;
+      r.body.vy = 0;
+    };
+    const before = intents(world, 'tess', 20, still);
+    const stunned = intents(world, 'tess', 40, (r) => {
+      still(r);
+      r.status.stunned = 5;
+    });
+    const trapped = intents(world, 'tess', 40, (r) => {
+      still(r);
+      r.status.stunned = 0;
+      r.status.trapped = 5;
+    });
+    const freed = intents(world, 'tess', 25, (r) => {
+      still(r);
+      r.status.trapped = 0;
+    });
+
+    expect([...before, ...stunned, ...trapped, ...freed].some(sideways)).toBe(false);
+  });
+});
+
 describe('catch-up', () => {
   const pair = (rivalProgress: number, playerProgress: number) => {
     const base = { facing: 1 as const, kickCooldown: 0, place: 1, finished: null, ai: null, ...noItems() };
@@ -316,6 +343,35 @@ describe('using items', () => {
     expect(without?.move.x).toBeLessThan(0);
   });
 
+  it('steers around coral while its puffer burst cools down', () => {
+    const { tess, decide } = itemScene(['puffer'], {}, 0, CORAL_LANE);
+    tess.burstCooldown = 100;
+
+    expect(decide()[0]?.move.x).toBeLessThan(0);
+  });
+
+  it('steers through coral while inflated, even with its burst cooling down', () => {
+    const { tess, decide } = itemScene(['puffer'], {}, 0, CORAL_LANE);
+    tess.burstCooldown = 100;
+    tess.status.inflated = 30;
+
+    expect(decide()[0]?.move.x).toBeGreaterThan(0.5);
+  });
+
+  it('never bursts while swimming sideways to get unstuck', () => {
+    const { tess, decide } = itemScene(['jetFin']);
+    const pinned = Array.from({ length: 60 }, () => {
+      tess.body.vx = 0;
+      tess.body.vy = 0;
+      return decide()[0] as Intent;
+    });
+    const recovering = pinned.filter(sideways);
+
+    expect(recovering.length).toBeGreaterThan(0);
+    expect(recovering.filter((intent) => intent.burst)).toEqual([]);
+    expect(pinned.filter((intent) => !sideways(intent)).every((intent) => intent.burst)).toBe(true);
+  });
+
   it('aims into the coral itself once it reaches it holding a puffer', () => {
     const [atCoral] = itemScene(['puffer'], { tess: [5, 1] }, 0, CORAL_LANE).decide();
 
@@ -331,8 +387,16 @@ describe('using items', () => {
   });
 
   it('bursts on about itemAggression of its eligible ticks', () => {
-    const half = bursts(itemScene(['glowLantern'], { player: [10, 2] }, 0.5).decide(400));
-    const never = bursts(itemScene(['glowLantern'], { player: [10, 2] }, 0).decide(400));
+    // Kept swimming, so it never sits still long enough to start a recovery swim (which holds bursts).
+    const swimming = (aggression: number) => {
+      const { tess, decide } = itemScene(['glowLantern'], { player: [10, 2] }, aggression);
+      return Array.from({ length: 400 }, () => {
+        tess.body.vx = 60;
+        return decide()[0] as Intent;
+      });
+    };
+    const half = bursts(swimming(0.5));
+    const never = bursts(swimming(0));
 
     expect(half / 400).toBeGreaterThan(0.35);
     expect(half / 400).toBeLessThan(0.65);

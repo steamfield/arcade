@@ -5,6 +5,7 @@
  * the walk may step into unbroken coral, so a racer able to break it aims at it.
  */
 import { cellAt, isSolid } from '../level/query.ts';
+import { length } from '../num.ts';
 import { cornerIsClear, fieldAt, NEIGHBOURS } from '../race/flowfield.ts';
 import { type Body, type FlowFields, type Level, TILE, type Vec } from '../types.ts';
 
@@ -52,9 +53,9 @@ export function steerDirection(
   }
   if (!target) return { ...STILL };
   const aim = tileCentre(target);
-  const length = Math.hypot(aim.x - centre.x, aim.y - centre.y);
-  if (length === 0) return { ...STILL };
-  return { x: (aim.x - centre.x) / length, y: (aim.y - centre.y) / length };
+  const distance = length(aim.x - centre.x, aim.y - centre.y);
+  if (distance === 0) return { ...STILL };
+  return { x: (aim.x - centre.x) / distance, y: (aim.y - centre.y) / distance };
 }
 
 /** Which tiles a downhill walk may enter: open water, plus unbroken coral when `throughCoral`. */
@@ -104,7 +105,7 @@ export function hasClearSweep(level: Level, broken: ReadonlySet<number>, body: B
   const from = centreOf(body);
   const halfW = body.w / 2 - EDGE_INSET_PX;
   const halfH = body.h / 2 - EDGE_INSET_PX;
-  const samples = Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / SIGHT_STEP_PX);
+  const samples = Math.ceil(length(to.x - from.x, to.y - from.y) / SIGHT_STEP_PX);
   for (let i = 1; i <= samples; i++) {
     const t = i / samples;
     const x = from.x + (to.x - from.x) * t;
