@@ -164,7 +164,7 @@ One lane: the engine has no seam inside it until the runtime and scenes exist, a
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/reef-rush/src/engine/, games/reef-rush/src/main.ts, games/reef-rush/src/logic/records.ts, games/reef-rush/src/logic/records.test.ts, games/reef-rush/scenarios/, games/reef-rush/tests/smoke.spec.ts, games/reef-rush/DESIGN.md | contracts, templates/phaser-2d/src/engine/game.ts | | opus | running | deliver/reef-rush-2a | gate passes; see captures at desktop and mobile reviewed |
+| a | L | games/reef-rush/src/engine/, games/reef-rush/src/main.ts, games/reef-rush/src/logic/records.ts, games/reef-rush/src/logic/records.test.ts, games/reef-rush/scenarios/, games/reef-rush/tests/smoke.spec.ts, games/reef-rush/DESIGN.md | contracts, templates/phaser-2d/src/engine/game.ts | | opus | merged | deliver/reef-rush-2a | gate passes; see captures at desktop and mobile reviewed |
 
 ### Phase 3: stacking power-ups, pickups and hazards
 
