@@ -4,6 +4,7 @@
  * UI art files export. Panel textures are made per size on demand and are
  * named by `panelKey` in `panel.ts`.
  */
+import type { CharacterId } from '../../../logic/types.ts';
 import type { NamedFrame } from '../pixel.ts';
 
 /** UI texture keys; every one is built by `buildUiTextures`. */
@@ -57,15 +58,19 @@ export const MedalFrame = {
 export type MedalFrameKey = (typeof MedalFrame)[keyof typeof MedalFrame];
 
 /**
- * Frames in `UiTex.portraits` (16x16) and `UiTex.heads` (7x7 progress-strip markers), named by
- * racer id so a view can pass `racer.id` straight in.
+ * Frames in `UiTex.portraits` (16x16) and `UiTex.heads` (7x7 progress-strip markers), one per
+ * character and named by its id, so a view can pass `racer.character` straight in.
  */
 export const PortraitFrame = {
-  player: 'player',
-  tess: 'tess',
-  squib: 'squib',
-  bo: 'bo',
-} as const;
+  rudy: 'rudy',
+  gil: 'gil',
+  streak: 'streak',
+  onyx: 'onyx',
+  nib: 'nib',
+  baron: 'baron',
+  selene: 'selene',
+  rook: 'rook',
+} as const satisfies Record<CharacterId, string>;
 
 /** Any portrait frame name. */
 export type PortraitFrameKey = (typeof PortraitFrame)[keyof typeof PortraitFrame];

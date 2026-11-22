@@ -3,18 +3,19 @@
  * and choosing what a hit knocks off. The stack is oldest first, so the newest
  * power-up is always the last entry.
  */
+import { stackMaxFor } from '../abilities.ts';
 import type { PowerUpKind, Racer, World } from '../types.ts';
-import { COMBO_PAIRS, STACK_MAX } from './tuning.ts';
+import { COMBO_PAIRS } from './tuning.ts';
 
 /**
- * Puts `kind` on top of the racer's stack and emits `powerup.gained`. When that makes
- * STACK_MAX + 1, the oldest (bottom) is dropped first with `powerup.lost {cause: 'full'}`.
+ * Puts `kind` on top of the racer's stack and emits `powerup.gained`. When the stack already holds
+ * `stackMaxFor(racer)`, the oldest (bottom) is dropped first with `powerup.lost {cause: 'full'}`.
  *
  * @returns false, changing nothing and emitting nothing, when the racer already holds `kind`.
  */
 export function gainPowerUp(world: World, racer: Racer, kind: PowerUpKind): boolean {
   if (racer.stack.includes(kind)) return false;
-  if (racer.stack.length >= STACK_MAX) {
+  if (racer.stack.length >= stackMaxFor(racer)) {
     const oldest = racer.stack.shift();
     if (oldest) world.events.emit({ type: 'powerup.lost', id: racer.id, kind: oldest, cause: 'full' });
   }

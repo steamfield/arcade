@@ -4,6 +4,7 @@
  * behave the same whatever caused it.
  */
 
+import { ignoresHazard, statusDurationMul } from '../abilities.ts';
 import { length } from '../num.ts';
 import { spawnLoose } from '../pickups/loose.ts';
 import { popForHit } from '../powerups/stack.ts';
@@ -13,13 +14,14 @@ import type { HitCause, Racer, RacerId, Vec, World } from '../types.ts';
 import { HIT } from './tuning.ts';
 
 /**
- * Hits `racer`. An invulnerable racer ignores it entirely (returns false, nothing emitted).
- * Otherwise emits `racer.hit {id, cause, by}`, then:
+ * Hits `racer`. An invulnerable racer, or one whose ability ignores this cause (`ignoresHazard`),
+ * ignores it entirely (returns false, nothing emitted). Otherwise emits `racer.hit {id, cause, by}`, then:
  * - a held Bubble Shield absorbs any cause: `popForHit` removes it (`shield.popped`);
  * - flash: stunned FLASH.stunTicks (`racer.stunned`), stack kept;
  * - bubble: trapped BUBBLE.trapTicks (`racer.trapped {id, by}`), stack kept;
  * - urchin, jelly, puffer: `popForHit` knocks off the newest power-up, which `spawnLoose` floats at the
  *   racer's centre; with an empty stack the racer is stunned HIT.stunTicks (`racer.stunned`).
+ * Stun and trap lengths are scaled by the racer's `statusDurationMul`, rounded to whole ticks.
  * Every landed hit ends any dash (`status.dashing = 0`, inflated cannonball dashes included), sets
  * `status.invulnerable = HIT.invulnerableTicks` and sets the racer's velocity to HIT.knockbackSpeed
  * directly away from `from` (along facing when `from` is its centre). A trapped racer's float
@@ -33,7 +35,7 @@ import { HIT } from './tuning.ts';
  */
 export function applyHit(world: World, racer: Racer, cause: HitCause, by: RacerId | null, from: Vec): boolean {
   const blow = blowOf(racer, cause, by);
-  if (racer.status.invulnerable > 0) return false;
+  if (racer.status.invulnerable > 0 || ignoresHazard(racer, cause)) return false;
   world.events.emit({ type: 'racer.hit', id: racer.id, cause, by });
   sufferHit(world, racer, blow);
   racer.status.dashing = 0;
@@ -60,7 +62,7 @@ function sufferHit(world: World, racer: Racer, blow: Blow): void {
   } else if (blow.cause === 'flash') {
     stun(world, racer, FLASH.stunTicks);
   } else if (blow.cause === 'bubble') {
-    racer.status.trapped = BUBBLE.trapTicks;
+    racer.status.trapped = Math.round(BUBBLE.trapTicks * statusDurationMul(racer, 'trapped'));
     world.events.emit({ type: 'racer.trapped', id: racer.id, by: blow.by });
   } else if (racer.stack.length === 0) {
     stun(world, racer, HIT.stunTicks);
@@ -71,7 +73,7 @@ function sufferHit(world: World, racer: Racer, blow: Blow): void {
 }
 
 function stun(world: World, racer: Racer, ticks: number): void {
-  racer.status.stunned = ticks;
+  racer.status.stunned = Math.round(ticks * statusDurationMul(racer, 'stunned'));
   world.events.emit({ type: 'racer.stunned', id: racer.id });
 }
 

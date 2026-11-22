@@ -4,6 +4,9 @@
  * settings. Each tick it reads input, advances whichever screen is active, then
  * drains the tick's events once and hands them to audio and any listening view.
  * Scenes render from it and never change gameplay themselves.
+ *
+ * Screens: title, then select (pick a character; kick races, burst goes back),
+ * then race and results. Race again skips the select and races the same pick.
  */
 import { createLogger, EventLog, FixedStep, type Stamped } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
@@ -14,15 +17,16 @@ import { parseLevel } from '../logic/level/parse.ts';
 import { playerOf } from '../logic/racers.ts';
 import { isNewBest, recordResult } from '../logic/records.ts';
 import { NEW_GAME, type SaveData } from '../logic/save.ts';
-import type { RaceResult, TickInput, World } from '../logic/types.ts';
+import type { CharacterId, RaceResult, TickInput, World } from '../logic/types.ts';
 import { createWorld, stepWorld } from '../logic/world.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
+import { moveCharacter } from './character-select.ts';
 import { input } from './input.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 import { raceProgress } from './race-progress.ts';
 
 /** Phaser scene keys, one per screen. */
-export type SceneKey = 'boot' | 'title' | 'race' | 'results';
+export type SceneKey = 'boot' | 'title' | 'select' | 'race' | 'results';
 
 /** Events the engine adds on top of the world's. */
 export type EngineEvent =
@@ -91,6 +95,11 @@ export class Runtime {
   lastResult: RaceOutcome | null = null;
   /** The active screen's menu, or null on screens without one. */
   menu: Menu | null = null;
+  /**
+   * The character under the select screen's cursor, and who the next race is run as. Starts at the
+   * saved pick, and goes back to it each time the select screen opens.
+   */
+  selectedCharacter: CharacterId;
   /** True from the start of a save write until it settles. The test harness waits on it through idle(). */
   saving = false;
   readonly audio: AudioPort;
@@ -110,7 +119,7 @@ export class Runtime {
   private cursor = 0;
   /** Ticks left before the results screen, or null when no race has finished. */
   private resultsIn: number | null = null;
-  /** Ticks left before the current menu accepts kick. */
+  /** Ticks left before the current menu or the select screen accepts kick. */
   private menuArmIn = 0;
 
   constructor(options: RuntimeOptions) {
@@ -119,6 +128,7 @@ export class Runtime {
     this.save = options.save;
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.startScene = options.startScene;
+    this.selectedCharacter = this.savedCharacter;
     this.audio = createAudio(options.ctx, this.settings, this.events);
   }
 
@@ -126,6 +136,11 @@ export class Runtime {
   get settings(): Settings {
     const saved = (this.save ?? NEW_GAME).settings;
     return { muted: saved.muted, reducedMotion: saved.reducedMotion ?? this.prefersReducedMotion };
+  }
+
+  /** The character picked last, from the save; Rudy when there is none. */
+  get savedCharacter(): CharacterId {
+    return (this.save ?? NEW_GAME).character;
   }
 
   /** Feeds one game step's wall time to the fixed step. Does nothing in test mode, where the shell calls advance(). */
@@ -140,11 +155,15 @@ export class Runtime {
     this.startScene(scene);
   }
 
-  /** Called from a scene's create() once it is ready to show. The title drops any finished race. */
+  /**
+   * Called from a scene's create() once it is ready to show. The title drops any finished race; the
+   * select screen puts its cursor on the saved pick.
+   */
   entered(scene: SceneKey): void {
     this.scene = scene;
     this.loading = false;
     if (scene === 'title') this.world = null;
+    if (scene === 'select') this.selectedCharacter = this.savedCharacter;
     const options = MENUS[scene];
     this.menu = options ? createMenu(options) : null;
     this.menuArmIn = MENU_ARM_TICKS;
@@ -152,12 +171,13 @@ export class Runtime {
   }
 
   /**
-   * Builds a fresh world on the course and starts the race scene at the countdown. The seed
-   * moves on with every recorded race, so a rematch differs while a test run still repeats.
+   * Builds a fresh world on the course with the player as `selectedCharacter` and starts the race
+   * scene at the countdown. The seed moves on with every recorded race, so a rematch differs (rivals
+   * included) while a test run still repeats.
    */
   startRace(): void {
     const seed = this.ctx.params.seed + (this.save?.races ?? 0);
-    this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, { seed });
+    this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, { seed, character: this.selectedCharacter });
     this.startProgress = playerOf(this.world).progress;
     this.lastResult = null;
     this.resultsIn = null;
@@ -192,6 +212,7 @@ export class Runtime {
     this.events.tick = this.step.tick;
     input.update();
     if (this.menu) this.tickMenu(this.menu);
+    else if (this.scene === 'select') this.tickSelect();
     else if (this.scene === 'race') this.tickRace(dt);
     this.dispatchEvents();
   }
@@ -209,7 +230,33 @@ export class Runtime {
     if (option === 'Sound') this.changeSettings({ muted: !this.settings.muted });
     else if (option === 'Motion') this.changeSettings({ reducedMotion: !this.settings.reducedMotion });
     else if (option === 'Title') this.goTo('title');
+    else if (option === 'Race') this.goTo('select');
     else this.startRace();
+  }
+
+  /** Moves the select cursor on the d-pad; after the arming ticks kick races as the pick and burst goes back. */
+  private tickSelect(): void {
+    if (input.justPressed('left')) this.selectedCharacter = moveCharacter(this.selectedCharacter, -1, 0);
+    if (input.justPressed('right')) this.selectedCharacter = moveCharacter(this.selectedCharacter, 1, 0);
+    if (input.justPressed('up')) this.selectedCharacter = moveCharacter(this.selectedCharacter, 0, -1);
+    if (input.justPressed('down')) this.selectedCharacter = moveCharacter(this.selectedCharacter, 0, 1);
+    if (this.menuArmIn > 0) {
+      this.menuArmIn--;
+      return;
+    }
+    if (input.justPressed('burst')) this.goTo('title');
+    else if (input.justPressed('kick')) this.pickCharacter();
+  }
+
+  /**
+   * Saves the select cursor as the player's pick and starts the race. Like a settings change, the
+   * pick holds for this session even when the write fails.
+   */
+  private pickCharacter(): void {
+    const data: SaveData = { ...(this.save ?? NEW_GAME), character: this.selectedCharacter };
+    this.save = data;
+    this.persist(data).catch((error: unknown) => this.ctx.reportError('save', error));
+    this.startRace();
   }
 
   /**

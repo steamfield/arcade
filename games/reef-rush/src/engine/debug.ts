@@ -8,8 +8,9 @@ import type { Runtime } from './runtime.ts';
 import { formatBest } from './view/race-text.ts';
 
 /**
- * Scene, save status and the world summary, plus the menu on menu screens, the best
- * line as shown on the title, and the race outcome on results.
+ * Scene, save status, the character the player races as (the select cursor while picking) and
+ * the world summary, plus the menu on menu screens, the best line as shown on the title, and the
+ * race outcome on results.
  *
  * @param sceneRunning Whether Phaser is actually running `rt.scene`. When it isn't, the
  * scene reads 'none', so a runtime that believes in a scene Phaser stopped is visible.
@@ -19,6 +20,7 @@ export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: 
   return {
     scene: sceneRunning ? rt.scene : 'none',
     save: saveStatus,
+    character: rt.selectedCharacter,
     ...(world ? summarize(world) : {}),
     ...(menu ? { menu: { options: menu.options, selected: menu.selected } } : {}),
     ...sceneDetails(rt),
@@ -33,7 +35,7 @@ function sceneDetails(rt: Runtime): Record<string, unknown> {
   return { result: { place: result.playerPlace, ticks: result.playerTicks, newBest, saveFailed } };
 }
 
-/** Everything in the summary plus racers, race state, settings, the save and the course as ASCII. */
+/** Everything in the summary plus racers (with their characters), race state, settings, the save and the course as ASCII. */
 export function debugState(rt: Runtime, saveStatus: SaveStatus, sceneRunning: boolean): Record<string, unknown> {
   const { world } = rt;
   return {
@@ -44,8 +46,9 @@ export function debugState(rt: Runtime, saveStatus: SaveStatus, sceneRunning: bo
     lastResult: rt.lastResult,
     race: world?.race ?? null,
     racers:
-      world?.racers.map(({ id, body, facing, kickCooldown, place, progress, finished }) => ({
+      world?.racers.map(({ id, character, body, facing, kickCooldown, place, progress, finished }) => ({
         id,
+        character,
         body,
         facing,
         kickCooldown,

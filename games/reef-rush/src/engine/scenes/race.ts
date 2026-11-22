@@ -59,7 +59,7 @@ export class RaceScene extends Phaser.Scene {
       view: createRacerView(this, racer, reducedMotion),
       effects: createPowerupView(this, racer.id, reducedMotion),
     }));
-    const hud = createHud(this, reducedMotion);
+    const hud = createHud(this, world, reducedMotion);
     const fx = createFx(this, world, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;

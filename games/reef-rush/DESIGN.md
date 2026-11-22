@@ -6,7 +6,7 @@ This is the repo's first full game and its reference layout: logic in feature fo
 
 ## Core loop
 
-3-2-1 countdown, then race. Swim with momentum, kick for bursts, ride currents, avoid kelp drag. Finish ahead of Tess (steady turtle), Squib (erratic squid) and Bo (heavy crab). Results show place and time; the best finish is saved.
+Pick a racer, then a 3-2-1 countdown and the race. Swim with momentum, kick for bursts, ride currents, avoid kelp drag. Finish ahead of three rivals drawn from the rest of the cast. Results show place and time; the best finish is saved.
 
 ## Controls
 
@@ -15,7 +15,9 @@ This is the repo's first full game and its reference layout: logic in feature fo
 | swim          | Arrow keys, WASD  | d-pad |
 | kick, confirm | Space, Z, Enter   | A     |
 | menu up/down  | Up/Down, W/S      | d-pad |
-| burst         | X, Shift          | B     |
+| burst, back   | X, Shift          | B     |
+
+On the select screen the arrows (d-pad) move around the grid, kick races as the highlighted character, and burst goes back to the title.
 
 ## Rules worth knowing
 
@@ -25,6 +27,23 @@ This is the repo's first full game and its reference layout: logic in feature fo
 - Rivals out-swim you (about 1.5x your swim force) but kick and burst rarely, so your kicks and power-ups are how you win. Catch-up scales their swim force by 0.03 per tile of gap, between 0.6x when far ahead of you and 1.15x when far behind (`ai/rival.ts` `CATCH_UP`). Rivals steer around urchins and jellies they can see coming (`ai/avoid.ts`).
 - Difficulty is measured by `logic/difficulty.test.ts` on 30 seeds: an expert bot wins with the lead rival within 8 s in at least 21, and a novice bot (loose steering, occasional kicks, no items) places 3rd or 4th in at least 21 and finishes within 1.3x the winner's time in at least 24. On seeds 1-200 the tuning measures 86%, 100% and 100%.
 - Logic never calls `Math.sin`, `cos`, `atan2`, `hypot`, `exp`, `pow` or `log`: engines may approximate them, and a seeded race must replay identically on Chromium and WebKit. Use `src/logic/num.ts`.
+
+## Roster
+
+You race as one of eight characters; the race fills the three rival slots with three of the other seven, drawn by seed from the `roster` random stream (`pickRivals` in `logic/characters.ts`). Characters are data in fixed slots (`player`, `tess`, `squib`, `bo`), so tick order, random streams and tie-breaks never depend on who is picked. Abilities are not implemented yet: every hook in `logic/abilities.ts` is a no-op, every character races with a placeholder profile (the tuned Tess, Squib and Bo values, cycled), and the art reuses the four original racers. Each rival slot draws from the characters holding its old profile, so races play as they did before the roster.
+
+| Character | Look | Ability (planned) |
+| --- | --- | --- |
+| Rudy | red snapper in a brass diving helmet | Shake it off: stuns and bubble traps last half as long |
+| Gil | lanky green seahorse | Spring kick: kicks push harder upward |
+| Streak | electric-blue sailfish | Wind-up: top speed rises the longer it swims without turning hard or being hit |
+| Onyx | black barracuda with a scarred fin | Ambush: bumping a racer from behind takes some of its speed |
+| Nib | cleaner shrimp in goggles | Deep pockets: holds 4 power-ups instead of 3 |
+| Baron Barnacle | huge spider crab with a crusted crown | Bulldozer: breaks coral by ramming, barely moves in bumps, accelerates slowly |
+| Selene | moon jellyfish with a starlight glow | Moonlight: sees through dark zones, immune to jelly stings |
+| Rook | hammerhead shark | Frenzy: when a racer near it is hit or loses a power-up, it gets a short speed burst |
+
+Dark zones (`Level.dark`) are parsed and `inDark` in `level/query.ts` answers whether a racer is in one, but nothing uses darkness yet.
 
 ## Power-ups
 
@@ -46,10 +65,13 @@ A hit (urchin `*`, jelly `j`, bubble, puffer, flash) takes your shield if you ho
 
 - `boot`: builds every texture (`engine/art/index.ts`), then routes.
 - `title`: the logo over the swimming cast, Race, Sound (mute) and Motion (reduced motion) buttons, PRESS A on touch screens only, and your best time and place when you have one. Settings save at once and apply for the session even if the save fails; a fresh save follows the OS reduced-motion preference.
+- `select`: the eight characters in a 4x2 grid (portrait and short name, the cursor's cell in a gold frame) and a card with the highlighted character's full name, ability and what it does. The cursor starts on your last pick. Kick saves the pick and races; burst goes back. Like menus, it ignores kick for its first 20 ticks. Laid out clear of the safe zones (layout in the header of `scenes/select.ts`).
 - `race`: 3-2-1-GO countdown, then the race, with FINAL STRETCH and FINISH splashes. HUD (laid out in `UI.md`): place with your portrait (hidden during the countdown; pops up or down on a change), timer, a progress strip with each racer's head, and a well with kick, burst (a dim ring while it recharges) and three stack slots (empty ones show a dot). Combo names appear beside you, clear of your sprite. The camera follows you with a deadzone and lookahead. 90 ticks after the race ends you go to results.
 - `results`: a podium with medals for the top three, standings with names and times revealed row by row (DNF if not finished), your row in sun with your head beside it, a NEW BEST or BEST NOT SAVED readout, then Race again or Title.
 - Menus ignore kick for their first 20 ticks, so a kick still being pressed from the race can't skip the results.
-- `?scene=race` (or `?scene=play`) skips the title. `?seed=7` changes rival behaviour. Each race is seeded with `seed + races in the save`, so a rematch plays differently while a test run still repeats exactly.
+- Title Race goes to `select`; results' Race again races the same character again without the select screen.
+- `?scene=race` (or `?scene=play`) skips the title and races as the saved pick (Rudy on a fresh save). `?seed=7` changes rival behaviour and which characters you race. Each race is seeded with `seed + races in the save`, so a rematch plays differently while a test run still repeats exactly.
+- Save version 3: the best finish, races run, settings, and `character`, the last pick. A v2 save loads as Rudy.
 - `?debug=1` draws hitboxes from logic state and shows the tick and your tile.
 
 ## Engine layout

@@ -16,6 +16,7 @@ const SETTLE = 600;
 function makeRacer(): Racer {
   return {
     id: 'player',
+    character: 'rudy',
     body: { x: 40, y: 40, vx: 0, vy: 0, w: SWIM.width, h: SWIM.height },
     facing: 1,
     kickCooldown: 0,

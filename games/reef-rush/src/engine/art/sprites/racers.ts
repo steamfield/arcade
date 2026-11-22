@@ -1,17 +1,27 @@
 /**
- * The four racers, 16x12 and facing right (the racer view flips them), each
- * drawn around its 12x10 body with two swim-stroke frames. Every racer has its
- * own silhouette so they stay apart without colour: Pip a round brass helmet
- * with a porthole, Tess a domed shell, Squib a long mantle trailing tentacles,
- * Bo a squat diving bell with crab claws underneath.
+ * The racers, 16x12 and facing right (the racer view flips them), each drawn
+ * around its 12x10 body with two swim-stroke frames, one texture per character.
+ *
+ * Placeholder: the characters reuse the four phase 4 drawings in CHARACTER_IDS
+ * order (a round brass helmet with a porthole, a domed shell, a long mantle
+ * trailing tentacles, a squat diving bell with crab claws), so every character
+ * has a texture until each gets its own art.
  */
+import { CHARACTER_IDS } from '../../../logic/types.ts';
 import { Frame, Tex } from '../keys.ts';
 import { RacerPalette } from '../palettes.ts';
+import type { Palette, PixelRows } from '../pixel.ts';
 import { type ArtSheet, sheet } from './sheet.ts';
 
-/** Racer sheets: frame `a` and `b` are the two strokes of the swim cycle. */
-export const RACER_SHEETS: readonly ArtSheet[] = [
-  sheet(Tex.player, RacerPalette.pip, {
+/** One drawing: its palette and its two swim-stroke frames. */
+interface RacerDrawing {
+  palette: Palette;
+  frames: Readonly<Record<string, PixelRows>>;
+}
+
+const HELMET: RacerDrawing = {
+  palette: RacerPalette.pip,
+  frames: {
     [Frame.a]: [
       '.........00.....',
       '.......003100...',
@@ -40,8 +50,12 @@ export const RACER_SHEETS: readonly ArtSheet[] = [
       '30.....001100...',
       '0........00.....',
     ],
-  }),
-  sheet(Tex.tess, RacerPalette.tess, {
+  },
+};
+
+const SHELL: RacerDrawing = {
+  palette: RacerPalette.tess,
+  frames: {
     [Frame.a]: [
       '................',
       '....000000......',
@@ -70,8 +84,12 @@ export const RACER_SHEETS: readonly ArtSheet[] = [
       '....0000220.....',
       '........00......',
     ],
-  }),
-  sheet(Tex.squib, RacerPalette.squib, {
+  },
+};
+
+const MANTLE: RacerDrawing = {
+  palette: RacerPalette.squib,
+  frames: {
     [Frame.a]: [
       '...........00...',
       '..........0110..',
@@ -100,8 +118,12 @@ export const RACER_SHEETS: readonly ArtSheet[] = [
       '2.........0110..',
       '...........00...',
     ],
-  }),
-  sheet(Tex.bo, RacerPalette.bo, {
+  },
+};
+
+const BELL: RacerDrawing = {
+  palette: RacerPalette.bo,
+  frames: {
     [Frame.a]: [
       '......0000......',
       '....00111100....',
@@ -130,5 +152,13 @@ export const RACER_SHEETS: readonly ArtSheet[] = [
       '...03003300300..',
       '....0..00..0....',
     ],
-  }),
-];
+  },
+};
+
+const PLACEHOLDERS = [HELMET, SHELL, MANTLE, BELL] as const;
+
+/** Racer sheets, one per character: frame `a` and `b` are the two strokes of the swim cycle. */
+export const RACER_SHEETS: readonly ArtSheet[] = CHARACTER_IDS.map((character, index) => {
+  const drawing = PLACEHOLDERS[index % PLACEHOLDERS.length] ?? HELMET;
+  return sheet(Tex[character], drawing.palette, drawing.frames);
+});

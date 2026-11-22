@@ -44,8 +44,11 @@ export function hitbox(racer: Racer): Box {
   return { x: centre.x - INFLATE.size / 2, y: centre.y - INFLATE.size / 2, w: INFLATE.size, h: INFLATE.size };
 }
 
-/** A racer's item fields at the start line: nothing held, no statuses, burst ready. */
-export function noItems(): Pick<Racer, 'stack' | 'burstCooldown' | 'pearls' | 'status' | 'dashDir' | 'dashCombos'> {
+/** A racer's item and ability fields at the start line: nothing held, no statuses, burst ready, ability counters at 0. */
+export function noItems(): Pick<
+  Racer,
+  'stack' | 'burstCooldown' | 'pearls' | 'status' | 'dashDir' | 'dashCombos' | 'ability'
+> {
   return {
     stack: [],
     burstCooldown: 0,
@@ -53,5 +56,6 @@ export function noItems(): Pick<Racer, 'stack' | 'burstCooldown' | 'pearls' | 's
     status: { stunned: 0, invulnerable: 0, slowed: 0, trapped: 0, inflated: 0, dashing: 0, boost: 0 },
     dashDir: { x: 0, y: 0 },
     dashCombos: [],
+    ability: { windUp: 0, frenzy: 0 },
   };
 }
