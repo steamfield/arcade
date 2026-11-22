@@ -53,7 +53,11 @@ A hit (urchin `*`, jelly `j`, bubble, puffer, flash) takes your shield if you ho
 
 ## Engine layout
 
-`engine/game.ts` wires Phaser to the shell. `engine/runtime.ts` is the only place logic ticks (`game.ts` feeds its clock once per Phaser step): it reads input, steps the world or the menu, drains each tick's events once and hands them to audio (`audio/index.ts`, silent for now) and to views that listen. Scenes in `engine/scenes/` build views from `engine/view/` and sync them every frame. Screens follow `UI.md` (palette, type scale, layout grid, safe zones, motion). Text goes only through `art/font.ts` `createLabel`; textures and animations only through `art/keys.ts`.
+`engine/game.ts` wires Phaser to the shell. `engine/runtime.ts` is the only place logic ticks (`game.ts` feeds its clock once per Phaser step): it reads input, steps the world or the menu, drains each tick's events once and hands them to audio and to views that listen. Scenes in `engine/scenes/` build views from `engine/view/` and sync them every frame. Screens follow `UI.md` (palette, type scale, layout grid, safe zones, motion). Text goes only through `art/font.ts` `createLabel`; textures and animations only through `art/keys.ts`.
+
+## Art and audio
+
+Every sprite is palette-indexed pixel text in `engine/art/sprites/`, drawn at boot by `art/pixel.ts` (at most 4 colours per frame; racers and hazards hold 3:1 contrast against every water band, enforced in `sprites.test.ts`). The UI kit (fonts, panels, icons, portraits, logo) lives in `engine/art/ui/`. Sound is a four-voice chip synth (`audio/synth.ts`, `sequencer.ts`); songs are written in a small text notation (`audio/notation.ts`, songs in `audio/songs/`) and parsed at load, so a malformed song fails tests. The race theme speeds up for the final stretch.
 
 ## Course format
 
@@ -61,4 +65,4 @@ ASCII in `src/logic/level/levels.ts`, documented in `src/logic/level/parse.ts`.
 
 ## Scenarios
 
-`countdown-holds-racers`, `race-to-finish`, `results-after-finish`, `results-ignores-early-kick`, `dnf-results`, `race-again`, `results-to-title`, `title-best`, `clam-stack`, `hit-pops-newest`, `cannonball-combo`. The top route most share is `TOP_ROUTE` in `scenarios/kit.ts`; it threads past the urchin at (32, 4). Power-up scenarios pin a seed because clam rolls depend on it.
+`countdown-holds-racers`, `race-to-finish`, `results-after-finish`, `results-ignores-early-kick`, `dnf-results`, `race-again`, `results-to-title`, `title-best`, `clam-stack`, `hit-pops-newest`, `cannonball-combo`, `audio-plays`. The top route most share is `TOP_ROUTE` in `scenarios/kit.ts`; it threads past the urchin at (32, 4). Power-up scenarios pin a seed because clam rolls depend on it.
