@@ -1,8 +1,9 @@
 /**
  * Held-stack effects drawn on a racer, read from `racer.stack` and `racer.status`:
  * a shield ring while Bubble Shield is held, the Puffer itself blown up to twice its
- * size around the racer during a Puffer burst, a dash streak behind a Jet Fins dash
- * and a ring that expands from a Glow Lantern flash. Everything is an overlay: the
+ * size around the racer during a Puffer burst, a dash streak behind a Jet Fins dash,
+ * a ring that expands from a Glow Lantern flash, a Homing Squid wrapped round a racer it
+ * has latched on to and speed lines behind a racer Undertow is pulling back. Everything is an overlay: the
  * racer's own sprite (including its invulnerability flicker) belongs to
  * `racer-view.ts`. Overlays are created once and only reconfigured each frame.
  */
@@ -21,11 +22,10 @@ export const POWER_UP_TEX: Record<PowerUpKind, TexKey> = {
   puffer: Tex.puffer,
   inkSac: Tex.inkSac,
   glowLantern: Tex.glowLantern,
-  // Placeholder art until lane 7/b draws the attack kinds.
-  homingSquid: Tex.inkSac,
-  riptide: Tex.jetFin,
-  undertow: Tex.puffer,
-  mimic: Tex.bubbleShield,
+  homingSquid: Tex.homingSquid,
+  riptide: Tex.riptide,
+  undertow: Tex.undertow,
+  mimic: Tex.mimic,
 };
 
 /** One racer's held-stack overlays. */
@@ -44,6 +44,12 @@ const GLOW_DIAMETER = 16;
 const STREAK_LENGTH = 40;
 const STREAK_TINT = 0x7fdbff;
 const FLASH_TINT = 0xf0e060;
+/** A latched squid shifts a pixel every this many ticks, so it reads as gripping and squirming. */
+const LATCH_SQUIRM_TICKS = 6;
+/** Undertow's speed lines swap frames every this many ticks and trail this far behind the racer's centre, like speed lines. */
+const PULL_LINE_TICKS = 4;
+const PULL_LINE_BEHIND = 10;
+const PULL_LINE_ALPHA = 0.85;
 
 /** Creates the overlays for one racer. `reducedMotion` shows the flash ring at its full reach, fading, instead of growing. */
 export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reducedMotion: boolean): PowerupView {
@@ -55,6 +61,8 @@ export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reduced
   const inflated = overlay(Tex.puffer, Layer.racers - 0.5).setScale(INFLATED_SCALE);
   const streak = overlay(Tex.looseGlow, Layer.racers - 0.5).setTint(STREAK_TINT);
   const flashRing = overlay(Tex.looseGlow, Layer.player + 0.25).setTint(FLASH_TINT);
+  const latch = overlay(Tex.squid, Layer.player + 0.6).setAlpha(0.95);
+  const pullLines = overlay(Tex.undertowStreak, Layer.racers - 0.25).setAlpha(PULL_LINE_ALPHA);
   let flashedAt = Number.NEGATIVE_INFINITY;
 
   return {
@@ -73,6 +81,8 @@ export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reduced
         .setFlipX(racer.facing < 0);
       showStreak(streak, racer, x, y);
       showFlashRing(flashRing, tick - flashedAt, x, y, reducedMotion);
+      showLatch(latch, racer, tick, x, y, reducedMotion);
+      showPullLines(pullLines, racer, tick, x, y, reducedMotion);
     },
   };
 }
@@ -110,4 +120,42 @@ function showFlashRing(
     .setPosition(x, y)
     .setScale((reach * FLASH.rangeTiles * TILE * 2) / GLOW_DIAMETER)
     .setAlpha((reducedMotion ? 0.35 : 0.5) * (1 - progress));
+}
+
+/** The squid wrapped round a racer it has latched on to, squirming a pixel unless motion is reduced. */
+function showLatch(
+  latch: Phaser.GameObjects.Image,
+  racer: Racer,
+  tick: number,
+  x: number,
+  y: number,
+  reducedMotion: boolean,
+): void {
+  const latched = racer.status.latched > 0;
+  latch.setVisible(latched);
+  if (!latched) return;
+  const squirm = !reducedMotion && Math.floor(tick / LATCH_SQUIRM_TICKS) % 2 === 1 ? 1 : 0;
+  latch
+    .setFrame(Frame.squidLatched)
+    .setFlipX(racer.facing < 0)
+    .setPosition(x + squirm * racer.facing, y);
+}
+
+/** Speed lines trailing a racer Undertow is dragging back; they hold one frame under reduced motion. */
+function showPullLines(
+  lines: Phaser.GameObjects.Image,
+  racer: Racer,
+  tick: number,
+  x: number,
+  y: number,
+  reducedMotion: boolean,
+): void {
+  const pulled = racer.status.undertow > 0;
+  lines.setVisible(pulled);
+  if (!pulled) return;
+  const frame = reducedMotion || Math.floor(tick / PULL_LINE_TICKS) % 2 === 0 ? Frame.a : Frame.b;
+  lines
+    .setFrame(frame)
+    .setFlipX(racer.facing < 0)
+    .setPosition(x - racer.facing * PULL_LINE_BEHIND, y);
 }

@@ -1,11 +1,14 @@
 /**
  * What tests and `arcade see` read about the running game: a small, stable
- * summary for assertions and the CLI, and a fuller state dump for state.json.
+ * summary for assertions and the CLI (with a `threat` readout of the squid warnings), and a fuller state dump for state.json.
  */
 import type { SaveStatus } from '@arcade/save';
+import { playerOf } from '../logic/racers.ts';
+import type { World } from '../logic/types.ts';
 import { summarize, toAscii } from '../logic/world.ts';
 import type { Runtime } from './runtime.ts';
 import { formatBest } from './view/race-text.ts';
+import { squidHuntingPlayer } from './view/threat-math.ts';
 
 /**
  * Scene, save status, the character the player races as (the select cursor while picking) and
@@ -21,10 +24,15 @@ export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: 
     scene: sceneRunning ? rt.scene : 'none',
     save: saveStatus,
     character: rt.selectedCharacter,
-    ...(world ? summarize(world) : {}),
+    ...(world ? { ...summarize(world), threat: threatOf(world) } : {}),
     ...(menu ? { menu: { options: menu.options, selected: menu.selected } } : {}),
     ...sceneDetails(rt),
   };
+}
+
+/** What the squid warnings on the HUD are showing: a squid locked on the player, and a squid latched on them. */
+function threatOf(world: World) {
+  return { lockedOn: squidHuntingPlayer(world) !== null, latched: playerOf(world).status.latched > 0 };
 }
 
 function sceneDetails(rt: Runtime): Record<string, unknown> {

@@ -75,6 +75,8 @@ A hit (urchin `*`, jelly `j`, bubble, puffer, flash) takes your shield if you ho
 - `?scene=race` (or `?scene=play`) skips the title and races as the saved pick (Rudy on a fresh save). `?seed=7` changes rival behaviour and which characters you race. Each race is seeded with `seed + races in the save`, so a rematch plays differently while a test run still repeats exactly.
 - Save version 3: the best finish, races run, settings, and `character`, the last pick. A v2 save loads as Rudy.
 - `?debug=1` draws hitboxes from logic state and shows the tick and your tile.
+- `?stage=<name>` (needs `?debug=1`, or the test harness) puts attack power-ups into the race before its first frame, to review their views without waiting for a roll: `icons-a`, `icons-b`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow` (`engine/debug-stage.ts`). A staged race never saves a result. Without the gate the parameter is ignored.
+- Attack power-up warnings: a squid locked on you shows an edge arrow, a LOCKED ON! caption and a rising ping (at most once per 1.5 s); a latched squid shows KICK! beside you (PRESS A on touch). Details in `UI.md`.
 
 ## Engine layout
 

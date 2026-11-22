@@ -23,6 +23,7 @@ import { IconFrame, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
 import { abilityTextFor, SELECT_COLUMNS } from '../character-select.ts';
 import type { Runtime } from '../runtime.ts';
+import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { racerName, racerShortName, slideRemaining, TONE_CSS } from '../view/race-text.ts';
 
@@ -185,13 +186,4 @@ function addFooter(scene: Phaser.Scene): void {
     else scene.add.image(x, FOOTER_ICON_Y, UiTex.icons, icon).setOrigin(0, 0);
     createLabel(scene, x + FOOTER_WORD_DX, FOOTER_TEXT_Y, word, { tone: 'foam' });
   }
-}
-
-/**
- * Whether the on-screen touch controls are up, by the rule `@arcade/input` mounts them by and the
- * title's PRESS A uses: the shell's `?touch=1`, or a coarse pointer.
- */
-function isTouchScreen(): boolean {
-  const forced = new URLSearchParams(window.location.search).get('touch') === '1';
-  return forced || window.matchMedia('(pointer: coarse)').matches;
 }

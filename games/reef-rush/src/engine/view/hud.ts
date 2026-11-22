@@ -5,12 +5,14 @@
  * timer, the kick / power-up well (kick readiness, the burst icon with a
  * cooldown ring while it recharges, and a stack slot per power-up the player
  * can hold: three, or four for Nib), and a track-style progress strip
- * with one head per racer and the finish flag. Every piece sits clear of the
+ * with one head per racer (spread apart when racers bunch, the player's never moved
+ * unless the strip's end forces it) and the finish flag. Every piece sits clear of the
  * back link and the touch controls.
  *
  * Over the water: the centre splash (`race-text.ts`), a combo name that pops
  * big then settles after the player fires a combo, and a caption line for what
- * the player can't see (their own status, rival bubbles out of view). Text
+ * the player can't see (their own status, a squid locked on, rival bubbles out of view), and
+ * the squid warnings in `threat-hud.ts` (an edge arrow, a KICK! prompt). Text
  * over the water is foam or sun and outlined. Motion is timed from the world
  * tick and holds still under reduced motion.
  */
@@ -32,9 +34,12 @@ import { IconFrame, type IconFrameKey, PortraitFrame, UiTex } from '../art/ui/ke
 import { UiRamp, type UiToneName } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { DISPLAY_FACE, TEXT_FACE } from '../art/ui/typeface.ts';
+import { spreadHeads } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { Layer } from './layers.ts';
 import { createRaceSplash, formatRaceTime, ordinal, slideRemaining, TONE_CSS } from './race-text.ts';
+import { createThreatHud } from './threat-hud.ts';
+import { squidHuntingPlayer } from './threat-math.ts';
 
 /** The race HUD; `onEvents` catches combo bursts and `sync` redraws everything else from the world. */
 export interface Hud {
@@ -61,6 +66,8 @@ const WELL_PITCH = 11;
 /** From the last icon's left edge to the well's right edge: the icon, 1 px padding and the 3 px frame. */
 const WELL_END = ICON_SIZE + 4;
 const STRIP = { x: 122, y: 6, w: 112, h: 15, headY: 10, headFrom: 126, headTo: 223 } as const;
+/** Heads are 7 px wide; bunched racers are drawn this far apart, so each shows more than half its face. */
+const HEAD_MIN_GAP = 5;
 const FLAG_AT = { x: 236, y: 9 } as const;
 /**
  * The combo name centres on x 168, the middle of the safe column (x 108-228) that stays clear of
@@ -95,17 +102,17 @@ const COMBO_TEXT: Record<ComboName, string> = {
   inkSquid: 'INK SQUID!',
   bubbleDecoy: 'BUBBLE DECOY!',
 };
-const POWER_UP_ICON: Record<PowerUpKind, IconFrameKey> = {
+/** The 9x9 icon each held power-up shows in the well. */
+export const POWER_UP_ICON: Record<PowerUpKind, IconFrameKey> = {
   jetFin: IconFrame.jetFin,
   bubbleShield: IconFrame.bubbleShield,
   puffer: IconFrame.puffer,
   inkSac: IconFrame.inkSac,
   glowLantern: IconFrame.glowLantern,
-  // Placeholder art until lane 7/b draws the attack kinds.
-  homingSquid: IconFrame.inkSac,
-  riptide: IconFrame.jetFin,
-  undertow: IconFrame.puffer,
-  mimic: IconFrame.bubbleShield,
+  homingSquid: IconFrame.homingSquid,
+  riptide: IconFrame.riptide,
+  undertow: IconFrame.undertow,
+  mimic: IconFrame.mimic,
 };
 
 /** Adds the HUD for `world`'s race to `scene`, pinned to the screen, with each racer's character on its portrait and head. */
@@ -117,6 +124,7 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
   const strip = createProgressStrip(scene, world);
   const splash = createRaceSplash(scene, reducedMotion);
   const combo = createComboName(scene, reducedMotion);
+  const threat = createThreatHud(scene, reducedMotion, comboCentreY);
   const caption = createLabel(scene, CAPTION_CENTRE.x, CAPTION_CENTRE.y, '', {
     tone: 'foam',
     outline: true,
@@ -139,10 +147,11 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
       shownTime = time;
       well.sync(world);
       strip.sync(world);
-      splash.sync(world);
+      const splashShowing = splash.sync(world);
       const view = scene.cameras.main.worldView;
       const body = playerOf(world).body;
-      combo.sync(world.tick, body.y + body.h / 2 - view.y);
+      combo.sync(world.tick, body.y + body.h / 2 - view.y, playerOf(world).status.latched > 0);
+      threat.sync(world, view, splashShowing);
       caption.setText(captionText(world, view));
     },
   };
@@ -351,13 +360,30 @@ function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
   // Distance to the finish from the furthest start, fixed at the first sync; heads show the share of it covered.
   let courseLength: number | null = null;
 
+  // Heads move whole pixels, so most frames repeat the last layout: only re-spread when one moved.
+  const spots: number[] = world.racers.map(() => Number.NaN);
+  let drawn: number[] = [];
+  const anchor = Math.max(
+    0,
+    world.racers.findIndex((racer) => racer.id === 'player'),
+  );
+
   return {
     sync(world) {
       courseLength ??= longestStart(world);
-      for (const racer of world.racers) {
-        const fraction = racer.finished ? 1 : 1 - racer.progress / courseLength;
-        heads.get(racer.id)?.setX(Math.round(headFrom + clampUnit(fraction) * (headTo - headFrom)));
-      }
+      let moved = false;
+      world.racers.forEach((racer, index) => {
+        const fraction = racer.finished ? 1 : 1 - racer.progress / (courseLength ?? 1);
+        const spot = Math.round(headFrom + clampUnit(fraction) * (headTo - headFrom));
+        if (spot === spots[index]) return;
+        spots[index] = spot;
+        moved = true;
+      });
+      if (!moved) return;
+      drawn = spreadHeads(spots, anchor, HEAD_MIN_GAP, headFrom, headTo);
+      world.racers.forEach((racer, index) => {
+        heads.get(racer.id)?.setX(drawn[index] ?? headFrom);
+      });
     },
   };
 }
@@ -365,8 +391,8 @@ function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
 /** The combo name over the water, started by the player's combo bursts. */
 interface ComboNameView {
   fired(name: ComboName, tick: number): void;
-  /** `playerY` is the player's body centre in screen px. */
-  sync(tick: number, playerY: number): void;
+  /** `playerY` is the player's body centre in screen px; `hidden` gives the spot to the KICK! prompt. */
+  sync(tick: number, playerY: number, hidden: boolean): void;
 }
 
 /**
@@ -394,9 +420,9 @@ function createComboName(scene: Phaser.Scene, reducedMotion: boolean): ComboName
       text = COMBO_TEXT[name];
       firedAt = tick;
     },
-    sync(tick, playerY) {
+    sync(tick, playerY, hidden) {
       const age = tick - firedAt;
-      const shown = age >= 0 && age < COMBO_TICKS;
+      const shown = age >= 0 && age < COMBO_TICKS && !hidden;
       // Under reduced motion the name doesn't jump between sizes; it shows settled.
       const popping = !reducedMotion && age < COMBO_POP_TICKS;
       big.setText(shown && popping ? text : '');
@@ -408,12 +434,20 @@ function createComboName(scene: Phaser.Scene, reducedMotion: boolean): ComboName
   };
 }
 
-/** Status of the player, else a rival bubble nearby but out of view, else nothing. */
-function captionText(world: World, view: Phaser.Geom.Rectangle): string {
+/**
+ * The caption line: the player's status (trapped, stunned, or a squid locked on) first, else a
+ * rival bubble nearby but out of view, else nothing. */
+/** The parts of the camera's view the caption reads. */
+export type CaptionView = Pick<Phaser.Geom.Rectangle, 'contains' | 'centerX' | 'centerY'>;
+
+export function captionText(world: World, view: CaptionView): string {
   const player = playerOf(world);
   const { status } = player;
+  // A latched squid's KICK! prompt takes the caption's place.
+  if (status.latched > 0) return '';
   if (status.trapped > 0) return 'TRAPPED!';
   if (status.stunned > 0) return 'STUNNED!';
+  if (squidHuntingPlayer(world)) return 'LOCKED ON!';
   if (status.slowed > 0) return 'SLOWED BY INK';
   const px = player.body.x + player.body.w / 2;
   const py = player.body.y + player.body.h / 2;

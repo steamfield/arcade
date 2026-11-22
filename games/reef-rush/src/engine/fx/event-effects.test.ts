@@ -53,3 +53,42 @@ describe('event effects shake', () => {
     expect(shielded).toBeLessThan(bare);
   });
 });
+
+describe('event effects for the attack power-ups', () => {
+  /** Effects over a fresh world with every burst recorded as `name x,y`. */
+  function setup() {
+    const world = createWorld(parseLevel(OCEAN_LEVEL), new EventLog<GameEvent>(), { seed: 1 });
+    const seen: string[] = [];
+    const record = (name: string) => (x: number, y: number) => seen.push(`${name} ${x},${y}`);
+    const bursts: Bursts = { ...NO_BURSTS, inkPuff: record('ink'), bubblePop: record('pop') };
+    const effects = createEventEffects(world, bursts, createBubbleTracker(), () => {});
+    const drain = (events: GameEvent[]) =>
+      effects.onTick(events.map((event, seq) => ({ ...event, tick: 300, seq }) as Stamped<RuntimeEvent>));
+    return { world, seen, drain };
+  }
+
+  it('puffs ink where a squid was when it fizzles, picking the right one when two are out', () => {
+    const { world, seen, drain } = setup();
+    const squid = (x: number, owner: 'tess' | 'bo') => ({ x, y: 50, vx: 0, vy: 0, ttl: 9, owner, target: null });
+    const first = squid(100, 'tess');
+    const second = squid(200, 'bo');
+    world.squids.push(first, second);
+    drain([]);
+    // Both move on, then tess's squid is gone.
+    first.x = 110;
+    second.x = 210;
+    drain([]);
+    world.squids.splice(0, 1);
+    drain([{ type: 'squid.lost', owner: 'tess' }]);
+    expect(seen).toEqual(['ink 110,50']);
+  });
+
+  it('pops a bubble burst where a decoy was when it is popped', () => {
+    const { world, seen, drain } = setup();
+    world.decoys.push({ x: 300, y: 60, vx: 0, vy: 0, ttl: 5, owner: 'squib' });
+    drain([]);
+    world.decoys.length = 0;
+    drain([{ type: 'decoy.popped', owner: 'squib', by: 'player' }]);
+    expect(seen).toEqual(['pop 300,60']);
+  });
+});

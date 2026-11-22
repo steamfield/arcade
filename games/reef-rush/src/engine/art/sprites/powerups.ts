@@ -1,13 +1,14 @@
 /**
- * The five power-up icons (12x12, each its own shape: fin, bubble, puffer,
- * ink drop, lantern) and the effects their bursts leave in the water: the ink
+ * The nine power-up icons (12x12, each its own shape: fin, bubble, puffer,
+ * ink drop, lantern, squid, wave, pull arrow, octopus) and the effects their bursts leave in the water: the ink
  * cloud and the trapping bubble.
  */
 import { Frame, Tex } from '../keys.ts';
 import { ItemPalette } from '../palettes.ts';
+import { ATTACK_ICON_ROWS, ATTACK_SHEETS, AttackPalette, worldIcon } from './attack.ts';
 import { type ArtSheet, sheet } from './sheet.ts';
 
-/** Power-up icon and effect sheets. */
+/** Power-up icon and effect sheets, including the attack kinds' icons and their in-water art. */
 export const POWERUP_SHEETS: readonly ArtSheet[] = [
   sheet(Tex.jetFin, ItemPalette.jetFin, {
     [Frame.a]: [
@@ -89,6 +90,11 @@ export const POWERUP_SHEETS: readonly ArtSheet[] = [
       '............',
     ],
   }),
+  sheet(Tex.homingSquid, AttackPalette.homingSquid, { [Frame.a]: worldIcon(ATTACK_ICON_ROWS.homingSquid) }),
+  sheet(Tex.riptide, AttackPalette.riptide, { [Frame.a]: worldIcon(ATTACK_ICON_ROWS.riptide) }),
+  sheet(Tex.undertow, AttackPalette.undertow, { [Frame.a]: worldIcon(ATTACK_ICON_ROWS.undertow) }),
+  sheet(Tex.mimic, AttackPalette.mimic, { [Frame.a]: worldIcon(ATTACK_ICON_ROWS.mimic) }),
+  ...ATTACK_SHEETS,
   sheet(Tex.inkCloud, ItemPalette.inkCloud, {
     [Frame.a]: [
       '........................',

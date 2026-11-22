@@ -17,10 +17,12 @@ import { parseLevel } from '../logic/level/parse.ts';
 import { playerOf } from '../logic/racers.ts';
 import { isNewBest, recordResult } from '../logic/records.ts';
 import { NEW_GAME, type SaveData } from '../logic/save.ts';
-import type { CharacterId, RaceResult, TickInput, World } from '../logic/types.ts';
+import type { CharacterId, RaceResult, RacerId, TickInput, World } from '../logic/types.ts';
 import { createWorld, stepWorld } from '../logic/world.ts';
+import { withinHearing } from './audio/attack-sfx.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
 import { moveCharacter } from './character-select.ts';
+import { applyStage, stageFor } from './debug-stage.ts';
 import { input } from './input.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 import { raceProgress } from './race-progress.ts';
@@ -103,6 +105,8 @@ export class Runtime {
   /** True from the start of a save write until it settles. The test harness waits on it through idle(). */
   saving = false;
   readonly audio: AudioPort;
+  /** True when the current race was staged for a capture (`?stage=`); its result is never saved. */
+  staged = false;
   /** The player's progress-field distance at the start line, for the race progress fraction. */
   private startProgress = 0;
 
@@ -129,7 +133,7 @@ export class Runtime {
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.startScene = options.startScene;
     this.selectedCharacter = this.savedCharacter;
-    this.audio = createAudio(options.ctx, this.settings, this.events);
+    this.audio = createAudio(options.ctx, this.settings, this.events, (id) => this.audibleFromPlayer(id));
   }
 
   /** Settings from the save, with a null `reducedMotion` following the OS. */
@@ -178,6 +182,9 @@ export class Runtime {
   startRace(): void {
     const seed = this.ctx.params.seed + (this.save?.races ?? 0);
     this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, { seed, character: this.selectedCharacter });
+    const stage = stageFor(this.ctx.params);
+    if (stage) applyStage(this.world, stage);
+    this.staged = stage !== null;
     this.startProgress = playerOf(this.world).progress;
     this.lastResult = null;
     this.resultsIn = null;
@@ -205,6 +212,11 @@ export class Runtime {
   listen(listener: EventListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** Whether racer `id` is within about a screen of the player, whom the camera follows. */
+  private audibleFromPlayer(id: RacerId): boolean {
+    return this.world ? withinHearing(this.world, id) : true;
   }
 
   private tick(dt: number): void {
@@ -302,6 +314,7 @@ export class Runtime {
     const before = this.save ?? NEW_GAME;
     this.lastResult = { result, newBest: isNewBest(before, result), saveFailed: false };
     this.resultsIn = RESULTS_DELAY_TICKS;
+    if (this.staged) return;
     this.persist(recordResult(before, result)).catch((error: unknown) => this.ctx.reportError('save', error));
   }
 }

@@ -25,6 +25,19 @@ export type SfxKey =
   | 'combo.lanternBubble'
   | 'combo.inkBomb'
   | 'combo.comet'
+  | 'combo.surfline'
+  | 'combo.inkSquid'
+  | 'combo.bubbleDecoy'
+  | 'squid.fire'
+  | 'squid.lock'
+  | 'squid.latch'
+  | 'squid.dodge'
+  | 'squid.shake'
+  | 'squid.lost'
+  | 'riptide'
+  | 'undertow'
+  | 'decoy.spawn'
+  | 'decoy.pop'
   | 'hit'
   | 'stun'
   | 'pearl'
@@ -120,6 +133,53 @@ const SFX: Record<SfxKey, readonly Part[]> = {
   'combo.lanternBubble': [pulse(84, 0.05, 0.08, 0.3, { duty: 0.25 }), pulse(91, 0.13, 0.2, 0.3, { vibrato: true })],
   'combo.inkBomb': [tri(40, 0.05, 0.25, 0.6), hiss('lowpass', 300, 0.05, 0.2, 0.45)],
   'combo.comet': arpeggio([88, 93, 96], 0.04, 0.3, 0.125).map((part) => ({ ...part, offset: part.offset + 0.05 })),
+  // Surfline: a rising wash, like a wave lifting the racer.
+  'combo.surfline': [
+    hiss('bandpass', 500, 0.05, 0.25, 0.3, { sweepTo: 3000 }),
+    pulse(72, 0.05, 0.1, 0.25, { duty: 0.25, slide: 12 }),
+  ],
+  // Ink Squid: a wet pop and a low wobble.
+  'combo.inkSquid': [tri(47, 0.05, 0.2, 0.55, { slide: 5, vibrato: true }), hiss('lowpass', 600, 0.05, 0.1, 0.4)],
+  // Bubble Decoy: two airy pops, the second higher.
+  'combo.bubbleDecoy': [pulse(84, 0.05, 0.05, 0.3, { duty: 0.125 }), pulse(91, 0.11, 0.07, 0.3, { duty: 0.125 })],
+  // A squid fired: a quick rising hiss.
+  'squid.fire': [
+    hiss('bandpass', 700, 0, 0.14, 0.3, { sweepTo: 2600 }),
+    pulse(55, 0, 0.1, 0.2, { duty: 0.25, slide: 7 }),
+  ],
+  // Lock-on: three quick climbing pings, urgent but short. Heard only when the squid is after the player.
+  'squid.lock': [
+    pulse(79, 0, 0.07, 0.3, { duty: 0.25 }),
+    pulse(84, 0.08, 0.07, 0.3, { duty: 0.25 }),
+    pulse(91, 0.16, 0.12, 0.3, { duty: 0.25 }),
+  ],
+  // Latched: a wet slap, then a low squelch.
+  'squid.latch': [hiss('lowpass', 1500, 0, 0.07, 0.5), tri(50, 0, 0.18, 0.5, { slide: -9 })],
+  // A dodge: a bright whoosh past.
+  'squid.dodge': [
+    hiss('highpass', 1800, 0, 0.18, 0.3, { sweepTo: 600 }),
+    pulse(88, 0, 0.08, 0.2, { duty: 0.25, slide: -5 }),
+  ],
+  // Shaken off: a relieved little pair of notes going up.
+  'squid.shake': [pulse(67, 0, 0.06, 0.35, { duty: 0.25 }), pulse(74, 0.06, 0.12, 0.35, { duty: 0.25 })],
+  // A squid that fizzled: a short falling blip.
+  'squid.lost': [pulse(72, 0, 0.12, 0.25, { duty: 0.125, slide: -10 })],
+  // Riptide: a wide rushing swell.
+  riptide: [
+    hiss('bandpass', 400, 0, 0.3, 0.35, { sweepTo: 1800, envelope: env(0.06, 0.12, 0.5, 0.1) }),
+    tri(36, 0, 0.3, 0.45, { slide: 7 }),
+  ],
+  // Undertow: the same swell run backwards, pulling down.
+  undertow: [
+    hiss('bandpass', 1800, 0, 0.3, 0.35, { sweepTo: 300, envelope: env(0.06, 0.12, 0.5, 0.1) }),
+    tri(48, 0, 0.3, 0.45, { slide: -12 }),
+  ],
+  'decoy.spawn': [
+    pulse(76, 0, 0.05, 0.3, { duty: 0.5 }),
+    pulse(76, 0.06, 0.05, 0.2, { duty: 0.125 }),
+    pulse(83, 0.12, 0.09, 0.3, { duty: 0.25 }),
+  ],
+  'decoy.pop': [hiss('bandpass', 3500, 0, 0.06, 0.45), pulse(88, 0, 0.1, 0.3, { duty: 0.125, slide: -12 })],
   hit: [hiss('lowpass', 2000, 0, 0.08, 0.5), pulse(64, 0, 0.12, 0.35, { slide: -7 })],
   stun: [pulse(76, 0, 0.35, 0.25, { duty: 0.25, vibrato: true }), pulse(71, 0, 0.35, 0.15, { duty: 0.25 })],
   pearl: [pulse(84, 0, 0.05, 0.3, { duty: 0.125 }), pulse(91, 0.04, 0.1, 0.3, { duty: 0.125 })],

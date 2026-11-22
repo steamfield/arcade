@@ -1,6 +1,6 @@
 /**
- * The UI icon set: 9x9 icons for the HUD and menus (kick, burst, the five
- * power-ups, the finish flag, place arrows and the menu cursor fin) and 12x14
+ * The UI icon set: 9x9 icons for the HUD and menus (kick, burst, the nine
+ * power-ups, the finish flag, place arrows, the lock-on arrow and the menu cursor fin) and 12x14
  * medals for the results podium. Each is a bold silhouette with a 1 px foam
  * rim (index 0), sticker style: an ink outline would vanish into the indigo
  * panels and the inset wells the icons sit on. Each medal carries its numeral,
@@ -9,6 +9,7 @@
 
 import { ItemPalette } from '../palettes.ts';
 import type { Palette, PixelRows } from '../pixel.ts';
+import { ATTACK_ICON_ROWS, AttackPalette } from '../sprites/attack.ts';
 import { IconFrame, MedalFrame, type UiSheet, UiTex } from './keys.ts';
 import { UiColour, UiRamp } from './palette.ts';
 
@@ -31,6 +32,11 @@ const IconPalette = {
   puffer: withRim(ItemPalette.puffer),
   inkSac: withRim(ItemPalette.inkSac),
   glowLantern: withRim(ItemPalette.glowLantern),
+  homingSquid: withRim(AttackPalette.homingSquid),
+  riptide: withRim(AttackPalette.riptide),
+  undertow: withRim(AttackPalette.undertow),
+  mimic: withRim(AttackPalette.mimic),
+  warn: [ICON_RIM, UiColour.coral, 0xffc0b8],
 } as const satisfies Record<string, Palette>;
 
 /** Medal palettes: rim (also the face's shine), metal, the struck numeral, ribbon. */
@@ -130,6 +136,23 @@ export const ICON_SHEETS: readonly UiSheet[] = [
         '.0111110.',
         '..01110..',
         '...000...',
+      ]),
+      // The four attack kinds: a squid, a wave, a pull arrow and an octopus. Rows are shared with the world icons.
+      icon(IconFrame.homingSquid, IconPalette.homingSquid, ATTACK_ICON_ROWS.homingSquid),
+      icon(IconFrame.riptide, IconPalette.riptide, ATTACK_ICON_ROWS.riptide),
+      icon(IconFrame.undertow, IconPalette.undertow, ATTACK_ICON_ROWS.undertow),
+      icon(IconFrame.mimic, IconPalette.mimic, ATTACK_ICON_ROWS.mimic),
+      // Lock-on warning: a wedge pointing right at the squid; the HUD turns it to face it.
+      icon(IconFrame.warnArrow, IconPalette.warn, [
+        '.0.......',
+        '.010.....',
+        '.01110...',
+        '.0111110.',
+        '.01111110',
+        '.0111110.',
+        '.01110...',
+        '.010.....',
+        '.0.......',
       ]),
       // Finish flag: a chequered pennant on a pole.
       icon(IconFrame.finishFlag, IconPalette.flag, [

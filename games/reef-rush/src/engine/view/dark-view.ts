@@ -4,7 +4,9 @@
  * screen, faded in at its ends, with a pool of light cut around every racer.
  * The player's pool is the widest and leans ahead along their velocity, and a
  * Glow Lantern holder's is bigger still. Urchins and jellies inside a zone
- * show a faint glint above the veil, so a hazard reads before it is lit. A
+ * show a faint glint above the veil, so a hazard reads before it is lit. A Mimic decoy carries the
+ * rival's pool (it is meant to pass for the racer), and a Homing Squid a small one (`SQUID_LIGHT_RADIUS`),
+ * so the thing hunting the player can be seen coming. A
  * player who sees in the dark (`racerSeesInDark`, Selene's Moonlight) gets
  * only a light tint that says "this is a dark zone".
  *
@@ -56,6 +58,8 @@ const GLINTS = {
   urchin: { key: 'dark-glint-urchin', colour: 0xff8a7a, alpha: 0.55 },
   jelly: { key: 'dark-glint-jelly', colour: 0xe0b8ff, alpha: 0.6 },
 } as const;
+/** A squid's pool: enough to see its shape, far less than a racer's. */
+const SQUID_LIGHT_RADIUS = 14;
 /** Stamping a light pool erases it from the veil. */
 const ERASE_STAMP = { blendMode: Phaser.BlendModes.ERASE } as const;
 
@@ -65,6 +69,7 @@ export function createDarkView(scene: Phaser.Scene, world: World, reducedMotion:
   if (zones.length === 0) return { sync() {} };
   // Every pool texture up front, so the first lantern pickup in the dark doesn't hitch.
   const lightKeys = new Map(reachableRadii().map((radius) => [radius, ensureLightTexture(scene, radius)]));
+  const squidKey = ensureLightTexture(scene, SQUID_LIGHT_RADIUS);
   addGlints(scene, world, zones);
   const camera = scene.cameras.main;
   const { width, height } = camera;
@@ -110,6 +115,19 @@ export function createDarkView(scene: Phaser.Scene, world: World, reducedMotion:
           const cx = Math.round(x + w / 2) + (isPlayer ? leadOffset(vx) : 0) - left;
           const cy = Math.round(y + h / 2) + (isPlayer ? leadOffset(vy) : 0) - top;
           veil.stamp(key, undefined, cx, cy, ERASE_STAMP);
+        }
+      }
+      if (!seesThrough) {
+        const rivalReach = lightRadius(false, false);
+        for (let index = 0; index < current.decoys.length; index++) {
+          const decoy = current.decoys[index];
+          const key =
+            decoy && lightKeys.get(rivalReach - flicker(current.tick, current.racers.length + index, reducedMotion));
+          if (decoy && key)
+            veil.stamp(key, undefined, Math.round(decoy.x) - left, Math.round(decoy.y) - top, ERASE_STAMP);
+        }
+        for (const squid of current.squids) {
+          veil.stamp(squidKey, undefined, Math.round(squid.x) - left, Math.round(squid.y) - top, ERASE_STAMP);
         }
       }
       veil.render();

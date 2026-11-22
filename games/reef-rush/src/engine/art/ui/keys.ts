@@ -38,6 +38,12 @@ export const IconFrame = {
   puffer: 'puffer',
   inkSac: 'ink-sac',
   glowLantern: 'glow-lantern',
+  homingSquid: 'homing-squid',
+  riptide: 'riptide',
+  undertow: 'undertow',
+  mimic: 'mimic',
+  /** The lock-on warning's wedge, pointing right; the HUD turns it toward the squid. */
+  warnArrow: 'warn-arrow',
   finishFlag: 'finish-flag',
   arrowUp: 'arrow-up',
   arrowDown: 'arrow-down',

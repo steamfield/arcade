@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest';
+import { raceOn, racerOf } from '../../logic/test-world.ts';
+import { POWER_UP_KINDS } from '../../logic/types.ts';
 import { ICON_SHEETS } from '../art/ui/icons.ts';
 import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { PanelPalette } from '../art/ui/palette.ts';
-import { comboCentreY, isPlacePopping, NOT_READY_ALPHA, type PlaceTrack, trackPlace, wellLayout } from './hud.ts';
+import {
+  captionText,
+  comboCentreY,
+  isPlacePopping,
+  NOT_READY_ALPHA,
+  type PlaceTrack,
+  POWER_UP_ICON,
+  trackPlace,
+  wellLayout,
+} from './hud.ts';
+import { promptText } from './threat-hud.ts';
 
 describe('the place panel', () => {
   it('does not pop when the race starts, even though logic re-places everyone at GO', () => {
@@ -109,5 +121,63 @@ describe('a dimmed well icon', () => {
       const dimmed = blend(colour, well, NOT_READY_ALPHA);
       expect(contrast(dimmed, well), `#${colour.toString(16)}`).toBeGreaterThanOrEqual(3);
     }
+  });
+});
+
+describe('the well\u2019s power-up icons', () => {
+  const frames = ICON_SHEETS.find((sheet) => sheet.key === UiTex.icons)?.frames ?? [];
+
+  it('draws an icon for every kind, and no two kinds share one', () => {
+    const drawn = new Set(frames.map((frame) => frame.name));
+    for (const kind of POWER_UP_KINDS) expect(drawn.has(POWER_UP_ICON[kind]), kind).toBe(true);
+    expect(new Set(POWER_UP_KINDS.map((kind) => POWER_UP_ICON[kind])).size).toBe(POWER_UP_KINDS.length);
+  });
+});
+
+describe('the squid warnings on the HUD', () => {
+  const ARENA = `
+    ####################
+    #1................F#
+    #2................F#
+    #3................F#
+    #4................F#
+    ####################
+  `;
+  const view = { contains: () => true, centerX: 0, centerY: 0 };
+  const lockedOnPlayer = () => {
+    const { world } = raceOn(ARENA);
+    world.squids.push({ x: 90, y: 40, vx: 0, vy: 0, ttl: 100, owner: 'tess', target: { kind: 'racer', id: 'player' } });
+    return world;
+  };
+
+  it('says LOCKED ON! while a squid is locked on the player, and nothing before', () => {
+    expect(captionText(raceOn(ARENA).world, view)).toBe('');
+    expect(captionText(lockedOnPlayer(), view)).toBe('LOCKED ON!');
+  });
+
+  it('does not say it for a squid chasing a rival', () => {
+    const { world } = raceOn(ARENA);
+    world.squids.push({ x: 90, y: 40, vx: 0, vy: 0, ttl: 100, owner: 'tess', target: { kind: 'racer', id: 'bo' } });
+    expect(captionText(world, view)).toBe('');
+  });
+
+  it('leaves the caption to the KICK! prompt while a squid is latched, and prompts', () => {
+    const world = lockedOnPlayer();
+    racerOf(world, 'player').status.latched = 100;
+    expect(captionText(world, view)).toBe('');
+    expect(promptText(world, false)).toEqual({ headline: 'KICK!', hint: '' });
+  });
+
+  it('adds PRESS A on a touch screen, and prompts nothing when not latched', () => {
+    const world = lockedOnPlayer();
+    expect(promptText(world, true)).toEqual({ headline: '', hint: '' });
+    racerOf(world, 'player').status.latched = 100;
+    expect(promptText(world, true)).toEqual({ headline: 'KICK!', hint: 'PRESS A' });
+  });
+
+  it('lets a trapped player see TRAPPED! rather than LOCKED ON!', () => {
+    const world = lockedOnPlayer();
+    racerOf(world, 'player').status.trapped = 30;
+    expect(captionText(world, view)).toBe('TRAPPED!');
   });
 });
