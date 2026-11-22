@@ -1,13 +1,14 @@
 /**
  * The attack power-ups that live in the water, drawn from world state each frame: Homing Squids
  * in flight (turned to their heading, swimming), Riptide lanes (a green wash with arrowed streaks
- * scrolling along the lane, over whatever current is under it) and Mimic decoys (the owner's own sprite,
+ * scrolling along the lane, over whatever current is under it; a surfline lane is brighter and faster) and Mimic decoys (the owner's own sprite,
  * a little see-through and cool-tinted so a second look gives it away). What happens to a racer
  * (the squid wrapped round them, the pull lines) is in `powerup-view.ts`. Sprites come from pools
  * that grow only when more are in play than ever before. Under reduced motion squids hold one
  * frame, lane streaks stand still and decoys hold a steady see-through look.
  */
 import type Phaser from 'phaser';
+import { RIPTIDE } from '../../logic/powerups/tuning.ts';
 import type { Decoy, Riptide, Squid, World } from '../../logic/types.ts';
 import { Frame, Tex } from '../art/keys.ts';
 import { Layer } from './layers.ts';
@@ -29,7 +30,14 @@ const LANE_WASH_ALPHA = 0.16;
 const LANE_EDGE_ALPHA = 0.7;
 /** A lane fades out over its last this-many ticks. */
 const LANE_FADE_TICKS = 30;
+/** A surfline lane (stronger than a plain Riptide) is brighter and its streaks run faster in step with its push. */
+const SURF_WASH = 0x7cf0ff;
+const SURF_ALPHA_MUL = 1.8;
 const DECOY_TINT = 0xcfe8ff;
+/** A bubbleDecoy (it traps whatever pops it) is tinted bubble-pink so a sharp eye can tell. */
+const BUBBLED_DECOY_TINT = 0xffc8ec;
+/** An inkSquid (it bursts ink on whoever it latches) is tinted ink-violet. */
+const INKED_SQUID_TINT = 0x8a6cff;
 const DECOY_ALPHA = { low: 0.72, high: 0.9, steady: 0.8 } as const;
 const DECOY_SHIMMER_TICKS = 48;
 /** A decoy blinks for its last this-many ticks, every DECOY_BLINK_TICKS, or sits at this alpha when motion is reduced. */
@@ -95,6 +103,8 @@ function showSquid(
     .setPosition(Math.round(squid.x), Math.round(squid.y))
     .setFlipX(squid.vx < 0)
     .setRotation(squidRotation(squid.vx, squid.vy));
+  if (squid.inked) sprite.setTint(INKED_SQUID_TINT);
+  else sprite.clearTint();
 }
 
 /**
@@ -138,13 +148,17 @@ function hideLane(lane: LaneSprites | undefined): void {
 function showLane(lane: LaneSprites | undefined, riptide: Riptide, tick: number, reducedMotion: boolean): void {
   if (!lane) return;
   const alpha = Math.min(1, riptide.ttl / LANE_FADE_TICKS);
+  const push = laneStrength(riptide);
+  const surf = push > RIPTIDE.currentForceMul;
+  const glow = surf ? SURF_ALPHA_MUL : 1;
   const alongX = Math.abs(riptide.dir.x) >= Math.abs(riptide.dir.y);
   const { x, y, w, h } = riptide;
   lane.wash
     .setVisible(true)
     .setPosition(x, y)
     .setSize(w, h)
-    .setAlpha(LANE_WASH_ALPHA * alpha);
+    .setFillStyle(surf ? SURF_WASH : LANE_WASH, LANE_WASH_ALPHA)
+    .setAlpha(Math.min(1, glow * alpha));
   const [first, second] = lane.edges;
   const edge = alongX ? { w, h: 1 } : { w: 1, h };
   first
@@ -162,7 +176,8 @@ function showLane(lane: LaneSprites | undefined, riptide: Riptide, tick: number,
   // Its size is exactly the lane's box, so the pattern is clipped to the lane whatever its alignment.
   const length = alongX ? w : h;
   const breadth = alongX ? h : w;
-  const scroll = reducedMotion ? 0 : (tick * LANE_FLOW_PX_PER_TICK) % LANE_TILE_PX;
+  const speed = (LANE_FLOW_PX_PER_TICK * push) / RIPTIDE.currentForceMul;
+  const scroll = reducedMotion ? 0 : (tick * speed) % LANE_TILE_PX;
   lane.flow
     .setVisible(true)
     .setSize(length, breadth)
@@ -170,6 +185,11 @@ function showLane(lane: LaneSprites | undefined, riptide: Riptide, tick: number,
     .setRotation(laneRotation(riptide))
     .setAlpha(alpha)
     .setTilePosition(-scroll, 0);
+}
+
+/** How many times a plain current's push the lane gives (surfline lanes give more). */
+export function laneStrength(riptide: Pick<Riptide, 'strength'>): number {
+  return riptide.strength ?? RIPTIDE.currentForceMul;
 }
 
 /** The tile rotation that points its streaks along the lane's flow: right, down, left or up. */
@@ -195,7 +215,7 @@ function showDecoy(
     .setTexture(Tex[owner.character], Math.floor(tick / DECOY_STROKE_TICKS) % 2 === 0 ? Frame.a : Frame.b)
     .setPosition(Math.round(decoy.x), Math.round(decoy.y))
     .setFlipX(decoy.vx === 0 ? sprite.flipX : decoy.vx < 0)
-    .setTint(DECOY_TINT)
+    .setTint(decoy.bubbled ? BUBBLED_DECOY_TINT : DECOY_TINT)
     .setAlpha(decoyAlpha(decoy.ttl, tick, reducedMotion));
 }
 

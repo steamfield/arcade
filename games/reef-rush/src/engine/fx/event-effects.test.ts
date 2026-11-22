@@ -60,7 +60,12 @@ describe('event effects for the attack power-ups', () => {
     const world = createWorld(parseLevel(OCEAN_LEVEL), new EventLog<GameEvent>(), { seed: 1 });
     const seen: string[] = [];
     const record = (name: string) => (x: number, y: number) => seen.push(`${name} ${x},${y}`);
-    const bursts: Bursts = { ...NO_BURSTS, inkPuff: record('ink'), bubblePop: record('pop') };
+    const bursts: Bursts = {
+      ...NO_BURSTS,
+      inkPuff: record('ink'),
+      bubblePop: record('pop'),
+      trailBubble: record('trail'),
+    };
     const effects = createEventEffects(world, bursts, createBubbleTracker(), () => {});
     const drain = (events: GameEvent[]) =>
       effects.onTick(events.map((event, seq) => ({ ...event, tick: 300, seq }) as Stamped<RuntimeEvent>));
@@ -88,7 +93,22 @@ describe('event effects for the attack power-ups', () => {
     world.decoys.push({ x: 300, y: 60, vx: 0, vy: 0, ttl: 5, owner: 'squib' });
     drain([]);
     world.decoys.length = 0;
-    drain([{ type: 'decoy.popped', owner: 'squib', by: 'player' }]);
+    drain([{ type: 'decoy.popped', owner: 'squib', by: 'player', trapped: null }]);
     expect(seen).toEqual(['pop 300,60']);
+  });
+
+  it('strings bubbles from a popped bubbleDecoy to the racer it trapped, ending on them', () => {
+    const { world, seen, drain } = setup();
+    const victim = world.racers.find((racer) => racer.id === 'tess');
+    if (!victim) throw new Error('no tess');
+    const at = { x: victim.body.x + victim.body.w / 2, y: victim.body.y + victim.body.h / 2 };
+    world.decoys.push({ x: 300, y: 60, vx: 0, vy: 0, ttl: 5, owner: 'squib', bubbled: true });
+    drain([]);
+    world.decoys.length = 0;
+    drain([{ type: 'decoy.popped', owner: 'squib', by: 'tess', trapped: 'tess' }]);
+    const trail = seen.filter((entry) => entry.startsWith('trail'));
+    expect(seen[0]).toBe('pop 300,60');
+    expect(trail.length).toBeGreaterThan(5);
+    expect(trail.at(-1)).toBe(`trail ${at.x},${at.y}`);
   });
 });

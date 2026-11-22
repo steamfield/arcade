@@ -6,7 +6,8 @@
  * Glow Lantern holder's is bigger still. Urchins and jellies inside a zone
  * show a faint glint above the veil, so a hazard reads before it is lit. A Mimic decoy carries the
  * rival's pool (it is meant to pass for the racer), and a Homing Squid a small one (`SQUID_LIGHT_RADIUS`),
- * so the thing hunting the player can be seen coming. A
+ * so the thing hunting the player can be seen coming. A lanternBubble lights
+ * `BUBBLE.lightTiles` around it as it flies. A
  * player who sees in the dark (`racerSeesInDark`, Selene's Moonlight) gets
  * only a light tint that says "this is a dark zone".
  *
@@ -23,6 +24,7 @@
  */
 import Phaser from 'phaser';
 import { racerSeesInDark } from '../../logic/abilities.ts';
+import { BUBBLE } from '../../logic/powerups/tuning.ts';
 import { playerOf } from '../../logic/racers.ts';
 import { TILE, type Vec, type World } from '../../logic/types.ts';
 import {
@@ -60,6 +62,8 @@ const GLINTS = {
 } as const;
 /** A squid's pool: enough to see its shape, far less than a racer's. */
 const SQUID_LIGHT_RADIUS = 14;
+/** A lanternBubble lights the water around it as it flies (the logic's stun reach, `BUBBLE.lightTiles`). */
+const BUBBLE_LIGHT_RADIUS = BUBBLE.lightTiles * TILE;
 /** Stamping a light pool erases it from the veil. */
 const ERASE_STAMP = { blendMode: Phaser.BlendModes.ERASE } as const;
 
@@ -70,6 +74,7 @@ export function createDarkView(scene: Phaser.Scene, world: World, reducedMotion:
   // Every pool texture up front, so the first lantern pickup in the dark doesn't hitch.
   const lightKeys = new Map(reachableRadii().map((radius) => [radius, ensureLightTexture(scene, radius)]));
   const squidKey = ensureLightTexture(scene, SQUID_LIGHT_RADIUS);
+  const bubbleKey = ensureLightTexture(scene, BUBBLE_LIGHT_RADIUS);
   addGlints(scene, world, zones);
   const camera = scene.cameras.main;
   const { width, height } = camera;
@@ -128,6 +133,10 @@ export function createDarkView(scene: Phaser.Scene, world: World, reducedMotion:
         }
         for (const squid of current.squids) {
           veil.stamp(squidKey, undefined, Math.round(squid.x) - left, Math.round(squid.y) - top, ERASE_STAMP);
+        }
+        for (const bubble of current.bubbles) {
+          if (bubble.seeking)
+            veil.stamp(bubbleKey, undefined, Math.round(bubble.x) - left, Math.round(bubble.y) - top, ERASE_STAMP);
         }
       }
       veil.render();
