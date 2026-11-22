@@ -222,6 +222,7 @@ Test cases:
 
 ### Phase 4: pixel art and chiptune audio
 
+Scaffold: ad8607f (on phase branch deliver/reef-rush-p4)
 Demo: `pnpm arcade see reef-rush --scene race --at 0,240` shows final sprites, animated tiles, parallax and light; dev build plays the title and race themes and SFX. Music is judged by ear: the phase tag message asks the user to listen.
 Depends on: phase 2
 
@@ -232,9 +233,9 @@ Its lanes own only files behind the seams phase 2 built (`art/index.ts`, `art/fo
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/engine/art/index.ts, games/reef-rush/src/engine/art/pixel.ts, games/reef-rush/src/engine/art/palettes.ts, games/reef-rush/src/engine/art/sprites/, games/reef-rush/src/engine/view/backdrop.ts | contracts | | opus | pending | | |
-| b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/scenarios/audio-plays.ts | contracts | | opus | pending | | |
-| c | M | games/reef-rush/src/engine/audio/songs/, games/reef-rush/src/engine/audio/notation.ts, games/reef-rush/src/engine/audio/notation.test.ts | contracts | | opus | pending | | |
+| a | M | games/reef-rush/src/engine/art/index.ts, games/reef-rush/src/engine/art/pixel.ts, games/reef-rush/src/engine/art/palettes.ts, games/reef-rush/src/engine/art/sprites/, games/reef-rush/src/engine/view/backdrop.ts | contracts | | opus | running | deliver/reef-rush-4a | |
+| b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/scenarios/audio-plays.ts | contracts | | opus | running | deliver/reef-rush-4b | |
+| c | M | games/reef-rush/src/engine/audio/songs/, games/reef-rush/src/engine/audio/notation.ts, games/reef-rush/src/engine/audio/notation.test.ts | contracts | | opus | running | deliver/reef-rush-4c | |
 | d | M | games/reef-rush/src/engine/art/font.ts, games/reef-rush/src/engine/art/ui/, games/reef-rush/UI.md | contracts | | opus | pending | | |
 
 ### Phase 5: the full ocean course, difficulty tuning, UI redesign, juice and settings
