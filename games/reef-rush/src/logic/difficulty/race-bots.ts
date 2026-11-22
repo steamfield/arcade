@@ -15,10 +15,10 @@ import type { GameEvent } from '../events.ts';
 import { OCEAN_LEVEL } from '../level/levels.ts';
 import { parseLevel } from '../level/parse.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
-import type { CharacterId, RacerId, RivalProfile } from '../types.ts';
+import type { CharacterId, Difficulty, RacerId, RivalProfile } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
-const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
+export const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
 const IDLE = { move: { x: 0, y: 0 }, kick: false, burst: false };
 const LEVEL = parseLevel(OCEAN_LEVEL);
 
@@ -33,16 +33,21 @@ export const BALANCE_BAND = { min: 24, max: 28 } as const;
 /** Thirty whole races take a while, more under a loaded test run. */
 const RACES_TIMEOUT_MS = 120_000;
 
-interface Run {
+export interface Run {
   seed: number;
   /** Finish tick per racer, null when it never finished. */
   finish: Record<RacerId, number | null>;
   playerPlace: number;
+  /** Squids locked on the player and Undertows that pulled the player, fired by rivals. */
+  attacksOnPlayer: number;
 }
 
-function race(bot: RivalProfile, character: CharacterId, seed: number): Run {
-  const world = createWorld(LEVEL, new EventLog<GameEvent>(), {
+/** One whole race with `bot` driving the player's racer as `character`, on `difficulty` (Hard by default). */
+export function race(bot: RivalProfile, character: CharacterId, seed: number, difficulty: Difficulty = 'hard'): Run {
+  const log = new EventLog<GameEvent>(100_000);
+  const world = createWorld(LEVEL, log, {
     seed,
+    difficulty,
     playerBot: bot,
     endsWhen: 'everyone',
     character,
@@ -50,7 +55,14 @@ function race(bot: RivalProfile, character: CharacterId, seed: number): Run {
   // Countdown plus the race limit, with room to spare; the race ends itself well before this.
   for (let i = 0; i < RACE_LIMIT_TICKS + 1000 && world.race.phase !== 'finished'; i++) stepWorld(world, IDLE, TICK_DT);
   const finish = Object.fromEntries(world.racers.map((r) => [r.id, r.finished?.tick ?? null])) as Run['finish'];
-  return { seed, finish, playerPlace: world.race.result?.playerPlace ?? 4 };
+  const attacksOnPlayer = log
+    .all()
+    .filter(
+      (event) =>
+        (event.type === 'squid.locked' && event.target === 'player' && event.owner !== 'player') ||
+        (event.type === 'undertow.fired' && event.id !== 'player' && event.pulled.includes('player')),
+    ).length;
+  return { seed, finish, playerPlace: world.race.result?.playerPlace ?? 4, attacksOnPlayer };
 }
 
 const seconds = (ticks: number) => (ticks / TICK_HZ).toFixed(1);

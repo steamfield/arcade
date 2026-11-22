@@ -5,6 +5,7 @@
  * of the kinds the racer doesn't hold, so one draw maps to one kind.
  */
 import type { Rng } from '@arcade/core';
+import { tuningOf } from '../difficulty-level.ts';
 import { overlapsTile } from '../level/query.ts';
 import { gainPowerUp } from '../powerups/stack.ts';
 import { CLAM } from '../powerups/tuning.ts';
@@ -16,7 +17,7 @@ const LAST_PLACE = RACER_IDS.length;
 /**
  * The pickups slot for clams. Each call, a clam with `closedFor > 0` counts it down by one instead
  * of opening. A ready clam whose tile the hitbox of a racer overlaps (first in `racers` order) opens:
- * `rollClam(world.rngs.pickups, racer.place, racer.stack)`, `clam.opened {id, index, kind}`, then
+ * `rollClam(world.rngs.pickups, racer.place, racer.stack, bias)`, `clam.opened {id, index, kind}`, then
  * `gainPowerUp`, and `closedFor = CLAM.closedTicks`. So a racer parked on a clam opens it on one
  * call and again CLAM.closedTicks + 1 calls later.
  */
@@ -28,7 +29,8 @@ export function openClams(world: World, racers: readonly Racer[]): void {
     }
     const opener = racers.find((racer) => overlapsTile(hitbox(racer), clam.tile.x, clam.tile.y));
     if (!opener) return;
-    const kind = rollClam(world.rngs.pickups, opener.place, opener.stack);
+    const bias = opener.id === 'player' ? tuningOf(world).playerClamWeightMul : {};
+    const kind = rollClam(world.rngs.pickups, opener.place, opener.stack, bias);
     world.events.emit({ type: 'clam.opened', id: opener.id, index, kind });
     gainPowerUp(world, opener, kind);
     clam.closedFor = CLAM.closedTicks;
@@ -55,13 +57,20 @@ export function clamWeights(place: number): Record<PowerUpKind, number> {
 }
 
 /**
- * Picks a power-up the racer doesn't hold, weighted by `clamWeights(place)`, with one draw from `rng`.
+ * Picks a power-up the racer doesn't hold, weighted by `clamWeights(place)` times `bias` per kind
+ * (the difficulty level's `playerClamWeightMul` for the player; none by default), with one draw from `rng`.
  * Kinds with weight 0 never roll. A stack holds at most 4 kinds and at least seven have weight, so there is always something to roll.
  *
  * @throws {Error} When `held` already covers every rollable kind, which a valid stack never does.
  */
-export function rollClam(rng: Rng, place: number, held: readonly PowerUpKind[]): PowerUpKind {
+export function rollClam(
+  rng: Rng,
+  place: number,
+  held: readonly PowerUpKind[],
+  bias: Partial<Record<PowerUpKind, number>> = {},
+): PowerUpKind {
   const weights = clamWeights(place);
+  for (const kind of POWER_UP_KINDS) weights[kind] *= bias[kind] ?? 1;
   const candidates = POWER_UP_KINDS.filter((kind) => !held.includes(kind));
   // A weight-0 kind never rolls, so the float-rounding fallback below must land on a kind that can.
   const last = candidates.filter((kind) => weights[kind] > 0).at(-1);

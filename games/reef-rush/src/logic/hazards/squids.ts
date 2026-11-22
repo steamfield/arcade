@@ -14,14 +14,15 @@
  * 6. a decoy it touches pops (`popDecoy`) and the squid is spent; the first racer it touches (not its
  *    owner or the one that dodged) is hit with cause 'squid': a held Bubble Shield absorbs it
  *    (`squid.lost`), a landed hit latches the racer (`squid.latched`, `status.latched`, shortened by
- *    `statusDurationMul`), and an invulnerable racer is flown through: the squid drops its lock and
+ *    `statusTicks`), and an invulnerable racer is flown through: the squid drops its lock and
  *    never chases that racer again, like a dodge.
  *
  * Turning is vector math only (no trig at run time, see num.ts): the velocity rotates by the fixed
  * per-tick angle toward the target's side, or snaps onto it once it is within that angle.
  */
-import { statusDurationMul } from '../abilities.ts';
+
 import { hasClearSweep, steerDirection } from '../ai/steer.ts';
+import { statusTicks } from '../difficulty-level.ts';
 import { isSolid } from '../level/query.ts';
 import { cos, length, sin } from '../num.ts';
 import { popDecoy } from '../powerups/decoys.ts';
@@ -231,7 +232,7 @@ function touchSomething(world: World, racers: readonly Racer[], squid: Squid): b
 
 /** The squid takes hold of `victim`: `status.latched`, the event, and the inkSquid cloud. */
 function latch(world: World, victim: Racer, squid: Squid): void {
-  victim.status.latched = Math.round(SQUID.latchedTicks * statusDurationMul(victim, 'latched'));
+  victim.status.latched = statusTicks(world, victim, SQUID.latchedTicks, 'latched');
   world.events.emit({ type: 'squid.latched', id: victim.id, by: squid.owner });
   if (!squid.inked) return;
   const centre = centreOf(victim);

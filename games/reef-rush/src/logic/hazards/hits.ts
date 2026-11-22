@@ -4,7 +4,8 @@
  * behave the same whatever caused it.
  */
 
-import { ignoresHazard, statusDurationMul } from '../abilities.ts';
+import { ignoresHazard } from '../abilities.ts';
+import { statusTicks } from '../difficulty-level.ts';
 import { length } from '../num.ts';
 import { spawnLoose } from '../pickups/loose.ts';
 import { popForHit } from '../powerups/stack.ts';
@@ -21,7 +22,7 @@ import { HIT } from './tuning.ts';
  * - bubble: trapped BUBBLE.trapTicks (`racer.trapped {id, by}`), stack kept;
  * - urchin, jelly, puffer, squid: `popForHit` knocks off the newest power-up, which `spawnLoose` floats at the
  *   racer's centre; with an empty stack the racer is stunned HIT.stunTicks (`racer.stunned`).
- * Stun and trap lengths are scaled by the racer's `statusDurationMul`, rounded to whole ticks.
+ * Stun and trap lengths are scaled by `statusTicks` (the racer's `statusDurationMul`, and the difficulty level's for the player), rounded to whole ticks.
  * Every landed hit ends any dash (`status.dashing = 0`, inflated cannonball dashes included), sets
  * `status.invulnerable = HIT.invulnerableTicks` and sets the racer's velocity to HIT.knockbackSpeed
  * directly away from `from` (along facing when `from` is its centre). A trapped racer's float
@@ -62,7 +63,7 @@ function sufferHit(world: World, racer: Racer, blow: Blow): void {
   } else if (blow.cause === 'flash') {
     stun(world, racer, FLASH.stunTicks);
   } else if (blow.cause === 'bubble') {
-    racer.status.trapped = Math.round(BUBBLE.trapTicks * statusDurationMul(racer, 'trapped'));
+    racer.status.trapped = statusTicks(world, racer, BUBBLE.trapTicks, 'trapped');
     world.events.emit({ type: 'racer.trapped', id: racer.id, by: blow.by });
   } else if (racer.stack.length === 0) {
     stun(world, racer, HIT.stunTicks);
@@ -73,7 +74,7 @@ function sufferHit(world: World, racer: Racer, blow: Blow): void {
 }
 
 function stun(world: World, racer: Racer, ticks: number): void {
-  racer.status.stunned = Math.round(ticks * statusDurationMul(racer, 'stunned'));
+  racer.status.stunned = statusTicks(world, racer, ticks, 'stunned');
   world.events.emit({ type: 'racer.stunned', id: racer.id });
 }
 

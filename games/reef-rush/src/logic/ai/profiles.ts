@@ -24,4 +24,5 @@ export const PLAYER_PROFILE: RivalProfile = {
 export const BOT_PROFILES = {
   expert: { ...PLAYER_PROFILE, kickSkill: 0.95, wobble: 0.04, reactionTicks: 2, itemAggression: 0.8 },
   novice: { ...PLAYER_PROFILE, kickSkill: 0.01, wobble: 0.5, reactionTicks: 12, itemAggression: 0 },
+  toddler: { ...PLAYER_PROFILE, kickSkill: 0, wobble: 1, reactionTicks: 30, itemAggression: 0 },
 } as const satisfies Record<string, RivalProfile>;

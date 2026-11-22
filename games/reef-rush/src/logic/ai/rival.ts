@@ -20,6 +20,7 @@
  */
 import type { Rng } from '@arcade/core';
 import { breaksCoralOnContact, racerSeesInDark } from '../abilities.ts';
+import { type CatchUpBounds, DIFFICULTY } from '../difficulty-level.ts';
 import { inDark } from '../level/query.ts';
 import { cos, length, sin } from '../num.ts';
 import type { AiMemory, Intent, Racer, Vec, World } from '../types.ts';
@@ -33,7 +34,7 @@ import { steerDirection } from './steer.ts';
  * and one 8 tiles ahead at the lower, so the field stays near the player without any rival
  * swimming far outside its own pace.
  */
-export const CATCH_UP = { perTile: 0.05, min: 0.6, max: 1.25 } as const;
+export const CATCH_UP = DIFFICULTY.hard.rivalCatchUp;
 
 /** How much looser a rival steers in a dark zone it can't see in: wobble bound and reaction time multipliers. */
 export const DARK_STEERING = { wobbleMul: 2, reactionMul: 2 } as const;
@@ -165,13 +166,14 @@ function wantsKick(racer: Racer, aim: Vec, roll: number): boolean {
 
 /**
  * Force multiplier that keeps races close: below 1 when the racer is ahead of the player,
- * above 1 when behind, clamped to CATCH_UP.
+ * above 1 when behind, clamped to `bounds`.
  *
+ * @param bounds The difficulty level's bounds; Hard's (`CATCH_UP`) by default.
  * @returns Exactly 1 while either racer's progress is unknown (Infinity before the first read).
  */
-export function catchUpMul(racer: Racer, player: Racer): number {
+export function catchUpMul(racer: Racer, player: Racer, bounds: CatchUpBounds = CATCH_UP): number {
   if (!Number.isFinite(racer.progress) || !Number.isFinite(player.progress)) return 1;
   const gapTiles = racer.progress - player.progress;
-  const boost = gapTiles * CATCH_UP.perTile;
-  return 1 + Math.max(CATCH_UP.min - 1, Math.min(CATCH_UP.max - 1, boost));
+  const boost = (gapTiles - bounds.lagTiles) * bounds.perTile;
+  return 1 + Math.max(bounds.min - 1, Math.min(bounds.max - 1, boost));
 }
