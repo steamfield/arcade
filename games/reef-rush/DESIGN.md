@@ -24,26 +24,26 @@ On the select screen the arrows (d-pad) move around the grid, kick races as the 
 - Tick order and determinism rules are in the header of `src/logic/world.ts`.
 - Rivals steer by a distance-to-finish field (`race/flowfield.ts`); placing uses a separate uniform-cost field so places don't flicker.
 - The race ends when you finish, 10 s after the third rival finishes (you DNF), or at 5 minutes.
-- Rivals out-swim you (about 1.5x your swim force) but kick and burst rarely, so your kicks and power-ups are how you win. Catch-up scales their swim force by 0.03 per tile of gap, between 0.6x when far ahead of you and 1.15x when far behind (`ai/rival.ts` `CATCH_UP`). Rivals steer around urchins and jellies they can see coming (`ai/avoid.ts`).
-- Difficulty is measured by `logic/difficulty.test.ts` on 30 seeds: an expert bot wins with the lead rival within 8 s in at least 21, and a novice bot (loose steering, occasional kicks, no items) places 3rd or 4th in at least 21 and finishes within 1.3x the winner's time in at least 24. On seeds 1-200 the tuning measures 86%, 100% and 100%.
+- Rivals out-swim you (about 1.5x your swim force) but kick and burst rarely, so your kicks and power-ups are how you win. Catch-up scales their swim force by 0.05 per tile of gap, between 0.6x when far ahead of you and 1.15x when far behind (`ai/rival.ts` `CATCH_UP`). Rivals steer around urchins and jellies they can see coming (`ai/avoid.ts`). They burst items only at you, never at each other, and flash a lantern only at a racer just ahead (`ai/items.ts`). In a dark zone a rival that can't see (not Selene, no Glow Lantern) wobbles twice as much and replans half as often.
+- Difficulty is measured per character in `logic/difficulty/<character>.test.ts` (shared bots in `race-bots.ts`) on 30 seeds: an expert bot wins with the lead rival within 8 s in at least 21, and a novice bot (loose steering, occasional kicks, no items) places 3rd or 4th in at least 21 and finishes within 1.3x the winner's time in at least 24. Each character's plain expert wins must land in 24-28 of 30, which keeps the roster within about 13 points of each other. On seeds 1-200 the expert close-win rate is 78-85% by character and the novice bars are 100%.
 - Logic never calls `Math.sin`, `cos`, `atan2`, `hypot`, `exp`, `pow` or `log`: engines may approximate them, and a seeded race must replay identically on Chromium and WebKit. Use `src/logic/num.ts`.
 
 ## Roster
 
-You race as one of eight characters; the race fills the three rival slots with three of the other seven, drawn by seed from the `roster` random stream (`pickRivals` in `logic/characters.ts`). Characters are data in fixed slots (`player`, `tess`, `squib`, `bo`), so tick order, random streams and tie-breaks never depend on who is picked. Abilities are not implemented yet: every hook in `logic/abilities.ts` is a no-op, every character races with a placeholder profile (the tuned Tess, Squib and Bo values, cycled). Each character has its own art (`art/sprites/racers.ts`, portraits and heads in `art/ui/portraits.ts`). Each rival slot draws from the characters holding its old profile, so races play as they did before the roster.
+You race as one of eight characters; the race fills the three rival slots with three of the other seven, drawn by seed from the `roster` random stream (`pickRivals` in `logic/characters.ts`). Characters are data in fixed slots (`player`, `tess`, `squib`, `bo`), so tick order, random streams and tie-breaks never depend on who is picked. Abilities live in `logic/abilities.ts` (numbers in `ABILITY`), called from hooks in the systems they change. Each character also has its own rival profile in `logic/characters.ts`. Each character has its own art (`art/sprites/racers.ts`, portraits and heads in `art/ui/portraits.ts`).
 
-| Character | Look | Ability (planned) |
+| Character | Look | Ability |
 | --- | --- | --- |
-| Rudy | red snapper in a brass diving helmet | Shake it off: stuns and bubble traps last half as long |
-| Gil | lanky green seahorse | Spring kick: kicks push harder upward |
-| Streak | electric-blue sailfish | Wind-up: top speed rises the longer it swims without turning hard or being hit |
-| Onyx | black barracuda with a scarred fin | Ambush: bumping a racer from behind takes some of its speed |
+| Rudy | red snapper in a brass diving helmet | Shake it off: stuns and bubble traps last 40% as long |
+| Gil | lanky green seahorse | Spring kick: kicks aimed steeply upward push 1.8x as hard |
+| Streak | electric-blue sailfish | Wind-up: up to +10% swim force after 3 s swimming straight; a hard turn, stop or hit resets it |
+| Onyx | black barracuda with a scarred fin | Ambush: bumping a racer from behind (within 45° of its heading) takes 12% of its speed |
 | Nib | cleaner shrimp in goggles | Deep pockets: holds 4 power-ups instead of 3 |
-| Baron Barnacle | huge spider crab with a crusted crown | Bulldozer: breaks coral by ramming, barely moves in bumps, accelerates slowly |
+| Baron Barnacle | huge spider crab with a crusted crown | Bulldozer: breaks coral by ramming, bumps with 2x mass, ramps from 0.4 to full force over 1 s after the start or a hit |
 | Selene | moon jellyfish with a starlight glow | Moonlight: sees through dark zones, immune to jelly stings |
-| Rook | hammerhead shark | Frenzy: when a racer near it is hit or loses a power-up, it gets a short speed burst |
+| Rook | hammerhead shark | Frenzy: +25% swim force for 1.5 s when a racer within 5 tiles is hit |
 
-Dark zones (`Level.dark`) draw a veil (`view/dark-view.ts`, maths in `view/dark-math.ts`) with a light pool around each racer: yours is 64 px and leans ahead as you swim, a Glow Lantern widens it, and urchins and jellies show a faint glint so you can see them coming. Racers who see in the dark (`racerSeesInDark`) get only a light tint.
+Dark zones (`Level.dark`) draw a veil (`view/dark-view.ts`, maths in `view/dark-math.ts`) with a light pool around each racer: yours is 64 px and leans ahead as you swim, a Glow Lantern widens it, and urchins and jellies show a faint glint so you can see them coming. Racers who see in the dark (`racerSeesInDark`) get only a light tint. The course has one dark range, columns 530-610 (the last ledge and drop).
 
 ## Power-ups
 

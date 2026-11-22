@@ -48,7 +48,7 @@ export type AbilityId =
  * at the start line (`noItems`).
  */
 export interface AbilityState {
-  /** Wind-up: ticks swum without turning hard or being hit. */
+  /** Wind-up: ticks swum without turning hard or being hit. Baron reuses it as ticks since the start or his last hit (bulldozer ramp). */
   windUp: number;
   /** Frenzy: ticks left in the speed burst. */
   frenzy: number;
