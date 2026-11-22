@@ -1,11 +1,11 @@
 import { expect } from '@playwright/test';
-import { scenario, tap, wait } from './kit.ts';
+import { IDLE_TO_RESULTS, scenario, tap, wait } from './kit.ts';
 
 /** Reaches results the quick way (an idle DNF), waits out the menu's arming ticks, then picks "Race again". */
 export default scenario({
   description: 'choosing Race again on the results screen starts a fresh countdown from the start line',
   start: { scene: 'race' },
-  input: [wait(1930), tap('kick'), wait(10)],
+  input: [wait(IDLE_TO_RESULTS), tap('kick'), wait(10)],
   expect({ summary, events }) {
     expect(summary).toMatchObject({
       scene: 'race',
