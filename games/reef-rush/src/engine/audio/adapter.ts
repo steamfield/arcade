@@ -27,7 +27,10 @@ export interface AdapterOptions {
   events: EventSink<RuntimeEvent>;
   /** Cosmetic randomness for effect pitch; never shared with gameplay. */
   rng: Rng;
-  /** Receives effects that WebAudio refused to schedule. */
+  /**
+   * Receives effects that WebAudio refused to schedule: once per failed play, since each
+   * effect is a one-off (unlike songs, which the sequencer stops after one report).
+   */
   onError(error: unknown): void;
 }
 

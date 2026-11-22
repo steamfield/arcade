@@ -48,6 +48,7 @@ export function createAudio(ctx: GameContext, settings: Settings, events: EventS
   const synth = buildSynth(context, settings.muted, reportError);
   if (!synth) return SILENT;
   ctx.registerAudioContext(context);
+  const stopUnlocking = unlockOnGesture(context, reportError);
   const sequencer = createSequencer(synth, reportError);
   const adapter = createAdapter({
     synth,
@@ -62,10 +63,37 @@ export function createAudio(ctx: GameContext, settings: Settings, events: EventS
     ...adapter,
     setMuted: (muted) => synth.setMuted(muted),
     dispose() {
+      stopUnlocking();
       sequencer.dispose();
       context.close().catch(reportError);
     },
   };
+}
+
+/**
+ * Resumes `context` on the next key press or pointer press until it is running, then stops
+ * listening. The shell's start-gate tap resumes contexts before this one exists, so on
+ * gesture-strict browsers (Safari) it would otherwise stay suspended for keyboard-only
+ * players. Returns the function that removes the listeners.
+ */
+function unlockOnGesture(context: AudioContext, reportError: (error: unknown) => void): () => void {
+  const stop = () => {
+    window.removeEventListener('keydown', unlock);
+    window.removeEventListener('pointerdown', unlock);
+  };
+  function unlock() {
+    if (context.state === 'running') {
+      stop();
+      return;
+    }
+    context.resume().then(() => {
+      if (context.state === 'running') stop();
+    }, reportError);
+  }
+  if (context.state === 'running') return stop;
+  window.addEventListener('keydown', unlock);
+  window.addEventListener('pointerdown', unlock);
+  return stop;
 }
 
 /** A new AudioContext, or null (reported) when the browser refuses one. */

@@ -78,7 +78,7 @@ export function createSequencer(synth: Synth, onError: (error: unknown) => void)
   const pump = () => {
     if (!current) return;
     try {
-      schedule(synth, current, context.currentTime + SCHEDULE_AHEAD);
+      schedule(synth, current, context.currentTime);
     } catch (error) {
       onError(new Error(`Song "${current.song.name}" stopped: a note could not be scheduled`, { cause: error }));
       fadeOut(current);
@@ -119,7 +119,11 @@ export function createSequencer(synth: Synth, onError: (error: unknown) => void)
       const heard = current.marks.filter((mark) => mark.time <= now);
       current.marks = current.marks.filter((mark) => mark.time > now);
       const ended = current.endTime !== null && now >= current.endTime;
-      if (ended) current = null;
+      if (ended) {
+        // Its last note has rung out, so the bus can go now rather than after a fade.
+        current.bus.disconnect();
+        current = null;
+      }
       return { sections: heard.map((mark) => mark.name), ended };
     },
     dispose() {
@@ -157,14 +161,21 @@ function cuesOf(song: Song): Cue[] {
   return [...sections, ...notes].sort((a, b) => a.beat - b.beat || (a.section ? -1 : b.section ? 1 : 0));
 }
 
-/** Schedules every cue that sounds before `horizon`, looping as needed. */
-function schedule(synth: Synth, playback: Playback, horizon: number): void {
+/** Schedules every cue that sounds before `now + SCHEDULE_AHEAD`, looping as needed. */
+function schedule(synth: Synth, playback: Playback, now: number): void {
   const { song, cues } = playback;
+  const horizon = now + SCHEDULE_AHEAD;
   for (;;) {
     if (playback.next >= cues.length && !wrap(playback)) return;
     const cue = cues[playback.next];
     if (!cue) return;
-    const time = timeOf(playback, playback.passStart + cue.beat);
+    let time = timeOf(playback, playback.passStart + cue.beat);
+    if (time < now) {
+      // A main-thread stall outlasted the lookahead: move the song's clock past the gap so
+      // the overdue notes resume in time from now instead of firing together in a clump.
+      playback.anchorTime += now - time;
+      time = now;
+    }
     if (time > horizon) return;
     // The song's start is announced as a song start, so a section on its first beat isn't news.
     if (cue.section && !(playback.passStart === 0 && cue.beat === 0)) playback.marks.push({ name: cue.section, time });
