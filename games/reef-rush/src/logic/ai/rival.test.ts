@@ -199,3 +199,25 @@ describe('catch-up', () => {
     expect(pair(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)).toBe(1);
   });
 });
+
+describe('kicking while getting unstuck', () => {
+  it('never kicks during the 20 recovery ticks, even while swimming the sideways way', () => {
+    const { world } = lanes();
+    racing(world);
+    const squib = racer(world, 'squib');
+    const recovery: Intent[] = [];
+    let previous: Intent | null = null;
+    for (let i = 0; i < 80 && recovery.length < 20; i++) {
+      // Pinned still until it starts recovering, then moving the way it asked, kick always ready.
+      const moveTo = previous && sideways(previous) ? previous.move : { x: 0, y: 0 };
+      squib.body.vx = moveTo.x * 60;
+      squib.body.vy = moveTo.y * 60;
+      squib.kickCooldown = 0;
+      previous = rivalIntent(world, squib, world.rngs['ai.squib']);
+      if (sideways(previous)) recovery.push(previous);
+    }
+
+    expect(recovery).toHaveLength(20);
+    expect(recovery.filter((i) => i.kick)).toEqual([]);
+  });
+});
