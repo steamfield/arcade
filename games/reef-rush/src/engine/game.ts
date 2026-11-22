@@ -11,6 +11,7 @@ import type { SaveData } from '../logic/save.ts';
 import { debugState, debugSummary } from './debug.ts';
 import { Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
 import { BootScene } from './scenes/boot.ts';
+import { HowToPlayScene } from './scenes/how-to-play.ts';
 import { RaceScene } from './scenes/race.ts';
 import { ResultsScene } from './scenes/results.ts';
 import { SelectScene } from './scenes/select.ts';
@@ -63,7 +64,14 @@ function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
     // Sound comes from audio/, which owns its own AudioContext; Phaser's would sit unused.
     audio: { noAudio: true },
     scale: { mode: Phaser.Scale.NONE },
-    scene: [new BootScene(rt), new TitleScene(rt), new SelectScene(rt), new RaceScene(rt), new ResultsScene(rt)],
+    scene: [
+      new BootScene(rt),
+      new TitleScene(rt),
+      new HowToPlayScene(rt),
+      new SelectScene(rt),
+      new RaceScene(rt),
+      new ResultsScene(rt),
+    ],
   });
 }
 

@@ -33,6 +33,8 @@ export type OptionText = (option: MenuOption) => string;
 /** Each option's button text when it has no live state to show: the option in capitals, built once. */
 export const OPTION_LABELS: Readonly<Record<MenuOption, string>> = {
   Race: 'RACE',
+  'How to play': 'HOW TO PLAY',
+  Difficulty: 'LEVEL',
   Sound: 'SOUND',
   Motion: 'MOTION',
   'Race again': 'RACE AGAIN',

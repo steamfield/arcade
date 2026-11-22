@@ -6,7 +6,8 @@
  * Scenes render from it and never change gameplay themselves.
  *
  * Screens: title, then select (pick a character; kick races, burst goes back),
- * then race and results. Race again skips the select and races the same pick.
+ * then race and results. Race again skips the select and races the same pick. The title also
+ * opens How to Play, a few pages the player turns with the move and action buttons.
  */
 import { createLogger, EventLog, FixedStep, type Stamped } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
@@ -17,18 +18,28 @@ import { parseLevel } from '../logic/level/parse.ts';
 import { playerOf } from '../logic/racers.ts';
 import { isNewBest, recordResult } from '../logic/records.ts';
 import { NEW_GAME, type SaveData } from '../logic/save.ts';
-import type { CharacterId, RaceResult, RacerId, TickInput, World } from '../logic/types.ts';
+import {
+  type CharacterId,
+  DIFFICULTIES,
+  type Difficulty,
+  type RaceResult,
+  type RacerId,
+  type TickInput,
+  type World,
+} from '../logic/types.ts';
 import { createWorld, stepWorld } from '../logic/world.ts';
 import { withinHearing } from './audio/attack-sfx.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
 import { moveCharacter } from './character-select.ts';
 import { applyStage, stageFor } from './debug-stage.ts';
+import { type PageTurn, turnPage } from './how-to-play.ts';
 import { input } from './input.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 import { raceProgress } from './race-progress.ts';
+import { type HintMemory, type HintState, hintsEnabled, NO_HINTS, newHintMemory, updateHints } from './view/hints.ts';
 
 /** Phaser scene keys, one per screen. */
-export type SceneKey = 'boot' | 'title' | 'select' | 'race' | 'results';
+export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'select' | 'race' | 'results';
 
 /** Events the engine adds on top of the world's. */
 export type EngineEvent =
@@ -37,7 +48,7 @@ export type EngineEvent =
   | { type: 'save.written' }
   | { type: 'save.failed'; reason: string }
   /** The player changed a setting from the title menu; carries the settings now in force. */
-  | { type: 'settings.changed'; muted: boolean; reducedMotion: boolean }
+  | { type: 'settings.changed'; muted: boolean; reducedMotion: boolean; difficulty: Difficulty }
   /** A sound actually started: once per SFX and once per song start or section change, never per note. */
   | { type: 'audio.played'; key: string; kind: 'sfx' | 'song' };
 
@@ -48,6 +59,8 @@ export type RuntimeEvent = GameEvent | EngineEvent;
 export interface Settings {
   muted: boolean;
   reducedMotion: boolean;
+  /** How hard the rivals race; each new race builds its world with it. */
+  difficulty: Difficulty;
 }
 
 /** How the last race went, for the results screen. */
@@ -107,8 +120,16 @@ export class Runtime {
   readonly audio: AudioPort;
   /** True when the current race was staged for a capture (`?stage=`); its result is never saved. */
   staged = false;
+  /** The page How to Play shows, 0-based; back to the first page each time the screen opens. */
+  howToPage = 0;
+  /** The logic tick the current How to Play page came up on, so its animation starts from its first moment however many frames were drawn. */
+  howToSince = 0;
+  /** The in-race hints showing now, refreshed each racing tick; none outside a race. */
+  hints: HintState = NO_HINTS;
   /** The player's progress-field distance at the start line, for the race progress fraction. */
   private startProgress = 0;
+  private hintMemory: HintMemory = newHintMemory();
+  private hintsOn = false;
 
   /** How far the player is through the current race, 0 to 1; 0 with no race. */
   get raceFraction(): number {
@@ -139,7 +160,11 @@ export class Runtime {
   /** Settings from the save, with a null `reducedMotion` following the OS. */
   get settings(): Settings {
     const saved = (this.save ?? NEW_GAME).settings;
-    return { muted: saved.muted, reducedMotion: saved.reducedMotion ?? this.prefersReducedMotion };
+    return {
+      muted: saved.muted,
+      reducedMotion: saved.reducedMotion ?? this.prefersReducedMotion,
+      difficulty: saved.difficulty,
+    };
   }
 
   /** The character picked last, from the save; Rudy when there is none. */
@@ -168,6 +193,7 @@ export class Runtime {
     this.loading = false;
     if (scene === 'title') this.world = null;
     if (scene === 'select') this.selectedCharacter = this.savedCharacter;
+    if (scene === 'howToPlay') this.openHowToPlayPage(0);
     const options = MENUS[scene];
     this.menu = options ? createMenu(options) : null;
     this.menuArmIn = MENU_ARM_TICKS;
@@ -181,7 +207,15 @@ export class Runtime {
    */
   startRace(): void {
     const seed = this.ctx.params.seed + (this.save?.races ?? 0);
-    this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, { seed, character: this.selectedCharacter });
+    const { difficulty } = this.settings;
+    this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, {
+      seed,
+      character: this.selectedCharacter,
+      difficulty,
+    });
+    this.hintMemory = newHintMemory();
+    this.hintsOn = hintsEnabled(this.save?.races ?? 0, difficulty);
+    this.hints = NO_HINTS;
     const stage = stageFor(this.ctx.params);
     if (stage) applyStage(this.world, stage);
     this.staged = stage !== null;
@@ -225,6 +259,7 @@ export class Runtime {
     input.update();
     if (this.menu) this.tickMenu(this.menu);
     else if (this.scene === 'select') this.tickSelect();
+    else if (this.scene === 'howToPlay') this.tickHowToPlay();
     else if (this.scene === 'race') this.tickRace(dt);
     this.dispatchEvents();
   }
@@ -241,6 +276,8 @@ export class Runtime {
     this.events.emit({ type: 'menu.selected', option });
     if (option === 'Sound') this.changeSettings({ muted: !this.settings.muted });
     else if (option === 'Motion') this.changeSettings({ reducedMotion: !this.settings.reducedMotion });
+    else if (option === 'Difficulty') this.changeSettings({ difficulty: nextDifficulty(this.settings.difficulty) });
+    else if (option === 'How to play') this.goTo('howToPlay');
     else if (option === 'Title') this.goTo('title');
     else if (option === 'Race') this.goTo('select');
     else this.startRace();
@@ -258,6 +295,24 @@ export class Runtime {
     }
     if (input.justPressed('burst')) this.goTo('title');
     else if (input.justPressed('kick')) this.pickCharacter();
+  }
+
+  /** A or right turns to the next page, B or left to the previous; either end leaves for the title. */
+  private tickHowToPlay(): void {
+    if (this.menuArmIn > 0) {
+      this.menuArmIn--;
+      return;
+    }
+    const turn = readPageTurn();
+    if (!turn) return;
+    const outcome = turnPage(this.howToPage, turn);
+    if (outcome.kind === 'leave') this.goTo('title');
+    else this.openHowToPlayPage(outcome.page);
+  }
+
+  private openHowToPlayPage(page: number): void {
+    this.howToPage = page;
+    this.howToSince = this.step.tick;
   }
 
   /**
@@ -279,9 +334,9 @@ export class Runtime {
     const before = this.save ?? NEW_GAME;
     const data: SaveData = { ...before, settings: { ...before.settings, ...patch } };
     this.save = data;
-    const { muted, reducedMotion } = this.settings;
+    const { muted, reducedMotion, difficulty } = this.settings;
     this.audio.setMuted(muted);
-    this.events.emit({ type: 'settings.changed', muted, reducedMotion });
+    this.events.emit({ type: 'settings.changed', muted, reducedMotion, difficulty });
     this.persist(data).catch((error: unknown) => this.ctx.reportError('save', error));
   }
 
@@ -289,6 +344,7 @@ export class Runtime {
     const world = this.world;
     if (!world) throw new Error('The race scene is ticking without a world; start races with startRace()');
     stepWorld(world, readPlayerInput(), dt);
+    this.hints = updateHints(this.hintMemory, world, this.hintsOn);
     this.audio.onRaceProgress(this.raceFraction);
     if (this.resultsIn === null) return;
     this.resultsIn--;
@@ -317,6 +373,19 @@ export class Runtime {
     if (this.staged) return;
     this.persist(recordResult(before, result)).catch((error: unknown) => this.ctx.reportError('save', error));
   }
+}
+
+/** The next difficulty in the cycle EASY, NORMAL, HARD, then back to EASY. */
+function nextDifficulty(current: Difficulty): Difficulty {
+  const index = DIFFICULTIES.indexOf(current);
+  return DIFFICULTIES[(index + 1) % DIFFICULTIES.length] ?? current;
+}
+
+/** The page turn the player pressed this tick, if any: A or right is next, B or left is back. */
+function readPageTurn(): PageTurn | null {
+  if (input.justPressed('kick') || input.justPressed('right')) return 'next';
+  if (input.justPressed('burst') || input.justPressed('left')) return 'back';
+  return null;
 }
 
 /** The player's input this tick as plain data for `stepWorld`. */

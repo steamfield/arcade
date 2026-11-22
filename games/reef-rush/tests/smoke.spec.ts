@@ -9,7 +9,7 @@ test('starts on WebGL, races from the title through the select screen, and swims
   expect(await game.renderer()).toBe('webgl');
   expect(await game.summary()).toMatchObject({
     scene: 'title',
-    menu: { options: ['Race', 'Sound', 'Motion'], selected: 0 },
+    menu: { options: ['Race', 'Difficulty', 'How to play', 'Sound', 'Motion'], selected: 0 },
     best: null,
   });
 
