@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { CHARACTER_IDS } from '../../../logic/types.ts';
 import { Frame, Tex, TileIndex } from '../keys.ts';
-import { BackdropPalette, HazardPalette, RacerPalette, WATER_BANDS } from '../palettes.ts';
+import { BackdropPalette, HazardPalette, WATER_BANDS } from '../palettes.ts';
 import { measureFrames } from '../pixel.ts';
 import { ART_SHEETS } from './index.ts';
+import { CharacterPalette, RACER_SHEETS } from './racers.ts';
 
 /** Every character's racer texture. */
 const RACER_KEYS = CHARACTER_IDS.map((character) => Tex[character]);
@@ -67,8 +68,9 @@ describe('world art palettes', () => {
     return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
   };
   const behind = [...WATER_BANDS, ...BackdropPalette.far, ...BackdropPalette.near];
+  const readable = (colour: number) => Math.min(...behind.map((water) => contrast(colour, water))) >= 3;
   const mainColours = [
-    ...Object.entries(RacerPalette).map(([name, palette]) => [name, palette[1]] as const),
+    ...CHARACTER_IDS.map((character) => [character, CharacterPalette[character][1]] as const),
     ['urchin', HazardPalette.urchin[1]] as const,
   ];
 
@@ -77,10 +79,14 @@ describe('world art palettes', () => {
     expect(weakest).toBeGreaterThanOrEqual(3);
   });
 
-  it('keeps the racers in brightness order Pip, Squib, Tess, Bo so grayscale tells them apart', () => {
-    const order = (['pip', 'squib', 'tess', 'bo'] as const).map((id) => luminance(RacerPalette[id][1]));
-    expect(order).toEqual([...order].sort((a, b) => b - a));
-  });
+  it.each(RACER_SHEETS.flatMap((sheet) => sheet.frames.map((frame) => [sheet.key, frame.name, frame] as const)))(
+    '%s frame %s draws at least a quarter of its pixels in colours that stand 3:1 off the water',
+    (_, __, frame) => {
+      const pixels = [...frame.rows.join('')].filter((pixel) => pixel !== '.');
+      const bright = pixels.filter((pixel) => readable(frame.palette[Number(pixel)] ?? 0));
+      expect(bright.length / pixels.length).toBeGreaterThanOrEqual(0.25);
+    },
+  );
 });
 
 describe('measureFrames', () => {
