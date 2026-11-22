@@ -5,12 +5,13 @@
  * of the kinds the racer doesn't hold, so one draw maps to one kind.
  */
 import type { Rng } from '@arcade/core';
+import { overlapsTile } from '../level/query.ts';
 import { gainPowerUp } from '../powerups/stack.ts';
 import { CLAM } from '../powerups/tuning.ts';
-import { POWER_UP_KINDS, type PowerUpKind, type Racer, type World } from '../types.ts';
-import { touchesTile } from './touch.ts';
+import { hitbox } from '../racers.ts';
+import { POWER_UP_KINDS, type PowerUpKind, RACER_IDS, type Racer, type World } from '../types.ts';
 
-const LAST_PLACE = 4;
+const LAST_PLACE = RACER_IDS.length;
 
 /**
  * The pickups slot for clams. Each call, a clam with `closedFor > 0` counts it down by one instead
@@ -25,7 +26,7 @@ export function openClams(world: World, racers: readonly Racer[]): void {
       clam.closedFor -= 1;
       return;
     }
-    const opener = racers.find((racer) => touchesTile(racer, clam.tile));
+    const opener = racers.find((racer) => overlapsTile(hitbox(racer), clam.tile.x, clam.tile.y));
     if (!opener) return;
     const kind = rollClam(world.rngs.pickups, opener.place, opener.stack);
     world.events.emit({ type: 'clam.opened', id: opener.id, index, kind });

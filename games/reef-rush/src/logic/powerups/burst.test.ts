@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { centreOf, hitbox } from '../racers.ts';
 import { eventsIn, hold, IDLE, placeOnTile, raceOn, racerOf, step, ticksOf } from '../test-world.ts';
 import type { PowerUpKind, Vec } from '../types.ts';
-import { fireBurst } from './burst.ts';
+import { driveDash, fireBurst } from './burst.ts';
+import { gainPowerUp } from './stack.ts';
 
 /** The player's lane is two rows tall with coral right in front of the start and a way round below. */
 const LANES = `
@@ -238,5 +239,32 @@ describe('Glow Lantern', () => {
     fireBurst(world, player, RIGHT);
 
     expect(world.jellies.map((jelly) => jelly.stunned)).toEqual([45, 0]);
+  });
+});
+
+describe('a dash after it fires', () => {
+  it('keeps the combos it fired with: a Glow Lantern gained mid-dash adds no comet flash', () => {
+    const { world, log, player } = holding(['jetFin'], LANES);
+    placeOnTile(player, 1, 2);
+    step(world, log, 1, hold(RIGHT, { burst: true }));
+    step(world, log, 5, hold(RIGHT));
+
+    gainPowerUp(world, player, 'glowLantern');
+    step(world, log, 25, hold(RIGHT));
+
+    expect(eventsIn(log, 'flash.fired')).toEqual([]);
+  });
+
+  it('leaves velocity alone and forgets its combos once dashing is over', () => {
+    const { player } = holding(['jetFin', 'glowLantern']);
+    player.dashDir = { x: 1, y: 0 };
+    player.dashCombos = ['comet'];
+    player.body.vx = 30;
+    player.body.vy = -40;
+
+    driveDash(player);
+
+    expect({ vx: player.body.vx, vy: player.body.vy }).toEqual({ vx: 30, vy: -40 });
+    expect(player.dashCombos).toEqual([]);
   });
 });

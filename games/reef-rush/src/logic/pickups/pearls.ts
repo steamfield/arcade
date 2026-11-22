@@ -2,12 +2,13 @@
  * Pearls: each one can be collected once per race, by the first racer to touch it,
  * for a short boost. A Glow Lantern holder collects them from a distance: "within
  * 3 tiles" is the straight-line distance from the racer's centre to the pearl's
- * tile centre, inclusive.
+ * tile centre, inclusive. When several racers reach a pearl on the same tick,
+ * by touch or by lantern alike, the first in RACER_IDS order gets it.
  */
+import { overlapsTile } from '../level/query.ts';
 import { PASSIVE, PEARL } from '../powerups/tuning.ts';
-import { centreOf } from '../racers.ts';
+import { centreOf, hitbox } from '../racers.ts';
 import { type Racer, TILE, type Vec, type World } from '../types.ts';
-import { touchesTile } from './touch.ts';
 
 /**
  * The pickups slot for pearls. A pearl not in `world.pearlsTaken` is collected by the first racer
@@ -30,9 +31,11 @@ export function collectPearls(world: World, racers: readonly Racer[]): void {
 
 /** Whether `racer` collects the pearl on `tile`: by touch, or by Glow Lantern range. */
 function reaches(racer: Racer, tile: Vec): boolean {
-  if (touchesTile(racer, tile)) return true;
+  if (overlapsTile(hitbox(racer), tile.x, tile.y)) return true;
   if (!racer.stack.includes('glowLantern')) return false;
   const centre = centreOf(racer);
-  const distance = Math.hypot((tile.x + 0.5) * TILE - centre.x, (tile.y + 0.5) * TILE - centre.y);
-  return distance <= PASSIVE.lanternPearlTiles * TILE;
+  const dx = (tile.x + 0.5) * TILE - centre.x;
+  const dy = (tile.y + 0.5) * TILE - centre.y;
+  // Squared, because logic avoids Math.hypot (engines may round it differently).
+  return dx * dx + dy * dy <= (PASSIVE.lanternPearlTiles * TILE) ** 2;
 }

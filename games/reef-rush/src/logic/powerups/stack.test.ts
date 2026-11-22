@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyHit } from '../hazards/hits.ts';
 import { centreOf } from '../racers.ts';
 import { eventsIn, raceOn, racerOf } from '../test-world.ts';
-import { gainPowerUp } from './stack.ts';
+import { gainPowerUp, popForHit } from './stack.ts';
 
 /** Open water: these tests call the stack rules directly and never step. */
 const BOX = `
@@ -88,5 +88,17 @@ describe('what a hit takes', () => {
       { type: 'powerup.lost', id: 'player', kind: 'inkSac', cause: 'hit' },
       { type: 'loose.spawned', kind: 'inkSac' },
     ]);
+  });
+});
+
+describe('a hit during a dash', () => {
+  it('stops only the dash combos whose pair it breaks', () => {
+    const { world, player } = setup();
+    player.stack = ['jetFin', 'inkSac', 'glowLantern'];
+    player.dashCombos = ['inkTrail', 'comet'];
+
+    expect(popForHit(world, player)).toBe('glowLantern');
+
+    expect(player.dashCombos).toEqual(['inkTrail']);
   });
 });

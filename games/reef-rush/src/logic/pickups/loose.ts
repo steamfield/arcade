@@ -6,8 +6,8 @@
  */
 import { gainPowerUp } from '../powerups/stack.ts';
 import { LOOSE } from '../powerups/tuning.ts';
-import type { LoosePowerUp, PowerUpKind, Racer, Vec, World } from '../types.ts';
-import { touchesSquare } from './touch.ts';
+import { hitbox } from '../racers.ts';
+import type { Box, LoosePowerUp, PowerUpKind, Racer, Vec, World } from '../types.ts';
 
 /**
  * Adds a loose `kind` centred at `at` (world px) with `grabDelay = LOOSE.grabDelayTicks` and
@@ -27,7 +27,11 @@ export function spawnLoose(world: World, kind: PowerUpKind, at: Vec): void {
  * @param dt Tick length in seconds.
  */
 export function updateLoose(world: World, racers: readonly Racer[], dt: number): void {
-  world.loose = world.loose.filter((loose) => !driftAndGrab(world, loose, racers, dt));
+  const remaining: LoosePowerUp[] = [];
+  for (const loose of world.loose) {
+    if (!driftAndGrab(world, loose, racers, dt)) remaining.push(loose);
+  }
+  world.loose = remaining;
 }
 
 /** One loose pickup's tick. Returns true when it is gone: expired or grabbed. */
@@ -39,9 +43,15 @@ function driftAndGrab(world: World, loose: LoosePowerUp, racers: readonly Racer[
     loose.grabDelay -= 1;
     return false;
   }
-  const grabber = racers.find((racer) => !racer.stack.includes(loose.kind) && touchesSquare(racer, loose, LOOSE.size));
+  const box = { x: loose.x - LOOSE.size / 2, y: loose.y - LOOSE.size / 2, w: LOOSE.size, h: LOOSE.size };
+  const grabber = racers.find((racer) => !racer.stack.includes(loose.kind) && boxesOverlap(hitbox(racer), box));
   if (!grabber) return false;
   world.events.emit({ type: 'loose.grabbed', id: grabber.id, kind: loose.kind });
   gainPowerUp(world, grabber, loose.kind);
   return true;
+}
+
+/** True when two boxes share some positive area; edge-only contact doesn't count. */
+function boxesOverlap(a: Box, b: Box): boolean {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }

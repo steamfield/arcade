@@ -16,14 +16,17 @@
  * the cloud INK.bombRadius and centred on the racer; comet flashes on the firing tick and again on
  * the dash's last tick (DASH.ticks - 1 ticks later). All matching combos apply.
  *
- * The dash's later effects (inkTrail clouds, the comet's second flash) read the stack each tick, so
- * a dash keeps them only while the racer still holds the pair; a hit that knocks one off ends them.
+ * The dash's later effects (inkTrail clouds, the comet's second flash) follow `racer.dashCombos`,
+ * fixed when the dash fires: gaining a kind mid-dash never starts one, and `popForHit` removes a
+ * combo whose pair a hit breaks. A landed hit also ends the dash (`applyHit` zeroes dashing).
  */
 import { flashAround } from '../hazards/contacts.ts';
+import { bodyTiles } from '../level/query.ts';
+import { length } from '../num.ts';
 import { breakCoral } from '../race/coral.ts';
 import { centreOf, hitbox } from '../racers.ts';
-import { type Box, type ComboName, type Intent, type Racer, TILE, type Vec, type World } from '../types.ts';
-import { comboFor, combosIn } from './combos.ts';
+import type { ComboName, Intent, Racer, Vec, World } from '../types.ts';
+import { combosIn } from './combos.ts';
 import { BUBBLE, BURST_COOLDOWN_TICKS, DASH, INFLATE, INK } from './tuning.ts';
 
 /**
@@ -51,12 +54,12 @@ export function fireBurst(world: World, racer: Racer, move: Vec): boolean {
   const kinds = [...racer.stack];
   const combos = combosIn(kinds);
   racer.burstCooldown = BURST_COOLDOWN_TICKS;
-  world.events.emit({ type: 'burst.fired', id: racer.id, kinds, combo: comboFor(kinds) });
+  world.events.emit({ type: 'burst.fired', id: racer.id, kinds, combo: combos[0] ?? null });
   const aim = aimOf(racer, move);
   for (const kind of kinds) {
     switch (kind) {
       case 'jetFin':
-        startDash(racer, aim);
+        startDash(racer, aim, combos);
         break;
       case 'bubbleShield':
         fireBubble(world, racer, aim, combos.includes('seekerBubble'));
@@ -78,10 +81,14 @@ export function fireBurst(world: World, racer: Racer, move: Vec): boolean {
 
 /**
  * Holds a dashing racer's velocity at DASH.speed along `dashDir`, overriding swimming and drag.
- * Called in `stepWorld` after swimming and before the body moves; does nothing when not dashing.
+ * Called in `stepWorld` after swimming and before the body moves. When not dashing (the dash ran
+ * out or a hit ended it) it leaves velocity alone and clears `dashCombos`.
  */
 export function driveDash(racer: Racer): void {
-  if (racer.status.dashing === 0) return;
+  if (racer.status.dashing === 0) {
+    racer.dashCombos = [];
+    return;
+  }
   racer.body.vx = racer.dashDir.x * DASH.speed;
   racer.body.vy = racer.dashDir.y * DASH.speed;
 }
@@ -100,13 +107,14 @@ export function sustainBursts(world: World, racers: readonly Racer[]): void {
 
 /** The unit input direction, or straight ahead along facing when there is no input. */
 function aimOf(racer: Racer, move: Vec): Vec {
-  const length = Math.hypot(move.x, move.y);
-  return length === 0 ? { x: racer.facing, y: 0 } : { x: move.x / length, y: move.y / length };
+  const size = length(move.x, move.y);
+  return size === 0 ? { x: racer.facing, y: 0 } : { x: move.x / size, y: move.y / size };
 }
 
-function startDash(racer: Racer, aim: Vec): void {
+function startDash(racer: Racer, aim: Vec, combos: readonly ComboName[]): void {
   racer.status.dashing = DASH.ticks;
   racer.dashDir = { ...aim };
+  racer.dashCombos = [...combos];
   driveDash(racer);
 }
 
@@ -142,24 +150,14 @@ function dropInk(world: World, racer: Racer, combos: readonly ComboName[]): void
 function sustainDash(world: World, racer: Racer): void {
   const elapsed = DASH.ticks - racer.status.dashing;
   if (elapsed === 0) return;
-  const combos = combosIn(racer.stack);
+  const combos = racer.dashCombos;
   if (combos.includes('inkTrail') && elapsed % INK.trailEveryTicks === 0) dropInk(world, racer, combos);
   if (combos.includes('comet') && racer.status.dashing === 1) flashAround(world, racer);
 }
 
 function smashCoral(world: World, racer: Racer): void {
-  const tiles = tilesUnder(hitbox(racer));
+  const tiles = bodyTiles(hitbox(racer));
   for (let ty = tiles.top; ty <= tiles.bottom; ty++) {
     for (let tx = tiles.left; tx <= tiles.right; tx++) breakCoral(world, tx, ty, racer.id);
   }
-}
-
-/** Inclusive tile range a box overlaps by positive area (edge-only contact excluded). */
-function tilesUnder(box: Box): { left: number; right: number; top: number; bottom: number } {
-  return {
-    left: Math.floor(box.x / TILE),
-    right: Math.ceil((box.x + box.w) / TILE) - 1,
-    top: Math.floor(box.y / TILE),
-    bottom: Math.ceil((box.y + box.h) / TILE) - 1,
-  };
 }

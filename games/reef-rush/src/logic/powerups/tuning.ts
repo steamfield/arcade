@@ -12,8 +12,9 @@ export const STACK_MAX = 3;
 export const BURST_COOLDOWN_TICKS = 150;
 
 /**
- * Jet Fins burst: velocity held at `speed` along the input (or facing) for `ticks` ticks,
- * counting the firing tick, ignoring drag.
+ * Jet Fins burst: velocity held at `speed` along the input (or facing) for `ticks` ticks, counting
+ * the firing tick, ignoring drag. The firing tick sets velocity after the body has moved, so the
+ * dash moves the body on `ticks - 1` ticks.
  */
 export const DASH = { ticks: 24, speed: 200 } as const;
 

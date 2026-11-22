@@ -114,3 +114,33 @@ describe('roll weights', () => {
     expect(shares.glowLantern).toBeCloseTo(0.5, 1);
   });
 });
+
+describe('who opens a clam', () => {
+  it('rolls with the weights of the opener place', () => {
+    const fourth = parkedOnClam(3);
+    fourth.player.place = 4;
+
+    openClams(fourth.world, fourth.racers);
+
+    const asFourth = rollClam(parkedOnClam(3).world.rngs.pickups, 4, []);
+    // The seed is one where 1st and 4th place roll differently, so the place really decides.
+    expect(rollClam(parkedOnClam(3).world.rngs.pickups, 1, [])).not.toBe(asFourth);
+    expect(fourth.player.stack).toEqual([asFourth]);
+  });
+
+  it('goes to the first racer in RACER_IDS order when two touch it at once', () => {
+    const { world, log, racers } = parkedOnClam();
+    placeOnTile(racerOf(world, 'tess'), 5, 2);
+
+    openClams(world, racers);
+
+    expect(eventsIn(log, 'clam.opened').map((event) => 'id' in event && event.id)).toEqual(['player']);
+    expect(racerOf(world, 'tess').stack).toEqual([]);
+  });
+
+  it('rejects a place outside 1 to 4', () => {
+    for (const place of [0, 5, 2.5]) {
+      expect(() => clamWeights(place), `place ${place}`).toThrow(RangeError);
+    }
+  });
+});
