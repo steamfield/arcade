@@ -36,7 +36,7 @@ This is the repo's first full game and its reference layout: logic in feature fo
 
 ## Engine layout
 
-`engine/game.ts` wires Phaser to the shell. `engine/runtime.ts` is the only place logic ticks (`game.ts` feeds its clock once per Phaser step): it reads input, steps the world or the menu, drains each tick's events once and hands them to audio (`audio/index.ts`, silent for now) and to views that listen. Scenes in `engine/scenes/` build views from `engine/view/` and sync them every frame. Text goes only through `art/font.ts` `createLabel`; textures and animations only through `art/keys.ts`.
+`engine/game.ts` wires Phaser to the shell. `engine/runtime.ts` is the only place logic ticks (`game.ts` feeds its clock once per Phaser step): it reads input, steps the world or the menu, drains each tick's events once and hands them to audio (`audio/index.ts`, silent for now) and to views that listen. Scenes in `engine/scenes/` build views from `engine/view/` and sync them every frame. Screens follow `UI.md` (palette, type scale, layout grid, safe zones, motion). Text goes only through `art/font.ts` `createLabel`; textures and animations only through `art/keys.ts`.
 
 ## Course format
 
