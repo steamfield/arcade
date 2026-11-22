@@ -5,7 +5,11 @@ import { TOP_ROUTE, wait } from '../scenarios/kit.ts';
 test('starts on WebGL, races from the title, and swims after the countdown', async ({ game }) => {
   await game.open();
   expect(await game.renderer()).toBe('webgl');
-  expect(await game.summary()).toMatchObject({ scene: 'title', menu: { options: ['Race'], selected: 0 }, best: null });
+  expect(await game.summary()).toMatchObject({
+    scene: 'title',
+    menu: { options: ['Race', 'Sound', 'Motion'], selected: 0 },
+    best: null,
+  });
 
   // Menus ignore kick for their first 20 ticks.
   await game.play(parseInput('_*20 kick _*2'));

@@ -5,11 +5,11 @@
  */
 
 /** Every option a menu in this game can offer. */
-export type MenuOption = 'Race' | 'Race again' | 'Title';
+export type MenuOption = 'Race' | 'Sound' | 'Motion' | 'Race again' | 'Title';
 
 /** The options each menu screen offers, top to bottom. */
 export const MENU_OPTIONS = {
-  title: ['Race'],
+  title: ['Race', 'Sound', 'Motion'],
   results: ['Race again', 'Title'],
 } as const satisfies Record<string, readonly MenuOption[]>;
 

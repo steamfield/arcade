@@ -40,7 +40,7 @@ function racer(world: World, id: RacerId): Racer {
 
 /** Skips the countdown so intents are asked for a running race. */
 function racing(world: World) {
-  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null };
+  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
 }
 
 /** Asks for `ticks` intents, calling `hold` on the racer before each to pin its velocity. */

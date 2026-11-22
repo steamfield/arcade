@@ -52,6 +52,8 @@ export interface WorldOptions {
   seed: number;
   /** When set, this profile's AI drives the player's racer and `stepWorld` ignores its input. Used by bot tests. */
   playerBot?: RivalProfile;
+  /** 'everyone' keeps racing after the player finishes, so difficulty tests can time every racer. Default 'player'. */
+  endsWhen?: 'player' | 'everyone';
 }
 
 const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
@@ -81,7 +83,7 @@ export function createWorld(level: Level, events: EventSink<GameEvent>, options:
     fields,
     broken,
     racers: RACER_IDS.map((id, index) => createRacer(level, id, index, options.playerBot)),
-    race: { phase: 'countdown', raceTick: 0, rivalsDoneAt: null, result: null },
+    race: { phase: 'countdown', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: options.endsWhen ?? 'player' },
     tick: 0,
     rngs: createRngs(options.seed),
     events,

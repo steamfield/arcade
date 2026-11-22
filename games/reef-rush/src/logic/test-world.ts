@@ -23,7 +23,7 @@ export function hold(move: Vec, presses: { kick?: boolean; burst?: boolean } = {
 export function raceOn(ascii: string, options: { seed?: number; playerBot?: RivalProfile } = {}) {
   const log = new EventLog<GameEvent>(100_000);
   const world = createWorld(parseLevel({ name: 'test', ascii }), log, { seed: options.seed ?? 1, ...options });
-  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null };
+  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
   return { world, log };
 }
 

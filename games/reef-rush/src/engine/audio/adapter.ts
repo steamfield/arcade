@@ -7,6 +7,7 @@
  * while the AudioContext is not running (before the first gesture).
  */
 import type { EventSink, Rng, Stamped } from '@arcade/core';
+import { FINAL_STRETCH_AT } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { AudioPort } from './index.ts';
 import type { Song } from './notation.ts';
@@ -36,8 +37,6 @@ export interface AdapterOptions {
 
 /** Final-stretch tempo, as a multiple of the race theme's own. */
 const LIFT_TEMPO = 1.1;
-/** Player progress (0..1) at which the final stretch starts. */
-const LIFT_AT = 0.75;
 /** Random pitch spread for effects: ±5%. */
 const PITCH_SPREAD = 0.05;
 /** Musical cues that must stay in tune with each other, so they skip the random pitch. */
@@ -145,7 +144,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       followSequencer();
     },
     onRaceProgress(fraction: number) {
-      if (lifted || fraction < LIFT_AT || started !== 'race' || !running()) return;
+      if (lifted || fraction < FINAL_STRETCH_AT || started !== 'race' || !running()) return;
       lifted = true;
       sequencer.setTempoScale(LIFT_TEMPO);
       announce('race:lift', 'song');

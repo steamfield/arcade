@@ -8,6 +8,7 @@ import { TICK_HZ } from '@arcade/core';
 import Phaser from 'phaser';
 import { playerOf } from '../../logic/racers.ts';
 import type { World } from '../../logic/types.ts';
+import { createFx } from '../fx/index.ts';
 import type { Runtime } from '../runtime.ts';
 import { createBackdrop } from '../view/backdrop.ts';
 import { followRacer } from '../view/camera.ts';
@@ -59,6 +60,7 @@ export class RaceScene extends Phaser.Scene {
       effects: createPowerupView(this, racer.id, reducedMotion),
     }));
     const hud = createHud(this, reducedMotion);
+    const fx = createFx(this, world, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
 
@@ -67,6 +69,7 @@ export class RaceScene extends Phaser.Scene {
       level.onEvents(events);
       hud.onEvents(events, tick);
       for (const { effects } of racers) effects.onEvents(events, tick);
+      fx.onEvents(events, tick);
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopListening);
 
@@ -82,6 +85,7 @@ export class RaceScene extends Phaser.Scene {
         effects.sync(racer, current.tick);
       }
       hud.sync(current);
+      fx.sync(current);
       debug?.sync(current);
     };
     sync(world);

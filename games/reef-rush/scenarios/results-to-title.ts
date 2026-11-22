@@ -7,7 +7,11 @@ export default scenario({
   start: { scene: 'race' },
   input: [wait(1930), tap('down'), tap('kick'), wait(5)],
   expect({ summary, events }) {
-    expect(summary).toMatchObject({ scene: 'title', best: null, menu: { options: ['Race'], selected: 0 } });
+    expect(summary).toMatchObject({
+      scene: 'title',
+      best: null,
+      menu: { options: ['Race', 'Sound', 'Motion'], selected: 0 },
+    });
     expect(summary).not.toHaveProperty('phase');
     expect(summary).not.toHaveProperty('player');
     expect(events.filter((e) => e.type === 'menu.selected')).toMatchObject([{ option: 'Title' }]);

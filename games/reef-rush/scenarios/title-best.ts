@@ -8,6 +8,10 @@ export default scenario({
   start: { save },
   input: [wait(5)],
   expect({ summary }) {
-    expect(summary).toMatchObject({ scene: 'title', best: 'Best 0:45.20 (2nd)', menu: { options: ['Race'] } });
+    expect(summary).toMatchObject({
+      scene: 'title',
+      best: 'Best 0:45.20 (2nd)',
+      menu: { options: ['Race', 'Sound', 'Motion'] },
+    });
   },
 });

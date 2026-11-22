@@ -34,7 +34,7 @@ function setup() {
 
 /** Skips the countdown so referee calls act on a running race. */
 function racing(world: World, raceTick = 0) {
-  world.race = { phase: 'racing', raceTick, rivalsDoneAt: null, result: null };
+  world.race = { phase: 'racing', raceTick, rivalsDoneAt: null, result: null, endsWhen: 'player' };
 }
 
 function racer(world: World, id: RacerId): Racer {

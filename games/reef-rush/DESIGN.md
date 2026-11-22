@@ -44,7 +44,7 @@ A hit (urchin `*`, jelly `j`, bubble, puffer, flash) takes your shield if you ho
 ## Scenes and launch parameters
 
 - `boot`: builds every texture (`engine/art/index.ts`), then routes.
-- `title`: the Race option, and your best time and place when you have one.
+- `title`: Race, Sound (mute) and Motion (reduced motion) options, and your best time and place when you have one. Settings save at once and apply for the session even if the save fails; a fresh save follows the OS reduced-motion preference.
 - `race`: 3-2-1-GO countdown, then the race. HUD: big place, timer, kick-ready pip, three power-up slots with the burst cooldown ring, combo names, status captions, and a progress strip with one marker per racer (Pip yellow circle, Tess green square, Squib purple triangle, Bo orange diamond). The camera follows you with a deadzone and lookahead. 90 ticks after the race ends you go to results.
 - `results`: standings with names and times (DNF if not finished), your row highlighted, "New best!" or "Best time not saved", then Race again or Title.
 - Menus ignore kick for their first 20 ticks, so a kick still being pressed from the race can't skip the results.

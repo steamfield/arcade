@@ -19,6 +19,7 @@ import { createWorld, stepWorld } from '../logic/world.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
 import { input } from './input.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
+import { raceProgress } from './race-progress.ts';
 
 /** Phaser scene keys, one per screen. */
 export type SceneKey = 'boot' | 'title' | 'race' | 'results';
@@ -29,6 +30,8 @@ export type EngineEvent =
   | { type: 'menu.selected'; option: MenuOption }
   | { type: 'save.written' }
   | { type: 'save.failed'; reason: string }
+  /** The player changed a setting from the title menu; carries the settings now in force. */
+  | { type: 'settings.changed'; muted: boolean; reducedMotion: boolean }
   /** A sound actually started: once per SFX and once per song start or section change, never per note. */
   | { type: 'audio.played'; key: string; kind: 'sfx' | 'song' };
 
@@ -93,6 +96,11 @@ export class Runtime {
   readonly audio: AudioPort;
   /** The player's progress-field distance at the start line, for the race progress fraction. */
   private startProgress = 0;
+
+  /** How far the player is through the current race, 0 to 1; 0 with no race. */
+  get raceFraction(): number {
+    return this.world ? raceProgress(this.world, this.startProgress) : 0;
+  }
   readonly ctx: GameContext;
 
   private readonly saves: SaveStore<SaveData>;
@@ -198,15 +206,31 @@ export class Runtime {
     if (!input.justPressed('kick')) return;
     const option = selectedOption(menu);
     this.events.emit({ type: 'menu.selected', option });
-    if (option === 'Title') this.goTo('title');
+    if (option === 'Sound') this.changeSettings({ muted: !this.settings.muted });
+    else if (option === 'Motion') this.changeSettings({ reducedMotion: !this.settings.reducedMotion });
+    else if (option === 'Title') this.goTo('title');
     else this.startRace();
+  }
+
+  /**
+   * Applies a settings change at once and saves it. The change holds for this session even when
+   * the write fails (`save.failed` says so); it just won't survive a reload.
+   */
+  private changeSettings(patch: Partial<Settings>): void {
+    const before = this.save ?? NEW_GAME;
+    const data: SaveData = { ...before, settings: { ...before.settings, ...patch } };
+    this.save = data;
+    const { muted, reducedMotion } = this.settings;
+    this.audio.setMuted(muted);
+    this.events.emit({ type: 'settings.changed', muted, reducedMotion });
+    this.persist(data).catch((error: unknown) => this.ctx.reportError('save', error));
   }
 
   private tickRace(dt: number): void {
     const world = this.world;
     if (!world) throw new Error('The race scene is ticking without a world; start races with startRace()');
     stepWorld(world, readPlayerInput(), dt);
-    this.audio.onRaceProgress(raceProgress(world, this.startProgress));
+    this.audio.onRaceProgress(this.raceFraction);
     if (this.resultsIn === null) return;
     this.resultsIn--;
     if (this.resultsIn <= 0) this.goTo('results');
@@ -239,15 +263,4 @@ export class Runtime {
 function readPlayerInput(): TickInput {
   const move = input.vector('move');
   return { move: { x: move.x, y: move.y }, kick: input.justPressed('kick'), burst: input.justPressed('burst') };
-}
-
-/**
- * How far the player is through the course, 0 at the start line and 1 at the finish,
- * from the progress field. The audio uses it to lift the tempo on the final stretch.
- */
-function raceProgress(world: World, start: number): number {
-  const player = playerOf(world);
-  if (player.finished) return 1;
-  if (!Number.isFinite(player.progress) || start <= 0) return 0;
-  return Math.min(1, Math.max(0, 1 - player.progress / start));
 }

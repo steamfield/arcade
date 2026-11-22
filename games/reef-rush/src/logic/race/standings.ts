@@ -89,7 +89,9 @@ export function checkRaceEnd(world: World): void {
   if (race.phase !== 'racing') return;
   const player = playerOf(world);
   const graceOver = race.rivalsDoneAt !== null && race.raceTick >= race.rivalsDoneAt + DNF_GRACE_TICKS;
-  if (!player.finished && !graceOver && race.raceTick < RACE_LIMIT_TICKS) return;
+  const done =
+    race.endsWhen === 'everyone' ? world.racers.every((racer) => racer.finished) : player.finished || graceOver;
+  if (!done && race.raceTick < RACE_LIMIT_TICKS) return;
 
   const standings = rankRacers(world.racers).map((racer) => racer.id);
   const result: RaceResult = {
