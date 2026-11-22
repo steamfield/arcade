@@ -22,6 +22,7 @@ In scope:
 - Raised-bar 8-bit presentation: strict per-sprite palettes and a 320x180 integer-scaled canvas, but with multi-frame animation, parallax layers, light shafts and caustics, depth-graded palettes, a pixel font, particles and juice.
 - Music is a first-class feature: original, hummable chiptune in the spirit of classic console and handheld themes (the user cited the Mario and Pokemon Game Boy themes as the bar for catchiness, not as material to copy). Four voices like the classic hardware (two pulse leads with duty-cycle changes, a triangle bass, noise drums), a race theme with intro, A and B sections and a seamless loop, a title theme, a results jingle for winning and one for losing, and a tempo lift for the final stretch of the course. The hook is a short motif (2 bars or less) stated, answered and varied, with the B section contrasting in register and rhythm. Plus SFX for every player-facing event.
 - Settings persisted in the save: mute and reduced motion.
+- UI design bar (the user rated the phase 2 placeholder UI 4/10): a designed pixel UI kit, not debug text. One hand-made pixel font with a text size and a display numeral size on the pixel grid; a 4-5 colour UI palette distinct from the world palette; 9-slice pixel panels with a 1 px highlight and shadow; an icon set (kick, burst, the five power-ups, medals, finish flag); a 16x16 portrait per racer; a REEF RUSH logotype. HUD: a framed place panel (portrait plus big numeral), framed timer, a track-style progress strip with racer head icons and a finish flag, animated place changes (arrow and colour pop up or down), big countdown numerals and GO / FINAL STRETCH / FINISH splashes. Results: a podium with portraits, times revealed in sequence, medal and NEW BEST ribbon, framed buttons with an animated cursor. Title: logotype, racers swimming past, blinking PRESS A, best-time card. Layout follows a written grid and safe zones (back link top right, touch controls bottom corners), and UI motion obeys reduced motion.
 
 Out of scope: more than one level, multiple difficulty settings, online play, remappable keys (needs `packages/input` work), changes under `packages/` (the user chose to keep new infrastructure in the game and extract it when a second game needs it), Arcade/Matter physics.
 
@@ -224,17 +225,18 @@ Demo: `pnpm arcade see reef-rush --scene race --at 0,240` shows final sprites, a
 Depends on: phase 2
 
 Runs alongside phase 3.
-Phase 4 scaffold (orchestrator, before dispatch): `audio/notation.ts` stub exporting the final `Song`/`NoteEvent`/`Channel` types and `parseSong` (throws not implemented), so 4/b and 4/c share it; `AudioPort` gains `onRaceProgress(fraction: number)` and the runtime calls it each racing tick with the player's progress fraction; `EngineEvent` gains `audio.played { key; kind: 'sfx' | 'song' }`.
+Phase 4 scaffold (orchestrator, before dispatch): `art/pixel.ts` stub exporting `drawSprite`/`drawSheet` signatures (4/a implements, 4/d calls); `audio/notation.ts` stub exporting the final `Song`/`NoteEvent`/`Channel` types and `parseSong` (throws not implemented), so 4/b and 4/c share it; `AudioPort` gains `onRaceProgress(fraction: number)` and the runtime calls it each racing tick with the player's progress fraction; `EngineEvent` gains `audio.played { key; kind: 'sfx' | 'song' }`.
 
 Its lanes own only files behind the seams phase 2 built (`art/index.ts`, `art/font.ts`, `view/backdrop.ts`, `audio/index.ts`), so it never touches phase 3's files. `art/keys.ts` declares phase 3's sprites in phase 2.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/engine/art/index.ts, games/reef-rush/src/engine/art/font.ts, games/reef-rush/src/engine/art/pixel.ts, games/reef-rush/src/engine/art/palettes.ts, games/reef-rush/src/engine/art/sprites/, games/reef-rush/src/engine/view/backdrop.ts | contracts | | opus | pending | | |
+| a | M | games/reef-rush/src/engine/art/index.ts, games/reef-rush/src/engine/art/pixel.ts, games/reef-rush/src/engine/art/palettes.ts, games/reef-rush/src/engine/art/sprites/, games/reef-rush/src/engine/view/backdrop.ts | contracts | | opus | pending | | |
 | b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/scenarios/audio-plays.ts | contracts | | opus | pending | | |
 | c | M | games/reef-rush/src/engine/audio/songs/, games/reef-rush/src/engine/audio/notation.ts, games/reef-rush/src/engine/audio/notation.test.ts | contracts | | opus | pending | | |
+| d | M | games/reef-rush/src/engine/art/font.ts, games/reef-rush/src/engine/art/ui/, games/reef-rush/UI.md | contracts | | opus | pending | | |
 
-### Phase 5: the full ocean course, difficulty tuning, juice and settings
+### Phase 5: the full ocean course, difficulty tuning, UI redesign, juice and settings
 
 Demo: full race on the finished course with music, effects and the settings menu; `pnpm --filter game-reef-rush exec vitest run src/logic/difficulty.test.ts`.
 Depends on: phase 3, phase 4
@@ -242,7 +244,8 @@ Depends on: phase 3, phase 4
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/reef-rush/src/logic/level/levels.ts, games/reef-rush/src/logic/ai/profiles.ts, games/reef-rush/src/logic/difficulty.test.ts | contracts | | opus | pending | | |
-| b | M | games/reef-rush/src/engine/fx/, games/reef-rush/src/engine/scenes/title.ts, games/reef-rush/src/engine/scenes/results.ts | contracts | | sonnet | pending | | |
+| b | M | games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/view/menu-view.ts, games/reef-rush/src/engine/view/race-text.ts, games/reef-rush/src/engine/scenes/title.ts, games/reef-rush/src/engine/scenes/results.ts | contracts, games/reef-rush/UI.md | | opus | pending | | |
+| c | M | games/reef-rush/src/engine/fx/ | contracts | | sonnet | pending | | |
 
 ## Lane briefs, first phase
 
@@ -307,15 +310,22 @@ Depends on: phase 3, phase 4
 - Out of scope: real pixel art, sound, particles and screen shake, power-ups, settings UI (settings are read and stored only), changes to logic outside `records.ts`.
 - Done when: `pnpm arcade check reef-rush` and `pnpm arcade smoke reef-rush` pass; `pnpm arcade see reef-rush --scenario race-to-finish --at 0,200,600,end` and the same with `--mobile` are reviewed and the HUD is readable and clear of the touch overlay and back link; DESIGN.md is updated for scenes, controls and scenarios; check-lane is clean.
 
+### Lane 4/d brief: the UI kit
+
+- Goal: the designed pixel UI system the spec's "UI design bar" describes, as reusable pieces with no game-state knowledge, plus the written spec the screens are built to. Phase 5 lane b builds the HUD and screens from it.
+- Owns `art/font.ts` (keep the `createLabel` signature and `Label` interface; add `size: 'text' | 'display'` and `tone` options), `art/ui/` (`palette.ts` UI colours; `panel.ts` 9-slice pixel panels with highlight and shadow, `createPanel(scene, x, y, w, h, style)`; `icons.ts` kick, burst, five power-ups, medals 1-3, finish flag, arrow up/down, cursor fin; `portraits.ts` 16x16 heads for Pip, Tess, Squib, Bo; `logo.ts` the REEF RUSH logotype; `button.ts` framed menu button with selected state), and `games/reef-rush/UI.md`.
+- Behavior: everything is drawn from palette-indexed text through lane 4/a's `art/pixel.ts` (coordinate: until 4/a lands, depend only on its exported `drawSprite`/`drawSheet` signatures, which the phase 4 scaffold stubs); the font is a hand-made 5x7 text face and an 8x12 or larger display face for numerals and splashes, both crisp at 1x on the pixel grid, rendered via BitmapText or glyph images; text keeps 4.5:1 contrast via panel backing or a designed 1 px shadow. `UI.md` fixes: the UI palette with roles, type scale, the 320x180 layout grid and margins, safe zones (back link top right, touch controls bottom-left and bottom-right on phones), HUD zones per element, motion rules (durations in ticks, reduced-motion fallbacks), and a sketch (ASCII or described) of the race HUD, title and results layouts that lane 5/b implements.
+- Out of scope: wiring the HUD or screens (phase 5 lane b), world sprites (4/a).
+- Done when: gate passes; a `?scene=uikit` debug scene is out of scope, so instead a see capture of the title and race shows the new font through `createLabel` with no layout regressions; `UI.md` exists and is under two screens; check-lane clean.
+
 ### Lane 4/a brief: pixel art, pixel font and backdrop
 
-- Goal: replace every placeholder texture with original pixel art authored as palette-indexed text, swap the HUD font to a pixel font, and replace the placeholder backdrop, all behind the seams phase 2 built (`buildTextures`, `createLabel`, `createBackdrop`), so no scene or view file changes. Raise the bar on 8-bit: tight palettes, readable silhouettes, animation, depth.
+- Goal: replace every placeholder world texture with original pixel art authored as palette-indexed text, and replace the placeholder backdrop, behind the seams phase 2 built (`buildTextures`, `createBackdrop`). The UI kit (font, panels, icons, portraits) is lane 4/d's; export `drawSprite`/`drawSheet` from `art/pixel.ts` for it to use, so no scene or view file changes. Raise the bar on 8-bit: tight palettes, readable silhouettes, animation, depth.
 - Interface:
   - `art/palettes.ts`: named palettes, each at most 4 colours plus transparent per sprite (NES-style constraint), chosen so player, rivals, hazards and pickups read first and the background recedes. Racers stay distinguishable by silhouette and palette in grayscale (Pip round brass helmet, Tess shell, Squib tentacles, Bo diving bell).
   - `art/pixel.ts`: `drawSprite(scene, key, rows: readonly string[], palette)` and `drawSheet(scene, key, frames, palette)`: turns text rows (one char per pixel, `.` transparent, digits index the palette) into a texture or spritesheet via Graphics + generateTexture. Throws a plain Error naming the key and row when a row is ragged or uses an index the palette lacks.
   - `art/sprites/*.ts`: one file per family (racers, terrain, pickups, hazards, powerups, hud), data only, every key in `art/keys.ts` covered with the frame counts keys.ts declares.
   - `art/index.ts`: `buildTextures(scene)` builds everything from sprites and registers animations once. `art/placeholder.ts` is deleted when nothing references it.
-  - `art/font.ts`: a 5x7 (or 4x6) pixel font authored the same way, uppercase, digits and `:.!?/-+%'`, rendered through Phaser `BitmapText` or per-glyph images behind the existing `createLabel` signature; crisp at 1x, outlined or panel-backed so HUD text keeps 4.5:1 contrast over any background.
   - `view/backdrop.ts`: `createBackdrop` body: a depth gradient (lighter near the surface row, darker toward the floor), 3 parallax layers (far reef silhouettes, mid kelp forest, near drifting particles), god-ray light shafts from the surface that sway slowly, and a caustics shimmer band near the top. Advanced per runtime tick where it is deterministic, honouring `reducedMotion` (static rays, no parallax drift).
 - Behavior: animated tiles (kelp sway 2 frames, current flow 2 frames per direction, jellyfish pulse) use registered animations; animation timing may use Phaser's clock (visual only). `?debug=1` unaffected. No asset files: everything is generated at boot, and boot stays under 200 ms of texture generation on desktop (measure once with performance marks in a see run, and remove the marks).
 - Decisions already made: originality (no sprites resembling existing games' characters); 16 px tiles; racer bodies 12x10 with sprites up to 16x12 drawn around them; palette constraint per sprite; colour never carries meaning alone (game-feel skill section 5).
@@ -356,6 +366,7 @@ Depends on: phase 3, phase 4
 
 - 2026-11-22: `arcade new` writes `.claude/launch.json` in a shape Biome rejects (`tools/arcade/src/new-game.ts:78`, `JSON.stringify` expands arrays), so `check` fails on a freshly created game. Formatted with `pnpm fix` here; the tool fix is a separate change.
 - 2026-11-22: main gained 1e3b073 (docs/repo-map.md) after the landing branch was cut; merged main into deliver/reef-rush as 1febb4d. Phase 1 lanes branch from 1febb4d and use it as their check-lane and lane-review base. The first dispatch used agent worktree isolation, which cut both lanes from main and deleted their worktrees when they stopped to ask; both were redispatched into orchestrator-made worktrees with no work lost.
+- 2026-11-22: User rated the phase 2 placeholder UI 4/10. Added the UI design bar to the spec, a UI kit lane 4/d (font moves from 4/a), and split phase 5 so lane b redesigns the HUD, title, results and menus from the kit while lane c does fx. Phase 2 merges as the functional base.
 - 2026-11-22: Phase 1 boundary review: 5 findings, all accepted and fixed in 1b1595a: progress now bilinear (no 0.5-tile steps at turns, so the open item below is resolved), breakCoral contract with coral.broken event and read-only World.broken, finished racers out of play via logic/racers.ts (activeRacers, single playerOf), seed mixed before salting (streams aliased across seeds), committed .vitest artifact removed, steering split to ai/steer.ts (flowfield.ts 201 lines, resolving the size item below). Accepted fixer choices: breakCoral replaces the Set rather than mutating it; activeRacers orders by RACER_IDS; racers.test.ts added.
 - 2026-11-22: Lane 1/b fixes (5453629) merged. Open: flowfield.ts is 266 lines (field building and field lookups in one file; splitting needs test import changes); progressAt still steps 0.5 tiles where the route turns, inherent to the briefed interpolation, which can swap places of racers within half a tile. Both left for the phase 1 boundary review.
 - 2026-11-22: Lane 1/b review: 3 findings, all accepted and sent back: kicks aligned against move instead of aim (sideways kicks during stuck recovery), the clear-line check tests only the centre line so 12x10 bodies clip rock corners, and progressAt interpolates toward corner-blocked diagonals (non-monotonic progress, place flicker). Scaffold fixture bug in rival.test.ts (ragged rows) fixed on the landing branch in d533e48.
