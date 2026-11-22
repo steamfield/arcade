@@ -234,7 +234,7 @@ Its lanes own only files behind the seams phase 2 built (`art/index.ts`, `art/fo
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/reef-rush/src/engine/art/index.ts, games/reef-rush/src/engine/art/pixel.ts, games/reef-rush/src/engine/art/palettes.ts, games/reef-rush/src/engine/art/sprites/, games/reef-rush/src/engine/view/backdrop.ts | contracts | | opus | running | deliver/reef-rush-4a | |
-| b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/scenarios/audio-plays.ts | contracts | | opus | running | deliver/reef-rush-4b | |
+| b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/scenarios/audio-plays.ts | contracts | | opus | merged | deliver/reef-rush-4b | |
 | c | M | games/reef-rush/src/engine/audio/songs/, games/reef-rush/src/engine/audio/notation.ts, games/reef-rush/src/engine/audio/notation.test.ts, games/reef-rush/src/engine/audio/notation/ | contracts | | opus | running | deliver/reef-rush-4c | |
 | d | M | games/reef-rush/src/engine/art/font.ts, games/reef-rush/src/engine/art/ui/, games/reef-rush/UI.md | contracts | | opus | pending | | |
 
