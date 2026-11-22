@@ -155,6 +155,7 @@ Inline (orchestrator, in the scaffold and while lanes run): types, events, save 
 
 ### Phase 2: the playable race engine
 
+Scaffold: d1b23ee (single lane owning every file it creates; no stubs needed)
 Demo: `pnpm arcade dev reef-rush`: title, countdown, race with HUD (place, timer, progress strip with four racer markers), camera with lookahead, results screen with best time, race again. `pnpm arcade see reef-rush --scenario race-to-finish --mobile`.
 Depends on: phase 1
 
@@ -162,7 +163,7 @@ One lane: the engine has no seam inside it until the runtime and scenes exist, a
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/reef-rush/src/engine/, games/reef-rush/src/main.ts, games/reef-rush/src/logic/records.ts, games/reef-rush/src/logic/records.test.ts, games/reef-rush/scenarios/, games/reef-rush/tests/smoke.spec.ts, games/reef-rush/DESIGN.md | contracts, templates/phaser-2d/src/engine/game.ts | | opus | pending | | gate passes; see captures at desktop and mobile reviewed |
+| a | L | games/reef-rush/src/engine/, games/reef-rush/src/main.ts, games/reef-rush/src/logic/records.ts, games/reef-rush/src/logic/records.test.ts, games/reef-rush/scenarios/, games/reef-rush/tests/smoke.spec.ts, games/reef-rush/DESIGN.md | contracts, templates/phaser-2d/src/engine/game.ts | | opus | running | deliver/reef-rush-2a | gate passes; see captures at desktop and mobile reviewed |
 
 ### Phase 3: stacking power-ups, pickups and hazards
 
@@ -245,6 +246,7 @@ Depends on: phase 3, phase 4
   - `engine/view/level-view.ts` (`createLevelView(scene, level): LevelView`: rock and coral via a Phaser Tilemap built from data with a generated tileset, kelp and currents as sprites, finish gate, inert placeholders for pearls, clams, urchins and jellies so phase 3 can replace them), `racer-view.ts` (`createRacerView(scene, racer): RacerView` with `sync(racer)`: position rounded, facing flip, two-frame swim animation keyed by speed, kick squash), `hud.ts` (`createHud(scene): Hud` with `sync(world)`: big place ("2nd"), race timer m:ss.cc, progress strip across the top with four racer markers in distinct shapes and colors, kick-ready pip, countdown and GO banner; text only through `art/font.ts`), `camera.ts` (`followRacer(camera, body, level)`: deadzone, velocity lookahead, frame-rate independent smoothing, integer scroll), `backdrop.ts` (`createBackdrop(scene, level): Backdrop`: depth-graded colour bands and two placeholder parallax layers; phase 4 replaces the body).
   - `engine/art/keys.ts`: `Tex`, `Frame` and `Anim` consts for every sprite the game will need, including phase 3's: racers (2 swim frames each), rock, coral, coral debris, kelp (2 frames), currents (4 dirs, 2 frames), finish gate, pearl, clam (closed, open), urchin, jellyfish (2 frames), the five power-up icons, ink cloud, bubble, loose power-up glow, HUD marker shapes. `engine/art/index.ts`: `buildTextures(scene)` builds every key (placeholders from `art/placeholder.ts` now) and registers animations once. `engine/art/font.ts`: `createLabel(scene, x, y, text, options): Label` (Phaser Text with monospace now; phase 4 swaps to a pixel font behind the same signature).
   - `engine/audio/index.ts`: `type AudioPort = { onEvents(events): void; setMuted(muted): void; dispose(): void }` and `createAudio(ctx, settings): AudioPort`, silent in this phase.
+  - Use `playerOf`/`activeRacers` from `logic/racers.ts` (not world.ts). Render a `coral.broken` event by removing that tile (phase 3 emits it).
   - `logic/records.ts`: `recordResult(save, result): SaveData` (one more race; a new best only when the player finished and beat the old ticks) with `records.test.ts` covering first finish, slower finish, faster finish, DNF.
   - Delete `engine/textures.ts`.
 - Behavior:
