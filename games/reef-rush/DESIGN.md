@@ -35,4 +35,4 @@ ASCII in `src/logic/level/levels.ts`, documented in `src/logic/level/parse.ts`.
 
 ## Scenarios
 
-`countdown-holds-racers`.
+`countdown-holds-racers`, `race-to-finish`.
