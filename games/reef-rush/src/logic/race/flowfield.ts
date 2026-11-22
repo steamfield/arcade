@@ -22,6 +22,7 @@ const KELP_COST = 2.5;
 const WITH_CURRENT_COST = 0.4;
 const AGAINST_CURRENT_COST = 3;
 const SMASH_CORAL_COST = 6;
+const RAM_CORAL_COST = 3;
 const STILL: Vec = { x: 0, y: 0 };
 
 /**
@@ -73,6 +74,10 @@ function currentCost(current: Vec, move: Vec): number {
   return 1;
 }
 
+/** Like steer, but a racer that rams through coral as it swims pays only a little for it. */
+const ramCost: EntryCost = (cell, isBroken, move) =>
+  cell === 'coral' && !isBroken ? RAM_CORAL_COST : steerCost(cell, isBroken, move);
+
 /**
  * The corner rule shared by every walk over the grid: a diagonal step from `tile` by `offset` is
  * allowed only when both tiles beside it are open. Orthogonal steps always pass.
@@ -82,7 +87,7 @@ export function cornerIsClear(tile: Vec, offset: Vec, isOpen: (tx: number, ty: n
   return isOpen(tile.x + offset.x, tile.y) && isOpen(tile.x, tile.y + offset.y);
 }
 
-/** Builds all three fields by Dijkstra from the finish column. */
+/** Builds all four fields by Dijkstra from the finish column. */
 export function buildFlowFields(level: Level, broken: ReadonlySet<number>): FlowFields {
   return {
     width: level.width,
@@ -90,11 +95,12 @@ export function buildFlowFields(level: Level, broken: ReadonlySet<number>): Flow
     progress: distancesToFinish(level, broken, progressCost),
     steer: distancesToFinish(level, broken, steerCost),
     smash: distancesToFinish(level, broken, smashCost),
+    ram: distancesToFinish(level, broken, ramCost),
   };
 }
 
 /**
- * The fields after coral breaks: steer and smash rebuilt for `broken`, progress shared as is,
+ * The fields after coral breaks: steer, smash and ram rebuilt for `broken`, progress shared as is,
  * since it treats coral as passable whether broken or not.
  */
 export function rebuildForBrokenCoral(fields: FlowFields, level: Level, broken: ReadonlySet<number>): FlowFields {
@@ -102,6 +108,7 @@ export function rebuildForBrokenCoral(fields: FlowFields, level: Level, broken: 
     ...fields,
     steer: distancesToFinish(level, broken, steerCost),
     smash: distancesToFinish(level, broken, smashCost),
+    ram: distancesToFinish(level, broken, ramCost),
   };
 }
 

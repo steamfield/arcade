@@ -11,9 +11,9 @@
  * hits that land (invulnerable racers ignore hits); `shield.popped` means a Bubble
  * Shield absorbed one.
  *
- * Phase 7 events (attack power-ups; nothing emits them until lane 7/a): `squid.spawned.target`
- * is the racer it locked on at launch, or null when it swims straight; `squid.locked` fires on
- * every new lock including retargets, with `target` 'decoy' when it picked a Mimic decoy;
+ * Phase 7 events (attack power-ups): `squid.spawned.target`
+ * is the racer it locked on at launch, or null when it swims straight or locked a decoy; `squid.locked` fires on
+ * every new lock including the one at launch and retargets, with `target` 'decoy' when it picked a Mimic decoy;
  * `squid.latched {id, by}` is a contact that landed on racer `id`; `squid.dodged` is a kick that
  * made it miss; `squid.lost` is a squid that expired, hit a wall, lost its lock in ink or was
  * absorbed by a shield; `racer.shaken` ends a latch early from kicks. `undertow.fired.pulled`

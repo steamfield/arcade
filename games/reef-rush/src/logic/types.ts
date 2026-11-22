@@ -267,6 +267,11 @@ export interface Racer {
    */
   dashCombos: ComboName[];
   ability: AbilityState;
+  /**
+   * Undertow: how many tiles ahead of the user this racer was when it was pulled, which sets the
+   * pull's strength while `status.undertow` runs. Absent until an Undertow has pulled it.
+   */
+  undertowGapTiles?: number;
 }
 
 export type RacePhase = 'countdown' | 'racing' | 'finished';
@@ -294,7 +299,9 @@ export interface RaceState {
  * Distance-to-finish fields over the tile grid, indexed `y * width + x`, in tile units.
  * `progress` ranks racers (uniform cost, coral passable). `steer` guides swimmers (kelp and
  * currents weighted, coral blocked unless broken). `smash` is `steer` with coral passable at a
- * high cost, for racers that can break it.
+ * high cost, for racers that can break it with a Puffer burst. `ram` is `steer` with coral passable
+ * at a low cost, for a racer that breaks coral just by swimming into it (Baron's bulldozer): no burst
+ * to wait for, so coral is cheaper for him than for a Puffer holder.
  */
 export interface FlowFields {
   width: number;
@@ -302,6 +309,7 @@ export interface FlowFields {
   progress: Float32Array;
   steer: Float32Array;
   smash: Float32Array;
+  ram: Float32Array;
 }
 
 /** Salts for the per-consumer random streams. Adding a consumer never shifts an existing stream. */
@@ -357,7 +365,10 @@ export interface Bubble {
   vy: number;
   ttl: number;
   owner: RacerId;
-  /** Steers toward a racer ahead (the lanternBubble combo; lane 7/a replaces its homing). */
+  /**
+   * Set by the lanternBubble combo: the bubble lights the dark around it (`BUBBLE.lightTiles`, which
+   * the engine reads) and stuns jellies it passes. The name is from when it homed; it no longer steers.
+   */
   seeking: boolean;
 }
 
@@ -373,6 +384,10 @@ export interface Squid {
   ttl: number;
   owner: RacerId;
   target: SquidTarget | null;
+  /** The racer whose kick made it miss. It flies on without a lock and never chases that racer again. */
+  dodgedBy?: RacerId;
+  /** Fired with the inkSquid combo: an ink cloud bursts on whoever it latches. */
+  inked?: boolean;
 }
 
 /** A Riptide lane: a strong current over the box (x, y, w, h) in world pixels, pushing along the unit vector `dir`. */
@@ -384,6 +399,8 @@ export interface Riptide {
   dir: Vec;
   ttl: number;
   owner: RacerId;
+  /** How many times a plain current's push it gives; `RIPTIDE.currentForceMul` when absent (surfline lanes are stronger). */
+  strength?: number;
 }
 
 /** A Mimic decoy: looks like its owner and swims on along the steer field. Centre in world pixels. */
@@ -394,6 +411,8 @@ export interface Decoy {
   vy: number;
   ttl: number;
   owner: RacerId;
+  /** Made by the bubbleDecoy combo: whatever hits it (a squid's owner, a racer) is trapped. */
+  bubbled?: boolean;
 }
 
 /** A jellyfish bobbing around its home tile. */

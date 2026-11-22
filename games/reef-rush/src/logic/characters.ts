@@ -17,62 +17,70 @@ export interface Character {
 
 /**
  * The cast. Each profile is how the character races as a rival, in the personality the roster
- * gives it. They all swim harder than the player (forceMul near 1.5) and kick and burst less
+ * gives it. They all swim harder than the player (forceMul near 1.45) and kick and burst less
  * than a good player; the tests in `difficulty/` hold the whole field to its bars for every pick.
  *
- * - Rudy, the plucky hero: the all-rounder; among the strongest swimmers (1.50), middling kicks,
- *   steering and item use.
+ * Swim force is kept close together on purpose: a rival that is much weaker than the rest makes
+ * the races it is in lopsided (the best rival finishes far behind the player), and with the
+ * catch-up rubber band and attack power-ups in play a few thousandths of force move a character's
+ * win rate by a point. Baron (the coral gate, which he rams for nothing) and Selene (the dark
+ * zone, where she sees) have shortcuts the others lack, so theirs are the lowest.
+ *
+ * - Rudy, the plucky hero: the all-rounder; middling kicks, steering and item use.
  * - Gil, lanky and springy: kicks the most, steers the loosest, light in bumps, sparing with items.
  * - Streak, the cocky speedster: the cleanest line (least wobble) and quick to react, but barely
  *   kicks and seldom bursts; its wind-up does the work.
  * - Onyx, the brooding rival: tight steering and solid in bumps, and the least item use of all; his
  *   threat is the ambush, so his items are kept rare.
  * - Nib, the tinkerer: by far the most item-happy (3x anyone else), a little scatty, the lightest.
- * - Baron Barnacle, the bruiser: the highest swim force (1.56), offset by his slow start and the
- *   slowest reactions; heaviest, and almost never kicks.
- * - Selene, the mystic: smooth and unhurried, among the weaker swimmers (1.47), reacts late.
+ * - Baron Barnacle, the bruiser: a little less swim force, offset by the gate he rams through,
+ *   his slow start and the slowest reactions; heaviest, and almost never kicks.
+ * - Selene, the mystic: smooth and unhurried, a little less swim force, reacts late.
  * - Rook, the hunter: the quickest to react, heavy for his size, kicks readily, moderate items.
+ *
+ * `itemAggression` is the chance per tick to burst when a held power-up has a use; about 3 bursts
+ * per rival per race on average.
  */
 export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
   rudy: {
     name: 'Rudy',
     ability: 'shakeItOff',
-    profile: { forceMul: 1.5, kickSkill: 0.006, wobble: 0.1, reactionTicks: 5, mass: 1.1, itemAggression: 0.01 },
+    profile: { forceMul: 1.437, kickSkill: 0.006, wobble: 0.1, reactionTicks: 5, mass: 1.1, itemAggression: 0.0165 },
   },
   gil: {
     name: 'Gil',
     ability: 'springKick',
-    profile: { forceMul: 1.47, kickSkill: 0.012, wobble: 0.25, reactionTicks: 4, mass: 0.8, itemAggression: 0.008 },
+    profile: { forceMul: 1.452, kickSkill: 0.012, wobble: 0.25, reactionTicks: 4, mass: 0.8, itemAggression: 0.013 },
   },
   streak: {
     name: 'Streak',
     ability: 'windUp',
-    profile: { forceMul: 1.49, kickSkill: 0.003, wobble: 0.05, reactionTicks: 4, mass: 0.9, itemAggression: 0.008 },
+    profile: { forceMul: 1.452, kickSkill: 0.003, wobble: 0.05, reactionTicks: 4, mass: 0.9, itemAggression: 0.013 },
   },
   onyx: {
     name: 'Onyx',
     ability: 'ambush',
-    profile: { forceMul: 1.48, kickSkill: 0.008, wobble: 0.06, reactionTicks: 4, mass: 1.3, itemAggression: 0.004 },
+    profile: { forceMul: 1.447, kickSkill: 0.008, wobble: 0.06, reactionTicks: 4, mass: 1.3, itemAggression: 0.0065 },
   },
   nib: {
     name: 'Nib',
     ability: 'deepPockets',
-    profile: { forceMul: 1.5, kickSkill: 0.005, wobble: 0.2, reactionTicks: 5, mass: 0.7, itemAggression: 0.03 },
+    profile: { forceMul: 1.447, kickSkill: 0.005, wobble: 0.2, reactionTicks: 5, mass: 0.7, itemAggression: 0.049 },
   },
   baron: {
     name: 'Baron Barnacle',
     ability: 'bulldozer',
-    profile: { forceMul: 1.56, kickSkill: 0.002, wobble: 0.1, reactionTicks: 8, mass: 2, itemAggression: 0.01 },
+    profile: { forceMul: 1.417, kickSkill: 0.002, wobble: 0.1, reactionTicks: 8, mass: 2, itemAggression: 0.0165 },
   },
   selene: {
     name: 'Selene',
     ability: 'moonlight',
-    profile: { forceMul: 1.47, kickSkill: 0.004, wobble: 0.12, reactionTicks: 7, mass: 0.9, itemAggression: 0.01 },
+    profile: { forceMul: 1.417, kickSkill: 0.004, wobble: 0.12, reactionTicks: 7, mass: 0.9, itemAggression: 0.0165 },
   },
   rook: {
     name: 'Rook',
     ability: 'frenzy',
-    profile: { forceMul: 1.49, kickSkill: 0.008, wobble: 0.15, reactionTicks: 3, mass: 1.4, itemAggression: 0.007 },
+    profile: { forceMul: 1.452, kickSkill: 0.008, wobble: 0.15, reactionTicks: 3, mass: 1.4, itemAggression: 0.0115 },
   },
 };
 

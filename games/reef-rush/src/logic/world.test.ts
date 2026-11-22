@@ -4,8 +4,9 @@ import { BOT_PROFILES } from './ai/profiles.ts';
 import type { GameEvent } from './events.ts';
 import { OCEAN_LEVEL } from './level/levels.ts';
 import { LevelError, parseLevel } from './level/parse.ts';
+import { fireBurst } from './powerups/burst.ts';
 import { COUNTDOWN_TICKS, DNF_GRACE_TICKS, RACE_LIMIT_TICKS } from './race/standings.ts';
-import { eventsIn, hold, placeAt, raceOn, racerOf, step, tileCentre } from './test-world.ts';
+import { eventsIn, hold, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from './test-world.ts';
 import { type RacerId, RNG_SALTS, type RngStream, type TickInput, type Vec } from './types.ts';
 import { createWorld, stepWorld, summarize, toAscii } from './world.ts';
 
@@ -268,5 +269,71 @@ describe('summary and ASCII', () => {
     world.pearlsTaken.add(0);
     world.clams = world.clams.map((clam) => ({ ...clam, closedFor: 10 }));
     expect(row()).toBe('#@._.*j.F#');
+  });
+
+  it('toAscii shows a squid as s and a decoy as m at the tiles holding their centres', () => {
+    const { world } = raceOn(LANES);
+    world.squids.push({ ...tileCentre(8, 1), vx: 0, vy: 0, ttl: 10, owner: 'tess', target: null });
+    world.decoys.push({ ...tileCentre(12, 2), vx: 0, vy: 0, ttl: 10, owner: 'bo' });
+    const rows = toAscii(world).split('\n');
+
+    expect([rows[1]?.[8], rows[2]?.[12]]).toEqual(['s', 'm']);
+  });
+});
+
+/** Open water long enough for a squid to run down a racer, finish at the right edge. */
+const POOL = `
+  ###############################
+  #1............................#
+  #2............................#
+  #3............................#
+  #4...........................F#
+  ###############################
+`;
+
+describe('attack power-ups in the step', () => {
+  it('a squid fired by a rival latches the player, and kicks shake it off', () => {
+    const { world, log } = raceOn(POOL);
+    for (const id of ['squib', 'bo'] as const) racerOf(world, id).status.stunned = 100_000;
+    const tess = racerOf(world, 'tess');
+    tess.status.stunned = 100_000;
+    placeOnTile(tess, 3, 2);
+    placeAt(racerOf(world, 'player'), tileCentre(12, 2));
+    tess.stack = ['homingSquid'];
+    fireBurst(world, tess, { x: 1, y: 0 });
+
+    const player = racerOf(world, 'player');
+    // Holding something, so the hit takes it instead of stunning the player, who could not kick through a stun.
+    player.stack = ['jetFin'];
+    for (let i = 0; i < 120 && player.status.latched === 0; i++) step(world, log, 1, IDLE);
+    expect(eventsIn(log, 'squid.latched')).toEqual([{ type: 'squid.latched', id: 'player', by: 'tess' }]);
+    expect(player.status.latched).toBeGreaterThan(0);
+
+    // Kicks 36 ticks apart take 30 off each, so three shake off a 150-tick latch long before it runs out.
+    for (let kick = 0; kick < 3; kick++) {
+      step(world, log, 1, hold({ x: 0, y: 0 }, { kick: true }));
+      step(world, log, 36, IDLE);
+    }
+    expect(player.status.latched).toBe(0);
+    expect(eventsIn(log, 'racer.shaken')).toEqual([{ type: 'racer.shaken', id: 'player' }]);
+  });
+
+  it('rivals fire squids at each other and at the player over whole races', () => {
+    const squidsBy = new Set<string>();
+    const targets = new Set<string>();
+    // Seeds in which rivals do fire squids; most races have none, because only trailers roll them.
+    for (const seed of [14, 37]) {
+      const log = new EventLog<GameEvent>(1_000_000);
+      const world = createWorld(parseLevel(OCEAN_LEVEL), log, { seed, playerBot: BOT_PROFILES.expert });
+      for (let i = 0; i < 9000 && world.race.phase !== 'finished'; i++) stepWorld(world, IDLE, TICK_DT);
+      for (const event of log.all()) {
+        if (event.type === 'squid.spawned') squidsBy.add(event.owner);
+        if (event.type === 'squid.locked') targets.add(event.target);
+      }
+    }
+
+    expect([...squidsBy].some((owner) => owner !== 'player')).toBe(true);
+    expect(targets.has('player')).toBe(true);
+    expect([...targets].some((target) => target !== 'player' && target !== 'decoy')).toBe(true);
   });
 });

@@ -5,9 +5,11 @@
  * the rest of that tick's contacts pass over it (a bubble included: it flies on).
  */
 
+import { popDecoy } from '../powerups/decoys.ts';
 import { BUBBLE, FLASH } from '../powerups/tuning.ts';
 import { activeRacers, centreOf, hitbox } from '../racers.ts';
 import { type Box, type Racer, TILE, type Vec, type World } from '../types.ts';
+import { overlaps, squareAt } from './boxes.ts';
 import { applyHit } from './hits.ts';
 import { jellyCentre, wearOffStuns } from './jellies.ts';
 import { JELLY } from './tuning.ts';
@@ -36,7 +38,8 @@ export function resolveContacts(world: World, racers: readonly Racer[]): void {
 /**
  * A Glow Lantern flash from `racer`: emits `flash.fired {id}`, then hits every other racer in play
  * whose centre is within FLASH.rangeTiles tiles of the racer's centre (cause 'flash'), and sets
- * `stunned = FLASH.stunTicks` on every jelly whose centre is that close. Called by `burst.ts`.
+ * `stunned = FLASH.stunTicks` on every jelly whose centre is that close and pops every other racer's
+ * Mimic decoy that close (`popDecoy`). Called by `burst.ts`.
  */
 export function flashAround(world: World, racer: Racer): void {
   world.events.emit({ type: 'flash.fired', id: racer.id });
@@ -52,6 +55,9 @@ export function flashAround(world: World, racer: Racer): void {
   }
   for (const jelly of world.jellies) {
     if (inRange(jellyCentre(jelly))) jelly.stunned = FLASH.stunTicks;
+  }
+  for (const decoy of [...world.decoys]) {
+    if (decoy.owner !== racer.id && inRange(decoy)) popDecoy(world, decoy, racer.id);
   }
 }
 
@@ -87,15 +93,6 @@ function touchPuffers(world: World, racer: Racer, box: Box, racers: readonly Rac
     if (puffer.id === racer.id || puffer.status.inflated === 0) continue;
     if (overlaps(box, hitbox(puffer))) applyHit(world, racer, 'puffer', puffer.id, centreOf(puffer));
   }
-}
-
-/** True when two boxes overlap by any positive area; touching edges don't count. */
-function overlaps(a: Box, b: Box): boolean {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-}
-
-function squareAt(centre: Vec, size: number): Box {
-  return { x: centre.x - size / 2, y: centre.y - size / 2, w: size, h: size };
 }
 
 function centreOfBox(box: Box): Vec {

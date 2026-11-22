@@ -6,29 +6,41 @@
  * - jetFin: `status.dashing = DASH.ticks`, `dashDir` = unit input (facing when none), velocity set to
  *   DASH.speed along it on the firing tick and held there by `driveDash` while dashing.
  * - bubbleShield: pushes a Bubble at the racer's centre moving BUBBLE.speed along the same aim, ttl
- *   BUBBLE.ttlTicks, `seeking` when the lanternBubble combo is held; emits `bubble.spawned`.
+ *   BUBBLE.ttlTicks, `seeking` (it lights the dark and stuns jellies it passes) when the lanternBubble
+ *   combo is held; emits `bubble.spawned`. With the bubbleDecoy combo it fires no bubble: the decoy wears it.
  * - puffer: `status.inflated = INFLATE.ticks`.
  * - inkSac: pushes an InkCloud of INK.radius INK.behind px behind the racer's centre (opposite its
- *   facing), ttl INK.ttlTicks; emits `ink.spawned`.
+ *   facing), ttl INK.ttlTicks; emits `ink.spawned`. With the inkSquid combo it drops none: the squid
+ *   bursts ink on whoever it latches.
  * - glowLantern: `flashAround(world, racer)` (hazards/contacts.ts).
- * - homingSquid, riptide, undertow, mimic: nothing yet (phase 7 scaffold; lane 7/a adds them).
+ * - homingSquid: `launchSquid` (hazards/squids.ts) along the same aim, `inked` with the inkSquid combo.
+ * - riptide: `layRiptide` (riptides.ts) along the aim, from the racer's centre; with the surfline combo
+ *   it lays nothing now: the dash lays a longer, stronger lane where it ends.
+ * - undertow: `fireUndertow` (undertow.ts), then the power-up is used up (`powerup.lost` cause 'used').
+ *   The one kind a burst doesn't keep.
+ * - mimic: `spawnDecoy` (decoys.ts), bubbled with the bubbleDecoy combo.
  * Combo changes (`combosIn`): cannonball keeps the racer inflated for the whole dash; inkTrail drops
  * a cloud every INK.trailEveryTicks of the dash, from the firing tick, instead of one; inkBomb makes
  * the cloud INK.bombRadius and centred on the racer; comet flashes on the firing tick and again on
- * the dash's last tick (DASH.ticks - 1 ticks later). All matching combos apply.
+ * the dash's last tick (DASH.ticks - 1 ticks later); surfline lays its lane at the racer's centre on that
+ * same last tick. All matching combos apply.
  *
  * The dash's later effects (inkTrail clouds, the comet's second flash) follow `racer.dashCombos`,
  * fixed when the dash fires: gaining a kind mid-dash never starts one, and `popForHit` removes a
  * combo whose pair a hit breaks. A landed hit also ends the dash (`applyHit` zeroes dashing).
  */
 import { flashAround } from '../hazards/contacts.ts';
+import { launchSquid } from '../hazards/squids.ts';
 import { bodyTiles } from '../level/query.ts';
 import { length } from '../num.ts';
 import { breakCoral } from '../race/coral.ts';
 import { centreOf, hitbox } from '../racers.ts';
-import type { ComboName, Intent, Racer, Vec, World } from '../types.ts';
+import type { ComboName, Intent, PowerUpKind, Racer, Vec, World } from '../types.ts';
 import { combosIn } from './combos.ts';
+import { spawnDecoy } from './decoys.ts';
+import { layRiptide, PLAIN_LANE, SURFLINE_LANE } from './riptides.ts';
 import { BUBBLE, BURST_COOLDOWN_TICKS, DASH, INFLATE, INK } from './tuning.ts';
+import { fireUndertow } from './undertow.ts';
 
 /**
  * The bursts slot of `stepWorld`: fires `fireBurst` for each racer whose intent presses burst.
@@ -63,27 +75,42 @@ export function fireBurst(world: World, racer: Racer, move: Vec): boolean {
         startDash(racer, aim, combos);
         break;
       case 'bubbleShield':
-        fireBubble(world, racer, aim, combos.includes('lanternBubble'));
+        if (!combos.includes('bubbleDecoy')) fireBubble(world, racer, aim, combos.includes('lanternBubble'));
         break;
       case 'puffer':
         racer.status.inflated = INFLATE.ticks;
         break;
       case 'inkSac':
-        dropInk(world, racer, combos);
+        if (!combos.includes('inkSquid')) dropInk(world, racer, combos);
         break;
       case 'glowLantern':
         flashAround(world, racer);
         break;
       case 'homingSquid':
+        launchSquid(world, racer, aim, combos.includes('inkSquid'));
+        break;
       case 'riptide':
+        if (!combos.includes('surfline')) layRiptide(world, racer, aim, PLAIN_LANE);
+        break;
       case 'undertow':
+        fireUndertow(world, racer);
+        break;
       case 'mimic':
-        // Scaffold: the attack kinds roll at clam weight 0 and have no burst effect until lane 7/a.
+        spawnDecoy(world, racer, combos.includes('bubbleDecoy'));
         break;
     }
   }
+  useUp(world, racer, 'undertow');
   if (combos.includes('cannonball')) racer.status.inflated = Math.max(racer.status.inflated, DASH.ticks);
   return true;
+}
+
+/** Removes a one-use `kind` from the stack after its burst, emitting `powerup.lost` with cause 'used'. */
+function useUp(world: World, racer: Racer, kind: PowerUpKind): void {
+  const at = racer.stack.indexOf(kind);
+  if (at < 0) return;
+  racer.stack.splice(at, 1);
+  world.events.emit({ type: 'powerup.lost', id: racer.id, kind, cause: 'used' });
 }
 
 /**
@@ -159,7 +186,9 @@ function sustainDash(world: World, racer: Racer): void {
   if (elapsed === 0) return;
   const combos = racer.dashCombos;
   if (combos.includes('inkTrail') && elapsed % INK.trailEveryTicks === 0) dropInk(world, racer, combos);
-  if (combos.includes('comet') && racer.status.dashing === 1) flashAround(world, racer);
+  if (racer.status.dashing !== 1) return;
+  if (combos.includes('comet')) flashAround(world, racer);
+  if (combos.includes('surfline')) layRiptide(world, racer, racer.dashDir, SURFLINE_LANE);
 }
 
 function smashCoral(world: World, racer: Racer): void {

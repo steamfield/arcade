@@ -4,7 +4,7 @@ import type { GameEvent } from '../events.ts';
 import { parseLevel } from '../level/parse.ts';
 import { updateProgress } from '../race/standings.ts';
 import { noItems } from '../racers.ts';
-import { placeOnTile, raceOn } from '../test-world.ts';
+import { placeOnTile, raceOn, tileCentre } from '../test-world.ts';
 import type { Intent, PowerUpKind, Racer, RacerId, TickInput, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 import { ITEM_USE } from './items.ts';
@@ -343,11 +343,11 @@ describe('using items', () => {
     expect(bursts(itemScene(['glowLantern'], { player: [8, 5] }).decide())).toBe(0);
   });
 
-  it('aims its items at the player only, never at another rival', () => {
-    const atSquib = itemScene(['glowLantern', 'inkSac'], { squib: [12, 5], bo: [8, 5] });
-    const atPlayer = itemScene(['glowLantern', 'inkSac'], { player: [12, 5] });
+  it('aims its items at any racer in reach, another rival as readily as the player', () => {
+    const atSquib = itemScene(['glowLantern'], { squib: [12, 5] });
+    const atPlayer = itemScene(['glowLantern'], { player: [12, 5] });
 
-    expect(bursts(atSquib.decide(100))).toBe(0);
+    expect(bursts(atSquib.decide())).toBe(1);
     expect(bursts(atPlayer.decide())).toBe(1);
   });
 
@@ -593,5 +593,70 @@ describe('abilities in the rival AI', () => {
 
     expect(aimAt('baron').x).toBeGreaterThan(0.5);
     expect(aimAt('rudy').x).toBeLessThan(0);
+  });
+});
+
+describe('using the attack items', () => {
+  it('fires a squid at a racer ahead within lock range, whoever it is', () => {
+    expect(bursts(itemScene(['homingSquid'], { squib: [15, 5] }).decide())).toBe(1);
+    expect(bursts(itemScene(['homingSquid'], { player: [15, 5] }).decide())).toBe(1);
+  });
+
+  it('holds its squid with nobody ahead, or the racer ahead beyond 10 tiles', () => {
+    expect(bursts(itemScene(['homingSquid'], { player: [4, 5], squib: [3, 5], bo: [2, 5] }).decide())).toBe(0);
+    expect(bursts(itemScene(['homingSquid'], { tess: [2, 5], squib: [14, 5] }).decide())).toBe(0);
+  });
+
+  it('fires an undertow from 4th place when a racer is 8 or more tiles ahead', () => {
+    const { tess, decide } = itemScene(['undertow'], { tess: [3, 5], player: [14, 5] });
+    tess.place = 4;
+
+    expect(bursts(decide())).toBe(1);
+  });
+
+  it('holds its undertow from 2nd place, or when the leader is less than 8 tiles ahead', () => {
+    const second = itemScene(['undertow'], { tess: [3, 5], player: [14, 5] });
+    second.tess.place = 2;
+    const close = itemScene(['undertow'], { tess: [3, 5], player: [9, 5], bo: [2, 7] });
+    close.tess.place = 4;
+
+    expect(bursts(second.decide())).toBe(0);
+    expect(bursts(close.decide())).toBe(0);
+  });
+
+  it('lays a riptide with 6 clear tiles ahead, not with a wall 3 tiles ahead', () => {
+    expect(bursts(itemScene(['riptide'], {}).decide())).toBe(1);
+    expect(bursts(itemScene(['riptide'], { tess: [18, 5] }).decide())).toBe(0);
+  });
+
+  it('drops a mimic when a squid is locked on it within 8 tiles', () => {
+    const squidAt = (tx: number, target: RacerId) => ({
+      ...tileCentre(tx, 5),
+      vx: 0,
+      vy: 0,
+      ttl: 100,
+      owner: 'player' as const,
+      target: { kind: 'racer' as const, id: target },
+    });
+    const near = itemScene(['mimic']);
+    near.world.squids.push(squidAt(5, 'tess'));
+    const far = itemScene(['mimic']);
+    far.world.squids.push(squidAt(1, 'tess'));
+    const elsewhere = itemScene(['mimic']);
+    elsewhere.world.squids.push(squidAt(8, 'bo'));
+
+    expect([bursts(near.decide()), bursts(far.decide()), bursts(elsewhere.decide())]).toEqual([1, 0, 0]);
+  });
+
+  it('goes straight for a gate of coral with a puffer and Jet Fins, instead of waiting on a rare dash', () => {
+    const { tess, decide } = itemScene(['jetFin', 'puffer'], { tess: [5, 1] }, 1, CORAL_LANE);
+    const burstTicks = bursts(
+      Array.from({ length: 200 }, () => {
+        tess.body.vx = 60;
+        return decide()[0] as Intent;
+      }),
+    );
+
+    expect(burstTicks).toBeGreaterThan(150);
   });
 });

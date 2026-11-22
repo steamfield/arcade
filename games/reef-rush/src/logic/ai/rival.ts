@@ -12,7 +12,7 @@
  * In a dark zone (`inDark`) a rival that can't see (`racerSeesInDark`: not
  * Selene, no Glow Lantern) wobbles twice as far and re-reads its field half as
  * often. A rival that rams coral (`breaksCoralOnContact`) always steers by the
- * smash field.
+ * ram field, which prices coral below the smash field a Puffer holder reads.
  *
  * Every call draws exactly four numbers from the racer's rng, in this order,
  * whether or not they are used: wobble, kick roll, recovery side, item roll.
@@ -33,7 +33,7 @@ import { steerDirection } from './steer.ts';
  * and one 8 tiles ahead at the lower, so the field stays near the player without any rival
  * swimming far outside its own pace.
  */
-export const CATCH_UP = { perTile: 0.05, min: 0.6, max: 1.15 } as const;
+export const CATCH_UP = { perTile: 0.05, min: 0.6, max: 1.25 } as const;
 
 /** How much looser a rival steers in a dark zone it can't see in: wobble bound and reaction time multipliers. */
 export const DARK_STEERING = { wobbleMul: 2, reactionMul: 2 } as const;
@@ -104,15 +104,15 @@ function canRecover(world: World, racer: Racer, memory: AiMemory): boolean {
  * Re-reads its field every `reactionTicks` (times `reactionMul`), so slower rivals react later to
  * the course. A rival holding a Puffer that is inflated or ready to burst reads the smash field and
  * aims through coral, which its inflate breaks; while the burst cools down it steers around like
- * everyone else. A rival that rams coral reads the smash field always.
+ * everyone else. A rival that rams coral reads the ram field always.
  */
 function replanAim(world: World, racer: Racer, memory: AiMemory, reactionMul: number): void {
   if (memory.replanIn <= 0) {
     const { fields, level, broken } = world;
     const pufferReady = racer.stack.includes('puffer') && (racer.status.inflated > 0 || racer.burstCooldown === 0);
-    const smash = pufferReady || breaksCoralOnContact(racer);
-    const field = smash ? fields.smash : fields.steer;
-    memory.aim = steerDirection(field, fields, level, broken, racer.body, LOOKAHEAD_TILES, smash);
+    const rams = breaksCoralOnContact(racer);
+    const field = rams ? fields.ram : pufferReady ? fields.smash : fields.steer;
+    memory.aim = steerDirection(field, fields, level, broken, racer.body, LOOKAHEAD_TILES, rams || pufferReady);
     memory.replanIn = racer.profile.reactionTicks * reactionMul;
   }
   memory.replanIn--;

@@ -87,29 +87,44 @@ describe('roll weights', () => {
     expect(clamWeights(4)).toEqual(CLAM.lastWeights);
   });
 
-  it('interpolate linearly for 2nd and 3rd', () => {
-    for (const kind of POWER_UP_KINDS) {
+  it('interpolate linearly for 2nd and 3rd, except Undertow', () => {
+    for (const kind of POWER_UP_KINDS.filter((candidate) => candidate !== 'undertow')) {
       const first = CLAM.firstWeights[kind];
       const last = CLAM.lastWeights[kind];
       expect(clamWeights(2)[kind], `${kind} in 2nd`).toBeCloseTo(first + (last - first) / 3, 9);
       expect(clamWeights(3)[kind], `${kind} in 3rd`).toBeCloseTo(first + ((last - first) * 2) / 3, 9);
     }
+    expect(clamWeights(3).undertow).toBeCloseTo((CLAM.lastWeights.undertow * 2) / 3, 9);
   });
 
-  it('shape what rolls come up', () => {
+  it('give Undertow no weight ahead of 3rd, however the weights interpolate', () => {
+    expect([1, 2].map((place) => clamWeights(place).undertow)).toEqual([0, 0]);
+    expect(clamWeights(4).undertow).toBeGreaterThan(0);
+  });
+
+  it('shape what rolls come up: the leader gets defence, the trailer speed and attacks', () => {
     const leader = rollShares(1, []);
     const trailer = rollShares(4, []);
+    const attacks = (shares: Record<PowerUpKind, number>) => shares.homingSquid + shares.riptide + shares.undertow;
 
-    expect(leader.bubbleShield).toBeCloseTo(0.3, 1);
-    expect(leader.jetFin).toBeCloseTo(0.1, 1);
-    expect(trailer.jetFin).toBeCloseTo(0.3, 1);
-    expect(trailer.glowLantern).toBeCloseTo(0.1, 1);
+    expect(attacks(leader)).toBe(0);
+    expect(leader.bubbleShield + leader.glowLantern + leader.mimic).toBeGreaterThan(0.6);
+    expect(leader.jetFin).toBeCloseTo(1 / 13, 1);
+    expect(attacks(trailer)).toBeGreaterThan(0.35);
+    expect(trailer.mimic).toBe(0);
+    expect(trailer.jetFin).toBeGreaterThan(leader.jetFin);
+  });
+
+  it('never roll Undertow for 1st or 2nd, over thousands of rolls', () => {
+    for (const place of [1, 2]) expect(rollShares(place, [], 3000).undertow, `place ${place}`).toBe(0);
+    expect(rollShares(3, [], 3000).undertow).toBeGreaterThan(0.05);
   });
 
   it('never roll a kind the racer holds', () => {
-    const shares = rollShares(1, ['jetFin', 'puffer', 'inkSac'], 1000);
+    const held = ['jetFin', 'puffer', 'inkSac', 'mimic'] as const;
+    const shares = rollShares(1, held, 1000);
 
-    expect(shares.jetFin + shares.puffer + shares.inkSac).toBe(0);
+    expect(held.map((kind) => shares[kind])).toEqual([0, 0, 0, 0]);
     expect(shares.bubbleShield).toBeCloseTo(0.5, 1);
     expect(shares.glowLantern).toBeCloseTo(0.5, 1);
   });
@@ -117,14 +132,14 @@ describe('roll weights', () => {
 
 describe('who opens a clam', () => {
   it('rolls with the weights of the opener place', () => {
-    const fourth = parkedOnClam(3);
+    const fourth = parkedOnClam(4);
     fourth.player.place = 4;
 
     openClams(fourth.world, fourth.racers);
 
-    const asFourth = rollClam(parkedOnClam(3).world.rngs.pickups, 4, []);
+    const asFourth = rollClam(parkedOnClam(4).world.rngs.pickups, 4, []);
     // The seed is one where 1st and 4th place roll differently, so the place really decides.
-    expect(rollClam(parkedOnClam(3).world.rngs.pickups, 1, [])).not.toBe(asFourth);
+    expect(rollClam(parkedOnClam(4).world.rngs.pickups, 1, [])).not.toBe(asFourth);
     expect(fourth.player.stack).toEqual([asFourth]);
   });
 

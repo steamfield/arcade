@@ -4,7 +4,8 @@
  *
  * Tick order: clock; intents for every unfinished racer from the start-of-tick
  * state (in RACER_IDS order), idle while stunned or trapped; each unfinished
- * racer's swimming (riptide lanes feed it their current), dash, trapped float and movement (RACER_IDS order); one pass
+ * racer's swimming (riptide lanes feed it their current; a squid's latch and an undertow pull it
+ * after), dash, trapped float and movement (RACER_IDS order); one pass
  * of separation over unfinished racers; then the phase 3 systems for unfinished
  * racers only: bursts (from intents), projectiles and inks, squids, riptides, decoys, jellies, contacts
  * (hits), pickups (clams, pearls, loose), status counters; then abilities
@@ -25,6 +26,7 @@ import { CHARACTERS, pickRivals } from './characters.ts';
 import type { GameEvent } from './events.ts';
 import { resolveContacts } from './hazards/contacts.ts';
 import { moveJellies } from './hazards/jellies.ts';
+import { driftLatched } from './hazards/latch.ts';
 import { advanceProjectiles } from './hazards/projectiles.ts';
 import { advanceSquids } from './hazards/squids.ts';
 import { LevelError } from './level/parse.ts';
@@ -35,7 +37,8 @@ import { updateLoose } from './pickups/loose.ts';
 import { collectPearls } from './pickups/pearls.ts';
 import { driveDash, fireBursts, sustainBursts } from './powerups/burst.ts';
 import { advanceDecoys } from './powerups/decoys.ts';
-import { advanceRiptides, riptideCurrentAt } from './powerups/riptides.ts';
+import { advanceRiptides, feltCurrent } from './powerups/riptides.ts';
+import { applyUndertow } from './powerups/undertow.ts';
 import { ramCoral } from './race/coral.ts';
 import { buildFlowFields, unreachableStarts } from './race/flowfield.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
@@ -223,8 +226,10 @@ function intentFor(world: World, racer: Racer, input: TickInput): Intent {
  */
 function swim(world: World, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
   const water = sampleEnvironment(world.level, racer.body);
-  const environment = { ...water, current: riptideCurrentAt(world, racer.body) ?? water.current };
+  const environment = { ...water, current: feltCurrent(world, racer, water.current) };
   applyIntent(racer, intent, environment, mods, world.events, dt);
+  driftLatched(racer, dt);
+  applyUndertow(world, racer, dt);
   driveDash(racer);
   floatTrapped(racer);
   if (breaksCoralOnContact(racer)) ramCoral(world, racer, dt);
