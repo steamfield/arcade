@@ -15,19 +15,37 @@ export const PLAYER_PROFILE: RivalProfile = {
   itemAggression: 0,
 };
 
-/** Tess the turtle is steady and clean, Squib the squid fast and erratic, Bo the crab slow and heavy. */
+/**
+ * Tess the turtle is steady and clean, Squib the squid fast and erratic, Bo the crab slow and heavy.
+ *
+ * Rivals swim harder than the player (forceMul above 1) but rarely kick or burst. `kickSkill` and
+ * `itemAggression` are chances per eligible tick, so even 0.02 kicks within a second or so of the
+ * kick being ready; these values space kicks out to a few seconds. The split matters because
+ * catch-up (`CATCH_UP` in rival.ts) scales swim force only: a rival whose speed comes from force
+ * can be held back behind a slow player and pushed on behind a fast one, which is what keeps both
+ * a novice and an expert in a close race (see difficulty.test.ts). Frequent kicks would carry a
+ * rival away from a player who never kicks, whatever the catch-up does.
+ */
 export const RIVAL_PROFILES: Record<Exclude<RacerId, 'player'>, RivalProfile> = {
-  tess: { id: 'tess', forceMul: 0.93, kickSkill: 0.5, wobble: 0.08, reactionTicks: 6, mass: 1.2, itemAggression: 0.3 },
+  tess: {
+    id: 'tess',
+    forceMul: 1.35,
+    kickSkill: 0.008,
+    wobble: 0.08,
+    reactionTicks: 6,
+    mass: 1.2,
+    itemAggression: 0.004,
+  },
   squib: {
     id: 'squib',
-    forceMul: 0.97,
-    kickSkill: 0.9,
+    forceMul: 1.31,
+    kickSkill: 0.02,
     wobble: 0.35,
     reactionTicks: 3,
     mass: 0.8,
-    itemAggression: 0.8,
+    itemAggression: 0.02,
   },
-  bo: { id: 'bo', forceMul: 0.9, kickSkill: 0.35, wobble: 0.12, reactionTicks: 8, mass: 2, itemAggression: 0.5 },
+  bo: { id: 'bo', forceMul: 1.28, kickSkill: 0.005, wobble: 0.12, reactionTicks: 8, mass: 2, itemAggression: 0.008 },
 };
 
 /**

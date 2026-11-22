@@ -3,13 +3,14 @@ import { scenario, wait } from './kit.ts';
 
 /**
  * The race ends DNF_GRACE_TICKS (600) after the third rival finishes and results follow 90 ticks
- * later. On seed 1 that puts results at about tick 1890; waiting to 2000 leaves room for the rivals'
- * order and times to shift as tuning changes.
+ * later. With nobody to catch, the rivals ease right off (catch-up), so on seed 1 that puts results
+ * at about tick 14700; waiting to 15000 leaves room for the rivals' order and times to shift as
+ * tuning changes.
  */
 export default scenario({
   description: 'a player who never swims is placed last as DNF on the results screen, and no best is saved',
   start: { scene: 'race' },
-  input: [wait(2000)],
+  input: [wait(15000)],
   expect({ summary, state, events }) {
     expect(summary).toMatchObject({
       scene: 'results',

@@ -16,8 +16,14 @@ import type { AiMemory, Intent, Racer, Vec, World } from '../types.ts';
 import { wantsBurst } from './items.ts';
 import { steerDirection } from './steer.ts';
 
-/** Bounds of the catch-up multiplier on swim force, and its slope per tile of gap to the player. */
-export const CATCH_UP = { perTile: 0.004, min: 0.9, max: 1.08 } as const;
+/**
+ * Bounds of the catch-up multiplier on swim force, and its slope per tile of gap to the player.
+ * Strong on purpose: a player who never kicks is about 1.8x slower than one who kicks well, and
+ * the difficulty bar keeps both within reach of the rivals over a 90 s course. A rival ahead eases
+ * off to hover a few seconds in front of a slow player; one behind a fast player pushes on but,
+ * barely kicking, still loses a few seconds over the course.
+ */
+export const CATCH_UP = { perTile: 0.02, min: 0.35, max: 1.25 } as const;
 
 /** Tiles down the steer field a rival aims at. */
 const LOOKAHEAD_TILES = 3;
