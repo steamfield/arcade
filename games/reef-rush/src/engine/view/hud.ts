@@ -3,7 +3,8 @@
  * world each frame. Along the top: the place panel (the player's portrait and
  * place numeral, with an arrow and a tone pop when the place changes), the
  * timer, the kick / power-up well (kick readiness, the burst icon with a
- * cooldown ring while it recharges, and the three stack slots), and a track-style progress strip
+ * cooldown ring while it recharges, and a stack slot per power-up the player
+ * can hold: three, or four for Nib), and a track-style progress strip
  * with one head per racer and the finish flag. Every piece sits clear of the
  * back link and the touch controls.
  *
@@ -15,7 +16,8 @@
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
-import { BURST_COOLDOWN_TICKS, STACK_MAX } from '../../logic/powerups/tuning.ts';
+import { stackMaxFor } from '../../logic/abilities.ts';
+import { BURST_COOLDOWN_TICKS } from '../../logic/powerups/tuning.ts';
 import { playerOf } from '../../logic/racers.ts';
 import {
   type CharacterId,
@@ -41,20 +43,25 @@ export interface Hud {
   sync(world: World): void;
 }
 
+/** HUD icons are 9x9. */
+const ICON_SIZE = 9;
 /** UI.md "Race HUD" rects, in game px. */
 const PLACE_PANEL = { x: 6, y: 6, w: 56, h: 24 } as const;
 const PORTRAIT_AT = { x: 10, y: 10 } as const;
 const PLACE_TEXT_AT = { x: 28, y: 12 } as const;
 const ARROW_AT = { x: 6, y: 34 } as const;
 const TIMER = { x: 66, y: 6, w: 52, h: 15, textTop: 10 } as const;
-const WELL = { x: 66, y: 23, w: 61, h: 17 } as const;
+/** The well's left edge, top and height; its width follows the stack (see `wellLayout`). */
+const WELL = { x: 66, y: 23, h: 17 } as const;
 const WELL_ICON_Y = 27;
 const KICK_X = 70;
 const BURST_X = 81;
-const STACK_X = [92, 103, 114] as const;
+/** Icons in the well sit this far apart, left edge to left edge: 9 px icons with a 2 px gap. */
+const WELL_PITCH = 11;
+/** From the last icon's left edge to the well's right edge: the icon, 1 px padding and the 3 px frame. */
+const WELL_END = ICON_SIZE + 4;
 const STRIP = { x: 122, y: 6, w: 112, h: 15, headY: 10, headFrom: 126, headTo: 223 } as const;
 const FLAG_AT = { x: 236, y: 9 } as const;
-const ICON_SIZE = 9;
 /**
  * The combo name centres on x 168, the middle of the safe column (x 108-228) that stays clear of
  * the d-pad and A/B zones at every height. Its y follows the player (see `comboCentreY`).
@@ -98,7 +105,7 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
   const place = createPlacePanel(scene, playerOf(world).character, reducedMotion);
   const timer = createTimer(scene);
   let shownTime = -1;
-  const well = createWell(scene);
+  const well = createWell(scene, stackMaxFor(playerOf(world)));
   const strip = createProgressStrip(scene, world);
   const splash = createRaceSplash(scene, reducedMotion);
   const combo = createComboName(scene, reducedMotion);
@@ -221,17 +228,37 @@ function createTimer(scene: Phaser.Scene): Label {
   return createLabel(scene, x + w / 2, textTop + 3, '', { align: 'center', fixed: true, depth: Layer.hud });
 }
 
+/** Where the well's stack slots go and how wide the well is, for a racer who holds `stackMax` power-ups. */
+export interface WellLayout {
+  /** The well panel's width in px. */
+  width: number;
+  /** Each stack slot's left edge, oldest first. */
+  slotX: number[];
+}
+
 /**
- * The well: kick readiness, the burst icon (with its cooldown ring while cooling), and the stack
- * slots, oldest first. An empty slot shows a dim socket dot, so the three-slot cap reads.
+ * The well for a stack of `stackMax`: kick and burst, then one slot per power-up, each a pitch
+ * further right, and the panel just wide enough to frame the last. Three slots end at x 126; Nib's
+ * four end at x 137, still under the progress strip and clear of every safe zone.
  */
-function createWell(scene: Phaser.Scene): WorldView {
-  const { x, y, w, h } = WELL;
-  createPanel(scene, x, y, w, h, 'inset', { fixed: true, depth: Layer.hud });
+export function wellLayout(stackMax: number): WellLayout {
+  const slotX = Array.from({ length: stackMax }, (_, index) => BURST_X + WELL_PITCH * (index + 1));
+  const last = slotX.at(-1) ?? BURST_X;
+  return { width: last + WELL_END - WELL.x, slotX };
+}
+
+/**
+ * The well: kick readiness, the burst icon (with its cooldown ring while cooling), and a slot per
+ * power-up the player can hold, oldest first. The size is fixed for the race from `stackMax`. An
+ * empty slot shows a dim socket dot, so the cap reads.
+ */
+function createWell(scene: Phaser.Scene, stackMax: number): WorldView {
+  const layout = wellLayout(stackMax);
+  createPanel(scene, WELL.x, WELL.y, layout.width, WELL.h, 'inset', { fixed: true, depth: Layer.hud });
   const kick = addIcon(scene, KICK_X, WELL_ICON_Y, IconFrame.kick);
   const ring = scene.add.graphics().setScrollFactor(0).setDepth(Layer.hud);
   const burst = addIcon(scene, BURST_X, WELL_ICON_Y, IconFrame.burst);
-  const slots = STACK_X.slice(0, STACK_MAX).map((slotX) => ({
+  const slots = layout.slotX.map((slotX) => ({
     socket: scene.add
       .rectangle(slotX + SOCKET.inset, WELL_ICON_Y + SOCKET.inset, SOCKET.size, SOCKET.size, UiRamp.dim)
       .setOrigin(0, 0)

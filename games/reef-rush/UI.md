@@ -55,11 +55,12 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | Place panel | 6, 6, 56, 24 | `accent` panel; portrait at (10, 10); display numeral plus suffix ("4TH", 26 wide) at (28, 12). The numeral is hidden during the countdown (logic only places racers once they move) and the first racing frame sets it without a pop |
 | Place change arrow | 6, 34, 9, 9 | `arrowUp` / `arrowDown`, under the place panel |
 | Timer | 66, 6, 52, 15 | `inset` panel; text centred, top at y 10 |
-| Kick / power-up well | 66, 23, 61, 17 | `inset` panel; icons at y 27 and x 70, 81, 92, 103, 114 (kick, burst, a stack of 3). Kick and burst show at 50% opacity when not ready (`hud.test.ts` holds that to 3:1 on the well). While the burst recharges a 1 px `dim` ring around it (x 80-90, y 26-36) fills clockwise from top centre; a ready burst is the icon at full opacity with no ring. An empty slot shows a 3x3 `dim` socket at its centre. No divider: x 90-91 is the ring's column and the gap |
+| Kick / power-up well | 66, 23, 61, 17 (72 wide for a stack of 4) | `inset` panel; icons at y 27 and x 70, 81, 92, 103, 114 (kick, burst, a stack of 3). The well has one slot per power-up the player can hold (`stackMaxFor`), each 11 px further right, so Nib's fourth slot sits at x 125 and the well ends at x 137, under the strip and clear of the back link (`wellLayout` in `hud.ts`). Kick and burst show at 50% opacity when not ready (`hud.test.ts` holds that to 3:1 on the well). While the burst recharges a 1 px `dim` ring around it (x 80-90, y 26-36) fills clockwise from top centre; a ready burst is the icon at full opacity with no ring. An empty slot shows a 3x3 `dim` socket at its centre. No divider: x 90-91 is the ring's column and the gap |
 | Progress strip | 122, 6, 112, 15 | `inset` panel; 7x7 `ui-heads` at y 10, travelling over x 126-223 |
 | Finish flag | 236, 9, 9, 9 | `finishFlag` at the strip's end, clear of the back link |
 | Splash | centred on (160, 62) | display at 2x, `outline: true`; countdown and DNF in foam (coral isn't allowed over the water), GO / FINAL STRETCH / FINISH in sun; the widest (FINAL STRETCH) covers x 53-267, y 50-74 |
 | Caption | centred on (160, 45) | text, foam, outlined: TRAPPED!, STUNNED!, SLOWED BY INK, or an off-screen bubble's direction |
+| Darkness | whole screen, over a dark zone's columns | `view/dark-view.ts`: a near-black veil (90%) under the HUD layer, faded in over 32 px at each end of the zone, with a light pool cut around every racer (player 48 px, rival 28, +32 holding a Glow Lantern; four 4 px rings of falling light at the edge). A Moonlight player (Selene) gets only a 30% tint. One screen-sized render texture, redrawn only while a zone is on screen |
 | Combo name | centred on x 168, y follows the player | display for 10 ticks then text, sun, outlined. x 168 is the middle of the safe column (x 108-228). Its nearest edge stays 16 px from the player's body centre (half an inflated puffer plus 4), above the player when that fits under the caption line, else below, always within y 50-174 (`comboCentreY`) |
 
 ```
@@ -82,7 +83,7 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | Sound button | 120, 99, 80, 15 | SOUND ON / SOUND OFF, changes the moment the setting does |
 | Motion button | 120, 116, 80, 15 | MOTION FULL / MOTION LESS. "MOTION REDUCED" is 83 px, too wide for a button whose fin clears the d-pad zone with the column centred on the logo |
 | PRESS A | 140, 137, 41, 7 | touch screens only (`?touch=1` or a coarse pointer, the rule `@arcade/input` mounts the controls by); on a keyboard A is a move key. Foam, outlined, blinks. 6 px clear of the buttons and the card so it reads as a hint |
-| Best card | 110, 150, 100, 24 | `raised`; medal at (114, 155), or Pip's portrait for a 4th-place best; "BEST 2ND" in dim at (130, 154); time in foam at (130, 163) |
+| Best card | 110, 150, 100, 24 | `raised`; medal at (114, 155), or the saved character's portrait for a 4th-place best; "BEST 2ND" in dim at (130, 154); time in foam at (130, 163) |
 
 All three buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108).
 
@@ -98,6 +99,29 @@ All three buttons are 80 wide so the fins line up; 80 is the widest that keeps t
  (d-pad)      [    0:24.46   ]                   (A/B)
 ```
 
+## Select
+
+| Element | Rect | Notes |
+| --- | --- | --- |
+| Heading | 112, 6, 96, 12 | "PICK A RACER", display, sun, outlined, centred on x 160 |
+| Grid cells | from 22, 28; 66x22; 4 px between columns, 2 between rows | 4x2 in `CHARACTER_IDS` order: rows y 28-49 and 52-73. `raised`, the cursor's cell `accent` with its name in sun; 16x16 portrait at (+3, +3), short name in foam at (+22, +8). The top-right cell (x 232-297) starts below the back link; the bottom row ends above the d-pad zone |
+| Card | 110, 78, 188, 40 | `raised`; right edge on the grid's, bottom at y 117 above the A/B zone. Portrait at 2x (32x32) at (114, 82); text column x 150-293 (`CARD_TEXT_WIDTH` 144): full name in display sun at y 83, ability in foam at y 98, blurb in dim at y 107. `character-select.test.ts` holds every line to the column |
+| Preview | 144, 128, 32, 24 | the picked racer's sprite at 2x, centred on (160, 140), swimming in place |
+| Footer | 114, 159, 92, 15 | `inset` readout: kick icon at (122, 162) + RACE, burst icon at (164, 162) + BACK, words in foam 11 px right of their icons |
+
+The card, preview and footer stay in the safe column (x 108-228) below the grid, except the card's right part, which ends above the A/B zone.
+
+```
+                 PICK A RACER                (back link)
+   [@ RUDY  ][@ GIL   ][@ STREAK][@ ONYX  ]
+   [@ NIB   ][@ BARON ][@ SELENE][@ ROOK  ]
+               [@@@@ BARON BARNACLE        ]
+               [@@@@ BULLDOZER             ]
+               [@@@@ RAMS CORAL, HARD TO BUMP]
+ (d-pad)               ><(((*>                   (A/B)
+                  [>> RACE  <> BACK]
+```
+
 ## Results
 
 | Element | Rect | Notes |
@@ -106,7 +130,7 @@ All three buttons are 80 wide so the fins line up; 80 is the widest that keeps t
 | 1st plinth | 140, 44, 40, 32 | `accent`; portrait at (152, 27); medal at (154, 47) |
 | 2nd plinth | 96, 50, 40, 26 | `raised`; portrait at (108, 33); medal at (110, 53) |
 | 3rd plinth | 184, 56, 40, 20 | `raised`; portrait at (196, 39); medal at (198, 59) |
-| Standing rows | 120, 80, 107, 7, pitch 10 | "4TH  SQUIB 0:24.46"; rivals in foam, the player in sun, all outlined; Pip's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 116 (117 with its outline) |
+| Standing rows | 120, 80, 107, 7, pitch 10 | "4TH  SQUIB 0:24.46"; rivals in foam, the player in sun, all outlined; the player's character's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 116 (117 with its outline) |
 | Ribbon | 114, 120, 92, 15 | `inset`, so it reads as a readout and never as a selected button; "NEW BEST" in sun or "BEST NOT SAVED" in coral, otherwise hidden |
 | Race again | 122, 139, 76, 15 | button |
 | Title | 122, 158, 76, 15 | button; cursor fin at x 111-119 |
@@ -136,6 +160,9 @@ All three buttons are 80 wide so the fins line up; 80 is the widest that keeps t
 | GO / FINAL STRETCH / FINISH | slides in 12 px from the right over 8 ticks, holds 45 | appears, holds 45 |
 | PRESS A blink | 32 on / 16 off | always on |
 | Results rows | one row every 20 ticks, each sliding in 8 px from the left over 6 ticks (from x 112, clear of the d-pad zone) | one row every 20 ticks, no slide |
+| Select card text | drops 2 px into place over 6 ticks on each cursor move (not when the screen opens) | appears |
+| Select preview | swaps swim strokes every 8 ticks | still |
+| Dark-zone light pools | shrink by 0-2 px in a fixed shuffle, changing at most every 20 ticks | still, full radius |
 | Ribbon | drops 2 px in over 10 ticks after the last row, from y 118 so it never covers the last row's outline | appears |
 
 - Nothing flashes more than 3 times a second.
