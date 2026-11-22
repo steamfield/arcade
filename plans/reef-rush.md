@@ -222,6 +222,7 @@ Test cases:
 
 ### Phase 4: pixel art and chiptune audio
 
+Scaffold: ad8607f (on phase branch deliver/reef-rush-p4)
 Demo: `pnpm arcade see reef-rush --scene race --at 0,240` shows final sprites, animated tiles, parallax and light; dev build plays the title and race themes and SFX. Music is judged by ear: the phase tag message asks the user to listen.
 Depends on: phase 2
 
@@ -232,9 +233,9 @@ Its lanes own only files behind the seams phase 2 built (`art/index.ts`, `art/fo
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/engine/art/index.ts, games/reef-rush/src/engine/art/pixel.ts, games/reef-rush/src/engine/art/palettes.ts, games/reef-rush/src/engine/art/sprites/, games/reef-rush/src/engine/view/backdrop.ts | contracts | | opus | pending | | |
-| b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/scenarios/audio-plays.ts | contracts | | opus | pending | | |
-| c | M | games/reef-rush/src/engine/audio/songs/, games/reef-rush/src/engine/audio/notation.ts, games/reef-rush/src/engine/audio/notation.test.ts | contracts | | opus | pending | | |
+| a | M | games/reef-rush/src/engine/art/index.ts, games/reef-rush/src/engine/art/pixel.ts, games/reef-rush/src/engine/art/palettes.ts, games/reef-rush/src/engine/art/sprites/, games/reef-rush/src/engine/view/backdrop.ts | contracts | | opus | running | deliver/reef-rush-4a | |
+| b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/scenarios/audio-plays.ts | contracts | | opus | running | deliver/reef-rush-4b | |
+| c | M | games/reef-rush/src/engine/audio/songs/, games/reef-rush/src/engine/audio/notation.ts, games/reef-rush/src/engine/audio/notation.test.ts | contracts | | opus | running | deliver/reef-rush-4c | |
 | d | M | games/reef-rush/src/engine/art/font.ts, games/reef-rush/src/engine/art/ui/, games/reef-rush/UI.md | contracts | | opus | pending | | |
 
 ### Phase 5: the full ocean course, difficulty tuning, UI redesign, juice and settings
@@ -367,6 +368,7 @@ Depends on: phase 3, phase 4
 
 - 2026-11-22: `arcade new` writes `.claude/launch.json` in a shape Biome rejects (`tools/arcade/src/new-game.ts:78`, `JSON.stringify` expands arrays), so `check` fails on a freshly created game. Formatted with `pnpm fix` here; the tool fix is a separate change.
 - 2026-11-22: main gained 1e3b073 (docs/repo-map.md) after the landing branch was cut; merged main into deliver/reef-rush as 1febb4d. Phase 1 lanes branch from 1febb4d and use it as their check-lane and lane-review base. The first dispatch used agent worktree isolation, which cut both lanes from main and deleted their worktrees when they stopped to ask; both were redispatched into orchestrator-made worktrees with no work lost.
+- 2026-11-22: Phase 4 scaffold ad8607f on phase branch deliver/reef-rush-p4 (worktree ../games-reef-rush-p4). The plan lives on the landing branch; when a phase branch merges back, resolve plans/reef-rush.md to the landing copy.
 - 2026-11-22: Lane 2/a fixes (048adae) merged; gate green (16 smoke tests). Accepted: MENU_ARM_TICKS = 20 shifted smoke and race-again timings; a failed save doesn't bump races, so that rematch reuses the seed. Tagged phase-2.
 - 2026-11-22: Lane 2/a (b55fdc7) review (game-reviewer): 5 findings accepted and sent back: switching to the running scene leaves it blank and freezes real-time logic (clock moves to one Phaser STEP listener), off-tick save writes not covered by idle(), menus confirming on their first tick, stale world in the title summary, missing doc blocks. Accepted lane choices: tick-driven RacerView.sync, extra engine modules (menu, debug, layers, race-text, menu-view, debug-overlay, placeholder-sheets), Runtime.listen, isNewBest excludes ties, LevelView.placeholders, Backdrop.update seam. Changed decision: Race again seeds with params.seed + save.races instead of replaying the same race. The phone capture missing the A button is a see artifact (canvas-only screenshot), not a bug.
 - 2026-11-22: User rated the phase 2 placeholder UI 4/10. Added the UI design bar to the spec, a UI kit lane 4/d (font moves from 4/a), and split phase 5 so lane b redesigns the HUD, title, results and menus from the kit while lane c does fx. Phase 2 merges as the functional base.
