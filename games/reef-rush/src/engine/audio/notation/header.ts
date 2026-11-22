@@ -2,8 +2,8 @@
  * Song header lines: tempo, time signature and per-channel voice settings, plus the default
  * voices a song starts with.
  */
-import type { Channel, ChannelVoice, Duty, Envelope } from '../notation.ts';
-import { failLine, type Line } from './errors.ts';
+import { failLine } from './errors.ts';
+import type { Channel, ChannelVoice, Duty, Envelope, Line } from './types.ts';
 
 const DUTIES: readonly number[] = [0.125, 0.25, 0.5, 0.75];
 const DEFAULT_ENVELOPE: Envelope = { attack: 0.005, decay: 0.08, sustain: 0.6, release: 0.05 };

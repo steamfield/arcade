@@ -132,6 +132,20 @@ describe('the soundtrack', () => {
     expect(mean(b.map((note) => note.length))).toBeGreaterThan(1.5 * mean(a.map((note) => note.length)));
   });
 
+  it('keeps the race B counter-melody under the lead, so the lead stays the top line', () => {
+    const b = sectionBeats(race, 'B');
+    const leadNotes = notesIn(lead(race), b);
+    const counter = notesIn(
+      race.notes.filter((note) => note.channel === 'pulse2'),
+      b,
+    );
+    const above = counter.filter((note) => {
+      const sounding = leadNotes.find((l) => l.start <= note.start && note.start < l.start + l.length);
+      return sounding !== undefined && pitchOf(note) > pitchOf(sounding);
+    });
+    expect(above.map((note) => `beat ${note.start}`)).toEqual([]);
+  });
+
   it('fills the drums in the last bar of every race section', () => {
     for (const section of race.sections) {
       const [, end] = sectionBeats(race, section.name);

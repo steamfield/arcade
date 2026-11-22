@@ -143,11 +143,30 @@ describe('parseSong', () => {
       'pulse1: C5/2~ D5/2',
       'token "D5/2": the tie from "C5/2~" must continue on the same pitch',
     ],
-    ['a tie into a rest', 'pulse1: C5/2~ r/2', 'token "r/2": the tie from "C5/2~"'],
+    [
+      'a tie into a rest',
+      'pulse1: C5/2~ r/2',
+      'pulse1 bar 1 (line 3), token "r/2": a tie can\'t continue into a rest; tie into C5 or drop the "~"',
+    ],
+    [
+      'a tie into a section where the channel is silent',
+      'section: a\npulse1: C5/1~\ntriangle: C3/1\nsection: b\ntriangle: C3/1',
+      'pulse1 bar 1 (line 4), token "C5/1~": a tie can\'t continue into a rest; pulse1 is silent in section "b"',
+    ],
     ['a tie off the end of the song', 'pulse1: C5/1~', 'pulse1 bar 1 (line 3), token "C5/1~": tie runs past the end'],
     ['an unclosed repeat', 'pulse1: [C5/4 C5/4', 'token "[": repeat is never closed'],
     ['a repeat closed without a count', 'pulse1: [C5/2]', 'token "]": close a repeat with "]xN"'],
     ['a stray repeat close', 'pulse1: C5/1]x2', 'token "]x2": this "]xN" has no opening "["'],
+    [
+      'a stray repeat close later in the line',
+      'pulse1: C5/1 | C5/1 | C5/1 | C5/1 ]x2',
+      'pulse1 bar 4 (line 3), token "]x2": this "]xN" has no opening "["',
+    ],
+    [
+      'an unclosed repeat after an expanded one',
+      'pulse1: [C5/1 |]x3 [C5/1',
+      'pulse1 bar 4 (line 3), token "[": repeat is never closed',
+    ],
   ])('rejects %s, naming the channel, bar and token', (_case, body, message) => {
     expect(() => parseSong(song(body))).toThrow(message);
   });
@@ -156,7 +175,18 @@ describe('parseSong', () => {
     [
       'channels of different lengths in a section',
       'section: a\npulse1: C5/1 | C5/1\ntriangle: C3/1',
-      'has 1 bars but pulse1 has 2 in section "a"',
+      'triangle bar 2 (line 5): section "a" has 1 bar on triangle but 2 on pulse1',
+    ],
+    [
+      'channels of different lengths in a later section, counting only that section',
+      'section: x\npulse1: C5/1 | C5/1\ntriangle: C3/1 | C3/1\nsection: y\npulse1: C5/1 | C5/1 | C5/1\npulse2: C5/1 | C5/1',
+      'pulse2 bar 5 (line 8): section "y" has 2 bars on pulse2 but 3 on pulse1',
+    ],
+    ['a section with no bars before another', 'section: a\nsection: b\npulse1: C5/1', 'section "a" has no bars'],
+    [
+      'a loop at an empty last section',
+      'loop: end\nsection: a\npulse1: C5/1\nsection: end',
+      'section "end" has no bars',
     ],
     [
       'a loop at a missing section',

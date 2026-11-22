@@ -13,8 +13,8 @@
  *
  * The hook (A, bars 1-2) is "B A B D~ C B | F#. E D B": a syncopated cell (three eighths, a
  * held note on the off-beat of 2) answered by a leap up a fifth to F#. Pulse 2 plays off-beat
- * stabs in A, thirds under the lead in A' and the turnaround, and a high arpeggio in B while
- * the lead drops an octave into long notes. Drums fill at the end of every section; B is half-time.
+ * stabs in A, thirds under the lead in A' and the turnaround, and in B an eighth-note arpeggio
+ * under the lead, which moves down to G4-F#5 in long notes. Drums fill at the end of every section; B is half-time.
  */
 import { parseSong, type Song } from '../notation.ts';
 
@@ -57,11 +57,11 @@ triangle: [G2/8 G3/8]x3 G2/8 A2/8 | [B2/8 B3/8]x4 | A2/8 A3/8 A2/8 A3/8 D3/8 D4/
 noise: [k/8 h/8@0.4 s/8 h/8@0.4 k/8 k/8 s/8 h/8@0.4 |]x7 k/8 h/8@0.4 s/8 h/8@0.4 s/16 s/16 s/16 s/16 s/8 s/8
 
 section: B
-// an octave down, long notes
+// lower register (G4-F#5), long notes; the arpeggio sits under it
 pulse1: G4/4. A4/8 B4/2 | C5/4. B4/8 G4/2 | A4/4. B4/8 C5/4 E5/4 | D#5/2v B4/2
 pulse1: G4/4. A4/8 B4/2 | C5/4. D5/8 E5/2 | A4/4. C5/8 F5/2 | F#5/2.v r/4
-pulse2: [E5/8 G5/8 B5/8 G5/8]x2 | [E5/8 G5/8 C6/8 G5/8]x2 | [E5/8 A5/8 C6/8 A5/8]x2 | [D#5/8 F#5/8 B5/8 F#5/8]x2
-pulse2: [E5/8 G5/8 B5/8 G5/8]x2 | [E5/8 G5/8 C6/8 G5/8]x2 | [F5/8 A5/8 C6/8 A5/8]x2 | [F#5/8 A5/8 D6/8 A5/8]x2
+pulse2: [G3/8 B3/8 E4/8 B3/8]x2 | [G3/8 C4/8 E4/8 C4/8]x2 | [A3/8 C4/8 E4/8 C4/8]x2 | [B3/8 D#4/8 F#4/8 D#4/8]x2
+pulse2: [G3/8 B3/8 E4/8 B3/8]x2 | [G3/8 C4/8 E4/8 C4/8]x2 | [A3/8 C4/8 F4/8 C4/8]x2 | [A3/8 D4/8 F#4/8 D4/8]x2
 // walking bass
 triangle: E2/4 B2/4 E3/4 D3/4 | C3/4 G2/4 C3/4 B2/4 | A2/4 C3/4 E3/4 A#2/4 | B2/4 D#3/4 F#3/4 D#2/4
 triangle: E2/4 B2/4 E3/4 D3/4 | C3/4 G2/4 C3/4 E2/4 | F2/4 A2/4 C3/4 C#3/4 | D3/4 A2/4 D3/4 F#2/4

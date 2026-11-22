@@ -2,8 +2,8 @@
  * Lexing for channel lines: splits a line into tokens, expands `[ ... ]xN` repeats, and reads
  * one note, rest or drum token into its pitch, length in beats and modifiers.
  */
-import type { NoteEvent } from '../notation.ts';
-import { failAt, type Place } from './errors.ts';
+import { failAt } from './errors.ts';
+import type { NoteEvent, Place } from './types.ts';
 
 /** A note token's meaning before it is placed in time. */
 export interface ParsedToken {
@@ -37,24 +37,29 @@ export function tokenizeLine(value: string, start: Place): string[] {
 /** Flattens `[ ... ]xN` groups, innermost first. */
 function expandRepeats(tokens: string[], start: Place): string[] {
   const groups: string[][] = [[]];
+  // Bar lines written so far, repeats expanded, place an error in the bar it sits in.
+  const at = (token: string): Place => ({
+    ...start,
+    bar: start.bar + groups.flat().filter((written) => written === '|').length,
+    token,
+  });
   for (const token of tokens) {
     const close = REPEAT_CLOSE.exec(token);
     if (token === '[') {
       groups.push([]);
     } else if (close) {
-      const body = groups.pop() ?? [];
-      const outer = groups.at(-1);
-      if (!outer) failAt({ ...start, token }, 'this "]xN" has no opening "["');
+      if (groups.length === 1) failAt(at(token), 'this "]xN" has no opening "["');
       const count = Number(close.groups?.count);
-      if (count < 1) failAt({ ...start, token }, 'repeat count must be at least 1');
-      for (let i = 0; i < count; i++) outer.push(...body);
+      if (count < 1) failAt(at(token), 'repeat count must be at least 1');
+      const body = groups.pop() ?? [];
+      for (let i = 0; i < count; i++) groups.at(-1)?.push(...body);
     } else if (token.startsWith(']')) {
-      failAt({ ...start, token }, 'close a repeat with "]xN", e.g. "]x2"');
+      failAt(at(token), 'close a repeat with "]xN", e.g. "]x2"');
     } else {
       groups.at(-1)?.push(token);
     }
   }
-  if (groups.length > 1) failAt({ ...start, token: '[' }, 'repeat is never closed with "]xN"');
+  if (groups.length > 1) failAt(at('['), 'repeat is never closed with "]xN"');
   return groups[0] ?? [];
 }
 

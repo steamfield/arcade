@@ -2,9 +2,9 @@
  * Turns parsed tokens into NoteEvents at a beat position: rests leave gaps, ties extend the
  * note they started from, and the finished channels merge into one time-ordered list.
  */
-import type { Channel, NoteEvent } from '../notation.ts';
-import { failAt, type Place } from './errors.ts';
+import { failAt } from './errors.ts';
 import type { ParsedToken } from './tokens.ts';
+import type { Channel, NoteEvent, Place } from './types.ts';
 
 /** A channel's emitted notes and the tie, if any, still waiting for its continuation. */
 export interface ChannelEvents {
@@ -23,6 +23,10 @@ export interface ChannelEvents {
 export function placeNote(target: ChannelEvents, note: ParsedToken, start: number, place: Place): void {
   const tie = target.tie;
   if (tie) {
+    if (note.pitch === null) {
+      const pitch = tie.place.token.split('/')[0];
+      failAt(place, `a tie can't continue into a rest; tie into ${pitch} or drop the "~"`);
+    }
     if (note.pitch !== tie.event.pitch)
       failAt(place, `the tie from "${tie.place.token}" must continue on the same pitch`);
     tie.event.length += note.beats;
