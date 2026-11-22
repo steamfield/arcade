@@ -9,7 +9,6 @@
  */
 import { cellAt, isSolid } from '../level/query.ts';
 import { length } from '../num.ts';
-import { FLASH } from '../powerups/tuning.ts';
 import { activeRacers, centreOf } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
 import { downhillPath, hasClearSweep, openTiles, tileOf } from './steer.ts';
@@ -22,26 +21,36 @@ export const ITEM_USE = {
   bubbleAheadTiles: 6,
   /** ...and within 30 degrees of the aim: cos(30°), written out so no engine trig runs. */
   aimConeCos: 0.8660254037844386,
-  /** Lantern: any racer as close as the flash reaches. */
-  lanternTiles: FLASH.rangeTiles,
+  /**
+   * Lantern: a racer just ahead and this close (half the flash's reach), so a rival saves its flash
+   * for a pass instead of firing it whenever anyone is in range.
+   */
+  lanternTiles: 2,
   /** Puffer: unbroken coral within this many steps down the smash field. */
   pufferCoralSteps: 3,
   /** Jet Fins: this many tiles of clear water straight along the aim. */
   jetClearTiles: 5,
+  /**
+   * A burst fires everything held, so while Jet Fins are in the stack every burst dashes. A dash
+   * from behind is runaway speed, so holding Jet Fins scales the burst chance by this.
+   */
+  jetChanceMul: 0.02,
 } as const;
 
 /**
- * True when the racer should burst this tick: its burst is ready, `roll < profile.itemAggression`,
- * and at least one held kind has a use. Uses: inkSac, a racer behind (higher progress) within 4
- * tiles; bubbleShield, a racer ahead within 6 tiles inside the aim cone; glowLantern, any racer
- * within 4 tiles; puffer, unbroken coral on the smash-field path within 3 tiles; jetFin, a clear
+ * True when the racer should burst this tick: its burst is ready, at least one held kind has a use,
+ * and `roll` is under its chance: `profile.itemAggression`, times ITEM_USE.jetChanceMul while it
+ * holds Jet Fins. Uses: inkSac, a racer behind (higher progress) within 4
+ * tiles; bubbleShield, a racer ahead within 6 tiles inside the aim cone; glowLantern, a racer ahead
+ * within 2 tiles; puffer, unbroken coral on the smash-field path within 3 tiles; jetFin, a clear
  * straight path of 5 tiles along the aim.
  *
  * @param aim The unit aim `rivalIntent` chose this tick.
  * @param roll The tick's item draw from the racer's rng, in [0, 1).
  */
 export function wantsBurst(world: World, racer: Racer, aim: Vec, roll: number): boolean {
-  if (racer.stack.length === 0 || racer.burstCooldown > 0 || roll >= racer.profile.itemAggression) return false;
+  const chance = racer.profile.itemAggression * (racer.stack.includes('jetFin') ? ITEM_USE.jetChanceMul : 1);
+  if (racer.stack.length === 0 || racer.burstCooldown > 0 || roll >= chance) return false;
   return racer.stack.some((kind) => hasUse(world, racer, aim, kind));
 }
 
@@ -54,7 +63,7 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
         (other) => other.progress < racer.progress && inAimCone(racer, aim, other),
       );
     case 'glowLantern':
-      return othersNear(world, racer, ITEM_USE.lanternTiles).length > 0;
+      return othersNear(world, racer, ITEM_USE.lanternTiles).some((other) => other.progress < racer.progress);
     case 'puffer':
       return coralOnSmashPath(world, racer);
     case 'jetFin':
@@ -62,11 +71,16 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
   }
 }
 
-/** Other racers in play whose centres are within `tiles` of this racer's centre. */
+/**
+ * Racers this one would aim at, in play and with centres within `tiles` of its centre. Rivals aim
+ * at the player only, so their items land where the player sees them instead of in fights among
+ * themselves; a bot driving the player aims at anyone.
+ */
 function othersNear(world: World, racer: Racer, tiles: number): Racer[] {
   const from = centreOf(racer);
   return activeRacers(world).filter((other) => {
     if (other.id === racer.id) return false;
+    if (racer.id !== 'player' && other.id !== 'player') return false;
     const dx = centreOf(other).x - from.x;
     const dy = centreOf(other).y - from.y;
     const reach = tiles * TILE;

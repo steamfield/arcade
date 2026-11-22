@@ -1,6 +1,6 @@
 import { createRng, EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { PLAYER_PROFILE, RIVAL_PROFILES } from './ai/profiles.ts';
+import { PLAYER_PROFILE } from './ai/profiles.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
 import type { GameEvent } from './events.ts';
 import { parseLevel } from './level/parse.ts';
@@ -40,6 +40,15 @@ describe('picking rivals', () => {
     expect(new Set(lineUps).size).toBeGreaterThan(5);
   });
 
+  it('draws every slot from one pool, so each other character races in each slot', () => {
+    const lineUps = SEEDS.map((seed) => pickRivals(createRng(seed), 'rudy'));
+    const others = CHARACTER_IDS.filter((id) => id !== 'rudy').sort();
+
+    for (const slot of [0, 1, 2]) {
+      expect([...new Set(lineUps.map((lineUp) => lineUp[slot]))].sort(), `slot ${slot}`).toEqual(others);
+    }
+  });
+
   it('gives every other character a turn as a rival', () => {
     const fielded = new Set(SEEDS.flatMap((seed) => pickRivals(createRng(seed), 'rudy')));
 
@@ -73,19 +82,6 @@ describe('a race line-up', () => {
     expect(player?.profile).toEqual(PLAYER_PROFILE);
     for (const rival of rivals) {
       expect(rival.profile).toEqual({ id: rival.id, ...CHARACTERS[rival.character].profile });
-    }
-  });
-
-  it('keeps each rival slot on its pre-roster tuned profile whoever is picked, while profiles are placeholders', () => {
-    for (const character of CHARACTER_IDS) {
-      for (const seed of SEEDS.slice(0, 10)) {
-        const rivals = worldAt(seed, character).racers.slice(1);
-        const slotProfiles = rivals.map((rival) => (rival.id === 'player' ? null : RIVAL_PROFILES[rival.id]));
-        expect(
-          rivals.map((rival) => rival.profile),
-          `${character} seed ${seed}`,
-        ).toEqual(slotProfiles);
-      }
     }
   });
 });

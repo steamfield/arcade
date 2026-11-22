@@ -25,13 +25,16 @@ import type { LevelDef } from '../types.ts';
  * - Cols 467-615, the coral gate and the final drop: clams in the approach, then a
  *   two-tile coral gate on the straight line (a Puffer or Cannonball opens it) or a
  *   chimney up and a tunnel over the top. A last ledge with pearls under ceiling
- *   urchins ends in a current that drops you to the floor run and the finish.
+ *   urchins ends in a current that drops you to the floor run and the finish. From
+ *   the ledge on (cols 530-610) the water is dark.
  *
  * Past the reef, clams sit in pairs with a row or more between them, so one racer opens
  * at most one and the racer just behind still finds the other ready; a roll favours speed
  * the further back you are. No clam sits above row 6: clams are numbered in reading
  * order and scenarios name the reef's first clam, at (22, 6), as index 0.
- * No dark zones: the engine doesn't draw them yet.
+ * One dark zone, the last ledge and the drop (cols 530-610): you see about 60-80 px around
+ * you, so the ceiling urchins (6 columns apart) come out of the dark one at a time. Rivals that
+ * can't see steer loosely there; Selene and anyone holding a Glow Lantern see as if lit.
  */
 export const OCEAN_LEVEL: LevelDef = {
   name: 'Sunlit Shallows',
@@ -57,5 +60,5 @@ export const OCEAN_LEVEL: LevelDef = {
     ########################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
     ########################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
   `,
-  dark: [],
+  dark: [[530, 610]],
 };

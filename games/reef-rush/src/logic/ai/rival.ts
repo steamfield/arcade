@@ -9,11 +9,18 @@
  * The aim then bends around any urchin or jelly in the way (`avoid.ts`); a
  * rival swerving that way holds its kick.
  *
+ * In a dark zone (`inDark`) a rival that can't see (`racerSeesInDark`: not
+ * Selene, no Glow Lantern) wobbles twice as far and re-reads its field half as
+ * often. A rival that rams coral (`breaksCoralOnContact`) always steers by the
+ * smash field.
+ *
  * Every call draws exactly four numbers from the racer's rng, in this order,
  * whether or not they are used: wobble, kick roll, recovery side, item roll.
  * So one racer's choices, and what it holds, never shift the rest of its stream.
  */
 import type { Rng } from '@arcade/core';
+import { breaksCoralOnContact, racerSeesInDark } from '../abilities.ts';
+import { inDark } from '../level/query.ts';
 import { cos, length, sin } from '../num.ts';
 import type { AiMemory, Intent, Racer, Vec, World } from '../types.ts';
 import { avoidHazards } from './avoid.ts';
@@ -26,7 +33,10 @@ import { steerDirection } from './steer.ts';
  * and one about 13 tiles ahead at the lower, so the field stays near the player without any rival
  * swimming far outside its own pace.
  */
-export const CATCH_UP = { perTile: 0.03, min: 0.6, max: 1.15 } as const;
+export const CATCH_UP = { perTile: 0.05, min: 0.6, max: 1.15 } as const;
+
+/** How much looser a rival steers in a dark zone it can't see in: wobble bound and reaction time multipliers. */
+export const DARK_STEERING = { wobbleMul: 2, reactionMul: 2 } as const;
 
 /** Tiles down the steer field a rival aims at. */
 const LOOKAHEAD_TILES = 3;
@@ -62,8 +72,9 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
   if (!memory) throw new Error(`rivalIntent needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
   const draws: Draws = { wobble: rng.next(), kick: rng.next(), side: rng.next(), item: rng.next() };
 
-  replanAim(world, racer, memory);
-  stepWobble(memory, racer.profile.wobble, draws.wobble);
+  const blind = inDark(world.level, racer.body) && !racerSeesInDark(racer);
+  replanAim(world, racer, memory, blind ? DARK_STEERING.reactionMul : 1);
+  stepWobble(memory, racer.profile.wobble * (blind ? DARK_STEERING.wobbleMul : 1), draws.wobble);
   const wobbled = wobbledAim(memory);
   const aim = avoidHazards(world, racer, wobbled);
   // avoidHazards hands back the same object when nothing is in the way.
@@ -90,17 +101,19 @@ function canRecover(world: World, racer: Racer, memory: AiMemory): boolean {
 }
 
 /**
- * Re-reads its field every `reactionTicks`, so slower rivals react later to the course. A rival
- * holding a Puffer that is inflated or ready to burst reads the smash field and aims through
- * coral, which its inflate breaks; while the burst cools down it steers around like everyone else.
+ * Re-reads its field every `reactionTicks` (times `reactionMul`), so slower rivals react later to
+ * the course. A rival holding a Puffer that is inflated or ready to burst reads the smash field and
+ * aims through coral, which its inflate breaks; while the burst cools down it steers around like
+ * everyone else. A rival that rams coral reads the smash field always.
  */
-function replanAim(world: World, racer: Racer, memory: AiMemory): void {
+function replanAim(world: World, racer: Racer, memory: AiMemory, reactionMul: number): void {
   if (memory.replanIn <= 0) {
     const { fields, level, broken } = world;
-    const smash = racer.stack.includes('puffer') && (racer.status.inflated > 0 || racer.burstCooldown === 0);
+    const pufferReady = racer.stack.includes('puffer') && (racer.status.inflated > 0 || racer.burstCooldown === 0);
+    const smash = pufferReady || breaksCoralOnContact(racer);
     const field = smash ? fields.smash : fields.steer;
     memory.aim = steerDirection(field, fields, level, broken, racer.body, LOOKAHEAD_TILES, smash);
-    memory.replanIn = racer.profile.reactionTicks;
+    memory.replanIn = racer.profile.reactionTicks * reactionMul;
   }
   memory.replanIn--;
 }
