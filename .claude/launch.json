@@ -18,6 +18,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@arcade/site", "dev", "--port", "5180", "--strictPort"],
       "port": 5180
+    },
+    {
+      "name": "reef-rush",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["arcade", "dev", "reef-rush", "--port", "5183"],
+      "port": 5183
     }
   ]
 }

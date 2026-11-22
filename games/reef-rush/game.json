@@ -1,0 +1,11 @@
+{
+  "id": "reef-rush",
+  "slug": "reef-rush",
+  "title": "Reef Rush",
+  "pitch": "Race three rivals through a reef, stacking power-ups that combine.",
+  "genre": "racing platformer",
+  "engine": "phaser",
+  "inputs": ["keyboard", "touch"],
+  "orientation": "landscape",
+  "status": "draft"
+}
