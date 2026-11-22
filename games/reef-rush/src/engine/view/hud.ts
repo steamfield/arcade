@@ -14,7 +14,7 @@ import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
 import { BURST_COOLDOWN_TICKS, STACK_MAX } from '../../logic/powerups/tuning.ts';
 import { playerOf } from '../../logic/racers.ts';
-import { type ComboName, type RacerId, TILE, type World } from '../../logic/types.ts';
+import { type ComboName, type PowerUpKind, type RacerId, TILE, type World } from '../../logic/types.ts';
 import { createLabel } from '../art/font.ts';
 import { Frame, type FrameKey, Tex } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
@@ -24,7 +24,8 @@ import { formatRaceTime, ordinal } from './race-text.ts';
 
 /** The race HUD; `onEvents` catches combo bursts and `sync` redraws everything else from the world. */
 export interface Hud {
-  onEvents(events: readonly Stamped<RuntimeEvent>[]): void;
+  /** `tick` is the world tick the events were drained at; effects time themselves from it. */
+  onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
   sync(world: World): void;
 }
 
@@ -97,16 +98,19 @@ export function createHud(scene: Phaser.Scene, reducedMotion: boolean): Hud {
     depth: Layer.hud,
   });
   let comboText = '';
-  let comboPending: ComboName | null = null;
   let comboStartedAt = Number.NEGATIVE_INFINITY;
   let drawnCooldown = -1;
+  let drawnReady = false;
   // Distance to the finish from the furthest start, fixed at the first sync; markers show the share of it covered.
   let courseLength: number | null = null;
 
   return {
-    onEvents(events) {
-      for (const event of events)
-        if (event.type === 'burst.fired' && event.id === 'player' && event.combo) comboPending = event.combo;
+    onEvents(events, tick) {
+      for (const event of events) {
+        if (event.type !== 'burst.fired' || event.id !== 'player' || !event.combo) continue;
+        comboText = COMBO_TEXT[event.combo];
+        comboStartedAt = tick;
+      }
     },
     sync(world) {
       courseLength ??= longestStart(world);
@@ -122,14 +126,11 @@ export function createHud(scene: Phaser.Scene, reducedMotion: boolean): Hud {
         markers[racer.id].setX(Math.round(STRIP.left + clampUnit(fraction) * (STRIP.right - STRIP.left)));
       }
       showStack(stack, player.stack);
-      if (player.burstCooldown !== drawnCooldown) {
+      const hasStack = player.stack.length > 0;
+      if (player.burstCooldown !== drawnCooldown || hasStack !== drawnReady) {
         drawnCooldown = player.burstCooldown;
-        drawBurstRing(ring, drawnCooldown, player.stack.length > 0);
-      }
-      if (comboPending) {
-        comboText = COMBO_TEXT[comboPending];
-        comboStartedAt = world.tick;
-        comboPending = null;
+        drawnReady = hasStack;
+        drawBurstRing(ring, drawnCooldown, hasStack);
       }
       const comboAge = world.tick - comboStartedAt;
       const comboShown = comboAge >= 0 && comboAge < COMBO_TICKS;
@@ -143,6 +144,8 @@ export function createHud(scene: Phaser.Scene, reducedMotion: boolean): Hud {
 
 interface StackSlot {
   icon: Phaser.GameObjects.Image;
+  /** The kind whose texture the icon currently shows, so the texture is only swapped on change. */
+  shown: PowerUpKind | null;
 }
 
 /** Draws the empty slot frames and an icon per slot that `showStack` fills. */
@@ -150,22 +153,24 @@ function createStackSlots(scene: Phaser.Scene): StackSlot[] {
   const frames = scene.add.graphics().setScrollFactor(0).setDepth(Layer.hud);
   return Array.from({ length: STACK_MAX }, (_, index) => {
     const x = SLOTS.x + index * (SLOTS.size + SLOTS.gap);
-    frames.fillStyle(0x0b1d33, 0.7).fillRect(x, SLOTS.y - SLOTS.size / 2, SLOTS.size, SLOTS.size);
+    frames.fillStyle(0x0b1d33, 0.4).fillRect(x, SLOTS.y - SLOTS.size / 2, SLOTS.size, SLOTS.size);
     const icon = scene.add
       .image(x + SLOTS.size / 2, SLOTS.y, Tex.jetFin, Frame.a)
       .setScrollFactor(0)
       .setDepth(Layer.hud)
       .setVisible(false);
-    return { icon };
+    return { icon, shown: null };
   });
 }
 
 /** Shows each held power-up's icon in its slot, oldest first, and hides the rest. */
-function showStack(slots: StackSlot[], held: readonly (keyof typeof POWER_UP_TEX)[]): void {
-  slots.forEach(({ icon }, index) => {
+function showStack(slots: StackSlot[], held: readonly PowerUpKind[]): void {
+  slots.forEach((slot, index) => {
     const kind = held[index];
-    icon.setVisible(kind !== undefined);
-    if (kind !== undefined) icon.setTexture(POWER_UP_TEX[kind], Frame.a);
+    slot.icon.setVisible(kind !== undefined);
+    if (kind === undefined || kind === slot.shown) return;
+    slot.icon.setTexture(POWER_UP_TEX[kind], Frame.a);
+    slot.shown = kind;
   });
 }
 
@@ -197,8 +202,11 @@ function captionText(world: World, view: Phaser.Geom.Rectangle): string {
   const py = player.body.y + player.body.h / 2;
   for (const bubble of world.bubbles) {
     if (bubble.owner === 'player' || view.contains(bubble.x, bubble.y)) continue;
-    if (Math.hypot(bubble.x - px, bubble.y - py) <= THREAT_RANGE_TILES * TILE)
-      return bubble.x < view.x ? '< BUBBLE' : 'BUBBLE >';
+    if (Math.hypot(bubble.x - px, bubble.y - py) > THREAT_RANGE_TILES * TILE) continue;
+    const dx = bubble.x - view.centerX;
+    const dy = bubble.y - view.centerY;
+    if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? '< BUBBLE' : 'BUBBLE >';
+    return dy < 0 ? '^ BUBBLE' : 'v BUBBLE';
   }
   return '';
 }

@@ -28,8 +28,8 @@ interface LooseSprite {
   icon: Phaser.GameObjects.Image;
 }
 
-/** Adds clam, pearl and loose-pickup sprites for `level` to `scene`. */
-export function createPickupView(scene: Phaser.Scene, level: Level): PickupView {
+/** Adds clam, pearl and loose-pickup sprites for `level` to `scene`. Under `reducedMotion` loose pickups sit still and glow steadily. */
+export function createPickupView(scene: Phaser.Scene, level: Level, reducedMotion: boolean): PickupView {
   const clams = level.clams.map((tile) =>
     scene.add.image(centre(tile.x), centre(tile.y), Tex.clam, Frame.clamOpen).setDepth(Layer.objects),
   );
@@ -48,9 +48,9 @@ export function createPickupView(scene: Phaser.Scene, level: Level): PickupView 
       });
       world.loose.forEach((pickup, index) => {
         loose[index] ??= addLooseSprite(scene);
-        showLoose(loose[index], pickup, tick);
+        showLoose(loose[index], pickup, tick, reducedMotion);
       });
-      for (const sprite of loose.slice(world.loose.length)) hideLoose(sprite);
+      for (let index = world.loose.length; index < loose.length; index++) hideLoose(loose[index] as LooseSprite);
     },
   };
 }
@@ -62,8 +62,14 @@ function addLooseSprite(scene: Phaser.Scene): LooseSprite {
   };
 }
 
-function showLoose({ glow, icon }: LooseSprite, pickup: World['loose'][number], tick: number): void {
-  const bob = Math.round(Math.sin((2 * Math.PI * tick) / BOB_PERIOD_TICKS) * BOB_PX);
+function showLoose(
+  { glow, icon }: LooseSprite,
+  pickup: World['loose'][number],
+  tick: number,
+  reducedMotion: boolean,
+): void {
+  const wave = reducedMotion ? 0 : Math.sin((2 * Math.PI * tick) / BOB_PERIOD_TICKS);
+  const bob = Math.round(wave * BOB_PX);
   const x = Math.round(pickup.x);
   const y = Math.round(pickup.y) + bob;
   const blinkedOut = pickup.ttl < BLINK_TICKS && pickup.ttl % BLINK_PERIOD < BLINK_PERIOD / 2;
@@ -72,7 +78,7 @@ function showLoose({ glow, icon }: LooseSprite, pickup: World['loose'][number], 
   glow
     .setPosition(x, y)
     .setScale(LOOSE_GLOW_SCALE)
-    .setAlpha(alpha * (0.6 + 0.4 * Math.sin((2 * Math.PI * tick) / BOB_PERIOD_TICKS)))
+    .setAlpha(alpha * (0.6 + 0.4 * wave))
     .setVisible(!blinkedOut);
 }
 

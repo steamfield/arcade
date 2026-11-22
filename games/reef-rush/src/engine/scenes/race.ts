@@ -50,9 +50,9 @@ export class RaceScene extends Phaser.Scene {
     const level = createLevelView(this, world.level);
     // The pickup and hazard views draw the course objects from world state, so the level's inert stand-ins go.
     for (const stand of Object.values(level.placeholders).flat()) stand.destroy();
-    const pickups = createPickupView(this, world.level);
-    const hazards = createHazardView(this, world.level);
     const { reducedMotion } = this.rt.settings;
+    const pickups = createPickupView(this, world.level, reducedMotion);
+    const hazards = createHazardView(this, world.level, reducedMotion);
     const racers = world.racers.map((racer) => ({
       racer,
       view: createRacerView(this, racer),
@@ -63,9 +63,10 @@ export class RaceScene extends Phaser.Scene {
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
 
     const stopListening = this.rt.listen((events) => {
+      const tick = this.rt.world?.tick ?? 0;
       level.onEvents(events);
-      hud.onEvents(events);
-      for (const { effects } of racers) effects.onEvents(events);
+      hud.onEvents(events, tick);
+      for (const { effects } of racers) effects.onEvents(events, tick);
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopListening);
 

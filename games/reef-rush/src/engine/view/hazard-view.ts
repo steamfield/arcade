@@ -27,7 +27,7 @@ const TRAP_WOBBLE_PX = 1;
 const TRAP_WOBBLE_PERIOD_TICKS = 24;
 
 /** Adds urchin and jelly sprites for `level` and the pools for transient hazards to `scene`. */
-export function createHazardView(scene: Phaser.Scene, level: Level): HazardView {
+export function createHazardView(scene: Phaser.Scene, level: Level, reducedMotion: boolean): HazardView {
   for (const tile of level.urchins)
     scene.add.image(centre(tile.x), centre(tile.y), Tex.urchin, Frame.a).setDepth(Layer.objects);
   const jellies = level.jellies.map((tile) =>
@@ -64,18 +64,20 @@ export function createHazardView(scene: Phaser.Scene, level: Level): HazardView 
       });
       hideFrom(inks, world.inks.length);
       world.bubbles.forEach((bubble, index) => {
-        bubbles[index] ??= scene.add
-          .image(0, 0, Tex.bubble, Frame.a)
-          .setDepth(Layer.player + 0.5)
-          .setScale(bubble.seeking ? 1.5 : 1.2);
-        bubbles[index].setPosition(Math.round(bubble.x), Math.round(bubble.y)).setVisible(true);
+        bubbles[index] ??= scene.add.image(0, 0, Tex.bubble, Frame.a).setDepth(Layer.player + 0.5);
+        bubbles[index]
+          .setPosition(Math.round(bubble.x), Math.round(bubble.y))
+          .setScale(bubble.seeking ? 1.5 : 1.2)
+          .setVisible(true);
       });
       hideFrom(bubbles, world.bubbles.length);
       world.racers.forEach((racer, index) => {
         const trapped = racer.status.trapped > 0;
         trapBubbles[index]?.setVisible(trapped);
         if (!trapped) return;
-        const wobble = Math.round(Math.sin((2 * Math.PI * tick) / TRAP_WOBBLE_PERIOD_TICKS) * TRAP_WOBBLE_PX);
+        const wobble = reducedMotion
+          ? 0
+          : Math.round(Math.sin((2 * Math.PI * tick) / TRAP_WOBBLE_PERIOD_TICKS) * TRAP_WOBBLE_PX);
         trapBubbles[index]?.setPosition(
           Math.round(racer.body.x + racer.body.w / 2) + wobble,
           Math.round(racer.body.y + racer.body.h / 2),

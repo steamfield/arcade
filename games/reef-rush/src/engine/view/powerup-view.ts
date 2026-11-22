@@ -25,8 +25,8 @@ export const POWER_UP_TEX: Record<PowerUpKind, TexKey> = {
 
 /** One racer's held-stack overlays. */
 export interface PowerupView {
-  /** Starts the flash ring when `flash.fired` names this racer. */
-  onEvents(events: readonly Stamped<RuntimeEvent>[]): void;
+  /** Starts the flash ring when `flash.fired` names this racer. `tick` is the world tick the events were drained at. */
+  onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
   /** Positions and shows or hides every overlay from `racer`'s state at `tick`. */
   sync(racer: Racer, tick: number): void;
 }
@@ -54,17 +54,12 @@ export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reduced
   const pulse = overlay(Tex.looseGlow, Layer.player + 0.25);
   const flashRing = overlay(Tex.looseGlow, Layer.player + 0.25).setTint(FLASH_TINT);
   let flashedAt = Number.NEGATIVE_INFINITY;
-  let flashPending = false;
 
   return {
-    onEvents(events) {
-      for (const event of events) if (event.type === 'flash.fired' && event.id === racerId) flashPending = true;
+    onEvents(events, tick) {
+      for (const event of events) if (event.type === 'flash.fired' && event.id === racerId) flashedAt = tick;
     },
     sync(racer, tick) {
-      if (flashPending) {
-        flashedAt = tick;
-        flashPending = false;
-      }
       const x = Math.round(racer.body.x + racer.body.w / 2);
       const y = Math.round(racer.body.y + racer.body.h / 2);
       const { status } = racer;
