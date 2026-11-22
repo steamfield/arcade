@@ -249,9 +249,36 @@ Depends on: phase 3, phase 4
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/level/levels.ts, games/reef-rush/src/logic/ai/profiles.ts, games/reef-rush/src/logic/difficulty.test.ts | contracts | | opus | pending | | |
-| b | M | games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/view/menu-view.ts, games/reef-rush/src/engine/view/race-text.ts, games/reef-rush/src/engine/scenes/title.ts, games/reef-rush/src/engine/scenes/results.ts | contracts, games/reef-rush/UI.md | | opus | pending | | |
-| c | M | games/reef-rush/src/engine/fx/ | contracts | | sonnet | pending | | |
+| a | L | games/reef-rush/src/logic/level/levels.ts, games/reef-rush/src/logic/ai/profiles.ts, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/scenarios/kit.ts, games/reef-rush/scenarios/dnf-results.ts, games/reef-rush/scenarios/race-to-finish.ts, games/reef-rush/scenarios/results-after-finish.ts, games/reef-rush/scenarios/results-ignores-early-kick.ts, games/reef-rush/tests/smoke.spec.ts | contracts | games/reef-rush/src/logic/difficulty.test.ts | opus | running | deliver/reef-rush-5a | |
+| b | L | games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/view/menu-view.ts, games/reef-rush/src/engine/view/race-text.ts, games/reef-rush/src/engine/scenes/title.ts, games/reef-rush/src/engine/scenes/results.ts | contracts, games/reef-rush/UI.md | | opus | running | deliver/reef-rush-5b | |
+| c | M | games/reef-rush/src/engine/fx/, games/reef-rush/src/engine/view/racer-view.ts, games/reef-rush/src/engine/view/powerup-view.ts | contracts | | opus | running | deliver/reef-rush-5c | |
+
+Scaffold: 87ddd94 (on the landing branch; phase 5 runs alone). Adds: title menu options Race, Sound, Motion with `Runtime.changeSettings` (applies at once, saves, emits `settings.changed {muted, reducedMotion}`, calls `audio.setMuted`) and the `settings-toggle` scenario; `engine/fx/index.ts` (`createFx(scene, world, reducedMotion): Fx` with `onEvents(events, tick)` and `sync(world)`, a no-op wired into race.ts); `engine/race-progress.ts` (`raceProgress`, `FINAL_STRETCH_AT = 0.75`, shared by the music lift and the HUD; `Runtime.raceFraction`); `WorldOptions.endsWhen: 'everyone'` so bot races time every racer; `logic/difficulty.test.ts` (read-only to lanes). Baseline on the 15 s first section: expert wins 3/10, novice passes.
+
+### Lane 5/a brief: the full ocean course and difficulty
+
+- Goal: finish "Sunlit Shallows" as an original ~90 s ocean course and tune the rivals so the difficulty test passes: neither too hard nor too easy.
+- Course: extend `OCEAN_LEVEL` to the right. Keep every row of the first section (columns 0-94) byte-identical so the clam, urchin and cannonball scenarios still hold; remove that section's finish column and move the finish to the new end. Keep 20 rows. Build 3-4 more sections that each teach and then test one idea from what the game has: a current highway with a kelp detour, a jelly field that rewards timing, an urchin gauntlet with a shield-or-thread choice, a coral gate shortcut that Puffer or Cannonball opens beside a longer open route, and a final stretch with a current-down drop. Place clams so trailing racers meet them (catch-up by item), pearls along the better lines, and at least one real route split. Use `dark` ranges only if a section earns them (the lantern lights them). Read docs/repo-map.md and the parse.ts format doc first. Look at captures of every section (`pnpm arcade see reef-rush --scene race --input ... --at ...`) and at `--ascii` output.
+- Tuning: `ai/profiles.ts` (rival force, kick skill, wobble, reaction, item aggression; BOT_PROFILES only if the bot definitions in the spec allow it) and `CATCH_UP` in `ai/rival.ts`. Change rival.ts only for tuning constants unless a real AI problem on the new course needs a fix; report any. Rivals must keep distinct personalities (Tess steady, Squib erratic, Bo heavy).
+- Done when: `difficulty.test.ts` passes unchanged (expert wins >= 8/10 with the lead rival within 8 s; novice 3rd/4th in >= 7/10 and within 25 s of the winner in >= 8/10; expert mean 75-105 s); `TOP_ROUTE` in scenarios/kit.ts is re-recorded to the new finish and every scenario and smoke test using it passes (update `tests/smoke.spec.ts` only where it depends on the route); `dnf-results` waits long enough for the longer race; `pnpm arcade check` and `pnpm arcade smoke` pass; check-lane.
+
+### Lane 5/b brief: the UI redesign
+
+- Goal: rebuild the race HUD, title, results and menus from the phase 4 UI kit to `UI.md`, so the game's UI moves from the user's 4/10 to something that looks designed. `UI.md` is the spec: its rect tables, zones, palette roles, type scale and motion rules are requirements; if one is wrong, report it rather than silently deviating.
+- Race HUD (`view/hud.ts`, keep `createHud(scene, reducedMotion)` with `onEvents` and `sync`): framed place panel with portrait and display numeral, framed timer, power-up well with the three stack slots and the burst ring (keep 3/c's behaviour: readiness, combo pop, captions), kick-ready indicator, track-style progress strip with 7x7 head markers and the finish flag, animated place changes (arrow and colour pop, up or down).
+- Race text (`view/race-text.ts`): big countdown numerals, GO, FINAL STRETCH when `rt.raceFraction` crosses `FINAL_STRETCH_AT` (once per race), FINISH; outlined display face over water.
+- Title (`scenes/title.ts`, `view/menu-view.ts`): logotype, racers swimming past, blinking PRESS A, best-time card, framed buttons with the animated cursor fin for Race, SOUND ON/OFF and MOTION FULL/REDUCED that update live on `settings.changed`.
+- Results (`scenes/results.ts`): podium with portraits and medals, times revealed in sequence, NEW BEST ribbon, framed Race again / Title buttons.
+- Every motion obeys reduced motion read live from `rt.settings.reducedMotion` where the screen stays up across a change (title). Debug summaries keep the semantic fields scenarios assert (scene, menu options and selection, best text); keep option strings unchanged ('Race', 'Sound', 'Motion', 'Race again', 'Title') since scenarios and smoke assert them.
+- Done when: check and smoke pass, check-lane, and you have looked at desktop and `--mobile` captures of title, a race at countdown, mid-race and final stretch, and results (win and DNF), and confirmed nothing sits in a touch or back-link zone.
+
+### Lane 5/c brief: juice and effects
+
+- Goal: make the race feel good. Read `.claude/skills/game-feel` first.
+- Owns `engine/fx/` (implement `createFx` behind the scaffold's seam; split into small modules), `view/racer-view.ts` and `view/powerup-view.ts`.
+- Effects, from events and world state only: kick squash-and-stretch and a bubble puff; swim trail bubbles scaled by speed; coral breaking into debris; hit sparks and a short camera shake on the player's hits; pearl sparkle and a pickup pop on clams and loose grabs; ink and bubble pops; a cannonball impact shake; place-up flash on the player; finish bubbles burst. Replace 3/c's stand-ins with the real thing: the inflated Puffer is a scaled sprite (integer-friendly), invulnerability a sprite flicker at 3 Hz or less.
+- Rules: render-only (never touch logic state or the tick); pool particles, no per-frame allocation; every effect has a reduced-motion form that keeps its information (no shake, no flashing, small or no motion); stays readable at 1x on phones.
+- Done when: check and smoke pass, check-lane, and captures (`--at` around kicks, a hit, the cannonball and the finish, with and without reduced motion) show each effect.
 
 ## Lane briefs, first phase
 
