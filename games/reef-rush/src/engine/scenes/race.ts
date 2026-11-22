@@ -56,7 +56,7 @@ export class RaceScene extends Phaser.Scene {
     const hazards = createHazardView(this, world.level, reducedMotion);
     const racers = world.racers.map((racer) => ({
       racer,
-      view: createRacerView(this, racer),
+      view: createRacerView(this, racer, reducedMotion),
       effects: createPowerupView(this, racer.id, reducedMotion),
     }));
     const hud = createHud(this, reducedMotion);
@@ -68,7 +68,10 @@ export class RaceScene extends Phaser.Scene {
       const tick = this.rt.world?.tick ?? 0;
       level.onEvents(events);
       hud.onEvents(events, tick);
-      for (const { effects } of racers) effects.onEvents(events, tick);
+      for (const { view, effects } of racers) {
+        view.onEvents(events);
+        effects.onEvents(events, tick);
+      }
       fx.onEvents(events, tick);
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopListening);

@@ -59,6 +59,10 @@ A hit (urchin `*`, jelly `j`, bubble, puffer, flash) takes your shield if you ho
 
 Every sprite is palette-indexed pixel text in `engine/art/sprites/`, drawn at boot by `art/pixel.ts` (at most 4 colours per frame; racers and hazards hold 3:1 contrast against every water band, enforced in `sprites.test.ts`). The UI kit (fonts, panels, icons, portraits, logo) lives in `engine/art/ui/`. Sound is a four-voice chip synth (`audio/synth.ts`, `sequencer.ts`); songs are written in a small text notation (`audio/notation.ts`, songs in `audio/songs/`) and parsed at load, so a malformed song fails tests. The race theme speeds up for the final stretch.
 
+## Effects
+
+`engine/fx/` turns logic events into particles and camera shake; racer squash, invulnerability flicker and the 2x Puffer live in the racer and power-up views. Effects run per logic tick from events, use their own cosmetic rng (never `world.rngs`), and never change logic state. Shake only ever moves the camera for the player's own hits, shield pops (lighter) and cannonball impacts, capped at 4 px. Reduced motion turns shake off, holds particles still, swaps the flicker for a steady half alpha, drops squash and the place flash, and shows the lantern ring at full reach.
+
 ## Course format
 
 ASCII in `src/logic/level/levels.ts`, documented in `src/logic/level/parse.ts`.

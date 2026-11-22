@@ -57,7 +57,7 @@ const FLASH_COLOUR = 0xffffff;
  * @param reducedMotion Drops the squash and stretch and the place-up flash, and holds the
  *   invulnerability look steady instead of flickering. Defaults to full motion.
  */
-export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion = false): RacerView {
+export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion: boolean): RacerView {
   const sprite = scene.add
     .sprite(0, 0, TEXTURE[racer.id], Frame.a)
     .setDepth(racer.id === 'player' ? Layer.player : Layer.racers);
