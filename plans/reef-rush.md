@@ -371,6 +371,26 @@ Implement the four kinds, their passives and the three new combos exactly as the
 
 Draw the four kinds as original pixel art in the existing style: held icons for the HUD well, a squid sprite with a swim cycle and a latched pose wrapped on a racer, a riptide lane (animated streaks along its direction, readable over currents), the decoy (the owner's sprite with a subtle shimmer so a player can tell it's fake on a second look) and the undertow (backward streaks on pulled racers). Add a lock-on warning when a squid's target is the player (an edge arrow pointing at the squid plus a rising sfx), a "KICK!" shake-off prompt while latched (A on touch), and combo captions for the new combos. Give each new event an sfx in the existing synth. Fix progress-strip heads overlapping when racers bunch (stagger or stack them, keep the player's on top). Add a `squid-warning` scenario that asserts the lock-on and latch events reach the HUD state (use launch params or the kit to give a racer a squid). Respect reduced motion. Update UI.md. Look at `arcade see` captures at desktop and phone width for every new visual and report what you saw.
 
+### Phase 8: courses and movement styles
+
+Demo: pick Sunlit Shallows or a new Moonlit Kelp Forest on a course-select screen and race either; best times are kept per course; `?course=sky-test` loads a small flying arena where you and three rival bots race with flight physics, and the race, HUD, power-ups, results and records all work there unchanged.
+Depends on: phase 7
+
+The user asked (2026-11-22) that new courses be quick to make, including ones that are not underwater (flying is the example), without a rewrite and without lowering gameplay quality. Characters stay aquatic for now; avatars can change later. Phase 8 proves two things: a second water course is mostly data plus an art theme, and a different movement style plugs in behind one interface. The sky arena is a dev-only proof (not on the select screen) so the seam has two real implementations instead of a guessed one.
+
+Design:
+- A course is data: `Course { id, name, level: LevelDef, medium: MediumId, theme: ThemeId, song: SongId }` in a registry (`logic/courses/`). Nothing outside the registry imports a specific course. Runtime, title and select backdrops, records and the difficulty harness take a course id.
+- Tiles are generic behaviours: `open`, `solid`, `breakable`, `slow`, `flow-<dir>`. Each theme has a legend that maps its ASCII characters to behaviours and to art (ocean: `C` coral is breakable, `~` kelp is slow, `> < ^ v` currents are flow). Hazards stay as they are (urchin is a static hazard, jelly a moving one) but are named generically in logic with theme skins in the engine.
+- A medium is the movement style: `Medium { applyIntent(racer, intent, env, mods, events, dt), cruiseSpeed(env, mods), steerIntent(racer, aim, memory): Intent }` plus its tuning. `swim` is today's physics moved behind it unchanged (fingerprint test: seeded races identical before and after). `flight` adds gravity, a flap on kick (upward impulse with cooldown), glide drag and flow tiles as wind; its rival `steerIntent` turns the flow-field aim into hold-direction plus timed flaps. Abilities and power-ups keep working through `MoveModifiers`; any rule that assumes water (e.g. Gil's upward kick) reads from the medium, not a constant.
+- Themes live in the engine: `Theme { palette, tiles, backdrop, hazard skins, darkness tint }` keyed by `ThemeId`; songs keyed by `SongId`. Ocean, kelp-forest and sky themes.
+- Save v4: best times per course id (migration from v3 puts the old best under Sunlit Shallows; fixture save-v3.json already exists).
+- A course-select screen after character select, matching the select screen's quality (course name, preview strip of the layout, your best time, A/B prompts).
+- `games/reef-rush/COURSES.md`: how to add a course, step by step, and how to add a medium. The kelp forest must be added following it, touching only course data, a theme and a song.
+
+Bars: Sunlit Shallows plays identically (fingerprints); the kelp forest is about 60 s for a good swimmer and passes the phase 6 difficulty bars for every character; the sky arena is finished by expert and novice bots on 30 seeds with no stuck racers, and its own scenario passes in smoke.
+
+Lanes are planned when phase 7 lands, after reading its merged code: an 8/s refactor lane first (registry, generic tiles, medium seam with swim behind it, theme seam, save v4), then in parallel the kelp forest course and tuning, the flight medium and sky arena, and the engine (course select, themes, records UI).
+
 ## Lane briefs, first phase
 
 ### Lane 1/a brief: level parsing, tile queries, swim physics and collision
