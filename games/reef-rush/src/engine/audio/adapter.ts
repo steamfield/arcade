@@ -9,13 +9,13 @@
 import type { EventSink, Rng, Stamped } from '@arcade/core';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { AudioPort } from './index.ts';
-import type { Channel, NoteEvent, Song } from './notation.ts';
+import type { Song } from './notation.ts';
 import type { Sequencer } from './sequencer.ts';
 import { playSfx, type SfxKey } from './sfx.ts';
-import { env, type Synth } from './synth.ts';
+import { type SongName, songs } from './songs/index.ts';
+import type { Synth } from './synth.ts';
 
 /** Every piece of music the game plays. */
-export type SongName = 'title' | 'race' | 'win' | 'lose' | 'results';
 
 /** What the adapter drives. */
 export interface AdapterOptions {
@@ -43,13 +43,9 @@ const PITCH_SPREAD = 0.05;
 /** Musical cues that must stay in tune with each other, so they skip the random pitch. */
 const STEADY: ReadonlySet<SfxKey> = new Set(['countdown', 'go']);
 
-/**
- * The song for `name`. The single place songs are chosen: until the soundtrack lands this
- * returns the placeholder test song (looping for themes, cut short and one-shot for jingles).
- */
+/** The song for `name`. The single place songs are chosen. */
 export function songFor(name: SongName): Song {
-  if (name === 'win' || name === 'lose') return { ...asJingle(PLACEHOLDER_SONG), name };
-  return { ...PLACEHOLDER_SONG, name };
+  return songs[name];
 }
 
 /** Builds the event-to-sound half of the `AudioPort`. */
@@ -156,53 +152,3 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
     },
   };
 }
-
-/** Cuts a song to its first two bars and plays it once, for the placeholder jingles. */
-function asJingle(song: Song): Song {
-  const lengthBeats = song.beatsPerBar * 2;
-  return {
-    ...song,
-    lengthBeats,
-    loopStart: null,
-    sections: [],
-    notes: song.notes.filter((note) => note.start < lengthBeats),
-  };
-}
-
-/** Back-to-back notes of `beats` each on one channel, from beat `start`. */
-function line(channel: Channel, start: number, beats: number, pitches: NoteEvent['pitch'][]): NoteEvent[] {
-  return pitches.map((pitch, i) => ({ channel, start: start + i * beats, length: beats, pitch, velocity: 1 }));
-}
-
-/**
- * A 4-bar test song in C major exercising all four voices, two sections and the loop, so the
- * sequencer can be heard before the real soundtrack lands. Not part of the game's music.
- */
-const PLACEHOLDER_SONG: Song = {
-  name: 'placeholder',
-  bpm: 140,
-  beatsPerBar: 4,
-  lengthBeats: 16,
-  loopStart: 0,
-  sections: [
-    { name: 'A', bar: 0 },
-    { name: 'B', bar: 2 },
-  ],
-  voices: {
-    pulse1: { duty: 0.5, envelope: env(0.005, 0.1, 0.6, 0.05), level: 0.3 },
-    pulse2: { duty: 0.25, envelope: env(0.005, 0.08, 0.4, 0.05), level: 0.15 },
-    triangle: { envelope: env(0.005, 0.02, 0.9, 0.03), level: 0.5 },
-    noise: { envelope: env(0.001, 0.05, 0, 0.02), level: 0.3 },
-  },
-  notes: [
-    ...line('pulse1', 0, 1, [72, 76, 79, 76, 77, 81, 79, 77, 76, 79, 84, 79, 74, 79, 72, 72]),
-    ...line('pulse2', 0, 2, [64, 67, 65, 64, 67, 64, 65, 64]),
-    ...line('triangle', 0, 1, [48, 55, 48, 55, 53, 60, 55, 43, 48, 55, 48, 55, 43, 50, 48, 55]),
-    ...line(
-      'noise',
-      0,
-      1,
-      Array.from({ length: 16 }, (_, beat) => (beat % 2 === 0 ? 'kick' : 'snare')),
-    ),
-  ],
-};
