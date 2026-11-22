@@ -1,6 +1,6 @@
 /**
- * The race screen. It assembles the views (backdrop, course, racers, HUD,
- * camera, debug overlay) over the runtime's world and syncs them every rendered
+ * The race screen. It assembles the views (backdrop, course, pickups, hazards,
+ * racers and their power-up effects, HUD, camera, debug overlay) over the runtime's world and syncs them every rendered
  * frame. Event-driven visuals arrive through the runtime's per-tick listener.
  * Ticking, input and the move to results all happen in the runtime.
  */
@@ -12,8 +12,11 @@ import type { Runtime } from '../runtime.ts';
 import { createBackdrop } from '../view/backdrop.ts';
 import { followRacer } from '../view/camera.ts';
 import { createDebugOverlay } from '../view/debug-overlay.ts';
+import { createHazardView } from '../view/hazard-view.ts';
 import { createHud } from '../view/hud.ts';
 import { createLevelView } from '../view/level-view.ts';
+import { createPickupView } from '../view/pickup-view.ts';
+import { createPowerupView } from '../view/powerup-view.ts';
 import { createRacerView } from '../view/racer-view.ts';
 
 /** Everything the race scene draws, rebuilt on each create(). */
@@ -45,12 +48,25 @@ export class RaceScene extends Phaser.Scene {
   private createViews(world: World): RaceViews {
     const backdrop = createBackdrop(this, world.level);
     const level = createLevelView(this, world.level);
-    const racers = world.racers.map((racer) => ({ racer, view: createRacerView(this, racer) }));
-    const hud = createHud(this);
+    // The pickup and hazard views draw the course objects from world state, so the level's inert stand-ins go.
+    for (const stand of Object.values(level.placeholders).flat()) stand.destroy();
+    const pickups = createPickupView(this, world.level);
+    const hazards = createHazardView(this, world.level);
+    const { reducedMotion } = this.rt.settings;
+    const racers = world.racers.map((racer) => ({
+      racer,
+      view: createRacerView(this, racer),
+      effects: createPowerupView(this, racer.id, reducedMotion),
+    }));
+    const hud = createHud(this, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
 
-    const stopListening = this.rt.listen((events) => level.onEvents(events));
+    const stopListening = this.rt.listen((events) => {
+      level.onEvents(events);
+      hud.onEvents(events);
+      for (const { effects } of racers) effects.onEvents(events);
+    });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopListening);
 
     let lastTick = world.tick;
@@ -58,7 +74,12 @@ export class RaceScene extends Phaser.Scene {
       camera.update((current.tick - lastTick) / TICK_HZ);
       lastTick = current.tick;
       backdrop.update(current.tick);
-      for (const { racer, view } of racers) view.sync(racer, current.tick);
+      pickups.sync(current, current.tick);
+      hazards.sync(current, current.tick);
+      for (const { racer, view, effects } of racers) {
+        view.sync(racer, current.tick);
+        effects.sync(racer, current.tick);
+      }
       hud.sync(current);
       debug?.sync(current);
     };
