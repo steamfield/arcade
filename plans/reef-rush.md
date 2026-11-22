@@ -157,7 +157,7 @@ One lane: the engine has no seam inside it until the runtime and scenes exist, a
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/reef-rush/src/engine/, games/reef-rush/src/main.ts, games/reef-rush/scenarios/, games/reef-rush/tests/smoke.spec.ts | contracts, templates/phaser-2d/src/engine/game.ts | | opus | pending | | gate passes; see captures at desktop and mobile reviewed |
+| a | L | games/reef-rush/src/engine/, games/reef-rush/src/main.ts, games/reef-rush/src/logic/records.ts, games/reef-rush/src/logic/records.test.ts, games/reef-rush/scenarios/, games/reef-rush/tests/smoke.spec.ts, games/reef-rush/DESIGN.md | contracts, templates/phaser-2d/src/engine/game.ts | | opus | pending | | gate passes; see captures at desktop and mobile reviewed |
 
 ### Phase 3: stacking power-ups, pickups and hazards
 
@@ -228,6 +228,32 @@ Depends on: phase 3, phase 4
 - Decisions already made: determinism rules in the spec; placing uses `progress`, steering uses `steer`; `world.ts` calls these in the documented order and owns the rngs (`rivalIntent` receives the racer's own rng).
 - Out of scope: items and burst use, `smash` consumers, profile tuning (profiles.ts is scaffold data), anything in `world.ts`.
 - Done when: the three test files pass, typecheck passes, check-lane is clean.
+
+### Lane 2/a brief: the playable race engine
+
+- Goal: replace phase 1's adapted template engine with the engine layout in Contracts, so the game plays title, countdown, race with HUD, and results, and every later phase plugs into a named seam instead of editing a 300-line file. This engine is the reference later games copy; structure matters as much as behavior.
+- Interface (create these; each file opens with a responsibility block, each export has a doc comment):
+  - `engine/game.ts`: `startPhaser(ctx, saves): Promise<GameHandle>`; Phaser config, scene list, ResizeObserver integer zoom, WebGL context-loss reporting, audio context registration, and the GameHandle (`advance`, `idle`, `renderer`, `debugSummary`, `debugState`, `loadState`, `pause`, `resume`). Wiring only.
+  - `engine/runtime.ts`: `class Runtime` owning `events: EventLog<GameEvent | EngineEvent>`, `step: FixedStep`, `scene`, `loading`, `world`, `save`, `settings` (resolved: `muted`, `reducedMotion` from the save or `matchMedia` when null), `lastResult`, `audio: AudioPort`; methods `frame(deltaMs)`, `goTo(scene)`, `entered(scene)`, `startRace()`, `persist(data)`. Its tick drains events once with its own cursor and hands them to `audio.onEvents`. `EngineEvent` (scene.started, menu.selected, save.written, save.failed {reason}) is exported from here.
+  - `engine/input.ts`: unchanged from phase 1.
+  - `engine/scenes/boot.ts` (calls `buildTextures(scene)` then routes by `?scene=`), `title.ts`, `race.ts`, `results.ts`. Scene keys: `boot`, `title`, `race`, `results`; `?scene=race` (and `?scene=play` as an alias) skips the title.
+  - `engine/view/level-view.ts` (`createLevelView(scene, level): LevelView`: rock and coral via a Phaser Tilemap built from data with a generated tileset, kelp and currents as sprites, finish gate, inert placeholders for pearls, clams, urchins and jellies so phase 3 can replace them), `racer-view.ts` (`createRacerView(scene, racer): RacerView` with `sync(racer)`: position rounded, facing flip, two-frame swim animation keyed by speed, kick squash), `hud.ts` (`createHud(scene): Hud` with `sync(world)`: big place ("2nd"), race timer m:ss.cc, progress strip across the top with four racer markers in distinct shapes and colors, kick-ready pip, countdown and GO banner; text only through `art/font.ts`), `camera.ts` (`followRacer(camera, body, level)`: deadzone, velocity lookahead, frame-rate independent smoothing, integer scroll), `backdrop.ts` (`createBackdrop(scene, level): Backdrop`: depth-graded colour bands and two placeholder parallax layers; phase 4 replaces the body).
+  - `engine/art/keys.ts`: `Tex`, `Frame` and `Anim` consts for every sprite the game will need, including phase 3's: racers (2 swim frames each), rock, coral, coral debris, kelp (2 frames), currents (4 dirs, 2 frames), finish gate, pearl, clam (closed, open), urchin, jellyfish (2 frames), the five power-up icons, ink cloud, bubble, loose power-up glow, HUD marker shapes. `engine/art/index.ts`: `buildTextures(scene)` builds every key (placeholders from `art/placeholder.ts` now) and registers animations once. `engine/art/font.ts`: `createLabel(scene, x, y, text, options): Label` (Phaser Text with monospace now; phase 4 swaps to a pixel font behind the same signature).
+  - `engine/audio/index.ts`: `type AudioPort = { onEvents(events): void; setMuted(muted): void; dispose(): void }` and `createAudio(ctx, settings): AudioPort`, silent in this phase.
+  - `logic/records.ts`: `recordResult(save, result): SaveData` (one more race; a new best only when the player finished and beat the old ticks) with `records.test.ts` covering first finish, slower finish, faster finish, DNF.
+  - Delete `engine/textures.ts`.
+- Behavior:
+  - Title: game title, "Race" (kick confirms; up/down move the selection if more options exist), best time and place when the save has one.
+  - Race: countdown banner 3/2/1/GO, HUD, camera follows the player, rivals rendered and labelled by colour/shape on the strip. When `race.finished` fires, wait 90 ticks (counted in the runtime tick, not Phaser time) then go to `results`.
+  - Results: standings with each racer's name and time (or DNF), the player's row highlighted, "New best!" when it is, "Best time not saved" when `save.failed` fired; options "Race again" and "Title".
+  - Persistence: exactly one `persist(recordResult(...))` per finished race; emits `save.written` or `save.failed {reason}` and logs a warning on failure.
+  - Debug: `debugSummary()` = `{ scene, save, ...summarize(world) }` plus `menu` on menus; `debugState()` adds racers, race, settings, `ascii`.
+  - `?debug=1` draws racer hitboxes from logic state and shows tick and tile.
+  - Text: every HUD and menu string goes through `createLabel`; nothing else creates `Phaser.GameObjects.Text`.
+- Scenarios (yours; delete none, add these): `race-to-finish` (keep phase 1's), `countdown-holds-racers`, `results-after-finish` (finishing shows the results scene with the player's place and a `save.written`), `dnf-results` (an idle player reaches results with DNF), `race-again` (from results, Race again returns to a fresh countdown). Update `tests/smoke.spec.ts` for the new scenes, keep the `@touch` test, and add a reload test showing the best time on the title.
+- Decisions already made: Phaser 4.2.1 (read `node_modules/phaser/skills/` for tilemaps, cameras, text, animations before writing them; the repo's `.claude/skills/phaser-game` wins on how Phaser fits the repo); logic ticks only in the FixedStep callback; no Phaser input, clocks or tweens for gameplay; engine effects only from drained events; 320x180, integer zoom, `pixelArt: true`.
+- Out of scope: real pixel art, sound, particles and screen shake, power-ups, settings UI (settings are read and stored only), changes to logic outside `records.ts`.
+- Done when: `pnpm arcade check reef-rush` and `pnpm arcade smoke reef-rush` pass; `pnpm arcade see reef-rush --scenario race-to-finish --at 0,200,600,end` and the same with `--mobile` are reviewed and the HUD is readable and clear of the touch overlay and back link; DESIGN.md is updated for scenes, controls and scenarios; check-lane is clean.
 
 ## Log
 
