@@ -11,6 +11,7 @@ import type { GameContext } from '@arcade/shell';
 import type { GameEvent } from '../logic/events.ts';
 import { OCEAN_LEVEL } from '../logic/level/levels.ts';
 import { parseLevel } from '../logic/level/parse.ts';
+import { playerOf } from '../logic/racers.ts';
 import { isNewBest, recordResult } from '../logic/records.ts';
 import { NEW_GAME, type SaveData } from '../logic/save.ts';
 import type { RaceResult, TickInput, World } from '../logic/types.ts';
@@ -27,7 +28,9 @@ export type EngineEvent =
   | { type: 'scene.started'; scene: SceneKey }
   | { type: 'menu.selected'; option: MenuOption }
   | { type: 'save.written' }
-  | { type: 'save.failed'; reason: string };
+  | { type: 'save.failed'; reason: string }
+  /** A sound actually started: once per SFX and once per song start or section change, never per note. */
+  | { type: 'audio.played'; key: string; kind: 'sfx' | 'song' };
 
 /** Everything that can appear in the runtime's event log. */
 export type RuntimeEvent = GameEvent | EngineEvent;
@@ -88,6 +91,8 @@ export class Runtime {
   /** True from the start of a save write until it settles. The test harness waits on it through idle(). */
   saving = false;
   readonly audio: AudioPort;
+  /** The player's progress-field distance at the start line, for the race progress fraction. */
+  private startProgress = 0;
   readonly ctx: GameContext;
 
   private readonly saves: SaveStore<SaveData>;
@@ -106,7 +111,7 @@ export class Runtime {
     this.save = options.save;
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.startScene = options.startScene;
-    this.audio = createAudio(options.ctx, this.settings);
+    this.audio = createAudio(options.ctx, this.settings, this.events);
   }
 
   /** Settings from the save, with a null `reducedMotion` following the OS. */
@@ -145,6 +150,7 @@ export class Runtime {
   startRace(): void {
     const seed = this.ctx.params.seed + (this.save?.races ?? 0);
     this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, { seed });
+    this.startProgress = playerOf(this.world).progress;
     this.lastResult = null;
     this.resultsIn = null;
     this.goTo('race');
@@ -200,6 +206,7 @@ export class Runtime {
     const world = this.world;
     if (!world) throw new Error('The race scene is ticking without a world; start races with startRace()');
     stepWorld(world, readPlayerInput(), dt);
+    this.audio.onRaceProgress(raceProgress(world, this.startProgress));
     if (this.resultsIn === null) return;
     this.resultsIn--;
     if (this.resultsIn <= 0) this.goTo('results');
@@ -232,4 +239,15 @@ export class Runtime {
 function readPlayerInput(): TickInput {
   const move = input.vector('move');
   return { move: { x: move.x, y: move.y }, kick: input.justPressed('kick'), burst: input.justPressed('burst') };
+}
+
+/**
+ * How far the player is through the course, 0 at the start line and 1 at the finish,
+ * from the progress field. The audio uses it to lift the tempo on the final stretch.
+ */
+function raceProgress(world: World, start: number): number {
+  const player = playerOf(world);
+  if (player.finished) return 1;
+  if (!Number.isFinite(player.progress) || start <= 0) return 0;
+  return Math.min(1, Math.max(0, 1 - player.progress / start));
 }
