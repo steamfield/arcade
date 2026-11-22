@@ -22,6 +22,7 @@ const AGAINST_CURRENT_COST = 3;
 const SMASH_CORAL_COST = 6;
 /** Pixels between samples when checking that a straight line stays in open water. */
 const SIGHT_STEP_PX = 1;
+const EDGE_INSET_PX = 0.001;
 const STILL: Vec = { x: 0, y: 0 };
 
 /** The 8 neighbour offsets, orthogonal first, in a fixed order so ties resolve the same way every run. */
@@ -35,6 +36,8 @@ const NEIGHBOURS: readonly Vec[] = [
   { x: -1, y: 1 },
   { x: -1, y: -1 },
 ];
+/** Unit signs of a box's four corners from its centre. */
+const CORNER_SIGNS = NEIGHBOURS.filter((offset) => offset.x !== 0 && offset.y !== 0);
 
 const CURRENT_DIRECTION: Partial<Record<Cell, Vec>> = {
   'current-right': { x: 1, y: 0 },
@@ -70,6 +73,15 @@ function currentCost(current: Vec, move: Vec): number {
   return 1;
 }
 
+/**
+ * The corner rule shared by every walk over the grid: a diagonal step from `tile` by `offset` is
+ * allowed only when both tiles beside it are open. Orthogonal steps always pass.
+ */
+function cornerIsClear(tile: Vec, offset: Vec, isOpen: (tx: number, ty: number) => boolean): boolean {
+  if (offset.x === 0 || offset.y === 0) return true;
+  return isOpen(tile.x + offset.x, tile.y) && isOpen(tile.x, tile.y + offset.y);
+}
+
 /** Builds all three fields by Dijkstra from the finish column. Rebuild when coral breaks. */
 export function buildFlowFields(level: Level, broken: ReadonlySet<number>): FlowFields {
   return {
@@ -103,7 +115,7 @@ function distancesToFinish(level: Level, broken: ReadonlySet<number>, cost: Entr
       const fromX = tx + offset.x;
       const fromY = ty + offset.y;
       if (!isOpen(fromX, fromY)) continue;
-      if (offset.x !== 0 && offset.y !== 0 && !(isOpen(tx, fromY) && isOpen(fromX, ty))) continue;
+      if (!cornerIsClear({ x: tx, y: ty }, offset, isOpen)) continue;
       const move = { x: -offset.x, y: -offset.y };
       const reached = settled + Math.hypot(move.x, move.y) * entry(tx, ty, move);
       const fromIndex = tileIndex(level, fromX, fromY);
@@ -121,17 +133,9 @@ function fieldAt(field: Float32Array, fields: FlowFields, tile: Vec): number {
   return field[tile.y * fields.width + tile.x] ?? Number.POSITIVE_INFINITY;
 }
 
-function centreOf(body: Body): Vec {
-  return { x: body.x + body.w / 2, y: body.y + body.h / 2 };
-}
-
-function tileOf(point: Vec): Vec {
-  return { x: Math.floor(point.x / TILE), y: Math.floor(point.y / TILE) };
-}
-
-function tileCentre(tile: Vec): Vec {
-  return { x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE };
-}
+const centreOf = (body: Body): Vec => ({ x: body.x + body.w / 2, y: body.y + body.h / 2 });
+const tileOf = (point: Vec): Vec => ({ x: Math.floor(point.x / TILE), y: Math.floor(point.y / TILE) });
+const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE });
 
 /**
  * Distance to the finish in tiles at a body's centre, interpolated inside the tile toward its
@@ -154,13 +158,18 @@ export function progressAt(fields: FlowFields, _level: Level, body: Body): numbe
   return here + (along / (offset.x ** 2 + offset.y ** 2)) * (lowest.value - here);
 }
 
-/** The first of the 8 neighbours with the lowest progress strictly below the tile's own, or null. */
+/**
+ * The first neighbour with the lowest progress strictly below the tile's own, or null. A diagonal
+ * counts only when both tiles beside it are open, the same corner rule the search uses.
+ */
 function lowestNeighbour(fields: FlowFields, tile: Vec): { offset: Vec; value: number } | null {
+  const open = (x: number, y: number) => Number.isFinite(fieldAt(fields.progress, fields, { x, y }));
   let lowest: { offset: Vec; value: number } | null = null;
   let lowestValue = fieldAt(fields.progress, fields, tile);
   for (const offset of NEIGHBOURS) {
     const value = fieldAt(fields.progress, fields, { x: tile.x + offset.x, y: tile.y + offset.y });
     if (value >= lowestValue) continue;
+    if (!cornerIsClear(tile, offset, open)) continue;
     lowest = { offset, value };
     lowestValue = value;
   }
@@ -186,11 +195,11 @@ export function steerDirection(
   if (fieldAt(field, fields, start) === 0) return { ...STILL };
 
   const path = downhillPath(field, fields, level, broken, start, lookahead);
-  // The first step is always taken; later ones only while the straight line to them stays clear,
+  // The first step is always taken; later ones only while the body can slide straight to them,
   // so the aim never cuts a corner the path itself goes around.
   let target = path[0];
   for (const tile of path.slice(1)) {
-    if (!hasClearLine(level, broken, centre, tileCentre(tile))) break;
+    if (!hasClearSweep(level, broken, body, tileCentre(tile))) break;
     target = tile;
   }
   if (!target) return { ...STILL };
@@ -209,7 +218,7 @@ function downhillPath(
   start: Vec,
   steps: number,
 ): Vec[] {
-  const solid = (tx: number, ty: number) => isSolid(level, broken, tx, ty);
+  const open = (tx: number, ty: number) => !isSolid(level, broken, tx, ty);
   const path: Vec[] = [];
   let tile = start;
   for (let step = 0; step < steps; step++) {
@@ -218,8 +227,7 @@ function downhillPath(
     for (const offset of NEIGHBOURS) {
       const candidate = { x: tile.x + offset.x, y: tile.y + offset.y };
       const value = fieldAt(field, fields, candidate);
-      if (value >= nextValue || solid(candidate.x, candidate.y)) continue;
-      if (offset.x !== 0 && offset.y !== 0 && (solid(candidate.x, tile.y) || solid(tile.x, candidate.y))) continue;
+      if (value >= nextValue || !open(candidate.x, candidate.y) || !cornerIsClear(tile, offset, open)) continue;
       next = candidate;
       nextValue = value;
     }
@@ -230,13 +238,24 @@ function downhillPath(
   return path;
 }
 
-/** True when every point on the segment, sampled each SIGHT_STEP_PX, lies in a non-solid tile. */
-function hasClearLine(level: Level, broken: ReadonlySet<number>, from: Vec, to: Vec): boolean {
+/**
+ * True when the body's box, slid in a straight line until its centre reaches `to`, stays in
+ * non-solid tiles. Each corner is sampled every SIGHT_STEP_PX.
+ */
+function hasClearSweep(level: Level, broken: ReadonlySet<number>, body: Body, to: Vec): boolean {
+  const from = centreOf(body);
+  // Inset so a box edge lying exactly on a tile boundary doesn't count as touching the next tile.
+  const halfW = body.w / 2 - EDGE_INSET_PX;
+  const halfH = body.h / 2 - EDGE_INSET_PX;
   const samples = Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / SIGHT_STEP_PX);
   for (let i = 1; i <= samples; i++) {
     const t = i / samples;
-    const tile = tileOf({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
-    if (isSolid(level, broken, tile.x, tile.y)) return false;
+    const x = from.x + (to.x - from.x) * t;
+    const y = from.y + (to.y - from.y) * t;
+    for (const corner of CORNER_SIGNS) {
+      const tile = tileOf({ x: x + corner.x * halfW, y: y + corner.y * halfH });
+      if (isSolid(level, broken, tile.x, tile.y)) return false;
+    }
   }
   return true;
 }

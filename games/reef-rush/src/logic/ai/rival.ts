@@ -49,8 +49,11 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
 
   replanAim(world, racer, memory);
   stepWobble(memory, racer.profile.wobble, draws.wobble);
-  const move = world.race.phase === 'racing' ? chooseMove(racer, memory, draws.side) : wobbledAim(memory);
-  return { move, kick: wantsKick(racer, move, draws.kick), burst: false };
+  const aim = wobbledAim(memory);
+  const recovery = world.race.phase === 'racing' ? recoveryMove(racer, memory, draws.side) : null;
+  // A recovering rival is sliding off a wall, not racing, so it saves its kick for the aim.
+  const kick = recovery === null && wantsKick(racer, aim, draws.kick);
+  return { move: recovery ?? aim, kick, burst: false };
 }
 
 /** Re-reads the steer field every `reactionTicks`, so slower rivals react later to the course. */
@@ -76,14 +79,14 @@ function wobbledAim(memory: AiMemory): Vec {
 }
 
 /**
- * The wobbled aim, unless the racer has sat nearly still too long: then it swims sideways
- * for a while to slide off whatever it is pinned against.
+ * The sideways swim of a racer that has sat nearly still too long, held for RECOVER_TICKS to
+ * slide off whatever it is pinned against; null while it isn't recovering.
  */
-function chooseMove(racer: Racer, memory: AiMemory, sideDraw: number): Vec {
+function recoveryMove(racer: Racer, memory: AiMemory, sideDraw: number): Vec | null {
   if (memory.recoverTicks === 0) {
     const speed = Math.hypot(racer.body.vx, racer.body.vy);
     memory.stuckTicks = speed < STUCK_SPEED ? memory.stuckTicks + 1 : 0;
-    if (memory.stuckTicks < STUCK_TICKS) return wobbledAim(memory);
+    if (memory.stuckTicks < STUCK_TICKS) return null;
     memory.stuckTicks = 0;
     memory.recoverTicks = RECOVER_TICKS;
     memory.recoverDir = sidewaysFrom(memory.aim, racer.facing, sideDraw < 0.5 ? 1 : -1);
@@ -98,13 +101,13 @@ function sidewaysFrom(aim: Vec, facing: 1 | -1, side: 1 | -1): Vec {
   return { x: -forward.y * side, y: forward.x * side };
 }
 
-/** Kicks when ready, already moving roughly where it wants to go, and the skill roll passes. */
-function wantsKick(racer: Racer, move: Vec, roll: number): boolean {
+/** Kicks when ready, already moving roughly along its aim, and the skill roll passes. */
+function wantsKick(racer: Racer, aim: Vec, roll: number): boolean {
   if (racer.kickCooldown > 0) return false;
   const { vx, vy } = racer.body;
   const speed = Math.hypot(vx, vy);
   if (speed === 0) return false;
-  const alignment = (move.x * vx + move.y * vy) / speed;
+  const alignment = (aim.x * vx + aim.y * vy) / speed;
   return alignment > KICK_ALIGNMENT && roll < racer.profile.kickSkill;
 }
 

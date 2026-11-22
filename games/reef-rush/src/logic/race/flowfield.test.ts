@@ -205,3 +205,70 @@ describe('reachability', () => {
     expect(unreachableStarts(level, buildFlowFields(level, new Set()))).toEqual([]);
   });
 });
+
+describe('steering a whole body', () => {
+  /**
+   * From (1,1) the descent is (2,1), (3,1), then diagonally to (4,2). The centre line to (4,2)
+   * grazes the top-right corner of the rock at (2,2), so a 12x10 body following it would clip it.
+   */
+  const grazing = (): Level =>
+    parseLevel({
+      name: 'grazing',
+      ascii: `
+        #######
+        #1...##
+        #.#..F#
+        #234.F#
+        #######
+      `,
+    });
+
+  it('stops short of a tile the body could only reach by clipping a rock corner', () => {
+    const level = grazing();
+    const fields = buildFlowFields(level, new Set());
+    const dir = steerDirection(fields.steer, fields, level, new Set(), bodyCentredOn(1, 1), 3);
+
+    expect(dir.x).toBeCloseTo(1, 5);
+    expect(dir.y).toBeCloseTo(0, 5);
+  });
+});
+
+describe('progress beside a blocked diagonal', () => {
+  /**
+   * The tile at (1,1) has rock to its right, so its route runs down through (1,2) and only then
+   * right. Its diagonal neighbour (2,2) reads lower but can't be swum to directly.
+   */
+  const notch = (): Level =>
+    parseLevel({
+      name: 'notch',
+      ascii: `
+        ########
+        #1######
+        #.....F#
+        #234..F#
+        ########
+      `,
+    });
+
+  it('does not read lower for a body pressed toward the rock that blocks the diagonal', () => {
+    const level = notch();
+    const fields = buildFlowFields(level, new Set());
+    const centred = bodyCentredOn(1, 1);
+    const againstWall = { ...centred, x: centred.x + 2 };
+
+    expect(progressAt(fields, level, againstWall)).toBeCloseTo(progressAt(fields, level, centred), 5);
+  });
+
+  it('only decreases along the route down and then toward the finish', () => {
+    const level = notch();
+    const fields = buildFlowFields(level, new Set());
+    const start = bodyCentredOn(1, 1);
+    const route = [
+      ...Array.from({ length: 17 }, (_, i) => ({ ...start, y: start.y + i })),
+      ...Array.from({ length: 16 }, (_, i) => ({ ...start, y: start.y + TILE, x: start.x + i + 1 })),
+    ];
+    const readings = route.map((body) => progressAt(fields, level, body));
+
+    for (let i = 1; i < readings.length; i++) expect(readings[i]).toBeLessThanOrEqual(readings[i - 1] ?? 0);
+  });
+});
