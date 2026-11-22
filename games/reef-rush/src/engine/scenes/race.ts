@@ -43,7 +43,7 @@ export class RaceScene extends Phaser.Scene {
   }
 
   private createViews(world: World): RaceViews {
-    const backdrop = createBackdrop(this, world.level);
+    const backdrop = createBackdrop(this, world.level, this.rt.settings);
     const level = createLevelView(this, world.level);
     const racers = world.racers.map((racer) => ({ racer, view: createRacerView(this, racer) }));
     const hud = createHud(this);
