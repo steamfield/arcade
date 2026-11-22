@@ -1,16 +1,42 @@
 /**
- * 16x16 head-on portraits of the four racers for the place panel, the podium
- * and the progress strip, in each racer's own palette from `palettes.ts`.
- * They echo the in-race silhouettes: Pip's brass helmet with eyes behind the
- * porthole, Tess's round turtle face over her shell, Squib's pointed mantle
- * and tentacles, Bo's iron bell with the crab looking out.
+ * Head-on portraits of the four racers in each racer's own palette from
+ * `palettes.ts`: 16x16 for the place panel and the podium, and 7x7 heads for
+ * the progress strip (pixel art never scales by fractions, so the small size
+ * is drawn on its own). They echo the in-race silhouettes: Pip's brass helmet
+ * with eyes behind the porthole, Tess's round turtle face over her shell,
+ * Squib's pointed mantle and tentacles, Bo's iron bell with the crab looking
+ * out.
  */
 import { RacerPalette } from '../palettes.ts';
-import type { UiSheet } from './keys.ts';
-import { PortraitFrame, UiTex } from './keys.ts';
+import { PortraitFrame, type UiSheet, UiTex } from './keys.ts';
 
-/** The portrait sheet, one frame per racer id. */
+/** The portrait and head sheets, one frame per racer id in each. */
 export const PORTRAIT_SHEETS: readonly UiSheet[] = [
+  {
+    key: UiTex.heads,
+    frames: [
+      {
+        name: PortraitFrame.player,
+        palette: RacerPalette.pip,
+        rows: ['.00000.', '0122110', '0133310', '0132310', '0133310', '0111110', '.00000.'],
+      },
+      {
+        name: PortraitFrame.tess,
+        palette: RacerPalette.tess,
+        rows: ['.00000.', '0121110', '0101010', '0111110', '0133310', '0111110', '.00000.'],
+      },
+      {
+        name: PortraitFrame.squib,
+        palette: RacerPalette.squib,
+        rows: ['..000..', '.01210.', '0111110', '0311130', '0111110', '0101010', '0.0.0.0'],
+      },
+      {
+        name: PortraitFrame.bo,
+        palette: RacerPalette.bo,
+        rows: ['.00000.', '0122110', '0100010', '0133310', '0100010', '0111110', '0000000'],
+      },
+    ],
+  },
   {
     key: UiTex.portraits,
     frames: [

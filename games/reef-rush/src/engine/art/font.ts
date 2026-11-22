@@ -1,27 +1,53 @@
 /**
  * The one way scenes draw text: labels in the UI kit's two hand-drawn pixel
- * faces (`ui/typeface.ts`), each with a one-pixel ink shadow down and right so
- * text holds 4.5:1 contrast on any panel. Labels snap to whole pixels and scale
- * only by whole numbers, so glyphs stay crisp at every zoom. Callers get the
- * small `Label` interface rather than a Phaser object.
+ * faces (`ui/typeface.ts`). Each label draws over an ink copy of itself from
+ * the baked shadow faces: a one-pixel drop shadow on panels, or a full
+ * one-pixel outline (`outline: true`) for text over the water. The ink is in
+ * the texture, not a tint, so it survives renderers that ignore tint. Labels
+ * snap to whole pixels and scale only by whole numbers, so glyphs stay crisp
+ * at every zoom. Callers get the small `Label` interface rather than a Phaser
+ * object.
  */
 import Phaser from 'phaser';
 import { ensureFonts } from './ui/fonts.ts';
-import { TEXT_SHADOW, toneCss, type UiToneName } from './ui/palette.ts';
-import { DISPLAY_FACE, measureText, normalizeText, TEXT_FACE, type Typeface } from './ui/typeface.ts';
+import { toneCss, type UiToneName } from './ui/palette.ts';
+import {
+  DISPLAY_FACE,
+  DISPLAY_SHADOW_FACE,
+  measureText,
+  normalizeText,
+  TEXT_FACE,
+  TEXT_SHADOW_FACE,
+  type Typeface,
+} from './ui/typeface.ts';
 
 /**
  * `text` is the 5x7 face, `display` the 12 px face. The older names map onto them: `small` and
  * `medium` are text, `large` is display, `title` is display at 2x.
  */
+const TEXT = { face: TEXT_FACE, ink: TEXT_SHADOW_FACE } as const;
+const DISPLAY = { face: DISPLAY_FACE, ink: DISPLAY_SHADOW_FACE } as const;
 const SIZES = {
-  text: { face: TEXT_FACE, scale: 1 },
-  display: { face: DISPLAY_FACE, scale: 1 },
-  small: { face: TEXT_FACE, scale: 1 },
-  medium: { face: TEXT_FACE, scale: 1 },
-  large: { face: DISPLAY_FACE, scale: 1 },
-  title: { face: DISPLAY_FACE, scale: 2 },
-} as const satisfies Record<string, { face: Typeface; scale: number }>;
+  text: { ...TEXT, scale: 1 },
+  display: { ...DISPLAY, scale: 1 },
+  small: { ...TEXT, scale: 1 },
+  medium: { ...TEXT, scale: 1 },
+  large: { ...DISPLAY, scale: 1 },
+  title: { ...DISPLAY, scale: 2 },
+} as const satisfies Record<string, { face: Typeface; ink: Typeface; scale: number }>;
+
+/** Where the ink copies sit, in glyph pixels: one down-right, or all eight neighbours for an outline. */
+const DROP_SHADOW = [[1, 1]] as const;
+const OUTLINE = [
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+] as const;
 
 /** The text sizes a label can use. */
 export type LabelSize = keyof typeof SIZES;
@@ -34,9 +60,18 @@ export interface LabelOptions {
   scale?: 1 | 2 | 3;
   /** A UI palette colour by role. Defaults to 'foam'. */
   tone?: UiToneName;
-  /** CSS colour string, e.g. '#ffd23f'. Wins over `tone` when both are given. */
+  /**
+   * CSS colour string, e.g. '#ffd23f'. Wins over `tone` when both are given.
+   *
+   * @deprecated Use `tone`, so text stays in the UI palette and its tested contrast.
+   */
   color?: string;
-  /** Which point of the text sits at (x, y): top-left, centre, or top-right. Defaults to 'left'. */
+  /** A full 1 px ink outline instead of the drop shadow. Required for text off a panel (see UI.md). */
+  outline?: boolean;
+  /**
+   * Which point of the text sits at (x, y): top-left, centre, or top-right, and how lines of
+   * multi-line text align to each other. Defaults to 'left'.
+   */
   align?: 'left' | 'center' | 'right';
   /** Pinned to the screen instead of scrolling with the world. HUD labels set this. */
   fixed?: boolean;
@@ -46,6 +81,7 @@ export interface LabelOptions {
 /** A piece of on-screen text. Setters skip work when nothing changed, so calling them every frame is cheap. */
 export interface Label {
   setText(text: string): Label;
+  /** Takes a CSS colour string; pass `toneCss(tone)` to stay in the UI palette. */
   setColor(color: string): Label;
   setVisible(visible: boolean): Label;
   destroy(): void;
@@ -60,9 +96,9 @@ interface Layout {
   scale: number;
 }
 
-/** The two game objects a label draws with: the ink shadow underneath and the tinted glyphs. */
+/** The game objects a label draws with: ink copies underneath, each at its offset, and the tinted glyphs. */
 interface Layers {
-  shadow: Phaser.GameObjects.BitmapText;
+  ink: { object: Phaser.GameObjects.BitmapText; dx: number; dy: number }[];
   glyphs: Phaser.GameObjects.BitmapText;
 }
 
@@ -85,15 +121,19 @@ export function createLabel(
   };
   const fontSize = layout.face.height * layout.scale;
   const shown = normalizeText(layout.face, text);
-  // Same depth and added first, so the shadow draws under the glyphs.
-  const layers: Layers = {
-    shadow: scene.add.bitmapText(0, 0, layout.face.key, shown, fontSize).setTint(TEXT_SHADOW),
-    glyphs: scene.add.bitmapText(0, 0, layout.face.key, shown, fontSize),
-  };
-  for (const object of [layers.shadow, layers.glyphs]) {
-    object.setDepth(options.depth ?? 0);
+  const bitmap = (face: Typeface) => {
+    const object = scene.add.bitmapText(0, 0, face.key, shown, fontSize).setDepth(options.depth ?? 0);
     if (options.fixed) object.setScrollFactor(0);
-  }
+    if (layout.align === 'center') object.setCenterAlign();
+    else if (layout.align === 'right') object.setRightAlign();
+    return object;
+  };
+  // Same depth and added first, so the ink draws under the glyphs.
+  const offsets = options.outline ? OUTLINE : DROP_SHADOW;
+  const layers: Layers = {
+    ink: offsets.map(([dx, dy]) => ({ object: bitmap(size.ink), dx, dy })),
+    glyphs: bitmap(layout.face),
+  };
   const color = options.color ?? toneCss(options.tone ?? 'foam');
   layers.glyphs.setTint(toColour(color));
   place(layout, layers, text);
@@ -108,7 +148,7 @@ function wrap(layout: Layout, layers: Layers, initialText: string, initialColor:
       if (next === text) return label;
       text = next;
       const shown = normalizeText(layout.face, next);
-      layers.shadow.setText(shown);
+      for (const { object } of layers.ink) object.setText(shown);
       layers.glyphs.setText(shown);
       place(layout, layers, next);
       return label;
@@ -119,12 +159,12 @@ function wrap(layout: Layout, layers: Layers, initialText: string, initialColor:
       return label;
     },
     setVisible(visible) {
-      layers.shadow.setVisible(visible);
+      for (const { object } of layers.ink) object.setVisible(visible);
       layers.glyphs.setVisible(visible);
       return label;
     },
     destroy() {
-      layers.shadow.destroy();
+      for (const { object } of layers.ink) object.destroy();
       layers.glyphs.destroy();
     },
   };
@@ -132,15 +172,15 @@ function wrap(layout: Layout, layers: Layers, initialText: string, initialColor:
 }
 
 /**
- * Puts the text's anchor point at the label's (x, y) on whole pixels. The shadow sits one glyph
- * pixel down and right, so it scales with the text.
+ * Puts the text's anchor point at the label's (x, y) on whole pixels. Ink copies sit at their
+ * offsets in glyph pixels, so the shadow or outline scales with the text.
  */
 function place(layout: Layout, layers: Layers, text: string): void {
   const { width, height } = measureText(layout.face, text, layout.scale);
   const left = { left: layout.x, center: layout.x - Math.floor(width / 2), right: layout.x - width }[layout.align];
   const top = layout.align === 'center' ? layout.y - Math.floor(height / 2) : layout.y;
   layers.glyphs.setPosition(left, top);
-  layers.shadow.setPosition(left + layout.scale, top + layout.scale);
+  for (const { object, dx, dy } of layers.ink) object.setPosition(left + dx * layout.scale, top + dy * layout.scale);
 }
 
 function toColour(css: string): number {

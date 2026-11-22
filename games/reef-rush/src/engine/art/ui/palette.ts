@@ -47,12 +47,18 @@ export const UiTone = {
 /** Any named text tone. */
 export type UiToneName = keyof typeof UiTone;
 
+/**
+ * The only tones allowed on text over the water rather than a panel, and then only with a full
+ * outline. Coral and dim fall under 4.5:1 on the shallow bands, so they stay on panels.
+ */
+export const OFF_PANEL_TONES = ['foam', 'sun'] as const satisfies readonly UiToneName[];
+
 /** A tone as the CSS colour string `Label.setColor` takes. */
 export function toneCss(tone: UiToneName): string {
   return `#${UiTone[tone].toString(16).padStart(6, '0')}`;
 }
 
-/** Every label draws a copy of itself in this colour one pixel down and right. */
+/** The ink every label's shadow or outline is drawn in. */
 export const TEXT_SHADOW = UiColour.ink;
 
 /**

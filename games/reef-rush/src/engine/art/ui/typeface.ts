@@ -7,7 +7,7 @@
 import type { NamedFrame, Palette, PixelRows } from '../pixel.ts';
 import { DISPLAY_GLYPHS } from './display-face.ts';
 import { UiTex } from './keys.ts';
-import { DISPLAY_SHADE } from './palette.ts';
+import { DISPLAY_SHADE, TEXT_SHADOW } from './palette.ts';
 import { TEXT_GLYPHS } from './text-face.ts';
 
 /** A pixel face: its glyphs and how they sit on the line. */
@@ -51,6 +51,23 @@ export const DISPLAY_FACE: Typeface = {
   shadeFromRow: 7,
   palette: [0xffffff, DISPLAY_SHADE],
 };
+
+/**
+ * The same face drawn solid ink, under its own key, for label shadows and outlines. Baking the
+ * colour in rather than tinting keeps shadows on renderers that ignore tint (Canvas).
+ */
+function inkCopy(face: Typeface, key: string): Typeface {
+  return { ...face, key, palette: [TEXT_SHADOW, TEXT_SHADOW] };
+}
+
+/** The text face in solid ink. */
+export const TEXT_SHADOW_FACE = inkCopy(TEXT_FACE, UiTex.fontTextShadow);
+
+/** The display face in solid ink. */
+export const DISPLAY_SHADOW_FACE = inkCopy(DISPLAY_FACE, UiTex.fontDisplayShadow);
+
+/** Every face the fonts module draws and registers. */
+export const ALL_FACES: readonly Typeface[] = [TEXT_FACE, DISPLAY_FACE, TEXT_SHADOW_FACE, DISPLAY_SHADOW_FACE];
 
 /** Shown in place of any character a face has no glyph for. */
 const FALLBACK = '?';

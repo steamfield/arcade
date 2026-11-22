@@ -38,15 +38,23 @@ export interface PanelOptions {
   depth?: number;
 }
 
-/** The texture key for one style at one size. */
+/**
+ * The texture key for one style at one size.
+ *
+ * @throws {Error} When a size is not a whole number. Panel sizes are layout constants, never
+ *   animated, and a fractional size would both blur and mint a new texture per frame.
+ */
 export function panelKey(style: PanelStyle, width: number, height: number): string {
+  if (!Number.isInteger(width) || !Number.isInteger(height)) {
+    throw new Error(`Panel size must be whole pixels; got ${width}x${height}. Use a layout constant.`);
+  }
   return `ui-panel-${style}-${width}x${height}`;
 }
 
 /**
  * Adds a `width` x `height` panel with its top-left corner at (x, y).
  *
- * @throws {Error} When the panel is smaller than 6x6, the least that fits both corners.
+ * @throws {Error} When the size is not whole pixels, or smaller than 6x6 (the least that fits both corners).
  */
 export function createPanel(
   scene: Phaser.Scene,

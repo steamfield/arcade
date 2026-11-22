@@ -1,32 +1,43 @@
 /**
  * The UI icon set: 9x9 icons for the HUD and menus (kick, burst, the five
  * power-ups, the finish flag, place arrows and the menu cursor fin) and 12x14
- * medals for the results podium. Each icon is a bold silhouette with an ink
- * outline so it reads on any panel, and each medal carries its numeral, so
- * first, second and third differ by more than colour.
+ * medals for the results podium. Each is a bold silhouette with a 1 px foam
+ * rim (index 0), sticker style: an ink outline would vanish into the indigo
+ * panels and the inset wells the icons sit on. Each medal carries its numeral,
+ * so first, second and third differ by more than colour.
  */
 
 import { ItemPalette } from '../palettes.ts';
 import type { Palette, PixelRows } from '../pixel.ts';
-import type { UiSheet } from './keys.ts';
-import { IconFrame, MedalFrame, UiTex } from './keys.ts';
+import { IconFrame, MedalFrame, type UiSheet, UiTex } from './keys.ts';
 import { UiColour, UiRamp } from './palette.ts';
 
-/** Icon palettes: outline first, then the icon's own colours. */
+/** The light rim every icon and medal is outlined in. */
+export const ICON_RIM = UiColour.foam;
+
+/** A world item palette with its dark outline swapped for the UI rim. */
+const withRim = (palette: Palette): Palette => [ICON_RIM, ...palette.slice(1)];
+
+/** Icon palettes: rim first, then the icon's own colours. */
 const IconPalette = {
-  kick: [UiColour.ink, 0x4cc8f0, 0xd8f6ff],
-  burst: [UiColour.ink, UiColour.sun, 0xfff3c4, UiRamp.sunDark],
-  flag: [UiColour.ink, UiColour.foam, 0x2a2a3a, 0x8a8aa0],
-  up: [UiColour.ink, UiColour.sun, 0xfff3c4],
-  down: [UiColour.ink, UiColour.coral, 0xffc0b8],
-  cursor: [UiColour.ink, UiColour.sun, 0xfff3c4, UiRamp.sunDark],
+  kick: [ICON_RIM, 0x4cc8f0, 0xd8f6ff],
+  burst: [ICON_RIM, UiColour.sun, 0xfff3c4, UiRamp.sunDark],
+  flag: [ICON_RIM, 0xd8d4e8, 0x2a2a3a, 0x8a8aa0],
+  up: [ICON_RIM, UiColour.sun, 0xfff3c4],
+  down: [ICON_RIM, UiColour.coral, 0xffc0b8],
+  cursor: [ICON_RIM, UiColour.sun, 0xfff3c4, UiRamp.sunDark],
+  jetFin: withRim(ItemPalette.jetFin),
+  bubbleShield: withRim(ItemPalette.bubbleShield),
+  puffer: withRim(ItemPalette.puffer),
+  inkSac: withRim(ItemPalette.inkSac),
+  glowLantern: withRim(ItemPalette.glowLantern),
 } as const satisfies Record<string, Palette>;
 
-/** Medal palettes: outline, metal, metal light, ribbon. */
+/** Medal palettes: rim (also the face's shine), metal, the struck numeral, ribbon. */
 const MedalPalette = {
-  first: [UiColour.ink, 0xf2b01e, 0xfff0a0, 0x3060d8],
-  second: [UiColour.ink, 0xa8b4c8, 0xf0f4fa, 0xd84060],
-  third: [UiColour.ink, 0xc07038, 0xf4c098, 0x30a860],
+  first: [ICON_RIM, 0xf2b01e, UiColour.ink, 0x4a80f0],
+  second: [ICON_RIM, 0xa8b4c8, UiColour.ink, 0xe04a6a],
+  third: [ICON_RIM, 0xc07038, UiColour.ink, 0x30a860],
 } as const satisfies Record<string, Palette>;
 
 const icon = (name: string, palette: Palette, rows: PixelRows) => ({ name, palette, rows });
@@ -61,7 +72,7 @@ export const ICON_SHEETS: readonly UiSheet[] = [
         '....0....',
       ]),
       // Jet Fins: a swept fin cutting the water line.
-      icon(IconFrame.jetFin, ItemPalette.jetFin, [
+      icon(IconFrame.jetFin, IconPalette.jetFin, [
         '..00.....',
         '..010....',
         '..0210...',
@@ -73,7 +84,7 @@ export const ICON_SHEETS: readonly UiSheet[] = [
         '.........',
       ]),
       // Bubble Shield: a ring of bubble with a shine.
-      icon(IconFrame.bubbleShield, ItemPalette.bubbleShield, [
+      icon(IconFrame.bubbleShield, IconPalette.bubbleShield, [
         '..00000..',
         '.0111110.',
         '013322210',
@@ -85,11 +96,11 @@ export const ICON_SHEETS: readonly UiSheet[] = [
         '..00000..',
       ]),
       // Puffer: a spiny round fish facing right.
-      icon(IconFrame.puffer, ItemPalette.puffer, [
+      icon(IconFrame.puffer, IconPalette.puffer, [
         '..3.3.3..',
         '3.00000.3',
         '.0122220.',
-        '301220203',
+        '301223203',
         '.0122220.',
         '301111103',
         '.0111110.',
@@ -97,7 +108,7 @@ export const ICON_SHEETS: readonly UiSheet[] = [
         '..3.3.3..',
       ]),
       // Ink Sac: a dark drop with a sheen.
-      icon(IconFrame.inkSac, ItemPalette.inkSac, [
+      icon(IconFrame.inkSac, IconPalette.inkSac, [
         '....0....',
         '...010...',
         '...010...',
@@ -109,9 +120,9 @@ export const ICON_SHEETS: readonly UiSheet[] = [
         '...000...',
       ]),
       // Glow Lantern: a framed lamp with a hot core.
-      icon(IconFrame.glowLantern, ItemPalette.glowLantern, [
+      icon(IconFrame.glowLantern, IconPalette.glowLantern, [
         '...000...',
-        '..0...0..',
+        '..00000..',
         '.0111110.',
         '.0122210.',
         '.0123210.',
@@ -180,13 +191,13 @@ export const ICON_SHEETS: readonly UiSheet[] = [
   },
 ];
 
-/** A 12x14 medal: a ribbon V over a round face with `numeral` (4x5, `0` pixels) struck into it. */
+/** A 12x14 medal: a ribbon V over a round face with `numeral` (4x5, `0` pixels) struck into it in ink. */
 function medal(numeral: PixelRows): PixelRows {
   const face = [
     '..00000000..',
-    '.0122222110.',
-    '012111111110',
-    '012111111110',
+    '.0100000110.',
+    '010111111110',
+    '010111111110',
     '011111111110',
     '011111111110',
     '011111111110',
@@ -197,7 +208,7 @@ function medal(numeral: PixelRows): PixelRows {
   const struck = face.map((row, y) => {
     const digit = numeral[y - 3];
     if (!digit) return row;
-    return row.slice(0, 4) + [...digit].map((pixel, x) => (pixel === '0' ? '0' : row[4 + x])).join('') + row.slice(8);
+    return row.slice(0, 4) + [...digit].map((pixel, x) => (pixel === '0' ? '2' : row[4 + x])).join('') + row.slice(8);
   });
   return ['.033....330.', '..033..330..', '...033330...', '....0330....', ...struck];
 }

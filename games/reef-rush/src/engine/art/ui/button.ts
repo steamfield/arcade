@@ -3,18 +3,18 @@
  * gold accent panel, gold label and the cursor fin beside it when selected.
  * The fin nudges one pixel on a fixed tick rhythm (still under reduced
  * motion). It knows nothing about menus; the caller says what is selected and
- * passes the tick.
+ * passes the tick and the reduced-motion setting. The UI textures must already
+ * be built (`buildUiTextures`, called by boot).
  */
 import type Phaser from 'phaser';
 import { createLabel } from '../font.ts';
-import { buildUiTextures } from './index.ts';
 import { IconFrame, UiTex } from './keys.ts';
 import { cursorNudge } from './motion.ts';
 import { toneCss } from './palette.ts';
 import { createPanel } from './panel.ts';
 import { measureText, TEXT_FACE } from './typeface.ts';
 
-/** Button height in px: the 7 px text face with 4 px above and below. */
+/** Button height in px: the 3 px frame, 1 px padding and the 7 px text face, top and bottom. */
 export const BUTTON_HEIGHT = 15;
 /** Narrowest a button gets, so a short option like "Title" still has a clear target. */
 const MIN_WIDTH = 64;
@@ -30,15 +30,13 @@ export interface ButtonOptions {
   /** Pinned to the screen instead of scrolling with the world. */
   fixed?: boolean;
   depth?: number;
-  /** Holds the cursor fin still. */
-  reducedMotion?: boolean;
 }
 
 /** A drawn button. Setters skip work when nothing changed, so calling them every frame is cheap. */
 export interface Button {
   setSelected(selected: boolean): Button;
-  /** Moves the cursor fin for logic tick `tick`. */
-  animate(tick: number): Button;
+  /** Moves the cursor fin for logic tick `tick`; under reduced motion it stays put. */
+  animate(tick: number, reducedMotion: boolean): Button;
   setVisible(visible: boolean): Button;
   destroy(): void;
 }
@@ -62,7 +60,6 @@ export function createButton(
     align: 'center',
     tone: 'foam',
   });
-  buildUiTextures(scene);
   const cursorX = left - CURSOR_GAP;
   // The 9 px fin centres in the 15 px button with 3 px above and below.
   const cursor = scene.add
@@ -83,8 +80,8 @@ export function createButton(
       cursor.setVisible(visible && next);
       return button;
     },
-    animate(tick) {
-      cursor.setX(cursorX + cursorNudge(tick, options.reducedMotion ?? false));
+    animate(tick, reducedMotion) {
+      cursor.setX(cursorX + cursorNudge(tick, reducedMotion));
       return button;
     },
     setVisible(next) {

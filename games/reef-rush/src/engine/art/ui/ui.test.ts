@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { measureFrames } from '../pixel.ts';
+import { WATER_BANDS, WaterLight } from '../palettes.ts';
+import { measureFrames, type NamedFrame } from '../pixel.ts';
 import { UI_SHEETS } from './index.ts';
 import { IconFrame, MedalFrame, PortraitFrame, UiTex } from './keys.ts';
 import { cursorNudge } from './motion.ts';
-import { DISPLAY_SHADE, PanelPalette, TEXT_SHADOW, UiColour, UiTone } from './palette.ts';
-import { PANEL_INSET, PANEL_ROWS } from './panel.ts';
+import { DISPLAY_SHADE, OFF_PANEL_TONES, PanelPalette, TEXT_SHADOW, UiColour, UiTone } from './palette.ts';
+import { PANEL_INSET, PANEL_ROWS, panelKey } from './panel.ts';
 import { nineSlice } from './slice.ts';
 import {
+  ALL_FACES,
   DISPLAY_FACE,
+  DISPLAY_SHADOW_FACE,
   fontData,
   glyphFrames,
   measureText,
   normalizeText,
   TEXT_FACE,
+  TEXT_SHADOW_FACE,
   type Typeface,
 } from './typeface.ts';
 
@@ -27,7 +31,7 @@ describe('UI art data', () => {
 
   it('draws every fixed UI texture once and the fonts separately', () => {
     const keys = UI_SHEETS.map((sheet) => sheet.key);
-    expect([...keys, TEXT_FACE.key, DISPLAY_FACE.key].sort()).toEqual(Object.values(UiTex).sort());
+    expect([...keys, ...ALL_FACES.map((face) => face.key)].sort()).toEqual(Object.values(UiTex).sort());
   });
 
   it('has every icon, medal and portrait views ask for, at its spec size', () => {
@@ -35,6 +39,7 @@ describe('UI art data', () => {
       [UiTex.icons, IconFrame, { width: 9, height: 9 }],
       [UiTex.medals, MedalFrame, { width: 12, height: 14 }],
       [UiTex.portraits, PortraitFrame, { width: 16, height: 16 }],
+      [UiTex.heads, PortraitFrame, { width: 7, height: 7 }],
     ] as const;
     for (const [key, names, size] of cases) {
       expect(frameNames(key), key).toEqual(Object.values(names));
@@ -107,6 +112,16 @@ describe('pixel faces', () => {
     expect(glyphFrames(TEXT_FACE).every((frame) => frame.rows.join('').match(/^[0.]+$/))).toBe(true);
   });
 
+  it.each([
+    ['text', TEXT_FACE, TEXT_SHADOW_FACE],
+    ['display', DISPLAY_FACE, DISPLAY_SHADOW_FACE],
+  ] as const)('bakes an ink copy of the %s face with the same glyph layout, so shadows line up', (_, face, ink) => {
+    expect(fontData(ink).chars).toEqual(fontData(face).chars);
+    expect(glyphFrames(ink).map((frame) => frame.rows)).toEqual(glyphFrames(face).map((frame) => frame.rows));
+    expect(new Set(ink.palette)).toEqual(new Set([TEXT_SHADOW]));
+    expect(ink.key).not.toBe(face.key);
+  });
+
   it('names the face and glyph of a malformed glyph', () => {
     const broken: Typeface = { ...TEXT_FACE, glyphs: { A: ['00', '0', '00', '00', '00', '00', '00'] } };
     expect(() => glyphFrames(broken)).toThrow('Glyph "A" in ui-font-text row 1 is 1 px wide; expected 2 like row 0.');
@@ -137,6 +152,12 @@ describe('nineSlice', () => {
 
   it('refuses a panel too small for its corners', () => {
     expect(() => nineSlice(PANEL_ROWS, PANEL_INSET, 5, 20)).toThrow('A panel must be at least 6x6 px; got 5x20.');
+  });
+
+  it('keys panels by whole-pixel size and refuses fractional sizes', () => {
+    expect(panelKey('raised', 56, 24)).toBe('ui-panel-raised-56x24');
+    expect(() => panelKey('accent', 56.5, 24)).toThrow('Panel size must be whole pixels; got 56.5x24.');
+    expect(() => panelKey('inset', 52, 14.2)).toThrow('Panel size must be whole pixels; got 52x14.2.');
   });
 });
 
@@ -185,4 +206,68 @@ describe('UI palette contrast', () => {
   it('keeps the gold frame of an accent panel 3:1 off the indigo, so selection reads without the text', () => {
     expect(contrast(UiColour.sun, UiColour.indigo)).toBeGreaterThanOrEqual(3);
   });
+
+  /** A colour seen through translucent light, as the backdrop draws it. */
+  const over = (base: number, light: number, alpha: number) =>
+    [16, 8, 0].reduce(
+      (sum, shift) =>
+        sum | (Math.round(((base >> shift) & 0xff) * (1 - alpha) + ((light >> shift) & 0xff) * alpha) << shift),
+      0,
+    );
+  // The brightest water on screen: the shallowest band under the caustics (alpha 0.22) and a god ray
+  // (alpha 0.05), the alphas `view/backdrop.ts` draws them at.
+  const brightestWater = over(over(WATER_BANDS[0] ?? 0, WaterLight.caustic, 0.22), WaterLight.ray, 0.05);
+  const water = [...WATER_BANDS, brightestWater];
+  const offPanel = OFF_PANEL_TONES.flatMap((tone) => [
+    [tone, UiTone[tone], 4.5] as const,
+    // Display text is large text, where WCAG asks 3:1.
+    [`${tone} shaded`, multiply(UiTone[tone], DISPLAY_SHADE), 3] as const,
+  ]);
+
+  it.each(offPanel)('outlined %s text separates from every water colour', (_, colour, minimum) => {
+    // Each glyph pixel touches its ink outline; where the water is too light for the glyph, the outline carries the edge.
+    for (const backing of water) {
+      const separated = contrast(colour, backing) >= minimum || contrast(TEXT_SHADOW, backing) >= 3;
+      expect(separated, `#${backing.toString(16)}`).toBe(true);
+    }
+  });
+
+  it('keeps coral and dim on panels: they fall under 4.5:1 on the water', () => {
+    const offPanelUnsafe = (['coral', 'dim'] as const).filter((tone) =>
+      water.some((backing) => contrast(UiTone[tone], backing) < 4.5),
+    );
+    expect(offPanelUnsafe).toEqual(['coral', 'dim']);
+    expect(OFF_PANEL_TONES).toEqual(['foam', 'sun']);
+  });
+
+  /** Pixels on a frame's silhouette: lit, with a transparent or out-of-frame neighbour. */
+  const edgeColours = (frame: NamedFrame) => {
+    const at = (x: number, y: number) => frame.rows[y]?.[x] ?? '.';
+    const colours = new Set<number>();
+    frame.rows.forEach((row, y) => {
+      [...row].forEach((pixel, x) => {
+        if (pixel === '.') return;
+        const open = [at(x - 1, y), at(x + 1, y), at(x, y - 1), at(x, y + 1)].includes('.');
+        if (open) colours.add(frame.palette[Number(pixel)] ?? 0);
+      });
+    });
+    return [...colours];
+  };
+  const iconFrames = [UiTex.icons, UiTex.medals].flatMap(
+    (key) => UI_SHEETS.find((sheet) => sheet.key === key)?.frames ?? [],
+  );
+
+  it.each(iconFrames.map((frame) => [frame.name, frame] as const))(
+    '%s keeps its silhouette 3:1 off the indigo panel and the inset well',
+    (_, frame) => {
+      for (const colour of edgeColours(frame)) {
+        for (const backing of [UiColour.indigo, PanelPalette.inset[2]]) {
+          expect(
+            contrast(colour, backing),
+            `#${colour.toString(16)} on #${backing.toString(16)}`,
+          ).toBeGreaterThanOrEqual(3);
+        }
+      }
+    },
+  );
 });

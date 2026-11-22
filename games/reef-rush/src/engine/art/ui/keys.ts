@@ -10,6 +10,9 @@ import type { NamedFrame } from '../pixel.ts';
 export const UiTex = {
   fontText: 'ui-font-text',
   fontDisplay: 'ui-font-display',
+  fontTextShadow: 'ui-font-text-shadow',
+  fontDisplayShadow: 'ui-font-display-shadow',
+  heads: 'ui-heads',
   icons: 'ui-icons',
   medals: 'ui-medals',
   portraits: 'ui-portraits',
@@ -53,7 +56,10 @@ export const MedalFrame = {
 /** Any medal frame name. */
 export type MedalFrameKey = (typeof MedalFrame)[keyof typeof MedalFrame];
 
-/** Frames in `UiTex.portraits`, all 16x16, named by racer id so a view can pass `racer.id` straight in. */
+/**
+ * Frames in `UiTex.portraits` (16x16) and `UiTex.heads` (7x7 progress-strip markers), named by
+ * racer id so a view can pass `racer.id` straight in.
+ */
 export const PortraitFrame = {
   player: 'player',
   tess: 'tess',
