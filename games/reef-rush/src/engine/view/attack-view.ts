@@ -1,16 +1,15 @@
 /**
  * The attack power-ups that live in the water, drawn from world state each frame: Homing Squids
- * in flight (turned to their heading, swimming), Riptide lanes (a green wash with streaks that
- * run along the lane, over whatever current is under it) and Mimic decoys (the owner's own sprite,
+ * in flight (turned to their heading, swimming), Riptide lanes (a green wash with arrowed streaks
+ * scrolling along the lane, over whatever current is under it) and Mimic decoys (the owner's own sprite,
  * a little see-through and cool-tinted so a second look gives it away). What happens to a racer
  * (the squid wrapped round them, the pull lines) is in `powerup-view.ts`. Sprites come from pools
  * that grow only when more are in play than ever before. Under reduced motion squids hold one
  * frame, lane streaks stand still and decoys hold a steady see-through look.
  */
 import type Phaser from 'phaser';
-import { type Decoy, type Riptide, type Squid, TILE, type World } from '../../logic/types.ts';
+import type { Decoy, Riptide, Squid, World } from '../../logic/types.ts';
 import { Frame, Tex } from '../art/keys.ts';
-import { RIPTIDE_TILE } from '../art/sprites/attack.ts';
 import { Layer } from './layers.ts';
 
 /** Draws every squid, lane and decoy in `world`. */
@@ -21,7 +20,9 @@ export interface AttackView {
 const SQUID_FRAME_TICKS = 6;
 /** A squid points to the nearest 22.5 degrees, so the pixels stay crisp. */
 const SQUID_TURN_STEP = Math.PI / 8;
-const LANE_FRAME_TICKS = 8;
+/** Px a lane's streaks travel along the flow each tick (the tile is 16 px wide, so one lap takes about 11 ticks). */
+const LANE_FLOW_PX_PER_TICK = 1.5;
+const LANE_TILE_PX = 16;
 const LANE_WASH = 0x2cc47a;
 const LANE_EDGE = 0xd8ffe8;
 const LANE_WASH_ALPHA = 0.16;
@@ -37,11 +38,11 @@ const DECOY_BLINK_TICKS = 10;
 const DECOY_EXPIRING_ALPHA = 0.4;
 const DECOY_STROKE_TICKS = 14;
 
-/** One lane's pieces: the wash, two edge lines and a pool of streak tiles. */
+/** One lane's pieces: the wash, two edge lines and the scrolling streaks. */
 interface LaneSprites {
   wash: Phaser.GameObjects.Rectangle;
   edges: [Phaser.GameObjects.Rectangle, Phaser.GameObjects.Rectangle];
-  tiles: Phaser.GameObjects.Image[];
+  flow: Phaser.GameObjects.TileSprite;
 }
 
 /** Adds the views for the world's squids, riptides and decoys to `scene`. */
@@ -61,7 +62,7 @@ export function createAttackView(scene: Phaser.Scene, reducedMotion: boolean): A
 
       syncLanes(scene, lanes, world.riptides.length);
       world.riptides.forEach((riptide, index) => {
-        showLane(scene, lanes[index], riptide, tick, reducedMotion);
+        showLane(lanes[index], riptide, tick, reducedMotion);
       });
 
       syncPool(decoys, world.decoys.length, () =>
@@ -117,7 +118,7 @@ function syncLanes(scene: Phaser.Scene, lanes: LaneSprites[], count: number): vo
     lanes.push({
       wash: rect(LANE_WASH_ALPHA, LANE_WASH),
       edges: [rect(LANE_EDGE_ALPHA, LANE_EDGE), rect(LANE_EDGE_ALPHA, LANE_EDGE)],
-      tiles: [],
+      flow: scene.add.tileSprite(0, 0, 1, 1, Tex.riptideStreak, Frame.a).setDepth(Layer.objects + 0.2),
     });
   }
   for (let index = count; index < lanes.length; index++) hideLane(lanes[index]);
@@ -127,20 +128,14 @@ function hideLane(lane: LaneSprites | undefined): void {
   if (!lane) return;
   lane.wash.setVisible(false);
   for (const edge of lane.edges) edge.setVisible(false);
-  for (const tile of lane.tiles) tile.setVisible(false);
+  lane.flow.setVisible(false);
 }
 
 /**
  * A lane's wash, edge lines (along the flow, on both long sides) and streak tiles. A lane is a
  * box with a flow along one axis; the streak tiles point right and are turned to that axis.
  */
-function showLane(
-  scene: Phaser.Scene,
-  lane: LaneSprites | undefined,
-  riptide: Riptide,
-  tick: number,
-  reducedMotion: boolean,
-): void {
+function showLane(lane: LaneSprites | undefined, riptide: Riptide, tick: number, reducedMotion: boolean): void {
   if (!lane) return;
   const alpha = Math.min(1, riptide.ttl / LANE_FADE_TICKS);
   const alongX = Math.abs(riptide.dir.x) >= Math.abs(riptide.dir.y);
@@ -163,26 +158,18 @@ function showLane(
     .setSize(edge.w, edge.h)
     .setAlpha(LANE_EDGE_ALPHA * alpha);
 
-  const columns = Math.ceil(w / RIPTIDE_TILE);
-  const rows = Math.ceil(h / RIPTIDE_TILE);
-  const needed = columns * rows;
-  while (lane.tiles.length < needed) {
-    lane.tiles.push(scene.add.image(0, 0, Tex.riptideStreak, Frame.a).setDepth(Layer.objects + 0.2));
-  }
-  const frame = reducedMotion || Math.floor(tick / LANE_FRAME_TICKS) % 2 === 0 ? Frame.a : Frame.b;
-  const rotation = laneRotation(riptide);
-  lane.tiles.forEach((tile, index) => {
-    tile.setVisible(index < needed);
-    if (index >= needed) return;
-    tile
-      .setFrame(frame)
-      .setRotation(rotation)
-      .setAlpha(alpha)
-      .setPosition(
-        x + (index % columns) * RIPTIDE_TILE + TILE / 2,
-        y + Math.floor(index / columns) * RIPTIDE_TILE + TILE / 2,
-      );
-  });
+  // The streaks point right in the sprite's own space, so a lane along y is the same sprite turned a quarter.
+  // Its size is exactly the lane's box, so the pattern is clipped to the lane whatever its alignment.
+  const length = alongX ? w : h;
+  const breadth = alongX ? h : w;
+  const scroll = reducedMotion ? 0 : (tick * LANE_FLOW_PX_PER_TICK) % LANE_TILE_PX;
+  lane.flow
+    .setVisible(true)
+    .setSize(length, breadth)
+    .setPosition(x + w / 2, y + h / 2)
+    .setRotation(laneRotation(riptide))
+    .setAlpha(alpha)
+    .setTilePosition(-scroll, 0);
 }
 
 /** The tile rotation that points its streaks along the lane's flow: right, down, left or up. */

@@ -7,9 +7,10 @@
  * while the AudioContext is not running (before the first gesture).
  */
 import type { EventSink, Rng, Stamped } from '@arcade/core';
+import type { RacerId } from '../../logic/types.ts';
 import { FINAL_STRETCH_AT } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import { attackSfx } from './attack-sfx.ts';
+import { createAttackSfx } from './attack-sfx.ts';
 import type { AudioPort } from './index.ts';
 import type { Song } from './notation.ts';
 import type { Sequencer } from './sequencer.ts';
@@ -34,6 +35,8 @@ export interface AdapterOptions {
    * effect is a one-off (unlike songs, which the sequencer stops after one report).
    */
   onError(error: unknown): void;
+  /** Whether racer `id` is near enough the player to hear what it does; every racer is when omitted. */
+  audibleFromPlayer?(id: RacerId): boolean;
 }
 
 /** Final-stretch tempo, as a multiple of the race theme's own. */
@@ -64,6 +67,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
   let place: number | null = null;
   let won: boolean | null = null;
 
+  const attacks = createAttackSfx(options.audibleFromPlayer);
   const announce = (key: string, kind: 'sfx' | 'song') => events.emit({ type: 'audio.played', key, kind });
 
   const sfx = (key: SfxKey) => {
@@ -99,7 +103,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
     }
   };
 
-  const onEvent = (event: RuntimeEvent) => {
+  const onEvent = (event: RuntimeEvent, tick: number) => {
     switch (event.type) {
       case 'scene.started':
         if (event.scene === 'title') wanted = 'title';
@@ -136,7 +140,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       case 'menu.selected':
         return sfx('menu.confirm');
       default: {
-        const attack = attackSfx(event);
+        const attack = attacks.forEvent(event, tick);
         if (attack) sfx(attack);
       }
     }
@@ -144,7 +148,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
 
   return {
     onEvents(drained: readonly Stamped<RuntimeEvent>[]) {
-      for (const event of drained) onEvent(event);
+      for (const event of drained) onEvent(event, event.tick);
       syncMusic();
       followSequencer();
     },

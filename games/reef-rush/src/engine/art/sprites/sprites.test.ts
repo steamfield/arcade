@@ -4,7 +4,7 @@ import { POWER_UP_TEX } from '../../view/powerup-view.ts';
 import { Frame, Tex, TileIndex } from '../keys.ts';
 import { BackdropPalette, HazardPalette, WATER_BANDS } from '../palettes.ts';
 import { measureFrames, type NamedFrame } from '../pixel.ts';
-import { RIPTIDE_TILE } from './attack.ts';
+import { AttackPalette, RIPTIDE_TILE } from './attack.ts';
 import { ART_SHEETS } from './index.ts';
 import { CharacterPalette, RACER_SHEETS } from './racers.ts';
 
@@ -34,7 +34,7 @@ describe('world art data', () => {
     }
     expect(frameNames(Tex.clam)).toEqual([Frame.clamClosed, Frame.clamOpen]);
     expect(frameNames(Tex.squid)).toEqual([Frame.a, Frame.b, Frame.squidLatched]);
-    expect(frameNames(Tex.riptideStreak)).toEqual(twoStroke);
+    expect(frameNames(Tex.riptideStreak)).toEqual([Frame.a]);
     expect(frameNames(Tex.undertowStreak)).toEqual(twoStroke);
     expect(frameNames(Tex.kickPip)).toEqual([Frame.pipReady, Frame.pipCooling]);
     expect(frameNames(Tex.hudMarker)).toEqual([
@@ -95,6 +95,7 @@ describe('world art palettes', () => {
   const mainColours = [
     ...CHARACTER_IDS.map((character) => [character, CharacterPalette[character][1]] as const),
     ['urchin', HazardPalette.urchin[1]] as const,
+    ['homing squid', AttackPalette.homingSquid[1]] as const,
   ];
 
   it.each(mainColours)('%s main colour stands 3:1 off every water band and backdrop layer', (_, colour) => {

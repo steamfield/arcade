@@ -9,7 +9,6 @@ import { TICK_HZ } from '@arcade/core';
 import Phaser from 'phaser';
 import { playerOf } from '../../logic/racers.ts';
 import type { World } from '../../logic/types.ts';
-import { applyStage, readStage } from '../debug-stage.ts';
 import { createFx } from '../fx/index.ts';
 import type { Runtime } from '../runtime.ts';
 import { createAttackView } from '../view/attack-view.ts';
@@ -42,8 +41,6 @@ export class RaceScene extends Phaser.Scene {
   create(): void {
     const world = this.rt.world;
     if (!world) throw new Error('The race scene started without a world; start races with Runtime.startRace()');
-    const stage = readStage();
-    if (stage) applyStage(world, stage);
     this.views = this.createViews(world);
     this.rt.entered('race');
   }

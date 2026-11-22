@@ -3,7 +3,7 @@
  * a shield ring while Bubble Shield is held, the Puffer itself blown up to twice its
  * size around the racer during a Puffer burst, a dash streak behind a Jet Fins dash,
  * a ring that expands from a Glow Lantern flash, a Homing Squid wrapped round a racer it
- * has latched on to and speed lines ahead of a racer Undertow is pulling back. Everything is an overlay: the
+ * has latched on to and speed lines behind a racer Undertow is pulling back. Everything is an overlay: the
  * racer's own sprite (including its invulnerability flicker) belongs to
  * `racer-view.ts`. Overlays are created once and only reconfigured each frame.
  */
@@ -46,9 +46,9 @@ const STREAK_TINT = 0x7fdbff;
 const FLASH_TINT = 0xf0e060;
 /** A latched squid shifts a pixel every this many ticks, so it reads as gripping and squirming. */
 const LATCH_SQUIRM_TICKS = 6;
-/** Undertow's speed lines swap frames every this many ticks and sit this far ahead of the racer's centre. */
+/** Undertow's speed lines swap frames every this many ticks and trail this far behind the racer's centre, like speed lines. */
 const PULL_LINE_TICKS = 4;
-const PULL_LINE_AHEAD = 15;
+const PULL_LINE_BEHIND = 10;
 const PULL_LINE_ALPHA = 0.85;
 
 /** Creates the overlays for one racer. `reducedMotion` shows the flash ring at its full reach, fading, instead of growing. */
@@ -141,7 +141,7 @@ function showLatch(
     .setPosition(x + squirm * racer.facing, y);
 }
 
-/** Speed lines ahead of a racer Undertow is dragging back; they hold one frame under reduced motion. */
+/** Speed lines trailing a racer Undertow is dragging back; they hold one frame under reduced motion. */
 function showPullLines(
   lines: Phaser.GameObjects.Image,
   racer: Racer,
@@ -157,5 +157,5 @@ function showPullLines(
   lines
     .setFrame(frame)
     .setFlipX(racer.facing < 0)
-    .setPosition(x + racer.facing * PULL_LINE_AHEAD, y);
+    .setPosition(x - racer.facing * PULL_LINE_BEHIND, y);
 }

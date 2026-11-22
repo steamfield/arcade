@@ -149,9 +149,9 @@ const SFX: Record<SfxKey, readonly Part[]> = {
   ],
   // Lock-on: three quick climbing pings, urgent but short. Heard only when the squid is after the player.
   'squid.lock': [
-    pulse(79, 0, 0.07, 0.35, { duty: 0.125 }),
-    pulse(84, 0.08, 0.07, 0.35, { duty: 0.125 }),
-    pulse(91, 0.16, 0.14, 0.4, { duty: 0.125 }),
+    pulse(79, 0, 0.07, 0.3, { duty: 0.25 }),
+    pulse(84, 0.08, 0.07, 0.3, { duty: 0.25 }),
+    pulse(91, 0.16, 0.12, 0.3, { duty: 0.25 }),
   ],
   // Latched: a wet slap, then a low squelch.
   'squid.latch': [hiss('lowpass', 1500, 0, 0.07, 0.5), tri(50, 0, 0.18, 0.5, { slide: -9 })],

@@ -65,6 +65,25 @@ describe('the lock-on arrow', () => {
     expect(marker).toEqual({ x: MARKER_BOUNDS.x + MARKER_BOUNDS.w, y: 100, angle: 0 });
   });
 
+  it('sits where the line to an off-screen squid leaves the screen, not at the squid\u2019s clamped corner', () => {
+    // Squid far up-right but much further right than up: the ray exits the right edge well below the top.
+    const marker = markerFor(player, { x: 1160, y: 0 });
+    expect(marker.x).toBe(MARKER_BOUNDS.x + MARKER_BOUNDS.w);
+    expect(marker.y).toBeCloseTo(100 - (152 / 1000) * 100, 0);
+    expect(marker.angle).toBeCloseTo(0);
+  });
+
+  it('keeps clear of the splash while one is showing', () => {
+    const splash = { x: 53, y: 50, w: 214, h: 24 };
+    const marker = markerFor(player, { x: 160, y: -600 }, undefined, [splash]);
+    const inSplash =
+      marker.x >= splash.x &&
+      marker.x <= splash.x + splash.w &&
+      marker.y >= splash.y &&
+      marker.y <= splash.y + splash.h;
+    expect(inSplash).toBe(false);
+  });
+
   it('sits just short of a squid that is in view, pointing at it', () => {
     const marker = markerFor(player, { x: 200, y: 100 });
     expect(marker).toEqual({ x: 186, y: 100, angle: 0 });

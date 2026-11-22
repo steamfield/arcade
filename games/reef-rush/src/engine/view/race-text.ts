@@ -70,7 +70,8 @@ export const TONE_CSS: Readonly<Record<UiToneName, string>> = {
 
 /** The race's centre splash: countdown numerals, GO, FINAL STRETCH and FINISH. */
 export interface RaceSplash {
-  sync(world: World): void;
+  /** Redraws the splash and says whether one is showing. */
+  sync(world: World): boolean;
 }
 
 /** Where every splash is centred (UI.md "Splash"); FINAL STRETCH, the widest, spans x 53-267, y 50-74. */
@@ -135,6 +136,7 @@ export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean): R
       noteSplashMoments(moments, world.race.phase, world.tick, raceProgress(world, startProgress));
       splashFrame(world, moments, reducedMotion, frame);
       label.setColor(TONE_CSS[frame.tone]).setOffset(frame.dx, frame.dy).setText(frame.text);
+      return frame.text !== '';
     },
   };
 }

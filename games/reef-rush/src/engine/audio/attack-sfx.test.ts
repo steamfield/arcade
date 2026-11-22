@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { placeAt, raceOn, racerOf } from '../../logic/test-world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import { attackSfx } from './attack-sfx.ts';
+import { createAttackSfx, HEARING_PX, LOCK_CUE_GAP_TICKS, withinHearing } from './attack-sfx.ts';
 
 describe('the sound of an attack power-up event', () => {
   it.each<[string, RuntimeEvent, string | null]>([
@@ -42,6 +43,52 @@ describe('the sound of an attack power-up event', () => {
     ['a burst with no combo', { type: 'burst.fired', id: 'player', kinds: ['homingSquid'], combo: null }, null],
     ['an unrelated event', { type: 'racer.kicked', id: 'player' }, null],
   ])('%s', (_case, event, key) => {
-    expect(attackSfx(event)).toBe(key);
+    expect(createAttackSfx().forEvent(event, 500)).toBe(key);
+  });
+});
+
+describe('the lock-on cue', () => {
+  const lock: RuntimeEvent = { type: 'squid.locked', owner: 'tess', target: 'player' };
+
+  it('sounds once, then stays quiet for 90 ticks even as the squid retargets', () => {
+    const attacks = createAttackSfx();
+    expect(attacks.forEvent(lock, 100)).toBe('squid.lock');
+    expect(attacks.forEvent(lock, 100 + LOCK_CUE_GAP_TICKS - 1)).toBeNull();
+    expect(attacks.forEvent(lock, 100 + LOCK_CUE_GAP_TICKS)).toBe('squid.lock');
+  });
+});
+
+describe('other racers\u2019 attacks', () => {
+  const far = () => false;
+  it.each<[string, RuntimeEvent, string | null]>([
+    ['a squid fired out of earshot', { type: 'squid.spawned', owner: 'tess', target: null }, null],
+    ['a riptide laid out of earshot', { type: 'riptide.spawned', owner: 'tess' }, null],
+    ['a decoy left out of earshot', { type: 'decoy.spawned', owner: 'tess' }, null],
+    ['a decoy popping out of earshot', { type: 'decoy.popped', owner: 'tess', by: null }, null],
+    [
+      'an Undertow that pulls the player, wherever the user is',
+      { type: 'undertow.fired', id: 'tess', pulled: ['player'] },
+      'undertow',
+    ],
+  ])('%s', (_case, event, key) => {
+    expect(createAttackSfx(far).forEvent(event, 500)).toBe(key);
+  });
+
+  it('hears racers within a screen of the player and not beyond it', () => {
+    const { world } = raceOn(`
+      #######################################
+      #1...................................F#
+      #2...................................F#
+      #3...................................F#
+      #4...................................F#
+      #######################################
+    `);
+    const player = racerOf(world, 'player');
+    const tess = racerOf(world, 'tess');
+    placeAt(player, { x: 40, y: 40 });
+    placeAt(tess, { x: 40 + HEARING_PX - 10, y: 40 });
+    expect(withinHearing(world, 'tess')).toBe(true);
+    placeAt(tess, { x: 40 + HEARING_PX + 40, y: 40 });
+    expect(withinHearing(world, 'tess')).toBe(false);
   });
 });

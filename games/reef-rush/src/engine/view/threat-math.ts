@@ -59,48 +59,74 @@ export function squidHuntingPlayer(world: World): Squid | null {
   return nearest;
 }
 
+/** A fresh marker, for callers that reuse one through `markerFor`'s `out`. */
+export function newMarker(): Marker {
+  return { x: 0, y: 0, angle: 0 };
+}
+
 /**
- * The arrow for a squid at `squid` hunting a player at `player` (both screen px): on the screen's
- * edge in the squid's direction when it is off-screen, just short of it when it is in view. Always
- * inside `MARKER_BOUNDS` and clear of `TOUCH_ZONES`, pointing along the player-to-squid line to the
- * nearest 45 degrees.
+ * The arrow for a squid at `squid` hunting a player at `player` (both screen px), written into `out`
+ * and returned. Off-screen, it sits where the line from the player to the squid leaves
+ * `MARKER_BOUNDS`, so it points the way the squid really is; in view, just short of the squid.
+ * Always inside `MARKER_BOUNDS` and clear of `TOUCH_ZONES` and of `avoid` (such as a splash on
+ * screen), pointing along the player-to-squid line to the nearest 45 degrees.
  */
-export function markerFor(player: Point, squid: Point): Marker {
+export function markerFor(player: Point, squid: Point, out: Marker = newMarker(), avoid: readonly Rect[] = []): Marker {
   const dx = squid.x - player.x;
   const dy = squid.y - player.y;
   const length = Math.hypot(dx, dy) || 1;
-  const inView = contains(MARKER_BOUNDS, squid);
-  const aim = inView
-    ? { x: squid.x - (dx / length) * STANDOFF, y: squid.y - (dy / length) * STANDOFF }
-    : { x: squid.x, y: squid.y };
-  const placed = clearOfZones(clampTo(MARKER_BOUNDS, aim));
-  return { ...placed, angle: Math.round(Math.atan2(dy, dx) / EIGHTH_TURN) * EIGHTH_TURN };
+  if (contains(MARKER_BOUNDS, squid)) {
+    out.x = squid.x - (dx / length) * STANDOFF;
+    out.y = squid.y - (dy / length) * STANDOFF;
+  } else {
+    exitPoint(player, dx, dy, out);
+  }
+  clampInto(MARKER_BOUNDS, out);
+  clearOfZones(out, avoid);
+  out.angle = Math.round(Math.atan2(dy, dx) / EIGHTH_TURN) * EIGHTH_TURN;
+  return out;
+}
+
+/** Where the ray from `from` along (dx, dy) first leaves `MARKER_BOUNDS`, written into `out`. A start outside the bounds counts as on their nearest edge. */
+function exitPoint(from: Point, dx: number, dy: number, out: Point): void {
+  const start = { x: from.x, y: from.y };
+  clampInto(MARKER_BOUNDS, start);
+  const reach = (origin: number, delta: number, min: number, max: number) =>
+    delta > 0 ? (max - origin) / delta : delta < 0 ? (min - origin) / delta : Number.POSITIVE_INFINITY;
+  const t = Math.min(
+    reach(start.x, dx, MARKER_BOUNDS.x, MARKER_BOUNDS.x + MARKER_BOUNDS.w),
+    reach(start.y, dy, MARKER_BOUNDS.y, MARKER_BOUNDS.y + MARKER_BOUNDS.h),
+  );
+  out.x = start.x + dx * t;
+  out.y = start.y + dy * t;
 }
 
 function contains(rect: Rect, point: Point): boolean {
   return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
 }
 
-function clampTo(rect: Rect, point: Point): Point {
-  return {
-    x: Math.min(rect.x + rect.w, Math.max(rect.x, point.x)),
-    y: Math.min(rect.y + rect.h, Math.max(rect.y, point.y)),
-  };
+function clampInto(rect: Rect, point: Point): void {
+  point.x = Math.min(rect.x + rect.w, Math.max(rect.x, point.x));
+  point.y = Math.min(rect.y + rect.h, Math.max(rect.y, point.y));
 }
 
-/** Moves `point` out of any touch zone by the shortest way that stays inside the bounds. */
-function clearOfZones(point: Point): Point {
-  let at = point;
-  for (const zone of TOUCH_ZONES) {
-    if (!contains(zone, at)) continue;
+/** Moves `point` out of every touch zone and `avoid` rectangle by the shortest way that stays inside the bounds. */
+function clearOfZones(point: Point, avoid: readonly Rect[]): void {
+  const zones = [...TOUCH_ZONES, ...avoid];
+  for (const zone of zones) {
+    if (!contains(zone, point)) continue;
     const exits: Point[] = [
-      { x: at.x, y: zone.y - 1 },
-      { x: zone.x - 1, y: at.y },
-      { x: zone.x + zone.w + 1, y: at.y },
-      { x: at.x, y: zone.y + zone.h + 1 },
-    ].filter((exit) => contains(MARKER_BOUNDS, exit) && !TOUCH_ZONES.some((other) => contains(other, exit)));
-    const [best] = exits.sort((a, b) => Math.hypot(a.x - at.x, a.y - at.y) - Math.hypot(b.x - at.x, b.y - at.y));
-    if (best) at = best;
+      { x: point.x, y: zone.y - 1 },
+      { x: zone.x - 1, y: point.y },
+      { x: zone.x + zone.w + 1, y: point.y },
+      { x: point.x, y: zone.y + zone.h + 1 },
+    ].filter((exit) => contains(MARKER_BOUNDS, exit) && !zones.some((other) => contains(other, exit)));
+    const [best] = exits.sort(
+      (a, b) => Math.hypot(a.x - point.x, a.y - point.y) - Math.hypot(b.x - point.x, b.y - point.y),
+    );
+    if (best) {
+      point.x = best.x;
+      point.y = best.y;
+    }
   }
-  return at;
 }

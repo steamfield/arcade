@@ -3,12 +3,14 @@
  * power-ups into the world before the first frame, so their views can be looked at while the
  * logic that spawns them is still being built (and without waiting for a race to roll one). A
  * stage only writes plain world state (a stack, a status, a squid, a lane, a decoy) that the views
- * read; it never runs in a normal launch, since nothing else sets `?stage=`.
+ * read. It is honoured only with `?debug=1` or in test mode, and `Runtime.startRace` marks the race
+ * staged so its result is never saved. Applied by `Runtime.startRace`, right after the world is built.
  *
  * The names: `icons-a` and `icons-b` fill the player's well; `squid-flight` sends squids at rivals;
  * `squid-lockon` locks one on the player from in view and `squid-lockon-far` from off-screen;
  * `squid-latched` latches squids on the player and a rival; `riptide` lays a lane over a current
- * with a rival riding it; `decoy` leaves a rival's decoy beside it; `undertow` pulls two racers back.
+ * with a rival riding it; `decoy` leaves a rival's decoy beside it; `undertow` pulls two racers back;
+ * `dark` moves the pack into the first dark zone with a squid and a decoy near the player.
  */
 import { playerOf } from '../logic/racers.ts';
 import { type Level, type Racer, type RacerId, TILE, type Vec, type World } from '../logic/types.ts';
@@ -24,6 +26,7 @@ export const STAGES = [
   'riptide',
   'decoy',
   'undertow',
+  'dark',
 ] as const;
 
 /** A name from `STAGES`. */
@@ -33,8 +36,18 @@ export type StageName = (typeof STAGES)[number];
 const STAGED_TICKS = 600;
 const SQUID_SPEED = 110;
 
-/** The `?stage=` the page was opened with, when it names a known stage. */
-export function readStage(search: string = window.location.search): StageName | null {
+/** The launch parameters a stage depends on. */
+export interface StageGate {
+  debug: boolean;
+  testMode: boolean;
+}
+
+/**
+ * The `?stage=` the page was opened with: null unless it names a known stage and the launch is a
+ * debug (`?debug=1`) or test-mode one, so a stray or shared link cannot stage a real race.
+ */
+export function stageFor(gate: StageGate, search: string = window.location.search): StageName | null {
+  if (!gate.debug && !gate.testMode) return null;
   const name = new URLSearchParams(search).get('stage');
   return STAGES.find((stage) => stage === name) ?? null;
 }
@@ -75,6 +88,9 @@ export function applyStage(world: World, stage: StageName): void {
       world.decoys.push({ x: rivalAt.x + 22, y: rivalAt.y + 2, vx: 66, vy: 0, ttl: STAGED_TICKS, owner: 'tess' });
       return;
     }
+    case 'dark':
+      stageInDarkZone(world, player, rival);
+      return;
     case 'undertow':
       rival.status.undertow = STAGED_TICKS;
       racer(world, 'squib').status.undertow = STAGED_TICKS;
@@ -140,4 +156,27 @@ function firstCurrentRun(level: Level): Vec {
   throw new Error(
     'The riptide stage needs a run of three rightward current tiles under open water, and this course has none',
   );
+}
+
+/** Moves the player and a rival into open water in the first dark zone, with a squid and a decoy beside them. */
+function stageInDarkZone(world: World, player: Racer, rival: Racer): void {
+  const zone = world.level.dark[0];
+  if (!zone) throw new Error('The dark stage needs a dark zone, and this course has none');
+  const tx = zone[0] + 10;
+  const ty = [...Array(world.level.height).keys()].find(
+    (y) => world.level.cells[y]?.[tx] === 'water' && world.level.cells[y - 1]?.[tx] === 'water',
+  );
+  if (ty === undefined) throw new Error(`The dark stage needs open water in column ${tx}, and there is none`);
+  const place = (target: Racer, x: number, y: number) => {
+    target.body.x = x - target.body.w / 2;
+    target.body.y = y - target.body.h / 2;
+    target.body.vx = 0;
+    target.body.vy = 0;
+  };
+  const cx = tx * TILE + TILE / 2;
+  const cy = ty * TILE + TILE / 2;
+  place(player, cx, cy);
+  place(rival, cx + 70, cy);
+  world.squids.push(squid(cx + 36, cy - 14, -SQUID_SPEED, 0, 'tess', { kind: 'racer', id: 'player' }));
+  world.decoys.push({ x: cx + 70, y: cy + 22, vx: 66, vy: 0, ttl: STAGED_TICKS, owner: 'tess' });
 }

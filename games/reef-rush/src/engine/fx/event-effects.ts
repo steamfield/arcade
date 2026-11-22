@@ -7,7 +7,7 @@
  */
 import type { Stamped } from '@arcade/core';
 import { playerOf } from '../../logic/racers.ts';
-import { type RacerId, TILE, type Vec, type World } from '../../logic/types.ts';
+import { type Decoy, type RacerId, type Squid, TILE, type Vec, type World } from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { BubbleTracker } from './bubble-tracker.ts';
 import type { Bursts } from './bursts.ts';
@@ -41,8 +41,8 @@ export function createEventEffects(
 ): EventEffects {
   let playerPlace = playerOf(world).place;
   // Squids and decoys are gone from the world by the time their end events are drained, so remember where they were.
-  const lastSquidAt = new Map<RacerId, Vec>();
-  const lastDecoyAt = new Map<RacerId, Vec>();
+  const lastSquidAt = new Map<Squid, Vec>();
+  const lastDecoyAt = new Map<Decoy, Vec>();
 
   const racerAt = (id: RacerId, effect: (x: number, y: number) => void) => {
     const racer = world.racers.find((candidate) => candidate.id === id);
@@ -113,7 +113,7 @@ export function createEventEffects(
             racerAt(event.owner, bursts.bubblePop);
             break;
           case 'squid.lost': {
-            const at = lastSquidAt.get(event.owner);
+            const at = goneOwnedBy(lastSquidAt, world.squids, event.owner);
             if (at) bursts.inkPuff(at.x, at.y);
             break;
           }
@@ -131,7 +131,7 @@ export function createEventEffects(
             }
             break;
           case 'decoy.popped': {
-            const at = lastDecoyAt.get(event.owner);
+            const at = goneOwnedBy(lastDecoyAt, world.decoys, event.owner);
             if (at) bursts.bubblePop(at.x, at.y);
             break;
           }
@@ -142,7 +142,10 @@ export function createEventEffects(
       if (cannonballImpact) shake(CANNONBALL_TRAUMA);
       if (bubblesPopped) bubbles.vanished(world, bursts.bubblePop);
       bubbles.remember(world);
-      rememberPositions(world, lastSquidAt, lastDecoyAt);
+      forgetGone(lastSquidAt, world.squids);
+      forgetGone(lastDecoyAt, world.decoys);
+      track(lastSquidAt, world.squids);
+      track(lastDecoyAt, world.decoys);
     },
   };
 }
@@ -160,8 +163,36 @@ function shedLaneBubbles(world: World, owner: RacerId, bursts: Bursts): void {
   }
 }
 
-/** Notes each owner's squid and decoy positions from `world`, for the events that arrive after they are gone. */
-function rememberPositions(world: World, squids: Map<RacerId, Vec>, decoys: Map<RacerId, Vec>): void {
-  for (const squid of world.squids) squids.set(squid.owner, { x: squid.x, y: squid.y });
-  for (const decoy of world.decoys) decoys.set(decoy.owner, { x: decoy.x, y: decoy.y });
+/**
+ * Keeps `seen` in step with `present`: each thing's last position is updated in place (no
+ * allocation while it lives), and a thing that has left the world stays in `seen` until
+ * `goneOwnedBy` hands its position to the event that reports it gone.
+ */
+function track<T extends { x: number; y: number }>(seen: Map<T, Vec>, present: readonly T[]): void {
+  for (const thing of present) {
+    const at = seen.get(thing);
+    if (at) {
+      at.x = thing.x;
+      at.y = thing.y;
+    } else seen.set(thing, { x: thing.x, y: thing.y });
+  }
+}
+
+/** Drops from `seen` everything no longer in `present`, so a thing's end is reported once. */
+function forgetGone<T>(seen: Map<T, Vec>, present: readonly T[]): void {
+  for (const thing of seen.keys()) if (!present.includes(thing)) seen.delete(thing);
+}
+
+/** The last position of a thing owned by `owner` that is in `seen` but no longer in `present`, taken out of `seen`; undefined when none. */
+function goneOwnedBy<T extends { owner: RacerId }>(
+  seen: Map<T, Vec>,
+  present: readonly T[],
+  owner: RacerId,
+): Vec | undefined {
+  for (const [thing, at] of seen) {
+    if (thing.owner !== owner || present.includes(thing)) continue;
+    seen.delete(thing);
+    return at;
+  }
+  return undefined;
 }

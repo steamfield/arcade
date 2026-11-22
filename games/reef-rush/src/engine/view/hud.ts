@@ -124,7 +124,7 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
   const strip = createProgressStrip(scene, world);
   const splash = createRaceSplash(scene, reducedMotion);
   const combo = createComboName(scene, reducedMotion);
-  const threat = createThreatHud(scene, reducedMotion);
+  const threat = createThreatHud(scene, reducedMotion, comboCentreY);
   const caption = createLabel(scene, CAPTION_CENTRE.x, CAPTION_CENTRE.y, '', {
     tone: 'foam',
     outline: true,
@@ -147,11 +147,11 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
       shownTime = time;
       well.sync(world);
       strip.sync(world);
-      splash.sync(world);
+      const splashShowing = splash.sync(world);
       const view = scene.cameras.main.worldView;
       const body = playerOf(world).body;
-      combo.sync(world.tick, body.y + body.h / 2 - view.y);
-      threat.sync(world, view);
+      combo.sync(world.tick, body.y + body.h / 2 - view.y, playerOf(world).status.latched > 0);
+      threat.sync(world, view, splashShowing);
       caption.setText(captionText(world, view));
     },
   };
@@ -360,19 +360,27 @@ function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
   // Distance to the finish from the furthest start, fixed at the first sync; heads show the share of it covered.
   let courseLength: number | null = null;
 
+  // Heads move whole pixels, so most frames repeat the last layout: only re-spread when one moved.
+  const spots: number[] = world.racers.map(() => Number.NaN);
+  let drawn: number[] = [];
+  const anchor = Math.max(
+    0,
+    world.racers.findIndex((racer) => racer.id === 'player'),
+  );
+
   return {
     sync(world) {
       courseLength ??= longestStart(world);
-      const course = courseLength;
-      const truthful = world.racers.map((racer) => {
-        const fraction = racer.finished ? 1 : 1 - racer.progress / course;
-        return Math.round(headFrom + clampUnit(fraction) * (headTo - headFrom));
+      let moved = false;
+      world.racers.forEach((racer, index) => {
+        const fraction = racer.finished ? 1 : 1 - racer.progress / (courseLength ?? 1);
+        const spot = Math.round(headFrom + clampUnit(fraction) * (headTo - headFrom));
+        if (spot === spots[index]) return;
+        spots[index] = spot;
+        moved = true;
       });
-      const anchor = Math.max(
-        0,
-        world.racers.findIndex((racer) => racer.id === 'player'),
-      );
-      const drawn = spreadHeads(truthful, anchor, HEAD_MIN_GAP, headFrom, headTo);
+      if (!moved) return;
+      drawn = spreadHeads(spots, anchor, HEAD_MIN_GAP, headFrom, headTo);
       world.racers.forEach((racer, index) => {
         heads.get(racer.id)?.setX(drawn[index] ?? headFrom);
       });
@@ -383,8 +391,8 @@ function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
 /** The combo name over the water, started by the player's combo bursts. */
 interface ComboNameView {
   fired(name: ComboName, tick: number): void;
-  /** `playerY` is the player's body centre in screen px. */
-  sync(tick: number, playerY: number): void;
+  /** `playerY` is the player's body centre in screen px; `hidden` gives the spot to the KICK! prompt. */
+  sync(tick: number, playerY: number, hidden: boolean): void;
 }
 
 /**
@@ -412,9 +420,9 @@ function createComboName(scene: Phaser.Scene, reducedMotion: boolean): ComboName
       text = COMBO_TEXT[name];
       firedAt = tick;
     },
-    sync(tick, playerY) {
+    sync(tick, playerY, hidden) {
       const age = tick - firedAt;
-      const shown = age >= 0 && age < COMBO_TICKS;
+      const shown = age >= 0 && age < COMBO_TICKS && !hidden;
       // Under reduced motion the name doesn't jump between sizes; it shows settled.
       const popping = !reducedMotion && age < COMBO_POP_TICKS;
       big.setText(shown && popping ? text : '');
@@ -426,8 +434,13 @@ function createComboName(scene: Phaser.Scene, reducedMotion: boolean): ComboName
   };
 }
 
-/** Status of the player, else a rival bubble nearby but out of view, else nothing. */
-function captionText(world: World, view: Phaser.Geom.Rectangle): string {
+/**
+ * The caption line: the player's status (trapped, stunned, or a squid locked on) first, else a
+ * rival bubble nearby but out of view, else nothing. */
+/** The parts of the camera's view the caption reads. */
+export type CaptionView = Pick<Phaser.Geom.Rectangle, 'contains' | 'centerX' | 'centerY'>;
+
+export function captionText(world: World, view: CaptionView): string {
   const player = playerOf(world);
   const { status } = player;
   // A latched squid's KICK! prompt takes the caption's place.

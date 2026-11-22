@@ -20,6 +20,7 @@ import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/
 import { createPanel } from '../art/ui/panel.ts';
 import { MENU_OPTIONS, type MenuOption } from '../menu.ts';
 import type { Runtime, Settings } from '../runtime.ts';
+import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { createMenuView, type MenuView, OPTION_LABELS } from '../view/menu-view.ts';
 import { formatRaceTime, ordinal } from '../view/race-text.ts';
@@ -103,15 +104,6 @@ export class TitleScene extends Phaser.Scene {
     const stroke = reducedMotion || Math.floor(tick / STROKE_TICKS) % 2 === 0 ? Frame.a : Frame.b;
     for (const swimmer of this.swimmers) swimmer.image.setX(swimmerX(swimmer, tick, reducedMotion)).setFrame(stroke);
   }
-}
-
-/**
- * Whether the on-screen touch controls are up. The same rule `@arcade/input` mounts them by: the
- * shell's `?touch=1`, or a coarse pointer.
- */
-function isTouchScreen(): boolean {
-  const forced = new URLSearchParams(window.location.search).get('touch') === '1';
-  return forced || window.matchMedia('(pointer: coarse)').matches;
 }
 
 /** What each title button says: Race as is, Sound and Motion with the setting in force. */
