@@ -6,6 +6,7 @@
  *
  * Reads the world only. No trig per tick: the turns are precomputed.
  */
+import { ignoresHazard } from '../abilities.ts';
 import { jellyCentre } from '../hazards/jellies.ts';
 import { JELLY } from '../hazards/tuning.ts';
 import { isSolid } from '../level/query.ts';
@@ -39,14 +40,18 @@ const TURNS = HAZARD_AVOID.turnsDeg.map((deg) => ({
  * is clear when the body's box, grown by the margin, slides `lookaheadPx` along it without touching
  * an urchin tile or a jelly's reach, nor rock within `wallCheckPx`.
  *
- * An inflated racer is urchin-proof, so it steers around jellies only.
+ * An inflated racer is urchin-proof, so it steers around jellies only; a racer whose ability
+ * ignores jelly stings (`ignoresHazard`) swims straight through jellies.
  *
  * @returns `aim` itself (the same object) when its path is clear or no turn is; a new unit vector
  *   when it turns.
  */
 export function avoidHazards(world: World, racer: Racer, aim: Vec): Vec {
   if (aim.x === 0 && aim.y === 0) return aim;
-  const hazards = hazardsNear(world, racer.body, racer.status.inflated === 0);
+  const hazards = hazardsNear(world, racer.body, {
+    urchins: racer.status.inflated === 0,
+    jellies: !ignoresHazard(racer, 'jelly'),
+  });
   if (hazards.length === 0 || pathIsClear(world, hazards, racer.body, aim)) return aim;
   const turn = (index: number, side: number): Vec => {
     const { cos: c, sin: s } = TURNS[Math.min(index, TURNS.length - 1)] ?? { cos: 1, sin: 0 };
@@ -62,25 +67,32 @@ export function avoidHazards(world: World, racer: Racer, aim: Vec): Vec {
   return aim;
 }
 
-/** Boxes of the active jellies, and the urchins when they can hurt, near enough to matter within the look-ahead. */
-function hazardsNear(world: World, body: Box, withUrchins: boolean): Box[] {
+/**
+ * Boxes of the active jellies and the urchins, each kind only when it can hurt, near enough to
+ * matter within the look-ahead. Runs every tick for every rival, so it rules hazards out by
+ * position before building any box.
+ */
+function hazardsNear(world: World, body: Box, hurts: { urchins: boolean; jellies: boolean }): Box[] {
   const reach = HAZARD_AVOID.lookaheadPx + 2 * TILE;
-  const near = (box: Box) => Math.abs(box.x - body.x) < reach && Math.abs(box.y - body.y) < reach;
-  const urchins = (withUrchins ? world.level.urchins : []).map((tile) => ({
-    x: tile.x * TILE,
-    y: tile.y * TILE,
-    w: TILE,
-    h: TILE,
-  }));
-  const jellies = world.jellies
-    .filter((jelly) => jelly.stunned === 0)
-    .map((jelly) => {
+  const near = (x: number, y: number) => Math.abs(x - body.x) < reach && Math.abs(y - body.y) < reach;
+  const found: Box[] = [];
+  if (hurts.urchins) {
+    for (const tile of world.level.urchins) {
+      if (near(tile.x * TILE, tile.y * TILE)) found.push({ x: tile.x * TILE, y: tile.y * TILE, w: TILE, h: TILE });
+    }
+  }
+  if (hurts.jellies) {
+    const half = JELLY.size / 2;
+    const reachY = HAZARD_AVOID.jellyReachPx;
+    for (const jelly of world.jellies) {
+      // A jelly bobs straight up and down, so its home column settles x before its bob is worked out.
+      if (jelly.stunned > 0 || Math.abs((jelly.home.x + 0.5) * TILE - half - body.x) >= reach) continue;
       const centre = jellyCentre(jelly);
-      const half = JELLY.size / 2;
-      const reachY = HAZARD_AVOID.jellyReachPx;
-      return { x: centre.x - half, y: centre.y - half - reachY, w: JELLY.size, h: JELLY.size + 2 * reachY };
-    });
-  return [...urchins, ...jellies].filter(near);
+      const box = { x: centre.x - half, y: centre.y - half - reachY, w: JELLY.size, h: JELLY.size + 2 * reachY };
+      if (near(box.x, box.y)) found.push(box);
+    }
+  }
+  return found;
 }
 
 function pathIsClear(world: World, hazards: readonly Box[], body: Box, dir: Vec): boolean {

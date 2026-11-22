@@ -7,8 +7,9 @@ import { noItems } from '../racers.ts';
 import { placeOnTile, raceOn } from '../test-world.ts';
 import type { Intent, PowerUpKind, Racer, RacerId, TickInput, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
-import { RIVAL_PROFILES } from './profiles.ts';
-import { CATCH_UP, catchUpMul, rivalIntent } from './rival.ts';
+import { ITEM_USE } from './items.ts';
+import { PLAYER_PROFILE } from './profiles.ts';
+import { CATCH_UP, catchUpMul, DARK_STEERING, rivalIntent } from './rival.ts';
 
 const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
@@ -168,7 +169,7 @@ describe('getting unstuck', () => {
       r.body.vy = 0;
     });
 
-    const afterFirstRead = moving.slice(RIVAL_PROFILES.tess.reactionTicks);
+    const afterFirstRead = moving.slice(racer(world, 'tess').profile.reactionTicks);
 
     expect(moving.some(sideways)).toBe(false);
     expect(afterFirstRead.every((i) => i.move.x > 0.9)).toBe(true);
@@ -214,8 +215,14 @@ describe('catch-up', () => {
       ...noItems(),
     };
     const body = { x: 0, y: 0, vx: 0, vy: 0, w: 12, h: 10 };
-    const rival: Racer = { ...base, id: 'tess', body, progress: rivalProgress, profile: RIVAL_PROFILES.tess };
-    const player: Racer = { ...base, id: 'player', body, progress: playerProgress, profile: RIVAL_PROFILES.tess };
+    const rival: Racer = {
+      ...base,
+      id: 'tess',
+      body,
+      progress: rivalProgress,
+      profile: { ...PLAYER_PROFILE, id: 'tess' },
+    };
+    const player: Racer = { ...base, id: 'player', body, progress: playerProgress, profile: PLAYER_PROFILE };
     return catchUpMul(rival, player);
   };
 
@@ -228,8 +235,8 @@ describe('catch-up', () => {
   });
 
   it('scales with the gap in between and is neutral when level', () => {
-    expect(pair(15, 10)).toBeCloseTo(1 + 5 * CATCH_UP.perTile, 6);
-    expect(pair(10, 15)).toBeCloseTo(1 - 5 * CATCH_UP.perTile, 6);
+    expect(pair(12, 10)).toBeCloseTo(1 + 2 * CATCH_UP.perTile, 6);
+    expect(pair(10, 12)).toBeCloseTo(1 - 2 * CATCH_UP.perTile, 6);
     expect(pair(10, 10)).toBeCloseTo(1, 6);
   });
 
@@ -327,12 +334,21 @@ describe('using items', () => {
     expect(bursts(itemScene(['bubbleShield'], { player: [7, 5] }).decide())).toBe(0);
   });
 
-  it('flashes its lantern with a racer within 4 tiles', () => {
-    expect(bursts(itemScene(['glowLantern'], { player: [10, 2] }).decide())).toBe(1);
+  it('flashes its lantern at a racer just ahead, within 2 tiles', () => {
+    expect(bursts(itemScene(['glowLantern'], { player: [12, 5] }).decide())).toBe(1);
   });
 
-  it('saves its lantern when every racer is further than 4 tiles', () => {
-    expect(bursts(itemScene(['glowLantern']).decide())).toBe(0);
+  it('saves its lantern for a racer 3 tiles ahead, or one just behind it', () => {
+    expect(bursts(itemScene(['glowLantern'], { player: [13, 5] }).decide())).toBe(0);
+    expect(bursts(itemScene(['glowLantern'], { player: [8, 5] }).decide())).toBe(0);
+  });
+
+  it('aims its items at the player only, never at another rival', () => {
+    const atSquib = itemScene(['glowLantern', 'inkSac'], { squib: [12, 5], bo: [8, 5] });
+    const atPlayer = itemScene(['glowLantern', 'inkSac'], { player: [12, 5] });
+
+    expect(bursts(atSquib.decide(100))).toBe(0);
+    expect(bursts(atPlayer.decide())).toBe(1);
   });
 
   it('inflates its puffer for coral on its smash path within 3 tiles', () => {
@@ -367,7 +383,7 @@ describe('using items', () => {
   });
 
   it('never bursts while swimming sideways to get unstuck', () => {
-    const { tess, decide } = itemScene(['jetFin']);
+    const { tess, decide } = itemScene(['glowLantern'], { player: [12, 5] });
     const pinned = Array.from({ length: 60 }, () => {
       tess.body.vx = 0;
       tess.body.vy = 0;
@@ -386,8 +402,32 @@ describe('using items', () => {
     expect(atCoral?.move.x).toBeGreaterThan(0.5);
   });
 
-  it('dashes with 5 clear tiles straight ahead', () => {
-    expect(bursts(itemScene(['jetFin']).decide())).toBe(1);
+  it('dashes with 5 clear tiles straight ahead, but on only a small share of the ticks it could', () => {
+    const { tess, decide } = itemScene(['jetFin']);
+    const dashes = bursts(
+      Array.from({ length: 1000 }, () => {
+        tess.body.vx = 60;
+        return decide()[0] as Intent;
+      }),
+    );
+
+    expect(dashes / 1000).toBeGreaterThan(ITEM_USE.jetChanceMul * 0.4);
+    expect(dashes / 1000).toBeLessThan(ITEM_USE.jetChanceMul * 1.8);
+  });
+
+  it('holds back a lantern flash it would fire every time while Jet Fins ride along in the stack', () => {
+    const flashes = (kinds: PowerUpKind[]) => {
+      const { tess, decide } = itemScene(kinds, { player: [12, 5] });
+      return bursts(
+        Array.from({ length: 1000 }, () => {
+          tess.body.vx = 60;
+          return decide()[0] as Intent;
+        }),
+      );
+    };
+
+    expect(flashes(['glowLantern'])).toBe(1000);
+    expect(flashes(['jetFin', 'glowLantern'])).toBeLessThan(150);
   });
 
   it('holds its dash with a wall 3 tiles ahead', () => {
@@ -397,7 +437,7 @@ describe('using items', () => {
   it('bursts on about itemAggression of its eligible ticks', () => {
     // Kept swimming, so it never sits still long enough to start a recovery swim (which holds bursts).
     const swimming = (aggression: number) => {
-      const { tess, decide } = itemScene(['glowLantern'], { player: [10, 2] }, aggression);
+      const { tess, decide } = itemScene(['glowLantern'], { player: [12, 5] }, aggression);
       return Array.from({ length: 400 }, () => {
         tess.body.vx = 60;
         return decide()[0] as Intent;
@@ -412,7 +452,7 @@ describe('using items', () => {
   });
 
   it('never bursts while its burst cools down', () => {
-    const { tess, decide } = itemScene(['glowLantern'], { player: [10, 2] });
+    const { tess, decide } = itemScene(['glowLantern'], { player: [12, 5] });
     tess.burstCooldown = 10;
 
     expect(bursts(decide(100))).toBe(0);
@@ -420,12 +460,138 @@ describe('using items', () => {
 
   it('draws the same randomness each tick whatever it holds', () => {
     const draws = (kinds: PowerUpKind[]) => {
-      const { world, tess } = itemScene(kinds, { player: [10, 2] });
+      const { world, tess } = itemScene(kinds, { player: [12, 5] });
       const rng = createRng(99);
       for (let i = 0; i < 50; i++) rivalIntent(world, tess, rng);
       return rng.state();
     };
 
     expect(draws(['glowLantern', 'jetFin'])).toBe(draws([]));
+  });
+});
+
+/** One wide lane per racer; `dark` covers every column when set. */
+function darkLanes(dark: boolean) {
+  const level = parseLevel({
+    name: 'dark lanes',
+    ascii: `
+      ##############################
+      #1..........................F#
+      ##############################
+      #............................#
+      #2..........................F#
+      #............................#
+      ##############################
+      #3..........................F#
+      ##############################
+      #4..........................F#
+      ##############################
+    `,
+    dark: dark ? [[0, 29]] : [],
+  });
+  const world = createWorld(level, new EventLog<GameEvent>(100_000), { seed: 3 });
+  racing(world);
+  return world;
+}
+
+/** Tess's intents swimming on the spot mid-lane for `ticks`, after `setup` on her. */
+function steering(dark: boolean, ticks: number, setup: (tess: Racer) => void = () => {}) {
+  const world = darkLanes(dark);
+  setup(racer(world, 'tess'));
+  return intents(world, 'tess', ticks, (r) => {
+    placeOnTile(r, 10, 4);
+    r.body.vx = 60;
+  });
+}
+
+const widestSwerve = (moves: Intent[]) => Math.max(...moves.map((intent) => Math.abs(intent.move.y)));
+
+describe('steering in the dark', () => {
+  it('wobbles twice as far off its line in a dark zone', () => {
+    const lit = widestSwerve(steering(false, 600));
+    const dark = widestSwerve(steering(true, 600));
+
+    expect(lit).toBeGreaterThan(0);
+    // The same draws walk an angle exactly twice as wide; the sine of a small angle nearly doubles.
+    expect(dark / lit).toBeGreaterThan(1.9);
+    expect(dark / lit).toBeLessThan(2.05);
+  });
+
+  it('reads its field half as often in a dark zone', () => {
+    const reads = (dark: boolean) => {
+      const world = darkLanes(dark);
+      const tess = racer(world, 'tess');
+      let count = 0;
+      for (let i = 0; i < 120; i++) {
+        placeOnTile(tess, 10, 4);
+        if (tess.ai?.replanIn === 0) count++;
+        rivalIntent(world, tess, world.rngs['ai.tess']);
+      }
+      return count;
+    };
+
+    expect(reads(true)).toBe(Math.ceil(reads(false) / DARK_STEERING.reactionMul));
+  });
+
+  it('steers as if lit while it holds a Glow Lantern', () => {
+    const withLantern = (tess: Racer) => {
+      tess.stack = ['glowLantern'];
+      tess.profile = { ...tess.profile, itemAggression: 0 };
+    };
+
+    expect(steering(true, 600, withLantern)).toEqual(steering(false, 600, withLantern));
+  });
+
+  it('steers as if lit as Selene', () => {
+    const asSelene = (tess: Racer) => {
+      tess.character = 'selene';
+    };
+
+    expect(steering(true, 600, asSelene)).toEqual(steering(false, 600, asSelene));
+  });
+});
+
+describe('abilities in the rival AI', () => {
+  /** A jelly sits dead ahead on Tess's line. */
+  const JELLY_LINE = `
+    ##########################
+    #1......................F#
+    ##########################
+    #.......................F#
+    #2.........j............F#
+    #.......................F#
+    ##########################
+    #3......................F#
+    ##########################
+    #4......................F#
+    ##########################
+  `;
+
+  it('swims straight at a jelly as Selene, who it cannot sting, where others swerve', () => {
+    const aimAtJelly = (character: 'selene' | 'rook') => {
+      const { world } = raceOn(JELLY_LINE);
+      const tess = racer(world, 'tess');
+      tess.character = character;
+      tess.profile = { ...tess.profile, wobble: 0 };
+      placeOnTile(tess, 8, 4);
+      tess.body.vx = 60;
+      return rivalIntent(world, tess, world.rngs['ai.tess']).move;
+    };
+
+    expect(Math.abs(aimAtJelly('selene').y)).toBeLessThan(0.05);
+    expect(Math.abs(aimAtJelly('rook').y)).toBeGreaterThan(0.2);
+  });
+
+  it('steers through coral as Baron Barnacle, who rams it, and around it as anyone else', () => {
+    const aimAt = (character: 'baron' | 'rudy') => {
+      const { world } = raceOn(CORAL_LANE);
+      const tess = racer(world, 'tess');
+      tess.character = character;
+      tess.profile = { ...tess.profile, wobble: 0 };
+      return rivalIntent(world, tess, world.rngs['ai.tess']).move;
+    };
+
+    expect(aimAt('baron').x).toBeGreaterThan(0.5);
+    expect(aimAt('rudy').x).toBeLessThan(0);
   });
 });

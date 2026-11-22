@@ -100,7 +100,8 @@ function resolveY(body: Body, level: Level, broken: ReadonlySet<number>): void {
  *
  * @param massOf The mass each racer bumps with; its profile's unless held power-ups change it.
  * @param onBump Called with the pair in RACER_IDS order when a contact starts, after `racer.bumped`
- *   and after the pair has been pushed apart.
+ *   and after the pair has been pushed apart, but with the velocities they bumped with: the closing
+ *   speed they share is worked out before the call and added after it.
  */
 export function separateRacers(
   racers: Racer[],
@@ -147,12 +148,16 @@ function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump }: 
   const axis = penetration.x <= penetration.y ? 'x' : 'y';
   const masses = { a: massOf(a), b: massOf(b) };
   pushApart(a, b, masses, axis, penetration[axis]);
-  shareClosingSpeed(a, b, masses, axis);
-  if (contacts.has(key)) return;
-  contacts.add(key);
-  const [first, second] = inRacerOrder(a, b);
-  events.emit({ type: 'racer.bumped', a: first.id, b: second.id });
-  onBump(first, second);
+  const shared = closingSpeedShares(a, b, masses, axis);
+  if (!contacts.has(key)) {
+    contacts.add(key);
+    const [first, second] = inRacerOrder(a, b);
+    events.emit({ type: 'racer.bumped', a: first.id, b: second.id });
+    onBump(first, second);
+  }
+  const velocity = axis === 'x' ? 'vx' : 'vy';
+  a.body[velocity] += shared.a;
+  b.body[velocity] += shared.b;
 }
 
 /** Length two spans share along one axis; zero when they touch, negative when there's a gap. */
@@ -183,17 +188,17 @@ function pushApart(a: Racer, b: Racer, masses: Masses, axis: Axis, depth: number
 }
 
 /**
- * While the pair is closing on the axis, takes away their closing speed: each loses a share
- * weighted by the other's mass fraction, so equal racers lose half each and the heavier one less.
+ * The velocity changes along the axis that take away the pair's closing speed while it closes:
+ * each loses a share weighted by the other's mass fraction, so equal racers lose half each and the
+ * heavier one less. Zero for both when they aren't closing.
  */
-function shareClosingSpeed(a: Racer, b: Racer, masses: Masses, axis: Axis): void {
+function closingSpeedShares(a: Racer, b: Racer, masses: Masses, axis: Axis): { a: number; b: number } {
   const velocity = axis === 'x' ? 'vx' : 'vy';
   const direction = directionFromAToB(a.body, b.body, axis);
   const closing = (a.body[velocity] - b.body[velocity]) * direction;
-  if (closing <= 0) return;
+  if (closing <= 0) return { a: 0, b: 0 };
   const totalMass = masses.a + masses.b;
-  a.body[velocity] -= direction * closing * (masses.b / totalMass);
-  b.body[velocity] += direction * closing * (masses.a / totalMass);
+  return { a: -direction * closing * (masses.b / totalMass), b: direction * closing * (masses.a / totalMass) };
 }
 
 /** The pair ordered by RACER_IDS, so keys and events don't depend on array order. */
