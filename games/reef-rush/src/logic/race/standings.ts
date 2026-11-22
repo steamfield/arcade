@@ -3,6 +3,7 @@
  * when the race is over. Reads bodies; never moves them.
  */
 
+import { playerOf } from '../racers.ts';
 import { RACER_IDS, type RaceResult, type Racer, TILE, type World } from '../types.ts';
 import { progressAt } from './flowfield.ts';
 
@@ -45,7 +46,7 @@ export function advanceClock(world: World): boolean {
 /** Sets every unfinished racer's `progress` from the progress field. */
 export function updateProgress(world: World): void {
   for (const racer of world.racers) {
-    if (!racer.finished) racer.progress = progressAt(world.fields, world.level, racer.body);
+    if (!racer.finished) racer.progress = progressAt(world.fields, racer.body);
   }
 }
 
@@ -74,7 +75,7 @@ export function recordFinishes(world: World): void {
 export function updatePlaces(world: World): void {
   // The grid order is the standing during the countdown; announcing it would be noise.
   if (world.race.phase === 'countdown') return;
-  const player = findPlayer(world);
+  const player = playerOf(world);
   const before = player.place;
   rankRacers(world.racers).forEach((racer, index) => {
     racer.place = index + 1;
@@ -86,7 +87,7 @@ export function updatePlaces(world: World): void {
 export function checkRaceEnd(world: World): void {
   const race = world.race;
   if (race.phase !== 'racing') return;
-  const player = findPlayer(world);
+  const player = playerOf(world);
   const graceOver = race.rivalsDoneAt !== null && race.raceTick >= race.rivalsDoneAt + DNF_GRACE_TICKS;
   if (!player.finished && !graceOver && race.raceTick < RACE_LIMIT_TICKS) return;
 
@@ -126,15 +127,4 @@ function racerOrder(racer: Racer): number {
 
 function centreX(racer: Racer): number {
   return racer.body.x + racer.body.w / 2;
-}
-
-/**
- * The player's racer.
- *
- * @throws {Error} When the world has no racer with id 'player', which createWorld never builds.
- */
-function findPlayer(world: World): Racer {
-  const player = world.racers.find((racer) => racer.id === 'player');
-  if (!player) throw new Error(`World has no player racer; racers are ${world.racers.map((r) => r.id).join(', ')}`);
-  return player;
 }

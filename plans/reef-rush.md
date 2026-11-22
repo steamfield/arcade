@@ -43,9 +43,9 @@ Error model:
 - Audio that cannot start yet (suspended context before a gesture) is not an error: nothing plays and no `audio.played` is emitted. `audio.played` is emitted once per SFX and once per song start or section change, never per note, so long holds can't overflow the 1000-event log.
 
 Determinism rules (every lane follows these):
-- Tick order in `stepWorld`: countdown; then intents for every racer are computed from the start-of-tick state in `RACER_IDS` order; then each racer's physics and tile movement in `RACER_IDS` order; then one pass of pairwise separation over pairs (i < j) in `RACER_IDS` order; then progress, finishes, places and race end. Phase 2+ systems slot in at named points in `world.ts`.
-- Randomness: `world.rngs` holds one `Rng` per consumer, forked from the seed with fixed salts (`ai.tess`, `ai.squib`, `ai.bo`, `ai.bot`, later `pickups`, `hazards`). Adding a new consumer never changes an existing stream.
-- Placing uses the progress field (uniform-cost geometric distance, coral passable), sampled at the body centre with sub-tile interpolation, so places don't flicker crossing kelp or currents. Ties break by `RACER_IDS` order. Same-tick finishes break by how far past the finish line the body centre is (further first), then `RACER_IDS` order.
+- Tick order in `stepWorld`: countdown; then intents for every unfinished racer are computed from the start-of-tick state in `RACER_IDS` order; then each unfinished racer's physics and tile movement in `RACER_IDS` order; then one pass of pairwise separation over unfinished pairs (i < j) in `RACER_IDS` order (finished racers are out of play: they don't move or bump); then progress, finishes, places and race end. Phase 2+ systems slot in at named points in `world.ts`.
+- Randomness: `world.rngs` holds one `Rng` per consumer, forked from the seed with fixed salts (`ai.player`, `ai.tess`, `ai.squib`, `ai.bo`, later `pickups`, `hazards`); the seed is mixed (`Math.imul(seed, 0x9e3779b1)`) before the salt is XORed in, so no stream at one seed replays another stream at another seed. Adding a new consumer never changes an existing stream.
+- Placing uses the progress field (uniform-cost geometric distance, coral passable), sampled bilinearly between the four tile centres around the body centre (unreachable corners take a reachable neighbour's value), so places don't flicker crossing kelp or currents. Ties break by `RACER_IDS` order. Same-tick finishes break by how far past the finish line the body centre is (further first), then `RACER_IDS` order.
 
 ## Contracts (scaffold commit)
 
@@ -60,16 +60,19 @@ Layout (all under `games/reef-rush/`):
         events.ts                   GameEvent union: everything observable in a race
         save.ts                     save schema v2, migrations, NEW_GAME
         world.ts                    createWorld/stepWorld in the fixed tick order, summarize, toAscii; no rules of its own
+        racers.ts                   queries over the world's racers: playerOf, activeRacers (unfinished, RACER_IDS order)
         modifiers.ts                combines profile, catch-up and (phase 3) held power-ups into MoveModifiers
         level/parse.ts              LevelDef (ASCII + dark zones) into Level; throws LevelError
         level/query.ts              tile lookups on a Level: cellAt, isSolid, overlap and environment sampling
         level/levels.ts             the course data (OCEAN_LEVEL); data only
         swim/physics.ts             one racer's velocity from intent, environment and modifiers (force, drag, sink, kick, current, kelp)
         swim/collide.ts             moving a body through tiles, and separating overlapping racers
-        race/flowfield.ts           progress, steer and smash fields over the tile grid; distance and steering lookups
+        race/flowfield.ts           progress, steer and smash fields over the tile grid: cost model, build, rebuild after coral breaks, progressAt, unreachableStarts
+        race/coral.ts               breakCoral(world, tx, ty, by): the only writer of World.broken; rebuilds steer and smash, emits coral.broken
         race/priority-queue.ts      min-heap keyed by distance, used by the flow-field Dijkstra
         race/standings.ts           countdown, progress, finishes, placing and the race result
         ai/rival.ts                 an AI racer's Intent each tick from the fields, its profile, memory and rng
+        ai/steer.ts                 steerDirection: downhill lookahead on a field, aimed only where the whole body can slide
         ai/profiles.ts              rival and bot profiles; data only
         powerups/   (phase 3)       stack rules, burst effects, combos
         pickups/    (phase 3)       clams, pearls, loose power-ups
@@ -112,10 +115,10 @@ export interface Racer { id; body; facing: 1 | -1; kickCooldown; progress; place
 export interface RaceState { phase: 'countdown' | 'racing' | 'finished'; raceTick; rivalsDoneAt: number | null; result: RaceResult | null }
 export interface RaceResult { standings: RacerId[]; playerPlace: number; playerTicks: number | null }
 export interface FlowFields { width; height; progress: Float32Array; steer: Float32Array; smash: Float32Array }
-export interface World { level; fields; broken: Set<number>; racers: Racer[]; race: RaceState; tick; rngs: Record<string, Rng>; events: EventSink<GameEvent>; contacts: Set<string> }
+export interface World { level; fields; broken: ReadonlySet<number>; racers: Racer[]; race: RaceState; tick; rngs: Record<string, Rng>; events: EventSink<GameEvent>; contacts: Set<string> }
 ```
 
-Events (phase 1): `race.countdown {n}`, `race.started`, `racer.kicked {id}`, `racer.bumped {a, b}`, `player.place {place}`, `racer.finished {id, place, ticks}`, `race.finished {standings, playerPlace, playerTicks}`. Engine adds `scene.started`, `menu.selected`, `save.written`, `save.failed`.
+Events (phase 1): `race.countdown {n}`, `race.started`, `racer.kicked {id}`, `racer.bumped {a, b}`, `coral.broken {tx, ty, by}` (from `breakCoral`; phase 3 calls it), `player.place {place}`, `racer.finished {id, place, ticks}`, `race.finished {standings, playerPlace, playerTicks}`. Engine adds `scene.started`, `menu.selected`, `save.written`, `save.failed`.
 
 `summarize(world)` returns `{ tick, phase, raceTick, place: '2/4', progress (rounded tiles), finished, player: { tile: [x, y], kickReady } }`; phase 3 adds `stack`, `pearls`, `stunned`.
 
@@ -168,7 +171,7 @@ Depends on: phase 2
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/reef-rush/src/logic/powerups/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/modifiers.ts | contracts | | opus | pending | | |
-| b | M | games/reef-rush/src/logic/hazards/, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/race/flowfield.ts | contracts | | opus | pending | | |
+| b | M | games/reef-rush/src/logic/hazards/, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/ai/steer.ts, games/reef-rush/src/logic/race/flowfield.ts, games/reef-rush/src/logic/race/coral.ts | contracts | | opus | pending | | |
 | c | M | games/reef-rush/src/engine/view/pickup-view.ts, games/reef-rush/src/engine/view/hazard-view.ts, games/reef-rush/src/engine/view/powerup-view.ts, games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/scenes/race.ts, games/reef-rush/scenarios/ | contracts | | sonnet | pending | | |
 
 ### Phase 4: pixel art and chiptune audio

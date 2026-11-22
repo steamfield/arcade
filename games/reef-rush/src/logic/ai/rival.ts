@@ -7,8 +7,8 @@
  * never shift the rest of its stream.
  */
 import type { Rng } from '@arcade/core';
-import { steerDirection } from '../race/flowfield.ts';
 import type { AiMemory, Intent, Racer, Vec, World } from '../types.ts';
+import { steerDirection } from './steer.ts';
 
 /** Bounds of the catch-up multiplier on swim force, and its slope per tile of gap to the player. */
 export const CATCH_UP = { perTile: 0.004, min: 0.9, max: 1.08 } as const;

@@ -188,8 +188,8 @@ export type RngStream = keyof typeof RNG_SALTS;
 export interface World {
   level: Level;
   fields: FlowFields;
-  /** Tile indices of coral broken this race. */
-  broken: Set<number>;
+  /** Tile indices of coral broken this race. Only `breakCoral` (race/coral.ts) changes it. */
+  broken: ReadonlySet<number>;
   racers: Racer[];
   race: RaceState;
   tick: number;

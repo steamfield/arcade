@@ -4,7 +4,7 @@ import type { GameEvent } from './events.ts';
 import { OCEAN_LEVEL } from './level/levels.ts';
 import { LevelError, parseLevel } from './level/parse.ts';
 import { COUNTDOWN_TICKS, DNF_GRACE_TICKS, RACE_LIMIT_TICKS } from './race/standings.ts';
-import type { TickInput } from './types.ts';
+import { type RacerId, RNG_SALTS, type RngStream, type TickInput, type Vec } from './types.ts';
 import { createWorld, stepWorld } from './world.ts';
 
 const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
@@ -64,5 +64,60 @@ describe('level checks', () => {
 
     expect(create).toThrow(LevelError);
     expect(create).toThrow(expect.objectContaining({ row: 2, col: 1 }));
+  });
+});
+
+describe('finished racers', () => {
+  /** One lane, so rivals queue nose to tail and the leader stops against the wall past the line. */
+  const queue = () =>
+    parseLevel({
+      name: 'queue',
+      ascii: `
+        ############
+        #1234....F.#
+        ############
+      `,
+    });
+
+  it('stay where they crossed the line and never bump anyone', () => {
+    const log = new EventLog<GameEvent>(100_000);
+    const world = createWorld(queue(), log, { seed: 1 });
+    const parked = new Map<RacerId, Vec>();
+    const bumpsWithFinished: string[] = [];
+    let cursor = 0;
+    while (world.race.phase !== 'finished' && world.tick < 3000) {
+      log.tick = world.tick;
+      stepWorld(world, IDLE, TICK_DT);
+      const drained = log.drain(cursor);
+      cursor = drained.cursor;
+      for (const event of drained.events) {
+        if (event.type !== 'racer.bumped' || !(parked.has(event.a) || parked.has(event.b))) continue;
+        bumpsWithFinished.push(`${event.a}|${event.b} on tick ${event.tick}`);
+      }
+      for (const racer of world.racers) {
+        const at = parked.get(racer.id);
+        const now = { x: racer.body.x, y: racer.body.y };
+        if (at) expect(now, `${racer.id} on tick ${world.tick}`).toEqual(at);
+        else if (racer.finished) parked.set(racer.id, now);
+      }
+    }
+
+    expect([...parked.keys()].sort()).toEqual(['bo', 'squib', 'tess']);
+    expect(bumpsWithFinished).toEqual([]);
+  });
+});
+
+describe('random streams', () => {
+  it('never repeat another stream or another seed', () => {
+    const level = parseLevel(OCEAN_LEVEL);
+    const owner = new Map<string, string>();
+    for (let seed = 1; seed <= 8; seed++) {
+      const { rngs } = createWorld(level, new EventLog<GameEvent>(), { seed });
+      for (const stream of Object.keys(RNG_SALTS) as RngStream[]) {
+        const draws = Array.from({ length: 4 }, () => rngs[stream].next()).join(',');
+        expect(owner.get(draws), `${stream} at seed ${seed}`).toBeUndefined();
+        owner.set(draws, `${stream} at seed ${seed}`);
+      }
+    }
   });
 });

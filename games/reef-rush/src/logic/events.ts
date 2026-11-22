@@ -9,6 +9,7 @@ export type GameEvent =
   | { type: 'race.started' }
   | { type: 'racer.kicked'; id: RacerId }
   | { type: 'racer.bumped'; a: RacerId; b: RacerId }
+  | { type: 'coral.broken'; tx: number; ty: number; by: RacerId }
   | { type: 'player.place'; place: number }
   | { type: 'racer.finished'; id: RacerId; place: number; ticks: number }
   | { type: 'race.finished'; standings: RacerId[]; playerPlace: number; playerTicks: number | null };

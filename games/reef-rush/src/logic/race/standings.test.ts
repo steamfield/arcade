@@ -2,8 +2,9 @@ import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
 import { parseLevel } from '../level/parse.ts';
+import { playerOf } from '../racers.ts';
 import { type Racer, type RacerId, TILE, type TickInput, type World } from '../types.ts';
-import { createWorld, playerOf, stepWorld } from '../world.ts';
+import { createWorld, stepWorld } from '../world.ts';
 import {
   advanceClock,
   COUNTDOWN_TICKS,

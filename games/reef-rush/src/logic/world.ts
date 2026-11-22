@@ -2,9 +2,11 @@
  * The race as one deterministic step function. This module only sets the order
  * things happen in each tick; every rule lives in the module it calls.
  *
- * Tick order: clock; intents for every racer from the start-of-tick state (in
- * RACER_IDS order); each racer's swimming and movement (RACER_IDS order); one
- * pass of racer separation; progress, finishes, places, race end.
+ * Tick order: clock; intents for every unfinished racer from the start-of-tick
+ * state (in RACER_IDS order); each unfinished racer's swimming and movement
+ * (RACER_IDS order); one pass of separation over unfinished racers; progress,
+ * finishes, places, race end. Finished racers are out of play: they stay where
+ * they crossed the line and nobody bumps them.
  */
 import { createRng, type EventSink } from '@arcade/core';
 import { PLAYER_PROFILE, RIVAL_PROFILES } from './ai/profiles.ts';
@@ -15,6 +17,7 @@ import { sampleEnvironment } from './level/query.ts';
 import { modifiersFor } from './modifiers.ts';
 import { buildFlowFields, unreachableStarts } from './race/flowfield.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
+import { activeRacers, playerOf } from './racers.ts';
 import { moveBody, separateRacers } from './swim/collide.ts';
 import { applyIntent, SWIM } from './swim/physics.ts';
 import {
@@ -103,7 +106,8 @@ function createRacer(level: Level, id: RacerId, index: number, playerBot: RivalP
 function createRngs(seed: number): World['rngs'] {
   const streams = Object.keys(RNG_SALTS) as RngStream[];
   return Object.fromEntries(
-    streams.map((stream) => [stream, createRng((seed ^ RNG_SALTS[stream]) >>> 0)]),
+    // Mixed first because with a bare XOR, stream A at seed s equals stream B at s ^ saltA ^ saltB.
+    streams.map((stream) => [stream, createRng((Math.imul(seed, 0x9e3779b1) ^ RNG_SALTS[stream]) >>> 0)]),
   ) as World['rngs'];
 }
 
@@ -113,14 +117,15 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   if (world.race.phase === 'finished') return;
   if (advanceClock(world)) return;
 
-  const intents = world.racers.map((racer) => intentFor(world, racer, input));
+  const racing = activeRacers(world);
+  const intents = racing.map((racer) => intentFor(world, racer, input));
   const player = playerOf(world);
-  world.racers.forEach((racer, index) => {
+  racing.forEach((racer, index) => {
     const env = sampleEnvironment(world.level, racer.body);
     applyIntent(racer, intents[index] ?? IDLE, env, modifiersFor(racer, player), world.events, dt);
     moveBody(racer.body, world.level, world.broken, dt);
   });
-  separateRacers(world.racers, world.contacts, world.events);
+  separateRacers(racing, world.contacts, world.events);
 
   updateProgress(world);
   recordFinishes(world);
@@ -129,16 +134,8 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
 }
 
 function intentFor(world: World, racer: Racer, input: TickInput): Intent {
-  if (racer.finished) return IDLE;
   if (!racer.ai) return input;
   return rivalIntent(world, racer, world.rngs[`ai.${racer.id}`]);
-}
-
-/** The player's racer. Always first in `world.racers`. */
-export function playerOf(world: World): Racer {
-  const player = world.racers[0];
-  if (player?.id !== 'player') throw new Error('World has no player racer at index 0');
-  return player;
 }
 
 /** Small, stable view for the CLI summary and scenario assertions. */

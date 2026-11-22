@@ -5,9 +5,10 @@ import Phaser from 'phaser';
 import type { GameEvent } from '../logic/events.ts';
 import { OCEAN_LEVEL } from '../logic/level/levels.ts';
 import { parseLevel } from '../logic/level/parse.ts';
+import { playerOf } from '../logic/racers.ts';
 import { NEW_GAME, type SaveData } from '../logic/save.ts';
 import { type RaceResult, type RacerId, TILE, type World } from '../logic/types.ts';
-import { createWorld, playerOf, stepWorld, summarize, toAscii } from '../logic/world.ts';
+import { createWorld, stepWorld, summarize, toAscii } from '../logic/world.ts';
 import { input } from './input.ts';
 import { createPlaceholderTextures, Tex } from './textures.ts';
 
