@@ -37,8 +37,9 @@ export async function newGame(slug: string, options: { template: string; title?:
     writeFileSync(designPath, readFileSync(designPath, 'utf8').replace(/^# .*$/m, `# ${title}`));
   }
 
-  registerLaunchConfig(slug);
-  await run('pnpm', ['exec', 'biome', 'format', '--write', dir]);
+  const launchPath = registerLaunchConfig(slug);
+  // JSON.stringify expands every array onto its own lines; Biome collapses short ones, so format what we wrote.
+  await run('pnpm', ['exec', 'biome', 'format', '--write', dir, ...(launchPath ? [launchPath] : [])]);
   const install = await run('pnpm', ['install']);
   if (install.code !== 0) {
     console.log(install.output);
@@ -60,14 +61,17 @@ export async function newGame(slug: string, options: { template: string; title?:
   return 0;
 }
 
-/** Add the game to .claude/launch.json so the desktop app's browser pane can start its dev server. */
-function registerLaunchConfig(slug: string): void {
+/**
+ * Add the game to .claude/launch.json so the desktop app's browser pane can start its dev server.
+ * Returns the file's path when it was written, so the caller can format it.
+ */
+function registerLaunchConfig(slug: string): string | null {
   const path = join(ROOT, '.claude', 'launch.json');
-  if (!existsSync(path)) return;
+  if (!existsSync(path)) return null;
   const launch = JSON.parse(readFileSync(path, 'utf8')) as {
     configurations: { name: string; runtimeExecutable: string; runtimeArgs: string[]; port: number }[];
   };
-  if (launch.configurations.some((c) => c.name === slug)) return;
+  if (launch.configurations.some((c) => c.name === slug)) return null;
   const port = Math.max(5180, ...launch.configurations.map((c) => c.port)) + 1;
   launch.configurations.push({
     name: slug,
@@ -76,4 +80,5 @@ function registerLaunchConfig(slug: string): void {
     port,
   });
   writeFileSync(path, `${JSON.stringify(launch, null, 2)}\n`);
+  return path;
 }
