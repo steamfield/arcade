@@ -129,6 +129,7 @@ Save v2: `{ best: { ticks: number; place: number } | null, races: number, settin
 ### Phase 1: race logic on the first reef section (MVP)
 
 Scaffold: be3d297
+Tag: phase-1
 Demo: `pnpm arcade dev reef-rush`, press A on the title, swim the first section against three rivals (template-style placeholder rendering adapted to the new world), see the finish text. Headless: `pnpm arcade see reef-rush --scenario race-to-finish --at 0,200,end` and `pnpm --filter game-reef-rush exec vitest run src/logic/world.test.ts`.
 Test cases:
 - parse: reads every tile character (`#` rock, `C` coral, `~` kelp, `> < ^ v` currents, `.` water, `1-4` starts, `F` finish, `o` pearl, `?` clam, `*` urchin, `j` jellyfish); start and object tiles are water; dark zones pass through.
