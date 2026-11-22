@@ -8,18 +8,13 @@
  */
 import { cellAt, isSolid, tileIndex } from '../level/query.ts';
 import { type Body, type Cell, type FlowFields, type Level, TILE, type Vec } from '../types.ts';
+import { PriorityQueue } from './priority-queue.ts';
 
-/**
- * Cost multiplier for swimming into a tile along `move` (-1, 0 or 1 on each axis).
- * Infinity means the tile can't be entered at all.
- */
+/** Cost multiplier for swimming into a tile along `move` (-1, 0 or 1 per axis); Infinity means closed. */
 type EntryCost = (cell: Cell, isBroken: boolean, move: Vec) => number;
 
-interface QueuedTile {
-  cost: number;
-  tx: number;
-  ty: number;
-}
+/** A tile waiting in the Dijkstra frontier with the cost it was reached at. */
+type QueuedTile = { cost: number; tx: number; ty: number };
 
 const KELP_COST = 2.5;
 const WITH_CURRENT_COST = 0.4;
@@ -93,11 +88,11 @@ function distancesToFinish(level: Level, broken: ReadonlySet<number>, cost: Entr
   const isOpen = (tx: number, ty: number) => Number.isFinite(entry(tx, ty, STILL));
   // Searched in float64 so sums don't drift; stored as float32 per the FlowFields contract.
   const distance = new Float64Array(level.width * level.height).fill(Number.POSITIVE_INFINITY);
-  const frontier = new MinQueue();
+  const frontier = new PriorityQueue<QueuedTile>();
   for (let ty = 0; ty < level.height; ty++) {
     if (!isOpen(level.finishX, ty)) continue;
     distance[tileIndex(level, level.finishX, ty)] = 0;
-    frontier.push({ cost: 0, tx: level.finishX, ty });
+    frontier.push(0, { cost: 0, tx: level.finishX, ty });
   }
 
   for (let next = frontier.pop(); next; next = frontier.pop()) {
@@ -114,51 +109,10 @@ function distancesToFinish(level: Level, broken: ReadonlySet<number>, cost: Entr
       const fromIndex = tileIndex(level, fromX, fromY);
       if (reached >= (distance[fromIndex] ?? 0)) continue;
       distance[fromIndex] = reached;
-      frontier.push({ cost: reached, tx: fromX, ty: fromY });
+      frontier.push(reached, { cost: reached, tx: fromX, ty: fromY });
     }
   }
   return Float32Array.from(distance);
-}
-
-/** A binary min-heap of tiles keyed by cost, just enough for Dijkstra. */
-class MinQueue {
-  private readonly items: QueuedTile[] = [];
-
-  push(tile: QueuedTile): void {
-    this.items.push(tile);
-    let i = this.items.length - 1;
-    while (i > 0 && this.isLower(i, (i - 1) >> 1)) {
-      this.swap(i, (i - 1) >> 1);
-      i = (i - 1) >> 1;
-    }
-  }
-
-  pop(): QueuedTile | undefined {
-    const top = this.items[0];
-    const last = this.items.pop();
-    if (this.items.length === 0 || !last) return top;
-    this.items[0] = last;
-    let i = 0;
-    for (;;) {
-      let lowest = i;
-      for (const child of [2 * i + 1, 2 * i + 2]) if (this.isLower(child, lowest)) lowest = child;
-      if (lowest === i) return top;
-      this.swap(i, lowest);
-      i = lowest;
-    }
-  }
-
-  private isLower(i: number, j: number): boolean {
-    const a = this.items[i];
-    const b = this.items[j];
-    return a !== undefined && b !== undefined && a.cost < b.cost;
-  }
-
-  private swap(i: number, j: number): void {
-    const held = this.items[i] as QueuedTile;
-    this.items[i] = this.items[j] as QueuedTile;
-    this.items[j] = held;
-  }
 }
 
 /** Value of a field at a tile using the FlowFields `y * width + x` layout; Infinity outside the grid. */
