@@ -43,7 +43,7 @@ You race as one of eight characters; the race fills the three rival slots with t
 | Selene | moon jellyfish with a starlight glow | Moonlight: sees through dark zones, immune to jelly stings |
 | Rook | hammerhead shark | Frenzy: when a racer near it is hit or loses a power-up, it gets a short speed burst |
 
-Dark zones (`Level.dark`) are parsed and `inDark` in `level/query.ts` answers whether a racer is in one, but nothing uses darkness yet.
+Dark zones (`Level.dark`) draw a veil (`view/dark-view.ts`, maths in `view/dark-math.ts`) with a light pool around each racer: yours is 64 px and leans ahead as you swim, a Glow Lantern widens it, and urchins and jellies show a faint glint so you can see them coming. Racers who see in the dark (`racerSeesInDark`) get only a light tint.
 
 ## Power-ups
 
@@ -65,8 +65,8 @@ A hit (urchin `*`, jelly `j`, bubble, puffer, flash) takes your shield if you ho
 
 - `boot`: builds every texture (`engine/art/index.ts`), then routes.
 - `title`: the logo over the swimming cast, Race, Sound (mute) and Motion (reduced motion) buttons, PRESS A on touch screens only, and your best time and place when you have one. Settings save at once and apply for the session even if the save fails; a fresh save follows the OS reduced-motion preference.
-- `select`: the eight characters in a 4x2 grid (portrait and short name, the cursor's cell in a gold frame) and a card with the highlighted character's full name, ability and what it does. The cursor starts on your last pick. Kick saves the pick and races; burst goes back. Like menus, it ignores kick for its first 20 ticks. Laid out clear of the safe zones (layout in the header of `scenes/select.ts`).
-- `race`: 3-2-1-GO countdown, then the race, with FINAL STRETCH and FINISH splashes. HUD (laid out in `UI.md`): place with your portrait (hidden during the countdown; pops up or down on a change), timer, a progress strip with each racer's head, and a well with kick, burst (a dim ring while it recharges) and three stack slots (empty ones show a dot). Combo names appear beside you, clear of your sprite. The camera follows you with a deadzone and lookahead. 90 ticks after the race ends you go to results.
+- `select`: the eight characters in a 4x2 grid (portrait and short name, the cursor's cell in a gold frame) and a card with the highlighted character's full name, ability and what it does. The cursor starts on your last pick. Kick saves the pick and races; burst goes back. Like menus, it ignores kick for its first 20 ticks. Under the card the highlighted racer swims at 2x, and a footer shows the controls (icons on desktop, A/B letters on touch). Layout in `UI.md` "Select".
+- `race`: 3-2-1-GO countdown, then the race, with FINAL STRETCH and FINISH splashes. HUD (laid out in `UI.md`; the stack well has one slot per item your racer can hold, so four for Nib): place with your portrait (hidden during the countdown; pops up or down on a change), timer, a progress strip with each racer's head, and a well with kick, burst (a dim ring while it recharges) and three stack slots (empty ones show a dot). Combo names appear beside you, clear of your sprite. The camera follows you with a deadzone and lookahead. 90 ticks after the race ends you go to results.
 - `results`: a podium with medals for the top three, standings with names and times revealed row by row (DNF if not finished), your row in sun with your head beside it, a NEW BEST or BEST NOT SAVED readout, then Race again or Title.
 - Menus ignore kick for their first 20 ticks, so a kick still being pressed from the race can't skip the results.
 - Title Race goes to `select`; results' Race again races the same character again without the select screen.
@@ -96,4 +96,4 @@ ASCII in `src/logic/level/levels.ts`, documented in `src/logic/level/parse.ts`.
 
 ## Scenarios
 
-`countdown-holds-racers`, `race-to-finish`, `results-after-finish`, `results-ignores-early-kick`, `dnf-results`, `race-again`, `results-to-title`, `title-best`, `clam-stack`, `hit-pops-newest`, `cannonball-combo`, `audio-plays`. The top route most share is `TOP_ROUTE` in `scenarios/kit.ts`, a recorded no-kick run on seed 1 that finishes the whole course; any change to the course or rival tuning means re-recording it. Idle scenarios wait `IDLE_TO_RESULTS`, which the race limit guarantees. Power-up scenarios pin a seed because clam rolls depend on it.
+`countdown-holds-racers`, `race-to-finish`, `results-after-finish`, `results-ignores-early-kick`, `dnf-results`, `race-again`, `results-to-title`, `title-best`, `clam-stack`, `hit-pops-newest`, `cannonball-combo`, `audio-plays`, `settings-toggle`, `pick-character`. The top route most share is `TOP_ROUTE` in `scenarios/kit.ts`, a recorded no-kick run on seed 1 that finishes the whole course; any change to the course or rival tuning means re-recording it. Idle scenarios wait `IDLE_TO_RESULTS`, which the race limit guarantees. Power-up scenarios pin a seed because clam rolls depend on it.
