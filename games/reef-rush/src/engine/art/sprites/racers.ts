@@ -1,164 +1,309 @@
 /**
- * The racers, 16x12 and facing right (the racer view flips them), each drawn
- * around its 12x10 body with two swim-stroke frames, one texture per character.
+ * The eight racers, 16x12 and facing right (the racer view flips them), each
+ * drawn around its 12x10 body with two swim-stroke frames, one texture per
+ * character. Light comes from the top left like the rest of the art: lit
+ * pixels sit on top edges, the fish carry their second (pale) colour on the
+ * belly, and a dark outline closes each body. Thin limbs (legs, antennae,
+ * tentacles) are 1 px unoutlined lines in a body colour, so they stay thin.
  *
- * Placeholder: the characters reuse the four phase 4 drawings in CHARACTER_IDS
- * order (a round brass helmet with a porthole, a domed shell, a long mantle
- * trailing tentacles, a squat diving bell with crab claws), so every character
- * has a texture until each gets its own art.
+ * `CharacterPalette` holds each character's four colours; the portraits and
+ * heads in `ui/portraits.ts` draw in the same palettes, so a racer looks the
+ * same in the water, on the strip and on the podium.
  */
+import type { CharacterId } from '../../../logic/types.ts';
 import { CHARACTER_IDS } from '../../../logic/types.ts';
 import { Frame, Tex } from '../keys.ts';
-import { RacerPalette } from '../palettes.ts';
 import type { Palette, PixelRows } from '../pixel.ts';
 import { type ArtSheet, sheet } from './sheet.ts';
 
-/** One drawing: its palette and its two swim-stroke frames. */
-interface RacerDrawing {
-  palette: Palette;
-  frames: Readonly<Record<string, PixelRows>>;
-}
+/**
+ * Each character's palette: outline, main, second, accent. The main colour holds 3:1 against every
+ * water band so the racer reads in any depth (`sprites.test.ts`). The second is the other body
+ * tone: a pale belly, glint or shell for most, but Onyx's charcoal back, the one second colour
+ * darker than its main.
+ */
+export const CharacterPalette = {
+  /** Brass helmet, pale glints, red snapper body behind the porthole. */
+  rudy: [0x2a1008, 0xffc040, 0xfff2c0, 0xf05038],
+  /** Seahorse green, pale belly plates, deep green ridges. */
+  gil: [0x0c2a14, 0x7ad860, 0xe0ffa0, 0x2e8a44],
+  /** Electric blue, ice-white belly and sail spots, a yellow lightning stripe. */
+  streak: [0x0a1040, 0x3cb8ff, 0xd8f6ff, 0xffe040],
+  /** Silver rim and belly framing a charcoal-black back, a red eye and a red scar on the fin tip. */
+  onyx: [0x06060c, 0xc4cadc, 0x46445e, 0xff3048],
+  /** Cream shell, red cleaner stripes, cyan goggle lenses. */
+  nib: [0x3a0a14, 0xfff0e2, 0xff4a4a, 0x5ae2ff],
+  /** Rust-orange shell; cream legs and barnacles, so the legs still read over coral; a gold crown. */
+  baron: [0x220a08, 0xf08c50, 0xfff0d0, 0xffd040],
+  /** Pale moon bell, white starlight, periwinkle rings and tentacles. */
+  selene: [0x241a5c, 0xd0d8ff, 0xffffff, 0x9a8cff],
+  /** Shark grey, white belly and teeth, yellow hunter's eyes. */
+  rook: [0x0a1626, 0x9aaec4, 0xeef4fa, 0xffd23a],
+} as const satisfies Record<CharacterId, Palette>;
 
-const HELMET: RacerDrawing = {
-  palette: RacerPalette.pip,
-  frames: {
-    [Frame.a]: [
-      '.........00.....',
-      '.......003100...',
-      '0.....01221110..',
-      '30...0121111110.',
-      '3300.0321100010.',
-      '0222011111023010',
-      '.022211111033010',
-      '..0022111100010.',
-      '...022311111110.',
-      '....0001111110..',
-      '.......001100...',
-      '.........00.....',
-    ],
-    [Frame.b]: [
-      '.........00.....',
-      '.......003100...',
-      '......01221110..',
-      '.....0121111110.',
-      '.....0321100010.',
-      '....011111023010',
-      '..00211111033010',
-      '.02222111100010.',
-      '022222311111110.',
-      '33000001111110..',
-      '30.....001100...',
-      '0........00.....',
-    ],
-  },
+/** One character's two swim-stroke frames. */
+type Strokes = Readonly<Record<typeof Frame.a | typeof Frame.b, PixelRows>>;
+
+const RUDY: Strokes = {
+  [Frame.a]: [
+    '................',
+    '....0....00000..',
+    '...030..0221110.',
+    '0.03330021000110',
+    '3033330210233010',
+    '3333330110303010',
+    '0333330110333010',
+    '.032220111000110',
+    '0.02220111111110',
+    '...000.020202020',
+    '........0000000.',
+    '................',
+  ],
+  [Frame.b]: [
+    '................',
+    '....0....00000..',
+    '...030..0221110.',
+    '..03330021000110',
+    '0.33330210233010',
+    '3033330110303010',
+    '3333330110333010',
+    '3032220111000110',
+    '3002220111111110',
+    '0..000.020202020',
+    '........0000000.',
+    '................',
+  ],
 };
 
-const SHELL: RacerDrawing = {
-  palette: RacerPalette.tess,
-  frames: {
-    [Frame.a]: [
-      '................',
-      '....000000......',
-      '..0011111100....',
-      '.01113113111000.',
-      '0111313313112220',
-      '0113113113112202',
-      '0111111111112222',
-      '2222222222222220',
-      '021111111111000.',
-      '.00011111100....',
-      '....000200......',
-      '.......0........',
-    ],
-    [Frame.b]: [
-      '................',
-      '....000000......',
-      '.00011111100....',
-      '021113113111000.',
-      '2111313313112220',
-      '0113113113112202',
-      '0111111111112222',
-      '0222222222222220',
-      '.01111111111000.',
-      '..0011111120....',
-      '....0000220.....',
-      '........00......',
-    ],
-  },
+const GIL: Strokes = {
+  [Frame.a]: [
+    '......0.0.......',
+    '.....01210......',
+    '.....011210000..',
+    '....01101111110.',
+    '....011110000...',
+    '.....011130.....',
+    '...20111330.....',
+    '..2201111330....',
+    '...20111330.....',
+    '....0011130.....',
+    '......0110.00...',
+    '.......00000....',
+  ],
+  [Frame.b]: [
+    '......0.0.......',
+    '.....01210......',
+    '.....011210000..',
+    '....01101111110.',
+    '....011110000...',
+    '.....011130.....',
+    '..220111330.....',
+    '...201111330....',
+    '..220111330.....',
+    '....0011130.....',
+    '......01110.....',
+    '.......0000.....',
+  ],
 };
 
-const MANTLE: RacerDrawing = {
-  palette: RacerPalette.squib,
-  frames: {
-    [Frame.a]: [
-      '...........00...',
-      '..........0110..',
-      '......000001110.',
-      '0000.01111111110',
-      '1111013311111110',
-      '0222113011111111',
-      '1111111111111111',
-      '0222222222221110',
-      '.000001111111110',
-      '......000001110.',
-      '..........0110..',
-      '...........00...',
-    ],
-    [Frame.b]: [
-      '1..........00...',
-      '.1........0110..',
-      '..1...000001110.',
-      '...1101111111110',
-      '...1013311111110',
-      '2222113011111111',
-      '1111111111111111',
-      '2.02222222221110',
-      '.2.0001111111110',
-      '2.....000001110.',
-      '2.........0110..',
-      '...........00...',
-    ],
-  },
+const STREAK: Strokes = {
+  [Frame.a]: [
+    '..0000..........',
+    '..02220.........',
+    '...012220.......',
+    '....0122200.....',
+    '0....011111100..',
+    '10..01111111110.',
+    '.100113333331111',
+    '..0112222222100.',
+    '10...000000000..',
+    '0...............',
+    '................',
+    '................',
+  ],
+  [Frame.b]: [
+    '.0000...........',
+    '.02220..........',
+    '..012220........',
+    '....0122200.....',
+    '.....011111100..',
+    '0...01111111110.',
+    '1000113333331111',
+    '.10112222222100.',
+    '10...000000000..',
+    '10..............',
+    '0...............',
+    '................',
+  ],
 };
 
-const BELL: RacerDrawing = {
-  palette: RacerPalette.bo,
-  frames: {
-    [Frame.a]: [
-      '......0000......',
-      '....00111100....',
-      '...0112211110...',
-      '..011211111110..',
-      '..011211110010..',
-      '..01111110330...',
-      '..01111110330...',
-      '..0111111100100.',
-      '.022222222222330',
-      '..0030111103030.',
-      '...03000030330..',
-      '....0....0.00...',
-    ],
-    [Frame.b]: [
-      '......0000......',
-      '....00111100....',
-      '...0112211110...',
-      '..011211111110..',
-      '..011211110010..',
-      '..01111110330...',
-      '..01111110330...',
-      '..0111111100100.',
-      '.022222222222330',
-      '..0003111130030.',
-      '...03003300300..',
-      '....0..00..0....',
-    ],
-  },
+const ONYX: Strokes = {
+  [Frame.a]: [
+    '................',
+    '................',
+    '........1.3.....',
+    '0...0..02020....',
+    '20.0111111110...',
+    '220222222222320.',
+    '.022222222220000',
+    '20.0111111111110',
+    '0...00000000000.',
+    '................',
+    '................',
+    '................',
+  ],
+  [Frame.b]: [
+    '................',
+    '................',
+    '........1.3.....',
+    '....0..02020....',
+    '0..0111111110...',
+    '200222222222320.',
+    '2222222222220000',
+    '.0.0111111111110',
+    '20..00000000000.',
+    '0...............',
+    '................',
+    '................',
+  ],
 };
 
-const PLACEHOLDERS = [HELMET, SHELL, MANTLE, BELL] as const;
+const NIB: Strokes = {
+  [Frame.a]: [
+    '................',
+    '...........1...1',
+    '............1.1.',
+    '......00000001..',
+    '....00222220000.',
+    '...021111110330.',
+    '..02121211103301',
+    '.02111111110000.',
+    '0201111111110...',
+    '0220.1.1.1.1....',
+    '.00.1.1.1.1.....',
+    '................',
+  ],
+  [Frame.b]: [
+    '................',
+    '..........1....1',
+    '...........1.1..',
+    '......00000001..',
+    '....00222220000.',
+    '...021111110330.',
+    '..02121211103301',
+    '002111111110000.',
+    '2201111111110...',
+    '000..1.1.1.1....',
+    '.....1.1.1.1....',
+    '................',
+  ],
+};
+
+const BARON: Strokes = {
+  [Frame.a]: [
+    '......3.3.3.....',
+    '......33333.....',
+    '..2...32323...2.',
+    '.2.2.0000000.2.2',
+    '2...010111010..2',
+    '.2.012111112102.',
+    '..2011121111102.',
+    '.2..011111110.2.',
+    '2..2.0000000.2.2',
+    '2...2......2...2',
+    '.2..22....22..2.',
+    '................',
+  ],
+  [Frame.b]: [
+    '......3.3.3.....',
+    '......33333.....',
+    '.2....32323..2..',
+    '..2..0000000..2.',
+    '.2..010111010.2.',
+    '2..012111112102.',
+    '..2011121111102.',
+    '.2..011111110..2',
+    '.2.2.0000000.2.2',
+    '.2..2......2..2.',
+    '2...22....22...2',
+    '................',
+  ],
+};
+
+const SELENE: Strokes = {
+  [Frame.a]: [
+    '..2.............',
+    '.......0000.....',
+    '...33..022100...',
+    '.33..3102133110.',
+    '3......01111110.',
+    '..11111031111310',
+    '.1.1.11031111310',
+    '.......01111110.',
+    '.33..3101133110.',
+    '3..33..011100...',
+    '.......0000...2.',
+    '................',
+  ],
+  [Frame.b]: [
+    '................',
+    '.2.....0000.....',
+    '.33..3.022100...',
+    '3..33.102133110.',
+    '.......01111110.',
+    '.1111.1031111310',
+    '1.1.1.1031111310',
+    '.......01111110.',
+    '3..33.101133110.',
+    '.33..3.011100...',
+    '.......0000.....',
+    '....2...........',
+  ],
+};
+
+const ROOK: Strokes = {
+  [Frame.a]: [
+    '.....0......00..',
+    '....010....0130.',
+    '0...0110...0110.',
+    '10.011100..0110.',
+    '110011111111110.',
+    '.011111111111110',
+    '.011111111111110',
+    '102222222222210.',
+    '110002222200110.',
+    '10..00000..0110.',
+    '0..........0130.',
+    '............00..',
+  ],
+  [Frame.b]: [
+    '.....0......00..',
+    '....010....0130.',
+    '....0110...0110.',
+    '0..011100..0110.',
+    '100011111111110.',
+    '1101111111111110',
+    '.011111111111110',
+    '.02222222222210.',
+    '100002222200110.',
+    '11..00000..0110.',
+    '10.........0130.',
+    '0...........00..',
+  ],
+};
+
+const STROKES: Record<CharacterId, Strokes> = {
+  rudy: RUDY,
+  gil: GIL,
+  streak: STREAK,
+  onyx: ONYX,
+  nib: NIB,
+  baron: BARON,
+  selene: SELENE,
+  rook: ROOK,
+};
 
 /** Racer sheets, one per character: frame `a` and `b` are the two strokes of the swim cycle. */
-export const RACER_SHEETS: readonly ArtSheet[] = CHARACTER_IDS.map((character, index) => {
-  const drawing = PLACEHOLDERS[index % PLACEHOLDERS.length] ?? HELMET;
-  return sheet(Tex[character], drawing.palette, drawing.frames);
-});
+export const RACER_SHEETS: readonly ArtSheet[] = CHARACTER_IDS.map((character) =>
+  sheet(Tex[character], CharacterPalette[character], STROKES[character]),
+);
