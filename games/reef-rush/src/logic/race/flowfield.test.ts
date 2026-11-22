@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { steerDirection } from '../ai/steer.ts';
+import { OCEAN_LEVEL } from '../level/levels.ts';
 import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
 import { SWIM } from '../swim/physics.ts';
@@ -96,6 +98,44 @@ describe('the progress field', () => {
 
     expect(Number.isFinite(smash)).toBe(true);
     expect(smash).toBeGreaterThan(5);
+  });
+
+  it('lets the ram field cross unbroken coral too, but for less than the smash field', () => {
+    const level = straight('C');
+    const fields = buildFlowFields(level, new Set());
+    const ram = at(fields.ram, level, 1, 1) ?? Number.NaN;
+
+    expect(ram).toBeGreaterThan(5);
+    expect(ram).toBeLessThan(at(fields.smash, level, 1, 1) ?? Number.NaN);
+  });
+});
+
+describe('the coral gate on the ocean course', () => {
+  const level = parseLevel(OCEAN_LEVEL);
+  const fields = buildFlowFields(level, new Set());
+  /** A racer-sized body at the centre of tile (tx, ty). */
+  const bodyAt = (tx: number, ty: number): Body => ({
+    x: (tx + 0.5) * TILE - SWIM.width / 2,
+    y: (ty + 0.5) * TILE - SWIM.height / 2,
+    w: SWIM.width,
+    h: SWIM.height,
+    vx: 0,
+    vy: 0,
+  });
+
+  it('the ram field runs straight through the gate (columns 481-482) from the room before it', () => {
+    const aim = steerDirection(fields.ram, fields, level, new Set(), bodyAt(476, 9), 3, true);
+
+    expect(aim.x).toBeGreaterThan(0.95);
+    expect(Math.abs(aim.y)).toBeLessThan(0.1);
+  });
+
+  it('the steer and smash fields send a swimmer up and over the gate instead', () => {
+    const steer = steerDirection(fields.steer, fields, level, new Set(), bodyAt(476, 9), 3);
+    const smash = steerDirection(fields.smash, fields, level, new Set(), bodyAt(476, 9), 3, true);
+
+    expect(steer.y).toBeLessThan(-0.5);
+    expect(smash.y).toBeLessThan(-0.5);
   });
 });
 

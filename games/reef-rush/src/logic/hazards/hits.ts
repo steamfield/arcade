@@ -1,6 +1,6 @@
 /**
- * Applying a hit to a racer: the one path for urchins, jellies, bubbles, puffers
- * and flashes, so shields, invulnerability, knockback, stuns and loose power-ups
+ * Applying a hit to a racer: the one path for urchins, jellies, bubbles, puffers,
+ * flashes and squids, so shields, invulnerability, knockback, stuns and loose power-ups
  * behave the same whatever caused it.
  */
 
@@ -19,7 +19,7 @@ import { HIT } from './tuning.ts';
  * - a held Bubble Shield absorbs any cause: `popForHit` removes it (`shield.popped`);
  * - flash: stunned FLASH.stunTicks (`racer.stunned`), stack kept;
  * - bubble: trapped BUBBLE.trapTicks (`racer.trapped {id, by}`), stack kept;
- * - urchin, jelly, puffer: `popForHit` knocks off the newest power-up, which `spawnLoose` floats at the
+ * - urchin, jelly, puffer, squid: `popForHit` knocks off the newest power-up, which `spawnLoose` floats at the
  *   racer's centre; with an empty stack the racer is stunned HIT.stunTicks (`racer.stunned`).
  * Stun and trap lengths are scaled by the racer's `statusDurationMul`, rounded to whole ticks.
  * Every landed hit ends any dash (`status.dashing = 0`, inflated cannonball dashes included), sets
@@ -28,7 +28,7 @@ import { HIT } from './tuning.ts';
  * replaces that velocity on its next move, so a bubble hit doesn't knock it back.
  *
  * @param by The racer whose burst caused it, or null for urchins and jellies.
- * @param from Where the hit came from, in world px (urchin tile centre, jelly centre, bubble, puffer or flasher centre).
+ * @param from Where the hit came from, in world px (urchin tile centre, jelly centre, bubble, puffer or flasher centre, squid).
  * @returns true when the hit landed.
  * @throws {Error} For a bubble hit with no owner, whether or not it would land: bubbles only come
  * from bursts, so `by` is always set.

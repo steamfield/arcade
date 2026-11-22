@@ -6,6 +6,7 @@ import { BASE_MODIFIERS } from '../swim/physics.ts';
 import { eventsIn, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
 import type { World } from '../types.ts';
 import { bumpMass } from './passives.ts';
+import { SQUID } from './tuning.ts';
 
 const BOX = `
   ############
@@ -37,6 +38,18 @@ describe('Jet Fins', () => {
     player.stack = ['jetFin'];
 
     expect(modifiersFor(player, player)).toEqual({ ...BASE_MODIFIERS, forceMul: 1.15, kickCooldownTicks: 22 });
+  });
+});
+
+describe('Being latched by a squid', () => {
+  it('cuts swim force to the latched share, whatever else is held', () => {
+    const { player } = playerIn();
+    player.status.latched = 100;
+    player.stack = ['jetFin'];
+
+    expect(modifiersFor(player, player).forceMul).toBeCloseTo(1.15 * SQUID.latchedForceMul, 9);
+    player.status.latched = 0;
+    expect(modifiersFor(player, player).forceMul).toBeCloseTo(1.15, 9);
   });
 });
 

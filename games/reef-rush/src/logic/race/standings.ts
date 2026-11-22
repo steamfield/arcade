@@ -64,6 +64,9 @@ export function recordFinishes(world: World): void {
   for (const racer of crossers) {
     place++;
     racer.finished = { tick: world.race.raceTick, place, overshoot: centreX(racer) - lineX };
+    // Out of play: nothing ticks these down any more, and views draw a latch from them.
+    racer.status.latched = 0;
+    racer.status.undertow = 0;
     world.events.emit({ type: 'racer.finished', id: racer.id, place, ticks: world.race.raceTick });
   }
 
@@ -100,6 +103,10 @@ export function checkRaceEnd(world: World): void {
     playerTicks: player.finished?.tick ?? null,
   };
   race.phase = 'finished';
+  // Nothing steps once the race is over, so squids, decoys and riptides would hang frozen in the water.
+  world.squids = [];
+  world.decoys = [];
+  world.riptides = [];
   race.result = result;
   world.events.emit({ type: 'race.finished', ...result });
 }

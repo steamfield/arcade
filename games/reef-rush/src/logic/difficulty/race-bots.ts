@@ -25,8 +25,8 @@ const LEVEL = parseLevel(OCEAN_LEVEL);
 /**
  * Balance across the cast: every character's expert wins (any margin) on the 30 seeds fall in this
  * band, so no character wins more than 4 seeds (about 13 points) more than another. A fixed band
- * lets each character's file check it from its own races; the tuning measures 85-91% plain wins
- * for every character over seeds 1-200, the middle of the band.
+ * lets each character's file check it from its own races; the tuning measures 82.5-88.5% plain wins
+ * (81.5-88% close wins) for every character over seeds 1-200, inside the band with room on both sides.
  */
 export const BALANCE_BAND = { min: 24, max: 28 } as const;
 

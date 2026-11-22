@@ -25,10 +25,11 @@ export const BUBBLE = {
   /** Side of the bubble's square hitbox, centred on it. */
   size: 10,
   trapTicks: 60,
-  /** lanternBubble: turns toward the nearest racer ahead within this many tiles... */
-  seekRangeTiles: 8,
-  /** ...by at most this many radians per tick (4 degrees). */
-  seekTurnPerTick: (4 * Math.PI) / 180,
+  /** lanternBubble: lights the dark within this many tiles of the bubble (the engine draws it)... */
+  lightTiles: 3,
+  /** ...and stuns every jelly whose centre it passes within this many tiles, for this many ticks. */
+  jellyStunTiles: 1.5,
+  jellyStunTicks: 45,
 } as const;
 
 /** Puffer burst: a larger hitbox centred on the body that breaks coral and hits racers it touches. */
@@ -65,34 +66,56 @@ export const COMBO_PAIRS: readonly { name: ComboName; kinds: readonly [PowerUpKi
 ];
 
 /**
- * Homing Squid (placeholder numbers, lane 7/a tunes them). Locks the nearest unfinished racer ahead
- * within `lockTiles`; a kick in the last `dodgeTicks` before contact dodges it; a latched racer
- * swims at `latchedForceMul` force and each kick while latched takes `ticksPerKick` off.
+ * Homing Squid. It flies at `speed` px/s, turning at most `turnPerTick` radians a tick, and locks the
+ * nearest unfinished racer ahead of its owner within `lockTiles` (a Mimic holder only from
+ * `MIMIC.lockRangeMul` of that). It gives up after `ttlTicks`. A kick by its target in the last
+ * `dodgeTicks` before contact (distance at squid speed) makes it miss. A latched racer swims at
+ * `latchedForceMul` force for `latchedTicks`, drifting sideways by up to `driftAccel` px/s² on a
+ * sine of period `driftPeriodTicks`; each kick takes `ticksPerKick` off.
  */
 export const SQUID = {
-  speed: 110,
-  turnPerTick: (3 * Math.PI) / 180,
-  ttlTicks: 240,
+  speed: 160,
+  turnPerTick: (14 * Math.PI) / 180,
+  ttlTicks: 360,
   lockTiles: 10,
   dodgeTicks: 12,
-  latchedTicks: 150,
-  latchedForceMul: 0.5,
+  latchedTicks: 90,
+  latchedForceMul: 0.7,
   ticksPerKick: 30,
+  driftAccel: 90,
+  driftPeriodTicks: 60,
+  /** A squid ignores ink clouds for this many ticks after launch. */
+  inkGraceTicks: 10,
   /** Side of its square hitbox, centred on it. */
   size: 10,
 } as const;
 
 /**
- * Riptide (placeholder): a lane `widthTiles` wide and up to `lengthTiles` long from the racer's centre
- * along the aim, clipped at the first solid tile, lasting `ttlTicks`. Holders feel currents `currentMul` harder.
+ * Riptide: a lane `widthTiles` wide and up to `lengthTiles` long from the racer's centre along the
+ * aim (snapped to the dominant axis), clipped at the first solid tile, lasting `ttlTicks`. Inside it
+ * a racer feels `currentForceMul` times a plain current. Holders feel every current `currentMul`
+ * harder. `surfline` (Jet Fins + Riptide) lays a longer, stronger lane at the end of the dash.
  */
-export const RIPTIDE = { currentMul: 1.5, widthTiles: 2, lengthTiles: 8, ttlTicks: 180, currentForceMul: 2 } as const;
+export const RIPTIDE = {
+  currentMul: 1.5,
+  widthTiles: 2,
+  lengthTiles: 8,
+  ttlTicks: 180,
+  currentForceMul: 2,
+  surfline: { lengthTiles: 12, currentForceMul: 3 },
+} as const;
 
-/** Undertow (placeholder): `ticks` of pull on each racer ahead, `perTile` more strength per tile of lead up to `maxMul`. */
-export const UNDERTOW = { ticks: 45, baseForce: 120, perTile: 6, maxMul: 3 } as const;
+/**
+ * Undertow: `ticks` of pull on every racer ahead of the user, `baseForce` px/s² plus `perTile` for each
+ * tile of lead, at most `maxMul` times the base. A kick cuts that tick's pull and takes `kickCutTicks` off.
+ */
+export const UNDERTOW = { ticks: 90, baseForce: 120, perTile: 6, maxMul: 3, kickCutTicks: 20 } as const;
 
-/** Mimic (placeholder): the decoy lives `ttlTicks`; a squid fired at a Mimic holder locks on from `lockRangeMul` of the usual range. */
-export const MIMIC = { ttlTicks: 300, lockRangeMul: 0.5, speed: 66, size: 12 } as const;
+/**
+ * Mimic: the decoy lives `ttlTicks` and swims `speed` px/s along the steer field; a squid fired at a
+ * Mimic holder locks on only from `lockRangeMul` of the usual range.
+ */
+export const MIMIC = { ttlTicks: 300, lockRangeMul: 0.5, speed: 80, size: 12 } as const;
 
 /** Passive effects of held power-ups and statuses on swimming and bumping. */
 export const PASSIVE = {
@@ -111,13 +134,14 @@ export const PASSIVE = {
 
 /**
  * Clam roll weights for 1st and 4th place; 2nd and 3rd interpolate linearly between them
- * (2nd is one third of the way from 1st to 4th). Held kinds are excluded from a roll.
+ * (2nd is one third of the way from 1st to 4th). Held kinds are excluded from a roll. Leaders get
+ * defence (shields, lanterns, decoys); trailers get speed and the attacks. Undertow is zero for
+ * anyone ahead of `undertowMinPlace`, whatever the interpolation says (`clamWeights`).
  */
 export const CLAM = {
   closedTicks: 240,
-  /** Undertow only rolls for racers in this place or worse (3rd or 4th). Enforced by lane 7/a; no weight reads it yet. */
+  /** Undertow only rolls for racers in this place or worse (3rd or 4th). */
   undertowMinPlace: 3,
-  /** The attack kinds are weight 0 until lane 7/a, so races play as on phase 6. */
   firstWeights: {
     bubbleShield: 3,
     glowLantern: 3,
@@ -127,7 +151,7 @@ export const CLAM = {
     homingSquid: 0,
     riptide: 0,
     undertow: 0,
-    mimic: 0,
+    mimic: 3,
   },
   lastWeights: {
     jetFin: 3,
@@ -135,9 +159,9 @@ export const CLAM = {
     inkSac: 2,
     bubbleShield: 1,
     glowLantern: 1,
-    homingSquid: 0,
-    riptide: 0,
-    undertow: 0,
+    homingSquid: 3,
+    riptide: 2,
+    undertow: 2,
     mimic: 0,
   },
 } as const satisfies {

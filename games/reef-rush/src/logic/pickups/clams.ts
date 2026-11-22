@@ -37,7 +37,7 @@ export function openClams(world: World, racers: readonly Racer[]): void {
 
 /**
  * Roll weights for a racer in `place` (1..4): CLAM.firstWeights at 1st, CLAM.lastWeights at 4th,
- * linear in between.
+ * linear in between, except Undertow, which is 0 ahead of CLAM.undertowMinPlace.
  *
  * @throws {RangeError} When `place` is not an integer from 1 to 4.
  */
@@ -47,6 +47,7 @@ export function clamWeights(place: number): Record<PowerUpKind, number> {
   }
   const t = (place - 1) / (LAST_PLACE - 1);
   const weights = POWER_UP_KINDS.map((kind): [PowerUpKind, number] => {
+    if (kind === 'undertow' && place < CLAM.undertowMinPlace) return [kind, 0];
     const first = CLAM.firstWeights[kind];
     return [kind, first + (CLAM.lastWeights[kind] - first) * t];
   });
@@ -55,7 +56,7 @@ export function clamWeights(place: number): Record<PowerUpKind, number> {
 
 /**
  * Picks a power-up the racer doesn't hold, weighted by `clamWeights(place)`, with one draw from `rng`.
- * Kinds with weight 0 never roll. A stack holds at most 4 kinds and five have weight, so there is always something to roll.
+ * Kinds with weight 0 never roll. A stack holds at most 4 kinds and at least seven have weight, so there is always something to roll.
  *
  * @throws {Error} When `held` already covers every rollable kind, which a valid stack never does.
  */

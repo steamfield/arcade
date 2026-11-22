@@ -4,8 +4,9 @@ import { BOT_PROFILES } from './ai/profiles.ts';
 import type { GameEvent } from './events.ts';
 import { OCEAN_LEVEL } from './level/levels.ts';
 import { LevelError, parseLevel } from './level/parse.ts';
-import { COUNTDOWN_TICKS, DNF_GRACE_TICKS, RACE_LIMIT_TICKS } from './race/standings.ts';
-import { eventsIn, hold, placeAt, raceOn, racerOf, step, tileCentre } from './test-world.ts';
+import { fireBurst } from './powerups/burst.ts';
+import { COUNTDOWN_TICKS, DNF_GRACE_TICKS, RACE_LIMIT_TICKS, updateProgress } from './race/standings.ts';
+import { eventsIn, hold, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from './test-world.ts';
 import { type RacerId, RNG_SALTS, type RngStream, type TickInput, type Vec } from './types.ts';
 import { createWorld, stepWorld, summarize, toAscii } from './world.ts';
 
@@ -268,5 +269,108 @@ describe('summary and ASCII', () => {
     world.pearlsTaken.add(0);
     world.clams = world.clams.map((clam) => ({ ...clam, closedFor: 10 }));
     expect(row()).toBe('#@._.*j.F#');
+  });
+
+  it('toAscii shows a squid as s and a decoy as m at the tiles holding their centres', () => {
+    const { world } = raceOn(LANES);
+    world.squids.push({ ...tileCentre(8, 1), vx: 0, vy: 0, ttl: 10, owner: 'tess', target: null });
+    world.decoys.push({ ...tileCentre(12, 2), vx: 0, vy: 0, ttl: 10, owner: 'bo' });
+    const rows = toAscii(world).split('\n');
+
+    expect([rows[1]?.[8], rows[2]?.[12]]).toEqual(['s', 'm']);
+  });
+});
+
+/** Open water long enough for a squid to run down a racer, finish at the right edge. */
+const POOL = `
+  ###############################
+  #1............................#
+  #2............................#
+  #3............................#
+  #4...........................F#
+  ###############################
+`;
+
+describe('attack power-ups in the step', () => {
+  it('a squid fired by a rival latches the player, and kicks shake it off', () => {
+    const { world, log } = raceOn(POOL);
+    for (const id of ['squib', 'bo'] as const) racerOf(world, id).status.stunned = 100_000;
+    const tess = racerOf(world, 'tess');
+    tess.status.stunned = 100_000;
+    placeOnTile(tess, 3, 2);
+    placeAt(racerOf(world, 'player'), tileCentre(12, 2));
+    tess.stack = ['homingSquid'];
+    fireBurst(world, tess, { x: 1, y: 0 });
+
+    const player = racerOf(world, 'player');
+    // Rudy's ability would shorten the latch; Gil's does not touch it, so it runs its full 90 ticks.
+    player.character = 'gil';
+    // Holding something, so the hit takes it instead of stunning the player, who could not kick through a stun.
+    player.stack = ['jetFin'];
+    for (let i = 0; i < 120 && player.status.latched === 0; i++) step(world, log, 1, IDLE);
+    expect(eventsIn(log, 'squid.latched')).toEqual([{ type: 'squid.latched', id: 'player', by: 'tess' }]);
+    expect(player.status.latched).toBeGreaterThan(0);
+
+    // Each kick takes 30 ticks off, and the tick's own countdown takes one more.
+    const before = player.status.latched;
+    step(world, log, 1, hold({ x: 0, y: 0 }, { kick: true }));
+    expect(player.status.latched).toBe(before - 31);
+    // Kicks are 36 ticks apart, so a second one lands before the rest runs out and shakes it off.
+    step(world, log, 36, IDLE);
+    step(world, log, 1, hold({ x: 0, y: 0 }, { kick: true }));
+    expect(player.status.latched).toBe(0);
+    expect(eventsIn(log, 'racer.shaken')).toEqual([{ type: 'racer.shaken', id: 'player' }]);
+  });
+
+  it('rivals fire squids at the racer ahead, another rival or the player, without anyone rolling a clam', () => {
+    const { world, log } = raceOn(POOL);
+    // Tess trails everyone, Squib is between her and the player: Tess's nearest racer ahead is Squib,
+    // Squib's is the player.
+    placeOnTile(racerOf(world, 'tess'), 3, 2);
+    placeOnTile(racerOf(world, 'squib'), 9, 2);
+    placeAt(racerOf(world, 'player'), tileCentre(14, 2));
+    placeOnTile(racerOf(world, 'bo'), 1, 4);
+    updateProgress(world);
+    for (const id of ['tess', 'squib'] as const) {
+      const rival = racerOf(world, id);
+      rival.stack = ['homingSquid'];
+      rival.profile = { ...rival.profile, itemAggression: 1 };
+    }
+
+    step(world, log, 3, IDLE);
+
+    expect(eventsIn(log, 'squid.locked')).toEqual([
+      { type: 'squid.locked', owner: 'tess', target: 'squib' },
+      { type: 'squid.locked', owner: 'squib', target: 'player' },
+    ]);
+  });
+
+  it('a racer who crosses the line latched or pulled is let go, and nobody is left latched on the finish', () => {
+    const { world, log } = raceOn(POOL);
+    const player = racerOf(world, 'player');
+    placeAt(player, { x: world.level.finishX * 16 - 2, y: tileCentre(1, 2).y });
+    player.body.vx = 120;
+    player.status.latched = 50;
+    player.status.undertow = 40;
+
+    step(world, log, 3, hold({ x: 1, y: 0 }));
+
+    expect(player.finished).not.toBeNull();
+    expect([player.status.latched, player.status.undertow]).toEqual([0, 0]);
+  });
+
+  it('empties the water of squids, decoys and riptides when the race ends', () => {
+    const { world, log } = raceOn(POOL);
+    const player = racerOf(world, 'player');
+    placeAt(player, { x: world.level.finishX * 16 - 2, y: tileCentre(1, 2).y });
+    player.body.vx = 120;
+    world.squids.push({ ...tileCentre(5, 3), vx: 0, vy: 0, ttl: 100, owner: 'tess', target: null });
+    world.decoys.push({ ...tileCentre(6, 3), vx: 0, vy: 0, ttl: 100, owner: 'tess' });
+    world.riptides.push({ x: 80, y: 40, w: 64, h: 32, dir: { x: 1, y: 0 }, ttl: 100, owner: 'tess' });
+
+    step(world, log, 3, hold({ x: 1, y: 0 }));
+
+    expect(world.race.phase).toBe('finished');
+    expect([world.squids, world.decoys, world.riptides]).toEqual([[], [], []]);
   });
 });

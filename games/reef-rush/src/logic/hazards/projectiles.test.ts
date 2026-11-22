@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { updateProgress } from '../race/standings.ts';
 import { activeRacers, centreOf } from '../racers.ts';
 import { eventsIn, placeOnTile, raceOn, racerOf, tileCentre } from '../test-world.ts';
-import type { RacerId, World } from '../types.ts';
+import type { World } from '../types.ts';
 import { advanceProjectiles } from './projectiles.ts';
 
 /** A long open row (row 2) for bubbles to fly along, clear of the starts in column 1. */
@@ -55,50 +55,55 @@ describe('bubbles in flight', () => {
   });
 });
 
-type Spots = Record<RacerId, [number, number]>;
+/** Like RANGE, with a jelly at tile (10, 2) and another at (10, 4) two tiles below the bubble's row. */
+const JELLY_RANGE = `
+  ######################
+  #1..................F#
+  #2.......j..........F#
+  #3..................F#
+  #4.......j..........F#
+  ######################
+`;
 
-/**
- * A seeking bubble of the player's at tile (10, 2) flying right, with racers on `spots`, after one
- * tick of flight. Returns its velocity: straight right means it found no target, up or down shows
- * which way its target lies.
- */
-function seekOnce(spots: Spots, finished: RacerId[] = []) {
-  const { world, advance } = setup();
-  for (const [id, [tx, ty]] of Object.entries(spots) as [RacerId, [number, number]][]) {
-    placeOnTile(racerOf(world, id), tx, ty);
+describe('lantern bubbles', () => {
+  /** A bubble of the player's at tile (3, 2) flying right, `seeking` (lantern) or plain. */
+  function bubbleOver(ascii: string, seeking: boolean) {
+    const { world, log } = raceOn(ascii);
+    world.bubbles = [{ ...tileCentre(3, 2), vx: 150, vy: 0, ttl: 90, owner: 'player', seeking }];
+    const advance = (ticks = 1) => {
+      for (let i = 0; i < ticks; i++) advanceProjectiles(world, activeRacers(world), TICK_DT);
+    };
+    return { world, log, advance };
   }
-  updateProgress(world);
-  for (const id of finished) racerOf(world, id).finished = { tick: 1, place: 1, overshoot: 0 };
-  world.bubbles = [{ ...tileCentre(10, 2), vx: 150, vy: 0, ttl: 90, owner: 'player', seeking: true }];
-  advance();
-  const bubble = world.bubbles[0];
-  return { vx: bubble?.vx, vy: bubble?.vy };
-}
 
-describe('seeking bubbles', () => {
-  it('chase the racer nearest the bubble, not the one nearest their owner', () => {
-    // Tess is 2.2 tiles from the bubble and 9.5 from the player; Squib 4.5 and 3.
-    const turn = seekOnce({ player: [3, 4], tess: [12, 1], squib: [6, 4], bo: [2, 4] });
+  it('fly straight on, turning for no racer ahead', () => {
+    const { world, advance } = bubbleOver(RANGE, true);
+    placeOnTile(racerOf(world, 'tess'), 12, 4);
+    updateProgress(world);
 
-    expect(turn.vy).toBeLessThan(0);
+    advance(20);
+
+    expect(world.bubbles[0]).toMatchObject({ vx: 150, vy: 0 });
   });
 
-  it('fly straight past racers behind their owner or more than 8 tiles off', () => {
-    const turn = seekOnce({ player: [10, 2], tess: [5, 1], squib: [19, 4], bo: [4, 4] });
+  it('stun a jelly they pass within 1.5 tiles for 45 ticks, and no other', () => {
+    const { world, advance } = bubbleOver(JELLY_RANGE, true);
+    const [near, far] = world.jellies;
 
-    expect(turn).toEqual({ vx: 150, vy: 0 });
+    advance(24);
+    expect(near?.stunned).toBe(0);
+    advance(7);
+
+    expect(near?.stunned).toBe(45);
+    expect(far?.stunned).toBe(0);
   });
 
-  it('pick the earlier racer in RACER_IDS order between two equally near', () => {
-    const turn = seekOnce({ player: [3, 2], tess: [12, 1], squib: [12, 3], bo: [2, 4] });
+  it('leave jellies alone when the bubble is not a lantern bubble', () => {
+    const { world, advance } = bubbleOver(JELLY_RANGE, false);
 
-    expect(turn.vy).toBeLessThan(0);
-  });
+    advance(40);
 
-  it('never chase a racer that has finished', () => {
-    const turn = seekOnce({ player: [3, 2], tess: [12, 1], squib: [2, 3], bo: [2, 4] }, ['tess']);
-
-    expect(turn).toEqual({ vx: 150, vy: 0 });
+    expect(world.jellies.map((jelly) => jelly.stunned)).toEqual([0, 0]);
   });
 });
 
