@@ -1,0 +1,25 @@
+packages:
+  - packages/*
+  - templates/*
+  - games/*
+  - apps/*
+  - tools/*
+
+# Shared tooling versions. Engines (phaser, three, rapier) are NOT here:
+# each game pins its own exact engine version so upgrades are opt-in per game.
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+catalog:
+  "@biomejs/biome": 2.6.8
+  "@playwright/test": 1.65.1
+  "@types/node": 24.19.2
+  fake-indexeddb: 6.2.8
+  idb-keyval: 6.3.0
+  turbo: 2.11.13
+  typescript: 7.0.2
+  vite: 8.3.8
+  vitest: 5.1.1
+  wrangler: 4.166.0
+  zod: 4.6.7

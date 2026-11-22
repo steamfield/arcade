@@ -1,0 +1,11 @@
+{
+  "id": "phaser-2d",
+  "slug": "phaser-2d",
+  "title": "Coin Run (2D template)",
+  "pitch": "Template platformer: run, jump, collect every coin and reach the flag.",
+  "genre": "platformer",
+  "engine": "phaser",
+  "inputs": ["keyboard", "touch"],
+  "orientation": "landscape",
+  "status": "template"
+}

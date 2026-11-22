@@ -1,0 +1,69 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TURBO_TELEMETRY_DISABLED: "1"
+      ARCADE_SITE_URL: ${{ vars.ARCADE_SITE_URL }}
+      # Deploy steps run only once the Cloudflare secrets exist.
+      HAS_CLOUDFLARE: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+      - run: pnpm exec playwright install --with-deps chromium webkit
+
+      # Same commands agents run locally, so "passes locally" means the same thing here.
+      - run: pnpm arcade check --all
+      - run: pnpm arcade smoke
+
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-results
+          path: |
+            games/*/test-results
+            templates/*/test-results
+            games/*/playwright-report
+            templates/*/playwright-report
+          retention-days: 7
+
+      # PR preview: published + draft games, unlisted, at a preview URL (needs Cloudflare secrets).
+      - if: github.event_name == 'pull_request' && env.HAS_CLOUDFLARE == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pnpm arcade assemble --include preview
+          pnpm exec wrangler versions upload --message "PR #${{ github.event.number }}"
+
+      # Production: published games only.
+      - if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.HAS_CLOUDFLARE == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          pnpm arcade assemble --include published
+          pnpm exec wrangler deploy

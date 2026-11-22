@@ -1,0 +1,11 @@
+{
+  "id": "three-3d",
+  "slug": "three-3d",
+  "title": "Orb Field (3D template)",
+  "pitch": "Template 3D game: roam the field, collect the orbs, shove the crates around.",
+  "genre": "3d-action",
+  "engine": "three",
+  "inputs": ["keyboard", "touch"],
+  "orientation": "landscape",
+  "status": "template"
+}

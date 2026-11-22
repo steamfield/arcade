@@ -1,0 +1,22 @@
+{
+  "name": "@arcade/shell",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@arcade/core": "workspace:*",
+    "@arcade/input": "workspace:*"
+  },
+  "devDependencies": {
+    "@arcade/config": "workspace:*",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@arcade/testing",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./playwright": "./src/playwright.ts",
+    "./driver": "./src/driver.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@arcade/config": "workspace:*",
+    "@arcade/shell": "workspace:*"
+  },
+  "peerDependencies": {
+    "@playwright/test": "catalog:"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "extends": "@arcade/config/tsconfig.base.json",
+  "include": ["*.ts", "src"],
+  "compilerOptions": { "lib": ["ES2023", "DOM"], "types": ["node", "vite/client"] }
+}

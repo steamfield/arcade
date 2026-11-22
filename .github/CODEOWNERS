@@ -1,0 +1,5 @@
+# Shared packages affect every game, so changes to them need owner review.
+# Replace OWNER with your GitHub username once the repo has a remote, then uncomment.
+# /packages/ @OWNER
+# /tools/ @OWNER
+# /.github/ @OWNER

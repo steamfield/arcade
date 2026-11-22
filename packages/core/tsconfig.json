@@ -1,0 +1,6 @@
+{
+  "//": "core is imported by game logic, so it must compile without DOM or Node types.",
+  "extends": "@arcade/config/tsconfig.logic.json",
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "arcade",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.9.1",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "fix": "biome check --write .",
+    "test:update": "turbo run test -- -u",
+    "build": "turbo run build",
+    "deploy": "node tools/arcade/src/cli.ts smoke && node tools/arcade/src/cli.ts assemble && wrangler deploy"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "wrangler": "catalog:",
+    "@arcade/cli": "workspace:*"
+  }
+}

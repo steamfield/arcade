@@ -1,0 +1,76 @@
+:root {
+  --bg: #fbfaf7;
+  --fg: #1c1b19;
+  --muted: #6b675f;
+  --line: #e4e0d8;
+  --accent: #b4441c;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161514;
+    --fg: #efece6;
+    --muted: #a19c92;
+    --line: #2d2b28;
+    --accent: #f08a5d;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0 auto;
+  max-width: 880px;
+  padding: 48px 16px 64px;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    16px / 1.5 system-ui,
+    -apple-system,
+    sans-serif;
+}
+h1 {
+  margin: 0 0 4px;
+  font-size: 28px;
+  letter-spacing: -0.01em;
+}
+header p {
+  margin: 0 0 32px;
+  color: var(--muted);
+}
+a {
+  color: var(--accent);
+}
+.games {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.game a {
+  display: grid;
+  gap: 2px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+}
+.game a:hover .title,
+.game a:focus-visible .title {
+  color: var(--accent);
+}
+.title {
+  font-weight: 600;
+  font-size: 18px;
+}
+.pitch {
+  color: var(--fg);
+}
+.meta {
+  color: var(--muted);
+  font-size: 14px;
+}
+.empty {
+  padding: 16px 0;
+  color: var(--muted);
+}

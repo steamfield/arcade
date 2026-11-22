@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "phaser-2d",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["arcade", "dev", "phaser-2d", "--port", "5181"],
+      "port": 5181
+    },
+    {
+      "name": "three-3d",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["arcade", "dev", "three-3d", "--port", "5182"],
+      "port": 5182
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@arcade/site", "dev", "--port", "5180", "--strictPort"],
+      "port": 5180
+    }
+  ]
+}

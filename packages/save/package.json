@@ -1,0 +1,24 @@
+{
+  "name": "@arcade/save",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@arcade/core": "workspace:*",
+    "idb-keyval": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@arcade/config": "workspace:*",
+    "fake-indexeddb": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
