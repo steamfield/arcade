@@ -99,26 +99,38 @@ function resolveY(body: Body, level: Level, broken: ReadonlySet<number>): void {
  * `contacts` holds "a|b" keys of touching pairs; `racer.bumped` fires only when a contact starts.
  *
  * @param massOf The mass each racer bumps with; its profile's unless held power-ups change it.
+ * @param onBump Called with the pair in RACER_IDS order when a contact starts, after `racer.bumped`
+ *   and after the pair has been pushed apart.
  */
 export function separateRacers(
   racers: Racer[],
   contacts: Set<string>,
   events: EventSink<GameEvent>,
   massOf: MassOf = (racer) => racer.profile.mass,
+  onBump: OnBump = () => {},
 ): void {
   for (let i = 0; i < racers.length; i++) {
     for (let j = i + 1; j < racers.length; j++) {
       const first = racers[i];
       const second = racers[j];
-      if (first && second) separatePair(first, second, contacts, events, massOf);
+      if (first && second) separatePair(first, second, { contacts, events, massOf, onBump });
     }
   }
 }
 
 type MassOf = (racer: Racer) => number;
+type OnBump = (a: Racer, b: Racer) => void;
+
+/** What separating a pair reads and reports to, shared by every pair in one pass. */
+interface Separation {
+  contacts: Set<string>;
+  events: EventSink<GameEvent>;
+  massOf: MassOf;
+  onBump: OnBump;
+}
 
 /** Separates one pair and keeps its contact bookkeeping current. */
-function separatePair(a: Racer, b: Racer, contacts: Set<string>, events: EventSink<GameEvent>, massOf: MassOf): void {
+function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump }: Separation): void {
   const key = contactKey(a, b);
   const penetration = {
     x: overlapLength(a.body.x, a.body.w, b.body.x, b.body.w),
@@ -140,6 +152,7 @@ function separatePair(a: Racer, b: Racer, contacts: Set<string>, events: EventSi
   contacts.add(key);
   const [first, second] = inRacerOrder(a, b);
   events.emit({ type: 'racer.bumped', a: first.id, b: second.id });
+  onBump(first, second);
 }
 
 /** Length two spans share along one axis; zero when they touch, negative when there's a gap. */

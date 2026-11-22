@@ -3,6 +3,7 @@
  * Velocity, facing and kick cooldown only; position is moved by `collide.ts`.
  */
 import type { EventSink } from '@arcade/core';
+import { kickImpulse } from '../abilities.ts';
 import type { GameEvent } from '../events.ts';
 import type { Body, Environment, Intent, MoveModifiers, Racer, Vec } from '../types.ts';
 
@@ -90,10 +91,13 @@ function applyDrag(body: Body, env: Environment, mods: MoveModifiers, dt: number
   body.vy *= keep;
 }
 
-/** Fires a kick along the input direction, or straight ahead along facing when there is no input. */
+/**
+ * Fires a kick along the input direction, or straight ahead along facing when there is no input,
+ * shaped by the racer's ability (`kickImpulse`).
+ */
 function kick(racer: Racer, direction: Vec, mods: MoveModifiers, events: EventSink<GameEvent>): void {
   const aim = direction.x === 0 && direction.y === 0 ? { x: racer.facing, y: 0 } : direction;
-  accelerate(racer.body, aim, SWIM.kick * mods.kickMul);
+  accelerate(racer.body, kickImpulse(racer, aim), SWIM.kick * mods.kickMul);
   racer.kickCooldown = mods.kickCooldownTicks;
   events.emit({ type: 'racer.kicked', id: racer.id });
 }

@@ -9,8 +9,8 @@
  */
 import type { Stamped } from '@arcade/core';
 import Phaser from 'phaser';
-import type { Racer, RacerId } from '../../logic/types.ts';
-import { Frame, Tex, type TexKey } from '../art/keys.ts';
+import type { Racer } from '../../logic/types.ts';
+import { Frame, Tex } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { Layer } from './layers.ts';
 
@@ -28,8 +28,6 @@ export interface RacerView {
    */
   sync(racer: Racer, tick: number): void;
 }
-
-const TEXTURE: Record<RacerId, TexKey> = { player: Tex.player, tess: Tex.tess, squib: Tex.squib, bo: Tex.bo };
 
 /** Below this speed (px/s) a racer is drifting; below SPRINT_SPEED it is cruising. */
 const DRIFT_SPEED = 15;
@@ -52,14 +50,14 @@ const PLACE_FLASH_TICKS = 4;
 const FLASH_COLOUR = 0xffffff;
 
 /**
- * Adds `racer`'s sprite to `scene`. The player draws above the rivals.
+ * Adds `racer`'s sprite to `scene`, drawn as its character. The player draws above the rivals.
  *
  * @param reducedMotion Drops the squash and stretch and the place-up flash, and holds the
  *   invulnerability look steady instead of flickering. Defaults to full motion.
  */
 export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion: boolean): RacerView {
   const sprite = scene.add
-    .sprite(0, 0, TEXTURE[racer.id], Frame.a)
+    .sprite(0, 0, Tex[racer.character], Frame.a)
     .setDepth(racer.id === 'player' ? Layer.player : Layer.racers);
   let kickedAt = Number.NEGATIVE_INFINITY;
   // Kicks fire along the input, so the squash follows whichever axis the racer is moving on.

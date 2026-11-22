@@ -12,9 +12,10 @@
 import Phaser from 'phaser';
 import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
 import { parseLevel } from '../../logic/level/parse.ts';
-import { RACER_IDS, type RacerId } from '../../logic/types.ts';
+import { NEW_GAME } from '../../logic/save.ts';
+import type { CharacterId } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
-import { Frame, Tex, type TexKey } from '../art/keys.ts';
+import { Frame, Tex } from '../art/keys.ts';
 import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { MENU_OPTIONS, type MenuOption } from '../menu.ts';
@@ -43,13 +44,13 @@ const BLINK = { on: 32, off: 16 } as const;
 /** Racer sprites are 16 px wide and swap swim frames this often. */
 const RACER_WIDTH = 16;
 const STROKE_TICKS = 8;
-/** Each racer's speed across the lane in px per tick, and where it starts, so they spread out and overtake. */
-const SWIMMERS: Record<RacerId, { tex: TexKey; speed: number; offset: number }> = {
-  player: { tex: Tex.player, speed: 0.75, offset: 210 },
-  tess: { tex: Tex.tess, speed: 0.6, offset: 150 },
-  squib: { tex: Tex.squib, speed: 0.9, offset: 60 },
-  bo: { tex: Tex.bo, speed: 0.5, offset: 0 },
-};
+/** Who swims past, each one's speed across the lane in px per tick, and where it starts, so they spread out and overtake. */
+const SWIMMERS: readonly { character: CharacterId; speed: number; offset: number }[] = [
+  { character: 'rudy', speed: 0.75, offset: 210 },
+  { character: 'gil', speed: 0.6, offset: 150 },
+  { character: 'streak', speed: 0.9, offset: 60 },
+  { character: 'onyx', speed: 0.5, offset: 0 },
+];
 const MEDAL_FOR_PLACE: Partial<Record<number, MedalFrameKey>> = {
   1: MedalFrame.first,
   2: MedalFrame.second,
@@ -61,7 +62,7 @@ export class TitleScene extends Phaser.Scene {
   private readonly rt: Runtime;
   private menuView: MenuView | null = null;
   private backdrop: Backdrop | null = null;
-  private swimmers: { id: RacerId; image: Phaser.GameObjects.Image }[] = [];
+  private swimmers: { image: Phaser.GameObjects.Image; speed: number; offset: number }[] = [];
   private pressA: Label | null = null;
 
   constructor(rt: Runtime) {
@@ -78,16 +79,17 @@ export class TitleScene extends Phaser.Scene {
       },
     });
     this.add.image(LOGO_AT.x, LOGO_AT.y, UiTex.logo, 'logo').setOrigin(0, 0).setScale(LOGO_AT.scale);
-    this.swimmers = RACER_IDS.map((id) => ({
-      id,
-      image: this.add.image(0, RACER_LANE.y, SWIMMERS[id].tex, Frame.a).setOrigin(0, 0),
+    this.swimmers = SWIMMERS.map(({ character, speed, offset }) => ({
+      speed,
+      offset,
+      image: this.add.image(0, RACER_LANE.y, Tex[character], Frame.a).setOrigin(0, 0),
     }));
     this.menuView = createMenuView(this, MENU, MENU_OPTIONS.title, (option) => optionText(option, rt.settings));
     this.pressA = isTouchScreen()
       ? createLabel(this, PRESS_A.x, PRESS_A.top + 3, 'PRESS A', { align: 'center', outline: true })
       : null;
     const best = rt.save?.best;
-    if (best) addBestCard(this, best);
+    if (best) addBestCard(this, best, rt.save?.character ?? NEW_GAME.character);
     this.rt.entered('title');
     this.update();
   }
@@ -99,7 +101,7 @@ export class TitleScene extends Phaser.Scene {
     this.menuView?.sync(this.rt.menu, tick, reducedMotion);
     this.pressA?.setVisible(reducedMotion || tick % (BLINK.on + BLINK.off) < BLINK.on);
     const stroke = reducedMotion || Math.floor(tick / STROKE_TICKS) % 2 === 0 ? Frame.a : Frame.b;
-    for (const { id, image } of this.swimmers) image.setX(swimmerX(id, tick, reducedMotion)).setFrame(stroke);
+    for (const swimmer of this.swimmers) swimmer.image.setX(swimmerX(swimmer, tick, reducedMotion)).setFrame(stroke);
   }
 }
 
@@ -120,20 +122,19 @@ function optionText(option: MenuOption, settings: Settings): string {
   return OPTION_LABELS[option];
 }
 
-/** A racer's x in the lane at `tick`, wrapping from off the right edge back to off the left. Still under reduced motion. */
-function swimmerX(id: RacerId, tick: number, reducedMotion: boolean): number {
-  const { speed, offset } = SWIMMERS[id];
+/** A swimmer's x in the lane at `tick`, wrapping from off the right edge back to off the left. Still under reduced motion. */
+function swimmerX({ speed, offset }: { speed: number; offset: number }, tick: number, reducedMotion: boolean): number {
   const span = RACER_LANE.width + RACER_WIDTH;
   const travelled = reducedMotion ? offset : offset + tick * speed;
   return Math.floor(travelled % span) - RACER_WIDTH;
 }
 
-/** The raised best-time card: a medal for a podium best (else Pip's portrait), the place, and the time. */
-function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }): void {
+/** The raised best-time card: a medal for a podium best (else the saved character's portrait), the place, and the time. */
+function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }, character: CharacterId): void {
   createPanel(scene, BEST_CARD.x, BEST_CARD.y, BEST_CARD.w, BEST_CARD.h, 'raised');
   const medal = MEDAL_FOR_PLACE[best.place];
   if (medal) scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y, UiTex.medals, medal).setOrigin(0, 0);
-  else scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y - 1, UiTex.portraits, PortraitFrame.player).setOrigin(0, 0);
+  else scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y - 1, UiTex.portraits, PortraitFrame[character]).setOrigin(0, 0);
   createLabel(scene, BEST_PLACE_AT.x, BEST_PLACE_AT.y, `BEST ${ordinal(best.place)}`, { tone: 'dim' });
   createLabel(scene, BEST_TIME_AT.x, BEST_TIME_AT.y, formatRaceTime(best.ticks), { tone: 'foam' });
 }

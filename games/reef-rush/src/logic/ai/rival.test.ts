@@ -204,7 +204,15 @@ describe('stunned or trapped', () => {
 
 describe('catch-up', () => {
   const pair = (rivalProgress: number, playerProgress: number) => {
-    const base = { facing: 1 as const, kickCooldown: 0, place: 1, finished: null, ai: null, ...noItems() };
+    const base = {
+      character: 'rudy' as const,
+      facing: 1 as const,
+      kickCooldown: 0,
+      place: 1,
+      finished: null,
+      ai: null,
+      ...noItems(),
+    };
     const body = { x: 0, y: 0, vx: 0, vy: 0, w: 12, h: 10 };
     const rival: Racer = { ...base, id: 'tess', body, progress: rivalProgress, profile: RIVAL_PROFILES.tess };
     const player: Racer = { ...base, id: 'player', body, progress: playerProgress, profile: RIVAL_PROFILES.tess };

@@ -8,10 +8,51 @@ import type { GameEvent } from './events.ts';
 /** Tile size in world pixels. Levels are grids of TILE x TILE cells. */
 export const TILE = 16;
 
+/**
+ * A racer slot: the player's and three rival slots. Characters are data assigned to slots, so tick
+ * order, rng streams and tie-breaks follow the slot, never the character in it.
+ */
 export type RacerId = 'player' | 'tess' | 'squib' | 'bo';
 
 /** Racer order. Starts, tick processing and tie-breaks all follow it, so runs are deterministic. */
 export const RACER_IDS: readonly RacerId[] = ['player', 'tess', 'squib', 'bo'];
+
+/** The playable cast. Each has a name, a signature ability and a rival profile in `characters.ts`. */
+export type CharacterId = 'rudy' | 'gil' | 'streak' | 'onyx' | 'nib' | 'baron' | 'selene' | 'rook';
+
+/** Every character, in select-screen order. */
+export const CHARACTER_IDS: readonly CharacterId[] = [
+  'rudy',
+  'gil',
+  'streak',
+  'onyx',
+  'nib',
+  'baron',
+  'selene',
+  'rook',
+];
+
+/** One signature ability per character; `abilities.ts` holds the hooks that apply them. */
+export type AbilityId =
+  | 'shakeItOff'
+  | 'springKick'
+  | 'windUp'
+  | 'ambush'
+  | 'deepPockets'
+  | 'bulldozer'
+  | 'moonlight'
+  | 'frenzy';
+
+/**
+ * Per-racer state the ability code keeps between ticks, owned by `abilities.ts`. Every field is 0
+ * at the start line (`noItems`).
+ */
+export interface AbilityState {
+  /** Wind-up: ticks swum without turning hard or being hit. */
+  windUp: number;
+  /** Frenzy: ticks left in the speed burst. */
+  frenzy: number;
+}
 
 export interface Vec {
   x: number;
@@ -164,7 +205,10 @@ export interface RacerStatus {
 }
 
 export interface Racer {
+  /** The slot this racer races in. */
   id: RacerId;
+  /** Who is swimming in the slot: sprite, name and ability. */
+  character: CharacterId;
   body: Body;
   facing: 1 | -1;
   /** Ticks until the next kick is allowed; 0 means ready. */
@@ -177,7 +221,7 @@ export interface Racer {
   /** Null for the player unless a bot drives it in tests. */
   ai: AiMemory | null;
   profile: RivalProfile;
-  /** Held power-ups, oldest first: at most STACK_MAX, never two of a kind. */
+  /** Held power-ups, oldest first: at most `stackMaxFor(racer)`, never two of a kind. */
   stack: PowerUpKind[];
   /** Ticks until the next burst is allowed; 0 means ready. Shared by every held power-up. */
   burstCooldown: number;
@@ -191,6 +235,7 @@ export interface Racer {
    * starts one; empty when no dash is running. A hit that knocks off half of a pair removes it.
    */
   dashCombos: ComboName[];
+  ability: AbilityState;
 }
 
 export type RacePhase = 'countdown' | 'racing' | 'finished';
@@ -236,6 +281,8 @@ export const RNG_SALTS = {
   'ai.bo': 0x51a7e104,
   pickups: 0x51a7e105,
   hazards: 0x51a7e106,
+  /** Draws the rival characters at createWorld. */
+  roster: 0x51a7e107,
 } as const;
 
 export type RngStream = keyof typeof RNG_SALTS;
@@ -302,6 +349,11 @@ export interface World {
   tick: number;
   rngs: Record<RngStream, Rng>;
   events: EventSink<GameEvent>;
+  /**
+   * Events emitted since abilities last read them (`onWorldEvents` in stepWorld). The world records
+   * them as they pass to `events`, so abilities can react to anything that happened this tick.
+   */
+  recentEvents: GameEvent[];
   /** Pairs of racers currently touching, keyed "a|b" in RACER_IDS order. */
   contacts: Set<string>;
   /** One per `level.clams`, same order. */

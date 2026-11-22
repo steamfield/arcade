@@ -2,7 +2,9 @@ import { parseInput } from '@arcade/testing';
 import { expect, test } from '@arcade/testing/playwright';
 import { TOP_ROUTE, wait } from '../scenarios/kit.ts';
 
-test('starts on WebGL, races from the title, and swims after the countdown', async ({ game }) => {
+test('starts on WebGL, races from the title through the select screen, and swims after the countdown', async ({
+  game,
+}) => {
   await game.open();
   expect(await game.renderer()).toBe('webgl');
   expect(await game.summary()).toMatchObject({
@@ -11,9 +13,11 @@ test('starts on WebGL, races from the title, and swims after the countdown', asy
     best: null,
   });
 
-  // Menus ignore kick for their first 20 ticks.
+  // Menus and the select screen ignore kick for their first 20 ticks.
   await game.play(parseInput('_*20 kick _*2'));
-  expect(await game.summary()).toMatchObject({ scene: 'race', phase: 'countdown' });
+  expect(await game.summary()).toMatchObject({ scene: 'select', character: 'rudy' });
+  await game.play(parseInput('_*20 kick _*2'));
+  expect(await game.summary()).toMatchObject({ scene: 'race', phase: 'countdown', character: 'rudy' });
 
   await game.play(parseInput('_*180 right*60'));
   const summary = await game.summary();
@@ -21,10 +25,11 @@ test('starts on WebGL, races from the title, and swims after the countdown', asy
   expect((summary.player as { tile: number[] }).tile[0]).toBeGreaterThan(4);
   const events = await game.events();
   expect(events.filter((e) => e.type === 'menu.selected')).toMatchObject([{ option: 'Race' }]);
+  expect(events.filter((e) => e.type === 'scene.started').map((e) => e.scene)).toEqual(['title', 'select', 'race']);
   expect(events.map((e) => e.type)).toContain('race.started');
 });
 
-test('on-screen controls start the race and swim the player @touch', async ({ game, page }) => {
+test('on-screen controls pick a racer, start the race and swim the player @touch', async ({ game, page }) => {
   await game.open();
   const hold = async (action: string, ticks: number) => {
     const button = page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
@@ -34,10 +39,14 @@ test('on-screen controls start the race and swim the player @touch', async ({ ga
   };
   await game.advance(20);
   await hold('kick', 1);
+  await game.advance(21);
+  await hold('right', 1);
+  await game.advance(1);
+  await hold('kick', 1);
   await game.advance(182);
   await hold('right', 60);
   const summary = await game.summary();
-  expect(summary).toMatchObject({ scene: 'race', phase: 'racing' });
+  expect(summary).toMatchObject({ scene: 'race', phase: 'racing', character: 'gil' });
   expect((summary.player as { tile: number[] }).tile[0]).toBeGreaterThan(4);
 });
 

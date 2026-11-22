@@ -17,7 +17,14 @@ import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
 import { BURST_COOLDOWN_TICKS, STACK_MAX } from '../../logic/powerups/tuning.ts';
 import { playerOf } from '../../logic/racers.ts';
-import { type ComboName, type PowerUpKind, type RacePhase, type RacerId, TILE, type World } from '../../logic/types.ts';
+import {
+  type CharacterId,
+  type ComboName,
+  type PowerUpKind,
+  type RacePhase,
+  TILE,
+  type World,
+} from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { IconFrame, type IconFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import { UiRamp, type UiToneName } from '../art/ui/palette.ts';
@@ -86,13 +93,13 @@ const POWER_UP_ICON: Record<PowerUpKind, IconFrameKey> = {
   glowLantern: IconFrame.glowLantern,
 };
 
-/** Adds the HUD to `scene`, pinned to the screen. */
-export function createHud(scene: Phaser.Scene, reducedMotion: boolean): Hud {
-  const place = createPlacePanel(scene, reducedMotion);
+/** Adds the HUD for `world`'s race to `scene`, pinned to the screen, with each racer's character on its portrait and head. */
+export function createHud(scene: Phaser.Scene, world: World, reducedMotion: boolean): Hud {
+  const place = createPlacePanel(scene, playerOf(world).character, reducedMotion);
   const timer = createTimer(scene);
   let shownTime = -1;
   const well = createWell(scene);
-  const strip = createProgressStrip(scene);
+  const strip = createProgressStrip(scene, world);
   const splash = createRaceSplash(scene, reducedMotion);
   const combo = createComboName(scene, reducedMotion);
   const caption = createLabel(scene, CAPTION_CENTRE.x, CAPTION_CENTRE.y, '', {
@@ -165,12 +172,12 @@ export function isPlacePopping(track: PlaceTrack, tick: number): boolean {
   return age >= 0 && age < PLACE_POP.ticks;
 }
 
-/** The gold place panel: portrait, place numeral (hidden in the countdown), and the change arrow under it. */
-function createPlacePanel(scene: Phaser.Scene, reducedMotion: boolean): WorldView {
+/** The gold place panel: the player's portrait, place numeral (hidden in the countdown), and the change arrow under it. */
+function createPlacePanel(scene: Phaser.Scene, character: CharacterId, reducedMotion: boolean): WorldView {
   const { x, y, w, h } = PLACE_PANEL;
   createPanel(scene, x, y, w, h, 'accent', { fixed: true, depth: Layer.hud });
   scene.add
-    .image(PORTRAIT_AT.x, PORTRAIT_AT.y, UiTex.portraits, PortraitFrame.player)
+    .image(PORTRAIT_AT.x, PORTRAIT_AT.y, UiTex.portraits, PortraitFrame[character])
     .setOrigin(0, 0)
     .setScrollFactor(0)
     .setDepth(Layer.hud);
@@ -290,20 +297,22 @@ function squareRing(left: number, top: number, size: number): [number, number][]
   return [...edge.slice(start), ...edge.slice(0, start)];
 }
 
-/** The progress strip: a 7x7 head per racer travelling toward the finish flag. */
-function createProgressStrip(scene: Phaser.Scene): WorldView {
+/** The progress strip: a 7x7 head per racer, showing its character, travelling toward the finish flag. */
+function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
   const { x, y, w, h, headY, headFrom, headTo } = STRIP;
   createPanel(scene, x, y, w, h, 'inset', { fixed: true, depth: Layer.hud });
   addIcon(scene, FLAG_AT.x, FLAG_AT.y, IconFrame.finishFlag);
-  const head = (id: RacerId) =>
-    scene.add.image(headFrom, headY, UiTex.heads, PortraitFrame[id]).setOrigin(0, 0).setScrollFactor(0);
-  // Rivals first and the player last at a higher depth, so the player's head is never hidden.
-  const heads: Record<RacerId, Phaser.GameObjects.Image> = {
-    tess: head('tess').setDepth(Layer.hud),
-    squib: head('squib').setDepth(Layer.hud),
-    bo: head('bo').setDepth(Layer.hud),
-    player: head('player').setDepth(Layer.banner),
-  };
+  // The player's head draws at a higher depth than the rivals', so it is never hidden.
+  const heads = new Map(
+    world.racers.map((racer) => [
+      racer.id,
+      scene.add
+        .image(headFrom, headY, UiTex.heads, PortraitFrame[racer.character])
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(racer.id === 'player' ? Layer.banner : Layer.hud),
+    ]),
+  );
   // Distance to the finish from the furthest start, fixed at the first sync; heads show the share of it covered.
   let courseLength: number | null = null;
 
@@ -312,7 +321,7 @@ function createProgressStrip(scene: Phaser.Scene): WorldView {
       courseLength ??= longestStart(world);
       for (const racer of world.racers) {
         const fraction = racer.finished ? 1 : 1 - racer.progress / courseLength;
-        heads[racer.id].setX(Math.round(headFrom + clampUnit(fraction) * (headTo - headFrom)));
+        heads.get(racer.id)?.setX(Math.round(headFrom + clampUnit(fraction) * (headTo - headFrom)));
       }
     },
   };

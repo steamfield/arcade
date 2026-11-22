@@ -12,14 +12,13 @@
  */
 import { TICK_HZ } from '@arcade/core';
 import type Phaser from 'phaser';
+import { CHARACTERS } from '../../logic/characters.ts';
 import { playerOf } from '../../logic/racers.ts';
-import type { RacePhase, RacerId, RaceState, World } from '../../logic/types.ts';
+import type { CharacterId, RacePhase, RaceState, World } from '../../logic/types.ts';
 import { createLabel } from '../art/font.ts';
 import { toneCss, type UiToneName } from '../art/ui/palette.ts';
 import { FINAL_STRETCH_AT, raceProgress } from '../race-progress.ts';
 import { Layer } from './layers.ts';
-
-const RACER_NAMES: Record<RacerId, string> = { player: 'Pip', tess: 'Tess', squib: 'Squib', bo: 'Bo' };
 
 /** Logic ticks as a race time, e.g. 1234 ticks reads "0:20.56". Rounds down to the hundredth. */
 export function formatRaceTime(ticks: number): string {
@@ -41,9 +40,15 @@ export function formatBest(best: { ticks: number; place: number }): string {
   return `Best ${formatRaceTime(best.ticks)} (${ordinal(best.place)})`;
 }
 
-/** The name a racer goes by on screen. */
-export function racerName(id: RacerId): string {
-  return RACER_NAMES[id];
+/** The name a character goes by on screen, e.g. "Baron Barnacle". */
+export function racerName(character: CharacterId): string {
+  return CHARACTERS[character].name;
+}
+
+/** The first word of a character's name, for rows and cells too narrow for the whole: "Baron". */
+export function racerShortName(character: CharacterId): string {
+  const [first = ''] = racerName(character).split(' ');
+  return first;
 }
 
 /**

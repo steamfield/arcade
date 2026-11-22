@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { SWIM } from '../swim/physics.ts';
 import { type Body, type Level, TILE, type Vec } from '../types.ts';
 import { parseLevel } from './parse.ts';
-import { bodyTiles, cellAt, isSolid, overlapsTile, sampleEnvironment, tileIndex } from './query.ts';
+import { bodyTiles, cellAt, inDark, isSolid, overlapsTile, sampleEnvironment, tileIndex } from './query.ts';
 
 /** Every cell kind on the top row; starts and finish below. */
 const reef = (): Level =>
@@ -135,5 +135,40 @@ describe('environment sampling', () => {
     body.x -= 5;
 
     expect(sampleEnvironment(reef(), body)).toEqual({ current: null, inKelp: false });
+  });
+});
+
+describe('dark zones', () => {
+  /** Ten columns wide, dark over columns 3-4 and 7 only. */
+  const twilight = (): Level =>
+    parseLevel({
+      name: 'dark',
+      ascii: `
+        1234.....F
+        .........F
+      `,
+      dark: [
+        [3, 4],
+        [7, 7],
+      ],
+    });
+
+  it('is dark where the centre sits in a dark column, including both ends of a range', () => {
+    const level = twilight();
+    const dark = Array.from({ length: level.width }, (_, x) => inDark(level, bodyCentredOn(x, 1)));
+
+    expect(dark).toEqual([false, false, false, true, true, false, false, true, false, false]);
+  });
+
+  it('goes by the centre, not the edges: a body reaching into a dark column is lit', () => {
+    const level = twilight();
+    const leaning = { ...bodyCentredOn(2, 0), x: 3 * TILE - SWIM.width / 2 - 1 };
+
+    expect(inDark(level, leaning)).toBe(false);
+    expect(inDark(level, { ...leaning, x: leaning.x + 2 })).toBe(true);
+  });
+
+  it('is never dark on a level without dark zones', () => {
+    expect(inDark(reef(), bodyCentredOn(4, 1))).toBe(false);
   });
 });

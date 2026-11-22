@@ -1,13 +1,13 @@
 /**
  * The results screen, laid out to UI.md: the RESULTS heading, a podium with
  * the top three's portraits and medals, the standings revealed one row every
- * 20 ticks (place, name, time or DNF; the player's row in sun with Pip's
- * head beside it), then the NEW BEST or BEST NOT SAVED ribbon, and the Race again / Title
+ * 20 ticks (place, character name, time or DNF; the player's row in sun with
+ * its character's head beside it), then the NEW BEST or BEST NOT SAVED ribbon, and the Race again / Title
  * buttons. Motion is timed from the runtime's tick since this screen came up,
  * and holds still under reduced motion (rows still arrive in sequence).
  */
 import Phaser from 'phaser';
-import type { RacerId, World } from '../../logic/types.ts';
+import type { CharacterId, Racer, RacerId, World } from '../../logic/types.ts';
 import { createLabel } from '../art/font.ts';
 import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import type { PanelStyle, UiToneName } from '../art/ui/palette.ts';
@@ -16,7 +16,7 @@ import { MENU_OPTIONS } from '../menu.ts';
 import type { RaceOutcome, Runtime } from '../runtime.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { createMenuView, type MenuView } from '../view/menu-view.ts';
-import { formatRaceTime, ordinal, racerName, slideRemaining, TONE_CSS } from '../view/race-text.ts';
+import { formatRaceTime, ordinal, racerShortName, slideRemaining, TONE_CSS } from '../view/race-text.ts';
 
 /** UI.md "Results" rects, in game px. */
 const HEADING_CENTRE = { x: 160, y: 12 } as const;
@@ -38,7 +38,7 @@ const PORTRAIT_RISE = 17;
 const PORTRAIT_INSET_X = 12;
 const MEDAL_INSET = { x: 14, y: 3 } as const;
 const ROWS = { x: 120, y: 80, pitch: 10 } as const;
-/** Pip's 7x7 head on the player's row, clear of the d-pad zone (x < 108). */
+/** The player's 7x7 head on its row, clear of the d-pad zone (x < 108). */
 const ROW_HEAD_X = 111;
 const RIBBON = { x: 114, y: 120, w: 92, h: 15 } as const;
 const MENU = { centreX: 160, top: 139, width: 76, pitch: 19 } as const;
@@ -80,7 +80,7 @@ export class ResultsScene extends Phaser.Scene {
     const { standings } = lastResult.result;
     for (const [index, plinth] of PLINTHS.entries()) {
       const id = standings[index];
-      if (id) addPlinth(this, id, plinth);
+      if (id) addPlinth(this, racerIn(world, id).character, plinth);
     }
     this.standings = createStandings(this, world, standings);
     this.rowsSettleAt = (standings.length - 1) * ROW_EVERY_TICKS + ROW_SLIDE.ticks;
@@ -104,10 +104,19 @@ export class ResultsScene extends Phaser.Scene {
   }
 }
 
-/** A podium place: its plinth, the racer's portrait standing on it, and the medal on its face. */
-function addPlinth(scene: Phaser.Scene, id: RacerId, plinth: Plinth): void {
+/** The racer in slot `id`. Standings only list the world's own racers, so a miss is a bug. */
+function racerIn(world: World, id: RacerId): Racer {
+  const racer = world.racers.find((candidate) => candidate.id === id);
+  if (!racer) throw new Error(`Standings list '${id}', but the race has no such racer`);
+  return racer;
+}
+
+/** A podium place: its plinth, the character's portrait standing on it, and the medal on its face. */
+function addPlinth(scene: Phaser.Scene, character: CharacterId, plinth: Plinth): void {
   createPanel(scene, plinth.x, plinth.y, plinth.w, plinth.h, plinth.style);
-  scene.add.image(plinth.x + PORTRAIT_INSET_X, plinth.y - PORTRAIT_RISE, UiTex.portraits, id).setOrigin(0, 0);
+  scene.add
+    .image(plinth.x + PORTRAIT_INSET_X, plinth.y - PORTRAIT_RISE, UiTex.portraits, PortraitFrame[character])
+    .setOrigin(0, 0);
   scene.add.image(plinth.x + MEDAL_INSET.x, plinth.y + MEDAL_INSET.y, UiTex.medals, plinth.medal).setOrigin(0, 0);
 }
 
@@ -119,19 +128,20 @@ interface StandingsView {
 
 /**
  * One outlined label per row, in sun for the player and foam for rivals. The player's row also gets
- * Pip's 7x7 head beside it once the row has settled. The head never moves, so the only cursor fin
+ * its character's 7x7 head beside it once the row has settled. The head never moves, so the only cursor fin
  * on screen is the menu's.
  */
 function createStandings(scene: Phaser.Scene, world: World, standings: readonly RacerId[]): StandingsView {
   const rows = standings.map((id, index) => {
+    const racer = racerIn(world, id);
     const y = ROWS.y + index * ROWS.pitch;
-    const label = createLabel(scene, ROWS.x, y, rowText(world, id, index + 1), {
+    const label = createLabel(scene, ROWS.x, y, rowText(racer, index + 1), {
       tone: id === 'player' ? 'sun' : 'foam',
       outline: true,
     }).setVisible(false);
     const head =
       id === 'player'
-        ? scene.add.image(ROW_HEAD_X, y, UiTex.heads, PortraitFrame.player).setOrigin(0, 0).setVisible(false)
+        ? scene.add.image(ROW_HEAD_X, y, UiTex.heads, PortraitFrame[racer.character]).setOrigin(0, 0).setVisible(false)
         : null;
     return { label, head };
   });
@@ -151,11 +161,14 @@ function createStandings(scene: Phaser.Scene, world: World, standings: readonly 
   };
 }
 
-/** One standings row, e.g. "4TH  SQUIB 0:24.46", or "DNF" for a racer that never finished. */
-function rowText(world: World, id: RacerId, place: number): string {
-  const finish = world.racers.find((racer) => racer.id === id)?.finished;
-  const time = finish ? formatRaceTime(finish.tick) : 'DNF';
-  return `${ordinal(place).toUpperCase().padEnd(5)}${racerName(id).toUpperCase().padEnd(6)}${time.padStart(7)}`;
+/**
+ * One standings row, e.g. "4TH  BARON 0:24.46", or "DNF" for a racer that never finished. Names are
+ * the short form, at most 6 letters, so every row keeps the UI.md width.
+ */
+function rowText(racer: Racer, place: number): string {
+  const time = racer.finished ? formatRaceTime(racer.finished.tick) : 'DNF';
+  const name = racerShortName(racer.character).toUpperCase();
+  return `${ordinal(place).toUpperCase().padEnd(5)}${name.padEnd(6)}${time.padStart(7)}`;
 }
 
 /** What the ribbon can say. */

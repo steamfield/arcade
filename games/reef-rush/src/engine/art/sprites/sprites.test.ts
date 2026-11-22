@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { CHARACTER_IDS } from '../../../logic/types.ts';
 import { Frame, Tex, TileIndex } from '../keys.ts';
 import { BackdropPalette, HazardPalette, RacerPalette, WATER_BANDS } from '../palettes.ts';
 import { measureFrames } from '../pixel.ts';
 import { ART_SHEETS } from './index.ts';
 
+/** Every character's racer texture. */
+const RACER_KEYS = CHARACTER_IDS.map((character) => Tex[character]);
 const sheetFor = (key: string) => ART_SHEETS.find((sheet) => sheet.key === key);
 const frameNames = (key: string) => sheetFor(key)?.frames.map((frame) => frame.name);
 
@@ -20,7 +23,7 @@ describe('world art data', () => {
 
   it('gives animated and multi-state textures the frame names views and animations ask for', () => {
     const twoStroke = [Frame.a, Frame.b];
-    for (const key of [Tex.player, Tex.tess, Tex.squib, Tex.bo, Tex.kelp, Tex.jelly]) {
+    for (const key of [...RACER_KEYS, Tex.kelp, Tex.jelly]) {
       expect(frameNames(key), key).toEqual(twoStroke);
     }
     for (const key of [Tex.currentRight, Tex.currentLeft, Tex.currentUp, Tex.currentDown]) {
@@ -44,7 +47,7 @@ describe('world art data', () => {
   });
 
   it('keeps racers within 16x12 so they fit around their 12x10 bodies', () => {
-    for (const key of [Tex.player, Tex.tess, Tex.squib, Tex.bo]) {
+    for (const key of RACER_KEYS) {
       expect(measureFrames(key, sheetFor(key)?.frames ?? []), key).toEqual({ width: 16, height: 12 });
     }
   });

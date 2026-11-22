@@ -54,3 +54,12 @@ export function sampleEnvironment(level: Level, body: Body): Environment {
   const current = CURRENT_DIRECTIONS.get(cell);
   return { current: current ? { ...current } : null, inKelp: cell === 'kelp' };
 }
+
+/**
+ * True when the box's centre lies in one of the level's dark zones: a tile column inside any
+ * inclusive `level.dark` range.
+ */
+export function inDark(level: Level, box: Box): boolean {
+  const column = Math.floor((box.x + box.w / 2) / TILE);
+  return level.dark.some(([from, to]) => column >= from && column <= to);
+}

@@ -110,6 +110,7 @@ describe('moving through tiles', () => {
 function racer(id: RacerId, x: number, mass = 1): Racer {
   return {
     id,
+    character: 'rudy',
     body: body(x, 50),
     facing: 1,
     kickCooldown: 0,

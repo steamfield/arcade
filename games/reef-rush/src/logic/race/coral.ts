@@ -3,8 +3,8 @@
  * swimmers, so the steer and smash fields are rebuilt on the spot; the progress
  * field already treats coral as passable and never changes.
  */
-import { cellAt, tileIndex } from '../level/query.ts';
-import type { RacerId, World } from '../types.ts';
+import { bodyTiles, cellAt, tileIndex } from '../level/query.ts';
+import type { Racer, RacerId, World } from '../types.ts';
 import { rebuildForBrokenCoral } from './flowfield.ts';
 
 /**
@@ -21,4 +21,17 @@ export function breakCoral(world: World, tx: number, ty: number, by: RacerId): b
   world.fields = rebuildForBrokenCoral(world.fields, world.level, world.broken);
   world.events.emit({ type: 'coral.broken', tx, ty, by });
   return true;
+}
+
+/**
+ * Breaks every coral tile `racer`'s body would overlap after moving by its velocity for `dt`
+ * seconds, so a racer that rams coral swims on through it. `stepWorld` calls it before moving a
+ * racer whose ability breaks coral on contact (`breaksCoralOnContact`).
+ */
+export function ramCoral(world: World, racer: Racer, dt: number): void {
+  const { body } = racer;
+  const tiles = bodyTiles({ x: body.x + body.vx * dt, y: body.y + body.vy * dt, w: body.w, h: body.h });
+  for (let ty = tiles.top; ty <= tiles.bottom; ty++) {
+    for (let tx = tiles.left; tx <= tiles.right; tx++) breakCoral(world, tx, ty, racer.id);
+  }
 }

@@ -7,13 +7,21 @@
  * racer's swimming, dash, trapped float and movement (RACER_IDS order); one pass
  * of separation over unfinished racers; then the phase 3 systems for unfinished
  * racers only: bursts (from intents), projectiles and inks, jellies, contacts
- * (hits), pickups (clams, pearls, loose), status counters; then progress,
- * finishes, places, race end. Finished racers are out of play: they stay where
- * they crossed the line, nobody bumps them, and they never gain, lose or burst.
+ * (hits), pickups (clams, pearls, loose), status counters; then abilities
+ * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
+ * then progress, finishes, places, race end. Finished racers are out of play:
+ * they stay where they crossed the line, nobody bumps them, and they never
+ * gain, lose or burst.
+ *
+ * Slots are fixed (RACER_IDS); characters are data placed in them. The player's
+ * slot gets the chosen character and the rival slots get `pickRivals` from the
+ * `roster` stream, so a new pick never shifts another random stream.
  */
 import { createRng, type EventSink } from '@arcade/core';
-import { PLAYER_PROFILE, RIVAL_PROFILES } from './ai/profiles.ts';
+import { breaksCoralOnContact, bumpMassFor, onBump, onWorldEvents, tickAbilities } from './abilities.ts';
+import { PLAYER_PROFILE } from './ai/profiles.ts';
 import { createAiMemory, rivalIntent } from './ai/rival.ts';
+import { CHARACTERS, pickRivals } from './characters.ts';
 import type { GameEvent } from './events.ts';
 import { resolveContacts } from './hazards/contacts.ts';
 import { moveJellies } from './hazards/jellies.ts';
@@ -25,7 +33,7 @@ import { openClams } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
 import { collectPearls } from './pickups/pearls.ts';
 import { driveDash, fireBursts, sustainBursts } from './powerups/burst.ts';
-import { bumpMass } from './powerups/passives.ts';
+import { ramCoral } from './race/coral.ts';
 import { buildFlowFields, unreachableStarts } from './race/flowfield.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
 import { activeRacers, centreOf, noItems, playerOf } from './racers.ts';
@@ -33,6 +41,7 @@ import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
 import { moveBody, separateRacers } from './swim/collide.ts';
 import { applyIntent, SWIM } from './swim/physics.ts';
 import {
+  type CharacterId,
   type Intent,
   type Level,
   type MoveModifiers,
@@ -54,13 +63,17 @@ export interface WorldOptions {
   playerBot?: RivalProfile;
   /** 'everyone' keeps racing after the player finishes, so difficulty tests can time every racer. Default 'player'. */
   endsWhen?: 'player' | 'everyone';
+  /** Who the player races as. Default 'rudy'. The rivals are drawn from the rest by seed. */
+  character?: CharacterId;
 }
 
 const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
 /**
  * Sets up a race on `level` at the countdown's first tick, with every clam ready, every pearl
- * in play, jellies at their homes and nothing held or in flight.
+ * in play, jellies at their homes and nothing held or in flight. The player's slot holds
+ * `options.character` and the rival slots hold `pickRivals` drawn from the `roster` stream; each
+ * rival slot races with its character's profile.
  *
  * @param events Usually the engine's EventLog, so one stream holds race, menu and save events.
  * @throws {LevelError} When a start tile cannot reach the finish without breaking coral.
@@ -78,15 +91,20 @@ export function createWorld(level: Level, events: EventSink<GameEvent>, options:
       start?.x ?? null,
     );
   }
+  const rngs = createRngs(options.seed);
+  const player = options.character ?? 'rudy';
+  const characters: CharacterId[] = [player, ...pickRivals(rngs.roster, player)];
+  const recentEvents: GameEvent[] = [];
   const world: World = {
     level,
     fields,
     broken,
-    racers: RACER_IDS.map((id, index) => createRacer(level, id, index, options.playerBot)),
+    racers: RACER_IDS.map((id, index) => createRacer(level, id, index, characters[index] ?? player, options.playerBot)),
     race: { phase: 'countdown', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: options.endsWhen ?? 'player' },
     tick: 0,
-    rngs: createRngs(options.seed),
-    events,
+    rngs,
+    events: recordingInto(events, recentEvents),
+    recentEvents,
     contacts: new Set(),
     clams: level.clams.map((tile) => ({ tile: { ...tile }, closedFor: 0 })),
     pearlsTaken: new Set(),
@@ -100,13 +118,20 @@ export function createWorld(level: Level, events: EventSink<GameEvent>, options:
   return world;
 }
 
-function createRacer(level: Level, id: RacerId, index: number, playerBot: RivalProfile | undefined): Racer {
+function createRacer(
+  level: Level,
+  id: RacerId,
+  index: number,
+  character: CharacterId,
+  playerBot: RivalProfile | undefined,
+): Racer {
   const start = level.starts[index];
   if (!start) throw new LevelError(`Level has no start ${index + 1}`);
   const isHuman = id === 'player' && !playerBot;
-  const profile = id === 'player' ? (playerBot ?? PLAYER_PROFILE) : RIVAL_PROFILES[id];
+  const profile = id === 'player' ? (playerBot ?? PLAYER_PROFILE) : { id, ...CHARACTERS[character].profile };
   return {
     id,
+    character,
     body: {
       x: start.x * TILE + (TILE - SWIM.width) / 2,
       y: start.y * TILE + (TILE - SWIM.height) / 2,
@@ -123,6 +148,16 @@ function createRacer(level: Level, id: RacerId, index: number, playerBot: RivalP
     ai: isHuman ? null : createAiMemory(),
     profile,
     ...noItems(),
+  };
+}
+
+/** A sink that passes every event on to `sink` and also appends it to `into`. */
+function recordingInto(sink: EventSink<GameEvent>, into: GameEvent[]): EventSink<GameEvent> {
+  return {
+    emit(event) {
+      into.push(event);
+      sink.emit(event);
+    },
   };
 }
 
@@ -147,7 +182,7 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   racing.forEach((racer, index) => {
     swim(world, racer, intents[index] ?? IDLE, modifiersFor(racer, player), dt);
   });
-  separateRacers(racing, world.contacts, world.events, bumpMass);
+  separateRacers(racing, world.contacts, world.events, bumpMassFor, (a, b) => onBump(world, a, b));
 
   fireBursts(world, racing, intents);
   sustainBursts(world, racing);
@@ -158,6 +193,9 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   collectPearls(world, racing);
   updateLoose(world, racing, dt);
   for (const racer of racing) tickStatuses(racer);
+  // splice(0) empties the buffer the event sink appends to, so each event reaches abilities once.
+  onWorldEvents(world, world.recentEvents.splice(0));
+  tickAbilities(world, racing);
 
   updateProgress(world);
   recordFinishes(world);
@@ -170,11 +208,15 @@ function intentFor(world: World, racer: Racer, input: TickInput): Intent {
   return rivalIntent(world, racer, world.rngs[`ai.${racer.id}`]);
 }
 
-/** One racer's velocity for the tick (swimming, then a dash or a trapped float overriding it), then its move. */
+/**
+ * One racer's velocity for the tick (swimming, then a dash or a trapped float overriding it), then
+ * its move, breaking the coral ahead first when its ability rams through coral.
+ */
 function swim(world: World, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
   applyIntent(racer, intent, sampleEnvironment(world.level, racer.body), mods, world.events, dt);
   driveDash(racer);
   floatTrapped(racer);
+  if (breaksCoralOnContact(racer)) ramCoral(world, racer, dt);
   moveBody(racer.body, world.level, world.broken, dt);
 }
 
