@@ -2,7 +2,8 @@
  * The title screen, laid out to UI.md: the REEF RUSH logotype over the reef
  * backdrop, the four racers swimming past, the Race / Sound / Motion buttons
  * (Sound and Motion show the setting in force and change the moment it does),
- * a blinking PRESS A, and the best-time card when the save has a best.
+ * a blinking PRESS A on touch screens (on a keyboard A is a move key, so the
+ * hint would mislead), and the best-time card when the save has a best.
  *
  * The screen stays up while the player toggles Motion, so every motion here
  * reads `rt.settings.reducedMotion` live each frame. Motion is timed from the
@@ -19,7 +20,7 @@ import { createPanel } from '../art/ui/panel.ts';
 import { MENU_OPTIONS, type MenuOption } from '../menu.ts';
 import type { Runtime, Settings } from '../runtime.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
-import { createMenuView, type MenuView } from '../view/menu-view.ts';
+import { createMenuView, type MenuView, OPTION_LABELS } from '../view/menu-view.ts';
 import { formatRaceTime, ordinal } from '../view/race-text.ts';
 
 /** UI.md "Title" rects, in game px. */
@@ -29,8 +30,9 @@ const RACER_LANE = { y: 62, width: 320 } as const;
  * The three buttons share one width so their fins line up. 80 is the widest that keeps the fin
  * (x 109-117) clear of the d-pad zone (x < 108) with the column centred on the logo.
  */
-const MENU = { centreX: 160, top: 82, width: 80, pitch: 19 } as const;
-const PRESS_A = { x: 160, top: 139 } as const;
+const MENU = { centreX: 160, top: 82, width: 80, pitch: 17 } as const;
+/** 6 px clear of the last button and of the best card, so it reads as a hint, not a fourth button. */
+const PRESS_A = { x: 160, top: 137 } as const;
 const BEST_CARD = { x: 110, y: 150, w: 100, h: 24 } as const;
 const BEST_BADGE_AT = { x: 114, y: 155 } as const;
 const BEST_PLACE_AT = { x: 130, y: 154 } as const;
@@ -81,7 +83,9 @@ export class TitleScene extends Phaser.Scene {
       image: this.add.image(0, RACER_LANE.y, SWIMMERS[id].tex, Frame.a).setOrigin(0, 0),
     }));
     this.menuView = createMenuView(this, MENU, MENU_OPTIONS.title, (option) => optionText(option, rt.settings));
-    this.pressA = createLabel(this, PRESS_A.x, PRESS_A.top + 3, 'PRESS A', { align: 'center', outline: true });
+    this.pressA = isTouchScreen()
+      ? createLabel(this, PRESS_A.x, PRESS_A.top + 3, 'PRESS A', { align: 'center', outline: true })
+      : null;
     const best = rt.save?.best;
     if (best) addBestCard(this, best);
     this.rt.entered('title');
@@ -99,12 +103,21 @@ export class TitleScene extends Phaser.Scene {
   }
 }
 
+/**
+ * Whether the on-screen touch controls are up. The same rule `@arcade/input` mounts them by: the
+ * shell's `?touch=1`, or a coarse pointer.
+ */
+function isTouchScreen(): boolean {
+  const forced = new URLSearchParams(window.location.search).get('touch') === '1';
+  return forced || window.matchMedia('(pointer: coarse)').matches;
+}
+
 /** What each title button says: Race as is, Sound and Motion with the setting in force. */
 function optionText(option: MenuOption, settings: Settings): string {
   if (option === 'Sound') return settings.muted ? 'SOUND OFF' : 'SOUND ON';
   // "LESS" rather than "REDUCED": MOTION REDUCED is too wide for a button whose fin clears the d-pad.
   if (option === 'Motion') return settings.reducedMotion ? 'MOTION LESS' : 'MOTION FULL';
-  return option.toUpperCase();
+  return OPTION_LABELS[option];
 }
 
 /** A racer's x in the lane at `tick`, wrapping from off the right edge back to off the left. Still under reduced motion. */

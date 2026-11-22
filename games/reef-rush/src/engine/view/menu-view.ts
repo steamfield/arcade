@@ -27,24 +27,34 @@ export interface MenuLayout {
   pitch: number;
 }
 
-/** The text an option's button shows now. Defaults to the option in capitals. */
+/** The text an option's button shows now. Defaults to `OPTION_LABELS`. */
 export type OptionText = (option: MenuOption) => string;
+
+/** Each option's button text when it has no live state to show: the option in capitals, built once. */
+export const OPTION_LABELS: Readonly<Record<MenuOption, string>> = {
+  Race: 'RACE',
+  Sound: 'SOUND',
+  Motion: 'MOTION',
+  'Race again': 'RACE AGAIN',
+  Title: 'TITLE',
+};
 
 /** Adds one button per option, top to bottom, the first selected once `sync` runs. */
 export function createMenuView(
   scene: Phaser.Scene,
   layout: MenuLayout,
   options: readonly MenuOption[],
-  textOf: OptionText = (option) => option.toUpperCase(),
+  textOf: OptionText = (option) => OPTION_LABELS[option],
 ): MenuView {
   const rows = options.map((_, row) => createOptionRow(scene, layout, row));
   return {
     sync(menu, tick, reducedMotion) {
       if (!menu) return;
-      rows.forEach((showRow, row) => {
+      for (let row = 0; row < rows.length; row++) {
         const option = options[row];
-        if (option !== undefined) showRow(textOf(option), row === menu.selected, tick, reducedMotion);
-      });
+        const showRow = rows[row];
+        if (option !== undefined && showRow) showRow(textOf(option), row === menu.selected, tick, reducedMotion);
+      }
     },
   };
 }

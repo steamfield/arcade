@@ -13,8 +13,8 @@
 import { TICK_HZ } from '@arcade/core';
 import type Phaser from 'phaser';
 import { playerOf } from '../../logic/racers.ts';
-import type { RacerId, World } from '../../logic/types.ts';
-import { createLabel, type Label, type LabelOptions } from '../art/font.ts';
+import type { RacePhase, RacerId, RaceState, World } from '../../logic/types.ts';
+import { createLabel } from '../art/font.ts';
 import { toneCss, type UiToneName } from '../art/ui/palette.ts';
 import { FINAL_STRETCH_AT, raceProgress } from '../race-progress.ts';
 import { Layer } from './layers.ts';
@@ -55,38 +55,13 @@ export function slideRemaining(age: number, distance: number, ticks: number, red
   return Math.round(distance * (1 - Math.max(0, age) / ticks));
 }
 
-/** A label that can be drawn a few whole px away from where it rests, for slides. */
-export interface SlidingLabel {
-  /** Shows `text` in `tone`, offset (dx, dy) from the resting point; empty text hides it. */
-  show(text: string, tone: UiToneName, dx?: number, dy?: number): void;
-}
-
-/**
- * Adds a sliding label resting at (x, y). Labels are anchored when created, so it keeps one label
- * per offset it has been asked for (a slide has at most a dozen) and shows only the current one.
- */
-export function createSlidingLabel(
-  scene: Phaser.Scene,
-  x: number,
-  y: number,
-  options: Omit<LabelOptions, 'tone' | 'color'>,
-): SlidingLabel {
-  const byOffset = new Map<string, Label>();
-  let shown: Label | null = null;
-  return {
-    show(text, tone, dx = 0, dy = 0) {
-      const key = `${dx},${dy}`;
-      let label = byOffset.get(key);
-      if (!label) {
-        label = createLabel(scene, x + dx, y + dy, '', options);
-        byOffset.set(key, label);
-      }
-      if (shown !== label) shown?.setText('');
-      shown = label;
-      label.setColor(toneCss(tone)).setText(text);
-    },
-  };
-}
+/** Each tone's CSS string, built once so per-frame colour changes allocate nothing. */
+export const TONE_CSS: Readonly<Record<UiToneName, string>> = {
+  foam: toneCss('foam'),
+  sun: toneCss('sun'),
+  coral: toneCss('coral'),
+  dim: toneCss('dim'),
+};
 
 /** The race's centre splash: countdown numerals, GO, FINAL STRETCH and FINISH. */
 export interface RaceSplash {
@@ -99,30 +74,43 @@ const COUNTDOWN_TICKS_PER_NUMBER = 60;
 const COUNTDOWN_DROP = { px: 6, ticks: 6 } as const;
 const BANNER_SLIDE = { px: 12, ticks: 8 } as const;
 const BANNER_HOLD_TICKS = 45;
+const COUNTDOWN_TEXT: Partial<Record<number, string>> = { 1: '1', 2: '2', 3: '3' };
 
-/** One splash frame: the text, its tone and how far it sits from its resting place. */
-interface SplashFrame {
+/** One splash frame: the text (empty for none), its tone and how far it sits from its resting place. */
+export interface SplashFrame {
   text: string;
   tone: UiToneName;
   dx: number;
   dy: number;
 }
 
-const NO_SPLASH: SplashFrame = { text: '', tone: 'foam', dx: 0, dy: 0 };
-
 /** World ticks on which the race reached the final stretch and ended, null until it has. */
-interface SplashMoments {
+export interface SplashMoments {
   stretchAt: number | null;
   endedAt: number | null;
 }
 
+/** The parts of the world a splash frame depends on. */
+export interface SplashClock {
+  tick: number;
+  race: Pick<RaceState, 'phase' | 'raceTick' | 'result'>;
+}
+
 /**
- * Adds the splash to `scene`, pinned to the screen above the HUD. It notes the world tick on which
- * the race first entered the final stretch (`FINAL_STRETCH_AT`, the same moment the music lifts)
- * and on which it ended, so each banner shows once per race.
+ * Notes the first tick the race is in its final stretch and the first tick it is over. Each is
+ * set once and kept, so each banner shows once per race. `progress` is the player's race fraction.
+ */
+export function noteSplashMoments(moments: SplashMoments, phase: RacePhase, tick: number, progress: number): void {
+  if (moments.stretchAt === null && phase === 'racing' && progress >= FINAL_STRETCH_AT) moments.stretchAt = tick;
+  if (moments.endedAt === null && phase === 'finished') moments.endedAt = tick;
+}
+
+/**
+ * Adds the splash to `scene`, pinned to the screen above the HUD. The final stretch is the same
+ * `raceProgress` crossing of `FINAL_STRETCH_AT` that lifts the music.
  */
 export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean): RaceSplash {
-  const label = createSlidingLabel(scene, SPLASH_CENTRE.x, SPLASH_CENTRE.y, {
+  const label = createLabel(scene, SPLASH_CENTRE.x, SPLASH_CENTRE.y, '', {
     size: 'display',
     scale: 2,
     outline: true,
@@ -133,37 +121,45 @@ export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean): R
   // The player's distance to the finish at the first sync, which is the start line.
   let startProgress: number | null = null;
   const moments: SplashMoments = { stretchAt: null, endedAt: null };
+  // Reused every frame, so the splash allocates nothing per frame.
+  const frame: SplashFrame = { text: '', tone: 'foam', dx: 0, dy: 0 };
 
   return {
     sync(world) {
       startProgress ??= playerOf(world).progress;
-      const { phase } = world.race;
-      if (moments.stretchAt === null && phase === 'racing' && raceProgress(world, startProgress) >= FINAL_STRETCH_AT)
-        moments.stretchAt = world.tick;
-      if (moments.endedAt === null && phase === 'finished') moments.endedAt = world.tick;
-      const frame = splashFrame(world, moments, reducedMotion);
-      label.show(frame.text, frame.tone, frame.dx, frame.dy);
+      noteSplashMoments(moments, world.race.phase, world.tick, raceProgress(world, startProgress));
+      splashFrame(world, moments, reducedMotion, frame);
+      label.setColor(TONE_CSS[frame.tone]).setOffset(frame.dx, frame.dy).setText(frame.text);
     },
   };
 }
 
-/** What the splash shows now. The finish wins over a final stretch still on screen. */
-function splashFrame(world: World, moments: SplashMoments, reducedMotion: boolean): SplashFrame {
+/**
+ * What the splash shows now, written into `out` and returned. The finish wins over a final
+ * stretch still on screen; an empty `text` means no splash.
+ */
+export function splashFrame(
+  world: SplashClock,
+  moments: SplashMoments,
+  reducedMotion: boolean,
+  out: SplashFrame = { text: '', tone: 'foam', dx: 0, dy: 0 },
+): SplashFrame {
   const { race } = world;
   if (race.phase === 'countdown') {
     const age = race.raceTick % COUNTDOWN_TICKS_PER_NUMBER;
     const n = Math.max(1, 3 - Math.floor(race.raceTick / COUNTDOWN_TICKS_PER_NUMBER));
-    const dy = -slideRemaining(age, COUNTDOWN_DROP.px, COUNTDOWN_DROP.ticks, reducedMotion);
-    return { text: String(n), tone: 'foam', dx: 0, dy };
+    // Up from rest: 0 minus, not unary minus, so a finished drop is 0 rather than -0.
+    const dy = 0 - slideRemaining(age, COUNTDOWN_DROP.px, COUNTDOWN_DROP.ticks, reducedMotion);
+    return setFrame(out, COUNTDOWN_TEXT[n] ?? '', 'foam', 0, dy);
   }
   if (moments.endedAt !== null) {
     // Coral is not allowed over the water (UI.md), so a DNF reads by its word, in foam.
     const dnf = race.result?.playerTicks === null;
-    return banner(dnf ? 'DNF' : 'FINISH', dnf ? 'foam' : 'sun', world.tick - moments.endedAt, reducedMotion);
+    return banner(out, dnf ? 'DNF' : 'FINISH', dnf ? 'foam' : 'sun', world.tick - moments.endedAt, reducedMotion);
   }
   if (moments.stretchAt !== null && isBannerUp(world.tick - moments.stretchAt))
-    return banner('FINAL STRETCH', 'sun', world.tick - moments.stretchAt, reducedMotion);
-  return banner('GO!', 'sun', race.raceTick, reducedMotion);
+    return banner(out, 'FINAL STRETCH', 'sun', world.tick - moments.stretchAt, reducedMotion);
+  return banner(out, 'GO!', 'sun', race.raceTick, reducedMotion);
 }
 
 function isBannerUp(age: number): boolean {
@@ -171,7 +167,15 @@ function isBannerUp(age: number): boolean {
 }
 
 /** A banner `age` ticks after it started: sliding in from the right, holding, then gone. */
-function banner(text: string, tone: UiToneName, age: number, reducedMotion: boolean): SplashFrame {
-  if (!isBannerUp(age)) return NO_SPLASH;
-  return { text, tone, dx: slideRemaining(age, BANNER_SLIDE.px, BANNER_SLIDE.ticks, reducedMotion), dy: 0 };
+function banner(out: SplashFrame, text: string, tone: UiToneName, age: number, reducedMotion: boolean): SplashFrame {
+  if (!isBannerUp(age)) return setFrame(out, '', 'foam', 0, 0);
+  return setFrame(out, text, tone, slideRemaining(age, BANNER_SLIDE.px, BANNER_SLIDE.ticks, reducedMotion), 0);
+}
+
+function setFrame(out: SplashFrame, text: string, tone: UiToneName, dx: number, dy: number): SplashFrame {
+  out.text = text;
+  out.tone = tone;
+  out.dx = dx;
+  out.dy = dy;
+  return out;
 }

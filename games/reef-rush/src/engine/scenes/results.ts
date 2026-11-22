@@ -1,23 +1,22 @@
 /**
  * The results screen, laid out to UI.md: the RESULTS heading, a podium with
  * the top three's portraits and medals, the standings revealed one row every
- * 20 ticks (place, name, time or DNF; the player's row in sun with the cursor
- * fin), then the NEW BEST or BEST NOT SAVED ribbon, and the Race again / Title
+ * 20 ticks (place, name, time or DNF; the player's row in sun with Pip's
+ * head beside it), then the NEW BEST or BEST NOT SAVED ribbon, and the Race again / Title
  * buttons. Motion is timed from the runtime's tick since this screen came up,
  * and holds still under reduced motion (rows still arrive in sequence).
  */
 import Phaser from 'phaser';
 import type { RacerId, World } from '../../logic/types.ts';
-import { createLabel, type Label } from '../art/font.ts';
-import { IconFrame, MedalFrame, type MedalFrameKey, UiTex } from '../art/ui/keys.ts';
-import { cursorNudge } from '../art/ui/motion.ts';
-import { type PanelStyle, toneCss, type UiToneName } from '../art/ui/palette.ts';
+import { createLabel } from '../art/font.ts';
+import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
+import type { PanelStyle, UiToneName } from '../art/ui/palette.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
 import { MENU_OPTIONS } from '../menu.ts';
 import type { RaceOutcome, Runtime } from '../runtime.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { createMenuView, type MenuView } from '../view/menu-view.ts';
-import { createSlidingLabel, formatRaceTime, ordinal, racerName, slideRemaining } from '../view/race-text.ts';
+import { formatRaceTime, ordinal, racerName, slideRemaining, TONE_CSS } from '../view/race-text.ts';
 
 /** UI.md "Results" rects, in game px. */
 const HEADING_CENTRE = { x: 160, y: 12 } as const;
@@ -39,14 +38,18 @@ const PORTRAIT_RISE = 17;
 const PORTRAIT_INSET_X = 12;
 const MEDAL_INSET = { x: 14, y: 3 } as const;
 const ROWS = { x: 120, y: 80, pitch: 10 } as const;
-const ROW_FIN_X = 109;
+/** Pip's 7x7 head on the player's row, clear of the d-pad zone (x < 108). */
+const ROW_HEAD_X = 111;
 const RIBBON = { x: 114, y: 120, w: 92, h: 15 } as const;
 const MENU = { centreX: 160, top: 139, width: 76, pitch: 19 } as const;
 
-/** UI.md "Motion": a row every 20 ticks, sliding 8 px in from the left over 6; the ribbon drops 4 px over 10 after. */
+/**
+ * UI.md "Motion": a row every 20 ticks, sliding 8 px in from the left over 6; then the ribbon drops 2 px over
+ * 10, from y 118 so it never covers the last row's outline (which ends at y 117).
+ */
 const ROW_EVERY_TICKS = 20;
 const ROW_SLIDE = { px: 8, ticks: 6 } as const;
-const RIBBON_DROP = { px: 4, ticks: 10 } as const;
+const RIBBON_DROP = { px: 2, ticks: 10 } as const;
 
 /** Results scene. Reads the finished world and `Runtime.lastResult`; the runtime handles its menu input. */
 export class ResultsScene extends Phaser.Scene {
@@ -93,7 +96,7 @@ export class ResultsScene extends Phaser.Scene {
     const tick = this.rt.step.tick;
     const age = tick - this.enteredAt;
     this.backdrop?.update(tick);
-    this.standings?.sync(age, tick, reducedMotion);
+    this.standings?.sync(age, reducedMotion);
     // A save can fail after this screen is up, so the ribbon follows the outcome every frame.
     const note = this.rt.lastResult ? ribbonNote(this.rt.lastResult) : null;
     this.ribbon?.sync(note, age - this.rowsSettleAt, reducedMotion);
@@ -110,29 +113,40 @@ function addPlinth(scene: Phaser.Scene, id: RacerId, plinth: Plinth): void {
 
 /** The standings rows, revealed in order. */
 interface StandingsView {
-  /** `age` is ticks since the screen came up; `tick` drives the fin's nudge. */
-  sync(age: number, tick: number, reducedMotion: boolean): void;
+  /** `age` is ticks since the screen came up. */
+  sync(age: number, reducedMotion: boolean): void;
 }
 
+/**
+ * One outlined label per row, in sun for the player and foam for rivals. The player's row also gets
+ * Pip's 7x7 head beside it once the row has settled. The head never moves, so the only cursor fin
+ * on screen is the menu's.
+ */
 function createStandings(scene: Phaser.Scene, world: World, standings: readonly RacerId[]): StandingsView {
   const rows = standings.map((id, index) => {
     const y = ROWS.y + index * ROWS.pitch;
-    const label = createSlidingLabel(scene, ROWS.x, y, { outline: true });
-    const tone: UiToneName = id === 'player' ? 'sun' : 'foam';
-    return { y, label, tone, text: rowText(world, id, index + 1), isPlayer: id === 'player' };
+    const label = createLabel(scene, ROWS.x, y, rowText(world, id, index + 1), {
+      tone: id === 'player' ? 'sun' : 'foam',
+      outline: true,
+    }).setVisible(false);
+    const head =
+      id === 'player'
+        ? scene.add.image(ROW_HEAD_X, y, UiTex.heads, PortraitFrame.player).setOrigin(0, 0).setVisible(false)
+        : null;
+    return { label, head };
   });
-  const fin = scene.add.image(ROW_FIN_X, 0, UiTex.icons, IconFrame.cursorFin).setOrigin(0, 0).setVisible(false);
   return {
-    sync(age, tick, reducedMotion) {
-      rows.forEach((row, index) => {
+    sync(age, reducedMotion) {
+      for (let index = 0; index < rows.length; index++) {
+        const row = rows[index];
+        if (!row) continue;
         const rowAge = age - index * ROW_EVERY_TICKS;
         const shown = rowAge >= 0;
-        const dx = -slideRemaining(rowAge, ROW_SLIDE.px, ROW_SLIDE.ticks, reducedMotion);
-        row.label.show(shown ? row.text : '', row.tone, dx);
-        if (!row.isPlayer) return;
-        // The fin doesn't slide with its row: starting 8 px left it would sit in the d-pad zone.
-        fin.setVisible(shown).setPosition(ROW_FIN_X + cursorNudge(tick, reducedMotion), row.y - 1);
-      });
+        const still = slideRemaining(rowAge, ROW_SLIDE.px, ROW_SLIDE.ticks, reducedMotion);
+        row.label.setVisible(shown).setOffset(-still, 0);
+        // The head waits for its row to settle, so the sliding text never runs over it.
+        row.head?.setVisible(shown && still === 0);
+      }
     },
   };
 }
@@ -144,47 +158,52 @@ function rowText(world: World, id: RacerId, place: number): string {
   return `${ordinal(place).toUpperCase().padEnd(5)}${racerName(id).toUpperCase().padEnd(6)}${time.padStart(7)}`;
 }
 
+/** What the ribbon can say. */
+interface RibbonNote {
+  text: string;
+  tone: UiToneName;
+}
+const NOT_SAVED: RibbonNote = { text: 'BEST NOT SAVED', tone: 'coral' };
+const NEW_BEST: RibbonNote = { text: 'NEW BEST', tone: 'sun' };
+
 /** What the ribbon says, if anything. A failed save wins: the best shown would be gone on reload. */
-function ribbonNote(outcome: RaceOutcome): { text: string; tone: UiToneName } | null {
-  if (outcome.saveFailed) return { text: 'BEST NOT SAVED', tone: 'coral' };
-  return outcome.newBest ? { text: 'NEW BEST', tone: 'sun' } : null;
+function ribbonNote(outcome: RaceOutcome): RibbonNote | null {
+  if (outcome.saveFailed) return NOT_SAVED;
+  return outcome.newBest ? NEW_BEST : null;
 }
 
-/** The gold ribbon under the standings. */
+/** The ribbon under the standings: an inset readout, so it never reads as a selected button. */
 interface Ribbon {
   /** `age` is ticks since the last row settled; the ribbon waits until then, then drops in. */
-  sync(note: { text: string; tone: UiToneName } | null, age: number, reducedMotion: boolean): void;
+  sync(note: RibbonNote | null, age: number, reducedMotion: boolean): void;
 }
 
 /**
- * Panels and labels are placed when created, so the drop keeps one ribbon per offset (five at
- * most) and shows only the current one.
+ * One label that drops with `setOffset`. Kit panels are placed when created, so the drop keeps a
+ * panel per offset it reaches (three at most) and shows only the current one.
  */
 function createRibbon(scene: Phaser.Scene): Ribbon {
-  const byOffset = new Map<number, { panel: Panel; label: Label }>();
-  const ribbonAt = (dy: number) => {
-    let ribbon = byOffset.get(dy);
-    if (!ribbon) {
-      const { x, y, w, h } = RIBBON;
-      const panel = createPanel(scene, x, y - dy, w, h, 'accent');
-      const label = createLabel(scene, x + w / 2, y - dy + Math.floor(h / 2), '', { align: 'center' });
-      ribbon = { panel, label };
-      byOffset.set(dy, ribbon);
+  const { x, y, w, h } = RIBBON;
+  const panels = new Map<number, Panel>();
+  const panelAt = (dy: number) => {
+    let panel = panels.get(dy);
+    if (!panel) {
+      panel = createPanel(scene, x, y - dy, w, h, 'inset');
+      panels.set(dy, panel);
     }
-    return ribbon;
+    return panel;
   };
+  panelAt(0).setVisible(false);
+  // Depth 1 keeps the text over panels made later in the drop.
+  const label = createLabel(scene, x + w / 2, y + Math.floor(h / 2), '', { align: 'center', depth: 1 });
   return {
     sync(note, age, reducedMotion) {
       const dy = note && age >= 0 ? slideRemaining(age, RIBBON_DROP.px, RIBBON_DROP.ticks, reducedMotion) : null;
-      for (const [offset, { panel, label }] of byOffset) {
-        if (offset === dy) continue;
-        panel.setVisible(false);
-        label.setVisible(false);
-      }
+      for (const [offset, panel] of panels) panel.setVisible(offset === dy);
+      label.setVisible(dy !== null);
       if (dy === null || !note) return;
-      const { panel, label } = ribbonAt(dy);
-      panel.setVisible(true);
-      label.setVisible(true).setColor(toneCss(note.tone)).setText(note.text);
+      panelAt(dy).setVisible(true);
+      label.setOffset(0, -dy).setColor(TONE_CSS[note.tone]).setText(note.text);
     },
   };
 }

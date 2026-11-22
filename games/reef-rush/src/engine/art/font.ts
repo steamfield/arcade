@@ -8,7 +8,8 @@
  * at every zoom. Callers get the small `Label` interface rather than a Phaser
  * object.
  */
-import Phaser from 'phaser';
+// Type-only, so view modules that build on labels stay importable in unit tests without a browser.
+import type Phaser from 'phaser';
 import { ensureFonts } from './ui/fonts.ts';
 import { toneCss, type UiToneName } from './ui/palette.ts';
 import {
@@ -84,13 +85,21 @@ export interface Label {
   /** Takes a CSS colour string; pass `toneCss(tone)` to stay in the UI palette. */
   setColor(color: string): Label;
   setVisible(visible: boolean): Label;
+  /**
+   * Draws the label (dx, dy) whole px away from where it was created, for slides. Offsets don't
+   * accumulate: `setOffset(0, 0)` puts it back.
+   */
+  setOffset(dx: number, dy: number): Label;
   destroy(): void;
 }
 
-/** Where a label sits and how it measures; fixed at creation. */
+/** Where a label sits and how it measures. Only the offset changes after creation. */
 interface Layout {
   x: number;
   y: number;
+  /** Whole-px slide away from (x, y), set by `setOffset`. */
+  dx: number;
+  dy: number;
   align: NonNullable<LabelOptions['align']>;
   face: Typeface;
   scale: number;
@@ -115,6 +124,8 @@ export function createLabel(
   const layout: Layout = {
     x: Math.round(x),
     y: Math.round(y),
+    dx: 0,
+    dy: 0,
     align: options.align ?? 'left',
     face: size.face,
     scale: size.scale * (options.scale ?? 1),
@@ -163,6 +174,15 @@ function wrap(layout: Layout, layers: Layers, initialText: string, initialColor:
       layers.glyphs.setVisible(visible);
       return label;
     },
+    setOffset(dx, dy) {
+      const x = Math.round(dx);
+      const y = Math.round(dy);
+      if (x === layout.dx && y === layout.dy) return label;
+      layout.dx = x;
+      layout.dy = y;
+      place(layout, layers, text);
+      return label;
+    },
     destroy() {
       for (const { object } of layers.ink) object.destroy();
       layers.glyphs.destroy();
@@ -177,12 +197,17 @@ function wrap(layout: Layout, layers: Layers, initialText: string, initialColor:
  */
 function place(layout: Layout, layers: Layers, text: string): void {
   const { width, height } = measureText(layout.face, text, layout.scale);
-  const left = { left: layout.x, center: layout.x - Math.floor(width / 2), right: layout.x - width }[layout.align];
-  const top = layout.align === 'center' ? layout.y - Math.floor(height / 2) : layout.y;
+  const x = layout.x + layout.dx;
+  const y = layout.y + layout.dy;
+  const left = layout.align === 'center' ? x - Math.floor(width / 2) : layout.align === 'right' ? x - width : x;
+  const top = layout.align === 'center' ? y - Math.floor(height / 2) : y;
   layers.glyphs.setPosition(left, top);
   for (const { object, dx, dy } of layers.ink) object.setPosition(left + dx * layout.scale, top + dy * layout.scale);
 }
 
 function toColour(css: string): number {
-  return Phaser.Display.Color.HexStringToColor(css).color;
+  const colour = Number.parseInt(css.replace('#', ''), 16);
+  if (!/^#?[0-9a-f]{6}$/i.test(css) || Number.isNaN(colour))
+    throw new Error(`Label colour must be a 6-digit hex string like '#ffc53a'; got '${css}'. Use toneCss(tone).`);
+  return colour;
 }

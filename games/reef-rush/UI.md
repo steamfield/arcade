@@ -52,13 +52,15 @@ Every rect below stays clear of all three zones on every device, so the layout n
 
 | Element | Rect | Kit |
 | --- | --- | --- |
-| Place panel | 6, 6, 56, 24 | `accent` panel; portrait at (10, 10); display numeral plus suffix ("4TH", 26 wide) at (28, 12) |
+| Place panel | 6, 6, 56, 24 | `accent` panel; portrait at (10, 10); display numeral plus suffix ("4TH", 26 wide) at (28, 12). The numeral is hidden during the countdown (logic only places racers once they move) and the first racing frame sets it without a pop |
 | Place change arrow | 6, 34, 9, 9 | `arrowUp` / `arrowDown`, under the place panel |
 | Timer | 66, 6, 52, 15 | `inset` panel; text centred, top at y 10 |
-| Kick / power-up well | 66, 23, 61, 17 | `inset` panel; icons at y 27 and x 70, 81, 92, 103, 114 (kick, burst, a stack of 3) |
+| Kick / power-up well | 66, 23, 61, 17 | `inset` panel; icons at y 27 and x 70, 81, 92, 103, 114 (kick, burst, a stack of 3). Kick and burst show at 50% opacity when not ready (`hud.test.ts` holds that to 3:1 on the well). While the burst recharges a 1 px `dim` ring around it (x 80-90, y 26-36) fills clockwise from top centre; a ready burst is the icon at full opacity with no ring. An empty slot shows a 3x3 `dim` socket at its centre. No divider: x 90-91 is the ring's column and the gap |
 | Progress strip | 122, 6, 112, 15 | `inset` panel; 7x7 `ui-heads` at y 10, travelling over x 126-223 |
 | Finish flag | 236, 9, 9, 9 | `finishFlag` at the strip's end, clear of the back link |
-| Splash | centred on (160, 62) | display at 2x, `outline: true`, foam or sun; the widest (FINAL STRETCH) covers x 53-267, y 50-74 |
+| Splash | centred on (160, 62) | display at 2x, `outline: true`; countdown and DNF in foam (coral isn't allowed over the water), GO / FINAL STRETCH / FINISH in sun; the widest (FINAL STRETCH) covers x 53-267, y 50-74 |
+| Caption | centred on (160, 45) | text, foam, outlined: TRAPPED!, STUNNED!, SLOWED BY INK, or an off-screen bubble's direction |
+| Combo name | centred on x 168, y follows the player | display for 10 ticks then text, sun, outlined. x 168 is the middle of the safe column (x 108-228). Its nearest edge stays 16 px from the player's body centre (half an inflated puffer plus 4), above the player when that fits under the caption line, else below, always within y 50-174 (`comboCentreY`) |
 
 ```
  6       62 66        118 122                      234 236   248
@@ -75,17 +77,23 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | Element | Rect | Notes |
 | --- | --- | --- |
 | Logo | 67, 28, 186, 30 | `ui-logo` at 2x |
-| Racer lane | 0, 62, 320, 12 | racers swim past left to right (sprites, not text) |
-| Race button | 128, 82, 64, 15 | cursor fin at x 117-125 |
-| PRESS A | 140, 104, 41, 7 | foam, outlined, blinks |
-| Best card | 110, 120, 100, 24 | `raised`; medal at (114, 125); "BEST 2ND" in dim at (130, 124); time in foam at (130, 133) |
+| Racer lane | 0, 62, 320, 12 | racers swim past left to right (sprites, not text); still under reduced motion |
+| Race button | 120, 82, 80, 15 | cursor fin at x 109-117 |
+| Sound button | 120, 99, 80, 15 | SOUND ON / SOUND OFF, changes the moment the setting does |
+| Motion button | 120, 116, 80, 15 | MOTION FULL / MOTION LESS. "MOTION REDUCED" is 83 px, too wide for a button whose fin clears the d-pad zone with the column centred on the logo |
+| PRESS A | 140, 137, 41, 7 | touch screens only (`?touch=1` or a coarse pointer, the rule `@arcade/input` mounts the controls by); on a keyboard A is a move key. Foam, outlined, blinks. 6 px clear of the buttons and the card so it reads as a hint |
+| Best card | 110, 150, 100, 24 | `raised`; medal at (114, 155), or Pip's portrait for a 4th-place best; "BEST 2ND" in dim at (130, 154); time in foam at (130, 163) |
+
+All three buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108).
 
 ```
                                             (back link)
               R E E F   R U S H   (2x)
   ~ ~ racers ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
-                >[ RACE ]
-                 PRESS A
+               >[    RACE    ]
+                [  SOUND ON  ]
+                [ MOTION FULL]
+                   PRESS A        (touch only)
               [(2) BEST 2ND  ]
  (d-pad)      [    0:24.46   ]                   (A/B)
 ```
@@ -98,8 +106,8 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | 1st plinth | 140, 44, 40, 32 | `accent`; portrait at (152, 27); medal at (154, 47) |
 | 2nd plinth | 96, 50, 40, 26 | `raised`; portrait at (108, 33); medal at (110, 53) |
 | 3rd plinth | 184, 56, 40, 20 | `raised`; portrait at (196, 39); medal at (198, 59) |
-| Standing rows | 120, 80, 107, 7, pitch 10 | "4TH  SQUIB 0:24.46"; rivals in foam, the player in sun, all outlined; cursor fin at (109, row y - 1) on the player's row; the last row ends at y 116 |
-| Ribbon | 114, 120, 92, 15 | `accent`; "NEW BEST" in sun or "BEST NOT SAVED" in coral, otherwise hidden |
+| Standing rows | 120, 80, 107, 7, pitch 10 | "4TH  SQUIB 0:24.46"; rivals in foam, the player in sun, all outlined; Pip's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 116 (117 with its outline) |
+| Ribbon | 114, 120, 92, 15 | `inset`, so it reads as a readout and never as a selected button; "NEW BEST" in sun or "BEST NOT SAVED" in coral, otherwise hidden |
 | Race again | 122, 139, 76, 15 | button |
 | Title | 122, 158, 76, 15 | button; cursor fin at x 111-119 |
 
@@ -110,14 +118,15 @@ Every rect below stays clear of all three zones on every device, so the layout n
          +------+| (1)  |
          | (2)  ||      |+------+
          +------++------+| (3)  |
- (d-pad)     > 1ST  SQUIB 0:14.78
+ (d-pad)       1ST  SQUIB 0:14.78
                2ND  TESS  0:14.96 ...
+            @  4TH  PIP   0:24.46
             [   NEW BEST   ]
            >[  RACE AGAIN  ]
             [    TITLE     ]                    (A/B)
 ```
 
-## Motion (ticks at 60/s; `ui/motion.ts` owns the code)
+## Motion (ticks at 60/s)
 
 | Motion | Normal | Reduced motion |
 | --- | --- | --- |
@@ -126,9 +135,10 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | Countdown numeral | drops 6 px in over 6 ticks, then holds | appears in place |
 | GO / FINAL STRETCH / FINISH | slides in 12 px from the right over 8 ticks, holds 45 | appears, holds 45 |
 | PRESS A blink | 32 on / 16 off | always on |
-| Results rows | one row every 20 ticks, each sliding in 8 px from the left over 6 ticks | one row every 20 ticks, no slide |
-| Ribbon | drops 4 px in over 10 ticks after the last row | appears |
+| Results rows | one row every 20 ticks, each sliding in 8 px from the left over 6 ticks (from x 112, clear of the d-pad zone) | one row every 20 ticks, no slide |
+| Ribbon | drops 2 px in over 10 ticks after the last row, from y 118 so it never covers the last row's outline | appears |
 
 - Nothing flashes more than 3 times a second.
 - Positions animate from the logic tick, never from Phaser tweens, so captures repeat.
+- `ui/motion.ts` owns the kit's own motion (the cursor fin). Screen slides use `slideRemaining` in `view/race-text.ts` and move labels with `Label.setOffset`; the splash timing is `splashFrame` there, the place pop `trackPlace` in `view/hud.ts`.
 - Every slide starts and ends clear of the safe zones.

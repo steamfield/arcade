@@ -2,8 +2,8 @@
  * The race HUD, built from the UI kit to the rects in UI.md and read from the
  * world each frame. Along the top: the place panel (the player's portrait and
  * place numeral, with an arrow and a tone pop when the place changes), the
- * timer, the kick / power-up well (kick readiness, the burst icon inside its
- * cooldown ring, and the three stack slots), and a track-style progress strip
+ * timer, the kick / power-up well (kick readiness, the burst icon with a
+ * cooldown ring while it recharges, and the three stack slots), and a track-style progress strip
  * with one head per racer and the finish flag. Every piece sits clear of the
  * back link and the touch controls.
  *
@@ -17,14 +17,15 @@ import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
 import { BURST_COOLDOWN_TICKS, STACK_MAX } from '../../logic/powerups/tuning.ts';
 import { playerOf } from '../../logic/racers.ts';
-import { type ComboName, type PowerUpKind, type RacerId, TILE, type World } from '../../logic/types.ts';
+import { type ComboName, type PowerUpKind, type RacePhase, type RacerId, TILE, type World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { IconFrame, type IconFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
-import { toneCss, UiColour, UiRamp, type UiToneName } from '../art/ui/palette.ts';
+import { UiRamp, type UiToneName } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
+import { DISPLAY_FACE, TEXT_FACE } from '../art/ui/typeface.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { Layer } from './layers.ts';
-import { createRaceSplash, formatRaceTime, ordinal, slideRemaining } from './race-text.ts';
+import { createRaceSplash, formatRaceTime, ordinal, slideRemaining, TONE_CSS } from './race-text.ts';
 
 /** The race HUD; `onEvents` catches combo bursts and `sync` redraws everything else from the world. */
 export interface Hud {
@@ -48,16 +49,23 @@ const STRIP = { x: 122, y: 6, w: 112, h: 15, headY: 10, headFrom: 126, headTo: 2
 const FLAG_AT = { x: 236, y: 9 } as const;
 const ICON_SIZE = 9;
 /**
- * Below the splash the safe column is x 108-228, so text there centres on 168, not the screen's 160.
- * Low in that column, under where the camera usually holds the player.
+ * The combo name centres on x 168, the middle of the safe column (x 108-228) that stays clear of
+ * the d-pad and A/B zones at every height. Its y follows the player (see `comboCentreY`).
  */
-const COMBO_CENTRE = { x: 168, y: 104 } as const;
+const COMBO_X = 168;
+/**
+ * How far the combo's nearest edge stays from the player's body centre: half an inflated puffer
+ * (24 px tall at 2x) plus a 4 px gap, so the name never covers the sprite.
+ */
+const COMBO_CLEARANCE = 16;
+/** The band the combo may use: under the caption line (y 42-48) and above the bottom margin. */
+const COMBO_BAND = { top: 50, bottom: 174 } as const;
 const CAPTION_CENTRE = { x: 160, y: 45 } as const;
 
 /** UI.md "Motion": a place arrow slides 4 px in over 8 ticks; the arrow and the numeral's tone last 30. */
 const PLACE_POP = { slidePx: 4, slideTicks: 8, ticks: 30 } as const;
-/** An icon that is not ready shows at this opacity. */
-const NOT_READY_ALPHA = 0.35;
+/** An icon that is not ready shows at this opacity; `hud.test.ts` holds it to 3:1 on the well. */
+export const NOT_READY_ALPHA = 0.5;
 const COMBO_TICKS = 60;
 /** The combo name is drawn in the display face for this many ticks, then settles to the text face. */
 const COMBO_POP_TICKS = 10;
@@ -82,6 +90,7 @@ const POWER_UP_ICON: Record<PowerUpKind, IconFrameKey> = {
 export function createHud(scene: Phaser.Scene, reducedMotion: boolean): Hud {
   const place = createPlacePanel(scene, reducedMotion);
   const timer = createTimer(scene);
+  let shownTime = -1;
   const well = createWell(scene);
   const strip = createProgressStrip(scene);
   const splash = createRaceSplash(scene, reducedMotion);
@@ -102,12 +111,17 @@ export function createHud(scene: Phaser.Scene, reducedMotion: boolean): Hud {
     },
     sync(world) {
       place.sync(world);
-      timer.setText(formatRaceTime(raceTime(world)));
+      const time = raceTime(world);
+      // Only format when the shown time changes: frames can outnumber ticks.
+      if (time !== shownTime) timer.setText(formatRaceTime(time));
+      shownTime = time;
       well.sync(world);
       strip.sync(world);
       splash.sync(world);
-      combo.sync(world.tick);
-      caption.setText(captionText(world, scene.cameras.main.worldView));
+      const view = scene.cameras.main.worldView;
+      const body = playerOf(world).body;
+      combo.sync(world.tick, body.y + body.h / 2 - view.y);
+      caption.setText(captionText(world, view));
     },
   };
 }
@@ -122,7 +136,36 @@ function addIcon(scene: Phaser.Scene, x: number, y: number, frame: IconFrameKey)
   return scene.add.image(x, y, UiTex.icons, frame).setOrigin(0, 0).setScrollFactor(0).setDepth(Layer.hud);
 }
 
-/** The gold place panel: portrait, place numeral, and the change arrow under it. */
+/** What the place panel knows about the player's place between frames. */
+export interface PlaceTrack {
+  /** The place the panel last showed, or null when there is no baseline yet (the countdown). */
+  shown: number | null;
+  /** The last change: which way and on what world tick. */
+  change: { up: boolean; at: number } | null;
+}
+
+/**
+ * Updates `track` for this frame. The countdown keeps no baseline (logic only places racers once
+ * they move), the first racing frame sets one without a pop, and every later change is a pop.
+ */
+export function trackPlace(track: PlaceTrack, phase: RacePhase, place: number, tick: number): void {
+  if (phase === 'countdown') {
+    track.shown = null;
+    track.change = null;
+    return;
+  }
+  if (track.shown !== null && place !== track.shown) track.change = { up: place < track.shown, at: tick };
+  track.shown = place;
+}
+
+/** True while a place change is still popping `tick` ticks into the race. */
+export function isPlacePopping(track: PlaceTrack, tick: number): boolean {
+  if (!track.change) return false;
+  const age = tick - track.change.at;
+  return age >= 0 && age < PLACE_POP.ticks;
+}
+
+/** The gold place panel: portrait, place numeral (hidden in the countdown), and the change arrow under it. */
 function createPlacePanel(scene: Phaser.Scene, reducedMotion: boolean): WorldView {
   const { x, y, w, h } = PLACE_PANEL;
   createPanel(scene, x, y, w, h, 'accent', { fixed: true, depth: Layer.hud });
@@ -138,22 +181,21 @@ function createPlacePanel(scene: Phaser.Scene, reducedMotion: boolean): WorldVie
     depth: Layer.hud,
   });
   const arrow = addIcon(scene, ARROW_AT.x, ARROW_AT.y, IconFrame.arrowUp).setVisible(false);
-  let shownPlace: number | null = null;
-  let change: { up: boolean; at: number } | null = null;
+  const track: PlaceTrack = { shown: null, change: null };
+  let numeralPlace: number | null = null;
 
   return {
     sync(world) {
-      const { place } = playerOf(world);
-      if (shownPlace !== null && place !== shownPlace) change = { up: place < shownPlace, at: world.tick };
-      shownPlace = place;
-      numeral.setText(ordinal(place));
-      const age = change ? world.tick - change.at : Number.POSITIVE_INFINITY;
-      const popping = change !== null && age >= 0 && age < PLACE_POP.ticks;
-      numeral.setColor(toneCss(popping ? placePopTone(change?.up ?? true) : 'sun'));
+      trackPlace(track, world.race.phase, playerOf(world).place, world.tick);
+      if (track.shown !== numeralPlace) numeral.setText(track.shown === null ? '' : ordinal(track.shown));
+      numeralPlace = track.shown;
+      const popping = isPlacePopping(track, world.tick);
+      const change = track.change;
+      numeral.setColor(TONE_CSS[popping && change ? placePopTone(change.up) : 'sun']);
       arrow.setVisible(popping);
       if (!popping || !change) return;
       // The arrow travels the way the place went: up into place from below, or down from above.
-      const still = slideRemaining(age, PLACE_POP.slidePx, PLACE_POP.slideTicks, reducedMotion);
+      const still = slideRemaining(world.tick - change.at, PLACE_POP.slidePx, PLACE_POP.slideTicks, reducedMotion);
       arrow.setFrame(change.up ? IconFrame.arrowUp : IconFrame.arrowDown);
       arrow.setY(ARROW_AT.y + (change.up ? still : -still));
     },
@@ -172,36 +214,48 @@ function createTimer(scene: Phaser.Scene): Label {
   return createLabel(scene, x + w / 2, textTop + 3, '', { align: 'center', fixed: true, depth: Layer.hud });
 }
 
-/** The well: kick readiness, the burst icon in its cooldown ring, and the stack slots, oldest first. */
+/**
+ * The well: kick readiness, the burst icon (with its cooldown ring while cooling), and the stack
+ * slots, oldest first. An empty slot shows a dim socket dot, so the three-slot cap reads.
+ */
 function createWell(scene: Phaser.Scene): WorldView {
   const { x, y, w, h } = WELL;
   createPanel(scene, x, y, w, h, 'inset', { fixed: true, depth: Layer.hud });
   const kick = addIcon(scene, KICK_X, WELL_ICON_Y, IconFrame.kick);
   const ring = scene.add.graphics().setScrollFactor(0).setDepth(Layer.hud);
   const burst = addIcon(scene, BURST_X, WELL_ICON_Y, IconFrame.burst);
-  const slots = STACK_X.slice(0, STACK_MAX).map((slotX) =>
-    addIcon(scene, slotX, WELL_ICON_Y, IconFrame.jetFin).setVisible(false),
-  );
-  let drawnRing = '';
+  const slots = STACK_X.slice(0, STACK_MAX).map((slotX) => ({
+    socket: scene.add
+      .rectangle(slotX + SOCKET.inset, WELL_ICON_Y + SOCKET.inset, SOCKET.size, SOCKET.size, UiRamp.dim)
+      .setOrigin(0, 0)
+      .setScrollFactor(0)
+      .setDepth(Layer.hud),
+    icon: addIcon(scene, slotX, WELL_ICON_Y, IconFrame.jetFin).setVisible(false),
+  }));
+  let drawnCooldown = -1;
 
   return {
     sync(world) {
       const player = playerOf(world);
       kick.setAlpha(player.kickCooldown === 0 ? 1 : NOT_READY_ALPHA);
-      const hasStack = player.stack.length > 0;
-      const burstReady = player.burstCooldown === 0 && hasStack;
+      const burstReady = player.burstCooldown === 0 && player.stack.length > 0;
       burst.setAlpha(burstReady ? 1 : NOT_READY_ALPHA);
-      const ringKey = `${player.burstCooldown},${hasStack}`;
-      if (ringKey !== drawnRing) drawBurstRing(ring, player.burstCooldown, hasStack);
-      drawnRing = ringKey;
-      slots.forEach((slot, index) => {
+      if (player.burstCooldown !== drawnCooldown) drawBurstRing(ring, player.burstCooldown);
+      drawnCooldown = player.burstCooldown;
+      for (let index = 0; index < slots.length; index++) {
+        const slot = slots[index];
         const kind = player.stack[index];
-        slot.setVisible(kind !== undefined);
-        if (kind !== undefined) slot.setFrame(POWER_UP_ICON[kind]);
-      });
+        if (!slot) continue;
+        slot.socket.setVisible(kind === undefined);
+        slot.icon.setVisible(kind !== undefined);
+        if (kind !== undefined) slot.icon.setFrame(POWER_UP_ICON[kind]);
+      }
     },
   };
 }
+
+/** An empty stack slot's socket: a dim square this size, centred in the 9 px icon cell. */
+const SOCKET = { size: 3, inset: 3 } as const;
 
 /**
  * The 1 px square ring around the burst icon, as pixels walked clockwise from top centre. A ring
@@ -209,14 +263,19 @@ function createWell(scene: Phaser.Scene): WorldView {
  */
 const RING_PIXELS = squareRing(BURST_X - 1, WELL_ICON_Y - 1, ICON_SIZE + 2);
 
-/** Fills the ring as the burst cooldown runs out: gold all round when a burst is ready, empty with nothing held. */
-function drawBurstRing(ring: Phaser.GameObjects.Graphics, cooldown: number, hasStack: boolean): void {
+/**
+ * Fills the ring in dim as the burst cooldown runs out. There is no ring once the burst is ready:
+ * readiness is the icon at full strength, so nothing reads as a selection frame.
+ */
+function drawBurstRing(ring: Phaser.GameObjects.Graphics, cooldown: number): void {
   ring.clear();
-  if (cooldown === 0 && !hasStack) return;
-  const ready = cooldown === 0;
-  const lit = ready ? RING_PIXELS.length : Math.floor((1 - cooldown / BURST_COOLDOWN_TICKS) * RING_PIXELS.length);
-  ring.fillStyle(ready ? UiColour.sun : UiRamp.dim, 1);
-  for (const [px, py] of RING_PIXELS.slice(0, lit)) ring.fillRect(px, py, 1, 1);
+  if (cooldown === 0) return;
+  const lit = Math.floor((1 - cooldown / BURST_COOLDOWN_TICKS) * RING_PIXELS.length);
+  ring.fillStyle(UiRamp.dim, 1);
+  for (let index = 0; index < lit; index++) {
+    const pixel = RING_PIXELS[index];
+    if (pixel) ring.fillRect(pixel[0], pixel[1], 1, 1);
+  }
 }
 
 /** Every pixel on the edge of a `size` square at (left, top), clockwise from the middle of the top edge. */
@@ -262,28 +321,45 @@ function createProgressStrip(scene: Phaser.Scene): WorldView {
 /** The combo name over the water, started by the player's combo bursts. */
 interface ComboNameView {
   fired(name: ComboName, tick: number): void;
-  sync(tick: number): void;
+  /** `playerY` is the player's body centre in screen px. */
+  sync(tick: number, playerY: number): void;
+}
+
+/**
+ * Where the combo name centres vertically, in screen px, for text `height` px tall: above the
+ * player when there is room under the caption line, else below, kept inside the band either way.
+ */
+export function comboCentreY(playerY: number, height: number): number {
+  const half = Math.ceil(height / 2);
+  const above = playerY - COMBO_CLEARANCE - half;
+  if (above - half >= COMBO_BAND.top) return Math.round(above);
+  const below = Math.min(playerY + COMBO_CLEARANCE + half, COMBO_BAND.bottom - half);
+  return Math.round(Math.max(below, COMBO_BAND.top + half));
 }
 
 /** The combo name: the display face for its first ticks, then the text face, then gone. */
 function createComboName(scene: Phaser.Scene, reducedMotion: boolean): ComboNameView {
   const options = { tone: 'sun', outline: true, align: 'center', fixed: true, depth: Layer.banner } as const;
-  const big = createLabel(scene, COMBO_CENTRE.x, COMBO_CENTRE.y, '', { ...options, size: 'display' });
-  const small = createLabel(scene, COMBO_CENTRE.x, COMBO_CENTRE.y, '', options);
+  // Anchored at y 0 and moved with setOffset, so the name can follow the player.
+  const big = createLabel(scene, COMBO_X, 0, '', { ...options, size: 'display' });
+  const small = createLabel(scene, COMBO_X, 0, '', options);
   let text = '';
   let firedAt = Number.NEGATIVE_INFINITY;
   return {
-    fired(name: ComboName, tick: number) {
+    fired(name, tick) {
       text = COMBO_TEXT[name];
       firedAt = tick;
     },
-    sync(tick: number) {
+    sync(tick, playerY) {
       const age = tick - firedAt;
       const shown = age >= 0 && age < COMBO_TICKS;
       // Under reduced motion the name doesn't jump between sizes; it shows settled.
       const popping = !reducedMotion && age < COMBO_POP_TICKS;
       big.setText(shown && popping ? text : '');
       small.setText(shown && !popping ? text : '');
+      if (!shown) return;
+      const label = popping ? big : small;
+      label.setOffset(0, comboCentreY(playerY, popping ? DISPLAY_FACE.height : TEXT_FACE.height));
     },
   };
 }
