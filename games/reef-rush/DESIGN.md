@@ -14,6 +14,7 @@ This is the repo's first full game and its reference layout: logic in feature fo
 | ------------- | ----------------- | ----- |
 | swim          | Arrow keys, WASD  | d-pad |
 | kick, confirm | Space, Z, Enter   | A     |
+| menu up/down  | Up/Down, W/S      | d-pad |
 | burst         | X, Shift          | B     |
 
 ## Rules worth knowing
@@ -25,9 +26,16 @@ This is the repo's first full game and its reference layout: logic in feature fo
 
 ## Scenes and launch parameters
 
-- `title`: Race, and your best time.
-- `play`: the race. `?scene=play` skips the title. `?seed=7` changes rival behaviour.
-- `?debug=1` draws hitboxes and the tick.
+- `boot`: builds every texture (`engine/art/index.ts`), then routes.
+- `title`: the Race option, and your best time and place when you have one.
+- `race`: 3-2-1-GO countdown, then the race. HUD: big place, timer, kick-ready pip, and a progress strip with one marker per racer (Pip yellow circle, Tess green square, Squib purple triangle, Bo orange diamond). The camera follows you with a deadzone and lookahead. 90 ticks after the race ends you go to results.
+- `results`: standings with names and times (DNF if not finished), your row highlighted, "New best!" or "Best time not saved", then Race again or Title.
+- `?scene=race` (or `?scene=play`) skips the title. `?seed=7` changes rival behaviour.
+- `?debug=1` draws hitboxes from logic state and shows the tick and your tile.
+
+## Engine layout
+
+`engine/game.ts` wires Phaser to the shell. `engine/runtime.ts` is the only place logic ticks: it reads input, steps the world or the menu, drains each tick's events once and hands them to audio (`audio/index.ts`, silent for now) and to views that listen. Scenes in `engine/scenes/` build views from `engine/view/` and sync them every frame. Text goes only through `art/font.ts` `createLabel`; textures and animations only through `art/keys.ts`.
 
 ## Course format
 
@@ -35,4 +43,4 @@ ASCII in `src/logic/level/levels.ts`, documented in `src/logic/level/parse.ts`.
 
 ## Scenarios
 
-`countdown-holds-racers`, `race-to-finish`.
+`countdown-holds-racers`, `race-to-finish`, `results-after-finish`, `dnf-results`, `race-again`. The top route they share is `TOP_ROUTE` in `scenarios/kit.ts`.
