@@ -174,20 +174,23 @@ Depends on: phase 2
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/reef-rush/src/logic/powerups/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/modifiers.ts | contracts | | opus | pending | | |
 | b | M | games/reef-rush/src/logic/hazards/, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/ai/steer.ts, games/reef-rush/src/logic/race/flowfield.ts, games/reef-rush/src/logic/race/coral.ts | contracts | | opus | pending | | |
-| c | M | games/reef-rush/src/engine/view/pickup-view.ts, games/reef-rush/src/engine/view/hazard-view.ts, games/reef-rush/src/engine/view/powerup-view.ts, games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/scenes/race.ts, games/reef-rush/scenarios/ | contracts | | sonnet | pending | | |
+| c | M | games/reef-rush/src/engine/view/pickup-view.ts, games/reef-rush/src/engine/view/hazard-view.ts, games/reef-rush/src/engine/view/powerup-view.ts, games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/scenes/race.ts, games/reef-rush/scenarios/clam-stack.ts, games/reef-rush/scenarios/cannonball-combo.ts, games/reef-rush/scenarios/hit-pops-newest.ts | contracts | | sonnet | pending | | |
 
 ### Phase 4: pixel art and chiptune audio
 
 Demo: `pnpm arcade see reef-rush --scene race --at 0,240` shows final sprites, animated tiles, parallax and light; dev build plays the title and race themes and SFX. Music is judged by ear: the phase tag message asks the user to listen.
 Depends on: phase 2
 
-Runs alongside phase 3. Its lanes own only files behind the seams phase 2 built (`art/index.ts`, `art/font.ts`, `view/backdrop.ts`, `audio/index.ts`), so it never touches phase 3's files. `art/keys.ts` declares phase 3's sprites in phase 2.
+Runs alongside phase 3.
+Phase 4 scaffold (orchestrator, before dispatch): `audio/notation.ts` stub exporting the final `Song`/`NoteEvent`/`Channel` types and `parseSong` (throws not implemented), so 4/b and 4/c share it; `AudioPort` gains `onRaceProgress(fraction: number)` and the runtime calls it each racing tick with the player's progress fraction; `EngineEvent` gains `audio.played { key; kind: 'sfx' | 'song' }`.
+
+Its lanes own only files behind the seams phase 2 built (`art/index.ts`, `art/font.ts`, `view/backdrop.ts`, `audio/index.ts`), so it never touches phase 3's files. `art/keys.ts` declares phase 3's sprites in phase 2.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/reef-rush/src/engine/art/index.ts, games/reef-rush/src/engine/art/font.ts, games/reef-rush/src/engine/art/pixel.ts, games/reef-rush/src/engine/art/palettes.ts, games/reef-rush/src/engine/art/sprites/, games/reef-rush/src/engine/view/backdrop.ts | contracts | | opus | pending | | |
-| b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts | contracts | | opus | pending | | |
-| c | M | games/reef-rush/src/engine/audio/songs/, games/reef-rush/src/engine/audio/notation.ts | contracts | | opus | pending | | |
+| b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/scenarios/audio-plays.ts | contracts | | opus | pending | | |
+| c | M | games/reef-rush/src/engine/audio/songs/, games/reef-rush/src/engine/audio/notation.ts, games/reef-rush/src/engine/audio/notation.test.ts | contracts | | opus | pending | | |
 
 ### Phase 5: the full ocean course, difficulty tuning, juice and settings
 
@@ -261,6 +264,51 @@ Depends on: phase 3, phase 4
 - Decisions already made: Phaser 4.2.1 (read `node_modules/phaser/skills/` for tilemaps, cameras, text, animations before writing them; the repo's `.claude/skills/phaser-game` wins on how Phaser fits the repo); logic ticks only in the FixedStep callback; no Phaser input, clocks or tweens for gameplay; engine effects only from drained events; 320x180, integer zoom, `pixelArt: true`.
 - Out of scope: real pixel art, sound, particles and screen shake, power-ups, settings UI (settings are read and stored only), changes to logic outside `records.ts`.
 - Done when: `pnpm arcade check reef-rush` and `pnpm arcade smoke reef-rush` pass; `pnpm arcade see reef-rush --scenario race-to-finish --at 0,200,600,end` and the same with `--mobile` are reviewed and the HUD is readable and clear of the touch overlay and back link; DESIGN.md is updated for scenes, controls and scenarios; check-lane is clean.
+
+### Lane 4/a brief: pixel art, pixel font and backdrop
+
+- Goal: replace every placeholder texture with original pixel art authored as palette-indexed text, swap the HUD font to a pixel font, and replace the placeholder backdrop, all behind the seams phase 2 built (`buildTextures`, `createLabel`, `createBackdrop`), so no scene or view file changes. Raise the bar on 8-bit: tight palettes, readable silhouettes, animation, depth.
+- Interface:
+  - `art/palettes.ts`: named palettes, each at most 4 colours plus transparent per sprite (NES-style constraint), chosen so player, rivals, hazards and pickups read first and the background recedes. Racers stay distinguishable by silhouette and palette in grayscale (Pip round brass helmet, Tess shell, Squib tentacles, Bo diving bell).
+  - `art/pixel.ts`: `drawSprite(scene, key, rows: readonly string[], palette)` and `drawSheet(scene, key, frames, palette)`: turns text rows (one char per pixel, `.` transparent, digits index the palette) into a texture or spritesheet via Graphics + generateTexture. Throws a plain Error naming the key and row when a row is ragged or uses an index the palette lacks.
+  - `art/sprites/*.ts`: one file per family (racers, terrain, pickups, hazards, powerups, hud), data only, every key in `art/keys.ts` covered with the frame counts keys.ts declares.
+  - `art/index.ts`: `buildTextures(scene)` builds everything from sprites and registers animations once. `art/placeholder.ts` is deleted when nothing references it.
+  - `art/font.ts`: a 5x7 (or 4x6) pixel font authored the same way, uppercase, digits and `:.!?/-+%'`, rendered through Phaser `BitmapText` or per-glyph images behind the existing `createLabel` signature; crisp at 1x, outlined or panel-backed so HUD text keeps 4.5:1 contrast over any background.
+  - `view/backdrop.ts`: `createBackdrop` body: a depth gradient (lighter near the surface row, darker toward the floor), 3 parallax layers (far reef silhouettes, mid kelp forest, near drifting particles), god-ray light shafts from the surface that sway slowly, and a caustics shimmer band near the top. Advanced per runtime tick where it is deterministic, honouring `reducedMotion` (static rays, no parallax drift).
+- Behavior: animated tiles (kelp sway 2 frames, current flow 2 frames per direction, jellyfish pulse) use registered animations; animation timing may use Phaser's clock (visual only). `?debug=1` unaffected. No asset files: everything is generated at boot, and boot stays under 200 ms of texture generation on desktop (measure once with performance marks in a see run, and remove the marks).
+- Decisions already made: originality (no sprites resembling existing games' characters); 16 px tiles; racer bodies 12x10 with sprites up to 16x12 drawn around them; palette constraint per sprite; colour never carries meaning alone (game-feel skill section 5).
+- Out of scope: particles and screen shake (phase 5), sound, any logic, view files other than backdrop.ts.
+- Done when: gate passes; `pnpm arcade see reef-rush --scenario race-to-finish --at 0,200,600,end` and `--mobile` captures reviewed (you read frames.png): racers, hazards and pickups readable at 1x, HUD text crisp and legible, background clearly behind gameplay; a grayscale check of one capture still distinguishes the four racers; check-lane clean.
+
+### Lane 4/b brief: chiptune synth, sequencer and SFX
+
+- Goal: a small WebAudio chip synth behind `audio/index.ts` `createAudio`, playing songs written in the notation lane 4/c owns and short SFX for gameplay events, emitting `audio.played` so tests can hear it.
+- Interface:
+  - `audio/synth.ts`: four voices like classic hardware: two pulse channels with duty 12.5/25/50/75%, a triangle bass, and a noise channel (white noise buffer with short/long decay for kick, snare, hat). Per-note volume envelope (attack, decay, sustain level, release), optional vibrato and pitch slide. One master gain with mute. Pulse waves via `PeriodicWave` built once per duty.
+  - `audio/sequencer.ts`: schedules a `Song` (type from `audio/notation.ts`) with lookahead scheduling on the AudioContext clock (the standard 25 ms timer, 100 ms schedule-ahead pattern), loops from the song's loop point seamlessly, supports `setTempoScale(1.0..1.15)` for the final-stretch lift without restarting, and stops/crossfades songs over 100 ms. Music timing uses the AudioContext clock (audio only; never gameplay).
+  - `audio/sfx.ts`: one short sound per event: countdown beep (3/2/1 low, GO high), kick whoosh, bump thud, place gained / lost blips, finish fanfare sting, coral break crunch, clam open, power-up gain arpeggio, power-up lost, burst whoosh plus per-combo accent, hit, stun, pearl ping (pitch rises with consecutive pearls), menu move and confirm. Pitch varies ±5% with a cosmetic rng seeded from launch params.
+  - `audio/adapter.ts`: maps drained events and scene changes to SFX and songs (title song on title, race song on race start, tempo lift when the player passes 75% progress, win jingle for 1st, lose jingle otherwise, results loop); emits `audio.played { key, kind: 'sfx' | 'song' }` once per SFX and once per song start or section change, never per note, and only when the context is running. Exposes nothing beyond `AudioPort`.
+  - `audio/index.ts`: `createAudio(ctx, settings)` wires synth, sequencer, sfx, adapter; registers the AudioContext with `ctx.registerAudioContext`; reports node creation failures to `ctx.reportError`.
+- Behavior: mute from settings is honoured immediately; reduced motion does not affect audio; a suspended context before the first gesture plays nothing and emits nothing; audio never blocks `idle()`. Under test mode, events still emit when the context is running (headless Chromium runs it), so a scenario can assert `audio.played` for the race song and the countdown beeps.
+- Decisions already made: no audio files; `audio.played` volume bounded by the 1000-event log (per sound, not per note); EngineEvent union gains `audio.played` (adapter emits through the runtime's log passed in at creation).
+- Out of scope: composing songs (lane 4/c; use a 4-bar test song until 4/c lands, and the integration of 4/c's songs is a merge, since 4/c owns `songs/` and `notation.ts`), settings UI.
+- Done when: gate passes; a scenario `audio-plays` asserts the race song starts and countdown beeps emit `audio.played`; you listened to nothing (you can't), so describe in the report what the user should listen for; check-lane clean.
+
+### Lane 4/c brief: the soundtrack
+
+- Goal: write the game's music as data: catchy, original, hummable chiptune that a player remembers after one race. The user named classic console and handheld themes (the Mario and Pokemon Game Boy themes) as the bar for catchiness; match that quality without quoting or paraphrasing any existing melody, bass line or chord progression signature.
+- Interface:
+  - `audio/notation.ts`: the `Song` type and a parser from compact text to note events: per channel (pulse1, pulse2, triangle, noise) a line of tokens like `C5/8 E5/8 G5/4. r/8 [x2]`, with tempo, time signature, loop point, per-channel duty and envelope, slides and vibrato marks. `parseSong(source): Song` throws a plain Error naming the channel, bar and token on bad input. Pure TypeScript, no WebAudio; unit tested (`audio/notation.test.ts`): durations, dotted notes, rests, repeats, ties, bar-length validation (every bar of every channel sums to the time signature), loop point.
+  - `audio/songs/race.ts`, `title.ts`, `win.ts`, `lose.ts`, `results.ts`: data only, each a source string plus metadata.
+  - `audio/songs/songs.test.ts`: every song parses, bars balance across channels, the race song loops at a bar line, melodies stay in a singable range (lead within about an octave and a half), and each song's lead motif recurs (the hook is stated at least 3 times in the race song).
+- Composition rules (these are the brief, not suggestions):
+  - Race theme, about 130-150 BPM, major key with a bright, swimming feel; structure: 2-bar intro (drums and bass), A section 8 bars (the hook: a 1-2 bar motif, stated, answered, stated, resolved), A' 8 bars (hook varied: same rhythm, higher or altered ending), B section 8 bars contrasting in register and rhythm (longer notes, a different chord colour, e.g. move to the IV or relative minor), then a 4-bar turnaround back into A. Loop seamlessly from the turnaround to A.
+  - Counter-melody on pulse 2 (harmony in thirds/sixths or a rhythmic arpeggio), never fighting the lead; triangle bass with movement (walking or octave bounce), noise drums with a clear backbeat and fills at section ends.
+  - Hook test: the lead of A's first 2 bars is singable on its own, uses mostly stepwise motion with one memorable leap, and has a distinctive rhythm (syncopation or a repeated rhythmic cell).
+  - Title theme: same hook, slower and lighter (so the race theme feels like a payoff); win jingle 2-3 s ending on the tonic with a flourish; lose jingle 2-3 s, wistful but not sad; results loop gentle and short.
+  - Originality: do not reproduce any existing tune. If a phrase reminds you of a known theme, change it.
+- Out of scope: synthesis and playback (lane 4/b), SFX.
+- Done when: notation and song tests pass; typecheck and lint pass; the report includes, for the race theme, the hook written out in note names and a one-line description of each section, so the user can judge it before hearing it; check-lane clean.
 
 ## Log
 
