@@ -157,7 +157,7 @@ export interface RacerStatus {
   trapped: number;
   /** Puffer burst: larger hitbox that breaks coral and hits racers, urchin-proof. */
   inflated: number;
-  /** Jet Fins burst: velocity held along `dashDir`. */
+  /** Jet Fins burst: velocity held along `dashDir`. A landed hit ends it (`applyHit` sets 0). */
   dashing: number;
   /** Pearl boost: swims with more force. */
   boost: number;
@@ -186,6 +186,11 @@ export interface Racer {
   status: RacerStatus;
   /** Unit direction of the current dash; meaningful only while `status.dashing` is above 0. */
   dashDir: Vec;
+  /**
+   * Combos fixed when the current dash was fired, so gaining or losing a kind mid-dash never
+   * starts one; empty when no dash is running. A hit that knocks off half of a pair removes it.
+   */
+  dashCombos: ComboName[];
 }
 
 export type RacePhase = 'countdown' | 'racing' | 'finished';

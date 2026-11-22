@@ -27,7 +27,7 @@ const MAX_SUBSTEPS = 64;
  */
 export function moveBody(body: Body, level: Level, broken: ReadonlySet<number>, dt: number): void {
   pushOutOfSolids(body, level, broken);
-  const speed = Math.hypot(body.vx, body.vy);
+  const speed = Math.sqrt(body.vx * body.vx + body.vy * body.vy);
   if (speed === 0) return;
 
   const steps = Math.min(MAX_SUBSTEPS, Math.max(1, Math.ceil((speed * dt) / MAX_STEP)));

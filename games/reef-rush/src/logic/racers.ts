@@ -45,12 +45,13 @@ export function hitbox(racer: Racer): Box {
 }
 
 /** A racer's item fields at the start line: nothing held, no statuses, burst ready. */
-export function noItems(): Pick<Racer, 'stack' | 'burstCooldown' | 'pearls' | 'status' | 'dashDir'> {
+export function noItems(): Pick<Racer, 'stack' | 'burstCooldown' | 'pearls' | 'status' | 'dashDir' | 'dashCombos'> {
   return {
     stack: [],
     burstCooldown: 0,
     pearls: 0,
     status: { stunned: 0, invulnerable: 0, slowed: 0, trapped: 0, inflated: 0, dashing: 0, boost: 0 },
     dashDir: { x: 0, y: 0 },
+    dashCombos: [],
   };
 }
