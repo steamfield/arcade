@@ -1,12 +1,12 @@
 /**
  * The one entry point for the game's art: builds every texture in `keys.ts`
- * and registers the global animations. Boot calls it once. Placeholder shapes
- * stand in for now; phase 4 swaps the body for pixel art behind the same call.
+ * from the palette-indexed pixel text in `sprites/` and registers the global
+ * animations. Boot calls it once.
  */
 import type Phaser from 'phaser';
 import { Anim, type AnimKey, Frame, Tex, type TexKey } from './keys.ts';
-import { drawSheet } from './placeholder.ts';
-import { PLACEHOLDER_SHEETS } from './placeholder-sheets.ts';
+import { drawFrames } from './pixel.ts';
+import { ART_SHEETS } from './sprites/index.ts';
 
 /** Ambient two-frame loops. Cosmetic only: they run on Phaser's clock, never on logic ticks. */
 const LOOPS: readonly { key: AnimKey; texture: TexKey; frameRate: number }[] = [
@@ -18,9 +18,13 @@ const LOOPS: readonly { key: AnimKey; texture: TexKey; frameRate: number }[] = [
   { key: Anim.jellyPulse, texture: Tex.jelly, frameRate: 3 },
 ];
 
-/** Builds every texture key and registers each animation once; calling it again changes nothing. */
+/**
+ * Builds every texture key and registers each animation once; calling it again changes nothing.
+ *
+ * @throws {Error} When a sprite's pixel text is malformed (see `drawFrames`), naming the key, frame and row.
+ */
 export function buildTextures(scene: Phaser.Scene): void {
-  for (const sheet of PLACEHOLDER_SHEETS) drawSheet(scene, sheet);
+  for (const sheet of ART_SHEETS) drawFrames(scene, sheet.key, sheet.frames);
   for (const loop of LOOPS) registerLoop(scene, loop);
 }
 
