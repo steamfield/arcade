@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { gainPowerUp } from '../../logic/powerups/stack.ts';
+import { SQUID } from '../../logic/powerups/tuning.ts';
 import { IDLE, raceOn, racerOf, step } from '../../logic/test-world.ts';
 import type { TickInput, World } from '../../logic/types.ts';
 import {
+  type HintConfig,
   type HintMemory,
-  hintsEnabled,
+  hintConfig,
+  KICK_LEAD_TICKS,
   NO_HINTS,
   newHintMemory,
   PRESS_B_TICKS,
@@ -23,26 +26,30 @@ const OPEN = `
 
 const BURST: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: true };
 
+const EASY: HintConfig = hintConfig(0, 'easy');
+const NORMAL_FIRST_RACE: HintConfig = hintConfig(0, 'normal');
+
 /** A racing world and a memory that has seen nothing; `run` steps it and asks for hints after every tick. */
-function race() {
+function race(config: HintConfig = EASY) {
   const { world, log } = raceOn(OPEN);
   const memory: HintMemory = newHintMemory();
   const player = racerOf(world, 'player');
-  const run = (ticks: number, input = IDLE, enabled = true) => {
-    let hints = updateHints(memory, world, enabled);
+  const run = (ticks: number, input = IDLE, using = config) => {
+    let hints = updateHints(memory, world, using);
     for (let i = 0; i < ticks; i++) {
       step(world, log, 1, input);
-      hints = updateHints(memory, world, enabled);
+      hints = updateHints(memory, world, using);
     }
     return hints;
   };
   return { world, player, run };
 }
 
-function lockSquidOnPlayer(world: World): void {
+/** A squid locked on the player, `px` pixels to its right. */
+function lockSquidOnPlayer(world: World, px = 200): void {
   const player = racerOf(world, 'player');
   world.squids.push({
-    x: player.body.x + 200,
+    x: player.body.x + px,
     y: player.body.y,
     vx: 0,
     vy: 0,
@@ -60,7 +67,7 @@ describe('which races show hints', () => {
     ['a later hard race', 3, 'hard', false],
     ['a later easy race', 3, 'easy', true],
   ] as const)('%s', (_name, races, difficulty, shown) => {
-    expect(hintsEnabled(races, difficulty)).toBe(shown);
+    expect(hintConfig(races, difficulty).enabled).toBe(shown);
   });
 });
 
@@ -82,11 +89,17 @@ describe('PRESS B', () => {
     expect(run(200).pressB).toBe(false);
   });
 
-  it('times out when the player ignores it', () => {
-    const { world, player, run } = race();
+  it('times out when the player ignores it on a first race that is not Easy', () => {
+    const { world, player, run } = race(NORMAL_FIRST_RACE);
     gainPowerUp(world, player, 'jetFin');
     expect(run(PRESS_B_TICKS - 2).pressB).toBe(true);
     expect(run(3).pressB).toBe(false);
+  });
+
+  it('stays up on Easy until the first burst, however long the player waits', () => {
+    const { world, player, run } = race();
+    gainPowerUp(world, player, 'jetFin');
+    expect(run(PRESS_B_TICKS * 3).pressB).toBe(true);
   });
 
   it('hides when the stack empties under it', () => {
@@ -100,7 +113,7 @@ describe('PRESS B', () => {
   it('is silent when hints are off', () => {
     const { world, player, run } = race();
     gainPowerUp(world, player, 'jetFin');
-    expect(run(10, IDLE, false)).toEqual(NO_HINTS);
+    expect(run(10, IDLE, { enabled: false, easy: true })).toEqual(NO_HINTS);
   });
 
   it('is silent during the countdown', () => {
@@ -129,6 +142,15 @@ describe('the pulsing B on the stack', () => {
     expect(run(200).pulseStack).toBe(true);
   });
 
+  it('takes over the moment PRESS B gives up on a first race that is not Easy', () => {
+    const { world, player, run } = race(NORMAL_FIRST_RACE);
+    gainPowerUp(world, player, 'jetFin');
+    const before = run(PRESS_B_TICKS - 1);
+    expect([before.pressB, before.pulseStack]).toEqual([true, false]);
+    const after = run(1);
+    expect([after.pressB, after.pulseStack]).toEqual([false, true]);
+  });
+
   it('never shows with an empty stack', () => {
     const { run } = race();
     expect(run(UNUSED_PULSE_TICKS * 2).pulseStack).toBe(false);
@@ -136,23 +158,42 @@ describe('the pulsing B on the stack', () => {
 });
 
 describe('KICK', () => {
-  it('shows while a squid is locked on the player', () => {
+  /** Px a squid covers in the dodge window, and the farther edge where the hint starts. */
+  const windowPx = SQUID.dodgeTicks * SQUID.speed * (1 / 60);
+  const leadPx = (SQUID.dodgeTicks + KICK_LEAD_TICKS) * SQUID.speed * (1 / 60);
+
+  it('stays quiet while the locked-on squid is still far away', () => {
     const { world, run } = race();
-    expect(run(2).kick).toBe(false);
-    lockSquidOnPlayer(world);
+    lockSquidOnPlayer(world, 200);
+    expect(run(1).kick).toBe(false);
+  });
+
+  it('shows once the squid is inside the dodge window and its lead', () => {
+    const { world, run } = race();
+    lockSquidOnPlayer(world, Math.round(leadPx - 4));
     expect(run(1).kick).toBe(true);
+    const next = race();
+    lockSquidOnPlayer(next.world, Math.round(windowPx));
+    expect(next.run(1).kick).toBe(true);
+  });
+
+  it('stays quiet while the player kick is cooling down', () => {
+    const { world, player, run } = race();
+    lockSquidOnPlayer(world, Math.round(windowPx));
+    player.kickCooldown = 20;
+    expect(run(1).kick).toBe(false);
   });
 
   it('gives way to the latched prompt once the squid has wrapped the player', () => {
     const { world, player, run } = race();
-    lockSquidOnPlayer(world);
+    lockSquidOnPlayer(world, Math.round(windowPx));
     player.status.latched = 60;
     expect(run(1).kick).toBe(false);
   });
 
   it('ignores a squid locked on a rival', () => {
     const { world, run } = race();
-    lockSquidOnPlayer(world);
+    lockSquidOnPlayer(world, Math.round(windowPx));
     const [squid] = world.squids;
     if (squid) squid.target = { kind: 'racer', id: 'tess' };
     expect(run(1).kick).toBe(false);

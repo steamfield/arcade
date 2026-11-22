@@ -139,6 +139,8 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
         return sfx('coral');
       case 'menu.selected':
         return sfx('menu.confirm');
+      case 'howToPlay.page':
+        return sfx('menu.move');
       default: {
         const attack = attacks.forEvent(event, tick);
         if (attack) sfx(attack);

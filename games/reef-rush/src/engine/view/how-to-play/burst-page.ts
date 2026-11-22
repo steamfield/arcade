@@ -1,13 +1,14 @@
 /**
  * Page 3, B USES ALL. The page a child must get without reading: a well holding three power-ups,
- * the B control beside it, and the racer with all three effects bursting out at once when B lights.
- * The well is the HUD's own picture (icons on an inset), so the child can match it to the corner
- * of the race screen.
+ * the B control beside it, and the racer with all three effects bursting out at once when B lights,
+ * while the well empties to dim sockets: the stack is spent together. The well is the HUD's own
+ * picture (icons on an inset), so the child can match it to the corner of the race screen.
  */
 
 import type { PowerUpKind } from '../../../logic/types.ts';
 import { Frame } from '../../art/keys.ts';
 import { IconFrame } from '../../art/ui/keys.ts';
+import { UiRamp } from '../../art/ui/palette.ts';
 import { POWER_UP_ICON } from '../hud.ts';
 import { POWER_UP_TEX } from '../powerup-view.ts';
 import { easeOut, type PageBuilder, stroke } from './kit.ts';
@@ -17,9 +18,11 @@ const HELD: readonly PowerUpKind[] = ['jetFin', 'puffer', 'inkSac'];
 const ROW_Y = 60;
 /** The well ends at y 74, above the d-pad zone, which starts at y 76. */
 const WELL = { x: 12, y: ROW_Y - 14, w: 86, h: 28, slotX: 30, pitch: 26 } as const;
-const GLYPH_X = 110;
-const ARROW_X = 140;
-const RACER_X = 200;
+/** The control is drawn at 2x, the biggest thing on the row after the racer. */
+const GLYPH_X = 106;
+const ARROW_X = 148;
+const RACER_X = 208;
+const SOCKET_PX = 5;
 /** Where each burst effect flies to, round the racer (screen px centres), and how big the starburst behind it is. */
 const FAN: readonly { x: number; y: number }[] = [
   { x: RACER_X - 40, y: ROW_Y - 12 },
@@ -35,8 +38,14 @@ const CAPTION_TOP = 100;
 
 export const buildBurstPage: PageBuilder = (kit) => {
   kit.well(WELL.x, WELL.y, WELL.w, WELL.h);
-  for (const [index, kind] of HELD.entries()) kit.icon(WELL.slotX + index * WELL.pitch, ROW_Y, POWER_UP_ICON[kind], 2);
-  const glyph = kit.action('burst');
+  const slots = HELD.map((kind, index) => {
+    const x = WELL.slotX + index * WELL.pitch;
+    return {
+      icon: kit.icon(x, ROW_Y, POWER_UP_ICON[kind], 2),
+      socket: kit.bar(x, ROW_Y, SOCKET_PX, SOCKET_PX, UiRamp.dim),
+    };
+  });
+  const glyph = kit.action('burst', 2);
   glyph.setPosition(GLYPH_X, ROW_Y - glyph.height / 2);
   kit.icon(ARROW_X, ROW_Y, IconFrame.arrowUp).setAngle(90);
   const starburst = kit.icon(RACER_X, ROW_Y, IconFrame.burst, STARBURST_SCALE);
@@ -46,10 +55,14 @@ export const buildBurstPage: PageBuilder = (kit) => {
 
   return (tick, reducedMotion) => {
     const t = tick % PERIOD;
-    // Reduced motion shows the moment after B: lit, with every effect out.
+    // Reduced motion shows the moment after B: lit, every effect out and the well emptied.
     const since = reducedMotion ? OUT_TICKS : t - FIRE_AT;
     const fired = since >= 0;
     glyph.setHighlighted(fired && since < PERIOD / 2);
+    for (const slot of slots) {
+      slot.icon.setVisible(!fired);
+      slot.socket.setVisible(fired);
+    }
     racer.setFrame(stroke(tick, reducedMotion));
     starburst.setVisible(fired && since < OUT_TICKS * 2);
     const out = easeOut(since / OUT_TICKS);

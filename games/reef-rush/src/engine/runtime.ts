@@ -32,11 +32,19 @@ import { withinHearing } from './audio/attack-sfx.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
 import { moveCharacter } from './character-select.ts';
 import { applyStage, stageFor } from './debug-stage.ts';
-import { type PageTurn, turnPage } from './how-to-play.ts';
+import { type PagePress, turnPage } from './how-to-play.ts';
 import { input } from './input.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 import { raceProgress } from './race-progress.ts';
-import { type HintMemory, type HintState, hintsEnabled, NO_HINTS, newHintMemory, updateHints } from './view/hints.ts';
+import {
+  type HintConfig,
+  type HintMemory,
+  type HintState,
+  hintConfig,
+  NO_HINTS,
+  newHintMemory,
+  updateHints,
+} from './view/hints.ts';
 
 /** Phaser scene keys, one per screen. */
 export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'select' | 'race' | 'results';
@@ -45,6 +53,8 @@ export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'select' | 'race' | 'res
 export type EngineEvent =
   | { type: 'scene.started'; scene: SceneKey }
   | { type: 'menu.selected'; option: MenuOption }
+  /** How to Play turned to another page; `page` is 1-based, as the summary shows it. */
+  | { type: 'howToPlay.page'; page: number }
   | { type: 'save.written' }
   | { type: 'save.failed'; reason: string }
   /** The player changed a setting from the title menu; carries the settings now in force. */
@@ -129,7 +139,9 @@ export class Runtime {
   /** The player's progress-field distance at the start line, for the race progress fraction. */
   private startProgress = 0;
   private hintMemory: HintMemory = newHintMemory();
-  private hintsOn = false;
+  /** The menu option to put the cursor on when the next menu screen opens, or null for the first. */
+  private returnTo: MenuOption | null = null;
+  private hintConfig: HintConfig = { enabled: false, easy: false };
 
   /** How far the player is through the current race, 0 to 1; 0 with no race. */
   get raceFraction(): number {
@@ -193,9 +205,13 @@ export class Runtime {
     this.loading = false;
     if (scene === 'title') this.world = null;
     if (scene === 'select') this.selectedCharacter = this.savedCharacter;
-    if (scene === 'howToPlay') this.openHowToPlayPage(0);
+    if (scene === 'howToPlay') this.showHowToPlayPage(0);
     const options = MENUS[scene];
     this.menu = options ? createMenu(options) : null;
+    if (this.menu && this.returnTo) {
+      this.menu.selected = Math.max(0, this.menu.options.indexOf(this.returnTo));
+      this.returnTo = null;
+    }
     this.menuArmIn = MENU_ARM_TICKS;
     this.events.emit({ type: 'scene.started', scene });
   }
@@ -214,7 +230,7 @@ export class Runtime {
       difficulty,
     });
     this.hintMemory = newHintMemory();
-    this.hintsOn = hintsEnabled(this.save?.races ?? 0, difficulty);
+    this.hintConfig = hintConfig(this.save?.races ?? 0, difficulty);
     this.hints = NO_HINTS;
     const stage = stageFor(this.ctx.params);
     if (stage) applyStage(this.world, stage);
@@ -297,20 +313,28 @@ export class Runtime {
     else if (input.justPressed('kick')) this.pickCharacter();
   }
 
-  /** A or right turns to the next page, B or left to the previous; either end leaves for the title. */
+  /**
+   * A and right turn to the next page, B and left to the previous. Left and right stop at the ends;
+   * only B on the first page and A on the last leave, back to the title with How to play selected.
+   */
   private tickHowToPlay(): void {
     if (this.menuArmIn > 0) {
       this.menuArmIn--;
       return;
     }
-    const turn = readPageTurn();
-    if (!turn) return;
-    const outcome = turnPage(this.howToPage, turn);
-    if (outcome.kind === 'leave') this.goTo('title');
-    else this.openHowToPlayPage(outcome.page);
+    const press = readPagePress();
+    if (!press) return;
+    const outcome = turnPage(this.howToPage, press);
+    if (outcome.kind === 'leave') {
+      this.returnTo = 'How to play';
+      this.goTo('title');
+    } else if (outcome.page !== this.howToPage) {
+      this.showHowToPlayPage(outcome.page);
+      this.events.emit({ type: 'howToPlay.page', page: outcome.page + 1 });
+    }
   }
 
-  private openHowToPlayPage(page: number): void {
+  private showHowToPlayPage(page: number): void {
     this.howToPage = page;
     this.howToSince = this.step.tick;
   }
@@ -344,7 +368,7 @@ export class Runtime {
     const world = this.world;
     if (!world) throw new Error('The race scene is ticking without a world; start races with startRace()');
     stepWorld(world, readPlayerInput(), dt);
-    this.hints = updateHints(this.hintMemory, world, this.hintsOn);
+    this.hints = updateHints(this.hintMemory, world, this.hintConfig);
     this.audio.onRaceProgress(this.raceFraction);
     if (this.resultsIn === null) return;
     this.resultsIn--;
@@ -381,10 +405,11 @@ function nextDifficulty(current: Difficulty): Difficulty {
   return DIFFICULTIES[(index + 1) % DIFFICULTIES.length] ?? current;
 }
 
-/** The page turn the player pressed this tick, if any: A or right is next, B or left is back. */
-function readPageTurn(): PageTurn | null {
-  if (input.justPressed('kick') || input.justPressed('right')) return 'next';
-  if (input.justPressed('burst') || input.justPressed('left')) return 'back';
+/** The page button pressed this tick, if any. */
+function readPagePress(): PagePress | null {
+  for (const press of ['kick', 'burst', 'right', 'left'] as const) {
+    if (input.justPressed(press)) return press;
+  }
   return null;
 }
 

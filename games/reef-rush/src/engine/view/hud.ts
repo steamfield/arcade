@@ -36,6 +36,7 @@ import { createPanel } from '../art/ui/panel.ts';
 import { DISPLAY_FACE, TEXT_FACE } from '../art/ui/typeface.ts';
 import { spreadHeads } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import type { HintState } from './hints.ts';
 import { Layer } from './layers.ts';
 import { createRaceSplash, formatRaceTime, ordinal, slideRemaining, TONE_CSS } from './race-text.ts';
 import { createThreatHud } from './threat-hud.ts';
@@ -45,7 +46,8 @@ import { squidHuntingPlayer } from './threat-math.ts';
 export interface Hud {
   /** `tick` is the world tick the events were drained at; effects time themselves from it. */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
-  sync(world: World): void;
+  /** `hints` is what the hint view shows now: the combo name gives its spot to a KICK! hint. */
+  sync(world: World, hints: HintState): void;
 }
 
 /** HUD icons are 9x9. */
@@ -139,7 +141,7 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
         if (event.type === 'burst.fired' && event.id === 'player' && event.combo) combo.fired(event.combo, tick);
       }
     },
-    sync(world) {
+    sync(world, hints) {
       place.sync(world);
       const time = raceTime(world);
       // Only format when the shown time changes: frames can outnumber ticks.
@@ -150,7 +152,7 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
       const splashShowing = splash.sync(world);
       const view = scene.cameras.main.worldView;
       const body = playerOf(world).body;
-      combo.sync(world.tick, body.y + body.h / 2 - view.y, playerOf(world).status.latched > 0);
+      combo.sync(world.tick, body.y + body.h / 2 - view.y, playerOf(world).status.latched > 0 || hints.kick);
       threat.sync(world, view, splashShowing);
       caption.setText(captionText(world, view));
     },

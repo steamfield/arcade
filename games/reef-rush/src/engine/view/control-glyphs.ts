@@ -74,37 +74,50 @@ export function actionGlyphWidth(action: ActionName, touch: boolean): number {
   return measureText(TEXT_FACE, controlName(action, false)).width + CAP_PADDING * 2 + 2;
 }
 
-/** Adds `action`'s glyph: a round lettered button on touch, a key cap with the key's name otherwise. */
+/** Where and how big an action glyph draws. */
+export interface ActionGlyphOptions extends GlyphOptions {
+  /** Whole-number zoom, for a page that wants the control large. Defaults to 1. */
+  scale?: 1 | 2;
+}
+
+/**
+ * Adds `action`'s glyph: a round lettered button on touch, a key cap with the key's name otherwise.
+ * `width` and `height` on the result are the drawn size, scale included.
+ */
 export function createActionGlyph(
   scene: Phaser.Scene,
   action: ActionName,
   touch: boolean,
-  options: GlyphOptions = {},
+  options: ActionGlyphOptions = {},
 ): Glyph {
+  const scale = options.scale ?? 1;
   const name = controlName(action, touch);
-  const width = actionGlyphWidth(action, touch);
-  const shape = createShape(scene, options);
-  const label = createLabel(scene, Math.floor(width / 2), Math.floor(GLYPH_SIZE / 2), name, {
+  const baseWidth = actionGlyphWidth(action, touch);
+  const width = baseWidth * scale;
+  const height = GLYPH_SIZE * scale;
+  const shape = createShape(scene, options).setScale(scale);
+  const label = createLabel(scene, Math.floor(width / 2), Math.floor(height / 2), name, {
     align: 'center',
+    scale,
     fixed: options.fixed,
     depth: (options.depth ?? 0) + 0.1,
   });
-  let at = { x: 0, y: 0 };
   let highlighted = false;
   const draw = () => {
     shape.clear();
     if (touch) drawDisc(shape, GLYPH_SIZE, highlighted);
-    else drawCap(shape, width, GLYPH_SIZE, highlighted);
+    else drawCap(shape, baseWidth, GLYPH_SIZE, highlighted);
     label.setColor(toneCss(highlighted ? 'sun' : 'foam'));
   };
   draw();
   const glyph: Glyph = {
     width,
-    height: GLYPH_SIZE,
+    height,
     setPosition(x, y) {
-      at = { x: Math.round(x), y: Math.round(y) };
-      shape.setPosition(at.x, at.y);
-      label.setOffset(at.x, at.y);
+      const left = Math.round(x);
+      const top = Math.round(y);
+      shape.setPosition(left, top);
+      label.setOffset(left, top);
       return glyph;
     },
     setVisible(visible) {

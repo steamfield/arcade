@@ -6,7 +6,7 @@
  * read. It is honoured only with `?debug=1` or in test mode, and `Runtime.startRace` marks the race
  * staged so its result is never saved. Applied by `Runtime.startRace`, right after the world is built.
  *
- * The names: `icons-a` and `icons-b` fill the player's well; `squid-flight` sends squids at rivals;
+ * The names: `icons-a`, `icons-b` and `icons-c` (a lone Undertow, gone once fired) fill the player's well; `squid-flight` sends squids at rivals;
  * `squid-lockon` locks one on the player from in view and `squid-lockon-far` from off-screen;
  * `squid-latched` latches squids on the player and a rival; `riptide` lays a lane over a current
  * with a rival riding it; `decoy` leaves a rival's decoy beside it; `undertow` pulls two racers back;
@@ -19,6 +19,7 @@ import { type Level, type Racer, type RacerId, TILE, type Vec, type World } from
 export const STAGES = [
   'icons-a',
   'icons-b',
+  'icons-c',
   'squid-flight',
   'squid-lockon',
   'squid-lockon-far',
@@ -63,6 +64,10 @@ export function applyStage(world: World, stage: StageName): void {
       return;
     case 'icons-b':
       player.stack = ['mimic'];
+      return;
+    case 'icons-c':
+      // Undertow is spent when fired, so a burst empties this stack.
+      player.stack = ['undertow'];
       return;
     case 'squid-flight':
       world.squids.push(

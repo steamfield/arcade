@@ -93,7 +93,7 @@ Event effects: a squid fired puffs bubbles at its owner; a shake-off pops bubble
 
 In dark zones a decoy carries the rival's 28 px light pool and a squid a 14 px one.
 
-Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.ts`, applied by `Runtime.startRace`) puts staged state in the world before the first frame: `icons-a`, `icons-b`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow`. It only writes plain world state the views read, and a staged race never saves.
+Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.ts`, applied by `Runtime.startRace`) puts staged state in the world before the first frame: `icons-a`, `icons-b`, `icons-c`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow`. It only writes plain world state the views read, and a staged race never saves.
 
 ## Title
 
@@ -102,21 +102,21 @@ Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.t
 | Logo | 67, 28, 186, 30 | `ui-logo` at 2x |
 | Racer lane | 0, 62, 320, 12 | racers swim past left to right (sprites, not text); still under reduced motion |
 | Race button | 120, 78, 80, 15 | cursor fin at x 109-117 |
-| Level button | 120, 95, 80, 15 | LEVEL EASY / LEVEL NORMAL / LEVEL HARD; each press cycles to the next and saves, and the text changes the moment the setting does |
+| Level button | 120, 95, 80, 15 | EASY / NORMAL / HARD, centred; each press cycles to the next and saves, and the text changes the moment the setting does. Three 3 px pips at x 126, 131 and 136 (y 101) show the level without reading: 1 lit (sun) for Easy, 2 Normal, 3 Hard, the rest dim |
 | How to play button | 120, 112, 80, 15 | HOW TO PLAY opens the How to Play screen |
 | Sound button | 120, 129, 80, 15 | SOUND ON / SOUND OFF, changes the moment the setting does |
 | Motion button | 120, 146, 80, 15 | MOTION FULL / MOTION LESS. "MOTION REDUCED" is 83 px, too wide for a button whose fin clears the d-pad zone with the column centred on the logo |
 | PRESS A | 140, 167, 41, 7 | touch screens only (`?touch=1` or a coarse pointer, the rule `@arcade/input` mounts the controls by); on a keyboard A is a move key. Foam, outlined, blinks. 6 px clear of the last button, ending on the bottom margin |
 | Best card | 214, 82, 100, 24 | `raised`, right of the buttons so five buttons fit; clear of the back link above and the A/B zone (y 118 and below); medal at (218, 87), or the saved character's portrait for a 4th-place best; "BEST 2ND" in dim at (234, 86); time in foam at (234, 95) |
 
-All five buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest text is LEVEL NORMAL (71 px). A new save starts on Easy.
+All five buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A new save starts on Easy.
 
 ```
                                             (back link)
               R E E F   R U S H   (2x)
   ~ ~ racers ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
                >[    RACE    ]
-                [ LEVEL EASY ]       [BEST 2ND  ]
+                [ ■□□ EASY   ]       [BEST 2ND  ]
                 [ HOW TO PLAY]       [  0:24.46 ]
                 [  SOUND ON  ]
                 [ MOTION FULL]
@@ -125,25 +125,26 @@ All five buttons are 80 wide so the fins line up; 80 is the widest that keeps th
 
 ## How to Play
 
-Four picture pages, built for a reader who may be six: at most four short words on any line, and every idea is also a moving picture of the game's own sprites (the player's saved racer, the clam, the held-stack well, the squid). Opened from the title; A or right turns to the next page, B or left to the previous one, B (or left) on the first page returns to the title, and A on the last page does too. Like every menu it ignores presses for its first 20 ticks. Drawn over the reef backdrop, so words are foam or sun and outlined.
+Five picture pages, built for a reader who may be six: at most four short words on any line, and every idea is also a moving picture of the game's own sprites (the player's saved racer, the clam, the held-stack well, the squid). Opened from the title; A or right turns to the next page, B or left to the previous one. Left and right stop at the first and last page: only B on the first page and A on the last page leave, back to the title with HOW TO PLAY still selected. Each turn plays the menu-move sound. Like every menu it ignores presses for its first 20 ticks. Drawn over the reef backdrop, so words are foam or sun and outlined.
 
 | Element | Rect | Notes |
 | --- | --- | --- |
-| Heading | centred on (160, 12) | display, sun, outlined: SWIM AND KICK, OPEN CLAMS, B USES ALL!, ATTACKS (the key's name replaces B on a keyboard: X USES ALL!) |
+| Heading | centred on (160, 12) | display, sun, outlined: SWIM AND KICK, OPEN CLAMS, B USES ALL!, ATTACKS, KICK TO DODGE (the key's name replaces B on a keyboard: X USES ALL!) |
 | Pictures | anywhere in x 6-246, y 22-75, plus the safe column x 108-228 down to y 140 | nothing in the d-pad zone (x < 108, y 76+), the A/B zone (x 228+, y 118+) or the back link |
-| Page dots | five px squares, 10 px apart, centred on x 160, top at y 140 | the current page in sun, the others dim |
+| Page dots | squares 10 px apart, centred on x 160, centred on y 142 | the current page a 7 px square in sun, the others 5 px and dim, so the current page isn't told by colour alone |
 | Footer | 108, 153, 120, 21 | `inset`; the kick control and NEXT, the burst control and BACK, centred as one row |
 
-Control glyphs (`view/control-glyphs.ts`) are drawn from kit colours: on a keyboard a key cap with the key's name (SPACE kicks, X bursts, the four arrow keys in an inverted T), on a touch screen the round A and B buttons and the d-pad's plus of four arrows. A lit glyph has the gold frame. Both are 15 px tall (arrow caps 11 px).
+Control glyphs (`view/control-glyphs.ts`) are drawn from kit colours: on a keyboard a key cap with the key's name (SPACE kicks, X bursts, the four arrow keys in an inverted T), on a touch screen the round A and B buttons and the d-pad's plus of four arrows. A lit glyph has the gold frame. They are 15 px tall (arrow caps 11 px); pages 1, 3 and 5 draw the kick and burst controls at 2x (30 px, SPACE 72 px wide).
 
 | Page | Pictures |
 | --- | --- |
-| 1 SWIM AND KICK | The arrows or d-pad with the pressed arrow lit while the racer swims round a loop the way it points (45 ticks a side). Below, the kick control lights and the racer lurches 14 px forward with three speed lines behind it |
+| 1 SWIM AND KICK | The arrows or d-pad with the pressed arrow lit while the racer swims round a loop the way it points (45 ticks a side). Below, the kick control at 2x lights and the racer lurches 14 px forward with three speed lines behind it |
 | 2 OPEN CLAMS | The racer, a clam, a power-up popping from it (the clam shuts for 30 ticks), flying into the next slot of a well at 2x. HOLD 3 over a well that fills one slot every 90 ticks, then empties |
-| 3 B USES ALL! | The HUD's held-stack well (three icons at 2x) beside the burst control, an arrow and the racer. When the control lights (tick 50 of 150) a starburst flashes behind the racer and all three effects pop out around it at once. ALL AT ONCE! under it. This is the page a child must get without reading |
-| 4 ATTACKS | Four cells across the top: each a 2x icon, a small scene and a name. SQUID chases a racer; RIPTIDE is a green lane with streaks pushing a racer; UNDERTOW drags a racer back with violet lines; MIMIC is a see-through decoy a squid heads for. Below, KICK TO DODGE: the kick control lights and the racer hops over an arriving squid |
+| 3 B USES ALL! | The HUD's held-stack well (three icons at 2x) beside the burst control at 2x, an arrow and the racer. When the control lights (tick 50 of 150) a starburst flashes behind the racer, all three effects pop out around it at once and the well empties to dim sockets until the loop restarts (reduced motion holds the emptied well): the empty well is the cue that B spends everything. ALL AT ONCE! under it. This is the page a child must get without reading |
+| 4 ATTACKS | Four scenes at 2x, each captioned with its 9 px icon and name. Across the top: SQUID (a squid chases a racer) and RIPTIDE (a green lane of streaks carrying a racer). Under them in the safe column: UNDERTOW (a racer swims ahead, then is dragged back with violet lines behind it) and MIMIC (a squid, an arrow pointing at a see-through copy, and the real racer swimming off the other way, so the squid chases the copy and not you). Captions end at y 113, names on the left at y 62 |
+| 5 KICK TO DODGE | Alone at 2x in the safe column: the kick control at the top lights at the last moment, the racer hops up 20 px and the squid, which started at x 126, swims underneath and out |
 
-Reduced motion holds each page on its clearest still moment (the pressed arrow and loop halfway, the lurch half out, the last pop with all three held, B lit with every effect out, the dragged racer, the dodge made). The page's animation counts from the tick it came up on, so captures repeat.
+Reduced motion holds each page on its clearest still moment (the pressed arrow and loop halfway, the lurch half out, the last pop with all three held, B lit with every effect out and the well empty, the dragged racer, the dodge made). The page's animation counts from the tick it came up on, so captures repeat.
 
 ## Hints
 
@@ -151,9 +152,9 @@ For the first race on a save and every Easy race, short prompts show beside the 
 
 | Hint | When | Look |
 | --- | --- | --- |
-| PRESS B! | The first time a power-up lands in the stack, for 4 s or until the player fires one (then never again that race) | display, sun, outlined, with the burst glyph in the B's place: `PRESS` then the key cap X on a keyboard or the round B on touch, then `!`. Centred on x 168, placed like the combo name (`comboCentreY`), and dropped below the player when that would sit in the centre splash's band (x 53-267, y 50-74) |
-| KICK! | A squid is locked on the player and has not latched yet | the kick glyph (SPACE or A) and KICK!, placed like PRESS B!. Wins over PRESS B! when both apply. The latched squid's own KICK! prompt (above) takes over once it grips |
-| Pulsing B on the stack | The stack has held something unused for 5 s (restarts after each burst) | the burst glyph at 130, 24 (the well's right edge plus 3), blinking its gold frame twice a second; steady gold under reduced motion |
+| PRESS B! | The first time a power-up lands in the stack, until the player fires one (then never again that race). On Easy it has no timeout; on the first race of another level it gives up after 4 s | display, sun, outlined, with the burst glyph in the B's place: `PRESS` then the key cap X on a keyboard or the round B on touch, then `!`. Centred on x 168, placed like the combo name (`comboCentreY`), and dropped below the player when that would sit in the centre splash's band (x 53-267, y 50-74) |
+| KICK! | A locked-on squid is inside the dodge window plus 8 ticks of lead (`SQUID.dodgeTicks`, 12, at squid speed) and the player's kick is ready, since a kick only dodges just before contact and then cools down | the kick glyph (SPACE or A) and KICK!, placed like PRESS B!; the combo name is hidden while it shows. Wins over PRESS B! when both apply. The latched squid's own KICK! prompt (above) takes over once it grips |
+| Pulsing B on the stack | The stack has held something unused for 5 s on Easy, or from the moment PRESS B! gives up on another level (restarts after each burst) | the burst glyph at 130, 24 (the well's right edge plus 3), blinking its gold frame twice a second; steady gold under reduced motion |
 
 Glyph frames and the pulse blink at most 3 times a second. On touch screens the real B button also shows the newest held power-up's 9x9 icon at 4x above its letter (`view/burst-button.ts`), so a child can link the button to the item; it reverts to a plain B when the stack empties.
 

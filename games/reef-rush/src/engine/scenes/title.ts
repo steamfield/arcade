@@ -14,9 +14,12 @@ import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
 import { parseLevel } from '../../logic/level/parse.ts';
 import { NEW_GAME } from '../../logic/save.ts';
 import type { CharacterId } from '../../logic/types.ts';
+import { DIFFICULTIES } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { Frame, Tex } from '../art/keys.ts';
+import { BUTTON_HEIGHT } from '../art/ui/button.ts';
 import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
+import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { MENU_OPTIONS, type MenuOption } from '../menu.ts';
 import type { Runtime, Settings } from '../runtime.ts';
@@ -40,6 +43,9 @@ const BEST_CARD = { x: 214, y: 82, w: 100, h: 24 } as const;
 const BEST_BADGE_AT = { x: 218, y: 87 } as const;
 const BEST_PLACE_AT = { x: 234, y: 86 } as const;
 const BEST_TIME_AT = { x: 234, y: 95 } as const;
+
+/** The Level button's pips: 3 px squares 5 px apart, 6 px in from the button's left edge. */
+const LEVEL_PIPS = { size: 3, pitch: 5, inset: 6 } as const;
 
 /** UI.md "Motion": PRESS A shows for 32 ticks and hides for 16. */
 const BLINK = { on: 32, off: 16 } as const;
@@ -66,6 +72,7 @@ export class TitleScene extends Phaser.Scene {
   private backdrop: Backdrop | null = null;
   private swimmers: { image: Phaser.GameObjects.Image; speed: number; offset: number }[] = [];
   private pressA: Label | null = null;
+  private levelPips: Phaser.GameObjects.Rectangle[] = [];
 
   constructor(rt: Runtime) {
     super('title');
@@ -87,6 +94,7 @@ export class TitleScene extends Phaser.Scene {
       image: this.add.image(0, RACER_LANE.y, Tex[character], Frame.a).setOrigin(0, 0),
     }));
     this.menuView = createMenuView(this, MENU, MENU_OPTIONS.title, (option) => optionText(option, rt.settings));
+    this.levelPips = addLevelPips(this);
     this.pressA = isTouchScreen()
       ? createLabel(this, PRESS_A.x, PRESS_A.top + 3, 'PRESS A', { align: 'center', outline: true })
       : null;
@@ -101,6 +109,9 @@ export class TitleScene extends Phaser.Scene {
     const { reducedMotion } = this.rt.settings;
     this.backdrop?.update(tick);
     this.menuView?.sync(this.rt.menu, tick, reducedMotion);
+    const level = DIFFICULTIES.indexOf(this.rt.settings.difficulty) + 1;
+    for (const [index, pip] of this.levelPips.entries())
+      pip.setFillStyle(index < level ? UiColour.sun : UiRamp.indigoLight);
     this.pressA?.setVisible(reducedMotion || tick % (BLINK.on + BLINK.off) < BLINK.on);
     const stroke = reducedMotion || Math.floor(tick / STROKE_TICKS) % 2 === 0 ? Frame.a : Frame.b;
     for (const swimmer of this.swimmers) swimmer.image.setX(swimmerX(swimmer, tick, reducedMotion)).setFrame(stroke);
@@ -109,11 +120,27 @@ export class TitleScene extends Phaser.Scene {
 
 /** What each title button says: Race and How to play as is, Level, Sound and Motion with the setting in force. */
 function optionText(option: MenuOption, settings: Settings): string {
-  if (option === 'Difficulty') return `LEVEL ${settings.difficulty.toUpperCase()}`;
+  // The pips beside the word (`addLevelPips`) show the level to a child who can't read it.
+  if (option === 'Difficulty') return settings.difficulty.toUpperCase();
   if (option === 'Sound') return settings.muted ? 'SOUND OFF' : 'SOUND ON';
   // "LESS" rather than "REDUCED": MOTION REDUCED is too wide for a button whose fin clears the d-pad.
   if (option === 'Motion') return settings.reducedMotion ? 'MOTION LESS' : 'MOTION FULL';
   return OPTION_LABELS[option];
+}
+
+/**
+ * One pip per level, left inside the Level button: 1 lit for Easy, 2 for Normal, 3 for Hard. The
+ * button's word is centred, and the widest, NORMAL, starts at x 142, clear of the pips.
+ */
+function addLevelPips(scene: Phaser.Scene): Phaser.GameObjects.Rectangle[] {
+  const top = MENU.top + MENU.pitch + (BUTTON_HEIGHT - LEVEL_PIPS.size) / 2;
+  const left = MENU.centreX - MENU.width / 2 + LEVEL_PIPS.inset;
+  return DIFFICULTIES.map((_, index) =>
+    scene.add
+      .rectangle(left + index * LEVEL_PIPS.pitch, top, LEVEL_PIPS.size, LEVEL_PIPS.size, UiRamp.indigoLight)
+      .setOrigin(0, 0)
+      .setDepth(1),
+  );
 }
 
 /** A swimmer's x in the lane at `tick`, wrapping from off the right edge back to off the left. Still under reduced motion. */

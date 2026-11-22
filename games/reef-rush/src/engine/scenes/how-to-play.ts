@@ -22,8 +22,8 @@ import { createPages, type Page } from '../view/how-to-play/index.ts';
 
 /** UI.md "How to Play" rects, in game px. */
 const HEADING = { x: 160, y: 12 } as const;
-/** The page dots, centred on x 160, a dot each. */
-const DOTS = { y: 142, size: 5, pitch: 10 } as const;
+/** The page dots, centred on x 160, a dot each; the current page's is larger (7 px), so it isn't told by colour alone. */
+const DOTS = { y: 142, size: 5, current: 7, pitch: 10 } as const;
 /** The footer sits in the safe column, a key cap tall plus the frame. */
 const FOOTER = { x: 108, y: 153, w: 120, h: 21 } as const;
 const FOOTER_GLYPH_TOP = FOOTER.y + 3;
@@ -84,7 +84,12 @@ export class HowToPlayScene extends Phaser.Scene {
     const next = this.pages[page];
     next?.setVisible(true);
     this.heading?.setText(next?.heading ?? '');
-    for (const [index, dot] of this.dots.entries()) dot.setFillStyle(index === page ? UiColour.sun : UiRamp.dim);
+    for (const [index, dot] of this.dots.entries()) {
+      const current = index === page;
+      dot
+        .setFillStyle(current ? UiColour.sun : UiRamp.dim)
+        .setSize(current ? DOTS.current : DOTS.size, current ? DOTS.current : DOTS.size);
+    }
     this.shown = page;
   }
 }

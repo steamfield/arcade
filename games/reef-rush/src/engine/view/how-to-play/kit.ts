@@ -44,7 +44,8 @@ export interface PageKit {
   icon(x: number, y: number, frame: IconFrameKey, scale?: number): Phaser.GameObjects.Image;
   /** Outlined text over the water, anchored by `align` at (x, top). */
   words(x: number, top: number, text: string, options?: LabelOptions): Label;
-  action(action: ActionName): Glyph;
+  /** A control glyph, at `scale` times its normal size. */
+  action(action: ActionName, scale?: 1 | 2): Glyph;
   move(): MoveGlyph;
   /** A tiling sprite (a scrolling streak) with its top-left at (x, y). */
   tiles(
@@ -77,7 +78,7 @@ export function createPageKit(scene: Phaser.Scene, touch: boolean, character: Ch
     icon: (x, y, frame, scale = 1) => own(scene.add.image(x, y, UiTex.icons, frame).setScale(scale)),
     words: (x, top, text, options = {}) =>
       own(createLabel(scene, x, top, text, { outline: true, align: 'center', ...options })),
-    action: (action) => own(createActionGlyph(scene, action, touch)),
+    action: (action, scale = 1) => own(createActionGlyph(scene, action, touch, { scale })),
     move: () => own(createMoveGlyph(scene, touch)),
     tiles: (x, y, width, height, texture, frame) =>
       own(scene.add.tileSprite(x, y, width, height, texture, frame).setOrigin(0, 0)),

@@ -13,7 +13,7 @@ const LEGS: readonly Direction[] = ['right', 'down', 'left', 'up'];
 const LEG_TICKS = 45;
 const ARROWS_AT = { x: 56, centreY: 54 } as const;
 /** The lower row sits in the safe column, clear of the d-pad and the A/B buttons. */
-const KICK_ROW = { glyphX: 118, centreY: 104, racerX: 186 } as const;
+const KICK_ROW = { glyphX: 112, centreY: 104, racerX: 220 } as const;
 /** The kick lasts this long on a 120 tick loop, lurching the racer this many px forward. */
 const KICK = { startsAt: 40, pressTicks: 12, settleTicks: 18, lurchPx: 14, period: 120 } as const;
 
@@ -43,7 +43,7 @@ export const buildMovePage: PageBuilder = (kit) => {
   arrows.setPosition(ARROWS_AT.x, ARROWS_AT.centreY - arrows.height / 2);
   const swimmer = kit.sprite(LOOP.left, LOOP.top, kit.racer, Frame.a, 2);
 
-  const kick = kit.action('kick');
+  const kick = kit.action('kick', 2);
   kick.setPosition(KICK_ROW.glyphX, KICK_ROW.centreY - kick.height / 2);
   const kicker = kit.sprite(KICK_ROW.racerX, KICK_ROW.centreY, kit.racer, Frame.a, 2);
   const streaks = [-6, 0, 6].map((dy) => kit.bar(0, KICK_ROW.centreY + dy, 10, 1, 0xf6f0dc));
@@ -63,7 +63,7 @@ export const buildMovePage: PageBuilder = (kit) => {
     kick.setHighlighted(pressed);
     kicker.setPosition(KICK_ROW.racerX + Math.round(push), KICK_ROW.centreY).setFrame(stroke(tick, reducedMotion));
     for (const streak of streaks) {
-      streak.setVisible(push > 1).setX(KICK_ROW.racerX + Math.round(push) - 24);
+      streak.setVisible(push > 1).setX(KICK_ROW.racerX + Math.round(push) - 30);
     }
   };
 };

@@ -102,7 +102,7 @@ export class RaceScene extends Phaser.Scene {
         view.sync(racer, current.tick);
         effects.sync(racer, current.tick);
       }
-      hud.sync(current);
+      hud.sync(current, this.rt.hints);
       hints.sync(current, this.rt.hints, this.cameras.main.worldView);
       burstIcon.sync(playerOf(current).stack);
       fx.sync(current);

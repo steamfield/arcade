@@ -9,6 +9,7 @@ import { controlName } from '../control-glyphs.ts';
 import { buildAttacksPage } from './attacks-page.ts';
 import { buildBurstPage } from './burst-page.ts';
 import { buildClamsPage } from './clams-page.ts';
+import { buildDodgePage } from './dodge-page.ts';
 import { createPage, type Page, type PageBuilder } from './kit.ts';
 import { buildMovePage } from './move-page.ts';
 
@@ -20,6 +21,7 @@ const PAGES: readonly { heading: (touch: boolean) => string; build: PageBuilder 
   { heading: () => 'OPEN CLAMS', build: buildClamsPage },
   { heading: (touch) => `${controlName('burst', touch)} USES ALL!`, build: buildBurstPage },
   { heading: () => 'ATTACKS', build: buildAttacksPage },
+  { heading: () => 'KICK TO DODGE', build: buildDodgePage },
 ];
 
 /**

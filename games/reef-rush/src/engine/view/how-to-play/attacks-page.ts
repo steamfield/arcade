@@ -1,109 +1,102 @@
 /**
- * Page 4, ATTACKS. Four small scenes, one per attack power-up, each with its icon and name: the
- * Homing Squid chases a racer, a Riptide pushes along a lane, Undertow drags a racer back, and
- * a Mimic's decoy draws a squid off. Below them, how to dodge a squid: kick as it arrives and the
- * racer hops clear while the squid sails past.
+ * Page 4, ATTACKS. Four scenes at 2x, one per attack power-up, each with its icon and name: the
+ * Homing Squid chases a racer, a Riptide pushes along a lane, Undertow drags a racer back, and a
+ * Mimic's decoy draws a squid off the real racer. The first two sit across the top band, the
+ * other two to its right in the safe column, so nothing enters the d-pad zone (x < 108, y 76+) or
+ * the A/B zone (x 228+, y 118+).
  */
 import { Frame, Tex } from '../../art/keys.ts';
 import { IconFrame, type IconFrameKey } from '../../art/ui/keys.ts';
-import { easeOut, type PageBuilder, stroke } from './kit.ts';
+import { measureText, TEXT_FACE } from '../../art/ui/typeface.ts';
+import { easeOut, type PageBuilder, type PageKit, stroke } from './kit.ts';
 
-/** Four cells across the top band, each 54 px wide, centred on these x. */
-const CELL_X = [41, 99, 157, 215] as const;
-/** Each cell stacks a 2x icon, the little scene and the name; the names end at y 75, above the d-pad zone. */
-const ICON_Y = 32;
-const SCENE_Y = 54;
-const NAME_TOP = 68;
-/** The riptide lane and its wash colour (the lane's own green, as in the water). */
-const LANE = { w: 44, h: 16 } as const;
+/** Scene centres: the wide scenes across the top, the narrow ones under them in the safe column. */
+const SQUID_AT = { x: 67, y: 38 } as const;
+const RIPTIDE_AT = { x: 181, y: 38 } as const;
+const UNDERTOW_AT = { x: 150, y: 82 } as const;
+const MIMIC_AT = { x: 218, y: 82 } as const;
+/** A caption (icon and name) sits this far below its scene's centre. */
+const CAPTION_DY = 24;
+const CAPTION_ICON_GAP = 3;
+const ICON_PX = 9;
+/** The riptide lane's size and wash colour (the lane's own green, as in the water). */
+const LANE = { w: 96, h: 28 } as const;
 const LANE_WASH = 0x3ccf7a;
 const LANE_ALPHA = 0.25;
 const STREAK_SCROLL_PER_TICK = 1.5;
 const DECOY_TINT = 0xcfe8ff;
 const DECOY_ALPHA = 0.8;
 const LOOP = 90;
-/** The dodge row, in the safe column: words, then the kick control, the racer and the squid. */
-const DODGE = { wordsTop: 86, glyphX: 116, centreY: 120, racerX: 192, period: 120, kickAt: 56 } as const;
-
-const NAMES: readonly { name: string; icon: IconFrameKey }[] = [
-  { name: 'SQUID', icon: IconFrame.homingSquid },
-  { name: 'RIPTIDE', icon: IconFrame.riptide },
-  { name: 'UNDERTOW', icon: IconFrame.undertow },
-  { name: 'MIMIC', icon: IconFrame.mimic },
-];
+/** Undertow's violet lines trail this far behind the racer, in px (drawn 1x to stay clear of the d-pad zone). */
+const PULL_LINE_BEHIND = 24;
 
 /** A gentle -1..1 wave, `period` ticks long, for things that bob. */
 function wave(tick: number, period: number): number {
   return Math.sin((tick / period) * Math.PI * 2);
 }
 
+/** The icon and name under a scene, centred on `x` as one group. */
+function addCaption(kit: PageKit, x: number, centreY: number, icon: IconFrameKey, name: string): void {
+  const nameWidth = measureText(TEXT_FACE, name).width;
+  const left = Math.round(x - (ICON_PX + CAPTION_ICON_GAP + nameWidth) / 2);
+  kit.icon(left + ICON_PX / 2, centreY, icon);
+  kit.words(left + ICON_PX + CAPTION_ICON_GAP + nameWidth / 2, centreY, name);
+}
+
 export const buildAttacksPage: PageBuilder = (kit) => {
-  NAMES.forEach(({ name, icon }, index) => {
-    const x = CELL_X[index] ?? 0;
-    kit.icon(x, ICON_Y, icon, 2);
-    kit.words(x, NAME_TOP + 3, name);
-  });
+  addCaption(kit, SQUID_AT.x, SQUID_AT.y + CAPTION_DY, IconFrame.homingSquid, 'SQUID');
+  addCaption(kit, RIPTIDE_AT.x, RIPTIDE_AT.y + CAPTION_DY, IconFrame.riptide, 'RIPTIDE');
+  addCaption(kit, UNDERTOW_AT.x, UNDERTOW_AT.y + CAPTION_DY, IconFrame.undertow, 'UNDERTOW');
+  addCaption(kit, MIMIC_AT.x, MIMIC_AT.y + CAPTION_DY, IconFrame.mimic, 'MIMIC');
 
   // Squid: it follows a racer that keeps ahead of it.
-  const chased = kit.sprite(CELL_X[0] + 10, SCENE_Y, kit.racer, Frame.a);
-  const chaser = kit.sprite(CELL_X[0] - 14, SCENE_Y, Tex.squid, Frame.a);
+  const chased = kit.sprite(SQUID_AT.x + 22, SQUID_AT.y, kit.racer, Frame.a, 2);
+  const chaser = kit.sprite(SQUID_AT.x - 24, SQUID_AT.y, Tex.squid, Frame.a, 2);
 
   // Riptide: a green lane with streaks, and a racer riding it.
-  const laneLeft = CELL_X[1] - LANE.w / 2;
-  kit.bar(CELL_X[1], SCENE_Y, LANE.w, LANE.h, LANE_WASH).setAlpha(LANE_ALPHA);
-  const streaks = kit.tiles(laneLeft, SCENE_Y - LANE.h / 2, LANE.w, LANE.h, Tex.riptideStreak, Frame.a);
-  const rider = kit.sprite(CELL_X[1], SCENE_Y, kit.racer, Frame.a);
+  kit.bar(RIPTIDE_AT.x, RIPTIDE_AT.y, LANE.w, LANE.h, LANE_WASH).setAlpha(LANE_ALPHA);
+  const streaks = kit.tiles(
+    RIPTIDE_AT.x - LANE.w / 2,
+    RIPTIDE_AT.y - LANE.h / 2,
+    LANE.w,
+    LANE.h,
+    Tex.riptideStreak,
+    Frame.a,
+  );
+  const rider = kit.sprite(RIPTIDE_AT.x, RIPTIDE_AT.y, kit.racer, Frame.a, 2);
 
   // Undertow: a racer slides back with violet lines behind it.
-  const pulled = kit.sprite(CELL_X[2], SCENE_Y, kit.racer, Frame.a);
-  const pullLines = kit.sprite(CELL_X[2] - 10, SCENE_Y, Tex.undertowStreak, Frame.a);
+  const pulled = kit.sprite(UNDERTOW_AT.x, UNDERTOW_AT.y, kit.racer, Frame.a, 2);
+  const pullLines = kit.sprite(UNDERTOW_AT.x - PULL_LINE_BEHIND, UNDERTOW_AT.y, Tex.undertowStreak, Frame.a);
 
-  // Mimic: a squid heads for the decoy, not the racer.
-  const real = kit.sprite(CELL_X[3] - 10, SCENE_Y + 7, kit.racer, Frame.a);
-  const decoy = kit.sprite(CELL_X[3] + 12, SCENE_Y - 6, kit.racer, Frame.a).setTint(DECOY_TINT);
-  const hunter = kit.sprite(CELL_X[3] - 18, SCENE_Y - 6, Tex.squid, Frame.a);
-
-  // Dodge: kick as the squid arrives and hop over it.
-  kit.words(168, DODGE.wordsTop + 3, 'KICK TO DODGE', { tone: 'sun' });
-  const kick = kit.action('kick');
-  kick.setPosition(DODGE.glyphX, DODGE.centreY - kick.height / 2);
-  const hopper = kit.sprite(DODGE.racerX, DODGE.centreY, kit.racer, Frame.a);
-  const incoming = kit.sprite(DODGE.racerX - 48, DODGE.centreY + 2, Tex.squid, Frame.a);
+  // Mimic: the squid heads for the see-through copy, an arrow says so, and the real racer swims off the other way.
+  const decoy = kit.sprite(MIMIC_AT.x + 20, MIMIC_AT.y, kit.racer, Frame.a, 2).setTint(DECOY_TINT);
+  const hunter = kit.sprite(MIMIC_AT.x - 24, MIMIC_AT.y, Tex.squid, Frame.a, 2);
+  kit.icon(MIMIC_AT.x - 1, MIMIC_AT.y, IconFrame.arrowUp).setAngle(90);
+  const real = kit.sprite(MIMIC_AT.x - 18, MIMIC_AT.y + 13, kit.racer, Frame.a).setFlipX(true);
 
   return (tick, reducedMotion) => {
     const swim = stroke(tick, reducedMotion);
-    const sway = reducedMotion ? 0 : wave(tick, 90) * 5;
-    chased.setX(CELL_X[0] + 10 + sway).setFrame(swim);
-    chaser.setX(CELL_X[0] - 14 + sway).setFrame(swim);
+    const sway = reducedMotion ? 0 : wave(tick, 90) * 4;
+    chased.setX(SQUID_AT.x + 22 + sway).setFrame(swim);
+    chaser.setX(SQUID_AT.x - 24 + sway).setFrame(swim);
 
     streaks.setTilePosition(reducedMotion ? 0 : -tick * STREAK_SCROLL_PER_TICK, 0);
-    rider.setX(CELL_X[1] + (reducedMotion ? 0 : wave(tick, 60) * 6)).setFrame(swim);
+    rider.setX(RIPTIDE_AT.x + (reducedMotion ? 0 : wave(tick, 60) * 14)).setFrame(swim);
 
     // Undertow: swim ahead for half the loop, then be dragged back. Reduced motion holds the dragged moment.
     const half = LOOP / 2;
     const beat = reducedMotion ? LOOP - 1 : tick % LOOP;
     const dragged = beat >= half;
-    const slide = dragged ? 8 - 20 * easeOut((beat - half) / half) : -8 + 16 * (beat / half);
-    pulled.setX(CELL_X[2] + slide).setFrame(swim);
+    const slide = dragged ? 6 - 14 * easeOut((beat - half) / half) : -8 + 14 * (beat / half);
+    pulled.setX(UNDERTOW_AT.x + slide).setFrame(swim);
     pullLines
-      .setX(CELL_X[2] + slide - 12)
+      .setX(UNDERTOW_AT.x + slide - PULL_LINE_BEHIND)
       .setVisible(dragged)
       .setFrame(swim);
 
-    const approach = reducedMotion ? 0.6 : (tick % LOOP) / LOOP;
-    hunter.setX(CELL_X[3] - 18 + approach * 16).setFrame(swim);
+    hunter.setX(MIMIC_AT.x - 24 + (reducedMotion ? 6 : (tick % LOOP) / 9)).setFrame(swim);
     decoy.setAlpha(DECOY_ALPHA).setFrame(swim);
-    real.setFrame(swim);
-
-    const t = tick % DODGE.period;
-    const dodged = reducedMotion || t >= DODGE.kickAt;
-    kick.setHighlighted(reducedMotion || (t >= DODGE.kickAt && t < DODGE.kickAt + 12));
-    const hop = reducedMotion ? 14 : t < DODGE.kickAt ? 0 : 14 * easeOut((t - DODGE.kickAt) / 10);
-    hopper.setY(DODGE.centreY - (dodged ? hop : 0)).setFrame(swim);
-    const squidX = reducedMotion ? DODGE.racerX - 10 : DODGE.racerX - 48 + (t / DODGE.period) * 100;
-    incoming
-      .setX(squidX)
-      .setFrame(swim)
-      .setVisible(squidX < 226);
+    real.setX(MIMIC_AT.x - 18 - (reducedMotion ? 0 : (tick % LOOP) / 12)).setFrame(swim);
   };
 };

@@ -4,20 +4,30 @@
  * say, and the runtime keeps the latest answer so tests can read it.
  *
  * Three hints, each a picture-first prompt (see UI.md "Hints"):
- * - PRESS B: the first time a power-up lands in the stack, until the player fires one.
- * - KICK: a Homing Squid has locked on, and kicking just before it arrives dodges it.
- * - PULSE: the stack has held something unused for 5 seconds, so the B glyph pulses on the HUD.
+ * - PRESS B: the first time a power-up lands in the stack, until the player fires one. On Easy it
+ *   stays up until then; on other levels (first race only) it gives up after 4 seconds.
+ * - KICK: a Homing Squid is locked on and is inside the dodge window (plus a short lead) while the
+ *   player's kick is ready, since a kick only dodges in the last moments before contact.
+ * - PULSE: the stack has held something unused for a while, so the B glyph pulses on the HUD.
+ *   It starts where PRESS B gives up, so there is no silent gap.
  *
  * Hints run on the first race of a save and on every Easy race; otherwise they stay silent.
  */
-import { playerOf } from '../../logic/racers.ts';
+import { TICK_DT } from '@arcade/core';
+import { SQUID } from '../../logic/powerups/tuning.ts';
+import { centreOf, playerOf } from '../../logic/racers.ts';
 import type { Difficulty, World } from '../../logic/types.ts';
 import { squidHuntingPlayer } from './threat-math.ts';
 
-/** Ticks PRESS B! stays up after the first power-up lands, if the player doesn't fire it. */
+/** Ticks PRESS B! stays up after the first power-up lands when it times out (not on Easy), and when the HUD pulse takes over. */
 export const PRESS_B_TICKS = 240;
-/** Ticks a stack may sit unused before the HUD's B glyph starts to pulse (5 s at 60 ticks a second). */
+/** Ticks a stack may sit unused on Easy before the HUD's B glyph starts to pulse (5 s), while PRESS B! is still up. */
 export const UNUSED_PULSE_TICKS = 300;
+/**
+ * Ticks before the dodge window that KICK! appears, so there is time to read it and press. The
+ * window itself is `SQUID.dodgeTicks`, read from logic.
+ */
+export const KICK_LEAD_TICKS = 8;
 
 /** What the player has already shown they know, per race. */
 export interface HintMemory {
@@ -47,17 +57,24 @@ export function newHintMemory(): HintMemory {
   return { firstHeldAt: null, burstLearned: false, unusedSince: null };
 }
 
+/** Which hints a race runs: none, or on Easy (PRESS B! waits for the first burst) or on the first race of another level (it times out). */
+export interface HintConfig {
+  enabled: boolean;
+  /** True when PRESS B! has no timeout and the pulse waits `UNUSED_PULSE_TICKS`. */
+  easy: boolean;
+}
+
 /** Hints run for the first race of a save (nothing recorded yet) and for every Easy race. */
-export function hintsEnabled(racesRun: number, difficulty: Difficulty): boolean {
-  return racesRun === 0 || difficulty === 'easy';
+export function hintConfig(racesRun: number, difficulty: Difficulty): HintConfig {
+  return { enabled: racesRun === 0 || difficulty === 'easy', easy: difficulty === 'easy' };
 }
 
 /**
  * Updates `memory` from this tick's world and returns the hints to show. Call it once per tick
  * after the world stepped. Hints stay off during the countdown, once the player has finished,
- * and always when `enabled` is false.
+ * and always when the config has them off.
  */
-export function updateHints(memory: HintMemory, world: World, enabled: boolean): HintState {
+export function updateHints(memory: HintMemory, world: World, config: HintConfig): HintState {
   const player = playerOf(world);
   if (player.burstCooldown > 0) memory.burstLearned = true;
   const holding = player.stack.length > 0;
@@ -67,11 +84,25 @@ export function updateHints(memory: HintMemory, world: World, enabled: boolean):
   if (!holding || player.burstCooldown > 0) memory.unusedSince = null;
   else memory.unusedSince ??= tick;
 
-  if (!enabled || world.race.phase !== 'racing' || player.finished) return NO_HINTS;
+  if (!config.enabled || world.race.phase !== 'racing' || player.finished) return NO_HINTS;
   const firstHeldAt = memory.firstHeldAt;
+  const heldFor = firstHeldAt === null ? 0 : tick - firstHeldAt;
+  const pressBOpen = config.easy || heldFor < PRESS_B_TICKS;
+  const pulseAfter = config.easy ? UNUSED_PULSE_TICKS : PRESS_B_TICKS;
   return {
-    pressB: holding && !memory.burstLearned && firstHeldAt !== null && tick - firstHeldAt < PRESS_B_TICKS,
-    kick: player.status.latched === 0 && squidHuntingPlayer(world) !== null,
-    pulseStack: memory.unusedSince !== null && tick - memory.unusedSince >= UNUSED_PULSE_TICKS,
+    pressB: holding && !memory.burstLearned && firstHeldAt !== null && pressBOpen,
+    kick: kickIsUseful(world),
+    pulseStack: memory.unusedSince !== null && tick - memory.unusedSince >= pulseAfter,
   };
+}
+
+/** A squid locked on the player is inside the dodge window plus the lead, and the player can kick now. */
+function kickIsUseful(world: World): boolean {
+  const player = playerOf(world);
+  if (player.status.latched > 0 || player.kickCooldown > 0) return false;
+  const squid = squidHuntingPlayer(world);
+  if (squid === null) return false;
+  const reach = (SQUID.dodgeTicks + KICK_LEAD_TICKS) * SQUID.speed * TICK_DT;
+  const at = centreOf(player);
+  return (squid.x - at.x) ** 2 + (squid.y - at.y) ** 2 <= reach * reach;
 }
