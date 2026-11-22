@@ -259,7 +259,7 @@ class PlayScene extends Phaser.Scene {
 
 function bannerText(world: World): string {
   const { race } = world;
-  if (race.phase === 'countdown') return String(3 - Math.floor(race.raceTick / 60));
+  if (race.phase === 'countdown') return String(Math.max(1, 3 - Math.floor(race.raceTick / 60)));
   if (race.phase === 'racing') return race.raceTick < 45 ? 'GO!' : '';
   const result = race.result;
   if (!result) return '';
