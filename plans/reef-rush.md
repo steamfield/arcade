@@ -298,6 +298,8 @@ The user asked (2026-11-22) for a playable cast where each racer has its own abi
 | Selene | moon jellyfish with a starlight glow, the mystic | Moonlight: sees through dark zones, immune to jelly stings |
 | Rook | hammerhead shark, the hunter | Frenzy: when a racer near it is hit or loses a power-up, it gets a short speed burst |
 
+Dark zones move here from phase 5: `Level.dark` is parsed but nothing reads it. Phase 6 makes darkness matter (an engine overlay with a light radius around each racer, rivals steer more loosely in the dark), gives the Glow Lantern passive its "lights the dark trench" effect and Selene her ability, and adds a dark range to the course. The scaffold settles the contract.
+
 Abilities stay small next to power-ups. Difficulty bars from phase 5 must hold with the player as each character, and no character's expert-bot win rate may exceed any other's by more than 2 of 10 seeds.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
