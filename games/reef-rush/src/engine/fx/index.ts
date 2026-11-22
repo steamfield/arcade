@@ -31,10 +31,10 @@ export interface Fx {
   sync(world: World): void;
 }
 
-/** Particles behind the racers: swim trails and kick puffs. Four racers at full speed fill about half. */
-const BACK_CAPACITY = 96;
-/** Particles above the racers: everything that marks an event. A smashed coral gate uses about 40. */
-const FRONT_CAPACITY = 128;
+/** Particles behind the racers: swim trails, kick puffs and coral debris (a smashed gate uses about 40). */
+const BACK_CAPACITY = 160;
+/** Particles above the racers: everything else that marks an event. */
+const FRONT_CAPACITY = 96;
 /** Seeds the cosmetic rng; a constant, so a race's particles scatter the same way on every run. */
 const COSMETIC_SEED = 0x5eaf00d;
 
@@ -47,7 +47,7 @@ export function createFx(scene: Phaser.Scene, world: World, reducedMotion: boole
   const back = createParticleField(BACK_CAPACITY);
   const front = createParticleField(FRONT_CAPACITY);
   const layers = [
-    createParticleLayer(scene, back, Layer.racers - 0.25),
+    createParticleLayer(scene, back, Layer.racers - 0.75),
     createParticleLayer(scene, front, Layer.player + 0.75),
   ];
   const bursts = createBursts(back, front, createRng(COSMETIC_SEED), reducedMotion);

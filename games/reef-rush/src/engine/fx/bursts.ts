@@ -13,11 +13,14 @@ import { FX_TEXTURE, FxFrame } from './textures.ts';
 
 /** Spawns each effect's particles at a world position in px. */
 export interface Bursts {
-  /** Bubbles pushed out behind a kick; `facing` is the racer's (1 right, -1 left). */
-  kickPuff(x: number, y: number, facing: 1 | -1): void;
+  /**
+   * Bubbles pushed out behind a kick, opposite the racer's velocity (`vx`, `vy` in px/s) just
+   * after it; a racer that isn't moving pushes them out behind its `facing`.
+   */
+  kickPuff(x: number, y: number, vx: number, vy: number, facing: 1 | -1): void;
   /** One bubble shed while swimming. */
   trailBubble(x: number, y: number): void;
-  /** A coral tile breaking into chunks that sink. */
+  /** A coral tile breaking into chunks that sink, drawn behind the racers so a smashing racer stays readable. */
   coralDebris(x: number, y: number): void;
   /** Sparks where a racer was hit. */
   hitSparks(x: number, y: number): void;
@@ -82,12 +85,15 @@ const INK_PUFF_STILL: RingShape = { count: 4, radius: 6, speed: 0, life: 22, fra
 const POP: RingShape = { count: 6, radius: 3, speed: 1.3, life: 14, frame: FxFrame.bubbleSmall, style: DROPLET };
 const POP_STILL: RingShape = { count: 4, radius: 5, speed: 0, life: 16, frame: FxFrame.bubbleSmall, style: DROPLET };
 
+/** How far behind a kicking racer's centre its puff starts, px. */
+const KICK_PUFF_BEHIND = 8;
 /** How far above a racer's centre a popped power-up icon starts, px. */
 const ICON_RISE_FROM = 12;
 
 /**
- * Builds the recipes. `back` draws behind the racers (trails and kick puffs), `front` above
- * them (everything that marks an event).
+ * Builds the recipes. `back` draws behind the racers (trails, kick puffs and coral debris, which
+ * would otherwise bury a racer smashing a gate), `front` above them (everything else that marks
+ * an event).
  */
 export function createBursts(back: ParticleField, front: ParticleField, rng: Rng, reducedMotion: boolean): Bursts {
   const jitter = (spread: number) => (rng.next() * 2 - 1) * spread;
@@ -107,13 +113,22 @@ export function createBursts(back: ParticleField, front: ParticleField, rng: Rng
   };
 
   return {
-    kickPuff(x, y, facing) {
+    kickPuff(x, y, vx, vy, facing) {
+      const speed = Math.hypot(vx, vy);
+      // Unit direction of travel; the puff goes the other way.
+      const dirX = speed > 0 ? vx / speed : facing;
+      const dirY = speed > 0 ? vy / speed : 0;
       const count = reducedMotion ? 2 : 4;
       for (let index = 0; index < count; index++) {
         const frame = index % 2 === 0 ? FxFrame.bubble : FxFrame.bubbleSmall;
-        const particle = back.spawn(x - facing * 8, y + jitter(3), 26 + rng.int(0, 8), FX_TEXTURE, frame);
-        particle.vx = reducedMotion ? 0 : -facing * (0.6 + rng.next() * 0.8);
-        particle.vy = reducedMotion ? 0 : jitter(0.4);
+        const across = jitter(3);
+        const px = x - dirX * KICK_PUFF_BEHIND - dirY * across;
+        const py = y - dirY * KICK_PUFF_BEHIND + dirX * across;
+        const particle = back.spawn(px, py, 26 + rng.int(0, 8), FX_TEXTURE, frame);
+        const push = reducedMotion ? 0 : 0.6 + rng.next() * 0.8;
+        const spread = reducedMotion ? 0 : jitter(0.4);
+        particle.vx = -dirX * push - dirY * spread;
+        particle.vy = -dirY * push + dirX * spread;
         applyStyle(particle, reducedMotion ? BUBBLE_STILL : BUBBLE, rng);
       }
     },
@@ -125,7 +140,7 @@ export function createBursts(back: ParticleField, front: ParticleField, rng: Rng
     coralDebris(x, y) {
       const count = reducedMotion ? 3 : 4;
       for (let index = 0; index < count; index++) {
-        const particle = front.spawn(x + jitter(5), y + jitter(5), 36 + rng.int(0, 10), Tex.coralDebris, Frame.a);
+        const particle = back.spawn(x + jitter(5), y + jitter(5), 36 + rng.int(0, 10), Tex.coralDebris, Frame.a);
         particle.vx = reducedMotion ? 0 : jitter(1.4);
         particle.vy = reducedMotion ? 0 : -0.4 - rng.next() * 1.2;
         particle.flipX = rng.next() < 0.5;

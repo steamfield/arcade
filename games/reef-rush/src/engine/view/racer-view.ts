@@ -7,13 +7,20 @@
  * shape, shows invulnerability as a steady see-through look and skips the flash;
  * the kick puff and place-up sparkles in `fx/` still carry those moments.
  */
+import type { Stamped } from '@arcade/core';
 import Phaser from 'phaser';
 import type { Racer, RacerId } from '../../logic/types.ts';
 import { Frame, Tex, type TexKey } from '../art/keys.ts';
+import type { RuntimeEvent } from '../runtime.ts';
 import { Layer } from './layers.ts';
 
 /** One racer's sprite, kept in step with its logic state. */
 export interface RacerView {
+  /**
+   * Starts the kick squash on this racer's `racer.kicked` and, for the player, the flash on a
+   * `player.place` that gains a place, each from the tick stamped on the event.
+   */
+  onEvents(events: readonly Stamped<RuntimeEvent>[]): void;
   /**
    * Moves the sprite to `racer`'s current state.
    *
@@ -28,7 +35,7 @@ const TEXTURE: Record<RacerId, TexKey> = { player: Tex.player, tess: Tex.tess, s
 const DRIFT_SPEED = 15;
 const SPRINT_SPEED = 90;
 
-/** A kick squashes the sprite along its swim axis for SQUASH_TICKS, then stretches it and eases back by KICK_TICKS. */
+/** A kick squashes the sprite along the axis it kicked on for SQUASH_TICKS, then stretches it and eases back by KICK_TICKS. */
 const SQUASH_TICKS = 3;
 const KICK_TICKS = 11;
 const SQUASH_AMOUNT = 0.2;
@@ -54,25 +61,35 @@ export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion
   const sprite = scene.add
     .sprite(0, 0, TEXTURE[racer.id], Frame.a)
     .setDepth(racer.id === 'player' ? Layer.player : Layer.racers);
-  let lastCooldown = racer.kickCooldown;
   let kickedAt = Number.NEGATIVE_INFINITY;
-  let lastPlace = racer.place;
+  // Kicks fire along the input, so the squash follows whichever axis the racer is moving on.
+  let kickVertical = false;
+  let kickAxisFor = Number.NaN;
+  let place = racer.place;
   let placeGainedAt = Number.NEGATIVE_INFINITY;
 
   return {
+    onEvents(events) {
+      for (const event of events) {
+        if (event.type === 'racer.kicked' && event.id === racer.id) kickedAt = event.tick;
+        if (event.type === 'player.place' && racer.id === 'player') {
+          if (event.place < place) placeGainedAt = event.tick;
+          place = event.place;
+        }
+      }
+    },
     sync(current, tick) {
-      // A cooldown that went up since the last sync means a kick fired in between.
-      if (current.kickCooldown > lastCooldown) kickedAt = tick;
-      lastCooldown = current.kickCooldown;
-      if (current.place < lastPlace) placeGainedAt = tick;
-      lastPlace = current.place;
-
       const { body } = current;
+      if (kickAxisFor !== kickedAt) {
+        kickAxisFor = kickedAt;
+        kickVertical = Math.abs(body.vy) > Math.abs(body.vx);
+      }
       sprite.setPosition(Math.round(body.x + body.w / 2), Math.round(body.y + body.h / 2));
       sprite.setFlipX(current.facing < 0);
       sprite.setFrame(strokeFrame(Math.hypot(body.vx, body.vy), tick));
       const stretch = reducedMotion ? 0 : kickStretchAt(tick - kickedAt);
-      sprite.setScale(1 + stretch, 1 - stretch);
+      if (kickVertical) sprite.setScale(1 - stretch, 1 + stretch);
+      else sprite.setScale(1 + stretch, 1 - stretch);
       sprite.setAlpha(invulnerableAlpha(current.status.invulnerable, reducedMotion));
       const flashing = !reducedMotion && current.id === 'player' && tick - placeGainedAt < PLACE_FLASH_TICKS;
       if (flashing) sprite.setTint(FLASH_COLOUR).setTintMode(Phaser.TintModes.FILL);
@@ -92,7 +109,7 @@ function ticksPerStrokeFrame(speed: number): number {
 }
 
 /**
- * Horizontal stretch `ticksSinceKick` after a kick (the vertical scale moves the other way):
+ * Stretch along the kick's axis `ticksSinceKick` after a kick (the other axis moves the other way):
  * negative (squashed short and tall, gathering) for SQUASH_TICKS, then a stretch long and thin
  * that eases back to nothing by KICK_TICKS.
  */

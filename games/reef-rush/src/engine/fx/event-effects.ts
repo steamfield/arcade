@@ -50,11 +50,14 @@ export function createEventEffects(
     onTick(events) {
       let cannonballImpact = false;
       let bubblesPopped = false;
+      // A shielded hit emits both racer.hit and shield.popped on one tick; only the lighter shake applies.
+      let playerHit = false;
+      let playerShieldPopped = false;
       for (const event of events) {
         switch (event.type) {
           case 'racer.kicked': {
             const racer = world.racers.find((candidate) => candidate.id === event.id);
-            if (racer) racerAt(event.id, (x, y) => bursts.kickPuff(x, y, racer.facing));
+            if (racer) racerAt(event.id, (x, y) => bursts.kickPuff(x, y, racer.body.vx, racer.body.vy, racer.facing));
             break;
           }
           case 'coral.broken':
@@ -63,12 +66,12 @@ export function createEventEffects(
             break;
           case 'racer.hit':
             racerAt(event.id, bursts.hitSparks);
-            if (event.id === 'player') shake(PLAYER_HIT_TRAUMA);
+            if (event.id === 'player') playerHit = true;
             if (event.by === 'player' && event.cause === 'puffer' && playerCannonballing()) cannonballImpact = true;
             break;
           case 'shield.popped':
             racerAt(event.id, bursts.bubblePop);
-            if (event.id === 'player') shake(SHIELD_POP_TRAUMA);
+            if (event.id === 'player') playerShieldPopped = true;
             break;
           case 'pearl.collected': {
             const pearl = world.level.pearls[event.index];
@@ -100,6 +103,8 @@ export function createEventEffects(
             break;
         }
       }
+      if (playerShieldPopped) shake(SHIELD_POP_TRAUMA);
+      else if (playerHit) shake(PLAYER_HIT_TRAUMA);
       if (cannonballImpact) shake(CANNONBALL_TRAUMA);
       if (bubblesPopped) bubbles.vanished(world, bursts.bubblePop);
       bubbles.remember(world);
