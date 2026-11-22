@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHARACTER_IDS } from '../../../logic/types.ts';
 import { Frame, Tex, TileIndex } from '../keys.ts';
 import { BackdropPalette, HazardPalette, WATER_BANDS } from '../palettes.ts';
-import { measureFrames } from '../pixel.ts';
+import { measureFrames, type NamedFrame } from '../pixel.ts';
 import { ART_SHEETS } from './index.ts';
 import { CharacterPalette, RACER_SHEETS } from './racers.ts';
 
@@ -79,14 +79,27 @@ describe('world art palettes', () => {
     expect(weakest).toBeGreaterThanOrEqual(3);
   });
 
-  it.each(RACER_SHEETS.flatMap((sheet) => sheet.frames.map((frame) => [sheet.key, frame.name, frame] as const)))(
+  const racerFrames = RACER_SHEETS.flatMap((sheet) =>
+    sheet.frames.map((frame) => [sheet.key, frame.name, frame] as const),
+  );
+  const isBright = (frame: NamedFrame, pixel: string) => pixel !== '.' && readable(frame.palette[Number(pixel)] ?? 0);
+
+  it.each(racerFrames)(
     '%s frame %s draws at least a quarter of its pixels in colours that stand 3:1 off the water',
     (_, __, frame) => {
       const pixels = [...frame.rows.join('')].filter((pixel) => pixel !== '.');
-      const bright = pixels.filter((pixel) => readable(frame.palette[Number(pixel)] ?? 0));
+      const bright = pixels.filter((pixel) => isBright(frame, pixel));
       expect(bright.length / pixels.length).toBeGreaterThanOrEqual(0.25);
     },
   );
+
+  // A racer whose readable pixels sit in one thin stripe reads as a line, not a body.
+  it.each(racerFrames)('%s frame %s spreads its 3:1 colours over most of its height', (_, __, frame) => {
+    const drawn = frame.rows.flatMap((row, y) => ([...row].some((pixel) => pixel !== '.') ? [y] : []));
+    const bright = frame.rows.flatMap((row, y) => ([...row].some((pixel) => isBright(frame, pixel)) ? [y] : []));
+    const span = Math.max(...bright) - Math.min(...bright) + 1;
+    expect(span / (Math.max(...drawn) - Math.min(...drawn) + 1)).toBeGreaterThanOrEqual(0.6);
+  });
 });
 
 describe('measureFrames', () => {

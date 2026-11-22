@@ -57,7 +57,8 @@ describe('progress-strip heads', () => {
     const right = [...b.rows.join('')];
     return left.filter((pixel, index) => look(a, pixel) !== look(b, right[index] ?? '.')).length;
   };
-  const silhouette = (_: NamedFrame, pixel: string) => (pixel === '.' ? 0 : 1);
+  // The strip well is near black, so the outline colour reads as background there, not shape.
+  const silhouette = (_: NamedFrame, pixel: string) => (pixel === '.' || pixel === '0' ? 0 : 1);
   /** Four gray levels by Rec. 709 luma, with transparent as its own level, the way a grayscale capture reads. */
   const grayLevel = (frame: NamedFrame, pixel: string) => {
     if (pixel === '.') return -1;
@@ -67,7 +68,7 @@ describe('progress-strip heads', () => {
   };
 
   it.each(pairs)('%s and %s have different outline shapes', (_, __, a, b) => {
-    expect(difference(a, b, silhouette)).toBeGreaterThanOrEqual(6);
+    expect(difference(a, b, silhouette)).toBeGreaterThanOrEqual(8);
   });
 
   it.each(pairs)('%s and %s still tell apart in grayscale', (_, __, a, b) => {
