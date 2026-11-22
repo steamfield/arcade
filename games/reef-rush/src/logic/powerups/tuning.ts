@@ -84,6 +84,8 @@ export const SQUID = {
   ticksPerKick: 30,
   driftAccel: 90,
   driftPeriodTicks: 60,
+  /** A squid ignores ink clouds for this many ticks after launch. */
+  inkGraceTicks: 10,
   /** Side of its square hitbox, centred on it. */
   size: 10,
 } as const;

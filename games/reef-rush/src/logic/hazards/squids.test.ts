@@ -168,16 +168,48 @@ describe('a squid on its way', () => {
     expect(racerOf(world, 'tess').status.latched).toBe(0);
   });
 
-  it('flies through a racer that is invulnerable instead of spending itself on it', () => {
+  it('flies through a racer that is invulnerable, dropping the lock and never turning back for it', () => {
     const { world, log, fire, fly } = scene({ player: [3, 2], tess: [12, 2] });
-    racerOf(world, 'tess').status.invulnerable = 1000;
+    racerOf(world, 'tess').status.invulnerable = 30;
     fire('player');
 
     // About 55 ticks bring it to the target; stop just after it has passed through.
     fly(56);
-
     expect(events(log, 'squid.latched', 'racer.hit')).toEqual([]);
     expect(world.squids).toHaveLength(1);
+    expect(world.squids[0]).toMatchObject({ target: null, dodgedBy: 'tess' });
+
+    racerOf(world, 'tess').status.invulnerable = 0;
+    fly(10);
+
+    expect(events(log, 'squid.latched')).toEqual([]);
+  });
+
+  it('is not lost at launch when it starts inside an ink cloud, only once it has flown on', () => {
+    const { world, log, fire, fly } = scene({ player: [3, 2], tess: [20, 2] });
+    world.inks = [{ ...tileCentre(3, 2), radius: 16, ttl: 240, owner: 'bo' }];
+    fire('player');
+
+    fly(5);
+    expect(world.squids).toHaveLength(1);
+    expect(events(log, 'squid.lost')).toEqual([]);
+
+    // Past its first ticks the same squid does lose its lock in ink.
+    fly(10);
+    const { x, y } = squidOf(world);
+    world.inks = [{ x, y, radius: 16, ttl: 240, owner: 'bo' }];
+    fly(1);
+    expect(events(log, 'squid.lost')).toEqual([{ type: 'squid.lost', owner: 'player' }]);
+  });
+
+  it('latches Rudy for 40% as long, his ability applying to the latch too', () => {
+    const { world, fire, fly } = scene({ player: [3, 2], tess: [12, 2], squib: [12, 3] });
+    racerOf(world, 'tess').character = 'rudy';
+    fire('player');
+
+    fly(80);
+
+    expect(racerOf(world, 'tess').status.latched).toBe(Math.round(SQUID.latchedTicks * 0.4));
   });
 
   it('never hits its own owner', () => {
@@ -260,7 +292,7 @@ describe('decoys and squids', () => {
     fly(60);
 
     expect(events(log, 'squid.locked')).toEqual([{ type: 'squid.locked', owner: 'player', target: 'decoy' }]);
-    expect(events(log, 'decoy.popped')).toEqual([{ type: 'decoy.popped', owner: 'tess', by: 'player' }]);
+    expect(events(log, 'decoy.popped')).toEqual([{ type: 'decoy.popped', owner: 'tess', by: 'player', trapped: null }]);
     expect(events(log, 'squid.latched')).toEqual([]);
     expect(racerOf(world, 'tess').status.latched).toBe(0);
     expect(world.squids).toEqual([]);
@@ -287,6 +319,9 @@ describe('decoys and squids', () => {
 
     expect(racerOf(world, 'player').status.trapped).toBeGreaterThan(0);
     expect(events(log, 'racer.trapped')).toEqual([{ type: 'racer.trapped', id: 'player', by: 'tess' }]);
+    expect(events(log, 'decoy.popped')).toEqual([
+      { type: 'decoy.popped', owner: 'tess', by: 'player', trapped: 'player' },
+    ]);
     expect(racerOf(world, 'tess').status.latched).toBe(0);
   });
 });

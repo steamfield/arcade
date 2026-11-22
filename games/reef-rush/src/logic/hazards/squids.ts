@@ -2,7 +2,8 @@
  * Homing Squids in flight: launching, locking on, steering round rock, dodging, and landing a hit.
  *
  * Each tick, for every squid in `world.squids` (in order):
- * 1. it ages (`ttl`), and ends (`squid.lost`) when out of time or when its centre is inside any ink cloud;
+ * 1. it ages (`ttl`), and ends (`squid.lost`) when out of time or when its centre is inside any ink cloud
+ *    (clouds are ignored for its first SQUID.inkGraceTicks, since chasers sit where ink spawns);
  * 2. it settles on a target (`settleTarget`): a vanished or finished target is replaced by the nearest
  *    valid one, a squid with none looks for one, and a decoy that is as near as its racer target takes over;
  * 3. it turns toward the target by at most SQUID.turnPerTick, aiming straight at it when the line is
@@ -12,12 +13,14 @@
  *    speed), it misses: `squid.dodged`, no lock, flying on straight, never locking that racer again;
  * 6. a decoy it touches pops (`popDecoy`) and the squid is spent; the first racer it touches (not its
  *    owner or the one that dodged) is hit with cause 'squid': a held Bubble Shield absorbs it
- *    (`squid.lost`), a landed hit latches the racer (`squid.latched`, `status.latched`), and an
- *    invulnerable racer is flown through.
+ *    (`squid.lost`), a landed hit latches the racer (`squid.latched`, `status.latched`, shortened by
+ *    `statusDurationMul`), and an invulnerable racer is flown through: the squid drops its lock and
+ *    never chases that racer again, like a dodge.
  *
  * Turning is vector math only (no trig at run time, see num.ts): the velocity rotates by the fixed
  * per-tick angle toward the target's side, or snaps onto it once it is within that angle.
  */
+import { statusDurationMul } from '../abilities.ts';
 import { hasClearSweep, steerDirection } from '../ai/steer.ts';
 import { isSolid } from '../level/query.ts';
 import { cos, length, sin } from '../num.ts';
@@ -86,7 +89,9 @@ export function advanceSquids(world: World, racers: readonly Racer[], dt: number
 /** One squid's tick; true when it is spent (ended or landed) and must be removed. */
 function stepSquid(world: World, racers: readonly Racer[], squid: Squid, dt: number): boolean {
   squid.ttl -= 1;
-  if (squid.ttl <= 0 || insideInk(world, squid)) return lose(world, squid);
+  const launchedTicksAgo = SQUID.ttlTicks - squid.ttl;
+  // Ink spawns right where chasers sit, so a squid ignores clouds for its first few ticks.
+  if (squid.ttl <= 0 || (launchedTicksAgo > SQUID.inkGraceTicks && insideInk(world, squid))) return lose(world, squid);
   settleTarget(world, squid);
   steer(world, squid);
   squid.x += squid.vx * dt;
@@ -213,7 +218,12 @@ function touchSomething(world: World, racers: readonly Racer[], squid: Squid): b
   );
   if (!victim) return false;
   const shielded = victim.stack.includes('bubbleShield');
-  if (!applyHit(world, victim, 'squid', squid.owner, squid)) return false;
+  if (!applyHit(world, victim, 'squid', squid.owner, squid)) {
+    // Passing through an invulnerable racer drops the lock, like a dodge: it never turns back for it.
+    squid.target = null;
+    squid.dodgedBy = victim.id;
+    return false;
+  }
   if (shielded) return lose(world, squid);
   latch(world, victim, squid);
   return true;
@@ -221,7 +231,7 @@ function touchSomething(world: World, racers: readonly Racer[], squid: Squid): b
 
 /** The squid takes hold of `victim`: `status.latched`, the event, and the inkSquid cloud. */
 function latch(world: World, victim: Racer, squid: Squid): void {
-  victim.status.latched = SQUID.latchedTicks;
+  victim.status.latched = Math.round(SQUID.latchedTicks * statusDurationMul(victim, 'latched'));
   world.events.emit({ type: 'squid.latched', id: victim.id, by: squid.owner });
   if (!squid.inked) return;
   const centre = centreOf(victim);

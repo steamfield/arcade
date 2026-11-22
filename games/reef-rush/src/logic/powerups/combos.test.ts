@@ -182,7 +182,9 @@ describe('combo effects', () => {
 
     expect(world.decoys).toEqual([]);
     expect(racerOf(world, 'tess').status.trapped).toBeGreaterThan(0);
-    expect(eventsIn(log, 'decoy.popped')).toEqual([{ type: 'decoy.popped', owner: 'player', by: 'tess' }]);
+    expect(eventsIn(log, 'decoy.popped')).toEqual([
+      { type: 'decoy.popped', owner: 'player', by: 'tess', trapped: 'tess' },
+    ]);
   });
 
   it('inkBomb: one 48 px cloud centred on the racer', () => {

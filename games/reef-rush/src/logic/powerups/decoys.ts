@@ -49,10 +49,9 @@ export function spawnDecoy(world: World, owner: Racer, bubbled: boolean): void {
  */
 export function popDecoy(world: World, decoy: Decoy, by: RacerId | null): void {
   world.decoys = world.decoys.filter((candidate) => candidate !== decoy);
-  world.events.emit({ type: 'decoy.popped', owner: decoy.owner, by });
-  if (!decoy.bubbled || by === null) return;
-  const victim = activeRacers(world).find((racer) => racer.id === by);
-  if (victim) applyHit(world, victim, 'bubble', decoy.owner, decoy);
+  const victim = decoy.bubbled && by !== null ? activeRacers(world).find((racer) => racer.id === by) : undefined;
+  const trapped = victim && applyHit(world, victim, 'bubble', decoy.owner, decoy) && victim.status.trapped > 0;
+  world.events.emit({ type: 'decoy.popped', owner: decoy.owner, by, trapped: trapped && victim ? victim.id : null });
 }
 
 /**

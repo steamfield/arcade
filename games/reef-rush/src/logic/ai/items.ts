@@ -32,8 +32,10 @@ export const ITEM_USE = {
   pufferCoralSteps: 3,
   /** Jet Fins: this many tiles of clear water straight along the aim. */
   jetClearTiles: 5,
-  /** Riptide: this many tiles of clear water straight along the aim to lay the lane on. */
+  /** Riptide: this many tiles of clear water straight along the aim to lay the lane on... */
   riptideClearTiles: 6,
+  /** ...and a racer this close behind, who would draft it (a lane nobody can use is not worth a burst). */
+  riptideBehindTiles: 5,
   /** Undertow: a racer this many tiles further ahead makes it worth firing (from 3rd or 4th place only). */
   undertowLeadTiles: 8,
   /** Mimic: drop the decoy when a squid locked on this racer is within this many tiles. */
@@ -54,7 +56,7 @@ export const ITEM_USE = {
  * tiles; bubbleShield, a racer ahead within 6 tiles inside the aim cone; glowLantern, a racer ahead
  * within 2 tiles; puffer, unbroken coral on the smash-field path within 3 tiles; jetFin, a clear
  * straight path of 5 tiles along the aim; homingSquid, a target in lock range (`pickSquidTarget`);
- * riptide, 6 clear tiles along the aim; undertow, in 3rd or 4th with a racer 8 or more tiles ahead;
+ * riptide, 6 clear tiles along the aim with a racer within 5 tiles behind to draft it; undertow, in 3rd or 4th with a racer 8 or more tiles ahead;
  * mimic, a squid locked on it within 8 tiles.
  *
  * @param aim The unit aim `rivalIntent` chose this tick.
@@ -85,7 +87,10 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
     case 'homingSquid':
       return pickSquidTarget(world, racer.id, centreOf(racer), null) !== null;
     case 'riptide':
-      return clearAhead(world, racer, aim, ITEM_USE.riptideClearTiles);
+      return (
+        clearAhead(world, racer, aim, ITEM_USE.riptideClearTiles) &&
+        othersNear(world, racer, ITEM_USE.riptideBehindTiles).some((other) => other.progress > racer.progress)
+      );
     case 'undertow':
       return (
         racer.place >= CLAM.undertowMinPlace &&

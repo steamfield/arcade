@@ -17,7 +17,8 @@
  * `squid.latched {id, by}` is a contact that landed on racer `id`; `squid.dodged` is a kick that
  * made it miss; `squid.lost` is a squid that expired, hit a wall, lost its lock in ink or was
  * absorbed by a shield; `racer.shaken` ends a latch early from kicks. `undertow.fired.pulled`
- * lists the racers given `status.undertow`. `decoy.popped.by` is null when the decoy simply
+ * lists the racers given `status.undertow`. `decoy.popped.trapped` is the racer a bubbled decoy trapped (the popper or, for a squid, its owner),
+ * else null. `decoy.popped.by` is null when the decoy simply
  * expires. `powerup.lost` cause `used` is a one-use power-up (Undertow) consumed by its burst.
  */
 import type { ComboName, HitCause, PowerUpKind, RacerId } from './types.ts';
@@ -55,4 +56,4 @@ export type GameEvent =
   | { type: 'riptide.spawned'; owner: RacerId }
   | { type: 'undertow.fired'; id: RacerId; pulled: RacerId[] }
   | { type: 'decoy.spawned'; owner: RacerId }
-  | { type: 'decoy.popped'; owner: RacerId; by: RacerId | null };
+  | { type: 'decoy.popped'; owner: RacerId; by: RacerId | null; trapped: RacerId | null };

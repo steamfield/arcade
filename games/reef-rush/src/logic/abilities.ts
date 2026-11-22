@@ -90,10 +90,10 @@ export function stackMaxFor(racer: Racer): number {
 }
 
 /**
- * Multiplies the ticks of a stun or bubble trap as `applyHit` sets it (rounded to whole ticks).
- * Rudy gets 0.4: his stuns and traps last 40% of their time.
+ * Multiplies the ticks of a stun, bubble trap or squid latch as `applyHit` and `squids.ts` set them
+ * (rounded to whole ticks). Rudy gets 0.4: his stuns, traps and latches last 40% of their time.
  */
-export function statusDurationMul(racer: Racer, _status: 'stunned' | 'trapped'): number {
+export function statusDurationMul(racer: Racer, _status: 'stunned' | 'trapped' | 'latched'): number {
   return racer.character === 'rudy' ? ABILITY.shakeItOff.statusMul : 1;
 }
 

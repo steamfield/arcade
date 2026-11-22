@@ -624,9 +624,12 @@ describe('using the attack items', () => {
     expect(bursts(close.decide())).toBe(0);
   });
 
-  it('lays a riptide with 6 clear tiles ahead, not with a wall 3 tiles ahead', () => {
-    expect(bursts(itemScene(['riptide'], {}).decide())).toBe(1);
-    expect(bursts(itemScene(['riptide'], { tess: [18, 5] }).decide())).toBe(0);
+  it('lays a riptide with 6 clear tiles ahead and a racer close behind to draft it', () => {
+    const drafted = itemScene(['riptide'], { player: [7, 5] });
+    const alone = itemScene(['riptide'], { player: [1, 5], bo: [1, 7] });
+    const wall = itemScene(['riptide'], { tess: [18, 5], player: [15, 5] });
+
+    expect([bursts(drafted.decide()), bursts(alone.decide()), bursts(wall.decide())]).toEqual([1, 0, 0]);
   });
 
   it('drops a mimic when a squid is locked on it within 8 tiles', () => {

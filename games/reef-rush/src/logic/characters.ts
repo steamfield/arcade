@@ -20,11 +20,11 @@ export interface Character {
  * gives it. They all swim harder than the player (forceMul near 1.45) and kick and burst less
  * than a good player; the tests in `difficulty/` hold the whole field to its bars for every pick.
  *
- * Swim force is kept close together on purpose: a rival that is much weaker than the rest makes
- * the races it is in lopsided (the best rival finishes far behind the player), and with the
- * catch-up rubber band and attack power-ups in play a few thousandths of force move a character's
- * win rate by a point. Baron (the coral gate, which he rams for nothing) and Selene (the dark
- * zone, where she sees) have shortcuts the others lack, so theirs are the lowest.
+ * Swim force sits between 1.38 and 1.50 and is fitted per character, to two decimals, so that every
+ * pick's win rate lands inside the band: a rival's strength raises the win rate of the characters
+ * it does not race against, so the characters whose own abilities win the most (Rudy, Baron,
+ * Selene) race a little weaker as rivals and Nib, whose bot wins the least, a little stronger.
+ * Win rates shift by a point or more with any change here, so retune against seeds 1-200, not by eye.
  *
  * - Rudy, the plucky hero: the all-rounder; middling kicks, steering and item use.
  * - Gil, lanky and springy: kicks the most, steers the loosest, light in bumps, sparing with items.
@@ -45,42 +45,42 @@ export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
   rudy: {
     name: 'Rudy',
     ability: 'shakeItOff',
-    profile: { forceMul: 1.437, kickSkill: 0.006, wobble: 0.1, reactionTicks: 5, mass: 1.1, itemAggression: 0.0165 },
+    profile: { forceMul: 1.38, kickSkill: 0.006, wobble: 0.1, reactionTicks: 5, mass: 1.1, itemAggression: 0.025 },
   },
   gil: {
     name: 'Gil',
     ability: 'springKick',
-    profile: { forceMul: 1.452, kickSkill: 0.012, wobble: 0.25, reactionTicks: 4, mass: 0.8, itemAggression: 0.013 },
+    profile: { forceMul: 1.45, kickSkill: 0.012, wobble: 0.25, reactionTicks: 4, mass: 0.8, itemAggression: 0.02 },
   },
   streak: {
     name: 'Streak',
     ability: 'windUp',
-    profile: { forceMul: 1.452, kickSkill: 0.003, wobble: 0.05, reactionTicks: 4, mass: 0.9, itemAggression: 0.013 },
+    profile: { forceMul: 1.46, kickSkill: 0.003, wobble: 0.05, reactionTicks: 4, mass: 0.9, itemAggression: 0.02 },
   },
   onyx: {
     name: 'Onyx',
     ability: 'ambush',
-    profile: { forceMul: 1.447, kickSkill: 0.008, wobble: 0.06, reactionTicks: 4, mass: 1.3, itemAggression: 0.0065 },
+    profile: { forceMul: 1.46, kickSkill: 0.008, wobble: 0.06, reactionTicks: 4, mass: 1.3, itemAggression: 0.01 },
   },
   nib: {
     name: 'Nib',
     ability: 'deepPockets',
-    profile: { forceMul: 1.447, kickSkill: 0.005, wobble: 0.2, reactionTicks: 5, mass: 0.7, itemAggression: 0.049 },
+    profile: { forceMul: 1.5, kickSkill: 0.005, wobble: 0.2, reactionTicks: 5, mass: 0.7, itemAggression: 0.075 },
   },
   baron: {
     name: 'Baron Barnacle',
     ability: 'bulldozer',
-    profile: { forceMul: 1.417, kickSkill: 0.002, wobble: 0.1, reactionTicks: 8, mass: 2, itemAggression: 0.0165 },
+    profile: { forceMul: 1.42, kickSkill: 0.002, wobble: 0.1, reactionTicks: 8, mass: 2, itemAggression: 0.025 },
   },
   selene: {
     name: 'Selene',
     ability: 'moonlight',
-    profile: { forceMul: 1.417, kickSkill: 0.004, wobble: 0.12, reactionTicks: 7, mass: 0.9, itemAggression: 0.0165 },
+    profile: { forceMul: 1.42, kickSkill: 0.004, wobble: 0.12, reactionTicks: 7, mass: 0.9, itemAggression: 0.025 },
   },
   rook: {
     name: 'Rook',
     ability: 'frenzy',
-    profile: { forceMul: 1.452, kickSkill: 0.008, wobble: 0.15, reactionTicks: 3, mass: 1.4, itemAggression: 0.0115 },
+    profile: { forceMul: 1.42, kickSkill: 0.008, wobble: 0.15, reactionTicks: 3, mass: 1.4, itemAggression: 0.018 },
   },
 };
 
