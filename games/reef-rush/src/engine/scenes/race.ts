@@ -1,7 +1,8 @@
 /**
  * The race screen. It assembles the views (backdrop, course, pickups, hazards,
- * racers and their power-up effects, HUD, camera, debug overlay) over the runtime's world and syncs them every rendered
- * frame. Event-driven visuals arrive through the runtime's per-tick listener.
+ * racers and their power-up effects, the darkness over dark zones, HUD, camera,
+ * debug overlay) over the runtime's world and syncs them every rendered frame.
+ * Event-driven visuals arrive through the runtime's per-tick listener.
  * Ticking, input and the move to results all happen in the runtime.
  */
 import { TICK_HZ } from '@arcade/core';
@@ -12,6 +13,7 @@ import { createFx } from '../fx/index.ts';
 import type { Runtime } from '../runtime.ts';
 import { createBackdrop } from '../view/backdrop.ts';
 import { followRacer } from '../view/camera.ts';
+import { createDarkView } from '../view/dark-view.ts';
 import { createDebugOverlay } from '../view/debug-overlay.ts';
 import { createHazardView } from '../view/hazard-view.ts';
 import { createHud } from '../view/hud.ts';
@@ -59,6 +61,7 @@ export class RaceScene extends Phaser.Scene {
       view: createRacerView(this, racer, reducedMotion),
       effects: createPowerupView(this, racer.id, reducedMotion),
     }));
+    const dark = createDarkView(this, world, reducedMotion);
     const hud = createHud(this, world, reducedMotion);
     const fx = createFx(this, world, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
@@ -89,6 +92,8 @@ export class RaceScene extends Phaser.Scene {
       }
       hud.sync(current);
       fx.sync(current);
+      // After the camera moved, so the darkness lines up with this frame's scroll.
+      dark.sync(current);
       debug?.sync(current);
     };
     sync(world);

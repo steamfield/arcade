@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ICON_SHEETS } from '../art/ui/icons.ts';
 import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { PanelPalette } from '../art/ui/palette.ts';
-import { comboCentreY, isPlacePopping, NOT_READY_ALPHA, type PlaceTrack, trackPlace } from './hud.ts';
+import { comboCentreY, isPlacePopping, NOT_READY_ALPHA, type PlaceTrack, trackPlace, wellLayout } from './hud.ts';
 
 describe('the place panel', () => {
   it('does not pop when the race starts, even though logic re-places everyone at GO', () => {
@@ -60,6 +60,21 @@ describe('the combo name', () => {
         expect(centre + Math.ceil(height / 2), `player at ${playerY}`).toBeLessThanOrEqual(174);
       }
     }
+  });
+});
+
+describe('the kick and power-up well', () => {
+  it('frames three slots after kick and burst for a racer who holds three', () => {
+    expect(wellLayout(3)).toEqual({ width: 61, slotX: [92, 103, 114] });
+  });
+
+  it('grows by one slot for a racer who holds four, like Nib', () => {
+    const { width, slotX } = wellLayout(4);
+    expect(slotX).toEqual([92, 103, 114, 125]);
+    // The panel keeps 1 px padding and its 3 px frame past the fourth icon (x 125-133).
+    expect(66 + width - 1).toBe(137);
+    // It stays left of the back link (x 248 and right), and the d-pad zone starts at y 76, below it.
+    expect(66 + width).toBeLessThan(248);
   });
 });
 
