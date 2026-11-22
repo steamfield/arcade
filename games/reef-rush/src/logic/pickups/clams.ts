@@ -55,16 +55,17 @@ export function clamWeights(place: number): Record<PowerUpKind, number> {
 
 /**
  * Picks a power-up the racer doesn't hold, weighted by `clamWeights(place)`, with one draw from `rng`.
- * The stack holds at most 3 of the 5 kinds, so there is always something to roll.
+ * Kinds with weight 0 never roll. A stack holds at most 4 kinds and five have weight, so there is always something to roll.
  *
- * @throws {Error} When `held` already covers every kind, which a valid stack never does.
+ * @throws {Error} When `held` already covers every rollable kind, which a valid stack never does.
  */
 export function rollClam(rng: Rng, place: number, held: readonly PowerUpKind[]): PowerUpKind {
   const weights = clamWeights(place);
   const candidates = POWER_UP_KINDS.filter((kind) => !held.includes(kind));
-  const last = candidates.at(-1);
+  // A weight-0 kind never rolls, so the float-rounding fallback below must land on a kind that can.
+  const last = candidates.filter((kind) => weights[kind] > 0).at(-1);
   if (last === undefined) {
-    throw new Error(`Clam roll with every kind held (${held.join(', ')}); a stack holds at most 3 kinds`);
+    throw new Error(`Clam roll for place ${place} with no rollable kind left (held: ${held.join(', ')})`);
   }
   const total = candidates.reduce((sum, kind) => sum + weights[kind], 0);
   let left = rng.next() * total;

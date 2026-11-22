@@ -171,17 +171,44 @@ export interface Finish {
   overshoot: number;
 }
 
-/** The five power-ups. A racer holds each kind at most once. */
-export type PowerUpKind = 'jetFin' | 'bubbleShield' | 'puffer' | 'inkSac' | 'glowLantern';
+/** The nine power-ups. A racer holds each kind at most once. The last four are the attack kinds (phase 7). */
+export type PowerUpKind =
+  | 'jetFin'
+  | 'bubbleShield'
+  | 'puffer'
+  | 'inkSac'
+  | 'glowLantern'
+  | 'homingSquid'
+  | 'riptide'
+  | 'undertow'
+  | 'mimic';
 
 /** Every power-up kind, in a fixed order that clam rolls and tests iterate. */
-export const POWER_UP_KINDS: readonly PowerUpKind[] = ['jetFin', 'bubbleShield', 'puffer', 'inkSac', 'glowLantern'];
+export const POWER_UP_KINDS: readonly PowerUpKind[] = [
+  'jetFin',
+  'bubbleShield',
+  'puffer',
+  'inkSac',
+  'glowLantern',
+  'homingSquid',
+  'riptide',
+  'undertow',
+  'mimic',
+];
 
 /** Named pairs of held power-ups whose bursts change each other. Pairs are listed in `powerups/tuning.ts`. */
-export type ComboName = 'cannonball' | 'inkTrail' | 'seekerBubble' | 'inkBomb' | 'comet';
+export type ComboName =
+  | 'cannonball'
+  | 'inkTrail'
+  | 'lanternBubble'
+  | 'inkBomb'
+  | 'comet'
+  | 'surfline'
+  | 'inkSquid'
+  | 'bubbleDecoy';
 
 /** What hurt a racer. Urchins and jellies have no owner; the rest come from another racer's burst. */
-export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash';
+export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash' | 'squid';
 
 /**
  * Timed conditions on a racer, each a count of ticks left (0 = off). `tickStatuses` (status.ts)
@@ -202,6 +229,10 @@ export interface RacerStatus {
   dashing: number;
   /** Pearl boost: swims with more force. */
   boost: number;
+  /** Held by a Homing Squid: swims at reduced force with a sideways drift; kicks shorten it. */
+  latched: number;
+  /** Undertow: pulled back along the steer field. */
+  undertow: number;
 }
 
 export interface Racer {
@@ -326,8 +357,43 @@ export interface Bubble {
   vy: number;
   ttl: number;
   owner: RacerId;
-  /** Steers toward a racer ahead (the seekerBubble combo). */
+  /** Steers toward a racer ahead (the lanternBubble combo; lane 7/a replaces its homing). */
   seeking: boolean;
+}
+
+/** What a Homing Squid chases: a racer, a Mimic decoy (named by its owner), or nothing (it swims straight). */
+export type SquidTarget = { kind: 'racer'; id: RacerId } | { kind: 'decoy'; owner: RacerId };
+
+/** A Homing Squid in flight. Centre in world pixels, velocity in px/s. */
+export interface Squid {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  ttl: number;
+  owner: RacerId;
+  target: SquidTarget | null;
+}
+
+/** A Riptide lane: a strong current over the box (x, y, w, h) in world pixels, pushing along the unit vector `dir`. */
+export interface Riptide {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  dir: Vec;
+  ttl: number;
+  owner: RacerId;
+}
+
+/** A Mimic decoy: looks like its owner and swims on along the steer field. Centre in world pixels. */
+export interface Decoy {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  ttl: number;
+  owner: RacerId;
 }
 
 /** A jellyfish bobbing around its home tile. */
@@ -365,4 +431,10 @@ export interface World {
   bubbles: Bubble[];
   /** One per `level.jellies`, same order. */
   jellies: Jelly[];
+  /** Homing Squids in flight. */
+  squids: Squid[];
+  /** Riptide lanes in the water. */
+  riptides: Riptide[];
+  /** Mimic decoys swimming. */
+  decoys: Decoy[];
 }

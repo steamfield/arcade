@@ -93,7 +93,7 @@ describe('combo effects', () => {
     expect(new Set(xs).size).toBe(3);
   });
 
-  it('seekerBubble: the bubble turns toward the racer ahead by at most 4 degrees a tick', () => {
+  it('lanternBubble: the bubble turns toward the racer ahead by at most 4 degrees a tick', () => {
     const { world } = raceOn(OPEN);
     const player = racerOf(world, 'player');
     placeOnTile(player, 2, 2);

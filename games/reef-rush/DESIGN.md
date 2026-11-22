@@ -57,7 +57,9 @@ Clams (`?` in the course) open on touch, roll a power-up weighted by place (lead
 | Ink Sac | | ink cloud that slows racers behind |
 | Glow Lantern | pulls in pearls within 3 tiles | flash that stuns nearby racers and jellies |
 
-Held pairs combine: Cannonball (Jet Fins + Puffer, an inflated dash through coral), Ink Trail (Jet Fins + Ink Sac), Seeker Bubble (Bubble Shield + Glow Lantern), Ink Bomb (Puffer + Ink Sac), Comet (Jet Fins + Glow Lantern, flash at both ends of the dash). Combos are fixed when the burst fires.
+Four more kinds are planned (Homing Squid, Riptide, Undertow, Mimic Octopus; see `plans/reef-rush.md` phase 7); their contracts exist but they don't roll from clams yet.
+
+Held pairs combine: Cannonball (Jet Fins + Puffer, an inflated dash through coral), Ink Trail (Jet Fins + Ink Sac), Lantern Bubble (Bubble Shield + Glow Lantern), Ink Bomb (Puffer + Ink Sac), Comet (Jet Fins + Glow Lantern, flash at both ends of the dash). Combos are fixed when the burst fires.
 
 A hit (urchin `*`, jelly `j`, bubble, puffer, flash) takes your shield if you hold one, else knocks off your newest power-up as a loose pickup anyone can grab after half a second; with nothing held you're stunned. Every hit gives a second of invulnerability. Pearls (`o`) give a short speed boost. Rivals burst when a held kind has a use (`ai/items.ts`).
 

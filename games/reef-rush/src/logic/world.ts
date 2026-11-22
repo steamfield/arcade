@@ -4,9 +4,9 @@
  *
  * Tick order: clock; intents for every unfinished racer from the start-of-tick
  * state (in RACER_IDS order), idle while stunned or trapped; each unfinished
- * racer's swimming, dash, trapped float and movement (RACER_IDS order); one pass
+ * racer's swimming (riptide lanes feed it their current), dash, trapped float and movement (RACER_IDS order); one pass
  * of separation over unfinished racers; then the phase 3 systems for unfinished
- * racers only: bursts (from intents), projectiles and inks, jellies, contacts
+ * racers only: bursts (from intents), projectiles and inks, squids, riptides, decoys, jellies, contacts
  * (hits), pickups (clams, pearls, loose), status counters; then abilities
  * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
  * then progress, finishes, places, race end. Finished racers are out of play:
@@ -26,6 +26,7 @@ import type { GameEvent } from './events.ts';
 import { resolveContacts } from './hazards/contacts.ts';
 import { moveJellies } from './hazards/jellies.ts';
 import { advanceProjectiles } from './hazards/projectiles.ts';
+import { advanceSquids } from './hazards/squids.ts';
 import { LevelError } from './level/parse.ts';
 import { sampleEnvironment } from './level/query.ts';
 import { modifiersFor } from './modifiers.ts';
@@ -33,6 +34,8 @@ import { openClams } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
 import { collectPearls } from './pickups/pearls.ts';
 import { driveDash, fireBursts, sustainBursts } from './powerups/burst.ts';
+import { advanceDecoys } from './powerups/decoys.ts';
+import { advanceRiptides, riptideCurrentAt } from './powerups/riptides.ts';
 import { ramCoral } from './race/coral.ts';
 import { buildFlowFields, unreachableStarts } from './race/flowfield.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
@@ -112,6 +115,9 @@ export function createWorld(level: Level, events: EventSink<GameEvent>, options:
     inks: [],
     bubbles: [],
     jellies: level.jellies.map((home) => ({ home: { ...home }, phase: 0, stunned: 0 })),
+    squids: [],
+    riptides: [],
+    decoys: [],
   };
   // Catch-up reads progress on the first racing tick, before stepWorld updates it.
   updateProgress(world);
@@ -187,6 +193,9 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   fireBursts(world, racing, intents);
   sustainBursts(world, racing);
   advanceProjectiles(world, racing, dt);
+  advanceSquids(world, racing, dt);
+  advanceRiptides(world);
+  advanceDecoys(world, dt);
   moveJellies(world);
   resolveContacts(world, racing);
   openClams(world, racing);
@@ -213,7 +222,9 @@ function intentFor(world: World, racer: Racer, input: TickInput): Intent {
  * its move, breaking the coral ahead first when its ability rams through coral.
  */
 function swim(world: World, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
-  applyIntent(racer, intent, sampleEnvironment(world.level, racer.body), mods, world.events, dt);
+  const water = sampleEnvironment(world.level, racer.body);
+  const environment = { ...water, current: riptideCurrentAt(world, racer.body) ?? water.current };
+  applyIntent(racer, intent, environment, mods, world.events, dt);
   driveDash(racer);
   floatTrapped(racer);
   if (breaksCoralOnContact(racer)) ramCoral(world, racer, dt);
@@ -255,9 +266,15 @@ const CELL_CHAR = {
 
 const RACER_CHAR: Record<RacerId, string> = { player: '@', tess: 'T', squib: 'S', bo: 'B' };
 
+/** The "x,y" tile key of a thing at pixel position (x, y). */
+function pixelTileKey({ x, y }: { x: number; y: number }): string {
+  return `${Math.floor(x / TILE)},${Math.floor(y / TILE)}`;
+}
+
 /**
  * Characters for things on the course, by "x,y" tile: `*` urchin, `o` pearl still in play,
- * `?` clam ready to open, `_` clam shut after opening, `j` jelly (at its home tile).
+ * `?` clam ready to open, `_` clam shut after opening, `j` jelly (at its home tile), `m` Mimic decoy,
+ * `s` Homing Squid (the last two at the tile holding their centre).
  * Later entries win, so a jelly shows over the tile it bobs around.
  */
 function itemChars(world: World): Map<string, string> {
@@ -269,11 +286,14 @@ function itemChars(world: World): Map<string, string> {
     ),
     ...world.clams.map(({ tile, closedFor }): [string, string] => [`${tile.x},${tile.y}`, closedFor > 0 ? '_' : '?']),
     ...world.jellies.map(({ home }): [string, string] => [`${home.x},${home.y}`, 'j']),
+    ...world.decoys.map((decoy): [string, string] => [pixelTileKey(decoy), 'm']),
+    ...world.squids.map((squid): [string, string] => [pixelTileKey(squid), 's']),
   ]);
 }
 
 /**
- * The course as text: racers (`@ T S B`) at their centre tiles over items (see `itemChars`) over
+ * The course as text: racers (`@ T S B`) at their centre tiles over items (see `itemChars`: urchins `*`,
+ * pearls `o`, clams `?` `_`, jellies `j`, Mimic decoys `m` and Homing Squids `s`) over
  * tiles in the level's own characters, with broken coral shown as water. Readable in test failures
  * and `arcade see --ascii`.
  */

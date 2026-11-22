@@ -88,9 +88,12 @@ const THREAT_RANGE_TILES = 10;
 const COMBO_TEXT: Record<ComboName, string> = {
   cannonball: 'CANNONBALL!',
   inkTrail: 'INK TRAIL!',
-  seekerBubble: 'SEEKER BUBBLE!',
+  lanternBubble: 'LANTERN BUBBLE!',
   inkBomb: 'INK BOMB!',
   comet: 'COMET!',
+  surfline: 'SURFLINE!',
+  inkSquid: 'INK SQUID!',
+  bubbleDecoy: 'BUBBLE DECOY!',
 };
 const POWER_UP_ICON: Record<PowerUpKind, IconFrameKey> = {
   jetFin: IconFrame.jetFin,
@@ -98,6 +101,11 @@ const POWER_UP_ICON: Record<PowerUpKind, IconFrameKey> = {
   puffer: IconFrame.puffer,
   inkSac: IconFrame.inkSac,
   glowLantern: IconFrame.glowLantern,
+  // Placeholder art until lane 7/b draws the attack kinds.
+  homingSquid: IconFrame.inkSac,
+  riptide: IconFrame.jetFin,
+  undertow: IconFrame.puffer,
+  mimic: IconFrame.bubbleShield,
 };
 
 /** Adds the HUD for `world`'s race to `scene`, pinned to the screen, with each racer's character on its portrait and head. */

@@ -69,6 +69,12 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
       return coralOnSmashPath(world, racer);
     case 'jetFin':
       return clearAhead(world, racer, aim);
+    case 'homingSquid':
+    case 'riptide':
+    case 'undertow':
+    case 'mimic':
+      // Scaffold: rivals never hold the attack kinds (clam weight 0); lane 7/a adds their uses.
+      return false;
   }
 }
 
