@@ -1,9 +1,14 @@
 /**
  * Pearls: each one can be collected once per race, by the first racer to touch it,
- * for a short boost. A Glow Lantern holder collects them from a distance. Lane
- * 3/a implements it; the scaffold ships the signatures.
+ * for a short boost. A Glow Lantern holder collects them from a distance: "within
+ * 3 tiles" is the straight-line distance from the racer's centre to the pearl's
+ * tile centre, inclusive. When several racers reach a pearl on the same tick,
+ * by touch or by lantern alike, the first in RACER_IDS order gets it.
  */
-import type { Racer, World } from '../types.ts';
+import { overlapsTile } from '../level/query.ts';
+import { PASSIVE, PEARL } from '../powerups/tuning.ts';
+import { centreOf, hitbox } from '../racers.ts';
+import { type Racer, TILE, type Vec, type World } from '../types.ts';
 
 /**
  * The pickups slot for pearls. A pearl not in `world.pearlsTaken` is collected by the first racer
@@ -11,10 +16,26 @@ import type { Racer, World } from '../types.ts';
  * within PASSIVE.lanternPearlTiles tiles of the pearl's tile centre. Collecting adds its index to
  * `pearlsTaken`, 1 to `racer.pearls`, sets `status.boost = PEARL.boostTicks` and emits
  * `pearl.collected {id, index, total}`.
- *
- * Stub: does nothing until lane 3/a lands, so races on the current course keep running.
  */
 export function collectPearls(world: World, racers: readonly Racer[]): void {
-  void world;
-  void racers;
+  world.level.pearls.forEach((tile, index) => {
+    if (world.pearlsTaken.has(index)) return;
+    const collector = racers.find((racer) => reaches(racer, tile));
+    if (!collector) return;
+    world.pearlsTaken.add(index);
+    collector.pearls += 1;
+    collector.status.boost = PEARL.boostTicks;
+    world.events.emit({ type: 'pearl.collected', id: collector.id, index, total: collector.pearls });
+  });
+}
+
+/** Whether `racer` collects the pearl on `tile`: by touch, or by Glow Lantern range. */
+function reaches(racer: Racer, tile: Vec): boolean {
+  if (overlapsTile(hitbox(racer), tile.x, tile.y)) return true;
+  if (!racer.stack.includes('glowLantern')) return false;
+  const centre = centreOf(racer);
+  const dx = (tile.x + 0.5) * TILE - centre.x;
+  const dy = (tile.y + 0.5) * TILE - centre.y;
+  // Squared, because logic avoids Math.hypot (engines may round it differently).
+  return dx * dx + dy * dy <= (PASSIVE.lanternPearlTiles * TILE) ** 2;
 }

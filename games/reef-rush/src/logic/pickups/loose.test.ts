@@ -108,3 +108,28 @@ describe('drifting', () => {
     expect(eventsIn(log, 'loose.grabbed')).toEqual([]);
   });
 });
+
+describe('expiry and drift details', () => {
+  it('is gone, not grabbed, when its last tick is the one a racer touches it', () => {
+    const { world, log } = raceOn(BOX);
+    const player = racerOf(world, 'player');
+    const at = centreOf(player);
+    world.loose = [{ kind: 'puffer', x: at.x, y: at.y, grabDelay: 0, ttl: 1 }];
+
+    updateLoose(world, activeRacers(world), TICK_DT);
+
+    expect(world.loose).toEqual([]);
+    expect(player.stack).toEqual([]);
+    expect(eventsIn(log)).toEqual([]);
+  });
+
+  it('rises at 10 px/s', () => {
+    const { world } = raceOn(BOX);
+    const start = tileCentre(8, 3);
+    spawnLoose(world, 'glowLantern', start);
+
+    for (let i = 0; i < 120; i++) updateLoose(world, activeRacers(world), TICK_DT);
+
+    expect(world.loose[0]?.y).toBeCloseTo(start.y - 20, 6);
+  });
+});

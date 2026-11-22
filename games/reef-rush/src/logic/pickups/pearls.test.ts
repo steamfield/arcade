@@ -61,3 +61,17 @@ describe('collecting pearls', () => {
     ]);
   });
 });
+
+describe('two racers reaching one pearl on the same tick', () => {
+  it('goes to the first in RACER_IDS order, even when it only reaches by lantern', () => {
+    const { world, log, player, tess, racers } = setup();
+    player.stack = ['glowLantern'];
+    placeOnTile(player, 2, 2);
+    placeOnTile(tess, 5, 2);
+
+    collectPearls(world, racers);
+
+    expect(eventsIn(log)).toEqual([{ type: 'pearl.collected', id: 'player', index: 0, total: 1 }]);
+    expect(tess.pearls).toBe(0);
+  });
+});
