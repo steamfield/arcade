@@ -84,7 +84,8 @@ function accelerate(body: Body, direction: Vec, amount: number): void {
 
 function applyDrag(body: Body, env: Environment, mods: MoveModifiers, dt: number): void {
   const kelpMul = env.inKelp ? SWIM.kelpDragMul : 1;
-  const keep = 1 - SWIM.drag * mods.dragMul * kelpMul * dt;
+  // A long enough dt would make the factor negative and reverse the racer; drag only ever stops it.
+  const keep = Math.max(0, 1 - SWIM.drag * mods.dragMul * kelpMul * dt);
   body.vx *= keep;
   body.vy *= keep;
 }
