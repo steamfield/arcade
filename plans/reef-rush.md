@@ -157,6 +157,7 @@ Inline (orchestrator, in the scaffold and while lanes run): types, events, save 
 ### Phase 2: the playable race engine
 
 Scaffold: d1b23ee (single lane owning every file it creates; no stubs needed)
+Tag: phase-2
 Demo: `pnpm arcade dev reef-rush`: title, countdown, race with HUD (place, timer, progress strip with four racer markers), camera with lookahead, results screen with best time, race again. `pnpm arcade see reef-rush --scenario race-to-finish --mobile`.
 Depends on: phase 1
 
