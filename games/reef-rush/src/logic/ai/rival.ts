@@ -29,8 +29,8 @@ import { steerDirection } from './steer.ts';
 
 /**
  * Bounds of the catch-up multiplier on swim force, and its slope per tile of gap to the player.
- * Gentle bounds with a quick response: a rival 5 tiles behind the player swims at the upper bound
- * and one about 13 tiles ahead at the lower, so the field stays near the player without any rival
+ * Gentle bounds with a quick response: a rival 3 tiles behind the player swims at the upper bound
+ * and one 8 tiles ahead at the lower, so the field stays near the player without any rival
  * swimming far outside its own pace.
  */
 export const CATCH_UP = { perTile: 0.05, min: 0.6, max: 1.15 } as const;

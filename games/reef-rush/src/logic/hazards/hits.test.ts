@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { ABILITY } from '../abilities.ts';
 import { centreOf } from '../racers.ts';
 import { eventsIn, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
 import type { Vec } from '../types.ts';
 import { applyHit } from './hits.ts';
+import { HIT } from './tuning.ts';
 
 /** One walled lane per racer, so stepping never brings racers together. */
 const LANES = `
@@ -26,12 +28,12 @@ function setup() {
 }
 
 describe('a hit on an empty stack', () => {
-  it('stuns the racer for 50 ticks', () => {
+  it('stuns the racer for 50 ticks, shortened by its ability (the default Rudy shakes it off)', () => {
     const { log, player, hit } = setup();
 
     expect(hit()).toBe(true);
 
-    expect(player.status.stunned).toBe(50);
+    expect(player.status.stunned).toBe(Math.round(HIT.stunTicks * ABILITY.shakeItOff.statusMul));
     expect(eventsIn(log)).toEqual([
       { type: 'racer.hit', id: 'player', cause: 'jelly', by: null },
       { type: 'racer.stunned', id: 'player' },

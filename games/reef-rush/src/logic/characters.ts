@@ -18,17 +18,20 @@ export interface Character {
 /**
  * The cast. Each profile is how the character races as a rival, in the personality the roster
  * gives it. They all swim harder than the player (forceMul near 1.5) and kick and burst less
- * than a good player; difficulty.test.ts holds the whole field to its bars for every pick.
+ * than a good player; the tests in `difficulty/` hold the whole field to its bars for every pick.
  *
- * - Rudy, the plucky hero: the all-rounder, middle of every range.
- * - Gil, lanky and springy: kicks often, steers loosely, light in bumps.
- * - Streak, the cocky speedster: the strongest swimmer and the cleanest line, but barely kicks
- *   or uses items; it trusts its wind-up.
- * - Onyx, the brooding rival: tight steering, quick reactions, solid in bumps, fires items readily.
- * - Nib, the tinkerer: the most item-happy, a little scatty at the wheel, light.
- * - Baron Barnacle, the bruiser: heaviest, slowest to react, rarely kicks.
- * - Selene, the mystic: smooth and unhurried, reacts late.
- * - Rook, the hunter: quick to react and quick to fire, heavy for his size.
+ * - Rudy, the plucky hero: the all-rounder; among the strongest swimmers (1.50), middling kicks,
+ *   steering and item use.
+ * - Gil, lanky and springy: kicks the most, steers the loosest, light in bumps, sparing with items.
+ * - Streak, the cocky speedster: the cleanest line (least wobble) and quick to react, but barely
+ *   kicks and seldom bursts; its wind-up does the work.
+ * - Onyx, the brooding rival: tight steering and solid in bumps, and the least item use of all; his
+ *   threat is the ambush, so his items are kept rare.
+ * - Nib, the tinkerer: by far the most item-happy (3x anyone else), a little scatty, the lightest.
+ * - Baron Barnacle, the bruiser: the highest swim force (1.56), offset by his slow start and the
+ *   slowest reactions; heaviest, and almost never kicks.
+ * - Selene, the mystic: smooth and unhurried, among the weaker swimmers (1.47), reacts late.
+ * - Rook, the hunter: the quickest to react, heavy for his size, kicks readily, moderate items.
  */
 export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
   rudy: {

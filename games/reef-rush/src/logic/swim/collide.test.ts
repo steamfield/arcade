@@ -172,6 +172,23 @@ describe('racer separation', () => {
     expect(log.all()).toHaveLength(2);
   });
 
+  it('hands a new contact to onBump with the speeds the pair bumped with, then shares their closing speed', () => {
+    const a = racer('player', 100);
+    const b = racer('tess', 106);
+    a.body.vx = 60;
+    b.body.vx = 20;
+    const seen: [number, number][] = [];
+
+    separateRacers([a, b], new Set(), new EventLog<GameEvent>(), undefined, (first, second) => {
+      seen.push([first.body.vx, second.body.vx]);
+      // What onBump does to the velocities stays: the shared closing speed is added on top.
+      first.body.vx -= 10;
+    });
+
+    expect(seen).toEqual([[60, 20]]);
+    expect([a.body.vx, b.body.vx]).toEqual([30, 40]);
+  });
+
   it('leaves racers a pixel apart untouched and silent', () => {
     const a = racer('player', 100);
     const b = racer('tess', 113);

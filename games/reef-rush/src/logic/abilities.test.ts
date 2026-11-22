@@ -13,6 +13,7 @@ import type { GameEvent } from './events.ts';
 import { applyHit } from './hazards/hits.ts';
 import { HIT } from './hazards/tuning.ts';
 import { parseLevel } from './level/parse.ts';
+import { modifiersFor } from './modifiers.ts';
 import { length } from './num.ts';
 import { gainPowerUp } from './powerups/stack.ts';
 import { BUBBLE } from './powerups/tuning.ts';
@@ -179,46 +180,55 @@ describe('Streak: Wind-up', () => {
     expect(player.ability.windUp).toBe(before + 10);
   });
 
-  it('starts over when hit', () => {
+  it('starts over when hit, even by a hit from behind that knocks it on along its line', () => {
     const { world, log, player } = cruise('streak', 300);
 
-    // Hit from ahead, so the knockback carries it backward rather than on along its line.
-    applyHit(world, player, 'flash', 'tess', { x: centreOf(player).x + 8, y: centreOf(player).y });
+    applyHit(world, player, 'flash', 'tess', { x: centreOf(player).x - 8, y: centreOf(player).y });
     step(world, log);
 
+    expect(player.body.vx).toBeGreaterThan(ABILITY.windUp.minSpeed);
     expect(player.ability.windUp).toBe(0);
   });
 });
 
 describe('Onyx: Ambush', () => {
-  /** The player rear-ends Tess (or Tess the player, `onyxAhead`) at speed on row 2; both coast. */
-  const rearEnd = (character: CharacterId, onyxAhead = false) => {
+  type Meeting = 'from behind' | 'bumped from behind' | 'side by side' | 'at rest';
+
+  /**
+   * The player and Tess meet on row 2, both coasting. From behind: the player at 120 px/s catches
+   * Tess at 40, overlapping her by 4 px. Bumped from behind: the other way round. Side by side: the
+   * same speeds, but Tess sits 5 px ahead and 8 px below, more than 45 degrees off her heading. At
+   * rest: the player at 120 hits a still Tess.
+   */
+  const meet = (character: CharacterId, meeting: Meeting) => {
     const { world, log, player, tess } = raceAs(character);
     stun(player, tess);
-    const [rear, front] = onyxAhead ? [tess, player] : [player, tess];
+    const [rear, front] = meeting === 'bumped from behind' ? [tess, player] : [player, tess];
     placeOnTile(rear, 10, 2);
-    placeAt(front, { x: tileCentre(10, 2).x + rear.body.w - 4, y: tileCentre(10, 2).y });
+    const beside = meeting === 'side by side';
+    placeAt(front, {
+      x: tileCentre(10, 2).x + (beside ? 5 : rear.body.w - 4),
+      y: tileCentre(10, 2).y + (beside ? 8 : 0),
+    });
     rear.body.vx = 120;
-    front.body.vx = 40;
+    front.body.vx = meeting === 'at rest' ? 0 : 40;
     step(world, log);
     expect(eventsIn(log, 'racer.bumped')).toEqual([{ type: 'racer.bumped', a: 'player', b: 'tess' }]);
     return { player: player.body.vx, tess: tess.body.vx };
   };
 
   it('takes speed from a racer it bumps from behind and keeps it', () => {
-    const onyx = rearEnd('onyx');
-    const plain = rearEnd('rudy');
-    const { steal } = ABILITY.ambush;
+    const onyx = meet('onyx', 'from behind');
+    const plain = meet('rudy', 'from behind');
+    // Tess's speed as they bump: 40 px/s less one tick of her own drag.
+    const tessBumpedAt = 40 * (1 - SWIM.drag / 60);
 
-    expect(onyx.tess).toBeLessThan(plain.tess);
-    expect(onyx.player).toBeGreaterThan(plain.player);
-    // One tick of drag acts on both after the steal, so compare the change, not raw values.
-    expect((plain.tess - onyx.tess) / (onyx.player - plain.player)).toBeCloseTo(1, 6);
-    expect(plain.tess - onyx.tess).toBeGreaterThan(plain.tess * steal * 0.9);
+    expect(plain.tess - onyx.tess).toBeCloseTo(tessBumpedAt * ABILITY.ambush.steal, 6);
+    expect(onyx.player - plain.player).toBeCloseTo(tessBumpedAt * ABILITY.ambush.steal, 6);
   });
 
-  it('takes nothing when it is the one bumped from behind', () => {
-    expect(rearEnd('onyx', true)).toEqual(rearEnd('rudy', true));
+  it.each<Meeting>(['bumped from behind', 'side by side', 'at rest'])('takes nothing when %s', (meeting) => {
+    expect(meet('onyx', meeting)).toEqual(meet('rudy', meeting));
   });
 });
 
@@ -273,17 +283,40 @@ describe('Baron Barnacle: Bulldozer', () => {
     expect(baron.player / baron.tess).toBeCloseTo(plain.player / plain.tess / ABILITY.bulldozer.massMul, 6);
   });
 
-  it('gets going slowly but reaches the same cruising speed', () => {
-    const speedAfter = (character: CharacterId, ticks: number) => {
-      const { world, log, player, tess } = raceAs(character);
-      stun(tess);
-      placeOnTile(player, 2, 1);
-      step(world, log, ticks, hold({ x: 1, y: 0 }));
-      return player.body.vx;
+  /** Row 1 of each: open water, kelp, and a current pushing back against a racer swimming right. */
+  const WATERS = {
+    'open water': ARENA,
+    kelp: ARENA.replace(/#1\.+F#/, `#1${'~'.repeat(46)}F#`),
+    'a current against him': ARENA.replace(/#1\.+F#/, `#1${'<'.repeat(46)}F#`),
+  };
+
+  it.each(Object.keys(WATERS) as (keyof typeof WATERS)[])(
+    'gets going slowly but reaches the same cruising speed in %s',
+    (water) => {
+      const speedAfter = (character: CharacterId, ticks: number) => {
+        const { world, log, player, tess } = raceAs(character, WATERS[water]);
+        stun(tess);
+        placeOnTile(player, 4, 1);
+        step(world, log, ticks, hold({ x: 1, y: 0 }));
+        return player.body.vx;
+      };
+
+      expect(speedAfter('baron', 15)).toBeLessThan(speedAfter('rudy', 15) - 5);
+      expect(speedAfter('baron', 400)).toBeCloseTo(speedAfter('rudy', 400), 1);
+    },
+  );
+
+  it('gets going slowly again after a hit', () => {
+    const forceAfterHit = (character: CharacterId) => {
+      const { world, log, player } = raceAs(character);
+      step(world, log, 120, hold({ x: 1, y: 0 }));
+      applyHit(world, player, 'flash', 'tess', centreOf(player));
+      step(world, log);
+      return modifiersFor(player, player).forceMul;
     };
 
-    expect(speedAfter('baron', 15)).toBeLessThan(0.8 * speedAfter('rudy', 15));
-    expect(speedAfter('baron', 300)).toBeCloseTo(speedAfter('rudy', 300), 1);
+    expect(forceAfterHit('baron')).toBeCloseTo(ABILITY.bulldozer.accelMul, 6);
+    expect(forceAfterHit('rudy')).toBe(1);
   });
 });
 
@@ -331,21 +364,24 @@ describe('Rook: Frenzy', () => {
     const frenzied = frenzyAfter(hitTess, [12, 2]);
     const calm = frenzyAfter(nothing, [12, 2]);
 
-    expect(frenzied.frenzy).toBe(ABILITY.frenzy.ticks - 30);
     expect(frenzied.speed).toBeGreaterThan(calm.speed * 1.1);
     expect(calm.frenzy).toBe(0);
   });
 
-  it('gets one when a racer near him loses a power-up to a hit', () => {
-    const knocked = frenzyAfter(
-      (world, _rook, tess) => {
-        gainPowerUp(world, tess, 'inkSac');
-        applyHit(world, tess, 'urchin', null, centreOf(tess));
-      },
-      [12, 2],
-    );
+  it(`swims with the bonus for exactly ${ABILITY.frenzy.ticks} ticks`, () => {
+    const { world, log, player, tess } = raceAs('rook');
+    stun(tess);
+    placeOnTile(player, 10, 1);
+    placeOnTile(tess, 12, 2);
+    applyHit(world, tess, 'urchin', null, centreOf(tess));
+    step(world, log);
+    let boosted = 0;
+    for (let tick = 0; tick < 200; tick++) {
+      if (modifiersFor(player, player).forceMul > 1) boosted++;
+      step(world, log, 1, hold({ x: 1, y: 0 }));
+    }
 
-    expect(knocked.frenzy).toBe(ABILITY.frenzy.ticks - 30);
+    expect(boosted).toBe(ABILITY.frenzy.ticks);
   });
 
   it('ignores hits too far away, and his own', () => {

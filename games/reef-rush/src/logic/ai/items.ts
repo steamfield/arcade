@@ -9,6 +9,7 @@
  */
 import { cellAt, isSolid } from '../level/query.ts';
 import { length } from '../num.ts';
+import { FLASH } from '../powerups/tuning.ts';
 import { activeRacers, centreOf } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
 import { downhillPath, hasClearSweep, openTiles, tileOf } from './steer.ts';
@@ -22,10 +23,10 @@ export const ITEM_USE = {
   /** ...and within 30 degrees of the aim: cos(30°), written out so no engine trig runs. */
   aimConeCos: 0.8660254037844386,
   /**
-   * Lantern: a racer just ahead and this close (half the flash's reach), so a rival saves its flash
-   * for a pass instead of firing it whenever anyone is in range.
+   * Lantern: a racer just ahead and this close, so a rival saves its flash for a pass instead of
+   * firing it whenever anyone is in range.
    */
-  lanternTiles: 2,
+  lanternTiles: FLASH.rangeTiles / 2,
   /** Puffer: unbroken coral within this many steps down the smash field. */
   pufferCoralSteps: 3,
   /** Jet Fins: this many tiles of clear water straight along the aim. */
