@@ -6,6 +6,9 @@
  * A stunned or trapped rival can't act, so its stuck counter resets and it
  * starts no recovery swim; a rival recovering from being stuck never bursts.
  *
+ * The aim then bends around any urchin or jelly in the way (`avoid.ts`); a
+ * rival swerving that way holds its kick.
+ *
  * Every call draws exactly four numbers from the racer's rng, in this order,
  * whether or not they are used: wobble, kick roll, recovery side, item roll.
  * So one racer's choices, and what it holds, never shift the rest of its stream.
@@ -13,11 +16,17 @@
 import type { Rng } from '@arcade/core';
 import { cos, length, sin } from '../num.ts';
 import type { AiMemory, Intent, Racer, Vec, World } from '../types.ts';
+import { avoidHazards } from './avoid.ts';
 import { wantsBurst } from './items.ts';
 import { steerDirection } from './steer.ts';
 
-/** Bounds of the catch-up multiplier on swim force, and its slope per tile of gap to the player. */
-export const CATCH_UP = { perTile: 0.004, min: 0.9, max: 1.08 } as const;
+/**
+ * Bounds of the catch-up multiplier on swim force, and its slope per tile of gap to the player.
+ * Gentle bounds with a quick response: a rival 5 tiles behind the player swims at the upper bound
+ * and one about 13 tiles ahead at the lower, so the field stays near the player without any rival
+ * swimming far outside its own pace.
+ */
+export const CATCH_UP = { perTile: 0.03, min: 0.6, max: 1.15 } as const;
 
 /** Tiles down the steer field a rival aims at. */
 const LOOKAHEAD_TILES = 3;
@@ -29,7 +38,6 @@ const KICK_ALIGNMENT = 0.8;
 const STUCK_SPEED = 8;
 const STUCK_TICKS = 30;
 const RECOVER_TICKS = 20;
-
 /** The rng draws for one tick, taken up front so their number never varies. */
 interface Draws {
   wobble: number;
@@ -56,10 +64,14 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
 
   replanAim(world, racer, memory);
   stepWobble(memory, racer.profile.wobble, draws.wobble);
-  const aim = wobbledAim(memory);
+  const wobbled = wobbledAim(memory);
+  const aim = avoidHazards(world, racer, wobbled);
+  // avoidHazards hands back the same object when nothing is in the way.
+  const swerving = aim !== wobbled;
   const recovery = canRecover(world, racer, memory) ? recoveryMove(racer, memory, draws.side) : null;
   // A recovering rival is sliding off a wall, not racing, so it saves its kick and burst for the aim.
-  const kick = recovery === null && wantsKick(racer, aim, draws.kick);
+  // A swerving rival holds its kick, which would carry it on toward the hazard.
+  const kick = recovery === null && !swerving && wantsKick(racer, aim, draws.kick);
   const burst = recovery === null && wantsBurst(world, racer, aim, draws.item);
   return { move: recovery ?? aim, kick, burst };
 }

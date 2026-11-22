@@ -1,15 +1,14 @@
 import { expect } from '@playwright/test';
-import { scenario, wait } from './kit.ts';
+import { IDLE_TO_RESULTS, scenario, wait } from './kit.ts';
 
 /**
- * The race ends DNF_GRACE_TICKS (600) after the third rival finishes and results follow 90 ticks
- * later. On seed 1 that puts results at about tick 1890; waiting to 2000 leaves room for the rivals'
- * order and times to shift as tuning changes.
+ * The race ends DNF_GRACE_TICKS (600) after the third rival finishes, or at the race limit, and
+ * results follow 90 ticks later; IDLE_TO_RESULTS waits past the latest that can happen.
  */
 export default scenario({
   description: 'a player who never swims is placed last as DNF on the results screen, and no best is saved',
   start: { scene: 'race' },
-  input: [wait(2000)],
+  input: [wait(IDLE_TO_RESULTS)],
   expect({ summary, state, events }) {
     expect(summary).toMatchObject({
       scene: 'results',

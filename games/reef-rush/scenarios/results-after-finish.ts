@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { hold, scenario, TOP_ROUTE } from './kit.ts';
+import { hold, scenario, TOP_ROUTE, TOP_ROUTE_LAST_HOLD } from './kit.ts';
 
 /**
  * The last route step and the wait for results run as one step, so a single advance()
@@ -9,7 +9,7 @@ import { hold, scenario, TOP_ROUTE } from './kit.ts';
 export default scenario({
   description: 'finishing the race shows the results with the player placed and timed, after one save',
   start: { scene: 'race' },
-  input: [...TOP_ROUTE.slice(0, -1), hold('right', 520 + 90)],
+  input: [...TOP_ROUTE.slice(0, -1), hold('right', TOP_ROUTE_LAST_HOLD + 90)],
   expect({ summary, events }) {
     const finish = events.find((e) => e.type === 'race.finished');
     expect(summary).toMatchObject({
