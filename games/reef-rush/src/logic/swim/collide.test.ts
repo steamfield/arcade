@@ -181,3 +181,47 @@ describe('racer separation', () => {
     expect(contacts.size).toBe(0);
   });
 });
+
+describe('recovering from a push into a wall', () => {
+  /** A racer that a bump has shoved 3.5 px into the left wall (column 0). */
+  function shovedIntoWall(): Racer {
+    const shoved = racer('player', 17);
+    const shover = racer('tess', 20);
+    separateRacers([shoved, shover], new Set(), new EventLog<GameEvent>());
+    expect(insideSolid(shoved.body, room())).toBe(true);
+    return shoved;
+  }
+
+  it('keeps sinking along the wall instead of sticking to it', () => {
+    const { body: shoved } = shovedIntoWall();
+    shoved.vy = 30;
+    move(shoved, room(), 30);
+
+    expect(shoved.vy).toBe(30);
+    expect(shoved.y).toBeCloseTo(65, 6);
+    expect(insideSolid(shoved, room())).toBe(false);
+  });
+
+  it('swims diagonally away from the wall at full velocity', () => {
+    const { body: shoved } = shovedIntoWall();
+    shoved.vx = 60;
+    shoved.vy = -30;
+    move(shoved, room(), 20);
+
+    expect([shoved.vx, shoved.vy]).toEqual([60, -30]);
+    expect(shoved.y).toBeCloseTo(40, 6);
+    expect(insideSolid(shoved, room())).toBe(false);
+  });
+});
+
+describe('a very long tick', () => {
+  it.each([1e9, Number.POSITIVE_INFINITY])('returns with the body outside solids for dt %s', (dt) => {
+    const level = room();
+    const flier = body(40, 35, 60, 0);
+    moveBody(flier, level, new Set(), dt);
+
+    expect(flier.x).toBeCloseTo(52, 6);
+    expect(flier.vx).toBe(0);
+    expect(insideSolid(flier, level)).toBe(false);
+  });
+});

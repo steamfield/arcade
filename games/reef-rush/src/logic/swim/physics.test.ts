@@ -217,3 +217,21 @@ describe('kicking', () => {
     expect(log.all().map((event) => event.tick)).toEqual([0, 11, 22]);
   });
 });
+
+describe('a very long tick', () => {
+  it('slows a racer in kelp to a stop without reversing it', () => {
+    const racer = makeRacer();
+    racer.body.vx = 100;
+    applyIntent(
+      racer,
+      { move: STILL, kick: false, burst: false },
+      { current: null, inKelp: true },
+      BASE_MODIFIERS,
+      new EventLog<GameEvent>(),
+      0.5,
+    );
+
+    expect(racer.body.vx).toBe(0);
+    expect(racer.body.vy).toBe(0);
+  });
+});

@@ -5,7 +5,7 @@ plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.0/shared
 Started: 2026-11-22. Timebox: none. Landing branch: deliver/reef-rush.
 Gate: `pnpm arcade check reef-rush && pnpm arcade smoke reef-rush` (about 8s). Filtered tests: `pnpm --filter game-reef-rush exec vitest run <path>`. Typecheck: `pnpm --filter game-reef-rush typecheck`.
 Runner: plain commands.
-Worktree setup: `pnpm install --frozen-lockfile --offline`
+Worktree setup: `pnpm install --frozen-lockfile --offline`. Lane worktrees are created by the orchestrator (`git worktree add ../games-reef-rush-<lane> <lane branch>` from the landing tip) and lanes are dispatched without `isolation`, because agent-isolated worktrees are cut from main's HEAD and removed when an agent stops with no changes.
 Suppressions: biome-ignore, @ts-expect-error, @ts-ignore, todo: true
 Manifests: package.json, pnpm-lock.yaml, pnpm-workspace.yaml
 
@@ -67,6 +67,7 @@ Layout (all under `games/reef-rush/`):
         swim/physics.ts             one racer's velocity from intent, environment and modifiers (force, drag, sink, kick, current, kelp)
         swim/collide.ts             moving a body through tiles, and separating overlapping racers
         race/flowfield.ts           progress, steer and smash fields over the tile grid; distance and steering lookups
+        race/priority-queue.ts      min-heap keyed by distance, used by the flow-field Dijkstra
         race/standings.ts           countdown, progress, finishes, placing and the race result
         ai/rival.ts                 an AI racer's Intent each tick from the fields, its profile, memory and rng
         ai/profiles.ts              rival and bot profiles; data only
@@ -141,8 +142,8 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/level/parse.ts, games/reef-rush/src/logic/level/query.ts, games/reef-rush/src/logic/swim/physics.ts, games/reef-rush/src/logic/swim/collide.ts | contracts, templates/phaser-2d/src/logic/world.ts | games/reef-rush/src/logic/level/parse.test.ts, games/reef-rush/src/logic/level/query.test.ts, games/reef-rush/src/logic/swim/physics.test.ts, games/reef-rush/src/logic/swim/collide.test.ts | opus | running | deliver/reef-rush-1a | level and swim tests pass, typecheck passes |
-| b | M | games/reef-rush/src/logic/race/flowfield.ts, games/reef-rush/src/logic/race/standings.ts, games/reef-rush/src/logic/ai/rival.ts | contracts | games/reef-rush/src/logic/race/flowfield.test.ts, games/reef-rush/src/logic/race/standings.test.ts, games/reef-rush/src/logic/ai/rival.test.ts | opus | running | deliver/reef-rush-1b | race and rival tests pass, typecheck passes |
+| a | M | games/reef-rush/src/logic/level/parse.ts, games/reef-rush/src/logic/level/query.ts, games/reef-rush/src/logic/swim/physics.ts, games/reef-rush/src/logic/swim/collide.ts | contracts, templates/phaser-2d/src/logic/world.ts | games/reef-rush/src/logic/level/parse.test.ts, games/reef-rush/src/logic/level/query.test.ts, games/reef-rush/src/logic/swim/physics.test.ts, games/reef-rush/src/logic/swim/collide.test.ts | opus | merged | deliver/reef-rush-1a | level and swim tests pass, typecheck passes |
+| b | M | games/reef-rush/src/logic/race/flowfield.ts, games/reef-rush/src/logic/race/priority-queue.ts, games/reef-rush/src/logic/race/priority-queue.test.ts, games/reef-rush/src/logic/race/standings.ts, games/reef-rush/src/logic/ai/rival.ts | contracts | games/reef-rush/src/logic/race/flowfield.test.ts, games/reef-rush/src/logic/race/standings.test.ts, games/reef-rush/src/logic/ai/rival.test.ts | opus | running | deliver/reef-rush-1b | race and rival tests pass, typecheck passes |
 
 Inline (orchestrator, in the scaffold and while lanes run): types, events, save v2 and fixtures, world.ts and world.test.ts, levels.ts first section, profiles.ts, template engine adapted to the new world API, scenarios, smoke, DESIGN.md and game.json, deleting the template's coin files.
 
@@ -258,5 +259,11 @@ Depends on: phase 3, phase 4
 ## Log
 
 - 2026-11-22: `arcade new` writes `.claude/launch.json` in a shape Biome rejects (`tools/arcade/src/new-game.ts:78`, `JSON.stringify` expands arrays), so `check` fails on a freshly created game. Formatted with `pnpm fix` here; the tool fix is a separate change.
+- 2026-11-22: main gained 1e3b073 (docs/repo-map.md) after the landing branch was cut; merged main into deliver/reef-rush as 1febb4d. Phase 1 lanes branch from 1febb4d and use it as their check-lane and lane-review base. The first dispatch used agent worktree isolation, which cut both lanes from main and deleted their worktrees when they stopped to ask; both were redispatched into orchestrator-made worktrees with no work lost.
+- 2026-11-22: Lane 1/a fixes (7fa13b3) merged: the wall fix uses a push-out pass at the start of moveBody instead of leading-edge resolution (the lane showed leading-edge still snapped on the next row of a full-height wall); MAX_SUBSTEPS = 64; regression tests added to collide.test.ts and physics.test.ts with explicit permission (check-lane flags them as outside Owns; accepted).
+- 2026-11-22: Lane 1/a review: 3 findings, all accepted and sent back: racers bumped into a wall stuck to it (resolve only tiles the leading edge newly enters), drag reversing velocity and unbounded sub-steps at large dt (clamp both), MAX_STEP comment gave the wrong reason. The lane may add regression tests to collide.test.ts and physics.test.ts.
+- 2026-11-22: Lane 1/b (e8ad20d) accepted choices: diagonal current entry judged by the sign of its along-current component; costs charged on the entered tile; a diagonal is blocked when either orthogonal tile is unenterable for that field; steerDirection walks the lookahead path only while the straight line stays clear; progressAt projects in [-0.5, 0.5] and is Infinity on unreachable tiles; rivalsDoneAt set in recordFinishes; standings act only while racing; three rng draws per rival tick (wobble, kick, recovery side), wobble step 0.15 x profile.wobble; no kick at zero speed. flowfield.ts was 290 lines with a heap inside, so race/priority-queue.ts was added to the lane.
+- 2026-11-22: Lane 1/a (b3e3195) accepted choices: racers sink only with no input at all (a test needs exact forceMul scaling, and holding sideways shouldn't drag a racer to the floor); touching racers keep an existing contact and only a real gap clears it; coincident centres push the later racer forward; sub-steps at most 8 px sized by speed; dark-zone LevelErrors carry null row/col; an empty level fails as a missing start; edge-only contact doesn't cover a tile.
+- 2026-11-22: The `arcade new` launch.json fix landed separately on branch fix/arcade-new-launch-format (069a0e3).
 - 2026-11-22: Scaffold test writer flagged contract gaps; settled: createWorld computes initial progress, catch-up is 1 for non-finite progress, cruise is force/drag less one tick of drag, held kicks repeat every cooldown+1 ticks, LevelError row/col null for whole-level errors, bump velocity exchange only when closing and mass-weighted. Steer cost for entering a current diagonally is left to lane b and not tested.
 - 2026-11-22: Plan critique (devils-advocate, opus) raised 8 findings; all applied: integration files owned inline in the scaffold, DNF/limit race end, engine split moved to its own single-lane phase, seams for art/audio so phase 4 runs beside phase 3, explicit tick order + forked rngs + progress-field placing with tie-breaks, save v2 with migration instead of editing v1, three flow fields with rebuild on coral break (phase 3 lane b owns flowfield.ts), audio.played per sound and no console in the difficulty test.
