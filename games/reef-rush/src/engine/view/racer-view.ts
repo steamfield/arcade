@@ -8,6 +8,7 @@ import type { Racer, RacerId } from '../../logic/types.ts';
 import { Frame, Tex, type TexKey } from '../art/keys.ts';
 import { Layer } from './layers.ts';
 
+/** One racer's sprite, kept in step with its logic state. */
 export interface RacerView {
   /**
    * Moves the sprite to `racer`'s current state.

@@ -34,8 +34,7 @@ export class TitleScene extends Phaser.Scene {
     this.rt.entered('title');
   }
 
-  override update(_time: number, delta: number): void {
-    this.rt.frame(delta);
+  override update(): void {
     this.menuView?.sync(this.rt.menu);
   }
 }

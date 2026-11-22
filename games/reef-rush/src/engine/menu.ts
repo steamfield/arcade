@@ -13,6 +13,7 @@ export const MENU_OPTIONS = {
   results: ['Race again', 'Title'],
 } as const satisfies Record<string, readonly MenuOption[]>;
 
+/** A menu's options and which one is selected. */
 export interface Menu {
   readonly options: readonly MenuOption[];
   /** Index into `options`. */

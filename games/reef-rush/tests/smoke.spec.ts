@@ -7,7 +7,8 @@ test('starts on WebGL, races from the title, and swims after the countdown', asy
   expect(await game.renderer()).toBe('webgl');
   expect(await game.summary()).toMatchObject({ scene: 'title', menu: { options: ['Race'], selected: 0 }, best: null });
 
-  await game.play(parseInput('kick _*2'));
+  // Menus ignore kick for their first 20 ticks.
+  await game.play(parseInput('_*20 kick _*2'));
   expect(await game.summary()).toMatchObject({ scene: 'race', phase: 'countdown' });
 
   await game.play(parseInput('_*180 right*60'));
@@ -27,6 +28,7 @@ test('on-screen controls start the race and swim the player @touch', async ({ ga
     await game.advance(ticks);
     await button.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
   };
+  await game.advance(20);
   await hold('kick', 1);
   await game.advance(182);
   await hold('right', 60);

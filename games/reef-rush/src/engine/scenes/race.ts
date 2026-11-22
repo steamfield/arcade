@@ -38,8 +38,7 @@ export class RaceScene extends Phaser.Scene {
     this.rt.entered('race');
   }
 
-  override update(_time: number, delta: number): void {
-    this.rt.frame(delta);
+  override update(): void {
     if (this.rt.world) this.views?.sync(this.rt.world);
   }
 

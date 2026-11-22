@@ -9,6 +9,7 @@ import { type Level, TILE } from '../../logic/types.ts';
 import { Tex, type TexKey } from '../art/keys.ts';
 import { Layer } from './layers.ts';
 
+/** The water behind the course, built once per race. */
 export interface Backdrop {
   /**
    * Advances any animated part of the backdrop. The placeholder has none yet.

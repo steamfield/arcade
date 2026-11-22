@@ -20,6 +20,7 @@ export interface LevelPlaceholders {
   jellies: Phaser.GameObjects.Sprite[];
 }
 
+/** The drawn course: its placeholders and a hook for course-changing events. */
 export interface LevelView {
   placeholders: LevelPlaceholders;
   /** Applies a tick's drained events to the course (today only `coral.broken`). */

@@ -19,6 +19,7 @@ import { type AudioPort, createAudio } from './audio/index.ts';
 import { input } from './input.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 
+/** Phaser scene keys, one per screen. */
 export type SceneKey = 'boot' | 'title' | 'race' | 'results';
 
 /** Events the engine adds on top of the world's. */
@@ -48,6 +49,7 @@ export interface RaceOutcome {
 /** Receives each tick's drained events. Views use it for event-driven visuals such as broken coral. */
 export type EventListener = (events: readonly Stamped<RuntimeEvent>[]) => void;
 
+/** What the runtime needs from the outside: the shell context, saves, the OS motion setting and a scene switcher. */
 export interface RuntimeOptions {
   ctx: GameContext;
   saves: SaveStore<SaveData>;
@@ -59,10 +61,13 @@ export interface RuntimeOptions {
   startScene(scene: SceneKey): void;
 }
 
+/** The one save slot Reef Rush uses. */
 export const SAVE_SLOT = 'main';
 
 /** Ticks between `race.finished` and the results screen, so the finish can be seen. */
 const RESULTS_DELAY_TICKS = 90;
+/** Ticks a menu ignores kick after its screen appears, so a kick still being mashed from the race can't pick an option unseen. */
+const MENU_ARM_TICKS = 20;
 
 const MENUS: Partial<Record<SceneKey, readonly MenuOption[]>> = MENU_OPTIONS;
 
@@ -80,6 +85,8 @@ export class Runtime {
   lastResult: RaceOutcome | null = null;
   /** The active screen's menu, or null on screens without one. */
   menu: Menu | null = null;
+  /** True from the start of a save write until it settles. The test harness waits on it through idle(). */
+  saving = false;
   readonly audio: AudioPort;
   readonly ctx: GameContext;
 
@@ -90,6 +97,8 @@ export class Runtime {
   private cursor = 0;
   /** Ticks left before the results screen, or null when no race has finished. */
   private resultsIn: number | null = null;
+  /** Ticks left before the current menu accepts kick. */
+  private menuArmIn = 0;
 
   constructor(options: RuntimeOptions) {
     this.ctx = options.ctx;
@@ -106,7 +115,7 @@ export class Runtime {
     return { muted: saved.muted, reducedMotion: saved.reducedMotion ?? this.prefersReducedMotion };
   }
 
-  /** Feeds a rendered frame's wall time to the fixed step. Does nothing in test mode, where the shell calls advance(). */
+  /** Feeds one game step's wall time to the fixed step. Does nothing in test mode, where the shell calls advance(). */
   frame(deltaMs: number): void {
     if (!this.ctx.params.testMode) this.step.frame(deltaMs / 1000);
   }
@@ -118,18 +127,24 @@ export class Runtime {
     this.startScene(scene);
   }
 
-  /** Called from a scene's create() once it is ready to show. */
+  /** Called from a scene's create() once it is ready to show. The title drops any finished race. */
   entered(scene: SceneKey): void {
     this.scene = scene;
     this.loading = false;
+    if (scene === 'title') this.world = null;
     const options = MENUS[scene];
     this.menu = options ? createMenu(options) : null;
+    this.menuArmIn = MENU_ARM_TICKS;
     this.events.emit({ type: 'scene.started', scene });
   }
 
-  /** Builds a fresh world on the course and starts the race scene at the countdown. */
+  /**
+   * Builds a fresh world on the course and starts the race scene at the countdown. The seed
+   * moves on with every recorded race, so a rematch differs while a test run still repeats.
+   */
   startRace(): void {
-    this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, { seed: this.ctx.params.seed });
+    const seed = this.ctx.params.seed + (this.save?.races ?? 0);
+    this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, { seed });
     this.lastResult = null;
     this.resultsIn = null;
     this.goTo('race');
@@ -137,14 +152,19 @@ export class Runtime {
 
   /** Writes `data` to the save slot, emitting `save.written` or `save.failed`. The race carries on either way. */
   async persist(data: SaveData): Promise<void> {
-    const outcome = await this.saves.save(SAVE_SLOT, data);
-    if (outcome.ok) {
-      this.save = data;
-      this.events.emit({ type: 'save.written' });
-      return;
+    this.saving = true;
+    try {
+      const outcome = await this.saves.save(SAVE_SLOT, data);
+      if (outcome.ok) {
+        this.save = data;
+        this.events.emit({ type: 'save.written' });
+        return;
+      }
+      log.warn(`Best time not saved: ${outcome.reason}`);
+      this.events.emit({ type: 'save.failed', reason: outcome.reason });
+    } finally {
+      this.saving = false;
     }
-    log.warn(`Best time not saved: ${outcome.reason}`);
-    this.events.emit({ type: 'save.failed', reason: outcome.reason });
   }
 
   /** Calls `listener` with every later tick's drained events. Returns the function that stops it. */
@@ -165,6 +185,10 @@ export class Runtime {
   private tickMenu(menu: Menu): void {
     if (input.justPressed('down')) moveSelection(menu, 1);
     if (input.justPressed('up')) moveSelection(menu, -1);
+    if (this.menuArmIn > 0) {
+      this.menuArmIn--;
+      return;
+    }
     if (!input.justPressed('kick')) return;
     const option = selectedOption(menu);
     this.events.emit({ type: 'menu.selected', option });

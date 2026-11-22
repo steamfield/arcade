@@ -8,8 +8,10 @@ import type Phaser from 'phaser';
 /** Text sizes in game pixels at 1x. */
 const SIZE_PX = { small: 8, medium: 10, large: 16, title: 24 } as const;
 
+/** The text sizes a label can use. */
 export type LabelSize = keyof typeof SIZE_PX;
 
+/** How a label looks and where it is anchored; every field is optional. */
 export interface LabelOptions {
   size?: LabelSize;
   /** CSS colour string, e.g. '#ffd23f'. Defaults to white. */

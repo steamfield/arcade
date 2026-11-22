@@ -9,6 +9,7 @@ import { summarize } from '../../logic/world.ts';
 import { createLabel } from '../art/font.ts';
 import { Layer } from './layers.ts';
 
+/** The debug overlay; `sync` redraws hitboxes and the readout from the world. */
 export interface DebugOverlay {
   sync(world: World): void;
 }

@@ -36,7 +36,7 @@ export async function startPhaser(ctx: GameContext, saves: SaveStore<SaveData>):
     },
   });
   game = createPhaserGame(ctx, rt);
-  watchGame(ctx, game);
+  watchGame(ctx, game, rt);
   return createHandle(rt, game, saves);
 }
 
@@ -65,12 +65,21 @@ function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
 }
 
 function switchScene(game: Phaser.Game, scene: SceneKey): void {
-  for (const running of game.scene.getScenes(true)) running.scene.stop();
+  // stop() is queued but start() of a running scene restarts it at once; stopping the
+  // target too would let the queued stop land after the restart and leave it blank.
+  for (const running of game.scene.getScenes(true)) {
+    if (running.scene.key !== scene) running.scene.stop();
+  }
   game.scene.start(scene);
 }
 
-/** Integer zoom that follows the container, plus context-loss and audio-context hookups once Phaser is ready. */
-function watchGame(ctx: GameContext, game: Phaser.Game): void {
+/**
+ * Integer zoom that follows the container, the logic clock fed once per game step (not per
+ * scene, so a scene switch mid-step can't tick twice), plus context-loss and audio-context
+ * hookups once Phaser is ready.
+ */
+function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
+  game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => rt.frame(deltaMs));
   const fitToContainer = () => game.scale.setZoom(integerScale(WIDTH, HEIGHT, ctx.container));
   new ResizeObserver(fitToContainer).observe(ctx.container);
   game.events.once(Phaser.Core.Events.READY, () => {
@@ -81,7 +90,7 @@ function watchGame(ctx: GameContext, game: Phaser.Game): void {
 }
 
 function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>): GameHandle {
-  const idle = () => game.isBooted && !rt.loading;
+  const idle = () => game.isBooted && !rt.loading && !rt.saving;
   return {
     events: rt.events,
     idle,
@@ -94,8 +103,8 @@ function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>
       return ran;
     },
     renderer: () => (game.renderer?.type === Phaser.WEBGL ? 'webgl' : game.renderer ? 'canvas' : 'none'),
-    debugSummary: () => debugSummary(rt, saves.status),
-    debugState: () => debugState(rt, saves.status),
+    debugSummary: () => debugSummary(rt, saves.status, game.scene.isActive(rt.scene)),
+    debugState: () => debugState(rt, saves.status, game.scene.isActive(rt.scene)),
     async loadState(fixture) {
       const imported = await saves.importJson(SAVE_SLOT, JSON.stringify(fixture));
       if (imported.kind !== 'ok')

@@ -6,6 +6,7 @@ import type Phaser from 'phaser';
 import { createLabel } from '../art/font.ts';
 import type { Menu, MenuOption } from '../menu.ts';
 
+/** A drawn menu that follows the runtime's selection. */
 export interface MenuView {
   /** Redraws the selection. A null menu (the screen is switching) leaves the labels as they were. */
   sync(menu: Menu | null): void;

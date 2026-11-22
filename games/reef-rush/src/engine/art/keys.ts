@@ -37,6 +37,7 @@ export const Tex = {
   backdropNear: 'backdrop-near',
 } as const;
 
+/** Any texture key in `Tex`. */
 export type TexKey = (typeof Tex)[keyof typeof Tex];
 
 /** Named frames inside multi-frame textures. */
@@ -54,6 +55,7 @@ export const Frame = {
   pipCooling: 'cooling',
 } as const;
 
+/** Any frame name in `Frame`. */
 export type FrameKey = (typeof Frame)[keyof typeof Frame];
 
 /** Tile indices inside `Tex.tiles`. The tilemap stores these; -1 is empty water. */
@@ -72,4 +74,5 @@ export const Anim = {
   jellyPulse: 'jelly-pulse',
 } as const;
 
+/** Any animation key in `Anim`. */
 export type AnimKey = (typeof Anim)[keyof typeof Anim];

@@ -10,11 +10,14 @@ import { formatBest } from './view/race-text.ts';
 /**
  * Scene, save status and the world summary, plus the menu on menu screens, the best
  * line as shown on the title, and the race outcome on results.
+ *
+ * @param sceneRunning Whether Phaser is actually running `rt.scene`. When it isn't, the
+ * scene reads 'none', so a runtime that believes in a scene Phaser stopped is visible.
  */
-export function debugSummary(rt: Runtime, saveStatus: SaveStatus): Record<string, unknown> {
+export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: boolean): Record<string, unknown> {
   const { menu, world } = rt;
   return {
-    scene: rt.scene,
+    scene: sceneRunning ? rt.scene : 'none',
     save: saveStatus,
     ...(world ? summarize(world) : {}),
     ...(menu ? { menu: { options: menu.options, selected: menu.selected } } : {}),
@@ -31,10 +34,10 @@ function sceneDetails(rt: Runtime): Record<string, unknown> {
 }
 
 /** Everything in the summary plus racers, race state, settings, the save and the course as ASCII. */
-export function debugState(rt: Runtime, saveStatus: SaveStatus): Record<string, unknown> {
+export function debugState(rt: Runtime, saveStatus: SaveStatus, sceneRunning: boolean): Record<string, unknown> {
   const { world } = rt;
   return {
-    ...debugSummary(rt, saveStatus),
+    ...debugSummary(rt, saveStatus, sceneRunning),
     save: rt.save,
     saveStatus,
     settings: rt.settings,

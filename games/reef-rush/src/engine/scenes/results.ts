@@ -39,8 +39,7 @@ export class ResultsScene extends Phaser.Scene {
     this.rt.entered('results');
   }
 
-  override update(_time: number, delta: number): void {
-    this.rt.frame(delta);
+  override update(): void {
     this.menuView?.sync(this.rt.menu);
     // A save can fail after this screen is up, so the note follows the outcome every frame.
     if (this.rt.lastResult) this.saveNote?.setText(noteText(this.rt.lastResult));

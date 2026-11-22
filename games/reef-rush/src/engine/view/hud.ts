@@ -13,6 +13,7 @@ import { Frame, type FrameKey, Tex } from '../art/keys.ts';
 import { Layer } from './layers.ts';
 import { formatRaceTime, ordinal } from './race-text.ts';
 
+/** The race HUD; `sync` redraws it from the world. */
 export interface Hud {
   sync(world: World): void;
 }
