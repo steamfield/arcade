@@ -1,9 +1,10 @@
 /**
  * Which way a swimmer should head on a flow field: walk a few tiles downhill
  * from the body's tile, then aim at the furthest of them the whole body can
- * slide to in a straight line without clipping a solid tile.
+ * slide to in a straight line without clipping a solid tile. On the smash field
+ * the walk may step into unbroken coral, so a racer able to break it aims at it.
  */
-import { isSolid } from '../level/query.ts';
+import { cellAt, isSolid } from '../level/query.ts';
 import { cornerIsClear, fieldAt, NEIGHBOURS } from '../race/flowfield.ts';
 import { type Body, type FlowFields, type Level, TILE, type Vec } from '../types.ts';
 
@@ -16,7 +17,8 @@ const STILL: Vec = { x: 0, y: 0 };
 const CORNER_SIGNS = NEIGHBOURS.filter((offset) => offset.x !== 0 && offset.y !== 0);
 
 const centreOf = (body: Body): Vec => ({ x: body.x + body.w / 2, y: body.y + body.h / 2 });
-const tileOf = (point: Vec): Vec => ({ x: Math.floor(point.x / TILE), y: Math.floor(point.y / TILE) });
+/** The tile holding a point in world px. */
+export const tileOf = (point: Vec): Vec => ({ x: Math.floor(point.x / TILE), y: Math.floor(point.y / TILE) });
 const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE });
 
 /**
@@ -25,6 +27,7 @@ const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y +
  *
  * @param field One of `fields`' arrays: `steer` for most racers, `smash` for one that can break coral.
  * @param lookahead Downhill steps to look ahead, in tiles; 3 is the usual value.
+ * @param throughCoral Lets the downhill walk enter unbroken coral; pass true with the `smash` field.
  */
 export function steerDirection(
   field: Float32Array,
@@ -33,12 +36,13 @@ export function steerDirection(
   broken: ReadonlySet<number>,
   body: Body,
   lookahead: number,
+  throughCoral = false,
 ): Vec {
   const centre = centreOf(body);
   const start = tileOf(centre);
   if (fieldAt(field, fields, start) === 0) return { ...STILL };
 
-  const path = downhillPath(field, fields, level, broken, start, lookahead);
+  const path = downhillPath(field, fields, openTiles(level, broken, throughCoral), start, lookahead);
   // The first step is always taken; later ones only while the body can slide straight to them,
   // so the aim never cuts a corner the path itself goes around.
   let target = path[0];
@@ -53,16 +57,26 @@ export function steerDirection(
   return { x: (aim.x - centre.x) / length, y: (aim.y - centre.y) / length };
 }
 
-/** Up to `steps` tiles, each the lowest open neighbour of the last, stopping where nothing is lower. */
-function downhillPath(
-  field: Float32Array,
-  fields: FlowFields,
+/** Which tiles a downhill walk may enter: open water, plus unbroken coral when `throughCoral`. */
+export function openTiles(
   level: Level,
   broken: ReadonlySet<number>,
+  throughCoral: boolean,
+): (tx: number, ty: number) => boolean {
+  return (tx, ty) => !isSolid(level, broken, tx, ty) || (throughCoral && cellAt(level, tx, ty) === 'coral');
+}
+
+/**
+ * Up to `steps` tiles from `start`, each the lowest neighbour of the last that `open` allows,
+ * stopping where nothing is lower. Never cuts a corner `open` refuses.
+ */
+export function downhillPath(
+  field: Float32Array,
+  fields: FlowFields,
+  open: (tx: number, ty: number) => boolean,
   start: Vec,
   steps: number,
 ): Vec[] {
-  const open = (tx: number, ty: number) => !isSolid(level, broken, tx, ty);
   const path: Vec[] = [];
   let tile = start;
   for (let step = 0; step < steps; step++) {
@@ -86,7 +100,7 @@ function downhillPath(
  * True when the body's box, slid in a straight line until its centre reaches `to`, stays in
  * non-solid tiles. Each corner is sampled every SIGHT_STEP_PX.
  */
-function hasClearSweep(level: Level, broken: ReadonlySet<number>, body: Body, to: Vec): boolean {
+export function hasClearSweep(level: Level, broken: ReadonlySet<number>, body: Body, to: Vec): boolean {
   const from = centreOf(body);
   const halfW = body.w / 2 - EDGE_INSET_PX;
   const halfH = body.h / 2 - EDGE_INSET_PX;

@@ -316,6 +316,12 @@ describe('using items', () => {
     expect(without?.move.x).toBeLessThan(0);
   });
 
+  it('aims into the coral itself once it reaches it holding a puffer', () => {
+    const [atCoral] = itemScene(['puffer'], { tess: [5, 1] }, 0, CORAL_LANE).decide();
+
+    expect(atCoral?.move.x).toBeGreaterThan(0.5);
+  });
+
   it('dashes with 5 clear tiles straight ahead', () => {
     expect(bursts(itemScene(['jetFin']).decide())).toBe(1);
   });

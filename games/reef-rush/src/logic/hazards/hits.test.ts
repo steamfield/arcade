@@ -93,3 +93,11 @@ describe('knockback', () => {
     expect(player.body.vy).toBeCloseTo(-64, 6);
   });
 });
+
+describe('a bubble hit', () => {
+  it('needs the racer that fired the bubble', () => {
+    const { world, player, offset } = setup();
+
+    expect(() => applyHit(world, player, 'bubble', null, offset(-8, 0))).toThrow(/has no owner/);
+  });
+});

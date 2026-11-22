@@ -1,10 +1,11 @@
 /**
- * Computer-driven swimming: a racer's Intent each tick from the steer field,
- * its profile, its memory and its own random stream.
+ * Computer-driven swimming: a racer's Intent each tick from the steer field
+ * (the smash field while it holds a Puffer), its profile, its memory and its
+ * own random stream.
  *
- * Every call draws exactly three numbers from the racer's rng (wobble, kick
- * roll, recovery side) whether or not they are used, so one racer's choices
- * never shift the rest of its stream.
+ * Every call draws exactly four numbers from the racer's rng, in this order,
+ * whether or not they are used: wobble, kick roll, recovery side, item roll.
+ * So one racer's choices, and what it holds, never shift the rest of its stream.
  */
 import type { Rng } from '@arcade/core';
 import type { AiMemory, Intent, Racer, Vec, World } from '../types.ts';
@@ -30,6 +31,7 @@ interface Draws {
   wobble: number;
   kick: number;
   side: number;
+  item: number;
 }
 
 /** Fresh memory for a racer at the start line. */
@@ -46,7 +48,7 @@ export function createAiMemory(): AiMemory {
 export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
   const memory = racer.ai;
   if (!memory) throw new Error(`rivalIntent needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
-  const draws: Draws = { wobble: rng.next(), kick: rng.next(), side: rng.next() };
+  const draws: Draws = { wobble: rng.next(), kick: rng.next(), side: rng.next(), item: rng.next() };
 
   replanAim(world, racer, memory);
   stepWobble(memory, racer.profile.wobble, draws.wobble);
@@ -54,17 +56,20 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
   const recovery = world.race.phase === 'racing' ? recoveryMove(racer, memory, draws.side) : null;
   // A recovering rival is sliding off a wall, not racing, so it saves its kick for the aim.
   const kick = recovery === null && wantsKick(racer, aim, draws.kick);
-  // Scaffold wiring: lane 3/b moves the item roll into Draws so it is taken every tick, holding or not.
-  // Today nobody holds anything during a race, so this draw never happens and seeded races are unchanged.
-  const burst = racer.stack.length > 0 && wantsBurst(world, racer, aim, rng.next());
+  const burst = wantsBurst(world, racer, aim, draws.item);
   return { move: recovery ?? aim, kick, burst };
 }
 
-/** Re-reads the steer field every `reactionTicks`, so slower rivals react later to the course. */
+/**
+ * Re-reads its field every `reactionTicks`, so slower rivals react later to the course. A rival
+ * holding a Puffer reads the smash field and aims through coral, which its inflate breaks.
+ */
 function replanAim(world: World, racer: Racer, memory: AiMemory): void {
   if (memory.replanIn <= 0) {
     const { fields, level, broken } = world;
-    memory.aim = steerDirection(fields.steer, fields, level, broken, racer.body, LOOKAHEAD_TILES);
+    const smash = racer.stack.includes('puffer');
+    const field = smash ? fields.smash : fields.steer;
+    memory.aim = steerDirection(field, fields, level, broken, racer.body, LOOKAHEAD_TILES, smash);
     memory.replanIn = racer.profile.reactionTicks;
   }
   memory.replanIn--;
