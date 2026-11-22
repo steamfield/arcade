@@ -55,13 +55,16 @@ export function drawSheet(scene: Phaser.Scene, key: string, frames: readonly Pix
 
 /**
  * Draws equal-sized frames side by side into one texture under `key`, each with its own name and
- * palette. A key that already exists is left alone, so building the art twice changes nothing.
+ * palette.
  *
- * @throws {Error} Naming the key, frame and row when frames differ in size or a pixel is not `.` or a palette index.
+ * @throws {Error} When `key` is already a texture, since two callers drawing one key would silently
+ *   show only the first one's art.
+ * @throws {Error} Naming the key, frame and row when frames differ in size, share a name, or a pixel
+ *   is not `.` or a palette index.
  */
 export function drawFrames(scene: Phaser.Scene, key: string, frames: readonly NamedFrame[]): void {
   const size = measureFrames(key, frames);
-  if (scene.textures.exists(key)) return;
+  if (scene.textures.exists(key)) throw new Error(`Texture "${key}" already exists; pick another key.`);
 
   const graphics = scene.make.graphics({}, false);
   frames.forEach((frame, index) => {
@@ -78,7 +81,7 @@ export function drawFrames(scene: Phaser.Scene, key: string, frames: readonly Na
 
 /**
  * Checks that every frame is a rectangle of the same size and that every pixel is `.` or a digit
- * its palette has, and returns that size.
+ * its palette has, that no two frames share a name, and returns that size.
  *
  * @throws {Error} Naming the key, frame, row and column of the first problem found.
  */
@@ -86,7 +89,15 @@ export function measureFrames(key: string, frames: readonly NamedFrame[]): Frame
   const first = frames[0];
   if (!first || first.rows.length === 0) throw new Error(`Sprite "${key}" has no pixels; give it at least one row.`);
   const size = { width: first.rows[0]?.length ?? 0, height: first.rows.length };
-  for (const frame of frames) checkFrame(key, frame, size);
+  const names = new Set<string>();
+  for (const frame of frames) {
+    // Phaser's texture.add replaces a frame of the same name without a word, so catch it here.
+    if (names.has(frame.name)) {
+      throw new Error(`Sprite "${key}" has two frames named "${frame.name}"; give each frame its own name.`);
+    }
+    names.add(frame.name);
+    checkFrame(key, frame, size);
+  }
   return size;
 }
 

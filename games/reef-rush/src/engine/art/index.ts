@@ -24,7 +24,10 @@ const LOOPS: readonly { key: AnimKey; texture: TexKey; frameRate: number }[] = [
  * @throws {Error} When a sprite's pixel text is malformed (see `drawFrames`), naming the key, frame and row.
  */
 export function buildTextures(scene: Phaser.Scene): void {
-  for (const sheet of ART_SHEETS) drawFrames(scene, sheet.key, sheet.frames);
+  for (const sheet of ART_SHEETS) {
+    // Textures are global to the game, so a second call finds them built; that is fine here, unlike a key clash.
+    if (!scene.textures.exists(sheet.key)) drawFrames(scene, sheet.key, sheet.frames);
+  }
   for (const loop of LOOPS) registerLoop(scene, loop);
 }
 

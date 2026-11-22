@@ -9,7 +9,7 @@ import { type ArtSheet, sheet } from './sheet.ts';
 /** Pickup sheets. */
 export const PICKUP_SHEETS: readonly ArtSheet[] = [
   sheet(Tex.pearl, ItemPalette.pearl, {
-    [Frame.a]: ['.0000.', '021110', '021110', '011110', '011110', '.0000.'],
+    [Frame.a]: ['..000..', '.01110.', '0121110', '0111110', '0111110', '.01110.', '..000..'],
   }),
   sheet(Tex.clam, ItemPalette.clam, {
     [Frame.clamClosed]: [

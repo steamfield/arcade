@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Frame, Tex, TileIndex } from '../keys.ts';
+import { BackdropPalette, HazardPalette, RacerPalette, WATER_BANDS } from '../palettes.ts';
 import { measureFrames } from '../pixel.ts';
 import { ART_SHEETS } from './index.ts';
 
@@ -49,6 +50,36 @@ describe('world art data', () => {
   });
 });
 
+describe('world art palettes', () => {
+  /** WCAG relative luminance of a 0xRRGGBB colour. */
+  const luminance = (colour: number) => {
+    const linear = [16, 8, 0].map((shift) => {
+      const c = ((colour >> shift) & 0xff) / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * (linear[0] ?? 0) + 0.7152 * (linear[1] ?? 0) + 0.0722 * (linear[2] ?? 0);
+  };
+  const contrast = (a: number, b: number) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+  };
+  const behind = [...WATER_BANDS, ...BackdropPalette.far, ...BackdropPalette.near];
+  const mainColours = [
+    ...Object.entries(RacerPalette).map(([name, palette]) => [name, palette[1]] as const),
+    ['urchin', HazardPalette.urchin[1]] as const,
+  ];
+
+  it.each(mainColours)('%s main colour stands 3:1 off every water band and backdrop layer', (_, colour) => {
+    const weakest = Math.min(...behind.map((water) => contrast(colour, water)));
+    expect(weakest).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps the racers in brightness order Pip, Squib, Tess, Bo so grayscale tells them apart', () => {
+    const order = (['pip', 'squib', 'tess', 'bo'] as const).map((id) => luminance(RacerPalette[id][1]));
+    expect(order).toEqual([...order].sort((a, b) => b - a));
+  });
+});
+
 describe('measureFrames', () => {
   const palette = [0x000000, 0xffffff];
 
@@ -69,6 +100,16 @@ describe('measureFrames', () => {
   it('rejects characters that are neither "." nor a digit', () => {
     const frames = [{ name: 'a', palette, rows: ['0 '] }];
     expect(() => measureFrames('blob', frames)).toThrow('row 0 col 1 uses " "');
+  });
+
+  it('rejects two frames with the same name, which would overwrite each other in the texture', () => {
+    const frames = [
+      { name: 'a', palette, rows: ['01'] },
+      { name: 'a', palette, rows: ['10'] },
+    ];
+    expect(() => measureFrames('blob', frames)).toThrow(
+      'Sprite "blob" has two frames named "a"; give each frame its own name.',
+    );
   });
 
   it('rejects frames of different heights in one sheet', () => {

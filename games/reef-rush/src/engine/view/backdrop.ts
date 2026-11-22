@@ -77,51 +77,81 @@ export function createBackdrop(
     maxScroll: { x: level.width * TILE - camera.width, y: level.height * TILE - camera.height },
   };
   addDepthBands(scene, level, viewport);
-  addPaintedLayers(scene, viewport);
+  addPaintedLayers(scene, level, viewport);
   const parts = [createCaustics(scene), createLightRays(scene, viewport), createMotes(scene, viewport)];
+  // update runs every rendered frame, so it reuses one scroll object rather than allocating per frame.
+  const scroll = { x: 0, y: 0 };
 
   return {
     update(tick) {
       const time = options.reducedMotion ? 0 : tick;
-      const scroll = { x: camera.scrollX, y: camera.scrollY };
+      scroll.x = camera.scrollX;
+      scroll.y = camera.scrollY;
       for (const part of parts) part.update(time, scroll);
     },
   };
 }
 
-/** Line dither between bands: rows of the deeper colour above each boundary, densest nearest it. */
-const DITHER_ROWS = [-6, -3, -2] as const;
+/**
+ * Ordered dither above each band boundary, as pixel masks over a 2x2 cell: the rows furthest from the
+ * boundary take a quarter of the deeper colour, the nearest rows half, so bands blend without hard lines.
+ */
+const DITHER = [
+  { rowsAbove: [6, 5, 4], hit: (x: number, y: number) => x % 2 === 0 && y % 2 === 0 },
+  { rowsAbove: [3, 2, 1], hit: (x: number, y: number) => (x + y) % 2 === 0 },
+] as const;
 
 function addDepthBands(scene: Phaser.Scene, level: Level, viewport: Viewport): void {
   const levelHeight = level.height * TILE;
   const bandHeight = Math.ceil(levelHeight / WATER_BANDS.length);
   const width = viewport.screen.width;
-  // Pinned horizontally, scrolling vertically: depth is a property of y, not of where you are along the course.
-  const fill = (y: number, height: number, colour: number) =>
-    scene.add.rectangle(0, y, width, height, colour).setOrigin(0).setScrollFactor(0, 1).setDepth(Depth.bands);
+  const graphics = scene.make.graphics({}, false);
 
   WATER_BANDS.forEach((colour, band) => {
     const top = band * bandHeight;
-    fill(top, bandHeight, colour);
+    graphics.fillStyle(colour, 1).fillRect(0, top, width, bandHeight);
     const deeper = WATER_BANDS[band + 1];
     if (deeper === undefined) return;
-    for (const offset of DITHER_ROWS) fill(top + bandHeight + offset, 1, deeper);
+    graphics.fillStyle(deeper, 1);
+    for (const { rowsAbove, hit } of DITHER) {
+      for (const above of rowsAbove) {
+        const y = top + bandHeight - above;
+        for (let x = 0; x < width; x++) if (hit(x, y)) graphics.fillRect(x, y, 1, 1);
+      }
+    }
   });
+
+  // Baked once into a render texture: the dither is thousands of pixels, too many to redraw every frame.
+  // Pinned horizontally, scrolling vertically: depth is a property of y, not of where you are along the course.
+  const bands = scene.add.renderTexture(0, 0, width, levelHeight).setOrigin(0).setScrollFactor(0, 1);
+  bands.setDepth(Depth.bands).draw(graphics).render();
+  graphics.destroy();
 }
 
-function addPaintedLayers(scene: Phaser.Scene, viewport: Viewport): void {
+function addPaintedLayers(scene: Phaser.Scene, level: Level, viewport: Viewport): void {
   const { screen, maxScroll } = viewport;
+  const floorY = floorTop(level);
   for (const layer of PAINTED_LAYERS) {
-    // Wide enough to cover the screen at the far end of the course, and placed so the
-    // layer rests on the bottom edge of the screen when the camera is at the level floor.
+    // Wide enough to cover the screen at the far end of the course, and placed so the layer
+    // stands on the course's rock floor (not hidden behind it) when the camera is at the bottom.
     const width = Math.ceil(screen.width + maxScroll.x * layer.factor);
-    const y = maxScroll.y * layer.factor + screen.height - layer.height;
+    const y = floorY - maxScroll.y * (1 - layer.factor) - layer.height + FLOOR_OVERLAP;
     scene.add
       .tileSprite(0, y, width, layer.height, layer.texture)
       .setOrigin(0)
       .setScrollFactor(layer.factor)
       .setDepth(layer.depth);
   }
+}
+
+/** Pixels each painted layer tucks behind the floor, so no water shows between them. */
+const FLOOR_OVERLAP = 4;
+
+/** World y of the top of the solid rock rows at the bottom of the level (its height if there are none). */
+function floorTop(level: Level): number {
+  let row = level.height;
+  while (row > 0 && level.cells[row - 1]?.every((cell) => cell === 'rock')) row--;
+  return row * TILE;
 }
 
 /** Caustic net: one dash per cell, wobbling within its cell, fading with depth below the surface. */
@@ -135,12 +165,17 @@ function createCaustics(scene: Phaser.Scene): AnimatedPart {
     .setBlendMode(Phaser.BlendModes.ADD);
   const width = scene.cameras.main.width;
   const { cell } = CAUSTICS;
+  let drawn = '';
 
   return {
     update(tick, scroll) {
       // Stepped rather than smooth: the shimmer changes a few times a second, like animated tiles.
       const step = Math.floor(tick / CAUSTICS.stepTicks);
       const shift = Math.floor(scroll.x * CAUSTICS.factor);
+      // The pattern depends only on these two, so most frames have nothing to redraw.
+      const key = `${step}:${shift}`;
+      if (key === drawn) return;
+      drawn = key;
       const firstColumn = Math.floor(shift / cell.w);
       graphics.clear();
       for (let row = 0; row < CAUSTICS.rows; row++) {
@@ -178,19 +213,35 @@ function createLightRays(scene: Phaser.Scene, viewport: Viewport): AnimatedPart 
     .setBlendMode(Phaser.BlendModes.ADD);
   const span = viewport.screen.width + viewport.maxScroll.x * RAYS.factor + RAYS.spacing;
   const count = Math.ceil(span / RAYS.spacing);
+  const shafts = Array.from({ length: count }, (_, ray) => ({
+    x: ray * RAYS.spacing + Math.round(hash(ray, 3) * 30),
+    length: RAYS.length - Math.round(hash(ray, 5) * 60),
+    phase: hash(ray, 7) * Math.PI * 2,
+  }));
+  let drawn = '';
 
   return {
-    update(tick) {
+    update(tick, scroll) {
+      // Only shafts whose top can reach the screen, given how far they lean and spread.
+      const offset = scroll.x * RAYS.factor;
+      const visible = shafts.filter(
+        (shaft) => shaft.x - offset >= -RAYS.spacing - RAYS.slant && shaft.x - offset <= viewport.screen.width,
+      );
+      const sways = visible.map((shaft) =>
+        Math.round(RAYS.swayPx * Math.sin((tick / RAYS.swayTicks) * Math.PI * 2 + shaft.phase)),
+      );
+      // Whole-pixel sway changes a few times a second; redraw only then or when the visible set changes.
+      const key = `${visible[0]?.x}:${visible.length}:${sways.join(',')}`;
+      if (key === drawn) return;
+      drawn = key;
+
       graphics.clear();
       graphics.fillStyle(WaterLight.ray, RAYS.alpha);
-      for (let ray = 0; ray < count; ray++) {
-        const phase = hash(ray, 7) * Math.PI * 2;
-        const sway = Math.round(RAYS.swayPx * Math.sin((tick / RAYS.swayTicks) * Math.PI * 2 + phase));
-        const x = ray * RAYS.spacing + Math.round(hash(ray, 3) * 30);
-        const length = RAYS.length - Math.round(hash(ray, 5) * 60);
-        drawShaft(graphics, x, sway, length);
-        drawShaft(graphics, x, Math.round(sway / 2), Math.round(length / 2));
-      }
+      visible.forEach((shaft, index) => {
+        const sway = sways[index] ?? 0;
+        drawShaft(graphics, shaft.x, sway, shaft.length);
+        drawShaft(graphics, shaft.x, Math.round(sway / 2), Math.round(shaft.length / 2));
+      });
     },
   };
 }
