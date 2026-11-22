@@ -226,6 +226,7 @@ Test cases:
 ### Phase 4: pixel art and chiptune audio
 
 Scaffold: ad8607f (on phase branch deliver/reef-rush-p4)
+Tag: phase-4
 Demo: `pnpm arcade see reef-rush --scene race --at 0,240` shows final sprites, animated tiles, parallax and light; dev build plays the title and race themes and SFX. Music is judged by ear: the phase tag message asks the user to listen.
 Depends on: phase 2
 
@@ -397,3 +398,4 @@ Depends on: phase 3, phase 4
 - 2026-11-22: Lane 3/b (0909f99) review: accepted all 11 (puffer holders use the smash field only when inflated or burst-ready, no burst during stuck recovery, dnf-results stops pinning rival order, guard order in applyHit, hits end dashes, flashed jellies harmless for the full 45 ticks, exact math incl. vector seeker steering, seeker and contact-order tests, inSolid naming, no stuck recovery while stunned). Lane choices accepted; the ±30° bubble cone is revisited in phase 5 tuning if bubbles are wasted.
 - 2026-11-22: Phase 3 integration 47c828d: TOP_ROUTE re-recorded past the urchin at (32,4); hit-pops-newest pinned to seed 1 (Jet Fins roll, hit at tick 588, input stops 2 ticks later so the knockback leaves the pickup ungrabbed); cannonball-combo earns its stack on seed 12 by opening the first clam twice (Jet Fins, then Puffer after the 240-tick close) and smashes all 10 gate tiles. Gate: 260 tests, 19 smoke. Tagged phase-3.
 - 2026-11-22: Lane 4/d (9a6cfba) review (game-reviewer): accepted all 14. Notable: UI.md safe zones were estimated from the Pixel 7 capture, whose letterbox hides the touch overlay; re-derived from packages/input and packages/shell at scale 2 with no letterbox. Off-panel text fails contrast on water, so only foam and sun are allowed off panels and splashes get an outline. The text face resembled the HD44780 LCD ROM and is redrawn for originality. Baked ink shadow sheet for Canvas. Orchestrator wires buildUiTextures into BootScene and points DESIGN.md at UI.md at merge.
+- 2026-11-22: Phase 4 landed: lanes a-d merged into p4 (UI textures built at boot, 756566d), p4 merged into landing with the plan resolved to the landing copy. Gate on landing: 416 tests, lint, 20 smoke. Cannonball scenario checked on the new art. Canvas fallback draws tones white (accepted: meaning never rides on colour alone; smoke asserts WebGL). Tagged phase-4.
