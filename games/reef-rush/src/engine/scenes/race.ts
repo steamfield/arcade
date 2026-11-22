@@ -46,7 +46,7 @@ export class RaceScene extends Phaser.Scene {
   }
 
   private createViews(world: World): RaceViews {
-    const backdrop = createBackdrop(this, world.level);
+    const backdrop = createBackdrop(this, world.level, this.rt.settings);
     const level = createLevelView(this, world.level);
     // The pickup and hazard views draw the course objects from world state, so the level's inert stand-ins go.
     for (const stand of Object.values(level.placeholders).flat()) stand.destroy();

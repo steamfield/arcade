@@ -59,6 +59,8 @@ function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
     pixelArt: true,
     backgroundColor: '#0b3d6b',
     banner: false,
+    // Sound comes from audio/, which owns its own AudioContext; Phaser's would sit unused.
+    audio: { noAudio: true },
     scale: { mode: Phaser.Scale.NONE },
     scene: [new BootScene(rt), new TitleScene(rt), new RaceScene(rt), new ResultsScene(rt)],
   });

@@ -3,8 +3,10 @@
  * title, or straight into a race when launched with `?scene=race` (or the older
  * `?scene=play`).
  */
+
 import Phaser from 'phaser';
 import { buildTextures } from '../art/index.ts';
+import { buildUiTextures } from '../art/ui/index.ts';
 import type { Runtime } from '../runtime.ts';
 
 /** `?scene=` values that skip the title. */
@@ -21,6 +23,7 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     buildTextures(this);
+    buildUiTextures(this);
     if (RACE_SCENE_PARAMS.includes(this.rt.ctx.params.scene)) this.rt.startRace();
     else this.rt.goTo('title');
   }
