@@ -66,7 +66,7 @@ export function applyIntent(
 
 /** The vector scaled to length 1, or zero when it has no length. */
 function unit(v: Vec): Vec {
-  const length = Math.hypot(v.x, v.y);
+  const length = Math.sqrt(v.x * v.x + v.y * v.y);
   return length === 0 ? { x: 0, y: 0 } : { x: v.x / length, y: v.y / length };
 }
 
@@ -99,7 +99,7 @@ function kick(racer: Racer, direction: Vec, mods: MoveModifiers, events: EventSi
 }
 
 function capSpeed(body: Body): void {
-  const speed = Math.hypot(body.vx, body.vy);
+  const speed = Math.sqrt(body.vx * body.vx + body.vy * body.vy);
   if (speed <= SWIM.maxSpeed) return;
   const scale = SWIM.maxSpeed / speed;
   body.vx *= scale;
