@@ -1,6 +1,19 @@
 # Arcade monorepo: agent guide
 
-Browser games, one per folder, each deployed at `/games/<slug>/` on one static Cloudflare site. Most code here is written by agents, so the repo is built to let you verify your own work without a human opening a browser. Design docs: `docs/architecture.md`, `docs/agent-experience.md`, `docs/product-vision.md`.
+Browser games, one per folder, each deployed at `/games/<slug>/` on one static Cloudflare site. Most code here is written by agents, so the repo is built to let you verify your own work without a human opening a browser.
+
+**Before searching the repo, read `docs/repo-map.md`.** It lists every source file and what it's for, plus a "find it fast" table for common changes. A test keeps it in sync with the disk, so when you add, move or delete a file under `packages/`, `tools/`, `apps/` or `templates/`, update its row in the same change.
+
+## Docs
+
+| Read | When |
+| --- | --- |
+| `docs/repo-map.md` | Finding where anything lives. |
+| `docs/architecture.md` | Changing shared packages, hosting, deploys, or questioning a stack decision. |
+| `docs/agent-experience.md` | Changing the `arcade` CLI, test harness or guardrails. Its "As built" section lists what isn't built yet. |
+| `docs/product-vision.md`, `docs/problem-statement.md` | Deciding what a game or feature should be. |
+| `.claude/skills/` | `verify-game` (check, see, smoke), `phaser-game`, `threejs-game`, `game-feel`. |
+| `<game>/DESIGN.md` | Working on that game. |
 
 ## Commands
 
@@ -69,4 +82,8 @@ Follow the behavior-first approach: test what a player or caller can observe.
 
 ## Done means
 
-`pnpm arcade check <slug>` and `pnpm arcade smoke <slug>` pass, you've looked at a `see` capture of what you changed, `DESIGN.md` reflects the change, and any new behavior has a scenario or logic test.
+`pnpm arcade check <slug>` and `pnpm arcade smoke <slug>` pass, you've looked at a `see` capture of what you changed, `DESIGN.md` reflects the change, and any new behavior has a scenario or logic test. If you added, moved or removed a shared or template file, `docs/repo-map.md` says so.
+
+## Hooks
+
+`.claude/hooks/format.ts` (Biome-format each edited file) and `.claude/hooks/check-on-stop.ts` (run `pnpm arcade check` before ending a turn that changed code) exist but only run once a person registers them in a Claude Code `settings.json`. Agents shouldn't register them on their own. Until they're registered, run `pnpm fix` and `pnpm arcade check` yourself.

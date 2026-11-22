@@ -6,7 +6,16 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/.turbo", "!**/test-results", "!**/.arcade", "!**/*.gen.ts", "!**/*.md"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/.turbo",
+      "!**/test-results",
+      "!**/.arcade",
+      "!**/*.gen.ts",
+      "!**/*.md",
+      "!.claude/worktrees"
+    ]
   },
   "formatter": {
     "indentStyle": "space",
