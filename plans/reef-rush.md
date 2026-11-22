@@ -280,6 +280,34 @@ Scaffold: 87ddd94 (on the landing branch; phase 5 runs alone). Adds: title menu 
 - Rules: render-only (never touch logic state or the tick); pool particles, no per-frame allocation; every effect has a reduced-motion form that keeps its information (no shake, no flashing, small or no motion); stays readable at 1x on phones.
 - Done when: check and smoke pass, check-lane, and captures (`--at` around kicks, a hit, the cannonball and the finish, with and without reduced motion) show each effect.
 
+### Phase 6: playable roster and signature abilities
+
+Demo: pick any of eight racers on the select screen and race the other three; `pnpm --filter game-reef-rush exec vitest run src/logic/difficulty.test.ts` passes for every pick.
+Depends on: phase 5
+
+The user asked (2026-11-22) for a playable cast where each racer has its own ability. They first named Nintendo and Sega characters; those are ruled out by the originality rule, and the user approved this original cast instead, plus a shark. It replaces Pip, Tess, Squib and Bo. Racer slots stay `RACER_IDS` (`player` plus three rival slots); a character is data assigned to a slot, so tick order, rng salts and tie-breaks don't change. The game fills the three rival slots from the characters not picked, by seed.
+
+| Character | Look | Ability |
+| --- | --- | --- |
+| Rudy | red snapper in a brass diving helmet, the plucky hero | Shake it off: stuns and bubble traps last half as long |
+| Gil | lanky green seahorse, Rudy's cousin | Spring kick: kicks push harder upward |
+| Streak | electric-blue sailfish, the cocky speedster | Wind-up: top speed rises the longer it swims without turning hard or being hit |
+| Onyx | black barracuda with a scarred fin, the brooding rival | Ambush: bumping a racer from behind takes some of its speed |
+| Nib | cleaner shrimp in goggles, the tinkerer | Deep pockets: holds 4 power-ups instead of 3 |
+| Baron Barnacle | huge spider crab with a crusted crown, the bruiser | Bulldozer: breaks coral by ramming, barely moves in bumps, accelerates slowly |
+| Selene | moon jellyfish with a starlight glow, the mystic | Moonlight: sees through dark zones, immune to jelly stings |
+| Rook | hammerhead shark, the hunter | Frenzy: when a racer near it is hit or loses a power-up, it gets a short speed burst |
+
+Abilities stay small next to power-ups. Difficulty bars from phase 5 must hold with the player as each character, and no character's expert-bot win rate may exceed any other's by more than 2 of 10 seeds.
+
+| Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| a | L | games/reef-rush/src/logic/characters.ts, games/reef-rush/src/logic/abilities.ts, games/reef-rush/src/logic/ai/profiles.ts | contracts | games/reef-rush/src/logic/abilities.test.ts | opus | pending | | |
+| b | L | games/reef-rush/src/engine/art/sprites/racers.ts | contracts, games/reef-rush/UI.md | | opus | pending | | |
+| c | M | games/reef-rush/src/engine/scenes/select.ts, games/reef-rush/scenarios/pick-character.ts | contracts, games/reef-rush/UI.md | games/reef-rush/scenarios/pick-character.ts | opus | pending | | |
+
+Scaffold (written when phase 5 tags): `CharacterId` and `Character` in types.ts, `Racer.character`, `WorldOptions.character`, save version bump for the last pick, the select scene's place in the scene flow, and ability hook points in `world.ts`. Lane briefs are written with the scaffold.
+
 ## Lane briefs, first phase
 
 ### Lane 1/a brief: level parsing, tile queries, swim physics and collision
@@ -426,3 +454,4 @@ Scaffold: 87ddd94 (on the landing branch; phase 5 runs alone). Adds: title menu 
 - 2026-11-22: Phase 3 integration 47c828d: TOP_ROUTE re-recorded past the urchin at (32,4); hit-pops-newest pinned to seed 1 (Jet Fins roll, hit at tick 588, input stops 2 ticks later so the knockback leaves the pickup ungrabbed); cannonball-combo earns its stack on seed 12 by opening the first clam twice (Jet Fins, then Puffer after the 240-tick close) and smashes all 10 gate tiles. Gate: 260 tests, 19 smoke. Tagged phase-3.
 - 2026-11-22: Lane 4/d (9a6cfba) review (game-reviewer): accepted all 14. Notable: UI.md safe zones were estimated from the Pixel 7 capture, whose letterbox hides the touch overlay; re-derived from packages/input and packages/shell at scale 2 with no letterbox. Off-panel text fails contrast on water, so only foam and sun are allowed off panels and splashes get an outline. The text face resembled the HD44780 LCD ROM and is redrawn for originality. Baked ink shadow sheet for Canvas. Orchestrator wires buildUiTextures into BootScene and points DESIGN.md at UI.md at merge.
 - 2026-11-22: Phase 4 landed: lanes a-d merged into p4 (UI textures built at boot, 756566d), p4 merged into landing with the plan resolved to the landing copy. Gate on landing: 416 tests, lint, 20 smoke. Cannonball scenario checked on the new art. Canvas fallback draws tones white (accepted: meaning never rides on colour alone; smoke asserts WebGL). Tagged phase-4.
+- 2026-11-22: User asked for a playable roster with per-character abilities, naming Nintendo and Sega characters; declined under the originality rule and proposed an original cast, which the user approved with a shark added (Rook). Recorded as phase 6, after phase 5.
