@@ -174,9 +174,9 @@ Depends on: phase 2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/powerups/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/modifiers.ts | contracts | | opus | pending | | |
-| b | M | games/reef-rush/src/logic/hazards/, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/ai/steer.ts, games/reef-rush/src/logic/race/flowfield.ts, games/reef-rush/src/logic/race/coral.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/scenarios/dnf-results.ts | contracts | | opus | pending | | |
-| c | M | games/reef-rush/src/engine/view/pickup-view.ts, games/reef-rush/src/engine/view/hazard-view.ts, games/reef-rush/src/engine/view/powerup-view.ts, games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/scenes/race.ts, games/reef-rush/scenarios/clam-stack.ts, games/reef-rush/scenarios/cannonball-combo.ts, games/reef-rush/scenarios/hit-pops-newest.ts | contracts | | sonnet | pending | | |
+| a | M | games/reef-rush/src/logic/powerups/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/modifiers.ts | contracts | | opus | running | deliver/reef-rush-3a | |
+| b | M | games/reef-rush/src/logic/hazards/, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/ai/steer.ts, games/reef-rush/src/logic/race/flowfield.ts, games/reef-rush/src/logic/race/coral.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/scenarios/dnf-results.ts | contracts | | opus | running | deliver/reef-rush-3b | |
+| c | M | games/reef-rush/src/engine/view/pickup-view.ts, games/reef-rush/src/engine/view/hazard-view.ts, games/reef-rush/src/engine/view/powerup-view.ts, games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/scenes/race.ts, games/reef-rush/scenarios/clam-stack.ts, games/reef-rush/scenarios/cannonball-combo.ts, games/reef-rush/scenarios/hit-pops-newest.ts | contracts | | sonnet | running | deliver/reef-rush-3c | |
 
 Scaffold: 1c2098b (on phase branch deliver/reef-rush-p3). Scaffold-owned, no lane edits: logic/types.ts, events.ts, world.ts, racers.ts, status.ts, test-world.ts (shared test helpers), swim/collide.ts.
 
@@ -238,7 +238,7 @@ Its lanes own only files behind the seams phase 2 built (`art/index.ts`, `art/fo
 | a | M | games/reef-rush/src/engine/art/index.ts, games/reef-rush/src/engine/art/pixel.ts, games/reef-rush/src/engine/art/palettes.ts, games/reef-rush/src/engine/art/sprites/, games/reef-rush/src/engine/view/backdrop.ts, games/reef-rush/src/engine/art/placeholder.ts, games/reef-rush/src/engine/art/placeholder-sheets.ts | contracts | | opus | merged | deliver/reef-rush-4a | |
 | b | M | games/reef-rush/src/engine/audio/index.ts, games/reef-rush/src/engine/audio/synth.ts, games/reef-rush/src/engine/audio/sequencer.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/scenarios/audio-plays.ts | contracts | | opus | merged | deliver/reef-rush-4b | |
 | c | M | games/reef-rush/src/engine/audio/songs/, games/reef-rush/src/engine/audio/notation.ts, games/reef-rush/src/engine/audio/notation.test.ts, games/reef-rush/src/engine/audio/notation/ | contracts | | opus | merged | deliver/reef-rush-4c | |
-| d | M | games/reef-rush/src/engine/art/font.ts, games/reef-rush/src/engine/art/ui/, games/reef-rush/UI.md | contracts | | opus | pending | | |
+| d | M | games/reef-rush/src/engine/art/font.ts, games/reef-rush/src/engine/art/ui/, games/reef-rush/UI.md | contracts | | opus | running | deliver/reef-rush-4d | |
 
 ### Phase 5: the full ocean course, difficulty tuning, UI redesign, juice and settings
 
