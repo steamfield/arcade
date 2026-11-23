@@ -28,14 +28,22 @@ export interface DifficultyTuning {
   rivalCatchUp: CatchUpBounds;
   /** Multiplies every rival's `itemAggression` (how often it spends a ready burst on a use). */
   rivalItemAggressionMul: number;
+  /** Ticks after the GO before catch-up applies, so all four racers leave the line together. */
+  rivalCatchUpDelayTicks: number;
   /**
-   * False keeps rivals' power-ups off the player: they pick no target for a squid, ink, bubble or
-   * flash among racers that includes the player, and fire an Undertow only while the player is
-   * behind them (an Undertow pulls everyone ahead). The player's own attacks are unaffected.
+   * False keeps rivals' power-ups off the player. They pick no target for a squid, ink, bubble or
+   * flash among racers that includes the player, fire an Undertow only while the player is behind
+   * them (an Undertow pulls everyone ahead), and what they do land is ignored: `applyHit` refuses
+   * a hit caused by a rival's burst, ink does not slow the player and a rival's riptide lane does
+   * not push it. The player's own attacks and hazards (urchins, jellies) are unaffected.
    */
   rivalsAttackPlayer: boolean;
   /** Multiplies the player's stun, bubble trap and squid latch ticks, on top of the character's own multiplier. */
   playerStatusMul: number;
+  /** Multiplies the player's invulnerability after any hit, so a child isn't stunned again at once. */
+  playerInvulnerableMul: number;
+  /** Ticks before contact within which a kick makes a squid miss (SQUID.dodgeTicks on Hard). */
+  squidDodgeTicks: number;
   /** A swim-force boost for the player trailing the leader: `perTile` per tile beyond `startTiles`, at most `maxBoost`. */
   playerCatchUp: { startTiles: number; perTile: number; maxBoost: number };
   /** Multiplies the player's clam roll weight of these kinds (those not listed stay 1), so Easy hands over helpful power-ups. */
@@ -47,27 +55,36 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
   hard: {
     rivalForceMul: 1,
     rivalCatchUp: { lagTiles: 0, perTile: 0.05, min: 0.6, max: 1.25 },
+    rivalCatchUpDelayTicks: 0,
     rivalItemAggressionMul: 1,
     rivalsAttackPlayer: true,
     playerStatusMul: 1,
+    playerInvulnerableMul: 1,
+    squidDodgeTicks: 12,
     playerCatchUp: { startTiles: 6, perTile: 0, maxBoost: 0 },
     playerClamWeightMul: {},
   },
   normal: {
     rivalForceMul: 0.95,
     rivalCatchUp: { lagTiles: 10, perTile: 0.05, min: 0.6, max: 1.25 },
+    rivalCatchUpDelayTicks: 0,
     rivalItemAggressionMul: 0.7,
     rivalsAttackPlayer: true,
     playerStatusMul: 0.75,
+    playerInvulnerableMul: 1,
+    squidDodgeTicks: 18,
     playerCatchUp: { startTiles: 5, perTile: 0.02, maxBoost: 0.2 },
     playerClamWeightMul: {},
   },
   easy: {
-    rivalForceMul: 0.9,
-    rivalCatchUp: { lagTiles: 16, perTile: 0.12, min: 0.1, max: 1.3 },
+    rivalForceMul: 0.65,
+    rivalCatchUp: { lagTiles: 44, perTile: 0.12, min: 0.6, max: 1.6 },
+    rivalCatchUpDelayTicks: 240,
     rivalItemAggressionMul: 0.4,
     rivalsAttackPlayer: false,
     playerStatusMul: 0.5,
+    playerInvulnerableMul: 3,
+    squidDodgeTicks: 24,
     playerCatchUp: { startTiles: 3, perTile: 0.05, maxBoost: 0.6 },
     playerClamWeightMul: { jetFin: 3, bubbleShield: 2 },
   },
@@ -108,4 +125,24 @@ export function playerCatchUpMul(player: Racer, others: readonly Racer[], tuning
 /** Whether `attacker` may pick `target` for a hostile power-up: only a rival aiming at the player can be refused. */
 export function mayAttack(world: World, attacker: RacerId, target: RacerId): boolean {
   return attacker === 'player' || target !== 'player' || tuningOf(world).rivalsAttackPlayer;
+}
+
+/** The factor on a rival's item aggression: the level's for a rival, 1 for the player's own bot. */
+export function itemAggressionMul(world: World, racer: Racer): number {
+  return racer.id === 'player' ? 1 : tuningOf(world).rivalItemAggressionMul;
+}
+
+/** The clam roll weight multipliers for `racer`: the level's for the player, none for a rival. */
+export function clamBias(world: World, racer: Racer): Partial<Record<PowerUpKind, number>> {
+  return racer.id === 'player' ? tuningOf(world).playerClamWeightMul : {};
+}
+
+/** Ticks of invulnerability after a hit on `racer`: `baseTicks`, times the level's multiplier for the player. */
+export function invulnerableTicks(world: World, racer: Racer, baseTicks: number): number {
+  return Math.round(baseTicks * (racer.id === 'player' ? tuningOf(world).playerInvulnerableMul : 1));
+}
+
+/** Ticks before contact within which a kick dodges a squid on this world's level (the engine's KICK! prompt reads it too). */
+export function dodgeTicks(world: World): number {
+  return tuningOf(world).squidDodgeTicks;
 }

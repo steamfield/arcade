@@ -312,7 +312,7 @@ describe('Baron Barnacle: Bulldozer', () => {
       step(world, log, 120, hold({ x: 1, y: 0 }));
       applyHit(world, player, 'flash', 'tess', centreOf(player));
       step(world, log);
-      return modifiersFor(player, player).forceMul;
+      return modifiersFor(world, player).forceMul;
     };
 
     expect(forceAfterHit('baron')).toBeCloseTo(ABILITY.bulldozer.accelMul, 6);
@@ -377,7 +377,7 @@ describe('Rook: Frenzy', () => {
     step(world, log);
     let boosted = 0;
     for (let tick = 0; tick < 200; tick++) {
-      if (modifiersFor(player, player).forceMul > 1) boosted++;
+      if (modifiersFor(world, player).forceMul > 1) boosted++;
       step(world, log, 1, hold({ x: 1, y: 0 }));
     }
 

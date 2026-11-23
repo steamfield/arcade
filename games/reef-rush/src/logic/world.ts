@@ -23,7 +23,6 @@ import { breaksCoralOnContact, bumpMassFor, onBump, onWorldEvents, tickAbilities
 import { PLAYER_PROFILE } from './ai/profiles.ts';
 import { createAiMemory, rivalIntent } from './ai/rival.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
-import { tuningOf } from './difficulty-level.ts';
 import type { GameEvent } from './events.ts';
 import { resolveContacts } from './hazards/contacts.ts';
 import { moveJellies } from './hazards/jellies.ts';
@@ -192,9 +191,8 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   const racing = activeRacers(world);
   // Every racer's intent is asked for even while it can't act, so AI rng draws per tick never vary.
   const intents = racing.map((racer) => controlledIntent(racer, intentFor(world, racer, input)));
-  const player = playerOf(world);
   racing.forEach((racer, index) => {
-    swim(world, racer, intents[index] ?? IDLE, modifiersFor(racer, player, tuningOf(world), world.racers), dt);
+    swim(world, racer, intents[index] ?? IDLE, modifiersFor(world, racer), dt);
   });
   separateRacers(racing, world.contacts, world.events, bumpMassFor, (a, b) => onBump(world, a, b));
 

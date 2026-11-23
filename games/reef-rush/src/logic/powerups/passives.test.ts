@@ -34,22 +34,22 @@ function playerIn(ascii = BOX) {
 
 describe('Jet Fins', () => {
   it('swims with 15% more force and kicks again after 22 ticks', () => {
-    const { player } = playerIn();
+    const { world, player } = playerIn();
     player.stack = ['jetFin'];
 
-    expect(modifiersFor(player, player)).toEqual({ ...BASE_MODIFIERS, forceMul: 1.15, kickCooldownTicks: 22 });
+    expect(modifiersFor(world, player)).toEqual({ ...BASE_MODIFIERS, forceMul: 1.15, kickCooldownTicks: 22 });
   });
 });
 
 describe('Being latched by a squid', () => {
   it('cuts swim force to the latched share, whatever else is held', () => {
-    const { player } = playerIn();
+    const { world, player } = playerIn();
     player.status.latched = 100;
     player.stack = ['jetFin'];
 
-    expect(modifiersFor(player, player).forceMul).toBeCloseTo(1.15 * SQUID.latchedForceMul, 9);
+    expect(modifiersFor(world, player).forceMul).toBeCloseTo(1.15 * SQUID.latchedForceMul, 9);
     player.status.latched = 0;
-    expect(modifiersFor(player, player).forceMul).toBeCloseTo(1.15, 9);
+    expect(modifiersFor(world, player).forceMul).toBeCloseTo(1.15, 9);
   });
 });
 
@@ -111,22 +111,22 @@ describe('Puffer', () => {
 
 describe('Bubble Shield', () => {
   it('changes neither swimming nor bumping', () => {
-    const { player } = playerIn();
-    const bare = modifiersFor(player, player);
+    const { world, player } = playerIn();
+    const bare = modifiersFor(world, player);
     player.stack = ['bubbleShield'];
 
-    expect(modifiersFor(player, player)).toEqual(bare);
+    expect(modifiersFor(world, player)).toEqual(bare);
     expect(bumpMass(player)).toBe(player.profile.mass);
   });
 });
 
 describe('statuses', () => {
   it('scale swim force: boost by 1.2, ink by 0.5, inflation by 0.8, together with Jet Fins', () => {
-    const { player } = playerIn();
+    const { world, player } = playerIn();
     const forceWith = (status: Partial<typeof player.status>, stack: typeof player.stack = []) => {
       player.stack = stack;
       player.status = { ...player.status, boost: 0, slowed: 0, inflated: 0, ...status };
-      return modifiersFor(player, player).forceMul;
+      return modifiersFor(world, player).forceMul;
     };
 
     expect(forceWith({ boost: 5 })).toBeCloseTo(1.2, 9);

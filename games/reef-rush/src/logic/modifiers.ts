@@ -5,27 +5,26 @@
  */
 import { abilityModifiers } from './abilities.ts';
 import { catchUpMul } from './ai/rival.ts';
-import { DIFFICULTY, type DifficultyTuning, playerCatchUpMul } from './difficulty-level.ts';
+import { playerCatchUpMul, tuningOf } from './difficulty-level.ts';
 import { withPassives } from './powerups/passives.ts';
+import { playerOf } from './racers.ts';
 import { BASE_MODIFIERS } from './swim/physics.ts';
-import type { MoveModifiers, Racer } from './types.ts';
+import type { MoveModifiers, Racer, World } from './types.ts';
 
 /**
- * Modifiers for `racer` given the player's position. Catch-up applies to rivals only, and a
- * rival also swims at the level's `rivalForceMul`; the player's racer gets the level's own
- * catch-up push (`playerCatchUpMul`) when `racers` shows it trailing the leader. `tuning` is Hard's
- * (no change) by default.
+ * Modifiers for `racer` in `world`. A rival swims at the level's `rivalForceMul` and its catch-up
+ * (which waits `rivalCatchUpDelayTicks` after the GO); the player gets the level's own push
+ * (`playerCatchUpMul`) while it trails the leader.
  */
-export function modifiersFor(
-  racer: Racer,
-  player: Racer,
-  tuning: DifficultyTuning = DIFFICULTY.hard,
-  racers: readonly Racer[] = [],
-): MoveModifiers {
+export function modifiersFor(world: World, racer: Racer): MoveModifiers {
+  const tuning = tuningOf(world);
   const levelMul =
     racer.id === 'player'
-      ? playerCatchUpMul(racer, racers, tuning)
-      : tuning.rivalForceMul * catchUpMul(racer, player, tuning.rivalCatchUp);
+      ? playerCatchUpMul(racer, world.racers, tuning)
+      : tuning.rivalForceMul *
+        (world.race.raceTick < tuning.rivalCatchUpDelayTicks
+          ? 1
+          : catchUpMul(racer, playerOf(world), tuning.rivalCatchUp));
   return abilityModifiers(
     racer,
     withPassives(racer, { ...BASE_MODIFIERS, forceMul: racer.profile.forceMul * levelMul }),

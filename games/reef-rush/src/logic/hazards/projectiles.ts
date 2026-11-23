@@ -6,6 +6,7 @@
  * but stuns every jelly it passes close to. The engine lights the dark around it.
  * An ink cloud first ages, then slows, so a cloud on its last tick slows nobody.
  */
+import { mayAttack } from '../difficulty-level.ts';
 import { isSolid } from '../level/query.ts';
 import { BUBBLE, INK } from '../powerups/tuning.ts';
 import { centreOf } from '../racers.ts';
@@ -43,7 +44,7 @@ export function advanceProjectiles(world: World, racers: readonly Racer[], dt: n
   });
   for (const ink of world.inks) {
     for (const racer of racers) {
-      if (racer.id === ink.owner) continue;
+      if (racer.id === ink.owner || !mayAttack(world, ink.owner, racer.id)) continue;
       const centre = centreOf(racer);
       const dx = centre.x - ink.x;
       const dy = centre.y - ink.y;

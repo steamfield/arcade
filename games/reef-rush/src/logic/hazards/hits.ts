@@ -5,7 +5,7 @@
  */
 
 import { ignoresHazard } from '../abilities.ts';
-import { statusTicks } from '../difficulty-level.ts';
+import { invulnerableTicks, mayAttack, statusTicks } from '../difficulty-level.ts';
 import { length } from '../num.ts';
 import { spawnLoose } from '../pickups/loose.ts';
 import { popForHit } from '../powerups/stack.ts';
@@ -36,11 +36,12 @@ import { HIT } from './tuning.ts';
  */
 export function applyHit(world: World, racer: Racer, cause: HitCause, by: RacerId | null, from: Vec): boolean {
   const blow = blowOf(racer, cause, by);
+  if (by !== null && !mayAttack(world, by, racer.id)) return false;
   if (racer.status.invulnerable > 0 || ignoresHazard(racer, cause)) return false;
   world.events.emit({ type: 'racer.hit', id: racer.id, cause, by });
   sufferHit(world, racer, blow);
   racer.status.dashing = 0;
-  racer.status.invulnerable = HIT.invulnerableTicks;
+  racer.status.invulnerable = invulnerableTicks(world, racer, HIT.invulnerableTicks);
   knockBack(racer, from);
   return true;
 }

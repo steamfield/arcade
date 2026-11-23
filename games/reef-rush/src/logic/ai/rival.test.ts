@@ -1,5 +1,6 @@
 import { createRng, EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import { DIFFICULTY } from '../difficulty-level.ts';
 import type { GameEvent } from '../events.ts';
 import { parseLevel } from '../level/parse.ts';
 import { updateProgress } from '../race/standings.ts';
@@ -9,7 +10,10 @@ import type { Intent, PowerUpKind, Racer, RacerId, TickInput, World } from '../t
 import { createWorld, stepWorld } from '../world.ts';
 import { ITEM_USE } from './items.ts';
 import { PLAYER_PROFILE } from './profiles.ts';
-import { CATCH_UP, catchUpMul, DARK_STEERING, rivalIntent } from './rival.ts';
+import { catchUpMul, DARK_STEERING, rivalIntent } from './rival.ts';
+
+/** Hard's catch-up bounds, the ones the tests below were written against. */
+const BOUNDS = DIFFICULTY.hard.rivalCatchUp;
 
 const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
@@ -223,20 +227,20 @@ describe('catch-up', () => {
       profile: { ...PLAYER_PROFILE, id: 'tess' },
     };
     const player: Racer = { ...base, id: 'player', body, progress: playerProgress, profile: PLAYER_PROFILE };
-    return catchUpMul(rival, player);
+    return catchUpMul(rival, player, BOUNDS);
   };
 
   it('slows a rival far ahead of the player down to the lower bound', () => {
-    expect(pair(10, 200)).toBeCloseTo(CATCH_UP.min, 6);
+    expect(pair(10, 200)).toBeCloseTo(BOUNDS.min, 6);
   });
 
   it('speeds a rival far behind the player up to the upper bound', () => {
-    expect(pair(200, 10)).toBeCloseTo(CATCH_UP.max, 6);
+    expect(pair(200, 10)).toBeCloseTo(BOUNDS.max, 6);
   });
 
   it('scales with the gap in between and is neutral when level', () => {
-    expect(pair(12, 10)).toBeCloseTo(1 + 2 * CATCH_UP.perTile, 6);
-    expect(pair(10, 12)).toBeCloseTo(1 - 2 * CATCH_UP.perTile, 6);
+    expect(pair(12, 10)).toBeCloseTo(1 + 2 * BOUNDS.perTile, 6);
+    expect(pair(10, 12)).toBeCloseTo(1 - 2 * BOUNDS.perTile, 6);
     expect(pair(10, 10)).toBeCloseTo(1, 6);
   });
 

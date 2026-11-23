@@ -9,7 +9,7 @@
  * 3. it turns toward the target by at most SQUID.turnPerTick, aiming straight at it when the line is
  *    clear and down the steer field when rock is in the way, then flies SQUID.speed px/s;
  * 4. a wall under its centre ends it (`squid.lost`);
- * 5. when its racer target kicked this tick from within SQUID.dodgeTicks of contact (distance at squid
+ * 5. when its racer target kicked this tick from within `dodgeTicks(world)` of contact (SQUID.dodgeTicks on Hard; distance at squid
  *    speed), it misses: `squid.dodged`, no lock, flying on straight, never locking that racer again;
  * 6. a decoy it touches pops (`popDecoy`) and the squid is spent; the first racer it touches (not its
  *    owner or the one that dodged) is hit with cause 'squid': a held Bubble Shield absorbs it
@@ -20,9 +20,8 @@
  * Turning is vector math only (no trig at run time, see num.ts): the velocity rotates by the fixed
  * per-tick angle toward the target's side, or snaps onto it once it is within that angle.
  */
-
 import { hasClearSweep, steerDirection } from '../ai/steer.ts';
-import { statusTicks } from '../difficulty-level.ts';
+import { dodgeTicks, statusTicks } from '../difficulty-level.ts';
 import { isSolid } from '../level/query.ts';
 import { cos, length, sin } from '../num.ts';
 import { popDecoy } from '../powerups/decoys.ts';
@@ -189,14 +188,14 @@ function rotateToward(squid: Squid, want: Vec): void {
   squid.vy = (headX * TURN_SIN * side + headY * TURN_COS) * speed;
 }
 
-/** The dodge: the racer the squid is chasing kicked this tick, within the last SQUID.dodgeTicks of contact. */
+/** The dodge: the racer the squid is chasing kicked this tick, within the last `dodgeTicks(world)` of contact. */
 function dodgeIfKicked(world: World, racers: readonly Racer[], squid: Squid, dt: number): void {
   if (squid.target?.kind !== 'racer') return;
   const { id } = squid.target;
   const target = racers.find((racer) => racer.id === id);
   if (!target) return;
   const kicked = world.recentEvents.some((event) => event.type === 'racer.kicked' && event.id === id);
-  const near = SQUID.dodgeTicks * SQUID.speed * dt;
+  const near = dodgeTicks(world) * SQUID.speed * dt;
   const centre = centreOf(target);
   if (!kicked || (centre.x - squid.x) ** 2 + (centre.y - squid.y) ** 2 > near * near) return;
   squid.target = null;

@@ -4,10 +4,10 @@
  * reads the world.
  *
  * Distances are between racer centres, in tiles. "Ahead" and "behind" compare
- * progress (lower is ahead). Rivals aim at any racer, so the field fights itself. The bubble's aim cone is ITEM_USE.aimConeCos either
+ * progress (lower is ahead). Rivals aim at any racer, so the field fights itself (except the player, where the difficulty level's `mayAttack` says no). The bubble's aim cone is ITEM_USE.aimConeCos either
  * side of the aim. Jet Fins need the whole body to slide 5 tiles along the aim.
  */
-import { mayAttack, tuningOf } from '../difficulty-level.ts';
+import { itemAggressionMul, mayAttack } from '../difficulty-level.ts';
 import { pickSquidTarget } from '../hazards/squid-target.ts';
 import { cellAt, isSolid } from '../level/query.ts';
 import { length } from '../num.ts';
@@ -67,8 +67,7 @@ export function wantsBurst(world: World, racer: Racer, aim: Vec, roll: number): 
   if (racer.stack.length === 0 || racer.burstCooldown > 0) return false;
   const throughCoral = racer.stack.includes('puffer') && coralOnSmashPath(world, racer);
   const dashes = racer.stack.includes('jetFin') && !throughCoral;
-  const aggression =
-    racer.profile.itemAggression * (racer.id === 'player' ? 1 : tuningOf(world).rivalItemAggressionMul);
+  const aggression = racer.profile.itemAggression * itemAggressionMul(world, racer);
   if (roll >= aggression * (dashes ? ITEM_USE.jetChanceMul : 1)) return false;
   return racer.stack.some((kind) => hasUse(world, racer, aim, kind));
 }

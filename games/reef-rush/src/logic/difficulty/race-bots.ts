@@ -18,7 +18,7 @@ import { RACE_LIMIT_TICKS } from '../race/standings.ts';
 import type { CharacterId, Difficulty, RacerId, RivalProfile } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
-export const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
+const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
 const IDLE = { move: { x: 0, y: 0 }, kick: false, burst: false };
 const LEVEL = parseLevel(OCEAN_LEVEL);
 
@@ -38,8 +38,10 @@ export interface Run {
   /** Finish tick per racer, null when it never finished. */
   finish: Record<RacerId, number | null>;
   playerPlace: number;
-  /** Squids locked on the player and Undertows that pulled the player, fired by rivals. */
-  attacksOnPlayer: number;
+  /** Hits and squid latches that landed on the player, caused by a rival's power-up. */
+  rivalHitsOnPlayer: number;
+  /** Times the player was stunned. */
+  playerStuns: number;
 }
 
 /** One whole race with `bot` driving the player's racer as `character`, on `difficulty` (Hard by default). */
@@ -55,25 +57,41 @@ export function race(bot: RivalProfile, character: CharacterId, seed: number, di
   // Countdown plus the race limit, with room to spare; the race ends itself well before this.
   for (let i = 0; i < RACE_LIMIT_TICKS + 1000 && world.race.phase !== 'finished'; i++) stepWorld(world, IDLE, TICK_DT);
   const finish = Object.fromEntries(world.racers.map((r) => [r.id, r.finished?.tick ?? null])) as Run['finish'];
-  const attacksOnPlayer = log
-    .all()
-    .filter(
-      (event) =>
-        (event.type === 'squid.locked' && event.target === 'player' && event.owner !== 'player') ||
-        (event.type === 'undertow.fired' && event.id !== 'player' && event.pulled.includes('player')),
-    ).length;
-  return { seed, finish, playerPlace: world.race.result?.playerPlace ?? 4, attacksOnPlayer };
+  const events = log.all();
+  const rivalHitsOnPlayer = events.filter(
+    (event) =>
+      (event.type === 'racer.hit' && event.id === 'player' && event.by !== null && event.by !== 'player') ||
+      (event.type === 'squid.latched' && event.id === 'player' && event.by !== 'player'),
+  ).length;
+  const playerStuns = events.filter((event) => event.type === 'racer.stunned' && event.id === 'player').length;
+  return { seed, finish, playerPlace: world.race.result?.playerPlace ?? 4, rivalHitsOnPlayer, playerStuns };
 }
 
-const seconds = (ticks: number) => (ticks / TICK_HZ).toFixed(1);
+/** A finish tick in seconds, or 'DNF'. */
+export const seconds = (ticks: number | null) => (ticks === null ? 'DNF' : (ticks / TICK_HZ).toFixed(1));
 
-function table(runs: Run[]): string {
+/** The per-seed table of places and finish times that assertion messages print. */
+export function table(runs: Run[]): string {
   return runs
     .map(({ seed, finish, playerPlace }) => {
-      const times = Object.entries(finish).map(([id, t]) => `${id} ${t === null ? 'DNF' : seconds(t)}`);
+      const times = Object.entries(finish).map(([id, t]) => `${id} ${seconds(t)}`);
       return `seed ${seed}: place ${playerPlace}; ${times.join(', ')}`;
     })
     .join('\n');
+}
+
+/** The largest rival finish time over the player's, across runs; Infinity when anyone failed to finish. */
+export function slowestRivalRatio(runs: Run[]): number {
+  let worst = 0;
+  for (const run of runs) {
+    for (const id of ['tess', 'squib', 'bo'] as const) {
+      const rival = run.finish[id];
+      const player = run.finish.player;
+      if (rival === null || player === null) return Number.POSITIVE_INFINITY;
+      worst = Math.max(worst, rival / player);
+    }
+  }
+  return worst;
 }
 
 function rivalBest(run: Run): number | null {

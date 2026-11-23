@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { wantsBurst } from './ai/items.ts';
-import { DIFFICULTY } from './difficulty-level.ts';
+import { DIFFICULTY, dodgeTicks } from './difficulty-level.ts';
 import { applyHit } from './hazards/hits.ts';
+import { advanceProjectiles } from './hazards/projectiles.ts';
 import { pickSquidTarget } from './hazards/squid-target.ts';
 import { HIT } from './hazards/tuning.ts';
 import { modifiersFor } from './modifiers.ts';
+import { length } from './num.ts';
 import { openClams } from './pickups/clams.ts';
+import { fireBurst } from './powerups/burst.ts';
+import { riptideCurrentAt } from './powerups/riptides.ts';
+import { SQUID } from './powerups/tuning.ts';
+import { fireUndertow } from './powerups/undertow.ts';
 import { updateProgress } from './race/standings.ts';
 import { activeRacers, centreOf } from './racers.ts';
-import { placeOnTile, raceOn, racerOf } from './test-world.ts';
+import { eventsIn, hold, IDLE, placeOnTile, raceOn, racerOf, step } from './test-world.ts';
 import type { Difficulty, RacerId } from './types.ts';
 
 /** Open water with a clam, all four racers on the left edge and the finish on the right. */
@@ -106,32 +112,34 @@ describe('who a rival may aim at', () => {
 });
 
 describe('swim force on each level', () => {
-  it('multiplies a rival by the level rivalForceMul on top of its catch-up', () => {
-    const { world } = scene('hard', { player: [10, 1], tess: [10, 2] });
-    const [tess, player] = [racerOf(world, 'tess'), racerOf(world, 'player')];
-
-    const full = modifiersFor(tess, player, DIFFICULTY.hard, world.racers).forceMul;
-    const halved = modifiersFor(tess, player, { ...DIFFICULTY.hard, rivalForceMul: 0.5 }, world.racers).forceMul;
-
-    expect(halved).toBeCloseTo(full / 2, 9);
-  });
+  const rivalForce = (difficulty: Difficulty, ticksAfterGo = 1000) => {
+    const { world } = scene(difficulty, { player: [10, 1], tess: [16, 2] });
+    world.race.raceTick = ticksAfterGo;
+    return modifiersFor(world, racerOf(world, 'tess')).forceMul;
+  };
 
   it('holds a rival that has pulled ahead of the player back harder on Easy and Normal than on Hard', () => {
-    const force = (difficulty: Difficulty) => {
-      const { world } = scene(difficulty, { player: [10, 1], tess: [16, 2] });
-      return modifiersFor(racerOf(world, 'tess'), racerOf(world, 'player'), DIFFICULTY[difficulty], world.racers)
-        .forceMul;
-    };
+    expect(rivalForce('easy')).toBeLessThan(rivalForce('normal'));
+    expect(rivalForce('normal')).toBeLessThan(rivalForce('hard'));
+  });
 
-    expect(force('easy')).toBeLessThan(force('normal'));
-    expect(force('normal')).toBeLessThan(force('hard'));
+  it('lets Easy rivals swim at their full pace until the catch-up starts after the GO', () => {
+    const pace = racerOf(scene('easy').world, 'tess').profile.forceMul * DIFFICULTY.easy.rivalForceMul;
+
+    expect(rivalForce('easy', 0)).toBeCloseTo(pace, 9);
+    expect(rivalForce('easy', DIFFICULTY.easy.rivalCatchUpDelayTicks)).toBeLessThan(pace);
+  });
+
+  it('keeps a rival ahead of the player swimming at a visible share of its pace on Easy', () => {
+    const pace = racerOf(scene('easy').world, 'tess').profile.forceMul;
+
+    expect(rivalForce('easy')).toBeGreaterThanOrEqual(0.35 * pace);
   });
 
   it('pushes a player trailing the leader on Easy, never one in front, and never on Hard', () => {
     const force = (difficulty: Difficulty, playerTile: [number, number]) => {
       const { world } = scene(difficulty, { player: playerTile, tess: [20, 2], squib: [19, 3], bo: [18, 4] });
-      const player = racerOf(world, 'player');
-      return modifiersFor(player, player, DIFFICULTY[difficulty], world.racers).forceMul;
+      return modifiersFor(world, racerOf(world, 'player')).forceMul;
     };
 
     expect(force('easy', [4, 1])).toBeGreaterThan(1.3);
@@ -167,5 +175,118 @@ describe('a world built without a level', () => {
     const { world } = raceOn(ARENA);
 
     expect(world.difficulty).toBe('hard');
+  });
+});
+
+/** What a rival's power-up does to the player (tess is on tile 8, the player on 9). */
+function afterRivalAttack(
+  difficulty: Difficulty,
+  attack: 'flash' | 'bubble' | 'puffer' | 'ink' | 'riptide' | 'undertow',
+) {
+  const { world } = scene(difficulty, { player: [9, 2], tess: [8, 2], squib: [2, 3], bo: [2, 4] });
+  const player = racerOf(world, 'player');
+  const tess = racerOf(world, 'tess');
+  switch (attack) {
+    case 'flash':
+    case 'bubble':
+    case 'puffer':
+      return { landed: applyHit(world, player, attack, 'tess', centreOf(tess)), player };
+    case 'ink': {
+      world.inks.push({ x: centreOf(player).x, y: centreOf(player).y, radius: 20, ttl: 100, owner: 'tess' });
+      advanceProjectiles(world, activeRacers(world), 1 / 60);
+      return { landed: player.status.slowed > 0, player };
+    }
+    case 'riptide': {
+      const c = centreOf(player);
+      world.riptides.push({ x: c.x - 20, y: c.y - 20, w: 40, h: 40, dir: { x: 1, y: 0 }, ttl: 100, owner: 'tess' });
+      return { landed: riptideCurrentAt(world, player.body, 'player') !== null, player };
+    }
+    case 'undertow':
+      fireUndertow(world, racerOf(world, 'bo'));
+      return { landed: player.status.undertow > 0, player };
+  }
+}
+
+describe('a rival power-up on the player', () => {
+  const attacks = ['flash', 'bubble', 'puffer', 'ink', 'riptide', 'undertow'] as const;
+
+  it.each(attacks)('lands a %s on Hard and Normal', (attack) => {
+    expect(afterRivalAttack('hard', attack).landed).toBe(true);
+    expect(afterRivalAttack('normal', attack).landed).toBe(true);
+  });
+
+  it.each(attacks)('never lands a %s on Easy', (attack) => {
+    expect(afterRivalAttack('easy', attack).landed).toBe(false);
+  });
+
+  it('leaves no stun or trap behind on Easy', () => {
+    const { player } = afterRivalAttack('easy', 'flash');
+    expect(player.status.stunned).toBe(0);
+    expect(player.status.invulnerable).toBe(0);
+  });
+});
+
+describe('invulnerability after a hit', () => {
+  const invulnerable = (difficulty: Difficulty, id: RacerId) => {
+    const { world } = scene(difficulty);
+    const racer = racerOf(world, id);
+    applyHit(world, racer, 'jelly', null, { x: centreOf(racer).x - 8, y: centreOf(racer).y });
+    return racer.status.invulnerable;
+  };
+
+  it('lasts three times as long for the player on Easy and is unchanged elsewhere', () => {
+    expect(invulnerable('hard', 'player')).toBe(HIT.invulnerableTicks);
+    expect(invulnerable('normal', 'player')).toBe(HIT.invulnerableTicks);
+    expect(invulnerable('easy', 'player')).toBe(3 * HIT.invulnerableTicks);
+    expect(invulnerable('easy', 'tess')).toBe(HIT.invulnerableTicks);
+  });
+});
+
+describe('the squid dodge window', () => {
+  it('is 12 ticks on Hard, longer on Normal and longest on Easy, as `dodgeTicks` says', () => {
+    expect(dodgeTicks(scene('hard').world)).toBe(SQUID.dodgeTicks);
+    expect(dodgeTicks(scene('normal').world)).toBe(18);
+    expect(dodgeTicks(scene('easy').world)).toBe(24);
+  });
+
+  /** Whether a kick 44 px from contact (about 16 ticks of squid flight) makes tess's squid miss the player. */
+  function dodgedFromAfar(difficulty: Difficulty): boolean {
+    const { world, log } = raceOn(ARENA);
+    for (const id of ['tess', 'squib', 'bo'] as const) racerOf(world, id).status.stunned = 100_000;
+    placeOnTile(racerOf(world, 'tess'), 4, 2);
+    placeOnTile(racerOf(world, 'player'), 14, 2);
+    updateProgress(world);
+    racerOf(world, 'tess').stack = ['homingSquid'];
+    fireBurst(world, racerOf(world, 'tess'), { x: 1, y: 0 });
+    // Rivals may not squid the player on Easy, so the lock is made on Normal and the level swapped after.
+    world.difficulty = 'normal';
+    for (let tick = 0; ; tick++) {
+      const squid = world.squids[0];
+      if (!squid || tick > 200) throw new Error('the squid never closed on the player');
+      if (length(centreOf(racerOf(world, 'player')).x - squid.x, centreOf(racerOf(world, 'player')).y - squid.y) <= 44)
+        break;
+      step(world, log);
+    }
+    world.difficulty = difficulty;
+    step(world, log, 1, hold({ x: 0, y: 0 }, { kick: true }));
+    return eventsIn(log, 'squid.dodged').length > 0;
+  }
+
+  it('lets a kick 16 ticks from contact dodge on Normal and Easy but not on Hard', () => {
+    expect(dodgedFromAfar('hard')).toBe(false);
+    expect(dodgedFromAfar('normal')).toBe(true);
+    expect(dodgedFromAfar('easy')).toBe(true);
+  });
+});
+
+describe('the start of an Easy race', () => {
+  it('sends every rival off the line at a visible speed while the player sits still', () => {
+    const { world, log } = scene('easy', { player: [1, 1], tess: [1, 2], squib: [1, 3], bo: [1, 4] });
+    step(world, log, 120, IDLE);
+
+    for (const id of ['tess', 'squib', 'bo'] as const) {
+      const { vx, vy } = racerOf(world, id).body;
+      expect(length(vx, vy), id).toBeGreaterThanOrEqual(50);
+    }
   });
 });

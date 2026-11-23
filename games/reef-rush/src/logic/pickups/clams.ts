@@ -5,7 +5,7 @@
  * of the kinds the racer doesn't hold, so one draw maps to one kind.
  */
 import type { Rng } from '@arcade/core';
-import { tuningOf } from '../difficulty-level.ts';
+import { clamBias } from '../difficulty-level.ts';
 import { overlapsTile } from '../level/query.ts';
 import { gainPowerUp } from '../powerups/stack.ts';
 import { CLAM } from '../powerups/tuning.ts';
@@ -29,8 +29,7 @@ export function openClams(world: World, racers: readonly Racer[]): void {
     }
     const opener = racers.find((racer) => overlapsTile(hitbox(racer), clam.tile.x, clam.tile.y));
     if (!opener) return;
-    const bias = opener.id === 'player' ? tuningOf(world).playerClamWeightMul : {};
-    const kind = rollClam(world.rngs.pickups, opener.place, opener.stack, bias);
+    const kind = rollClam(world.rngs.pickups, opener.place, opener.stack, clamBias(world, opener));
     world.events.emit({ type: 'clam.opened', id: opener.id, index, kind });
     gainPowerUp(world, opener, kind);
     clam.closedFor = CLAM.closedTicks;
