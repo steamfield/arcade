@@ -3,7 +3,7 @@
  * is documented in `level/parse.ts`. Only `courses/index.ts` imports this file.
  */
 import type { LevelDef } from '../types.ts';
-import type { Course } from './types.ts';
+import type { ShippedCourse } from './types.ts';
 
 /**
  * A short forest run, one idea at a time, left to right on a floor at row 9:
@@ -48,7 +48,7 @@ const LEVEL: LevelDef = {
 const PAR_TICKS = 717;
 
 /** Run Test: the run medium's test course in Thornwood, reachable only by `?course=run-test` and tests. */
-export const RUN_TEST: Course = {
+export const RUN_TEST: ShippedCourse = {
   id: 'run-test',
   name: 'Run Test',
   level: LEVEL,

@@ -3,7 +3,7 @@
  * Only `courses/index.ts` imports this file.
  */
 import type { LevelDef } from '../types.ts';
-import type { Course } from './types.ts';
+import type { ShippedCourse } from './types.ts';
 
 /**
  * Bramble Run, left to right. The forest floor stands on row 16 (runners on row 15); every pit is
@@ -73,7 +73,7 @@ const PAR_TICKS = 4119;
 const NORMAL_LAG_TILES = 9;
 
 /** Bramble Run: Thornwood's listed course, run on foot through the forest. */
-export const BRAMBLE_RUN: Course = {
+export const BRAMBLE_RUN: ShippedCourse = {
   id: 'bramble-run',
   name: 'Bramble Run',
   level: LEVEL,

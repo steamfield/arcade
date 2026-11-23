@@ -174,7 +174,7 @@ About 90 s for a good player, 616 columns in five sections: the reef (columns 0-
 
 ## Bramble Run
 
-Thornwood's course (`logic/courses/bramble-run.ts`), 490 columns with par 4274 ticks (about 71 s, against Sunlit Shallows' 112 s), in three zones left to right, then a finish straight:
+Thornwood's course (`logic/courses/bramble-run.ts`), 490 columns with par 4119 ticks (about 69 s, against Sunlit Shallows' 112 s), in three zones left to right, then a finish straight:
 
 - The forest floor: pits, mud, thorn bushes, beetles and boars, and crates to hit from below.
 - The treetop high route: a rock-step climb up a trunk to a branch path of ledges above the floor path, quicker but harder, with gaps, wasps and wind gusts; the floor path below has mud, a headwind, a downdraft and a trench.

@@ -8,10 +8,10 @@ import type { Level, World } from '../types.ts';
 import { BRAMBLE_RUN } from './bramble-run.ts';
 import { RUN_TEST } from './run-test.ts';
 import { SUNLIT_SHALLOWS } from './sunlit-shallows.ts';
-import type { Course, ShippedCourseId } from './types.ts';
+import type { Course, ShippedCourse, ShippedCourseId } from './types.ts';
 
 /** Every shipped course by id, in menu order: course select lists the `listed` ones in this order. */
-export const COURSES: Readonly<Record<ShippedCourseId, Course>> = {
+export const COURSES: Readonly<Record<ShippedCourseId, ShippedCourse>> = {
   'sunlit-shallows': SUNLIT_SHALLOWS,
   'bramble-run': BRAMBLE_RUN,
   'run-test': RUN_TEST,

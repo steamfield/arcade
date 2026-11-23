@@ -3,7 +3,7 @@
  * Only `courses/index.ts` imports this file; everything else asks the registry.
  */
 import type { LevelDef } from '../types.ts';
-import type { Course } from './types.ts';
+import type { ShippedCourse } from './types.ts';
 
 /**
  * Sunlit Shallows, the ocean course: about 112 s for a good swimmer. Each section
@@ -77,7 +77,7 @@ const LEVEL: LevelDef = {
  */
 const PAR_TICKS = 6720;
 
-export const SUNLIT_SHALLOWS: Course = {
+export const SUNLIT_SHALLOWS: ShippedCourse = {
   id: 'sunlit-shallows',
   name: 'Sunlit Shallows',
   level: LEVEL,
