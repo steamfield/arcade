@@ -149,9 +149,11 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `apps/site/index.html` | Landing page template: the cabinet (marquee, CRT screen, control deck). |
 | `apps/site/404.html` | Not-found page Cloudflare serves, a game-over screen. |
 | `apps/site/src/style.css` | Site styles: physical cabinet around a pixel-crisp CRT screen, dark only, self-hosted pixel fonts (`@fontsource`). |
-| `apps/site/src/pixel.ts` | Build-time pixel art: the marquee lettering (`pixelLogo`) and input icons (`pixelIcon`) as SVG. |
+| `apps/site/src/pixel.ts` | Build-time pixel art: the 5x7 font (`GLYPHS`), the marquee lettering (`pixelLogo`) and input icons (`pixelIcon`) as SVG. |
 | `apps/site/src/sfx.ts` | Square-wave UI sounds via WebAudio, off until the player turns them on. |
-| `apps/site/src/favicon.svg` | Pixel favicon. |
+| `apps/site/src/favicon.svg` | Favicon: the invader mark on ink. Written by `apps/site/src/brand.ts`. |
+| `apps/site/src/brand.ts` | Brand pack generator (`pnpm --filter @arcade/site brand`, needs `rsvg-convert`): the invader mark, wordmark, lockup and 1200x630 link-preview image as SVG and PNG into `apps/site/public/brand/`, plus the favicon and `apple-touch-icon.png`. Output is committed. |
+| `apps/site/public/brand/` | The brand pack (see its `README.md`). `og-image.png` is the page's `og:image`. |
 | `apps/site/src/select.ts` | Select screen behaviour: selection and gameplay loop, keyboard, gamepad, deck buttons, sound, saved-progress detection, idle cycling, launch transition. |
 
 ## Anatomy of a game
