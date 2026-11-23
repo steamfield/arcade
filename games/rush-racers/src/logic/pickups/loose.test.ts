@@ -1,8 +1,23 @@
-import { TICK_DT } from '@arcade/core';
+import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import type { GameEvent } from '../events.ts';
 import { applyHit } from '../hazards/hits.ts';
+import { LOOSE } from '../powerups/tuning.ts';
 import { activeRacers, centreOf } from '../racers.ts';
-import { eventsIn, giveItems, placeAt, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
+import {
+  courseFromLevel,
+  eventsIn,
+  giveItems,
+  hold,
+  placeAt,
+  placeOnTile,
+  raceOn,
+  racerOf,
+  step,
+  tileCentre,
+} from '../test-world.ts';
+import { type Racer, TILE } from '../types.ts';
+import { createWorld } from '../world.ts';
 import { spawnLoose, updateLoose } from './loose.ts';
 
 const LANES = `
@@ -148,5 +163,46 @@ describe('expiry and drift details', () => {
     for (let i = 0; i < 120; i++) updateLoose(world, activeRacers(world), TICK_DT);
 
     expect(world.loose[0]?.y).toBeCloseTo(start.y - 20, 6);
+  });
+});
+
+describe('on land', () => {
+  /** A floor under row 4 with open air above; the starts sit right of cols 1-2, where the hit happens. */
+  const FIELD = `
+    ####################
+    #..................#
+    #..................#
+    #..................#
+    #....1.2.3.4.....F.#
+    ####################
+  `;
+
+  /** Puts `racer` standing on the floor with its middle over the middle of column `col`. */
+  function standAt(racer: Racer, col: number): void {
+    placeOnTile(racer, col, 4);
+    racer.body.y = 5 * TILE - racer.body.h;
+  }
+
+  it('settles on the ground under a runner it was knocked off, where another runner beside it grabs it after the delay', () => {
+    const log = new EventLog<GameEvent>(100_000);
+    const world = createWorld(courseFromLevel(FIELD, 'run'), log, { seed: 1 });
+    world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+    const player = racerOf(world, 'player');
+    const tess = racerOf(world, 'tess');
+    standAt(player, 1);
+    standAt(tess, 2);
+    step(world, log, 1);
+    giveItems(tess, [{ kind: 'puffer', charges: 1 }]);
+    const centre = centreOf(tess);
+    applyHit(world, tess, 'urchin', null, { x: centre.x - 8, y: centre.y });
+
+    step(world, log, LOOSE.grabDelayTicks);
+    expect(world.loose).toHaveLength(1);
+    step(world, log, 10, hold({ x: 1, y: 0 }));
+
+    expect(eventsIn(log, 'loose.grabbed')).toEqual([
+      { type: 'loose.grabbed', id: 'player', kind: 'puffer', charges: 1 },
+    ]);
+    expect(player.items[0]).toEqual({ kind: 'puffer', charges: 1 });
   });
 });

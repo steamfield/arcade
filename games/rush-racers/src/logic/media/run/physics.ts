@@ -191,6 +191,11 @@ function forceScale(mods: MoveModifiers): number {
   return 1 + (mods.forceMul - 1) * FORCE_SHARE;
 }
 
+/** A runner's running pace, px/s, on open ground with no gust: `runSpeed` scaled by its share of forceMul. */
+export function runPace(extra: { runSpeed: number }, mods: MoveModifiers): number {
+  return extra.runSpeed * forceScale(mods);
+}
+
 /**
  * Moves `vx` toward the held direction's top speed plus any gust. Over that speed while still
  * steering that way, the part above running pace (`runSpeed` times the force share, before mud and
@@ -210,7 +215,7 @@ function run(
   dt: number,
 ): void {
   const scale = forceScale(mods);
-  const pace = extra.runSpeed * scale;
+  const pace = runPace(extra, mods);
   const top = pace * (env.inMud ? extra.mudSpeedMul : 1);
   const drift = (env.wind?.x ?? 0) * extra.windSpeed;
   const accel = (env.grounded ? tuning.force * scale : extra.airAccel) * dt;

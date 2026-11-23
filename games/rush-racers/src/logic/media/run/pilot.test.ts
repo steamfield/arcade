@@ -253,6 +253,24 @@ describe('the run rival pilot when stuck', () => {
   });
 });
 
+/**
+ * A block at col 13 with a crate on top of the air above it, then a pit at cols 18-20. The plan from
+ * the crate's top (13, 4) is a short hop down to col 17, the pit's lip: planned at running pace, it
+ * lands a tile past the lip at a dash's speed.
+ */
+const CRATE_HOP_LEVEL = `
+  ##############################
+  #............................#
+  #............................#
+  #............................#
+  #............................#
+  #............?...............#
+  #............................#
+  #1.2.3.4.....#..............F#
+  ##################...#########
+  ##################...#########
+`;
+
 /** Steps `world` with the player idle until Tess finishes or `limit` ticks pass; returns the events about her. */
 function raceTess(world: World, log: EventLog<GameEvent>, limit: number) {
   world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
@@ -275,6 +293,23 @@ describe('a rival on a course', () => {
     const world = createWorld(courseFromLevel(wallLevel(height), 'run'), log, { seed: 1 });
 
     expect(raceTess(world, log, 1200)).toEqual({ finished: true, falls: 0 });
+  });
+
+  it('takes a jump at a speed it can land: a short hop off a crate to the lip of a pit, at dash speed', () => {
+    const falls = [100, 200].map((speed) => {
+      const log = new EventLog<GameEvent>(100_000);
+      const world = createWorld(courseFromLevel(CRATE_HOP_LEVEL, 'run'), log, { seed: 1 });
+      const tess = standingRival(world, 13, 4);
+      tess.body.vx = speed;
+      runMotion(tess.motion).dashGlide = speed;
+      tess.kickCooldown = 1200;
+      return raceTess(world, log, 1200);
+    });
+
+    expect(falls).toEqual([
+      { finished: true, falls: 0 },
+      { finished: true, falls: 0 },
+    ]);
   });
 
   it('climbs a ledge to get past a wall too high to jump', () => {

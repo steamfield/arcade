@@ -1,14 +1,16 @@
 /**
- * Loose power-ups: what a hit knocks off a racer. They drift as the medium says (up in water), can't be grabbed
- * at first, and go to the first eligible racer that touches them. A pickup whose
- * ttl runs out on a tick is removed before anyone can grab it that tick. Drift
- * ignores tiles: a pickup may rise into rock and fade there.
+ * Loose power-ups: what a hit knocks off a racer. They drift as the medium says (up in water, down
+ * on land), can't be grabbed at first, and go to the first eligible racer that touches them. A
+ * pickup whose ttl runs out on a tick is removed before anyone can grab it that tick. Drift stops
+ * at a solid tile, as a loose pearl's does: one knocked off a runner settles on the ground under it
+ * rather than sinking into the earth out of reach.
  */
+import { isSolid } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { gainItem, holds, inventoryFull } from '../powerups/inventory.ts';
 import { LOOSE } from '../powerups/tuning.ts';
 import { hitbox } from '../racers.ts';
-import type { Box, LoosePowerUp, PowerUpKind, Racer, Vec, World } from '../types.ts';
+import { type Box, type LoosePowerUp, type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
 
 /**
  * Adds a loose `kind` carrying `charges` uses, centred at `at` (world px) with `grabDelay =
@@ -22,7 +24,8 @@ export function spawnLoose(world: World, kind: PowerUpKind, charges: number, at:
 
 /**
  * The pickups slot for loose power-ups. Each call, every loose pickup moves the medium's
- * `effects.looseDrift * dt` vertically (water: up at LOOSE.riseSpeed) and loses one `ttl` tick (removed at 0). One with `grabDelay > 0` counts it down instead of being
+ * `effects.looseDrift * dt` vertically (water: up at LOOSE.riseSpeed), unless that would put its centre in a
+ * solid tile, and loses one `ttl` tick (removed at 0). One with `grabDelay > 0` counts it down instead of being
  * grabbed; otherwise the first racer in `racers` whose hitbox overlaps its LOOSE.size box, who has
  * an empty slot and who doesn't hold that kind grabs it: removed, `loose.grabbed {id, kind, charges}`,
  * then `gainItem` with its charges. A pickup nobody can take stays loose.
@@ -39,9 +42,13 @@ export function updateLoose(world: World, racers: readonly Racer[], dt: number):
   world.loose = remaining;
 }
 
-/** One loose pickup's tick, moving `driftPx` down (negative is up). Returns true when it is gone: expired or grabbed. */
+/**
+ * One loose pickup's tick, moving `driftPx` down (negative is up) unless its centre would end in a
+ * solid tile. Returns true when it is gone: expired or grabbed.
+ */
 function driftAndGrab(world: World, loose: LoosePowerUp, racers: readonly Racer[], driftPx: number): boolean {
-  loose.y += driftPx;
+  const nextY = loose.y + driftPx;
+  if (!isSolid(world.level, world.broken, Math.floor(loose.x / TILE), Math.floor(nextY / TILE))) loose.y = nextY;
   loose.ttl -= 1;
   if (loose.ttl <= 0) return true;
   if (loose.grabDelay > 0) {
