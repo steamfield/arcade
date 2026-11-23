@@ -91,6 +91,7 @@ Later phases add their contracts in their own scaffold (phase 2: `bounce` cell a
 ### Phase 1: fly it (MVP)
 
 Scaffold: eea57e5
+Tag: cloudreach/phase-1
 Demo: `pnpm arcade dev rush-racers`, open `/games/rush-racers/?course=sky-test&debug=1`: flap, glide, dive and carry speed, dash through a puff cloud, ride an updraft, fall through a gap and respawn; three rivals fly the course and finish. Placeholder Reef art with Cloudreach words.
 Test cases (the scaffold writes them; lanes treat them as read-only):
 - Gravity: from rest with no input a racer falls, gaining `gravity * dt` per tick, and never passes `maxFall`.
