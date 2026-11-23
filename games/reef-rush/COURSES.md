@@ -95,19 +95,21 @@ plus `kelp-forest-rudy-novice.test.ts` (`describeNovice`), the Normal files (`de
 
 If the geometry can't reach a bar, tune the level first. If it still can't, the course may override the rivals' catch-up for one difficulty level: `catchUp: { hard: { max: 1.3 } }` is merged field by field onto that level's bounds in `DIFFICULTY` (`rivalCatchUpFor` in `logic/difficulty-level.ts`); levels the course doesn't name keep the table's bounds exactly.
 
-Run the bars with `pnpm --filter game-reef-rush test:difficulty`. `pnpm arcade check reef-rush` runs the `unit` project only and must stay under 30 s cold, so never put whole-race bars outside `logic/difficulty/`'s top level.
+Run the new course's bars with `pnpm arcade test reef-rush src/logic/difficulty/<your-bars-file>.test.ts`; the whole `@bars` group (`pnpm --filter game-reef-rush test:difficulty`) runs before a merge. `pnpm arcade check reef-rush` runs the `unit` project only and must stay under 30 s cold, so never put whole-race bars outside `logic/difficulty/`'s top level.
 
 ### Conformance
 
 `logic/conformance/course.test.ts` runs over every course in `COURSES` with no edit: the level parses (legend glyphs read as their base cells), the medium's `validateLevel` finds nothing, and four racers (the expert bot as the player) finish within 1.6x `parTicks` on seeds 1-5 on Hard with none going 600 ticks of free swimming (stuns and traps restart the count) without new best progress. The engine's half (in `engine/themes/`) checks that every course's theme and song id resolve and that its theme has a tile for every legend art key.
 
 ```
-pnpm --filter game-reef-rush exec vitest run --project unit src/logic/conformance
+pnpm arcade test reef-rush @courses @behavior
 ```
+
+`@courses` is course conformance, levels and the course registry; `@behavior` is the fingerprints and sfx pin, which must not change when a course is added.
 
 ### Done
 
-`pnpm arcade check reef-rush`, `pnpm --filter game-reef-rush test:difficulty` and `pnpm arcade smoke reef-rush` pass, and you've looked at the course in its theme (`pnpm arcade dev reef-rush`, then `/games/reef-rush/?course=<course-id>`, or a scenario that passes `?course=` as a launch parameter and `arcade see --scenario`). The course select scene appears only while more than one course is listed.
+The groups above and `pnpm arcade check reef-rush --skip-tests` pass, and you've looked at the course in its theme (`pnpm arcade dev reef-rush`, then `/games/reef-rush/?course=<course-id>`, or a scenario that passes `?course=` as a launch parameter and `arcade see --scenario`). The course select scene appears only while more than one course is listed. Whoever merges runs the full gate: `pnpm arcade check reef-rush`, `pnpm --filter game-reef-rush test:difficulty` and `pnpm arcade smoke reef-rush` (AGENTS.md "Test scope").
 
 ## Add a medium
 
@@ -191,5 +193,5 @@ The progress for placing (`World.progress`) is generic and the same in every med
 `logic/conformance/medium.test.ts` runs over every entry in `MEDIA` plus a test-only glide medium with its own navigation and pilot (`conformance/glide.ts`, `glide-data.ts`, `glide-nav.ts`, `glide-pilot.ts`; a working example of a second medium): deterministic for the same seed and inputs, caps speed, honours kick cooldown, every `MoveModifiers` field changes motion, progress in open space in each direction the medium says it can move, and a rival gets through an overhang, a 1-tile gap, a shaft with a lip and a drop without stalling. Then race a course in the medium through course conformance and its own difficulty bars.
 
 ```
-pnpm --filter game-reef-rush exec vitest run --project unit src/logic/conformance
+pnpm arcade test reef-rush @media @seams @behavior
 ```
