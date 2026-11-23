@@ -6,8 +6,8 @@
  *
  * A stunned or trapped rival can't act, so its stuck counter resets and it starts no recovery swim.
  * A rival swerving round a hazard holds its kick; a recovering one saves it. It spends dash charges
- * only while it has them, keeping one back for a latch shake-off unless it is running last
- * (`hasDashToSpend`).
+ * only while it has them, keeping one back for a latch shake-off unless it trails the leader by more
+ * than RESERVE_WAIVED_BEHIND places, or is latched (`hasDashToSpend`).
  *
  * In a dark zone (`inDark`) a rival that can't see (`racerSeesInDark`: not Selene, no Glow Lantern)
  * wobbles twice as far and re-reads its field half as often.

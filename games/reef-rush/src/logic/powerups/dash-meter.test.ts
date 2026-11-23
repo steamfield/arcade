@@ -132,15 +132,16 @@ describe('rivals on the dash meter', () => {
     return found;
   }
 
-  it('keep their last charge for a latch unless they run last, and dash with the rest', () => {
+  it('keep their last charge unless they trail the leader by more than 2 places or are latched, and dash with the rest', () => {
     // Every racer is a bot that always wants to kick, so only the meter and the reserve hold it back.
     const { world, log } = raceOn(LANES, { playerBot: PLAYER_PROFILE });
     for (const racer of world.racers) racer.profile = { ...racer.profile, kickSkill: 1 };
+    const farBehind = (kick: LastChargeKick) => kick.place - 1 > 2;
 
     const kicks = lastChargeKicks(world, log, 600);
 
-    expect(kicks.filter((kick) => !kick.latched && kick.place < world.racers.length)).toEqual([]);
-    expect(kicks.filter((kick) => kick.place === world.racers.length)).not.toEqual([]);
+    expect(kicks.filter((kick) => !kick.latched && !farBehind(kick))).toEqual([]);
+    expect(kicks.filter(farBehind)).not.toEqual([]);
     for (const id of ['tess', 'squib', 'bo'] as const) expect(kicksOf(log, id).length).toBeGreaterThan(3);
   });
 

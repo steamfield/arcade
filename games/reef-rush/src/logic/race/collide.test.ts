@@ -230,7 +230,7 @@ describe('downed racers', () => {
     }
   });
 
-  it('forget the contact they were in, so touching again after recovery is a new bump', () => {
+  it('forget the contact they were in, so touching again after recovery and parting is a new bump', () => {
     const a = racer('player', 100);
     const b = racer('tess', 106);
     const contacts = new Set<string>();
@@ -244,11 +244,35 @@ describe('downed racers', () => {
     touch();
     b.status.stunned = 30;
     touch();
-    expect(contacts.size).toBe(0);
+    expect(contacts.has('player|tess')).toBe(false);
 
     b.status.stunned = 0;
+    b.body.x = 200;
+    separateRacers([a, b], contacts, log);
     touch();
     expect(log.all().map((event) => event.type)).toEqual(['racer.bumped', 'racer.bumped']);
+  });
+
+  it('keep passing through a racer that recovers while they overlap, until the two come apart', () => {
+    const a = racer('player', 100);
+    const b = racer('tess', 106);
+    const contacts = new Set<string>();
+    const log = new EventLog<GameEvent>();
+    b.status.stunned = 30;
+    separateRacers([a, b], contacts, log);
+
+    b.status.stunned = 0;
+    separateRacers([a, b], contacts, log);
+    separateRacers([a, b], contacts, log);
+    expect([a.body.x, b.body.x]).toEqual([100, 106]);
+    expect(log.all()).toEqual([]);
+
+    b.body.x = 200;
+    separateRacers([a, b], contacts, log);
+    expect(contacts.size).toBe(0);
+    b.body.x = 106;
+    separateRacers([a, b], contacts, log);
+    expect(log.all()).toMatchObject([{ type: 'racer.bumped', a: 'player', b: 'tess' }]);
   });
 });
 
