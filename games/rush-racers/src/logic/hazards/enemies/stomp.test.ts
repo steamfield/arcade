@@ -27,7 +27,8 @@ describe('stomping an enemy', () => {
     const player = racerOf(world, 'player');
     dropOnto(world, player, 1, 120);
 
-    step(world, log, 2);
+    // One tick: on the next, glide's speed cap (150 px/s) would clip the bounce.
+    step(world, log, 1);
 
     expect(eventsIn(log, 'enemy.bonked')).toEqual([
       expect.objectContaining({ by: 'player', kind: 'crab', how: 'stomp' }),

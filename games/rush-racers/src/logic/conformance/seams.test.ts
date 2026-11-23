@@ -65,7 +65,10 @@ describe('swim answers no to every platformer seam', () => {
   });
 
   it('rejects a course with a ledge', () => {
-    const course = courseFromLevel(['#########', '#1..===.F', '#.......F', '#########'].join('\n'), 'swim');
+    const course = courseFromLevel(
+      ['#########', '#1..===.F', '#2......F', '#3......F', '#4......F', '#########'].join('\n'),
+      'swim',
+    );
     expect(() => createWorld(course, new EventLog<GameEvent>(100), { seed: 1 })).toThrow(/ledge/i);
   });
 });
