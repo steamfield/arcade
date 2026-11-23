@@ -28,7 +28,7 @@ export interface Character {
  * - Rudy, the plucky hero: the all-rounder; middling kicks, steering and item use.
  * - Gil, lanky and springy: kicks the most, steers the loosest, light in bumps, sparing with items.
  * - Streak, the cocky speedster: the cleanest line (least wobble) and quick to react, but barely
- *   kicks and seldom uses items; its wind-up does the work.
+ *   kicks; its wind-up does the work. It passes few clams, so it fires few items even at 0.5.
  * - Onyx, the brooding rival: tight steering and solid in bumps, and the least item use of all; his
  *   threat is the ambush, so his items are kept rare.
  * - Nib, the tinkerer: by far the most item-happy (twice anyone else), a little scatty, the lightest.
@@ -39,9 +39,10 @@ export interface Character {
  *
  * `itemAggression` is how eagerly it fires an item that has a use: with one in reach it fires after
  * `reactionTicks / itemAggression` ticks on average (`ai/items.ts`). Rivals use most of what they
- * get, so clam supply, not eagerness, limits how often they fire: a rival rolls up to three items
- * from a clam (`CLAM.rivalRolls`), and on Normal each rival slot's median is 7-11.5 uses a race
- * (`difficulty/rival-items.test.ts`). Streak's and Onyx's stay lowest, as their habits say.
+ * get, so clam supply more than eagerness limits how often they fire: a rival rolls up to two
+ * items from a clam (`CLAM.rivalRolls`). On Normal each character's median as a rival is 6-9.5 uses
+ * a race (`difficulty/rival-items.ts`, 40 races each), inside the 5-10 band; Gil went 0.4 -> 0.3
+ * (he was at the 10 ceiling) and Streak 0.4 -> 0.5 (5.5, near the floor) to keep room on both sides.
  */
 export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
   rudy: {
@@ -52,12 +53,12 @@ export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
   gil: {
     name: 'Gil',
     ability: 'springKick',
-    profile: { forceMul: 1.04, kickSkill: 0.012, wobble: 0.25, reactionTicks: 4, mass: 0.8, itemAggression: 0.4 },
+    profile: { forceMul: 1.04, kickSkill: 0.012, wobble: 0.25, reactionTicks: 4, mass: 0.8, itemAggression: 0.3 },
   },
   streak: {
     name: 'Streak',
     ability: 'windUp',
-    profile: { forceMul: 1.05, kickSkill: 0.003, wobble: 0.05, reactionTicks: 4, mass: 0.9, itemAggression: 0.4 },
+    profile: { forceMul: 1.05, kickSkill: 0.003, wobble: 0.05, reactionTicks: 4, mass: 0.9, itemAggression: 0.5 },
   },
   onyx: {
     name: 'Onyx',

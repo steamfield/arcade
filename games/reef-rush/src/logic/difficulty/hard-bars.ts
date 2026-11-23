@@ -6,11 +6,15 @@
  * doesn't hang on one lucky seed. Race length is judged against the course's `parTicks`, so the same
  * bars fit a longer or shorter course. The per-seed table prints when a bar is missed.
  *
- * Measured at v2 phase 4 (rivals at par, a metered dash, three clam rolls for rivals), Sunlit
- * Shallows, seeds 1-30 unless said: expert wins 18-26 of 30 per character (60-85% over seeds 1-100:
- * Baron 60, Gil 65, Nib 68, Onyx 72, Rudy 73, Rook 75, Streak 84, Selene 85), and every win but
- * Streak's two by more than 8 s is close; mean expert finish 109.0-115.8 s, 0.96-1.02 of par; the
- * novice places 3rd or 4th in 17-27 of 30 and finishes within 1.3x the winner every time. Test-only.
+ * Measured at v2 phase 4 (rivals at par, a metered dash, two clam rolls for rivals), Sunlit
+ * Shallows, seeds 1-30 unless said: expert wins 21-27 of 30 per character, close wins (lead rival
+ * within 8 s) 21-27; mean expert finish 106.9-115.0 s, 0.95-1.03 of par; the novice places 3rd or
+ * 4th in 21-28 of 30 and finishes within 1.3x the winner every time. Test-only.
+ *
+ * Open balance problem: the cast's expert win rates are no longer within a few points of each other.
+ * Over seeds 1-100: Baron 67%, Gil 73, Rook 75, Nib 76, Onyx 77, Rudy 85, Streak 89, Selene 91, a
+ * 24-point spread (v1 kept it to 6). Abilities, not rival profiles, drive it, so these bars check
+ * that every character's expert wins most races and leave balance to an ability retune.
  */
 import { TICK_HZ } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
@@ -22,24 +26,23 @@ import { meanPlayerFinish, RIVAL_IDS, type Run, race, seconds, table } from './r
 const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
 
 /**
- * Every character's expert wins (any margin) on the 30 seeds fall in this band. Abilities now
- * spread the cast's win rates over 25 points (see the header), so the band is wide: it catches a
- * character that stops winning or never loses, not a few seeds of spread.
+ * Expert wins (any margin) every character needs of the 30 seeds: measured 21-27. Not a balance
+ * check (see the header): it catches a character whose expert stops winning most races.
  */
-export const BALANCE_BAND = { min: 16, max: 28 } as const;
+const EXPERT_WINS_MIN = 18;
 
-/** Close expert wins (the lead rival within 8 s) needed of the 30 seeds: measured 18-24. */
-const CLOSE_WINS_MIN = 16;
+/** Close expert wins (the lead rival within 8 s) needed of the 30 seeds: measured 21-27. */
+const CLOSE_WINS_MIN = 18;
 
 /**
  * A good race's mean expert finish as fractions of the course's par. Per-character means measure
- * 0.96-1.02 of Sunlit's par and five-seed means up to 1.03, so this catches a tuning that moves
+ * 0.95-1.03 of Sunlit's par and five-seed means 0.97-1.06, so this catches a tuning that moves
  * race length by more than about 9 s.
  */
 const PAR_BAND = { min: 0.92, max: 1.08 } as const;
 
-/** Novice 3rd or 4th places needed of the 30 seeds: measured 17 (Selene) to 27. */
-const NOVICE_BEHIND_MIN = 15;
+/** Novice 3rd or 4th places needed of the 30 seeds: measured 21 (Selene) to 28. */
+const NOVICE_BEHIND_MIN = 18;
 
 /** Novice finishes within 1.3x the winner's time needed of the 30 seeds: measured 30 for every character. */
 const NOVICE_IN_TOUCH_MIN = 27;
@@ -92,12 +95,11 @@ export function describeDifficulty(character: CharacterId, courseId: string = DE
     );
 
     it(
-      `an expert wins between ${BALANCE_BAND.min} and ${BALANCE_BAND.max} of 30 seeds, like every other character`,
+      `an expert wins most races: at least ${EXPERT_WINS_MIN} of 30 seeds`,
       () => {
         const runs = expert();
         const wins = runs.filter((run) => run.playerPlace === 1).length;
-        expect(wins, `expert wins:\n${table(runs)}`).toBeGreaterThanOrEqual(BALANCE_BAND.min);
-        expect(wins, `expert wins:\n${table(runs)}`).toBeLessThanOrEqual(BALANCE_BAND.max);
+        expect(wins, `expert wins:\n${table(runs)}`).toBeGreaterThanOrEqual(EXPERT_WINS_MIN);
       },
       RACES_TIMEOUT_MS,
     );

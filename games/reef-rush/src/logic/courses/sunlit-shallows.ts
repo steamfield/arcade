@@ -6,7 +6,7 @@ import type { LevelDef } from '../types.ts';
 import type { Course } from './types.ts';
 
 /**
- * Sunlit Shallows, the ocean course: about 115 s for a good swimmer. Each section
+ * Sunlit Shallows, the ocean course: about 112 s for a good swimmer. Each section
  * shows one idea gently, then tests it.
  *
  * - Cols 0-94, the reef: a start bay, a current tunnel over a kelp bed, a pillar
@@ -72,10 +72,10 @@ const LEVEL: LevelDef = {
 };
 
 /**
- * The mean Hard expert-bot finish over seeds 1-30 and all eight characters (113.5 s), measured at v2
+ * The mean Hard expert-bot finish over seeds 1-30 and all eight characters (112.0 s), measured at v2
  * phase 4: rivals swim at par and the dash is metered, so a good race runs longer than v1's 85.7 s.
  */
-const PAR_TICKS = 6810;
+const PAR_TICKS = 6720;
 
 export const SUNLIT_SHALLOWS: Course = {
   id: 'sunlit-shallows',

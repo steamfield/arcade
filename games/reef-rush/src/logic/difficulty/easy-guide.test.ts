@@ -3,10 +3,10 @@
  * the same races with the guide off and on. The full measurement (40 seeds, several characters) is
  * in DESIGN.md; this keeps the effect from regressing.
  *
- * Measured at v2 phase 4 (seeds 1-4): 5057 stuck ticks without the guide and 2103 with it. The bar
- * was "less than a third" until rivals got three clam rolls: the unguided kid now gets stuck less
+ * Measured at v2 phase 4 (seeds 1-4): 5329 stuck ticks without the guide and 2293 with it. The bar
+ * was "less than a third" until rivals got two clam rolls: the unguided kid now gets stuck less
  * (6825 ticks before; rivals firing more Puffers and Cannonballs open more coral, the likely cause),
- * while the guided kid's stuck time is unchanged (2117 before).
+ * while the guided kid's stuck time barely moved (2117 before).
  */
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTY } from '../difficulty-level.ts';
