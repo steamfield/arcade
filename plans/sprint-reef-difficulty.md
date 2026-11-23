@@ -57,13 +57,15 @@ Test cases:
 - Easy shark still never winds up on the player.
 - Two eels at different homes start at different cycle offsets; an eel's offset is the same every race (no rng).
 - An eel created mid-cycle is in the mode that offset implies (hidden, windup or lunge) and emits `enemy.telegraphed` when its windup starts.
-- Course: Sunlit Shallows has at least 8 eels and 2 sharks after this phase, every eel valid (createEnemies doesn't throw).
+- Normal's shark tuning equals Hard's; Easy's is today's numbers.
+- A Hard shark patrols out to 4 tiles from home before turning; Easy turns at 3.
+- Course: Sunlit Shallows has 10 eels and 2 sharks after this phase (3 sharks after phase 3), every eel valid (`createEnemies` doesn't throw via `eelOutward`).
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/reef-rush/src/logic/hazards/enemies/, games/reef-rush/src/logic/difficulty-level.ts, games/reef-rush/src/logic/difficulty-level.test.ts | contracts | games/reef-rush/src/logic/hazards/enemies/shark.test.ts, games/reef-rush/src/logic/hazards/enemies/eel.test.ts | opus | running | sprint/reef-difficulty-1a | enemy tests pass, typecheck and lint pass |
 
-Inline (me, after lane a): eel placement on `sunlit-shallows.ts`, re-record TOP_ROUTE, top-route test.
+Inline (me): seven new eels on `sunlit-shallows.ts` at (134,7), (205,7), (252,7), (290,16), (352,10), (360,6), (516,4); after lane a merges, re-record TOP_ROUTE so `top-route.test.ts` passes, and run the difficulty bars. A bar that drops in phase 1 is logged and fixed in phase 3's balance pass, not here, since phase 3 reshapes the course again.
 
 #### Lane a brief
 
@@ -94,3 +96,5 @@ Depends on: phase 2
 Inline: insert the surface section, reshape the cave with irregular urchins, eels and pillars, third shark, re-record TOP_ROUTE, re-measure par, run difficulty bars and tune, update DESIGN.md and scenarios.
 
 ## Log
+
+- Plan critique (sonnet): (1) shark count wording fixed: 2 now, 3 after phase 3. (2) Normal and patrol-lane test cases added to lane 1a by message. (3) Inline course and route work for phase 1 named above; bars may drop before phase 3, handled there. (4) Lane 1a told to export the eel start-state helper from eel.ts. (5) Phase 2 notes folded into its briefs: steerCost needs an air case, loose.ts, pearl-drift.ts and status.ts each drift on their own, hasClearSweep is shared with rivals so the shark's air block goes in shark.ts.
