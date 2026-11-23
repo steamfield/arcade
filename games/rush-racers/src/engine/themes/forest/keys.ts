@@ -32,6 +32,8 @@ export const ForestTile = {
   coral: 1,
   /** A thin branch to jump up through. */
   ledge: 2,
+  /** Earth under earth or stone: no grass top. */
+  rockBuried: 3,
 } as const;
 
 /** Forest animation keys: mud bubbles, the four wind flows and the wasp's wings. */

@@ -28,6 +28,9 @@ const EARTH_ROWS = [
   '1111211111011101',
 ];
 
+/** Earth with more earth over it: the same soil as `EARTH_ROWS` with no grass, so deep ground doesn't stripe. */
+const BURIED_EARTH_ROWS = ['1111111121111111', '1121111111110111', ...EARTH_ROWS.slice(2)];
+
 /** Cracked stone: lit faces split by dark cracks, with moss in the seams. Grey and cool, so it reads apart from earth. */
 const STONE_ROWS = [
   '1111112111111111',
@@ -77,7 +80,7 @@ const FINISH_ROWS = [
   '...00111122220..',
 ];
 
-/** Terrain sheets. The tileset frames sit in `ForestTile` order: earth, stone, then the branch. */
+/** Terrain sheets. The tileset frames sit in `ForestTile` order: earth, stone, the branch, then buried earth. */
 export const TERRAIN_SHEETS: readonly ArtSheet<ForestTexKey>[] = [
   {
     key: ForestTex.tiles,
@@ -85,6 +88,7 @@ export const TERRAIN_SHEETS: readonly ArtSheet<ForestTexKey>[] = [
       { name: 'rock', palette: ForestTerrainPalette.earth, rows: EARTH_ROWS },
       { name: 'coral', palette: ForestTerrainPalette.crackedStone, rows: STONE_ROWS },
       { name: 'ledge', palette: ForestTerrainPalette.branch, rows: BRANCH_ROWS },
+      { name: 'rockBuried', palette: ForestTerrainPalette.earth, rows: BURIED_EARTH_ROWS },
     ],
   },
   sheet(ForestTex.stoneDebris, ForestTerrainPalette.crackedStone, {

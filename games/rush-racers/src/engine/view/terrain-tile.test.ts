@@ -44,3 +44,19 @@ describe('the tile a theme draws', () => {
     expect(tileAt(LEVEL, TERRAIN, LEGEND, x, y)).toBe(tile);
   });
 });
+
+describe('a theme with buried tiles', () => {
+  const BURIED_ROCK_TILE = 5;
+  const BURIED: TerrainArt = { ...TERRAIN, buriedTiles: { rock: BURIED_ROCK_TILE } };
+
+  it.each([
+    ['rock under rock, as its buried tile', 0, 1, BURIED_ROCK_TILE],
+    ['rock in the floor under rock, as its buried tile', 0, 5, BURIED_ROCK_TILE],
+    ['rock on the top row, as its surface tile', 0, 0, ROCK_TILE],
+    ['rock under an open tile, as its surface tile', 2, 5, ROCK_TILE],
+    ['coral, which has no buried tile, as its cell', 2, 1, CORAL_TILE],
+    ['a legend glyph with art, as its art', 1, 0, WRECK_TILE],
+  ])('draws %s', (_, x, y, tile) => {
+    expect(tileAt(LEVEL, BURIED, LEGEND, x, y)).toBe(tile);
+  });
+});

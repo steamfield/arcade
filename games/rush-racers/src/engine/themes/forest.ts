@@ -40,6 +40,7 @@ export const FOREST_THEME = defineTheme({
   terrain: {
     tileset: ForestTex.tiles,
     tiles: { rock: ForestTile.rock, coral: ForestTile.coral, ledge: ForestTile.ledge },
+    buriedTiles: { rock: ForestTile.rockBuried },
     flowing: {
       kelp: { texture: ForestTex.mud, anim: ForestAnim.mudBubble },
       'current-right': { texture: ForestTex.windRight, anim: ForestAnim.windRight },

@@ -25,6 +25,12 @@ export interface TerrainArt {
    * is `rock` underneath draws as a hull. A glyph whose art isn't listed draws as its base cell.
    */
   glyphTiles: Readonly<Record<string, number>>;
+  /**
+   * Tile index for a solid cell with rock or coral directly above it, so a surface detail such as
+   * a grass top shows only where the ground meets open space. Cells not listed draw their `tiles`
+   * entry everywhere.
+   */
+  buriedTiles?: Readonly<Partial<Record<Cell, number>>>;
   /** Animated sprites over non-solid cells, such as kelp and currents. */
   flowing: Readonly<Partial<Record<Cell, FlowingArt>>>;
   /** Drawn on every open tile of the finish column. */
