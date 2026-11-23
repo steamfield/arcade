@@ -258,6 +258,8 @@ Test cases:
 Demo: course select lists Sunlit Shallows and Bramble Run; pick Bramble Run, see the Thornwood cast on select, race it in the forest on each level; the bars pass.
 Depends on: phase 3, phase 4
 
+Scaffold: ac5ca8b
+
 Scaffold (inline, by the orchestrator, after phases 3 and 4 tag): `'bramble-run'` in `ShippedCourseId`; `logic/courses/bramble-run.ts` registered in `COURSES` after Sunlit, `listed: true`, world thornwood, theme forest, song thornwood, with a first-draft level (run-test's ideas stretched to Sunlit's length) and a guessed `parTicks`; `TITLE_TO_RACE` in `scenarios/kit.ts` gains the course select step (fire on the course the cursor starts on, which is the course in force), and every spec or scenario that walks the menus by hand gets the same step. The gate passes on the scaffold. Listing the course in the scaffold, not at the end, is deliberate: course select turning on changes every menu walk, and lane b needs it on to test.
 
 Test cases:
@@ -287,8 +289,8 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/logic/courses/bramble-run.ts, games/rush-racers/src/logic/difficulty/ | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | pending | | Bramble Run bars pass |
-| b | M | games/rush-racers/scenarios/course-select.ts, games/rush-racers/scenarios/stomp.ts, games/rush-racers/scenarios/crate-from-below.ts, games/rush-racers/scenarios/ledge-jump.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/course.spec.ts, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md | contracts | games/rush-racers/tests/smoke.spec.ts | opus | pending | | scenarios and smoke pass |
+| a | L | games/rush-racers/src/logic/courses/bramble-run.ts, games/rush-racers/src/logic/difficulty/ | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | running | deliver/rush-racers-5a | Bramble Run bars pass |
+| b | M | games/rush-racers/scenarios/course-select.ts, games/rush-racers/scenarios/stomp.ts, games/rush-racers/scenarios/crate-from-below.ts, games/rush-racers/scenarios/ledge-jump.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/course.spec.ts, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md | contracts | games/rush-racers/tests/smoke.spec.ts | opus | running | deliver/rush-racers-5b | scenarios and smoke pass |
 
 ## Log
 
