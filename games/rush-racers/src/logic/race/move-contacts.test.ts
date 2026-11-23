@@ -94,4 +94,16 @@ describe('move contacts', () => {
     expect(all.find((c) => c.ceiling)?.ceilingTiles).toEqual([crate]);
     expect(rising.y).toBeGreaterThanOrEqual(48);
   });
+  it('keeps the velocity a tile stopped as `lost`, on the axis it stopped, and zero elsewhere', () => {
+    // Level with the rock at column 4, row 2 (pixels 64..80 by 32..48), heading into its left side.
+    const intoWall = body(30, 34, 90, 0);
+    const wallHit = contactsOver(intoWall, ROOM, 30).find((c) => c.wallRight);
+    const falling = body(100, 50, 0, 80);
+    const landing = contactsOver(falling, ROOM, 30).find((c) => c.floor);
+    const drifting = contactsOver(body(30, 20, 30, 0), ROOM, 5);
+
+    expect(wallHit?.lost).toEqual({ x: 90, y: 0 });
+    expect(landing?.lost).toEqual({ x: 0, y: 80 });
+    expect(drifting.every((c) => c.lost.x === 0 && c.lost.y === 0)).toBe(true);
+  });
 });

@@ -8,8 +8,8 @@
 import type { ShippedMediumId } from '../courses/types.ts';
 import type { CharacterId, EnemyKind, PowerUpKind } from '../types.ts';
 
-/** Shipped worlds. Grows with each world: later space. */
-export type ShippedWorldId = 'reef' | 'thornwood' | 'cloudreach';
+/** Shipped worlds. Grows with each world. */
+export type ShippedWorldId = 'reef' | 'thornwood' | 'cloudreach' | 'farside';
 
 /** Hazards the course format places (`*` and `j`), by their logic names. */
 export type HazardKind = 'urchin' | 'jelly';

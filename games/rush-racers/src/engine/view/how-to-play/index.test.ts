@@ -61,7 +61,7 @@ function recordingKit(): { kit: PageKit; labels: RecordedLabel[] } {
 }
 
 /** The words a medium's move page shows at `tick`, joined into one string. */
-function moveWordsShown(medium: 'flight', tick: number, reducedMotion: boolean): string {
+function moveWordsShown(medium: 'flight' | 'drift', tick: number, reducedMotion: boolean): string {
   const { kit, labels } = recordingKit();
   MEDIUM_PAGES[medium].move.build(kit)(tick, reducedMotion);
   return labels
@@ -114,6 +114,24 @@ describe("How to Play's pages per medium", () => {
       'TAP UP TO FLAP',
       'HOLD UP TO GLIDE',
       'HOLD DOWN TO DIVE',
+    ]);
+  });
+
+  it('teaches thrust, drifting and braking on a drift course with its own move page, in Farside words, on the same page count', () => {
+    const headings = headingsFor('drift', 'farside');
+    expect(mediumPagesFor('drift')).toBe(MEDIUM_PAGES.drift);
+    expect(headings[0]).toBe('THRUST AND DRIFT');
+    expect(headings[1]).toBe('SUPPLY PODS');
+    expect(headings[3]).toBe('STARDUST');
+    expect(headings).toHaveLength(HOW_TO_PLAY_PAGES);
+  });
+
+  it('names one drift move at a time while animating, and all three on the still page under reduced motion', () => {
+    expect(moveWordsShown('drift', 0, false)).toBe('HOLD TO BURN');
+    expect(moveWordsShown('drift', 0, true).split('\n')).toEqual([
+      'HOLD TO BURN',
+      'LET GO TO DRIFT',
+      'BURN BACK TO BRAKE',
     ]);
   });
 

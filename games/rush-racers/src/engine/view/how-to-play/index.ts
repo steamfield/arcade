@@ -13,6 +13,7 @@ import { controlName } from '../control-glyphs.ts';
 import { buildAttacksPage } from './attacks-page.ts';
 import { buildClamsPage } from './clams-page.ts';
 import { buildDodgePage } from './dodge-page.ts';
+import { buildDriftMovePage } from './drift-page.ts';
 import { buildEnemiesPage } from './enemies-page.ts';
 import { buildFirePage } from './fire-page.ts';
 import { buildFlightMovePage } from './flight-page.ts';
@@ -67,6 +68,7 @@ export const MEDIUM_PAGES: Readonly<Record<ShippedMediumId, MediumPages>> = {
     },
   },
   flight: { move: { heading: 'FLAP AND SWOOP', build: buildFlightMovePage } },
+  drift: { move: { heading: 'THRUST AND DRIFT', build: buildDriftMovePage } },
 };
 
 /** The medium whose pages stand in for one How to Play has none for. */

@@ -33,6 +33,11 @@ export type GameEvent =
   | { type: 'racer.jumped'; id: RacerId }
   /** A racer flapped on a fresh Up press (a flying medium only; never spends a dash charge). */
   | { type: 'racer.flapped'; id: RacerId }
+  /**
+   * A racer bounced off a tile hard enough to notice (a bouncing medium only); `speed` is how fast it
+   * went in (px/s) and `axis` the axis the tile stopped it on (the harder one in a corner).
+   */
+  | { type: 'racer.bounced'; id: RacerId; speed: number; axis: 'x' | 'y' }
   /** A racer fell out of the level through a pit. */
   | { type: 'racer.fell'; id: RacerId }
   /** A racer that fell is back on the last safe ground it stood on. */

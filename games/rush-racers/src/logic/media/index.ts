@@ -8,6 +8,7 @@
 import { courseOf } from '../courses/index.ts';
 import type { Course, ShippedMediumId } from '../courses/types.ts';
 import type { Difficulty, World } from '../types.ts';
+import { DRIFT_MEDIUM } from './drift/index.ts';
 import { FLIGHT_MEDIUM } from './flight/index.ts';
 import { RUN_MEDIUM } from './run/index.ts';
 import { SWIM_MEDIUM } from './swim/index.ts';
@@ -18,6 +19,7 @@ export const MEDIA: Readonly<Record<ShippedMediumId, Medium>> = {
   swim: SWIM_MEDIUM,
   run: RUN_MEDIUM,
   flight: FLIGHT_MEDIUM,
+  drift: DRIFT_MEDIUM,
 };
 
 const registered = new Map<string, Medium>();

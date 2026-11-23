@@ -30,6 +30,11 @@ export const PLACE_FLASH_TICKS = 4;
 export interface RacerLook {
   /** Stretch along the kick's axis: negative while squashed, positive while stretched, 0 at rest. */
   stretch: number;
+  /**
+   * The axis the stretch runs along when a bounce set it ('x' off a wall, 'y' off a floor or
+   * ceiling); null for every other moment, where the view uses the axis the racer kicked on.
+   */
+  axis: 'x' | 'y' | null;
   /** True while the place-up flash fills the sprite white. */
   flashing: boolean;
 }
@@ -67,11 +72,11 @@ export function createRacerMoments(id: RacerId, place: number, local: RacerId = 
       }
     },
     look(tick, reducedMotion) {
-      if (reducedMotion) return { stretch: 0, flashing: false };
+      if (reducedMotion) return { stretch: 0, axis: null, flashing: false };
       const sinceFlash = tick - placeGainedAt;
       // The latest of a kick and a flap shapes the sprite, so a flap mid-kick shows at once.
       const stretch = flappedAt > kickedAt ? flapStretchAt(tick - flappedAt) : kickStretchAt(tick - kickedAt);
-      return { stretch, flashing: sinceFlash >= 0 && sinceFlash < PLACE_FLASH_TICKS };
+      return { stretch, axis: null, flashing: sinceFlash >= 0 && sinceFlash < PLACE_FLASH_TICKS };
     },
   };
 }

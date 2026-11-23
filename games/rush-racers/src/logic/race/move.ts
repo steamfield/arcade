@@ -38,7 +38,7 @@ interface TileMove {
 /**
  * Integrates a body's position by its velocity for one tick, resolving X then Y against tiles that
  * block it (`blocksBody` under `rules`, and ledges from above) and zeroing the blocked velocity
- * component. Sub-steps fast movement so a body never tunnels through a tile. A body that starts
+ * component, which the contacts keep as `lost`. Sub-steps fast movement so a body never tunnels through a tile. A body that starts
  * inside a blocking tile (a bump can push one into a wall) is first moved out along its shallower
  * overlap; a ledge never pushes a body out.
  *
@@ -71,7 +71,7 @@ export function moveBody(
 }
 
 function noContacts(): MoveContacts {
-  return { floor: false, ceiling: false, wallLeft: false, wallRight: false, ceilingTiles: [] };
+  return { floor: false, ceiling: false, wallLeft: false, wallRight: false, ceilingTiles: [], lost: { x: 0, y: 0 } };
 }
 
 /**
@@ -106,10 +106,12 @@ function resolveX(body: Body, move: TileMove): void {
   for (let ty = tiles.top; ty <= tiles.bottom; ty++) {
     if (body.vx > 0 && blocksBody(level, broken, rules, tiles.right, ty)) {
       body.x = tiles.right * TILE - body.w;
+      contacts.lost.x = body.vx;
       body.vx = 0;
       contacts.wallRight = true;
     } else if (body.vx < 0 && blocksBody(level, broken, rules, tiles.left, ty)) {
       body.x = (tiles.left + 1) * TILE;
+      contacts.lost.x = body.vx;
       body.vx = 0;
       contacts.wallLeft = true;
     }
@@ -128,6 +130,7 @@ function landOnFloor(body: Body, move: TileMove): void {
   for (let tx = tiles.left; tx <= tiles.right; tx++) {
     if (!holdsFromAbove(move, tx, tiles.bottom)) continue;
     body.y = tiles.bottom * TILE - body.h;
+    move.contacts.lost.y = body.vy;
     body.vy = 0;
     move.contacts.floor = true;
     return;
@@ -150,6 +153,7 @@ function bumpCeiling(body: Body, move: TileMove): void {
   }
   if (hit.length === 0) return;
   body.y = (tiles.top + 1) * TILE;
+  contacts.lost.y = body.vy;
   body.vy = 0;
   contacts.ceiling = true;
   contacts.ceilingTiles = [...contacts.ceilingTiles, ...hit];

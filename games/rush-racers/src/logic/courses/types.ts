@@ -9,9 +9,9 @@ import type { Difficulty, LevelDef } from '../types.ts';
 import type { ShippedWorldId } from '../worlds/types.ts';
 
 /** Shipped courses. Grows with each course: 'kelp-forest', 'thunderhead-pass', ... */
-export type ShippedCourseId = 'sunlit-shallows' | 'bramble-run' | 'run-test' | 'sky-test';
-/** Shipped movement styles. Grows: later 'space'. */
-export type ShippedMediumId = 'swim' | 'run' | 'flight';
+export type ShippedCourseId = 'sunlit-shallows' | 'bramble-run' | 'run-test' | 'sky-test' | 'drift-test';
+/** Shipped movement styles. */
+export type ShippedMediumId = 'swim' | 'run' | 'flight' | 'drift';
 /** Looks the engine draws a course with. */
 export type ThemeId = 'ocean' | 'forest';
 /** Songs the engine can play for a race, by the soundtrack's names. */

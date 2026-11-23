@@ -109,6 +109,11 @@ export interface MoveContacts {
   wallRight: boolean;
   /** Tile indices (`tileIndex`) the body's head hit this tick, left to right; empty unless `ceiling`. */
   ceilingTiles: readonly number[];
+  /**
+   * The velocity, px/s, each axis had when a tile stopped it this tick; 0 on an axis nothing stopped.
+   * A medium whose racers bounce reads it, since `moveBody` has already zeroed the body's own.
+   */
+  lost: Vec;
 }
 
 /** What `moveBody` treats as solid beyond the level's own tiles, from the world's medium (`moveRulesFor`). */

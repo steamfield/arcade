@@ -312,6 +312,7 @@ export const CASES_BY_MEDIUM: Readonly<Record<string, MediumCases>> = {
   glide: FREE_MOVEMENT,
   run: ON_FOOT,
   flight: IN_FLIGHT,
+  drift: FREE_MOVEMENT,
 };
 
 /** A fresh course on `ascii` in the medium with id `medium`. */
