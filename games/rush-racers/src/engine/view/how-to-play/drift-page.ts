@@ -4,8 +4,7 @@
  * behind it, letting go leaves the arrows dark while it keeps drifting on at almost the same speed,
  * and holding Left burns against its motion, flame ahead, until it stops. On the second pass it
  * drifts past a small planet and its path bends up toward it. Under reduced motion the racer holds
- * still mid-burn, the planet is hidden so it cannot cover the words, and one caption lists all four
- * moves.
+ * still mid-burn with the planet above it, and one caption lists all four moves.
  */
 import { Frame } from '../../art/keys.ts';
 import type { Direction } from '../control-glyphs.ts';
@@ -160,6 +159,6 @@ export const buildDriftMovePage: PageBuilder = (kit) => {
       const dotX = x - TRAIL.offset - i * TRAIL.gap;
       dot.setVisible(beat.trail).setPosition(dotX, pathY(dotX, beat));
     });
-    for (const row of planet) row.setVisible(beat.planet);
+    for (const row of planet) row.setVisible(beat.planet || reducedMotion);
   };
 };

@@ -16,8 +16,8 @@ export interface WellMark {
   horizon: number | null;
 }
 
-/** In front of the backdrop and terrain tiles, behind pickups (`Layer.objects`) and racers. Drift courses have no water. */
-const WELL_DEPTH = Layer.water;
+/** Just over the terrain tiles and under everything at `Layer.water` (solar wind, the finish gate), so a well never hides either. */
+const WELL_DEPTH = Layer.tiles + 0.5;
 /** The faint ring at the edge of a well's pull. */
 const REACH_RING = { width: 1, colour: 0xc8d8ff, alpha: 0.3 } as const;
 /** A planet's body: a fraction of its reach across, in a pale colour laid down in see-through layers so its edge is soft. */
