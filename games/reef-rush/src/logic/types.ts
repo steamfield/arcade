@@ -276,6 +276,11 @@ export interface Racer {
   id: RacerId;
   /** World tick on which the AI took this racer over from its player. Absent until then. */
   tookOverAt?: number;
+  /**
+   * A test bot's profile drives this human slot, so its input entry is ignored and the AI never
+   * takes it over. Absent for every racer a person or a rival drives.
+   */
+  testBot?: true;
   /** Movement state the world's medium owns (`Medium.createMotion`). */
   motion: RacerMotion;
   /** Who is swimming in the slot: sprite, name and ability. */
