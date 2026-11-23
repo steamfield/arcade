@@ -130,6 +130,16 @@ describe('the soundtrack', () => {
     expect(quotesHookCell(thornwood)).toBe(false);
   });
 
+  it('gives Farside its own song: a loop at A, slower than the race, and neither the race hook nor Thornwood’s notes', () => {
+    const farside = songs.farside;
+    expect(farside.loopStart).toBe(sectionBeats(farside, 'A')[0]);
+    expect(farside.bpm).toBeLessThan(race.bpm);
+    expect(farside.bpm).not.toBe(songs.thornwood.bpm);
+    expect(hookStatements(farside)).toBe(0);
+    expect(quotesHookCell(farside)).toBe(false);
+    expect(lead(farside)).not.toEqual(lead(songs.thornwood));
+  });
+
   it.each([['win'], ['lose'], ['results']] as const)('quotes the hook cell in the %s music', (name) => {
     expect(quotesHookCell(songs[name])).toBe(true);
   });
