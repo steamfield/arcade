@@ -88,7 +88,7 @@ export class RaceScene extends Phaser.Scene {
       level.onEvents(events);
       hud.onEvents(events, tick);
       for (const { view, effects } of racers) {
-        view.onEvents(events);
+        view.onEvents(events, tick);
         effects.onEvents(events, tick);
       }
       fx.onEvents(events, tick);
