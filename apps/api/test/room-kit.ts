@@ -138,12 +138,30 @@ export class TestSocket {
     await this.closed;
   }
 
+  /** The next JSON message if one arrives within `ms`, or null when none does. */
+  async nextJsonWithin(ms: number): Promise<Record<string, unknown> | null> {
+    if (!(await this.#waitForMessage(ms))) return null;
+    return this.nextJson();
+  }
+
   async #next(): Promise<string | Uint8Array> {
-    const deadline = Date.now() + WAIT_DEADLINE_MS;
+    if (!(await this.#waitForMessage(WAIT_DEADLINE_MS))) throw new Error(`No message within ${WAIT_DEADLINE_MS} ms.`);
+    const message = this.#queue.shift();
+    if (message === undefined) throw new Error('Message queue emptied while reading.');
+    return message;
+  }
+
+  /**
+   * Waits until a message is queued or `ms` pass, and says whether one is queued.
+   *
+   * @throws Error when the socket closes with nothing queued.
+   */
+  async #waitForMessage(ms: number): Promise<boolean> {
+    const deadline = Date.now() + ms;
     while (this.#queue.length === 0) {
       if (this.#socket.readyState === WebSocket.CLOSED) throw new Error('Socket closed while waiting for a message.');
       const remaining = deadline - Date.now();
-      if (remaining <= 0) throw new Error(`No message within ${WAIT_DEADLINE_MS} ms.`);
+      if (remaining <= 0) return false;
       await new Promise<void>((resolve) => {
         const timer = setTimeout(resolve, remaining);
         this.#waiter = () => {
@@ -153,9 +171,7 @@ export class TestSocket {
       });
       this.#waiter = null;
     }
-    const message = this.#queue.shift();
-    if (message === undefined) throw new Error('Message queue emptied while reading.');
-    return message;
+    return true;
   }
 }
 

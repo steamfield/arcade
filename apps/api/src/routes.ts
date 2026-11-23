@@ -18,26 +18,50 @@ const UNAVAILABLE = 503;
 
 /**
  * `POST /api/rooms`: claims a fresh code and answers 201 `{ code }`, 503 `{ error }` when every
- * code tried was taken, or 403 `{ error }` for a page on another site.
+ * code tried was taken or a room failed to answer, or 403 `{ error }` for a page on another site.
  */
 export async function createRoom(request: Request, env: Env): Promise<Response> {
   if (!allowedOrigin(request)) return jsonResponse(FORBIDDEN, { error: 'Rooms can only be created from this site.' });
-  for (let attempt = 0; attempt < CLAIM_ATTEMPTS; attempt++) {
-    const code = randomRoomCode(randomByte);
-    if (await env.ROOM.getByName(code).claim()) return jsonResponse(CREATED, { code } satisfies Created);
+  try {
+    const code = await claimFreeCode(env);
+    if (code !== null) return jsonResponse(CREATED, { code } satisfies Created);
+    return jsonResponse(UNAVAILABLE, { error: `No free room code after ${CLAIM_ATTEMPTS} tries. Try again.` });
+  } catch (error) {
+    // The error model answers 503, never 500, so the page can show "unavailable".
+    console.error('api: claiming a room code failed', error);
+    return jsonResponse(UNAVAILABLE, { error: 'The room service could not create a room. Try again.' });
   }
-  return jsonResponse(UNAVAILABLE, { error: `No free room code after ${CLAIM_ATTEMPTS} tries. Try again.` });
 }
 
 /**
  * `GET /api/rooms/<code>` with `Upgrade: websocket`: passes the upgrade to the room's Durable
- * Object. A page on another site, or a code that cannot exist, gets a socket closed with `origin`
- * or `unknownRoom` instead.
+ * Object. A page on another site, a code that cannot exist, or a room that fails to answer gets a
+ * socket closed with `origin`, `unknownRoom` or `unavailable` instead.
  */
 export async function joinRoom(request: Request, env: Env, code: string): Promise<Response> {
   if (!allowedOrigin(request)) return refuseSocket(CLOSE.origin, 'origin');
   if (!isRoomCode(code)) return refuseSocket(CLOSE.unknownRoom, 'unknownRoom');
-  return env.ROOM.getByName(code).fetch(request);
+  try {
+    return await env.ROOM.getByName(code).fetch(request);
+  } catch (error) {
+    // Refusals are close codes, never HTTP errors: a failed upgrade logs a console error in the browser.
+    console.error(`api: room ${code} failed to take a join`, error);
+    return refuseSocket(CLOSE.unavailable, 'unavailable');
+  }
+}
+
+/**
+ * Tries up to `CLAIM_ATTEMPTS` random codes and returns the first one its room agreed to claim, or
+ * null when every one was taken.
+ *
+ * @throws Error from the Durable Object when a room fails to answer `claim`.
+ */
+async function claimFreeCode(env: Env): Promise<string | null> {
+  for (let attempt = 0; attempt < CLAIM_ATTEMPTS; attempt++) {
+    const code = randomRoomCode(randomByte);
+    if (await env.ROOM.getByName(code).claim()) return code;
+  }
+  return null;
 }
 
 /** The answer for any path the service does not serve. */

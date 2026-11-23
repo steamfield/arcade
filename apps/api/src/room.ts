@@ -23,7 +23,7 @@ import {
   type RoomPhase,
   StartRelaySchema,
 } from './protocol.ts';
-import { refuseSocket, replyToClose, sendQuietly, upgradeResponse } from './sockets.ts';
+import { closeQuietly, refuseSocket, replyToClose, sendQuietly, upgradeResponse } from './sockets.ts';
 import { kickSilenceMs, PeerTraffic } from './traffic.ts';
 
 /** Storage key of the flag `claim` sets. */
@@ -62,10 +62,11 @@ export class Room extends DurableObject<Env> {
     const refusal = joinRefusal({ claimed, nextPeer, version: url.searchParams.get('v'), build, peers });
     if (refusal !== null) return refuseSocket(CLOSE[refusal], refusal);
 
+    // Written before the socket is accepted, so a failed write leaves no accepted socket behind.
+    await this.ctx.storage.put(NEXT_PEER_KEY, nextPeer + 1);
     const { 0: client, 1: server } = new WebSocketPair();
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ peer: nextPeer, build, racing: false, ended: false, departed: false });
-    await this.ctx.storage.put(NEXT_PEER_KEY, nextPeer + 1);
     this.#traffic.joined(nextPeer, Date.now());
     this.#greet(server, nextPeer);
     await this.#postponeIdleClose();
@@ -90,10 +91,8 @@ export class Room extends DurableObject<Env> {
 
   /** Counts a peer whose socket closed as gone, and completes the close handshake the peer began. */
   override async webSocketClose(socket: WebSocket, code: number, reason: string): Promise<void> {
-    // A socket the room already counts as gone was closed by the room, or failed; it needs no reply.
-    const closedByPeer = peerOnSocket(this.#peers(), socket) !== undefined;
     await this.#depart(socket);
-    if (closedByPeer) replyToClose(socket, code, reason);
+    replyToClose(socket, code, reason);
   }
 
   /** Counts a peer whose socket failed as gone. */
@@ -105,7 +104,7 @@ export class Room extends DurableObject<Env> {
   override async alarm(): Promise<void> {
     for (const { socket } of this.#peers()) {
       updateAttachment(socket, { departed: true });
-      socket.close(CLOSE.idle, 'idle');
+      closeQuietly(socket, CLOSE.idle, 'idle');
     }
     await this.ctx.storage.deleteAll();
   }
@@ -173,9 +172,9 @@ export class Room extends DurableObject<Env> {
   }
 
   /**
-   * Counts a socket's peer as gone, once: marks it departed, closes it when the room is the one
-   * ending it, and tells the others with `left`. Close and error can both fire, after the room's own
-   * close too, so a socket already departed is left alone.
+   * Counts a socket's peer as gone, once: marks it departed, tells the others with `left` and any
+   * phase change, and then closes it when the room is the one ending it. Close and error can both
+   * fire, after the room's own close too, so a socket already departed is left alone.
    */
   async #depart(socket: WebSocket, cause?: DepartureCause): Promise<void> {
     const peers = this.#peers();
@@ -184,10 +183,10 @@ export class Room extends DurableObject<Env> {
     const phaseBefore = phaseOf(peers);
     updateAttachment(socket, { departed: true });
     this.#traffic.forget(leaving.attachment.peer);
-    if (cause !== undefined) socket.close(CLOSE[cause], cause);
     const left: RoomMessage = { type: 'left', peer: leaving.attachment.peer, host: hostOf(this.#peers()) };
     this.#broadcast(JSON.stringify(left));
     await this.#announcePhaseChange(phaseBefore);
+    if (cause !== undefined) closeQuietly(socket, CLOSE[cause], cause);
   }
 
   /** Broadcasts `phase` when the derived phase is no longer `before`; a return to the lobby restarts the idle clock. */

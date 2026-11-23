@@ -70,6 +70,23 @@ async function kickUntilClosed(kicker: TestSocket, peer: number, target: TestSoc
   throw new Error(`Peer ${peer} was not kicked within ${WAIT_DEADLINE_MS} ms.`);
 }
 
+/**
+ * Has `kicker` send `kick` naming `peer` every `KICK_RETRY_MS` until `witness` gets a message, and
+ * returns that message. It never waits on the target's own close, which workerd does not finish
+ * for a socket that has sent nothing.
+ *
+ * @throws Error when the witness hears nothing within `WAIT_DEADLINE_MS`.
+ */
+async function kickUntilWitnessHears(kicker: TestSocket, peer: number, witness: TestSocket) {
+  const deadline = Date.now() + WAIT_DEADLINE_MS;
+  while (Date.now() < deadline) {
+    kicker.sendJson({ type: 'kick', peer });
+    const heard = await witness.nextJsonWithin(KICK_RETRY_MS);
+    if (heard !== null) return heard;
+  }
+  throw new Error(`Nobody heard peer ${peer} leave within ${WAIT_DEADLINE_MS} ms.`);
+}
+
 test('a kick naming a peer that just spoke does nothing', async () => {
   const [first, second] = await roomWithPeers(service, 2);
   await startRace(first, second);
@@ -99,6 +116,16 @@ test('a kicked peer produces exactly one left', async () => {
 
   expect(await third.nextJson()).toEqual({ type: 'left', peer: 2, host: 1 });
   expect(await third.nextJson()).toEqual({ type: 'probe', from: 1 });
+});
+
+test('a kick naming a peer that never spoke after joining tells the others it left', async () => {
+  const [first, , third] = await roomWithPeers(service, 3);
+  first.sendJson({ type: 'start', slots: { 1: 'r0', 2: 'r1', 3: 'r2' } });
+  await third.nextJson();
+  await third.nextJson();
+  await first.nextJson();
+
+  expect(await kickUntilWitnessHears(first, 2, third)).toEqual({ type: 'left', peer: 2, host: 1 });
 });
 
 test('a message over the size limit closes the sender limit', async () => {

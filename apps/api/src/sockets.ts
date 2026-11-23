@@ -43,14 +43,32 @@ export function sendQuietly(socket: WebSocket, payload: string | ArrayBuffer | U
 }
 
 /**
- * Answers a peer's close frame with the same code and reason, or with no code when the peer's code
- * may not be sent (1005, 1006 and the other reserved ones). workerd does not answer a close frame on
- * a hibernatable socket itself, and without an answer the peer's close never completes.
+ * Answers the close frame a peer began with the same code and reason, or with no code when the
+ * peer's code may not be sent (1005, 1006 and the other reserved ones). Only a socket still
+ * `CLOSING` is answered; one the room closed itself is already `CLOSED` by the time its close event
+ * arrives.
+ *
+ * The config's compatibility date turns on `web_socket_auto_reply_to_close`, so the deployed
+ * runtime may answer by itself. Under local workerd (wrangler 4.166.0) it does not, even with the
+ * flag named explicitly: the socket is `CLOSING` in `webSocketClose`, and without this reply the
+ * peer's close never completes.
  */
 export function replyToClose(socket: WebSocket, code: number, reason: string): void {
-  if (code === NORMAL_CLOSURE || (code >= FIRST_APPLICATION_CLOSE && code <= LAST_APPLICATION_CLOSE)) {
+  if (socket.readyState !== WebSocket.CLOSING) return;
+  const sendable = code === NORMAL_CLOSURE || (code >= FIRST_APPLICATION_CLOSE && code <= LAST_APPLICATION_CLOSE);
+  if (sendable) closeQuietly(socket, code, reason);
+  else closeQuietly(socket);
+}
+
+/**
+ * Closes `socket`, logging rather than throwing when it cannot be closed, so closing one socket
+ * never stops the caller's work on the others or on storage.
+ */
+export function closeQuietly(socket: WebSocket, code?: number, reason?: string): void {
+  try {
     socket.close(code, reason);
-  } else {
-    socket.close();
+  } catch (error) {
+    // A socket that is already closed, or that the runtime has answered for, throws here.
+    console.warn(`room: closing a socket with ${code ?? 'no code'} failed`, error);
   }
 }
