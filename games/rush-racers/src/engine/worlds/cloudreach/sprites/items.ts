@@ -33,8 +33,8 @@ export const SkyItemPalette = {
   riptide: [0x0e2a6a, 0x4aa8ff, 0xc8e8ff, 0xffffff],
   /** Headwind: slate outline, grey-white cloud, a white top, cyan wind lines. */
   undertow: [0x2a3456, 0xc8d4ec, 0xffffff, 0x70e0ff],
-  /** Mirage: violet outline, pink balloon, a pale shine, violet shimmer bands. */
-  mimic: [0x2e1446, 0xff8ac0, 0xffe0f0, 0xa080ff],
+  /** Mirage: violet outline, pale lilac ghost body, a white shine, violet shimmer bands. */
+  mimic: [0x2e1446, 0xc8b0ff, 0xf4eeff, 0x8a6aff],
 } as const satisfies Record<PowerUpKind, Palette>;
 
 /** The ten 9x9 silhouettes, one per item. */
@@ -147,17 +147,17 @@ const ITEM_ROWS = {
     '...00000.',
     '.........',
   ],
-  // A balloon striped with shimmer, on a broken string: an item that isn't there.
+  // A ghost copy of a flyer facing right: a dotted outline and shimmer bands through its body.
   mimic: [
-    '..00000..',
-    '.0221110.',
-    '021331130',
-    '011113310',
-    '033111130',
-    '.0113310.',
-    '..01110..',
-    '...000...',
-    '..0.0.0..',
+    '....0.0..',
+    '...02220.',
+    '0...20110',
+    '.0.01110.',
+    '010.11110',
+    '.1111111.',
+    '..13311..',
+    '...113...',
+    '....0....',
   ],
 } as const satisfies Record<PowerUpKind, PixelRows>;
 

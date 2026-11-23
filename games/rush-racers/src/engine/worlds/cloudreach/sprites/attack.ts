@@ -16,7 +16,7 @@ const JET_STREAM_TILE_PALETTE: Palette = [0x2a62b8, 0xf0f8ff, 0x80d8ff];
 /** Headwind gusts: a slate shadow, a pale core and a sky-blue lead. */
 const HEADWIND_LINE_PALETTE: Palette = [0x5a78a8, 0xf0f4ff, 0xa8ccff];
 
-/** Smoke cloud: a grey core and a paler dithered edge, so it reads against the deep blue sky. */
+/** Smoke cloud: a grey core and a paler dithered edge, meant to blend into the sky as Reef's ink and Thornwood's mud do. */
 const SMOKE_CLOUD_PALETTE: Palette = [0x5a5a6c, 0x9a9aae];
 
 /** Cloud-shield bubble: a pale sky-blue scalloped rim and a white shine. */
