@@ -97,6 +97,7 @@ Signatures the lanes implement are in the scaffold's stubs; the briefs name them
 Demo: `pnpm arcade test rush-racers src/net && pnpm --filter @arcade/api test` (four sessions on the in-memory room finish one race hash-equal; the real Room relays between real sockets)
 Test cases: in each lane brief.
 Scaffold: 8944bb6
+Tag: rush-racers-online-phase-1
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -140,11 +141,12 @@ Scaffold: 8944bb6
 
 Demo: `pnpm arcade test rush-racers src/net/client.test.ts src/engine/online` (two to four clients on the in-memory room go lobby, race, results, lobby; the friends and room screens move as plain state)
 Depends on: phase 1
+Scaffold: 83e7a3e
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/net/client.ts, games/rush-racers/src/net/client.test.ts, games/rush-racers/src/net/transport/websocket.ts | | | opus | pending | | client tests pass |
-| b | M | games/rush-racers/src/engine/online/friends-screen.ts, games/rush-racers/src/engine/online/friends-screen.test.ts, games/rush-racers/src/engine/online/room-screen.ts, games/rush-racers/src/engine/online/room-screen.test.ts, games/rush-racers/src/engine/scenes/friends.ts, games/rush-racers/src/engine/scenes/room.ts, games/rush-racers/src/engine/view/friends-view.ts, games/rush-racers/src/engine/view/room-view.ts, games/rush-racers/UI.md | | | opus | pending | | screen-state tests pass |
+| a | M | games/rush-racers/src/net/client.ts, games/rush-racers/src/net/client.test.ts, games/rush-racers/src/net/transport/websocket.ts | | | opus | running | deliver/reef-net-2a | client tests pass |
+| b | M | games/rush-racers/src/engine/online/friends-screen.ts, games/rush-racers/src/engine/online/friends-screen.test.ts, games/rush-racers/src/engine/online/room-screen.ts, games/rush-racers/src/engine/online/room-screen.test.ts, games/rush-racers/src/engine/scenes/friends.ts, games/rush-racers/src/engine/scenes/room.ts, games/rush-racers/src/engine/view/friends-view.ts, games/rush-racers/src/engine/view/room-view.ts, games/rush-racers/UI.md | | | opus | running | deliver/reef-net-2b | screen-state tests pass |
 
 The phase 2 scaffold adds: `src/net/client.ts` and `src/net/transport/websocket.ts` stubs, `src/engine/online/{friends-screen,room-screen,state}.ts` stubs, scene keys `friends` and `room` in `runtime.ts` with a `Runtime.online: OnlineState` the scenes read, both scenes registered in `game.ts` as stubs, and `?scene=friends` reachable for captures.
 
