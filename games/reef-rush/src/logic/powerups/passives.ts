@@ -4,6 +4,7 @@
  * while its slot is selected. Glow Lantern's passive (pulling pearls) lives with the
  * pearls in `pickups/pearls.ts`; Bubble Shield and Ink Sac have none.
  */
+import { pearlSpeedMul } from '../pickups/pearls.ts';
 import type { MoveModifiers, Racer } from '../types.ts';
 import { selectedItem } from './inventory.ts';
 import { PASSIVE, SQUID } from './tuning.ts';
@@ -11,7 +12,8 @@ import { PASSIVE, SQUID } from './tuning.ts';
 /**
  * `base` with the racer's selected item and statuses folded in (PASSIVE in `powerups/tuning.ts`):
  * selected Jet Fins multiply forceMul by jetForceMul and sets kickCooldownTicks to jetKickCooldownTicks;
- * boost, slowed, inflated and latched multiply forceMul by their factors. Bubble Shield, Puffer, Ink Sac and
+ * the racer's pearls multiply forceMul by `pearlSpeedMul`; boost, slowed, inflated and latched multiply
+ * forceMul by their factors. Bubble Shield, Puffer, Ink Sac and
  * Glow Lantern don't change swimming.
  */
 export function withPassives(racer: Racer, base: MoveModifiers): MoveModifiers {
@@ -19,6 +21,7 @@ export function withPassives(racer: Racer, base: MoveModifiers): MoveModifiers {
   const jet = selectedItem(racer)?.kind === 'jetFin';
   const forceMul =
     base.forceMul *
+    pearlSpeedMul(racer) *
     (jet ? PASSIVE.jetForceMul : 1) *
     (boost > 0 ? PASSIVE.boostForceMul : 1) *
     (slowed > 0 ? PASSIVE.slowedForceMul : 1) *

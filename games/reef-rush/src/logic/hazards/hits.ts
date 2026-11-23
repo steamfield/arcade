@@ -9,6 +9,7 @@ import { invulnerableTicks, mayAttack, statusTicks } from '../difficulty-level.t
 import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
 import { spawnLoose } from '../pickups/loose.ts';
+import { dropPearls } from '../pickups/pearls.ts';
 import { heldItems, knockSelected, popShield } from '../powerups/inventory.ts';
 import { BUBBLE, FLASH } from '../powerups/tuning.ts';
 import { centreOf } from '../racers.ts';
@@ -32,6 +33,7 @@ export type HitOutcome = 'absorbed' | 'stunned' | 'trapped' | 'knocked';
  * - urchin, jelly, puffer, squid: `knockSelected` knocks off the selected item, which `spawnLoose` floats at
  *   the racer's centre with all its charges, 'knocked'; with nothing held the racer is stunned
  *   HIT.stunTicks (`racer.stunned`), 'stunned'.
+ * A hit the shield didn't absorb then knocks some pearls loose (`dropPearls`, `pearls.dropped`).
  * Stun and trap lengths are scaled by `statusTicks` (the racer's `statusDurationMul`, and the difficulty level's for the player), rounded to whole ticks.
  * Every landed hit ends any dash (`status.dashing = 0`; a Cannonball is invulnerable, so none lands on it), sets
  * `status.invulnerable = HIT.invulnerableTicks` and sets the racer's velocity to HIT.knockbackSpeed
@@ -57,6 +59,7 @@ export function applyHit(
   if (isInvulnerable(racer) || ignoresHazard(racer, cause)) return null;
   world.events.emit({ type: 'racer.hit', id: racer.id, cause, by });
   const outcome = sufferHit(world, racer, blow);
+  if (outcome !== 'absorbed') dropPearls(world, racer);
   racer.status.dashing = 0;
   racer.status.invulnerable = invulnerableTicks(world, racer, HIT.invulnerableTicks);
   knockBack(world, racer, from);

@@ -126,3 +126,68 @@ describe('a hit during a dash', () => {
     expect(player.body.vx).toBeLessThan(0);
   });
 });
+
+describe('pearls knocked loose', () => {
+  it('drops three of five pearls at the racer centre on a landed hit, after the hit events', () => {
+    const { world, log, player, hit } = setup();
+    player.pearls = 5;
+    const centre = centreOf(player);
+
+    expect(hit()).toBe('stunned');
+
+    expect(player.pearls).toBe(2);
+    expect(world.loosePearls.map(({ at, age, droppedBy }) => ({ at, age, droppedBy }))).toEqual(
+      Array.from({ length: 3 }, () => ({ at: centre, age: 0, droppedBy: 'player' })),
+    );
+    expect(eventsIn(log)).toEqual([
+      { type: 'racer.hit', id: 'player', cause: 'jelly', by: null },
+      { type: 'racer.stunned', id: 'player' },
+      { type: 'pearls.dropped', id: 'player', count: 3 },
+    ]);
+  });
+
+  it('drops every pearl of a racer holding fewer than three, and nothing from one holding none', () => {
+    const two = setup();
+    two.player.pearls = 2;
+    two.hit();
+    const none = setup();
+    none.hit();
+
+    expect([two.player.pearls, two.world.loosePearls.length]).toEqual([0, 2]);
+    expect(eventsIn(two.log, 'pearls.dropped')).toEqual([{ type: 'pearls.dropped', id: 'player', count: 2 }]);
+    expect(none.world.loosePearls).toEqual([]);
+    expect(eventsIn(none.log, 'pearls.dropped')).toEqual([]);
+  });
+
+  it('drops them when the hit knocks an item off too', () => {
+    const { world, player, hit } = setup();
+    giveItems(player, ['jetFin']);
+    player.pearls = 4;
+
+    expect(hit()).toBe('knocked');
+
+    expect([player.pearls, world.loosePearls.length]).toEqual([1, 3]);
+  });
+
+  it('keeps every pearl when a Bubble Shield absorbs the hit', () => {
+    const { world, log, player, hit } = setup();
+    giveItems(player, ['bubbleShield']);
+    player.pearls = 5;
+
+    expect(hit()).toBe('absorbed');
+
+    expect(player.pearls).toBe(5);
+    expect(world.loosePearls).toEqual([]);
+    expect(eventsIn(log, 'pearls.dropped')).toEqual([]);
+  });
+
+  it('keeps every pearl when the hit does not land', () => {
+    const { world, player, hit } = setup();
+    player.pearls = 5;
+    player.status.invulnerable = 10;
+
+    expect(hit()).toBeNull();
+
+    expect([player.pearls, world.loosePearls.length]).toEqual([5, 0]);
+  });
+});

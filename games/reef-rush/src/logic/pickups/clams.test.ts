@@ -33,7 +33,7 @@ function rollShares(place: number, held: readonly PowerUpKind[], rolls = 4000): 
 }
 
 describe('opening a clam', () => {
-  it('opens on touch, grants the roll with its charges in the first empty slot and shuts for 240 ticks', () => {
+  it('opens on touch, grants the roll with its charges in the first empty slot and shuts for 90 ticks', () => {
     const { world, log, player, racers } = parkedOnClam();
 
     openClams(world, racers);
@@ -49,7 +49,7 @@ describe('opening a clam', () => {
     expect(world.clams[0]?.closedFor).toBe(CLAM.closedTicks);
   });
 
-  it('stays shut for 240 ticks under a racer parked on it, then opens again', () => {
+  it('stays shut for 90 ticks under a racer parked on it, then opens again', () => {
     const { world, log, racers } = parkedOnClam();
     const openedOn: number[] = [];
 
@@ -105,17 +105,27 @@ describe('roll weights', () => {
     expect(clamWeights(4).undertow).toBeGreaterThan(0);
   });
 
-  it('shape what rolls come up: the leader gets defence, the trailer speed and attacks', () => {
+  it('shape what rolls come up: the leader gets defence and a rare Squid, the trailer speed and attacks', () => {
     const leader = rollShares(1, []);
     const trailer = rollShares(4, []);
     const attacks = (shares: Record<PowerUpKind, number>) => shares.homingSquid + shares.riptide + shares.undertow;
 
-    expect(attacks(leader)).toBe(0);
+    expect(attacks(leader)).toBeCloseTo(leader.homingSquid, 9);
     expect(leader.bubbleShield + leader.glowLantern + leader.mimic).toBeGreaterThan(0.6);
-    expect(leader.jetFin).toBeCloseTo(1 / 13, 1);
+    expect(leader.jetFin).toBeCloseTo(1 / 14, 1);
     expect(attacks(trailer)).toBeGreaterThan(0.35);
     expect(trailer.mimic).toBe(0);
     expect(trailer.jetFin).toBeGreaterThan(leader.jetFin);
+  });
+
+  it('weigh the Homing Squid 1 in 1st and 4 in last, so a trailer rolls it about four times as often', () => {
+    const squid = [1, 2, 3, 4].map((place) => clamWeights(place).homingSquid);
+    const leader = rollShares(1, []).homingSquid;
+    const trailer = rollShares(4, []).homingSquid;
+
+    expect(squid).toEqual([1, 2, 3, 4]);
+    expect(leader).toBeCloseTo(1 / 14, 1);
+    expect(trailer).toBeCloseTo(4 / 20, 1);
   });
 
   it('never roll Undertow for 1st or 2nd, over thousands of rolls', () => {
@@ -128,8 +138,9 @@ describe('roll weights', () => {
     const shares = rollShares(1, held, 1000);
 
     expect(held.map((kind) => shares[kind])).toEqual([0, 0, 0, 0]);
-    expect(shares.bubbleShield).toBeCloseTo(0.5, 1);
-    expect(shares.glowLantern).toBeCloseTo(0.5, 1);
+    expect(shares.bubbleShield).toBeCloseTo(3 / 7, 1);
+    expect(shares.glowLantern).toBeCloseTo(3 / 7, 1);
+    expect(shares.homingSquid).toBeCloseTo(1 / 7, 1);
   });
 });
 
@@ -179,8 +190,8 @@ describe('who opens a clam', () => {
     expect(world.rngs.pickups.state()).toBe(before);
   });
 
-  it('gives a Homing Squid one charge in 2nd and three in 3rd or 4th (1st never rolls one)', () => {
-    const squidCharges = [2, 3, 4].map((place) => {
+  it('gives a Homing Squid one charge in 1st or 2nd and three in 3rd or 4th', () => {
+    const squidCharges = [1, 2, 3, 4].map((place) => {
       // The first seed whose first pickups draw rolls a Squid in this place, found rather than pinned.
       const seed = Array.from({ length: 500 }, (_, i) => i + 1).find(
         (candidate) => rollClam(parkedOnClam(candidate).world.rngs.pickups, place, []) === 'homingSquid',
@@ -191,7 +202,7 @@ describe('who opens a clam', () => {
       return scene.player.items[0];
     });
 
-    expect(squidCharges).toEqual([1, 3, 3].map((charges) => ({ kind: 'homingSquid', charges })));
+    expect(squidCharges).toEqual([1, 1, 3, 3].map((charges) => ({ kind: 'homingSquid', charges })));
   });
 
   it('rejects a place outside 1 to 4', () => {

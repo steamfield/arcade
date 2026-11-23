@@ -1,11 +1,13 @@
-import { createRng, EventLog } from '@arcade/core';
+import { createRng, EventLog, TICK_DT, TICK_HZ } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { PLAYER_PROFILE } from './ai/profiles.ts';
+import { BOT_PROFILES, PLAYER_PROFILE } from './ai/profiles.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
+import { DEFAULT_COURSE } from './courses/index.ts';
 import type { GameEvent } from './events.ts';
+import { RACE_LIMIT_TICKS } from './race/standings.ts';
 import { courseFromLevel } from './test-world.ts';
-import { CHARACTER_IDS, type CharacterId, RACER_IDS, RNG_SALTS } from './types.ts';
-import { createWorld } from './world.ts';
+import { CHARACTER_IDS, type CharacterId, RACER_IDS, RNG_SALTS, type TickInput } from './types.ts';
+import { createWorld, stepWorld } from './world.ts';
 
 const SEEDS = Array.from({ length: 50 }, (_, i) => i + 1);
 
@@ -53,6 +55,46 @@ describe('picking rivals', () => {
     const fielded = new Set(SEEDS.flatMap((seed) => pickRivals(createRng(seed), 'rudy')));
 
     expect([...fielded].sort()).toEqual(CHARACTER_IDS.filter((id) => id !== 'rudy').sort());
+  });
+});
+
+describe('racing at par', () => {
+  it("gives every rival a swim force within 0.95 to 1.10 of the player's", () => {
+    const outside = CHARACTER_IDS.filter((id) => {
+      const ratio = CHARACTERS[id].profile.forceMul / PLAYER_PROFILE.forceMul;
+      return ratio < 0.95 || ratio > 1.1;
+    });
+
+    expect(outside).toEqual([]);
+  });
+
+  it('keeps the cast in its order of swim force, Rudy weakest and Nib strongest', () => {
+    const force = (id: CharacterId) => CHARACTERS[id].profile.forceMul;
+    const tiers: CharacterId[][] = [['rudy'], ['baron', 'selene', 'rook'], ['gil'], ['streak', 'onyx'], ['nib']];
+
+    for (const tier of tiers) expect(new Set(tier.map(force)).size, tier.join()).toBe(1);
+    const tierForces = tiers.map((tier) => force(tier[0] as CharacterId));
+    expect(tierForces).toEqual([...tierForces].sort((a, b) => a - b));
+    expect(new Set(tierForces).size).toBe(tiers.length);
+  });
+
+  // Seed 3 is one where the rivals' old 1.4x force left this player 4.4 s back; seed 1 is the plan's.
+  it.each([1, 3])('keeps a player who never dashes or fires within 3 s of the winner on Normal, seed %i', (seed) => {
+    const steadySwimmer = { ...BOT_PROFILES.expert, kickSkill: 0, itemAggression: 0 };
+    const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(100_000), {
+      seed,
+      difficulty: 'normal',
+      playerBot: steadySwimmer,
+      endsWhen: 'everyone',
+    });
+    const idle: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
+    for (let i = 0; i < RACE_LIMIT_TICKS + 1000 && world.race.phase !== 'finished'; i++) {
+      stepWorld(world, idle, TICK_DT);
+    }
+    const finishes = world.racers.map((racer) => racer.finished?.tick ?? Number.POSITIVE_INFINITY);
+    const player = world.racers.find((racer) => racer.id === 'player')?.finished?.tick ?? Number.POSITIVE_INFINITY;
+
+    expect(player - Math.min(...finishes), `finish ticks ${finishes.join(', ')}`).toBeLessThanOrEqual(3 * TICK_HZ);
   });
 });
 
