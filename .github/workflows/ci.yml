@@ -51,9 +51,32 @@ jobs:
             templates/*/playwright-report
           retention-days: 7
 
+  # Which per-game suites a push or pull request touches, so slow ones skip when nothing they test changed.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      rush-racers: ${{ steps.filter.outputs.rush-racers }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rush-racers:
+              - 'games/rush-racers/**'
+              - 'packages/core/**'
+              - 'packages/config/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/ci.yml'
+
   # Rush Racers' 30-seed difficulty bars: too slow for check, and over half an hour on one runner,
-  # so they run here in parallel shards (by file) beside the check job.
+  # so they run here in parallel shards (by file) beside the check job, and only when Rush Racers'
+  # logic or what it builds on changed. A skipped job counts as passing for a required check.
   difficulty:
+    needs: changes
+    if: needs.changes.outputs.rush-racers == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:

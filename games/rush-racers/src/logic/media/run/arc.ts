@@ -74,6 +74,17 @@ export function arcsFor(tuning: MediumTuning, limitPx: number): Arcs {
   return { byHold, fromRest: arcOf(tuning, 0, 0, limitPx) };
 }
 
+/**
+ * How far from the middle of its take-off tile any jump traced through `flight` reads the terrain,
+ * px: the longest flight at running speed (a bump restarts the arc as a fall from rest), plus the
+ * box and the catch margin. A tile farther than this from a take-off can't change where it lands.
+ */
+export function traceReachPx(flight: Flight): number {
+  const { byHold, fromRest } = flight.arcs;
+  const samples = Math.max(...byHold.map((arc) => Math.max(arc.feet.length, arc.risingSamples + fromRest.feet.length)));
+  return samples * flight.stepPx + HALF_BODY_WIDTH + CATCH_MARGIN_PX;
+}
+
 /** True when a runner's box with its feet at (x, feet) overlaps a solid tile. */
 function hitsSolid(terrain: Terrain, x: number, feet: number): boolean {
   const left = Math.floor((x - HALF_BODY_WIDTH) / TILE);
