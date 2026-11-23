@@ -11,9 +11,11 @@ import { controlName } from '../control-glyphs.ts';
 import { buildAttacksPage } from './attacks-page.ts';
 import { buildClamsPage } from './clams-page.ts';
 import { buildDodgePage } from './dodge-page.ts';
+import { buildEnemiesPage } from './enemies-page.ts';
 import { buildFirePage } from './fire-page.ts';
 import { createPage, type Page, type PageBuilder } from './kit.ts';
 import { buildMovePage } from './move-page.ts';
+import { buildPearlsPage } from './pearls-page.ts';
 
 export type { Page } from './kit.ts';
 
@@ -41,6 +43,8 @@ const FALLBACK_MEDIUM: ShippedMediumId = 'swim';
 const SHARED_PAGES: readonly PageSpec[] = [
   { heading: () => 'OPEN CLAMS', build: buildClamsPage },
   { heading: (touch) => `${controlName('fire', touch)} FIRES ONE`, build: buildFirePage },
+  { heading: () => 'GRAB PEARLS', build: buildPearlsPage },
+  { heading: () => 'DASH TO BONK', build: buildEnemiesPage },
   { heading: () => 'ATTACKS', build: buildAttacksPage },
   { heading: () => 'DASH TO DODGE', build: buildDodgePage },
 ];

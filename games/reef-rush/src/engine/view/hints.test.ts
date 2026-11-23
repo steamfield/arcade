@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { gainItem } from '../../logic/powerups/inventory.ts';
-import { SQUID } from '../../logic/powerups/tuning.ts';
+import { SQUID, USE_COOLDOWN_TICKS } from '../../logic/powerups/tuning.ts';
 import { giveItems, IDLE, placeOnTile, raceOn, racerOf, step } from '../../logic/test-world.ts';
 import type { TickInput, World } from '../../logic/types.ts';
 import {
@@ -12,6 +12,7 @@ import {
   NO_HINTS,
   newHintMemory,
   PRESS_FIRE_TICKS,
+  SWAP_TICKS,
   UNUSED_PULSE_TICKS,
   updateHints,
 } from './hints.ts';
@@ -26,6 +27,7 @@ const OPEN = `
 `;
 
 const FIRE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: true, cycle: 0 };
+const NEXT: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 1 };
 
 const EASY: HintConfig = hintConfig(0, 'easy');
 const NORMAL_FIRST_RACE: HintConfig = hintConfig(0, 'normal');
@@ -126,21 +128,38 @@ describe('PRESS FIRE', () => {
 });
 
 describe('the pulsing fire glyph by the item well', () => {
+  /** Fires a Puffer once so PRESS FIRE is retired, leaving one charge held and nothing counted as unused yet. */
+  function afterFirstFire(config: HintConfig = EASY) {
+    const built = race(config);
+    gainItem(built.world, built.player, 'puffer', 2);
+    built.run(1, FIRE);
+    return built;
+  }
+
   it('starts after 5 seconds of holding something unused', () => {
-    const { world, player, run } = race();
-    gainItem(world, player, 'jetFin', 2);
+    const { run } = afterFirstFire();
+    // The fire's cooldown passes before the item counts as unused.
+    run(USE_COOLDOWN_TICKS);
     expect(run(UNUSED_PULSE_TICKS - 2).pulseItems).toBe(false);
     expect(run(3).pulseItems).toBe(true);
   });
 
   it('stops when an item is fired, and starts counting again after the cooldown', () => {
-    const { world, player, run } = race();
-    gainItem(world, player, 'puffer', 2);
-    expect(run(UNUSED_PULSE_TICKS + 1).pulseItems).toBe(true);
+    const { world, player, run } = afterFirstFire();
+    gainItem(world, player, 'inkSac', 3);
+    giveItems(player, [{ kind: 'puffer', charges: 2 }]);
+    expect(run(UNUSED_PULSE_TICKS + 30).pulseItems).toBe(true);
     expect(run(1, FIRE).pulseItems).toBe(false);
     // The puffer is still held, but nothing counts as unused until the cooldown ends and 5 s pass.
     expect(run(UNUSED_PULSE_TICKS - 1).pulseItems).toBe(false);
     expect(run(200).pulseItems).toBe(true);
+  });
+
+  it('waits while PRESS FIRE is up on Easy, since that already shows the fire control', () => {
+    const { world, player, run } = race();
+    gainItem(world, player, 'jetFin', 2);
+    const hints = run(UNUSED_PULSE_TICKS * 2);
+    expect([hints.pressFire, hints.pulseItems]).toEqual([true, false]);
   });
 
   it('takes over the moment PRESS FIRE gives up on a first race that is not Easy', () => {
@@ -155,6 +174,114 @@ describe('the pulsing fire glyph by the item well', () => {
   it('never shows with nothing held', () => {
     const { run } = race();
     expect(run(UNUSED_PULSE_TICKS * 2).pulseItems).toBe(false);
+  });
+});
+
+describe('SWAP', () => {
+  /** A race where the player has already fired once, so PRESS FIRE is retired and SWAP can have the spot. */
+  function firedOnce(config: HintConfig = EASY) {
+    const built = race(config);
+    gainItem(built.world, built.player, 'puffer', 2);
+    built.run(1, FIRE);
+    return built;
+  }
+
+  it('shows the first time the player holds two items, and not with one', () => {
+    const { world, player, run } = firedOnce();
+    expect(run(30).swap).toBe(false);
+    gainItem(world, player, 'inkSac', 3);
+    expect(run(1)).toEqual({ ...NO_HINTS, swap: true });
+  });
+
+  it('goes away once the player swaps, and stays away for the rest of the race', () => {
+    const { world, player, run } = firedOnce();
+    gainItem(world, player, 'inkSac', 3);
+    expect(run(10).swap).toBe(true);
+    expect(run(1, NEXT).swap).toBe(false);
+    gainItem(world, player, 'jetFin', 3);
+    expect(run(60).swap).toBe(false);
+  });
+
+  it('shows once: it gives up after a few seconds and never comes back that race', () => {
+    const { world, player, run } = firedOnce();
+    gainItem(world, player, 'inkSac', 3);
+    expect(run(SWAP_TICKS - 1).swap).toBe(true);
+    expect(run(1).swap).toBe(false);
+    giveItems(player, ['jetFin']);
+    run(10);
+    gainItem(world, player, 'riptide', 2);
+    expect(run(10).swap).toBe(false);
+  });
+
+  it('still shows after the selected item is used up, since the selection moving on is not a swap', () => {
+    const { world, player, run } = race();
+    giveItems(player, [{ kind: 'puffer', charges: 1 }, null, null]);
+    // Firing the last Puffer charge moves the selection on by itself; the player hasn't swapped.
+    run(1, FIRE);
+    gainItem(world, player, 'inkSac', 3);
+    gainItem(world, player, 'jetFin', 3);
+    expect(run(1).swap).toBe(true);
+  });
+
+  it('waits behind PRESS FIRE until the player has fired once', () => {
+    const { world, player, run } = race();
+    gainItem(world, player, 'inkSac', 3);
+    gainItem(world, player, 'jetFin', 3);
+    const waiting = run(60);
+    expect([waiting.pressFire, waiting.swap]).toEqual([true, false]);
+    const after = run(1, FIRE);
+    expect([after.pressFire, after.swap]).toEqual([false, true]);
+  });
+
+  it('stays hidden while a squid is latched on the player, whose DASH! prompt holds the spot', () => {
+    const { world, player, run } = firedOnce();
+    player.status.latched = 60;
+    gainItem(world, player, 'inkSac', 3);
+    expect(run(1)).toEqual(NO_HINTS);
+  });
+
+  it('pauses while a squid takes the spot, then comes back for the rest of its time', () => {
+    const { world, player, run } = firedOnce();
+    gainItem(world, player, 'inkSac', 3);
+    expect(run(SWAP_TICKS / 2).swap).toBe(true);
+    lockSquidOnPlayer(world, 40);
+    const interrupted = run(1);
+    expect([interrupted.kick, interrupted.swap]).toEqual([true, false]);
+    world.squids.length = 0;
+    // Half its time was used before the squid; it gets the other half back once the squid is gone.
+    expect(run(SWAP_TICKS / 2 - 2).swap).toBe(true);
+    expect(run(2).swap).toBe(false);
+  });
+
+  it('is silent on a later Normal race', () => {
+    const { world, player, run } = firedOnce(hintConfig(3, 'normal'));
+    gainItem(world, player, 'inkSac', 3);
+    expect(run(1)).toEqual(NO_HINTS);
+  });
+});
+
+describe('one hint at a time', () => {
+  it('shows at most one hint on every tick while items, a squid and its latch all call for one', () => {
+    const { world, player, run } = race();
+    gainItem(world, player, 'puffer', 2);
+    gainItem(world, player, 'inkSac', 3);
+    const seen = { pressFire: 0, kick: 0, swap: 0, pulseItems: 0 };
+    let most = 0;
+    for (let tick = 0; tick < UNUSED_PULSE_TICKS + SWAP_TICKS + 60; tick++) {
+      if (tick === 20) run(1, FIRE);
+      if (tick === 100) lockSquidOnPlayer(world, 40);
+      // A latch partway through: the threat HUD's DASH! holds the spot, so no hint may show.
+      if (tick === 200) player.status.latched = 60;
+      const hints = run(1);
+      const on = [hints.pressFire, hints.kick, hints.swap, hints.pulseItems, hints.guide !== null];
+      most = Math.max(most, on.filter(Boolean).length);
+      if (player.status.latched > 0) expect(on.some(Boolean), `tick ${tick}`).toBe(false);
+      for (const key of Object.keys(seen) as (keyof typeof seen)[]) if (hints[key]) seen[key] += 1;
+    }
+    expect(most).toBe(1);
+    expect(seen.pressFire, 'PRESS FIRE showed').toBeGreaterThan(0);
+    expect(seen.kick, 'DASH showed').toBeGreaterThan(0);
+    expect(seen.swap, 'SWAP showed').toBeGreaterThan(0);
   });
 });
 

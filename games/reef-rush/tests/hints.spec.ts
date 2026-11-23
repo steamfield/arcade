@@ -45,6 +45,16 @@ test('PRESS FIRE goes away once the player fires an item, even though items are 
   });
 });
 
+test('SWAP shows once the player has fired and still holds two items, and goes when they swap', async ({ game }) => {
+  // icons-a holds three; before the first fire PRESS FIRE has the spot, after it two items are left to swap between.
+  await startStagedRace(game, easySave, 'icons-a');
+  expect(await game.summary()).toMatchObject({ hints: { pressFire: true, swap: false } });
+  await game.play(parseInput('fire'));
+  expect(await game.summary()).toMatchObject({ hints: { pressFire: false, swap: true }, selected: 1 });
+  await game.play(parseInput('next'));
+  expect(await game.summary()).toMatchObject({ hints: { swap: false }, selected: 2 });
+});
+
 test('a squid locked on the player calls for a DASH only once it is close enough to dodge', async ({ game }) => {
   await game.open({ scene: 'race', debug: true, query: { stage: 'squid-lockon' } });
   await game.advance(COUNTDOWN_TICKS + 1);

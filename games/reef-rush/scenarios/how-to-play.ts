@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import { HOW_TO_PLAY_PAGES } from '../src/engine/how-to-play.ts';
 import { scenario, tap, wait } from './kit.ts';
 
 /** A tap followed by a short wait, so the same button pressed twice registers twice. */
@@ -26,16 +27,19 @@ export default scenario({
     wait(25),
     tap('fire'),
     wait(25),
-    ...press('fire'),
-    ...press('fire'),
-    ...press('fire'),
-    ...press('fire'),
+    ...Array.from({ length: HOW_TO_PLAY_PAGES - 1 }, () => press('fire')).flat(),
     ...press('right'),
     ...press('fire'),
     wait(5),
   ],
   expect({ summary, events }) {
-    expect(events.filter((e) => e.type === 'howToPlay.page').map((e) => e.page)).toEqual([2, 3, 2, 1, 2, 3, 4, 5]);
+    expect(events.filter((e) => e.type === 'howToPlay.page').map((e) => e.page)).toEqual([
+      2,
+      3,
+      2,
+      1,
+      ...Array.from({ length: HOW_TO_PLAY_PAGES - 1 }, (_, index) => index + 2),
+    ]);
     expect(events.filter((e) => e.type === 'scene.started').map((e) => e.scene)).toEqual([
       'title',
       'howToPlay',

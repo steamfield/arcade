@@ -1,5 +1,5 @@
 /**
- * Page 5, DASH TO DODGE, alone at 2x. A squid swims at the racer; the dash control above lights at
+ * Page 7, DASH TO DODGE, alone at 2x. A squid swims at the racer; the dash control above lights at
  * the last moment, the racer hops up and the squid sails underneath. Everything sits in the safe
  * column (x 108-228), clear of the d-pad and A/B zones.
  */

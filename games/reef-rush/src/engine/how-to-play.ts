@@ -3,8 +3,11 @@
  * runtime feeds it input each tick and the scene only draws the page it is told.
  */
 
-/** Pages in How to Play: swim and kick, clams, B uses everything, the attack power-ups, dodging a squid. */
-export const HOW_TO_PLAY_PAGES = 5;
+/**
+ * Pages in How to Play: swim and dash, clams and charges, fire and swap, pearls, bonking enemies,
+ * the attack power-ups, dodging a squid.
+ */
+export const HOW_TO_PLAY_PAGES = 7;
 
 /** The buttons that move through the pages. */
 export type PagePress = 'fire' | 'dash' | 'right' | 'left';

@@ -1,6 +1,7 @@
 /**
  * Draws the in-race hints that `hints.ts` decides on: a short line beside the player ("PRESS [A]!"
- * with the fire control's glyph, "[B] DASH!" with the dash control's) and the fire glyph pulsing
+ * with the fire control's glyph, "[B] DASH!" with the dash control's, "[⇄] SWAP!" with the
+ * next-item control's) and the fire glyph pulsing
  * next to the HUD's item well while items sit unused. Text over the water is sun, outlined, and
  * sits beside the player (`besidePlayerY`), so it never covers them.
  * Glyphs are key caps on a keyboard and round buttons on a touch screen. Under reduced motion the
@@ -17,6 +18,7 @@ import { type ActionName, actionGlyphWidth, createActionGlyph, GLYPH_SIZE } from
 import type { HintState } from './hints.ts';
 import { Layer } from './layers.ts';
 import { SPLASH_RECT } from './threat-hud.ts';
+import { TOUCH_ZONES } from './threat-math.ts';
 
 /** The hint line centres on x 168, the middle of the safe column. */
 const LINE_X = BESIDE_PLAYER_X;
@@ -29,6 +31,18 @@ const LOWEST = 174;
 const PULSE_GAP = 3;
 const WELL_TOP = 23;
 const WELL_HEIGHT = 17;
+/**
+ * The back link's corner (UI.md "Safe zones", the first of `TOUCH_ZONES`). A glyph that would reach
+ * into it, Nib's SPACE cap beside a four-slot well, drops to just under it instead.
+ */
+const BACK_LINK = backLinkCorner();
+
+/** The back link's left edge and bottom, from the first touch zone. */
+function backLinkCorner(): { left: number; bottom: number } {
+  const zone = TOUCH_ZONES[0];
+  if (!zone) throw new Error('threat-math TOUCH_ZONES is empty; the hint view needs the back link zone first');
+  return { left: zone.x, bottom: zone.y + zone.h };
+}
 /** The glyph on the HUD blinks every this many ticks, 2 blinks a second. */
 const PULSE_TICKS = 15;
 
@@ -60,8 +74,16 @@ export function createHintView(
   const touch = isTouchScreen();
   const pressFire = createLine(scene, touch, 'PRESS', 'fire', '!');
   const kick = createLine(scene, touch, '', 'dash', 'DASH!');
+  const swap = createLine(scene, touch, '', 'next', 'SWAP!');
+  // `hints.ts` turns on at most one of these at a time.
+  const lines: readonly [HintLine, (hints: HintState) => boolean][] = [
+    [pressFire, (hints) => hints.pressFire],
+    [kick, (hints) => hints.kick],
+    [swap, (hints) => hints.swap],
+  ];
   const pulse = createActionGlyph(scene, 'fire', touch, { fixed: true, depth: Layer.hud });
-  pulse.setPosition(hudRight + PULSE_GAP, WELL_TOP + Math.floor((WELL_HEIGHT - GLYPH_SIZE) / 2));
+  const pulseX = hudRight + PULSE_GAP;
+  pulse.setPosition(pulseX, pulseTop(pulseX, pulse.width));
   pulse.setVisible(false);
 
   return {
@@ -69,19 +91,23 @@ export function createHintView(
       const body = playerOf(world).body;
       const playerY = body.y + body.h / 2 - view.y;
       const centreY = clearOfSplash(anchorY(playerY, GLYPH_SIZE), playerY);
-      // A dash hint outranks PRESS FIRE: a squid on the way is the more urgent thing to do.
       const lit = !reducedMotion && Math.floor(world.tick / PULSE_TICKS) % 2 === 1;
-      const showPressFire = hints.pressFire && !hints.kick;
-      pressFire.setVisible(showPressFire);
-      kick.setVisible(hints.kick);
-      pressFire.setHighlighted(lit);
-      kick.setHighlighted(lit);
-      if (showPressFire) pressFire.place(centreY);
-      if (hints.kick) kick.place(centreY);
+      for (const [line, shows] of lines) {
+        const shown = shows(hints);
+        line.setVisible(shown);
+        line.setHighlighted(lit);
+        if (shown) line.place(centreY);
+      }
       pulse.setVisible(hints.pulseItems);
       pulse.setHighlighted(reducedMotion || lit);
     },
   };
+}
+
+/** The HUD glyph's top: level with the well, or under the back link when it would reach into it. */
+function pulseTop(left: number, width: number): number {
+  const level = WELL_TOP + Math.floor((WELL_HEIGHT - GLYPH_SIZE) / 2);
+  return left + width > BACK_LINK.left ? BACK_LINK.bottom + 1 : level;
 }
 
 /**
