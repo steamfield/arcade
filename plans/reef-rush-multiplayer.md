@@ -160,6 +160,8 @@ The runtime: `engine/runtime.ts` `tickRace` calls `stepWorld(world, readPlayerIn
 
 ### 5.4 Wire protocol
 
+Built note, 2026-11-23: `hashWorld` leaves out what is fixed before the first tick (`level`, and `humans`, which slots people race in). The race-start message must therefore carry `humans` along with the seed, course, difficulty and characters, and every peer must build its world from that message alone, because the hash will not show a disagreement about them.
+
 Control messages are JSON text, validated with Zod on receipt. `inputs` and `hash` are binary, since they are nearly all the traffic.
 
 | Message | Direction | Encoding | Carries |

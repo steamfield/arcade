@@ -180,6 +180,23 @@ describe('hashWorld', () => {
     expect(hashWorld(world)).toBe(hashWorld(twin));
   });
 
+  it('refuses state that contains itself, naming where it is', () => {
+    const world = raced(0);
+    const racer = racerOf(world, 'player');
+    Object.assign(racer.status, { owner: racer });
+
+    expect(() => hashWorld(world)).toThrow(TypeError);
+    expect(() => hashWorld(world)).toThrow(/a cycle at racers\.0\.status\.owner/);
+  });
+
+  it('allows one object to appear in two places', () => {
+    const world = raced(0);
+    const shared = { x: 1, y: 2 };
+    Object.assign(racerOf(world, 'player').status, { a: shared, b: shared });
+
+    expect(() => hashWorld(world)).not.toThrow();
+  });
+
   it('refuses state it has no rule for, naming where it is', () => {
     const world = raced(0);
     Object.assign(racerOf(world, 'player').status, { onHit: () => {} });

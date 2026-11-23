@@ -22,9 +22,14 @@ const TAG = {
   object: 7,
 } as const;
 
-/** Top-level `World` keys that are not race state. Each is left out of the hash for the reason given. */
+/**
+ * Top-level `World` keys left out of the hash: fixed before the first tick, derived from hashed
+ * state, or output. Peers comparing hashes must agree on the fixed ones when the race is set up,
+ * since the hash will not show a difference in them.
+ */
 const UNHASHED_WORLD_KEYS: ReadonlySet<string> = new Set([
   'level', // static for a race
+  'humans', // which slots people race in, fixed at setup
   'progress', // static for a race
   'nav', // derived from `broken`, which is hashed
   'events', // an output sink, not state
@@ -54,11 +59,12 @@ function createByteSink(): ByteSink {
 /**
  * A 32-bit unsigned hash of every part of `world` that a race can change.
  *
- * @throws {TypeError} When the world holds a value there is no hashing rule for, naming its path.
+ * @throws {TypeError} When the world holds a value there is no hashing rule for, or a value that
+ *   contains itself, naming its path.
  */
 export function hashWorld(world: World): number {
   const sink = createByteSink();
-  writeValue(sink, hashableView(world), '');
+  writeValue(sink, hashableView(world), '', new Set());
   return sink.hash();
 }
 
@@ -72,16 +78,28 @@ function hashableView(world: World): Record<string, unknown> {
   return view;
 }
 
-function writeValue(sink: ByteSink, value: unknown, path: string): void {
+/**
+ * Writes one value by its kind. `open` holds the containers on the way down to it, so a value that
+ * contains itself is reported instead of walked forever.
+ */
+function writeValue(sink: ByteSink, value: unknown, path: string, open: Set<object>): void {
   if (value === undefined) sink.byte(TAG.undefined);
   else if (value === null) sink.byte(TAG.null);
   else if (typeof value === 'boolean') writeBoolean(sink, value);
   else if (typeof value === 'number') writeNumber(sink, value);
   else if (typeof value === 'string') writeString(sink, value);
-  else if (Array.isArray(value)) writeArray(sink, value, path);
+  else if (Array.isArray(value)) writeContainer(value, path, open, () => writeArray(sink, value, path, open));
   else if (value instanceof Set) writeSet(sink, value, path);
-  else if (isPlainObject(value)) writeObject(sink, value, path);
+  else if (isPlainObject(value)) writeContainer(value, path, open, () => writeObject(sink, value, path, open));
   else throw new TypeError(`hashWorld: no rule for ${describeKind(value)} at ${path || '(world)'}`);
+}
+
+/** Runs `write` for a container, refusing one that is already open above it. */
+function writeContainer(container: object, path: string, open: Set<object>, write: () => void): void {
+  if (open.has(container)) throw new TypeError(`hashWorld: a cycle at ${path || '(world)'}`);
+  open.add(container);
+  write();
+  open.delete(container);
 }
 
 function writeBoolean(sink: ByteSink, value: boolean): void {
@@ -111,17 +129,18 @@ function writeCount(sink: ByteSink, count: number): void {
   for (let shift = 0; shift < 32; shift += 8) sink.byte((count >>> shift) & 0xff);
 }
 
-function writeArray(sink: ByteSink, items: readonly unknown[], path: string): void {
+function writeArray(sink: ByteSink, items: readonly unknown[], path: string, open: Set<object>): void {
   sink.byte(TAG.array);
   writeCount(sink, items.length);
   // An indexed loop, so a hole in a sparse array is written as undefined and the count stays true.
-  for (let index = 0; index < items.length; index++) writeValue(sink, items[index], joinPath(path, String(index)));
+  for (let index = 0; index < items.length; index++)
+    writeValue(sink, items[index], joinPath(path, String(index)), open);
 }
 
 function writeSet(sink: ByteSink, members: Set<unknown>, path: string): void {
   sink.byte(TAG.set);
   writeCount(sink, members.size);
-  for (const member of sortedMembers(members, path)) writeValue(sink, member, path);
+  for (const member of sortedMembers(members, path)) writeValue(sink, member, path, new Set());
 }
 
 function sortedMembers(members: Set<unknown>, path: string): unknown[] {
@@ -138,7 +157,7 @@ function compareNumbers(a: number, b: number): number {
   return a - b;
 }
 
-function writeObject(sink: ByteSink, fields: Record<string, unknown>, path: string): void {
+function writeObject(sink: ByteSink, fields: Record<string, unknown>, path: string, open: Set<object>): void {
   const keys = Object.keys(fields)
     .filter((key) => fields[key] !== undefined)
     .sort();
@@ -146,7 +165,7 @@ function writeObject(sink: ByteSink, fields: Record<string, unknown>, path: stri
   writeCount(sink, keys.length);
   for (const key of keys) {
     writeString(sink, key);
-    writeValue(sink, fields[key], joinPath(path, key));
+    writeValue(sink, fields[key], joinPath(path, key), open);
   }
 }
 

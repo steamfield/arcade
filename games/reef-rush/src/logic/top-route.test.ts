@@ -10,9 +10,9 @@ import { TOP_ROUTE } from '../../scenarios/kit.ts';
 import { DEFAULT_COURSE } from './courses/index.ts';
 import type { GameEvent } from './events.ts';
 import { hashWorld } from './hash.ts';
-import { DNF_GRACE_TICKS } from './race/standings.ts';
+import { COUNTDOWN_TICKS, DNF_GRACE_TICKS, RACE_LIMIT_TICKS } from './race/standings.ts';
 import { playerOf } from './racers.ts';
-import type { World } from './types.ts';
+import type { TickInput, World } from './types.ts';
 import { createWorld, stepWorld } from './world.ts';
 
 /** Race ticks the player must cross before the DNF cutoff (last rival's finish plus the grace). */
@@ -25,6 +25,41 @@ const TOP_ROUTE_MARGIN_TICKS = 300;
  * replay feeds diagonals differently and steps on past the finish.
  */
 const TOP_ROUTE_HASH = 3381158881;
+
+/**
+ * `hashWorld` at the end of `busyRace`. The top route never dashes or uses an item, so this second
+ * pin covers a default world's player doing both, and the rivals racing on after the player is home.
+ */
+const BUSY_RACE_HASH = 440851348;
+
+const KICK_EVERY_TICKS = 45;
+const USE_EVERY_TICKS = 20;
+const CYCLE_EVERY_TICKS = 97;
+
+/**
+ * The default course on seed 1 until all four finish (or the limit), with the player swimming
+ * `TOP_ROUTE`'s moves while dashing, using and cycling items on fixed beats.
+ */
+function busyRace(): World {
+  const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1, endsWhen: 'everyone' });
+  const moves = TOP_ROUTE.flatMap((step) =>
+    Array.from({ length: step.ticks }, () => ({
+      x: (step.actions.includes('right') ? 1 : 0) - (step.actions.includes('left') ? 1 : 0),
+      y: (step.actions.includes('down') ? 1 : 0) - (step.actions.includes('up') ? 1 : 0),
+    })),
+  );
+  const lastTick = COUNTDOWN_TICKS + RACE_LIMIT_TICKS + 1;
+  for (let tick = 0; world.race.phase !== 'finished' && tick < lastTick; tick++) {
+    const input: TickInput = {
+      move: moves[tick] ?? { x: 1, y: 0 },
+      kick: tick % KICK_EVERY_TICKS === 0,
+      use: tick % USE_EVERY_TICKS === 0,
+      cycle: tick % CYCLE_EVERY_TICKS === 0 ? 1 : 0,
+    };
+    stepWorld(world, input, TICK_DT);
+  }
+  return world;
+}
 
 /** The default course on seed 1 after `TOP_ROUTE`, stopped on the tick the player finishes. */
 function replayTopRoute(): World {
@@ -55,6 +90,13 @@ describe('TOP_ROUTE on the default seed', () => {
     expect(margin, `finished at ${player.finished?.tick}, DNF cutoff at ${cutoff}`).toBeGreaterThanOrEqual(
       TOP_ROUTE_MARGIN_TICKS,
     );
+  });
+
+  it('with dashes and items, raced until everyone is home, ends in the pinned world state', () => {
+    const world = busyRace();
+
+    expect(world.race.phase).toBe('finished');
+    expect(hashWorld(world)).toBe(BUSY_RACE_HASH);
   });
 
   it('ends in the pinned world state', () => {
