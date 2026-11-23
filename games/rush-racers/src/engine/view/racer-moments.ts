@@ -1,6 +1,6 @@
 /**
  * The one-off moments a racer's sprite plays from events: the kick squash-and-stretch, the flap's
- * wing-stroke squash and, for the local racer (the slot the screen follows), the white flash on
+ * wing-stroke squash, the bounce's squash against the wall it hit and, for the local racer (the slot the screen follows), the white flash on
  * gaining a place. Timed in world ticks, the same clock `sync`
  * is given, never the tick stamped on the event: that stamp is the runtime's step count, which
  * keeps running through menus, so mixing the two left the flash on for the whole race.
@@ -23,6 +23,14 @@ const FLAP_HOLD_TICKS = 2;
 const FLAP_TICKS = 8;
 const FLAP_SQUASH_AMOUNT = 0.15;
 
+/**
+ * A bounce squashes the sprite against the wall along the axis the wall stopped it on (a negative
+ * stretch on that axis) for BOUNCE_HOLD_TICKS, then eases back to rest by BOUNCE_TICKS.
+ */
+const BOUNCE_HOLD_TICKS = 2;
+const BOUNCE_TICKS = 9;
+const BOUNCE_SQUASH_AMOUNT = 0.2;
+
 /** The place-up flash fills the sprite white for this many ticks, once. */
 export const PLACE_FLASH_TICKS = 4;
 
@@ -39,10 +47,10 @@ export interface RacerLook {
   flashing: boolean;
 }
 
-/** Tracks one racer's kick, flap and place-up moments. */
+/** Tracks one racer's kick, flap, bounce and place-up moments. */
 export interface RacerMoments {
   /**
-   * Records a `racer.kicked` or `racer.flapped` for this racer and its own `player.place` that gains a
+   * Records a `racer.kicked`, `racer.flapped` or `racer.bounced` for this racer and its own `player.place` that gains a
    * place, at world tick `tick`.
    */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
@@ -58,6 +66,8 @@ export interface RacerMoments {
 export function createRacerMoments(id: RacerId, place: number, local: RacerId = 'player'): RacerMoments {
   let kickedAt = Number.NEGATIVE_INFINITY;
   let flappedAt = Number.NEGATIVE_INFINITY;
+  let bouncedAt = Number.NEGATIVE_INFINITY;
+  let bounceAxis: 'x' | 'y' = 'x';
   let placeGainedAt = Number.NEGATIVE_INFINITY;
   let current = place;
   return {
@@ -65,6 +75,10 @@ export function createRacerMoments(id: RacerId, place: number, local: RacerId = 
       for (const event of events) {
         if (event.type === 'racer.kicked' && event.id === id) kickedAt = tick;
         if (event.type === 'racer.flapped' && event.id === id) flappedAt = tick;
+        if (event.type === 'racer.bounced' && event.id === id) {
+          bouncedAt = tick;
+          bounceAxis = event.axis;
+        }
         if (event.type === 'player.place' && event.id === id && id === local) {
           if (event.place < current) placeGainedAt = tick;
           current = event.place;
@@ -74,9 +88,14 @@ export function createRacerMoments(id: RacerId, place: number, local: RacerId = 
     look(tick, reducedMotion) {
       if (reducedMotion) return { stretch: 0, axis: null, flashing: false };
       const sinceFlash = tick - placeGainedAt;
-      // The latest of a kick and a flap shapes the sprite, so a flap mid-kick shows at once.
+      const flashing = sinceFlash >= 0 && sinceFlash < PLACE_FLASH_TICKS;
+      // The latest of a kick, a flap and a bounce shapes the sprite, so a new moment shows at once.
+      if (bouncedAt > kickedAt && bouncedAt > flappedAt) {
+        const stretch = bounceStretchAt(tick - bouncedAt);
+        return { stretch, axis: stretch === 0 ? null : bounceAxis, flashing };
+      }
       const stretch = flappedAt > kickedAt ? flapStretchAt(tick - flappedAt) : kickStretchAt(tick - kickedAt);
-      return { stretch, axis: null, flashing: sinceFlash >= 0 && sinceFlash < PLACE_FLASH_TICKS };
+      return { stretch, axis: null, flashing };
     },
   };
 }
@@ -100,4 +119,14 @@ function flapStretchAt(ticksSinceFlap: number): number {
   if (ticksSinceFlap < 0 || ticksSinceFlap >= FLAP_TICKS) return 0;
   if (ticksSinceFlap < FLAP_HOLD_TICKS) return FLAP_SQUASH_AMOUNT;
   return FLAP_SQUASH_AMOUNT * (1 - (ticksSinceFlap - FLAP_HOLD_TICKS) / (FLAP_TICKS - FLAP_HOLD_TICKS));
+}
+
+/**
+ * Stretch along the bounce's axis `ticksSinceBounce` after a bounce: squashed against the wall for
+ * BOUNCE_HOLD_TICKS, easing back to nothing by BOUNCE_TICKS.
+ */
+function bounceStretchAt(ticksSinceBounce: number): number {
+  if (ticksSinceBounce < 0 || ticksSinceBounce >= BOUNCE_TICKS) return 0;
+  if (ticksSinceBounce < BOUNCE_HOLD_TICKS) return -BOUNCE_SQUASH_AMOUNT;
+  return -BOUNCE_SQUASH_AMOUNT * (1 - (ticksSinceBounce - BOUNCE_HOLD_TICKS) / (BOUNCE_TICKS - BOUNCE_HOLD_TICKS));
 }
