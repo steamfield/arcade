@@ -1,7 +1,8 @@
 /**
  * The game's sound effects as data: each key is a few synth parts (a blip, a
  * slide, a noise burst) offset in time, and `playSfx` schedules them. Every
- * effect is under half a second so repeats never pile up into mush.
+ * effect is under half a second so repeats never pile up into mush. The part notation (`pulse`,
+ * `tri`, `hiss`) and `playParts` are exported so other effect sets, such as `sky-sfx.ts`, use them too.
  */
 import type { Duty, Envelope } from './notation.ts';
 import { env, midiToHz, type Synth } from './synth.ts';
@@ -43,7 +44,7 @@ export type SfxKey =
   | 'enemy.bite';
 
 /** A pitched part. `note` is a MIDI number; `slide` is semitones reached by the end. Times in seconds. */
-interface TonePart {
+export interface TonePart {
   wave: 'pulse' | 'triangle';
   note: number;
   offset: number;
@@ -56,7 +57,7 @@ interface TonePart {
 }
 
 /** A filtered noise part; `frequency` and `sweepTo` are the filter's, in Hz. */
-interface NoisePart {
+export interface NoisePart {
   wave: 'noise';
   offset: number;
   length: number;
@@ -67,7 +68,8 @@ interface NoisePart {
   envelope?: Envelope;
 }
 
-type Part = TonePart | NoisePart;
+/** One synth part of an effect, offset in time from the effect's start. */
+export type Part = TonePart | NoisePart;
 
 /** How a single play of an effect varies. */
 export interface SfxVariation {
@@ -79,7 +81,14 @@ export interface SfxVariation {
 
 const BLIP = env(0.002, 0.04, 0.7, 0.04);
 
-const pulse = (note: number, offset: number, length: number, level: number, extra: Partial<TonePart> = {}): Part => ({
+/** A pulse-wave part. */
+export const pulse = (
+  note: number,
+  offset: number,
+  length: number,
+  level: number,
+  extra: Partial<TonePart> = {},
+): Part => ({
   wave: 'pulse',
   note,
   offset,
@@ -87,7 +96,14 @@ const pulse = (note: number, offset: number, length: number, level: number, extr
   level,
   ...extra,
 });
-const tri = (note: number, offset: number, length: number, level: number, extra: Partial<TonePart> = {}): Part => ({
+/** A triangle-wave part. */
+export const tri = (
+  note: number,
+  offset: number,
+  length: number,
+  level: number,
+  extra: Partial<TonePart> = {},
+): Part => ({
   wave: 'triangle',
   note,
   offset,
@@ -95,7 +111,8 @@ const tri = (note: number, offset: number, length: number, level: number, extra:
   level,
   ...extra,
 });
-const hiss = (
+/** A filtered noise part. */
+export const hiss = (
   filter: BiquadFilterType,
   frequency: number,
   offset: number,
@@ -207,8 +224,23 @@ const SFX: Record<SfxKey, readonly Part[]> = {
  * @throws {Error} When WebAudio refuses to create or schedule one of its nodes.
  */
 export function playSfx(synth: Synth, out: AudioNode, key: SfxKey, at: number, variation: SfxVariation = {}): void {
+  playParts(synth, out, SFX[key], at, variation);
+}
+
+/**
+ * Schedules `parts` into `out`, each at context time `at` plus its offset.
+ *
+ * @throws {Error} When WebAudio refuses to create or schedule one of its nodes.
+ */
+export function playParts(
+  synth: Synth,
+  out: AudioNode,
+  parts: readonly Part[],
+  at: number,
+  variation: SfxVariation = {},
+): void {
   const ratio = (variation.pitch ?? 1) * 2 ** ((variation.semitones ?? 0) / 12);
-  for (const part of SFX[key]) {
+  for (const part of parts) {
     const start = at + part.offset;
     const envelope = part.envelope ?? BLIP;
     if (part.wave === 'noise') {

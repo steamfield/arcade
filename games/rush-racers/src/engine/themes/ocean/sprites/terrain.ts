@@ -1,6 +1,6 @@
 /**
  * The solid and decorative course tiles: the tileset (rock, coral, the sky and
- * cave tiles drawn in `surface.ts` and `cave.ts`, the ledge and a placeholder bounce cloud), coral debris,
+ * cave tiles drawn in `surface.ts` and `cave.ts`, the ledge and a bounce cloud), coral debris,
  * swaying kelp and the finish banner. Tiles are 16x16 and seamless, since the same tile
  * repeats across whole walls and kelp beds.
  */
@@ -21,6 +21,32 @@ const LEDGE_ROWS = [
   '1011111111101111',
   '0000000000000000',
   ...Array.from({ length: 12 }, () => '................'),
+];
+
+/** A bounce cloud's colours: shade, pale body, highlight, and the blue coil that says "spring". */
+const BOUNCE_PALETTE = [0x9aa8d8, 0xe2eafa, 0xffffff, 0x6474b8] as const;
+
+/**
+ * A bounce cloud tile: two puffy lumps on top over a pale body with a zigzag coil through it, so a
+ * row of them reads as one soft, springy block. Seamless left to right.
+ */
+const BOUNCE_ROWS = [
+  '..22222...22222.',
+  '.2222222.2222222',
+  '2221122222211222',
+  '2111111221111112',
+  '1111111111111111',
+  '1111111111111111',
+  '1111111111111111',
+  '3111311131113111',
+  '1313131313131313',
+  '1131113111311131',
+  '1111111111111111',
+  '1111111111111111',
+  '1111111111111111',
+  '0111011101110111',
+  '0010001000100010',
+  '0000000000000000',
 ];
 
 /** Coral's tile: branching stems in four tones, seamless both ways. */
@@ -45,9 +71,8 @@ const CORAL_ROWS = [
 
 /**
  * Terrain sheets. The tileset frames sit in `OceanTile` order: rock, coral, sky, the cave tiles, the
- * ledge, then the bounce cloud. The bounce cloud is a placeholder for sky-test (which races in the
- * ocean theme until the sky theme lands): coral's tile in the pale waterline colours, until
- * cloudreach phase 2 lane c draws a proper pale, springy cloud block.
+ * ledge, then the bounce cloud. The bounce cloud is here for sky-test, which races in the ocean
+ * theme until the sky theme lands and may restyle it.
  */
 export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
   {
@@ -79,7 +104,7 @@ export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
       SKY_TILE,
       ...CAVE_TILES,
       { name: 'ledge', palette: BRANCH_PALETTE, rows: LEDGE_ROWS },
-      { name: 'bounce', palette: TerrainPalette.waterline, rows: CORAL_ROWS },
+      { name: 'bounce', palette: BOUNCE_PALETTE, rows: BOUNCE_ROWS },
     ],
   },
   sheet(OceanTex.coralDebris, TerrainPalette.coral, {
