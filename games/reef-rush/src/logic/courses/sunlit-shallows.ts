@@ -65,7 +65,7 @@ const LEVEL: LevelDef = {
   dark: [[530, 610]],
 };
 
-/** The mean Hard expert-bot finish over seeds 1-200 and all eight characters, from the phase-8 scaffold report. */
+/** The mean Hard expert-bot finish over seeds 1-200 and all eight characters, measured at the phase-8 scaffold. */
 const PAR_TICKS = 5144;
 
 export const SUNLIT_SHALLOWS: Course = {
@@ -76,6 +76,5 @@ export const SUNLIT_SHALLOWS: Course = {
   theme: 'ocean',
   song: 'race',
   listed: true,
-  // The expert bot's mean finish on Hard over seeds 1-200 at phase 7, all eight characters (plan Log).
   parTicks: PAR_TICKS,
 };

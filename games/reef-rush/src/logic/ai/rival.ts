@@ -76,7 +76,8 @@ function progressStalled(world: World, racer: Racer, memory: AiMemory): boolean 
  * Force multiplier that keeps races close: below 1 when the racer is ahead of the player,
  * above 1 when behind, clamped to `bounds`.
  *
- * @param bounds The difficulty level's bounds (`DIFFICULTY[level].rivalCatchUp`).
+ * @param bounds The catch-up bounds for the race's course and difficulty level (`rivalCatchUpFor(world)`:
+ *   the level's `DIFFICULTY` bounds with any course override merged on).
  * @returns Exactly 1 while either racer's progress is unknown (Infinity before the first read).
  */
 export function catchUpMul(racer: Racer, player: Racer, bounds: CatchUpBounds): number {

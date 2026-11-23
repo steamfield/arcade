@@ -20,6 +20,17 @@ describe('engine conformance', () => {
     expect(() => assertCourseAssets(course)).toThrow(`Course '${course.id}' names theme 'sky'`);
   });
 
+  it('names the course, the glyph and the art key when the theme has no tile for legend art', () => {
+    const course = courseFromLevel({
+      name: 'wreck',
+      ascii: '#1wF#',
+      legend: { w: { cell: 'rock', art: 'wreck-hull' } },
+    });
+    expect(() => assertCourseAssets(course)).toThrow(
+      `Course '${course.id}' draws glyph "w" as art 'wreck-hull', which theme 'ocean' has no tile for`,
+    );
+  });
+
   it('names the course and the missing song', () => {
     const course = { ...courseFromLevel('#1F#'), song: 'nope' } as unknown as Course;
     expect(() => assertCourseAssets(course)).toThrow(`Course '${course.id}' names song 'nope'`);

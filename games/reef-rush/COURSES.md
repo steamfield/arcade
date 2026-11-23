@@ -11,7 +11,7 @@ A **course** is data: a level, the medium it races in, a theme and song id, a pa
 | File | What goes in it |
 | --- | --- |
 | `logic/courses/<course-id>.ts` | The course: one exported `Course` constant, data only. Copy `sunlit-shallows.ts` for the shape. |
-| `logic/courses/index.ts` | Registration: import the constant and add it to `COURSES` (and to `LISTED_COURSES` if players should see it). This is the only file allowed to import a course file; `logic/architecture.test.ts` fails otherwise. |
+| `logic/courses/index.ts` | Registration: import the constant and add it to `COURSES`, whose order is the menu order. `LISTED_COURSES` (course select) is derived from `COURSES` by each course's `listed` flag, so there is no second list to keep in step. This is the only file allowed to import a course file; `logic/architecture.test.ts` fails otherwise. |
 | `logic/courses/types.ts` | Add the id to `ShippedCourseId`, and the theme or song id to `ThemeId` / `SongId` if they are new. |
 | `engine/themes/<theme-id>.ts` | Only for a new look: the theme, built with `defineTheme`, with its art kept beside it. Register it in `THEMES` in `engine/themes/index.ts`. `engine/themes/ocean.ts` is the example. |
 | `engine/audio/songs/<song-id>.ts` | Only for a new song: register it in `songs` in `engine/audio/songs/index.ts`. |
@@ -52,7 +52,7 @@ legend: {
 },
 ```
 
-`parseLevel` rejects a legend glyph that reuses a built-in character, maps to a cell that doesn't exist, or is longer than one character. `Level.glyphs` keeps the glyph at every tile, so the theme can tell a wreck from plain rock. The theme must draw every art key the legend names.
+`parseLevel` rejects a legend glyph that reuses a built-in character, maps to a cell that doesn't exist, is longer than one character, or is whitespace (rows are trimmed, so it could vanish). `Level.glyphs` keeps the glyph at every tile, so the theme can tell a wreck from plain rock. The theme must have a tile in `terrain.glyphTiles` for every art key the legend names: `assertCourseAssets` (`engine/themes/course-assets.ts`) throws, naming the course, glyph and art key, for one it lacks, so `engine/themes/course-assets.test.ts` fails for a shipped course and boot fails for the course a session starts on.
 
 The medium checks the level too: `createWorld` throws `LevelError` (with row and column) for anything `medium.validateLevel` reports, such as a start that can't reach the finish in swim without breaking coral.
 
@@ -99,7 +99,7 @@ Run the bars with `pnpm --filter game-reef-rush test:difficulty`. `pnpm arcade c
 
 ### Conformance
 
-`logic/conformance/course.test.ts` runs over every course in `COURSES` with no edit: the level parses (legend glyphs read as their base cells), the medium's `validateLevel` finds nothing, and four racers (the expert bot as the player) finish within 1.6x `parTicks` on seeds 1-5 on Hard with none going 600 ticks of free swimming (stuns and traps restart the count) without new best progress. The engine's half (in `engine/themes/`) checks that every course's theme and song id resolve.
+`logic/conformance/course.test.ts` runs over every course in `COURSES` with no edit: the level parses (legend glyphs read as their base cells), the medium's `validateLevel` finds nothing, and four racers (the expert bot as the player) finish within 1.6x `parTicks` on seeds 1-5 on Hard with none going 600 ticks of free swimming (stuns and traps restart the count) without new best progress. The engine's half (in `engine/themes/`) checks that every course's theme and song id resolve and that its theme has a tile for every legend art key.
 
 ```
 pnpm --filter game-reef-rush exec vitest run --project unit src/logic/conformance
@@ -111,7 +111,7 @@ pnpm --filter game-reef-rush exec vitest run --project unit src/logic/conformanc
 
 ## Add a medium
 
-A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic code calls it through `mediumOf(world)` and never branches on its id (`logic/architecture.test.ts` fails on `=== 'swim'` outside `logic/media/`; `logic/media/boundary.test.ts` fails on a read of `world.nav` outside `logic/media/`, and on an import from a medium's folder, such as `logic/media/swim/`, by any file outside that folder other than the registry `logic/media/index.ts`).
+A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic code calls it through `mediumOf(world)` and never branches on its id (`logic/architecture.test.ts` fails on `=== 'swim'` outside `logic/media/`; `logic/media/boundary.test.ts` fails on a read of `world.nav` outside `logic/media/`, and on an import from a medium's folder, such as `logic/media/swim/`, by any file outside that folder other than the registry `logic/media/index.ts` and the conformance suite in `logic/conformance/`, which hosts the test-only glide medium).
 
 ### Files
 
