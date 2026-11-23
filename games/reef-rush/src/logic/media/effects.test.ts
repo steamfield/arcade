@@ -87,7 +87,7 @@ describe('velocity effects follow effects.dashAxes', () => {
     expect(knocked[1]).toEqual({ vx: 1, vy: 25 });
   });
 
-  it('a Mimic decoy follows the way up in water and keeps its vertical speed in glide', () => {
+  it('a Mimic decoy follows the way up in every medium, since it is no medium body', () => {
     const shaft = `
       #########
       #......F#
@@ -105,7 +105,7 @@ describe('velocity effects follow effects.dashAxes', () => {
     });
 
     expect(climbs[0]).toBeLessThan(0);
-    expect(climbs[1]).toBe(0);
+    expect(climbs[1]).toBeLessThan(0);
   });
 });
 

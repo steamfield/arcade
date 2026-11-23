@@ -263,14 +263,14 @@ describe('the progress backstop', () => {
     expect(playerMoves.some(sideways)).toBe(false);
   });
 
-  it('never counts for a racer that has finished', () => {
+  it('counts only racing ticks, never the countdown', () => {
     const { world } = lanes();
+    const countdown = intents(world, 'tess', PROGRESS_BACKSTOP_TICKS + 50, heldMoving);
     racing(world);
-    const tess = racer(world, 'tess');
-    tess.finished = { tick: 0, place: 1, overshoot: 0 };
-    for (let i = 0; i < 300; i++) stepWorld(world, IDLE, TICK_DT);
+    const race = intents(world, 'tess', PROGRESS_BACKSTOP_TICKS + 50, heldMoving);
 
-    expect(tess.ai?.sinceBest).toBe(0);
+    expect(countdown.some(sideways)).toBe(false);
+    expect(race.findIndex(sideways)).toBe(PROGRESS_BACKSTOP_TICKS);
   });
 });
 

@@ -20,6 +20,8 @@ export function controlledIntent(racer: Racer, intent: Intent): Intent {
 /**
  * Sets a trapped racer's velocity to the medium's straight drift (`effects.trappedDrift`; water floats
  * it up); call after the medium moves it and before moving the body.
+ *
+ * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
 export function floatTrapped(world: World, racer: Racer): void {
   if (racer.status.trapped === 0) return;

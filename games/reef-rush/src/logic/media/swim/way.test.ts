@@ -1,6 +1,6 @@
 /**
- * Swim's way to the finish answers from the steer field, the field the Easy guide, squids, decoys
- * and the Undertow read before they asked the medium: on Sunlit Shallows, along the whole route,
+ * Swim's way to the finish answers from the steer field, which is what the Easy guide, squids, decoys
+ * and the Undertow get when they ask the medium: on Sunlit Shallows, along the whole route,
  * `nextTile`, `distanceAt` and `aimFrom` give the steer field's readings, never the smash or ram
  * field's.
  */

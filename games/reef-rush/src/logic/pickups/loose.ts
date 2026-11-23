@@ -26,6 +26,7 @@ export function spawnLoose(world: World, kind: PowerUpKind, at: Vec): void {
  * doesn't hold that kind grabs it: removed, `loose.grabbed {id, kind}`, then `gainPowerUp`.
  *
  * @param dt Tick length in seconds.
+ * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
 export function updateLoose(world: World, racers: readonly Racer[], dt: number): void {
   const remaining: LoosePowerUp[] = [];

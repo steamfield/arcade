@@ -120,6 +120,8 @@ function useUp(world: World, racer: Racer, kind: PowerUpKind): void {
  * both axes or, where the medium says so (`effects.dashAxes`), horizontally only so its gravity
  * keeps working. Called in `stepWorld` after swimming and before the body moves. When not dashing
  * (the dash ran out or a hit ended it) it leaves velocity alone and clears `dashCombos`.
+ *
+ * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
 export function driveDash(world: World, racer: Racer): void {
   if (racer.status.dashing === 0) {

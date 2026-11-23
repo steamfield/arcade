@@ -38,7 +38,7 @@ import { driftLatched } from './hazards/latch.ts';
 import { advanceProjectiles } from './hazards/projectiles.ts';
 import { advanceSquids } from './hazards/squids.ts';
 import { LevelError } from './level/parse.ts';
-import { mediumById, mediumOf } from './media/index.ts';
+import { effectiveTuning, mediumById, mediumOf } from './media/index.ts';
 import type { LevelProblem, Medium } from './media/types.ts';
 import { modifiersFor } from './modifiers.ts';
 import { openClams } from './pickups/clams.ts';
@@ -255,7 +255,8 @@ function intentFor(world: World, racer: Racer, input: TickInput): Intent {
  * drift overriding it), then its move, breaking the coral ahead first when its ability rams through coral.
  */
 function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
-  medium.applyIntent(racer, intent, medium.sampleEnvironment(world, racer), mods, world.events, dt);
+  const env = medium.sampleEnvironment(world, racer);
+  medium.applyIntent(racer, intent, env, effectiveTuning(world), mods, world.events, dt);
   driftLatched(racer, dt);
   applyUndertow(world, racer, dt);
   driveDash(world, racer);

@@ -37,7 +37,8 @@ export function createAiMemory(medium: Medium): AiMemory {
  * Decides a racer's intent for this tick. Reads the world, mutates only `racer.ai`,
  * and consumes the same number of rng draws every tick so streams stay aligned.
  *
- * @throws {Error} When `racer.ai` is null.
+ * @throws {Error} When `racer.ai` is null, or when the world names a course or medium that is neither
+ *   shipped nor registered (`mediumOf`, `modifiersFor`).
  */
 export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
   const memory = racer.ai;

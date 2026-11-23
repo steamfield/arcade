@@ -5,9 +5,8 @@
  */
 import { abilityModifiers } from './abilities.ts';
 import { catchUpMul } from './ai/rival.ts';
-import { courseOf } from './courses/index.ts';
 import { playerCatchUpMul, rivalCatchUpFor, tuningOf } from './difficulty-level.ts';
-import { mediumOf } from './media/index.ts';
+import { effectiveTuning } from './media/index.ts';
 import { withPassives } from './powerups/passives.ts';
 import { playerOf } from './racers.ts';
 import type { MoveModifiers, Racer, World } from './types.ts';
@@ -28,14 +27,9 @@ export function modifiersFor(world: World, racer: Racer): MoveModifiers {
         (world.race.raceTick < tuning.rivalCatchUpDelayTicks
           ? 1
           : catchUpMul(racer, playerOf(world), rivalCatchUpFor(world)));
-  const base = baseModifiers(world);
+  const base = effectiveTuning(world).base;
   return abilityModifiers(
     racer,
     withPassives(racer, { ...base, forceMul: base.forceMul * racer.profile.forceMul * levelMul }),
   );
-}
-
-/** The medium's base modifiers with the course's overrides on top. */
-function baseModifiers(world: World): MoveModifiers {
-  return { ...mediumOf(world).tuning.base, ...courseOf(world).tuning?.base };
 }

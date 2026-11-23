@@ -1,7 +1,7 @@
 /**
  * Glide, a test-only medium for the conformance suite: thrust along the stick against gravity that
- * never lets up, linear drag, a speed cap and a kick on a cooldown. It borrows swim's navigation and
- * pilot, which suit any free-moving body, and answers every rule generic code reads from a medium
+ * never lets up, linear drag, a speed cap and a kick on a cooldown. Its navigation (`glide-nav.ts`)
+ * and pilot (`glide-pilot.ts`) are its own, and it answers every rule generic code reads from a medium
  * differently from swim (ghost racers, horizontal-only dashes, falling trapped racers and loose
  * power-ups, no kick counters), so tests can see those rules go through the medium. Register it
  * with `registerMedium` before racing a course that names it; the game never does.
@@ -9,10 +9,18 @@
 import type { EventSink } from '@arcade/core';
 import { kickImpulse } from '../abilities.ts';
 import type { GameEvent } from '../events.ts';
-import { MEDIA } from '../media/index.ts';
 import type { KickRules, Medium, MediumEffects, MediumEnv, MediumTuning } from '../media/types.ts';
 import { length } from '../num.ts';
 import type { Body, Intent, MoveModifiers, Racer, Vec } from '../types.ts';
+import {
+  buildGlideNav,
+  glideAimFrom,
+  glideCost,
+  glideDistanceAt,
+  glideNextTile,
+  validateGlideLevel,
+} from './glide-nav.ts';
+import { createGlidePilot, steerGlider } from './glide-pilot.ts';
 
 /** Glide's numbers in pixels and seconds; `extra.gravity` is the downward pull, px/s², held or not. */
 export const GLIDE_TUNING = {
@@ -46,6 +54,7 @@ function applyGlide(
   racer: Racer,
   intent: Intent,
   _env: MediumEnv,
+  tuning: MediumTuning,
   mods: MoveModifiers,
   events: EventSink<GameEvent>,
   dt: number,
@@ -53,14 +62,26 @@ function applyGlide(
   const { body } = racer;
   const direction = unit(intent.move);
   if (intent.move.x !== 0) racer.facing = intent.move.x > 0 ? 1 : -1;
-  accelerate(body, direction, GLIDE_TUNING.force * mods.forceMul * dt);
-  body.vy += GLIDE_TUNING.extra.gravity * dt;
-  const keep = Math.max(0, 1 - GLIDE_TUNING.drag * mods.dragMul * dt);
+  accelerate(body, direction, tuning.force * mods.forceMul * dt);
+  body.vy += gravityOf(tuning) * dt;
+  const keep = Math.max(0, 1 - tuning.drag * mods.dragMul * dt);
   body.vx *= keep;
   body.vy *= keep;
-  if (intent.kick && racer.kickCooldown === 0) kick(racer, direction, mods, events);
+  if (intent.kick && racer.kickCooldown === 0) kick(racer, direction, tuning.kick * mods.kickMul, mods, events);
   else if (racer.kickCooldown > 0) racer.kickCooldown -= 1;
-  capSpeed(body);
+  capSpeed(body, tuning.maxSpeed);
+}
+
+/**
+ * Glide's gravity from `tuning.extra`.
+ *
+ * @throws {Error} When the tuning has no gravity, which means it isn't glide's.
+ */
+function gravityOf(tuning: MediumTuning): number {
+  const gravity = tuning.extra.gravity;
+  if (gravity === undefined)
+    throw new Error("Glide tuning has no extra 'gravity'; pass glide's tuning (effectiveTuning)");
+  return gravity;
 }
 
 function unit(v: Vec): Vec {
@@ -73,38 +94,36 @@ function accelerate(body: Body, direction: Vec, amount: number): void {
   body.vy += direction.y * amount;
 }
 
-function kick(racer: Racer, direction: Vec, mods: MoveModifiers, events: EventSink<GameEvent>): void {
+function kick(racer: Racer, direction: Vec, speed: number, mods: MoveModifiers, events: EventSink<GameEvent>): void {
   const aim = direction.x === 0 && direction.y === 0 ? { x: racer.facing, y: 0 } : direction;
-  accelerate(racer.body, kickImpulse(racer, aim, GLIDE_KICK_RULES), GLIDE_TUNING.kick * mods.kickMul);
+  accelerate(racer.body, kickImpulse(racer, aim, GLIDE_KICK_RULES), speed);
   racer.kickCooldown = mods.kickCooldownTicks;
   events.emit({ type: 'racer.kicked', id: racer.id });
 }
 
-function capSpeed(body: Body): void {
+function capSpeed(body: Body, maxSpeed: number): void {
   const speed = length(body.vx, body.vy);
-  if (speed <= GLIDE_TUNING.maxSpeed) return;
-  body.vx *= GLIDE_TUNING.maxSpeed / speed;
-  body.vy *= GLIDE_TUNING.maxSpeed / speed;
+  if (speed <= maxSpeed) return;
+  body.vx *= maxSpeed / speed;
+  body.vy *= maxSpeed / speed;
 }
-
-const SWIM_MEDIUM = MEDIA.swim;
 
 /** The glide medium. */
 export const GLIDE_MEDIUM: Medium = {
   id: 'glide',
   tuning: GLIDE_TUNING,
   createMotion: () => ({}),
-  createPilot: SWIM_MEDIUM.createPilot,
+  createPilot: createGlidePilot,
   sampleEnvironment: () => STILL_AIR,
   applyIntent: applyGlide,
-  buildNav: SWIM_MEDIUM.buildNav,
-  steer: SWIM_MEDIUM.steer,
-  enterCost: SWIM_MEDIUM.enterCost,
-  aimFrom: SWIM_MEDIUM.aimFrom,
-  nextTile: SWIM_MEDIUM.nextTile,
-  distanceAt: SWIM_MEDIUM.distanceAt,
-  coralAhead: SWIM_MEDIUM.coralAhead,
-  validateLevel: SWIM_MEDIUM.validateLevel,
+  buildNav: buildGlideNav,
+  steer: steerGlider,
+  enterCost: glideCost,
+  aimFrom: glideAimFrom,
+  nextTile: glideNextTile,
+  distanceAt: glideDistanceAt,
+  coralAhead: () => false,
+  validateLevel: validateGlideLevel,
   racerCollision: 'ghost',
   effects: GLIDE_EFFECTS,
   kickRules: GLIDE_KICK_RULES,

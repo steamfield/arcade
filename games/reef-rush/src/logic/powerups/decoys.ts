@@ -58,6 +58,7 @@ export function popDecoy(world: World, decoy: Decoy, by: RacerId | null): void {
  * time or crossed the finish, and those a racer or a bubble touches.
  *
  * @param dt Tick length in seconds.
+ * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
 export function advanceDecoys(world: World, dt: number): void {
   for (const decoy of [...world.decoys]) {
@@ -73,11 +74,10 @@ export function advanceDecoys(world: World, dt: number): void {
 }
 
 /**
- * One tick of swimming straight along the medium's way, stopped by walls like any body. Where the
- * medium holds only horizontal speed (`effects.dashAxes`), the decoy keeps its vertical speed.
+ * One tick of swimming straight along the medium's way, stopped by walls like any body. A decoy
+ * isn't a body the medium moves, so it follows the aim on both axes in every medium.
  */
 function swimOn(world: World, decoy: Decoy, dt: number): void {
-  const medium = mediumOf(world);
   const body: Body = {
     x: decoy.x - RACER_SIZE.width / 2,
     y: decoy.y - RACER_SIZE.height / 2,
@@ -86,9 +86,9 @@ function swimOn(world: World, decoy: Decoy, dt: number): void {
     vx: 0,
     vy: 0,
   };
-  const aim = medium.aimFrom(world, body, LOOKAHEAD_TILES);
+  const aim = mediumOf(world).aimFrom(world, body, LOOKAHEAD_TILES);
   body.vx = aim.x * MIMIC.speed;
-  body.vy = medium.effects.dashAxes === 'both' ? aim.y * MIMIC.speed : decoy.vy;
+  body.vy = aim.y * MIMIC.speed;
   moveBody(body, world.level, world.broken, dt);
   decoy.x = body.x + body.w / 2;
   decoy.y = body.y + body.h / 2;

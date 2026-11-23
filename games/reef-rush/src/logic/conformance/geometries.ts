@@ -68,7 +68,7 @@ export const GEOMETRIES: readonly Geometry[] = [
   },
 ];
 
-/** Open water with the starts in one corner, room to move many tiles in every direction from the middle, and the finish far right. */
+/** Open water with the starts in one corner, the finish far right, and about ten tiles of room in every direction from `ARENA_CENTRE`. */
 export const OPEN_ARENA = `
   ###############################
   #1...........................F#
@@ -82,8 +82,21 @@ export const OPEN_ARENA = `
   #............................F#
   #............................F#
   #............................F#
+  #............................F#
+  #............................F#
+  #............................F#
+  #............................F#
+  #............................F#
+  #............................F#
+  #............................F#
+  #............................F#
+  #............................F#
+  #............................F#
   ###############################
 `;
+
+/** The tile in the middle of `OPEN_ARENA`. */
+export const ARENA_CENTRE = { x: 15, y: 11 } as const;
 
 /** A fresh course on `ascii` in the medium with id `medium`. */
 export function courseIn(ascii: string, medium: string): Course {

@@ -3,23 +3,24 @@
  * medium and on the test-only glide medium. Each is raced through `createWorld` and `stepWorld` on
  * small inline courses (`geometries.ts`): it is deterministic, caps speed, honours its kick
  * cooldown, shows every MoveModifiers field, makes progress in open space in each direction its
- * own spec allows, and gets every rival through an overhang, a 1-tile gap, a shaft with a lip and a
+ * own spec allows, sends a rival the progress backstop catches into its own recovery, and gets every rival through an overhang, a 1-tile gap, a shaft with a lip and a
  * drop without stalling. A new medium joins by being in `MEDIA` (or registered here) and listing its
  * open-space directions below.
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../ai/profiles.ts';
+import { PROGRESS_BACKSTOP_TICKS, rivalIntent } from '../ai/rival.ts';
 import type { GameEvent } from '../events.ts';
-import { MEDIA, registerMedium } from '../media/index.ts';
+import { effectiveTuning, MEDIA, registerMedium } from '../media/index.ts';
 import type { Medium } from '../media/types.ts';
 import { length } from '../num.ts';
 import { COUNTDOWN_TICKS } from '../race/standings.ts';
 import { centreOf, playerOf } from '../racers.ts';
-import { hold, placeOnTile, ticksOf } from '../test-world.ts';
-import { type Intent, type MoveModifiers, type RivalProfile, TILE, type Vec, type World } from '../types.ts';
+import { hold, placeOnTile, racerOf, ticksOf } from '../test-world.ts';
+import type { Intent, MoveModifiers, RivalProfile, Vec, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
-import { courseIn, GEOMETRIES, OPEN_ARENA } from './geometries.ts';
+import { ARENA_CENTRE, courseIn, GEOMETRIES, OPEN_ARENA } from './geometries.ts';
 import { GLIDE_MEDIUM } from './glide.ts';
 
 registerMedium(GLIDE_MEDIUM);
@@ -43,6 +44,8 @@ const OPEN_SPACE_DIRECTIONS: Readonly<Record<string, readonly Vec[]>> = {
   glide: EIGHT_WAYS,
 };
 
+/** Ticks a racer holds a direction in open space; it should cover at least half its cruise speed times that. */
+const OPEN_SPACE_TICKS = 90;
 /** Longest a rival may go without getting closer to the finish in a geometry: 2 s. */
 const STALL_LIMIT_TICKS = 120;
 /** Racing ticks a geometry race may take before it counts as not finishing: 60 s. */
@@ -94,11 +97,12 @@ function moveInOpen(
 ) {
   const { world, log } = racingWorld(medium, OPEN_ARENA);
   const player = playerOf(world);
-  placeOnTile(player, 14, 6);
+  placeOnTile(player, ARENA_CENTRE.x, ARENA_CENTRE.y);
   prepare(world);
+  const tuning = effectiveTuning(world);
   for (let i = 0; i < ticks; i++) {
     log.tick = i;
-    medium.applyIntent(player, intent, medium.sampleEnvironment(world, player), mods, log, TICK_DT);
+    medium.applyIntent(player, intent, medium.sampleEnvironment(world, player), tuning, mods, log, TICK_DT);
   }
   return { player, kicks: ticksOf(log, 'racer.kicked').length };
 }
@@ -166,9 +170,10 @@ describe.each(MEDIA_UNDER_TEST.map((medium) => [medium.id, medium] as const))('t
     placeOnTile(player, 2, 6);
     player.profile = { ...player.profile, forceMul: 6 };
     const top = Math.max(...speedsHolding(world, hold({ x: 1, y: 0 }, { kick: true }), 90));
+    const { maxSpeed } = effectiveTuning(world);
 
-    expect(top).toBeLessThanOrEqual(medium.tuning.maxSpeed + 1e-9);
-    expect(top).toBeGreaterThan(medium.tuning.maxSpeed * 0.95);
+    expect(top).toBeLessThanOrEqual(maxSpeed + 1e-9);
+    expect(top).toBeGreaterThan(maxSpeed * 0.95);
   });
 
   it('waits out its kick cooldown between kicks', () => {
@@ -185,7 +190,7 @@ describe.each(MEDIA_UNDER_TEST.map((medium) => [medium.id, medium] as const))('t
     const gaps = playerKicks.slice(1).map((tick, index) => tick - (playerKicks[index] ?? 0));
 
     expect(playerKicks.length).toBeGreaterThanOrEqual(3);
-    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(medium.tuning.base.kickCooldownTicks);
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(effectiveTuning(world).base.kickCooldownTicks);
   });
 
   it.each(MODIFIER_CASES.map((modifier) => [modifier.field, modifier] as const))(
@@ -208,14 +213,31 @@ describe.each(MEDIA_UNDER_TEST.map((medium) => [medium.id, medium] as const))('t
     (_x, _y, dir) => {
       const { world } = racingWorld(medium, OPEN_ARENA);
       const player = playerOf(world);
-      placeOnTile(player, 14, 6);
+      placeOnTile(player, ARENA_CENTRE.x, ARENA_CENTRE.y);
       const from = centreOf(player);
-      for (let i = 0; i < 40; i++) stepWorld(world, hold(dir), TICK_DT);
+      for (let i = 0; i < OPEN_SPACE_TICKS; i++) stepWorld(world, hold(dir), TICK_DT);
       const to = centreOf(player);
+      const { force, drag } = effectiveTuning(world);
+      const halfCruiseDistance = 0.5 * (force / drag) * OPEN_SPACE_TICKS * TICK_DT;
 
-      expect((to.x - from.x) * dir.x + (to.y - from.y) * dir.y).toBeGreaterThan(TILE);
+      expect((to.x - from.x) * dir.x + (to.y - from.y) * dir.y).toBeGreaterThan(halfCruiseDistance);
     },
   );
+
+  it('sends a rival the progress backstop catches into its own recovery, on that tick', () => {
+    const { world } = racingWorld(medium, OPEN_ARENA);
+    const tess = racerOf(world, 'tess');
+    const moves = Array.from({ length: PROGRESS_BACKSTOP_TICKS + 20 }, () => {
+      placeOnTile(tess, 5, ARENA_CENTRE.y);
+      tess.body.vx = 60;
+      tess.body.vy = 0;
+      return rivalIntent(world, tess, world.rngs['ai.tess']).move;
+    });
+    const offCourse = moves.findIndex((move) => move.x < 0.5);
+
+    // The first tick sets its best progress; the backstop fires once that many more pass without beating it.
+    expect(offCourse).toBe(PROGRESS_BACKSTOP_TICKS);
+  });
 
   it.each(GEOMETRIES.map((geometry) => [geometry.name, geometry] as const))(
     'gets every rival through %s without stalling',

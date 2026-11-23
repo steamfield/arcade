@@ -116,11 +116,16 @@ export interface Medium {
   createPilot(): PilotMemory;
   /** What the surroundings do to `racer` this tick (racer, not body: a held Riptide changes what its holder feels). */
   sampleEnvironment(world: World, racer: Racer): MediumEnv;
-  /** Velocity, facing and kick cooldown for one tick. Every `MoveModifiers` field has a visible effect. */
+  /**
+   * Velocity, facing and kick cooldown for one tick. Every `MoveModifiers` field has a visible effect.
+   * `tuning` is the medium's tuning with the course's overrides (`effectiveTuning`); read every number
+   * from it, not from the medium's own constants.
+   */
   applyIntent(
     racer: Racer,
     intent: Intent,
     env: MediumEnv,
+    tuning: MediumTuning,
     mods: MoveModifiers,
     events: EventSink<GameEvent>,
     dt: number,

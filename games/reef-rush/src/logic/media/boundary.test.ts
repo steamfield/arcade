@@ -2,7 +2,7 @@
  * The navigation seam: only a medium reads its own navigation. Generic code asks the medium
  * (`aimFrom`, `nextTile`, `distanceAt`, `steer`) instead of reading `world.nav`, so a medium with a
  * different kind of navigation plugs in without generic code changing. Swim's field walkers
- * (`ai/steer.ts`) take fields as arguments, so no file outside `logic/media/` needs to read nav.
+ * (`ai/steer.ts`) take fields as arguments, so only media's own files (MEDIUM_HOMES) read nav.
  * Nor does generic code import a medium's own modules (`logic/media/swim/`); only swim's physics in
  * `logic/swim/`, which is swim's own code kept where it was, does.
  * Reads the source tree, since the rule is about where code lives. Tests are left out: a medium's
@@ -14,8 +14,11 @@ import { describe, expect, it } from 'vitest';
 
 const SRC = new URL('../..', import.meta.url).pathname;
 
-/** `.nav`, `?.nav`, `['nav']`, a destructured `{ nav }` (or `fields`, the old name). */
+/** `.nav`, `?.nav`, `['nav']` or a destructured `{ nav }`, and the same reads of `fields`, so navigation can't sit on the world under that name either. */
 const NAV_READ = /(\??\.\s*(nav|fields)\b)|(\[\s*['"](nav|fields)['"]\s*\])|(\{[^{}]*\b(nav|fields)\b[^{}]*\}\s*[=:])/;
+
+/** Where media live: the shipped ones, and the conformance suite's test-only glide. */
+const MEDIUM_HOMES = ['logic/media/', 'logic/conformance/glide'];
 
 /** An import from swim's own folder; generic code reaches a medium only through `MEDIA`/`mediumOf`. */
 const SWIM_IMPORT = /from\s+'[^']*\/media\/swim\//;
@@ -64,9 +67,9 @@ describe('the navigation seam', () => {
     expect(importers).toEqual([]);
   });
 
-  it('lets only media read nav', () => {
-    const readers = FILES.filter(({ path }) => !path.startsWith('logic/media/')).flatMap(({ path, text }) =>
-      navReads(text).map((line) => `${path}:${line}`),
+  it('lets only media, in their own files, read nav', () => {
+    const readers = FILES.filter(({ path }) => !MEDIUM_HOMES.some((home) => path.startsWith(home))).flatMap(
+      ({ path, text }) => navReads(text).map((line) => `${path}:${line}`),
     );
     expect(readers).toEqual([]);
   });

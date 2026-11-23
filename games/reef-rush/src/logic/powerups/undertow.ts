@@ -37,6 +37,7 @@ export function fireUndertow(world: World, user: Racer): void {
  * Does nothing to a racer that isn't pulled.
  *
  * @param dt Tick length in seconds.
+ * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
 export function applyUndertow(world: World, racer: Racer, dt: number): void {
   if (racer.status.undertow === 0) return;

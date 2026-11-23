@@ -50,7 +50,7 @@ function swim(
   let top = 0;
   for (let i = 0; i < ticks; i++) {
     log.tick = i;
-    applyIntent(racer, { move, kick, burst: false }, env, mods, log, TICK_DT);
+    applyIntent(racer, { move, kick, burst: false }, env, SWIM, mods, log, TICK_DT);
     top = Math.max(top, speed(racer));
   }
   return { top, log };
@@ -233,6 +233,7 @@ describe('a very long tick', () => {
       racer,
       { move: STILL, kick: false, burst: false },
       { current: null, inKelp: true },
+      SWIM,
       BASE_MODIFIERS,
       new EventLog<GameEvent>(),
       0.5,
