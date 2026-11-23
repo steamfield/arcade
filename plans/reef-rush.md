@@ -401,6 +401,8 @@ Draw the four kinds as original pixel art in the existing style: held icons for 
 
 ### Phase 8: course and movement-style seams
 
+Superseded by `plans/reef-rush-phase-8-rfc.md` (2026-11-22), which a separate agent implements. The text below is the earlier draft, kept for history.
+
 Demo: race Sunlit Shallows exactly as on phase-7 (fingerprints, captures and audio unchanged); best times are saved per course; `?course=sunlit-shallows` works; the course and medium conformance suites pass for every registered course and medium; the course-select screen renders correctly with two or more courses in a view test (it is skipped in play while only one course is listed).
 Depends on: phase 7
 
