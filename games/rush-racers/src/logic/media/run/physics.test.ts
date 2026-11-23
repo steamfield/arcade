@@ -130,16 +130,23 @@ function riseOf(input: Intent, inputTicks: number, character: CharacterId = 'rud
 }
 
 describe('running', () => {
-  it('reaches top speed within 0.3 s holding right and never passes it', () => {
+  it('reaches running speed within 0.3 s holding right and never passes it', () => {
     const { speeds } = runFor(bareRunner(), 120, hold(RIGHT));
 
-    expect(speeds[ticksIn(0.3) - 1]).toBe(RUN_TUNING.maxSpeed);
+    expect(speeds[ticksIn(0.3) - 1]).toBe(RUN_TUNING.extra.runSpeed);
+    expect(Math.max(...speeds)).toBe(RUN_TUNING.extra.runSpeed);
+  });
+
+  it('never runs or dashes faster than maxSpeed, however strong its modifiers', () => {
+    const strong = { ...BASE, forceMul: 6, kickMul: 3 };
+    const { speeds } = runFor(bareRunner(), 90, hold(RIGHT, { kick: true }), ON_GROUND, strong);
+
     expect(Math.max(...speeds)).toBe(RUN_TUNING.maxSpeed);
   });
 
   it('stops within 0.2 s of letting go', () => {
     const racer = bareRunner();
-    racer.body.vx = RUN_TUNING.maxSpeed;
+    racer.body.vx = RUN_TUNING.extra.runSpeed;
     const { speeds } = runFor(racer, ticksIn(0.2), hold(STILL));
 
     expect(speeds.at(-1)).toBe(0);
@@ -148,34 +155,48 @@ describe('running', () => {
   it('runs 20 % faster with forceMul 1.4, half its deviation', () => {
     const { speeds } = runFor(bareRunner(), 60, hold(RIGHT), ON_GROUND, { ...BASE, forceMul: 1.4 });
 
-    expect(speeds.at(-1)).toBeCloseTo(RUN_TUNING.maxSpeed * 1.2, 9);
+    expect(speeds.at(-1)).toBeCloseTo(RUN_TUNING.extra.runSpeed * 1.2, 9);
   });
 
   it.each([1, 2])('slows by ground friction times dragMul %s', (dragMul) => {
     const racer = bareRunner();
-    racer.body.vx = RUN_TUNING.maxSpeed;
+    racer.body.vx = RUN_TUNING.extra.runSpeed;
     const { speeds } = runFor(racer, 3, hold(STILL), ON_GROUND, { ...BASE, dragMul });
 
-    expect(speeds.at(-1)).toBeCloseTo(RUN_TUNING.maxSpeed - 3 * RUN_TUNING.drag * dragMul * TICK_DT, 9);
+    expect(speeds.at(-1)).toBeCloseTo(RUN_TUNING.extra.runSpeed - 3 * RUN_TUNING.drag * dragMul * TICK_DT, 9);
   });
 
   it('settles slower in mud', () => {
     const { speeds } = runFor(bareRunner(), 60, hold(RIGHT), { ...ON_GROUND, inMud: true });
 
-    expect(speeds.at(-1)).toBeCloseTo(RUN_TUNING.maxSpeed * RUN_TUNING.extra.mudSpeedMul, 9);
+    expect(speeds.at(-1)).toBeCloseTo(RUN_TUNING.extra.runSpeed * RUN_TUNING.extra.mudSpeedMul, 9);
   });
 
   it('is carried by a gust standing still, and helped or held back by one while running', () => {
     const drift = (wind: Vec, move: Vec) =>
       runFor(bareRunner(), 60, hold(move), { ...ON_GROUND, wind }).speeds.at(-1) ?? Number.NaN;
-    const { maxSpeed } = RUN_TUNING;
-    const { windSpeed } = RUN_TUNING.extra;
+    const { runSpeed, windSpeed } = RUN_TUNING.extra;
 
     expect([drift(RIGHT, STILL), drift(RIGHT, RIGHT), drift({ x: -1, y: 0 }, RIGHT)]).toEqual([
       windSpeed,
-      maxSpeed + windSpeed,
-      maxSpeed - windSpeed,
+      runSpeed + windSpeed,
+      runSpeed - windSpeed,
     ]);
+  });
+
+  it('is pushed along a Tailwind lane like a gust', () => {
+    const speedAfterRunning = (inLane: boolean) => {
+      const { world, log, player } = runWorld(FLAT);
+      if (inLane) {
+        const lane = { x: 0, y: 3 * TILE, w: 16 * TILE, h: 6 * TILE, dir: { x: 1, y: 0 } };
+        world.riptides.push({ ...lane, ttl: 600, owner: 'tess' });
+      }
+      step(world, log, SETTLE);
+      step(world, log, 40, hold(RIGHT));
+      return player.body.vx;
+    };
+
+    expect(speedAfterRunning(true)).toBeGreaterThan(speedAfterRunning(false));
   });
 
   it('is lifted by an updraft and pushed down by a downdraft', () => {

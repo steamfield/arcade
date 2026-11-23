@@ -11,7 +11,8 @@ import type { RunMotion } from './data.ts';
 
 /**
  * Dashes when the button is pressed and the dash is ready; otherwise runs the cooldown down a tick.
- * A dash sets `vx` to `tuning.kick * mods.kickMul` along facing and never touches `vy`.
+ * A dash sets `vx` to `tuning.kick * mods.kickMul` along facing (`applyRunIntent` then caps it at
+ * `maxSpeed`) and never touches `vy`.
  */
 export function dashOrCoolDown(
   racer: Racer,

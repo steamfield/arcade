@@ -22,8 +22,10 @@ export interface RunMotion extends RacerMotion {
   jumping: boolean;
   /** The air dash is spent; it comes back on landing. */
   airDashUsed: boolean;
-  /** Top-left of the last spot the runner stood on with ground under both feet; a fall returns it here. */
+  /** Top-left of the last spot the runner stood on with rock or a ledge under both feet; a fall returns it here. */
   lastSafe: Vec;
+  /** Top-left of where a fallen runner waits, out of the level, until it respawns. */
+  parkedAt: Vec;
 }
 
 /** What the surroundings do to a runner this tick. */
@@ -31,7 +33,10 @@ export interface RunEnv extends MediumEnv {
   readonly kind: 'run';
   /** Standing on something this tick (from last tick's contacts). */
   grounded: boolean;
-  /** Unit direction of the wind cell under the runner's centre (a gust, updraft or downdraft), or null. */
+  /**
+   * The wind on the runner: a wind cell's unit direction (a gust, updraft or downdraft), or a Tailwind
+   * lane's direction scaled by how much stronger it is. Null when there is none.
+   */
   wind: Vec | null;
   /** The runner's centre is in mud (a kelp cell), which lowers its top speed. */
   inMud: boolean;

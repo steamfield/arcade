@@ -6,6 +6,7 @@
 import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../../events.ts';
+import { breakCoral } from '../../race/coral.ts';
 import { courseFromLevel, eventsIn, hold, IDLE, placeOnTile, racerOf, step } from '../../test-world.ts';
 import { type MoveContacts, TILE, type Vec } from '../../types.ts';
 import { createWorld } from '../../world.ts';
@@ -137,6 +138,33 @@ describe('falling into a pit', () => {
 
     // Under the rivals' 3 rows, the ledge is row 5.
     expect(race.player.body.y + race.player.body.h).toBe(5 * TILE);
+  });
+
+  it('never counts cracked stone as safe ground, since it can break for good', () => {
+    const race = runWorld(['...............F', '.1.............F', '###CCC.....#####']);
+    const { world, log, player } = race;
+    step(world, log, SETTLE);
+    for (let tick = 0; tick < 120 && player.body.x < 4 * TILE; tick++) step(world, log, 1, hold(RIGHT));
+    for (const column of [3, 4, 5]) breakCoral(world, column, 5, 'tess');
+    runIntoPit(race);
+    step(world, log, respawnTicks + 30);
+
+    expect(eventsIn(log, 'racer.fell')).toEqual([{ type: 'racer.fell', id: 'player' }]);
+    expect(runMotion(player.motion).grounded).toBe(true);
+  });
+
+  it('stays on its park point while fallen, even with a dash running', () => {
+    const race = runWorld(pitLane('#'));
+    const { world, log, player } = race;
+    step(world, log, SETTLE);
+    runIntoPit(race);
+    const parkedAt = { x: player.body.x, y: player.body.y };
+    Object.assign(player, { dashDir: { x: 1, y: 0 }, dashSpeed: 200 });
+    player.status.dashing = respawnTicks;
+    for (let tick = 1; tick < respawnTicks; tick++) {
+      step(world, log, 1, IDLE);
+      expect({ x: player.body.x, y: player.body.y }).toEqual(parkedAt);
+    }
   });
 
   it('brings a rival back the same way', () => {

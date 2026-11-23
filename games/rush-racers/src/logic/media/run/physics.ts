@@ -30,13 +30,16 @@ export function createRunMotion(body: Body): RunMotion {
     jumping: false,
     airDashUsed: false,
     lastSafe: { x: body.x, y: body.y },
+    parkedAt: { x: body.x, y: body.y },
   };
 }
 
 /**
  * One tick of run, jump, dash and gravity. A jump fires when a press is buffered and the runner is
  * grounded or inside coyote time, and emits `racer.jumped`; releasing Up while a jump rises
- * multiplies gravity. A fallen racer (`status.fallen`) is held still with no gravity.
+ * multiplies gravity. Horizontal speed never passes `tuning.maxSpeed`, however strong the
+ * modifiers; vertical speed is capped only by `maxFall` on the way down. A fallen racer
+ * (`status.fallen`) is held still with no gravity.
  *
  * @param dt Tick length in seconds.
  * @throws {Error} When the racer's motion or `env` isn't run's, or `tuning` lacks one of run's extras.
@@ -68,11 +71,13 @@ export function applyRunIntent(
   run(racer.body, intent.move.x, surroundings, tuning, extra, mods, dt);
   if (jumpNow) jump(racer, motion, extra.jumpSpeed * jumpMulFor(racer), events);
   dashOrCoolDown(racer, motion, intent.kick, surroundings.grounded, tuning, mods, events);
+  racer.body.vx = clamp(racer.body.vx, -tuning.maxSpeed, tuning.maxSpeed);
   fall(racer.body, motion.jumping && !upHeld, surroundings, extra, dt);
 }
 
 /** The extras run reads from `tuning.extra`. */
 const RUN_EXTRAS = [
+  'runSpeed',
   'gravity',
   'cutGravityMul',
   'maxFall',
@@ -155,7 +160,7 @@ function run(
   dt: number,
 ): void {
   const scale = forceScale(mods);
-  const top = tuning.maxSpeed * scale * (env.inMud ? extra.mudSpeedMul : 1);
+  const top = extra.runSpeed * scale * (env.inMud ? extra.mudSpeedMul : 1);
   const drift = (env.wind?.x ?? 0) * extra.windSpeed;
   const accel = (env.grounded ? tuning.force * scale : extra.airAccel) * dt;
   // dragMul scales air friction too, so ink or a power-up slows a runner the same in a jump.
@@ -185,6 +190,10 @@ function fall(body: Body, cutShort: boolean, env: RunEnv, extra: RunExtra, dt: n
   const cut = cutShort && body.vy < 0 ? extra.cutGravityMul : 1;
   const draft = (env.wind?.y ?? 0) * extra.draftForce;
   body.vy = Math.min(extra.maxFall, body.vy + (extra.gravity * cut + draft) * dt);
+}
+
+function clamp(value: number, low: number, high: number): number {
+  return Math.min(high, Math.max(low, value));
 }
 
 function approach(value: number, target: number, step: number): number {
