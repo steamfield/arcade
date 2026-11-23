@@ -5,6 +5,7 @@ import { Frame, Tex, TileIndex } from '../keys.ts';
 import { BackdropPalette, HazardPalette, WATER_BANDS } from '../palettes.ts';
 import { measureFrames, type NamedFrame } from '../pixel.ts';
 import { AttackPalette, RIPTIDE_TILE } from './attack.ts';
+import { GUIDE_SIZE } from './guide.ts';
 import { ART_SHEETS } from './index.ts';
 import { CharacterPalette, RACER_SHEETS } from './racers.ts';
 
@@ -37,6 +38,7 @@ describe('world art data', () => {
     expect(frameNames(Tex.riptideStreak)).toEqual([Frame.a]);
     expect(frameNames(Tex.undertowStreak)).toEqual(twoStroke);
     expect(frameNames(Tex.kickPip)).toEqual([Frame.pipReady, Frame.pipCooling]);
+    expect(frameNames(Tex.guideArrow)).toEqual([Frame.guideStraight, Frame.guideDiagonal]);
     expect(frameNames(Tex.hudMarker)).toEqual([
       Frame.markerCircle,
       Frame.markerSquare,
@@ -67,6 +69,13 @@ describe('world art data', () => {
     expect(measureFrames(Tex.riptideStreak, sheetFor(Tex.riptideStreak)?.frames ?? [])).toEqual({
       width: RIPTIDE_TILE,
       height: RIPTIDE_TILE,
+    });
+  });
+
+  it('draws the guide arrow on a square frame, so quarter turns land on the same pixels', () => {
+    expect(measureFrames(Tex.guideArrow, sheetFor(Tex.guideArrow)?.frames ?? [])).toEqual({
+      width: GUIDE_SIZE,
+      height: GUIDE_SIZE,
     });
   });
 

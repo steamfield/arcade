@@ -2,8 +2,10 @@
  * The race as one deterministic step function. This module only sets the order
  * things happen in each tick; every rule lives in the module it calls.
  *
- * Tick order: clock; intents for every unfinished racer from the start-of-tick
- * state (in RACER_IDS order), idle while stunned or trapped; each unfinished
+ * Tick order: clock; the Easy guide's record of the player (`trackGuide`, nothing on other levels);
+ * intents for every unfinished racer from the start-of-tick
+ * state (in RACER_IDS order), the human player's passed through the Easy steering assist,
+ * idle while stunned or trapped; each unfinished
  * racer's swimming (riptide lanes feed it their current; a squid's latch and an undertow pull it
  * after), dash, trapped float and movement (RACER_IDS order); one pass
  * of separation over unfinished racers; then the phase 3 systems for unfinished
@@ -24,6 +26,7 @@ import { PLAYER_PROFILE } from './ai/profiles.ts';
 import { createAiMemory, rivalIntent } from './ai/rival.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
 import type { GameEvent } from './events.ts';
+import { assistedIntent, trackGuide } from './guide.ts';
 import { resolveContacts } from './hazards/contacts.ts';
 import { moveJellies } from './hazards/jellies.ts';
 import { driftLatched } from './hazards/latch.ts';
@@ -125,6 +128,7 @@ export function createWorld(level: Level, events: EventSink<GameEvent>, options:
     squids: [],
     riptides: [],
     decoys: [],
+    guide: { bestSteer: Number.POSITIVE_INFINITY, stuckTicks: 0, helpTicks: 0 },
   };
   // Catch-up reads progress on the first racing tick, before stepWorld updates it.
   updateProgress(world);
@@ -189,6 +193,7 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   if (advanceClock(world)) return;
 
   const racing = activeRacers(world);
+  trackGuide(world, input);
   // Every racer's intent is asked for even while it can't act, so AI rng draws per tick never vary.
   const intents = racing.map((racer) => controlledIntent(racer, intentFor(world, racer, input)));
   racing.forEach((racer, index) => {
@@ -219,7 +224,7 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
 }
 
 function intentFor(world: World, racer: Racer, input: TickInput): Intent {
-  if (!racer.ai) return input;
+  if (!racer.ai) return assistedIntent(world, racer, input);
   return rivalIntent(world, racer, world.rngs[`ai.${racer.id}`]);
 }
 

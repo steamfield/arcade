@@ -4,6 +4,7 @@
  */
 import { BACKDROP_SHEETS } from './backdrop.ts';
 import { CURRENT_SHEETS } from './currents.ts';
+import { GUIDE_SHEETS } from './guide.ts';
 import { HAZARD_SHEETS } from './hazards.ts';
 import { HUD_SHEETS } from './hud.ts';
 import { PICKUP_SHEETS } from './pickups.ts';
@@ -23,5 +24,6 @@ export const ART_SHEETS: readonly ArtSheet[] = [
   ...HAZARD_SHEETS,
   ...POWERUP_SHEETS,
   ...HUD_SHEETS,
+  ...GUIDE_SHEETS,
   ...BACKDROP_SHEETS,
 ];

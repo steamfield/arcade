@@ -18,6 +18,7 @@ import { createBurstButtonIcon } from '../view/burst-button.ts';
 import { followRacer } from '../view/camera.ts';
 import { createDarkView } from '../view/dark-view.ts';
 import { createDebugOverlay } from '../view/debug-overlay.ts';
+import { createGuideView } from '../view/guide-view.ts';
 import { createHazardView } from '../view/hazard-view.ts';
 import { createHintView } from '../view/hint-view.ts';
 import { comboCentreY, createHud, wellLayout } from '../view/hud.ts';
@@ -70,6 +71,7 @@ export class RaceScene extends Phaser.Scene {
     const hud = createHud(this, world, reducedMotion);
     const wellWidth = wellLayout(stackMaxFor(playerOf(world))).width;
     const hints = createHintView(this, reducedMotion, wellWidth, comboCentreY);
+    const guide = createGuideView(this, reducedMotion);
     const burstIcon = createBurstButtonIcon(this);
     const fx = createFx(this, world, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
@@ -104,6 +106,7 @@ export class RaceScene extends Phaser.Scene {
       }
       hud.sync(current, this.rt.hints);
       hints.sync(current, this.rt.hints, this.cameras.main.worldView);
+      guide.sync(current, this.rt.hints.guide, this.cameras.main.worldView);
       burstIcon.sync(playerOf(current).stack);
       fx.sync(current);
       // After the camera moved, so the darkness lines up with this frame's scroll.

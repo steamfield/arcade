@@ -50,6 +50,8 @@ export const Tex = {
   kickPip: 'kick-pip',
   backdropFar: 'backdrop-far',
   backdropNear: 'backdrop-near',
+  /** The Easy guide's arrow (13x13, pointing right and down-right frames); the view turns it in quarter turns. */
+  guideArrow: 'guide-arrow',
 } as const;
 
 /** Any texture key in `Tex`. */
@@ -69,6 +71,8 @@ export const Frame = {
   markerDiamond: 'diamond',
   pipReady: 'ready',
   pipCooling: 'cooling',
+  guideStraight: 'straight',
+  guideDiagonal: 'diagonal',
 } as const;
 
 /** Any frame name in `Frame`. */

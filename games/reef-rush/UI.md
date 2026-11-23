@@ -149,12 +149,13 @@ Reduced motion holds each page on its clearest still moment (the pressed arrow a
 
 ## Hints
 
-For the first race on a save and every Easy race, short prompts show beside the player (`view/hints.ts` decides, `view/hint-view.ts` draws; none on later Normal and Hard races).
+For the first race on a save and every Easy race, short prompts show beside the player (`view/hints.ts` decides, `view/hint-view.ts` draws; none on later Normal and Hard races; the guide arrow is drawn by `view/guide-view.ts`).
 
 | Hint | When | Look |
 | --- | --- | --- |
 | PRESS B! | The first time a power-up lands in the stack, until the player fires one (then never again that race). On Easy it has no timeout; on the first race of another level it gives up after 4 s | display, sun, outlined, with the burst glyph in the B's place: `PRESS` then the key cap X on a keyboard or the round B on touch, then `!`. Centred on x 168, placed like the combo name (`comboCentreY`), and dropped below the player when that would sit in the centre splash's band (x 53-267, y 50-74) |
 | KICK! | A locked-on squid is inside the dodge window plus 8 ticks of lead (`SQUID.dodgeTicks`, 12, at squid speed) and the player's kick is ready, since a kick only dodges just before contact and then cools down | the kick glyph (SPACE or A) and KICK!, placed like PRESS B!; the combo name is hidden while it shows. Wins over PRESS B! when both apply. The latched squid's own KICK! prompt (above) takes over once it grips |
+| Guide arrow | Easy only: the player has pushed 1.5 s (`DIFFICULTY.easy.guide.showTicks`, 90 ticks) without reaching a tile closer to the finish, so a wall is in the way. Gone as soon as they do. KICK! always wins; PRESS B! wins for the first 4.5 s of being stuck, then the arrow takes over and PRESS B! hides | a 13x13 sun-yellow arrow with a near-black outline (`sprites/guide.ts`: right and down-right, turned in quarter turns for the 8 directions), centre 24 px from the player's centre along the way on, bobbing up to 3 px outward every 40 ticks. Clamped to the play area (x 8-312, y 52-172, below the HUD rows) and dropped under the centre splash's band when it would cross it. Fades in and out at 0.2 per frame |
 | Pulsing B on the stack | The stack has held something unused for 5 s on Easy, or from the moment PRESS B! gives up on another level (restarts after each burst) | the burst glyph at 130, 24 (the well's right edge plus 3), blinking its gold frame twice a second; steady gold under reduced motion |
 
 Glyph frames and the pulse blink at most 3 times a second. On touch screens the real B button also shows the newest held power-up's 9x9 icon at 4x above its letter (`view/burst-button.ts`), so a child can link the button to the item; it reverts to a plain B when the stack empties.
@@ -226,6 +227,7 @@ The card, preview and footer stay in the safe column (x 108-228) below the grid,
 | Ribbon | drops 2 px in over 10 ticks after the last row, from y 118 so it never covers the last row's outline | appears |
 | How to Play pages | each page loops its own picture from the tick it opened (periods 120-360 ticks; see "How to Play") | one still frame |
 | Hint glyph | the gold frame blinks every 15 ticks | steady |
+| Guide arrow | bobs 3 px outward every 40 ticks | holds still, appears and disappears without fading |
 
 - Nothing flashes more than 3 times a second.
 - Positions animate from the logic tick, never from Phaser tweens, so captures repeat.
