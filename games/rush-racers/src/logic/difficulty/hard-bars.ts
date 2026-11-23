@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../ai/profiles.ts';
 import { courseOf, DEFAULT_COURSE } from '../courses/index.ts';
 import type { CharacterId } from '../types.ts';
-import { meanPlayerFinish, RIVAL_IDS, type Run, race, seconds, table } from './race-bots.ts';
+import { meanPlayerFinish, RIVAL_IDS, type Run, race, racesTimeoutMs, seconds, table } from './race-bots.ts';
 
 const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
 
@@ -52,8 +52,8 @@ const NOVICE_BEHIND_MIN = 18;
 /** Novice finishes within 1.3x the winner's time needed of the 30 seeds: measured 30 for every character. */
 const NOVICE_IN_TOUCH_MIN = 27;
 
-/** Thirty whole races take a while, more under a loaded test run. */
-const RACES_TIMEOUT_MS = 120_000;
+/** Each test races at most the 30 seeds once (`race` memoises across the expert's three). */
+const RACES_TIMEOUT_MS = racesTimeoutMs(SEEDS.length);
 
 /**
  * The mean expert finish, in ticks, that counts as a good race on the course with `courseId`.

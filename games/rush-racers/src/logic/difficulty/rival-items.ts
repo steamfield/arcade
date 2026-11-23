@@ -20,7 +20,7 @@ import { DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
 import { CHARACTER_IDS, type CharacterId, POWER_UP_KINDS } from '../types.ts';
 import { createWorld } from '../world.ts';
-import { race } from './race-bots.ts';
+import { race, racesTimeoutMs } from './race-bots.ts';
 
 /** Races per character: medians over 16 or 24 races still moved 1.5 uses with small tuning changes. */
 const RACES = 40;
@@ -31,18 +31,32 @@ const RACES = 40;
  */
 export const USES_BAND = { min: 4.5, max: 10 } as const;
 
-/** Forty whole races, with room for a loaded machine. */
-const RACES_TIMEOUT_MS = 120_000;
+/** Each band races at most its RACES seeds; the kinds check reuses the bands' races. */
+const RACES_TIMEOUT_MS = racesTimeoutMs(RACES);
 
 /** The player's character for `character`'s races: Rudy, or Gil when the rival measured is Rudy. */
 const playerFor = (character: CharacterId): CharacterId => (character === 'rudy' ? 'gil' : 'rudy');
+
+/** The rivals' characters seed by seed for each player character, so the bands in one file build each world once. */
+const drawn = new Map<CharacterId, CharacterId[][]>();
+
+/** The characters the rivals race as on `seed` when the player is `player`. */
+function rivalsOn(player: CharacterId, seed: number): CharacterId[] {
+  const bySeed = drawn.get(player) ?? [];
+  drawn.set(player, bySeed);
+  const known = bySeed[seed];
+  if (known) return known;
+  const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed, character: player });
+  const rivals = world.racers.filter((racer) => racer.id !== 'player').map((racer) => racer.character);
+  bySeed[seed] = rivals;
+  return rivals;
+}
 
 /** The first `count` seeds from 1 in which `character` races as a rival of `player`. */
 function seedsWithRival(character: CharacterId, player: CharacterId, count: number): number[] {
   const seeds: number[] = [];
   for (let seed = 1; seeds.length < count; seed++) {
-    const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed, character: player });
-    if (world.racers.some((racer) => racer.id !== 'player' && racer.character === character)) seeds.push(seed);
+    if (rivalsOn(player, seed).includes(character)) seeds.push(seed);
   }
   return seeds;
 }

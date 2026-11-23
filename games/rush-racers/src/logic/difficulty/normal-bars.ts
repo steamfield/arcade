@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../ai/profiles.ts';
 import { courseOf, DEFAULT_COURSE } from '../courses/index.ts';
 import type { CharacterId } from '../types.ts';
-import { type Run, race, table } from './race-bots.ts';
+import { type Run, race, racesTimeoutMs, table } from './race-bots.ts';
 
 const SEEDS = Array.from({ length: 10 }, (_, i) => i + 1);
 
@@ -30,8 +30,8 @@ const NOVICE_TOP_THREE_MIN = 5;
 /** The most races the novice may win: measured 0-6. More means Normal stopped asking anything. */
 const NOVICE_WINS_MAX = 8;
 
-/** Thirty whole races, with room for a loaded machine. */
-const RACES_TIMEOUT_MS = 120_000;
+/** The most a test races that earlier ones haven't: the expert test's two bots over every seed. */
+const RACES_TIMEOUT_MS = racesTimeoutMs(SEEDS.length * 2);
 
 const wins = (runs: Run[]) => runs.filter((run) => run.playerPlace === 1).length;
 const topThree = (runs: Run[]) => runs.filter((run) => run.playerPlace <= 3).length;
