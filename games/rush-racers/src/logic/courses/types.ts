@@ -9,7 +9,13 @@ import type { Difficulty, LevelDef } from '../types.ts';
 import type { ShippedWorldId } from '../worlds/types.ts';
 
 /** Shipped courses. Grows with each course: 'kelp-forest', 'thunderhead-pass', ... */
-export type ShippedCourseId = 'sunlit-shallows' | 'bramble-run' | 'run-test' | 'sky-test' | 'drift-test';
+export type ShippedCourseId =
+  | 'sunlit-shallows'
+  | 'bramble-run'
+  | 'run-test'
+  | 'sky-test'
+  | 'drift-test'
+  | 'slingshot-alley';
 /** Shipped movement styles. */
 export type ShippedMediumId = 'swim' | 'run' | 'flight' | 'drift';
 /** Looks the engine draws a course with. */
