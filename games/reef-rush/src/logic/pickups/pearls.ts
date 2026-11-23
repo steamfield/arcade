@@ -6,6 +6,7 @@
  * by touch or by lantern alike, the first in RACER_IDS order gets it.
  */
 import { overlapsTile } from '../level/query.ts';
+import { selectedItem } from '../powerups/inventory.ts';
 import { PASSIVE, PEARL } from '../powerups/tuning.ts';
 import { centreOf, hitbox } from '../racers.ts';
 import { type Racer, TILE, type Vec, type World } from '../types.ts';
@@ -32,7 +33,7 @@ export function collectPearls(world: World, racers: readonly Racer[]): void {
 /** Whether `racer` collects the pearl on `tile`: by touch, or by Glow Lantern range. */
 function reaches(racer: Racer, tile: Vec): boolean {
   if (overlapsTile(hitbox(racer), tile.x, tile.y)) return true;
-  if (!racer.stack.includes('glowLantern')) return false;
+  if (selectedItem(racer)?.kind !== 'glowLantern') return false;
   const centre = centreOf(racer);
   const dx = (tile.x + 0.5) * TILE - centre.x;
   const dy = (tile.y + 0.5) * TILE - centre.y;

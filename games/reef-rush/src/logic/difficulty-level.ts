@@ -43,7 +43,7 @@ export interface DifficultyTuning {
   rivalForceMul: number;
   /** Rival catch-up bounds: the rubber band that holds a rival back when it leads and speeds it when it trails. */
   rivalCatchUp: CatchUpBounds;
-  /** Multiplies every rival's `itemAggression` (how often it spends a ready burst on a use). */
+  /** Multiplies every rival's `itemAggression` (how often it spends a ready item on a use). */
   rivalItemAggressionMul: number;
   /** Ticks after the GO before catch-up applies, so all four racers leave the line together. */
   rivalCatchUpDelayTicks: number;
@@ -51,7 +51,7 @@ export interface DifficultyTuning {
    * False keeps rivals' power-ups off the player. They pick no target for a squid, ink, bubble or
    * flash among racers that includes the player, fire an Undertow only while the player is behind
    * them (an Undertow pulls everyone ahead), and what they do land is ignored: `applyHit` refuses
-   * a hit caused by a rival's burst, ink does not slow the player and a rival's riptide lane does
+   * a hit caused by a rival's item, ink does not slow the player and a rival's riptide lane does
    * not push it. The player's own attacks and hazards (urchins, jellies) are unaffected.
    */
   rivalsAttackPlayer: boolean;

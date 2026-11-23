@@ -9,10 +9,10 @@ import { BOT_PROFILES } from '../ai/profiles.ts';
 import { DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
-import type { RacerId } from '../types.ts';
+import type { RacerId, TickInput } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
-const IDLE = { move: { x: 0, y: 0 }, kick: false, burst: false };
+const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
 const GATE_COLUMNS = [481, 482];
 /** A tile column well past the gate. */
 const PAST_GATE = 495;

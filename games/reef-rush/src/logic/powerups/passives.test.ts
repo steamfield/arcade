@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { racerSeesInDark } from '../abilities.ts';
+import { lockRangePx } from '../hazards/squid-target.ts';
 import { SWIM_TUNING } from '../media/swim/tuning.ts';
 import { modifiersFor } from '../modifiers.ts';
 import { collectPearls } from '../pickups/pearls.ts';
 import { activeRacers } from '../racers.ts';
-import { eventsIn, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
-import type { World } from '../types.ts';
+import { eventsIn, giveItems, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
+import { type PowerUpKind, TILE, type World } from '../types.ts';
 import { bumpMass } from './passives.ts';
-import { SQUID } from './tuning.ts';
+import { MIMIC, SQUID } from './tuning.ts';
 
 const BOX = `
   ############
@@ -35,9 +37,36 @@ function playerIn(ascii = BOX) {
 describe('Jet Fins', () => {
   it('swims with 15% more force and kicks again after 22 ticks', () => {
     const { world, player } = playerIn();
-    player.stack = ['jetFin'];
+    giveItems(player, ['jetFin']);
 
     expect(modifiersFor(world, player)).toEqual({ ...SWIM_TUNING.base, forceMul: 1.15, kickCooldownTicks: 22 });
+  });
+});
+
+describe('passives come from the selected item only', () => {
+  it('changes nothing while Jet Fins, Puffer, Glow Lantern, Riptide and Mimic sit unselected', () => {
+    const { world, log, player } = playerIn(PEARL_BOX);
+    const bare = { mods: modifiersFor(world, player), mass: bumpMass(player), lock: lockRangePx(player) };
+    giveItems(player, ['inkSac', 'jetFin', 'puffer']);
+    const unselected = { mods: modifiersFor(world, player), mass: bumpMass(player), lock: lockRangePx(player) };
+    giveItems(player, ['inkSac', 'glowLantern', 'mimic']);
+    placeOnTile(player, 5, 2);
+    collectPearls(world, activeRacers(world));
+
+    expect(unselected).toEqual(bare);
+    expect(lockRangePx(player)).toBe(bare.lock);
+    expect(racerSeesInDark(player)).toBe(false);
+    expect(eventsIn(log)).toEqual([]);
+  });
+
+  it('applies once that item is selected', () => {
+    const { world, player } = playerIn();
+    giveItems(player, ['inkSac', 'jetFin', 'mimic'], 1);
+    const jet = modifiersFor(world, player).forceMul;
+    giveItems(player, ['inkSac', 'jetFin', 'mimic'], 2);
+
+    expect(jet).toBeCloseTo(1.15, 9);
+    expect(lockRangePx(player)).toBe(SQUID.lockTiles * TILE * MIMIC.lockRangeMul);
   });
 });
 
@@ -45,7 +74,7 @@ describe('Being latched by a squid', () => {
   it('cuts swim force to the latched share, whatever else is held', () => {
     const { world, player } = playerIn();
     player.status.latched = 100;
-    player.stack = ['jetFin'];
+    giveItems(player, ['jetFin']);
 
     expect(modifiersFor(world, player).forceMul).toBeCloseTo(1.15 * SQUID.latchedForceMul, 9);
     player.status.latched = 0;
@@ -56,7 +85,7 @@ describe('Being latched by a squid', () => {
 describe('Glow Lantern', () => {
   it('collects a pearl 3 tiles away', () => {
     const { world, log, player } = playerIn(PEARL_BOX);
-    player.stack = ['glowLantern'];
+    giveItems(player, ['glowLantern']);
     placeOnTile(player, 5, 2);
 
     collectPearls(world, activeRacers(world));
@@ -66,7 +95,7 @@ describe('Glow Lantern', () => {
 
   it('leaves a pearl 4 tiles away', () => {
     const { world, log, player } = playerIn(PEARL_BOX);
-    player.stack = ['glowLantern'];
+    giveItems(player, ['glowLantern']);
     placeOnTile(player, 4, 2);
 
     collectPearls(world, activeRacers(world));
@@ -76,7 +105,7 @@ describe('Glow Lantern', () => {
 
   it('is what reaches that far: without it a pearl 3 tiles away stays put', () => {
     const { world, log, player } = playerIn(PEARL_BOX);
-    player.stack = ['jetFin'];
+    giveItems(player, ['jetFin']);
     placeOnTile(player, 5, 2);
 
     collectPearls(world, activeRacers(world));
@@ -98,7 +127,7 @@ describe('Puffer', () => {
 
   it('bumps like a racer of twice the mass', () => {
     const puffer = bump((world) => {
-      racerOf(world, 'player').stack = ['puffer'];
+      giveItems(racerOf(world, 'player'), ['puffer']);
     });
     const heavy = bump((world) => {
       const player = racerOf(world, 'player');
@@ -113,7 +142,7 @@ describe('Bubble Shield', () => {
   it('changes neither swimming nor bumping', () => {
     const { world, player } = playerIn();
     const bare = modifiersFor(world, player);
-    player.stack = ['bubbleShield'];
+    giveItems(player, ['bubbleShield']);
 
     expect(modifiersFor(world, player)).toEqual(bare);
     expect(bumpMass(player)).toBe(player.profile.mass);
@@ -123,8 +152,8 @@ describe('Bubble Shield', () => {
 describe('statuses', () => {
   it('scale swim force: boost by 1.2, ink by 0.5, inflation by 0.8, together with Jet Fins', () => {
     const { world, player } = playerIn();
-    const forceWith = (status: Partial<typeof player.status>, stack: typeof player.stack = []) => {
-      player.stack = stack;
+    const forceWith = (status: Partial<typeof player.status>, kinds: PowerUpKind[] = []) => {
+      giveItems(player, kinds);
       player.status = { ...player.status, boost: 0, slowed: 0, inflated: 0, ...status };
       return modifiersFor(world, player).forceMul;
     };

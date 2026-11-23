@@ -10,7 +10,7 @@
  * | Gil | Spring kick | kicks push harder upward |
  * | Streak | Wind-up | top speed rises the longer it swims without turning hard or being hit |
  * | Onyx | Ambush | bumping a racer from behind takes some of its speed |
- * | Nib | Deep pockets | holds 4 power-ups instead of 3 |
+ * | Nib | Deep pockets | has 4 item slots instead of 3 |
  * | Baron Barnacle | Bulldozer | breaks coral by ramming, barely moves in bumps, accelerates slowly |
  * | Selene | Moonlight | sees through dark zones, immune to jelly stings |
  * | Rook | Frenzy | when a racer near it is hit (which is also how anyone loses a power-up), it gets a short speed burst |
@@ -23,6 +23,7 @@ import type { GameEvent } from './events.ts';
 import type { KickRules } from './media/types.ts';
 import { length } from './num.ts';
 import { bumpMass } from './powerups/passives.ts';
+import { selectedItem } from './powerups/inventory.ts';
 import { STACK_MAX } from './powerups/tuning.ts';
 import { activeRacers, centreOf } from './racers.ts';
 import { type HitCause, type MoveModifiers, type Racer, TILE, type Vec, type World } from './types.ts';
@@ -48,7 +49,7 @@ export const ABILITY = {
    * means the line from Onyx to it lies within 45 degrees of the way it was heading (cos² 0.5).
    */
   ambush: { steal: 0.12, behindCosSq: 0.5 },
-  /** Nib holds this many power-ups. */
+  /** Nib has this many item slots. */
   deepPockets: { stackMax: 4 },
   /**
    * Baron: bumps with `massMul` times his mass. Off the start line and after every hit (a stun, a
@@ -85,8 +86,8 @@ export function abilityModifiers(racer: Racer, mods: MoveModifiers): MoveModifie
   }
 }
 
-/** Most power-ups the racer holds before a new one pushes out the oldest (`gainPowerUp`). Nib holds 4. */
-export function stackMaxFor(racer: Racer): number {
+/** How many inventory slots the racer has (`Racer.items`). Nib has 4, everyone else 3. */
+export function stackMaxFor(racer: Pick<Racer, 'character'>): number {
   return racer.character === 'nib' ? ABILITY.deepPockets.stackMax : STACK_MAX;
 }
 
@@ -220,9 +221,9 @@ function runCounts(racer: Racer): boolean | null {
 
 /**
  * True when the racer sees through dark zones (`inDark` in level/query.ts) as if lit: Selene
- * (Moonlight), or anyone holding a Glow Lantern, whose passive lights the dark around its holder.
+ * (Moonlight), or anyone with a Glow Lantern selected, whose passive lights the dark around its holder.
  * Rivals that can't see steer loosely there (`ai/rival.ts`).
  */
 export function racerSeesInDark(racer: Racer): boolean {
-  return racer.character === 'selene' || racer.stack.includes('glowLantern');
+  return racer.character === 'selene' || selectedItem(racer)?.kind === 'glowLantern';
 }

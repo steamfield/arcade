@@ -1,6 +1,6 @@
 import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { wantsBurst } from './ai/items.ts';
+import { chooseItemSlot } from './ai/items.ts';
 import { registerCourse } from './courses/index.ts';
 import type { Course } from './courses/types.ts';
 import { DIFFICULTY, dodgeTicks, rivalCatchUpFor } from './difficulty-level.ts';
@@ -12,13 +12,13 @@ import { HIT } from './hazards/tuning.ts';
 import { modifiersFor } from './modifiers.ts';
 import { length } from './num.ts';
 import { openClams } from './pickups/clams.ts';
-import { fireBurst } from './powerups/burst.ts';
 import { riptideCurrentAt } from './powerups/riptides.ts';
 import { SQUID } from './powerups/tuning.ts';
 import { fireUndertow } from './powerups/undertow.ts';
+import { fireItem } from './powerups/use.ts';
 import { updateProgress } from './race/standings.ts';
 import { activeRacers, centreOf } from './racers.ts';
-import { courseFromLevel, eventsIn, hold, IDLE, placeOnTile, raceOn, racerOf, step } from './test-world.ts';
+import { courseFromLevel, eventsIn, giveItems, hold, IDLE, placeOnTile, raceOn, racerOf, step } from './test-world.ts';
 import type { Difficulty, RacerId } from './types.ts';
 import { createWorld } from './world.ts';
 
@@ -89,8 +89,8 @@ describe('who a rival may aim at', () => {
       const { world } = scene(difficulty, { player: playerTile, tess: [14, 2], squib: [10, 3], bo: [2, 4] });
       const bo = racerOf(world, 'bo');
       bo.place = 4;
-      bo.stack = ['undertow'];
-      return wantsBurst(world, bo, { x: 1, y: 0 }, 0);
+      giveItems(bo, ['undertow']);
+      return chooseItemSlot(world, bo, { x: 1, y: 0 }, 0) !== null;
     };
 
     expect(wantsUndertow('hard', [22, 1])).toBe(true);
@@ -99,20 +99,20 @@ describe('who a rival may aim at', () => {
     expect(wantsUndertow('easy', [1, 1])).toBe(true);
   });
 
-  it('spends bursts less often on Normal and Easy', () => {
-    const burstsAt = (difficulty: Difficulty, roll: number) => {
+  it('spends items less often on Normal and Easy', () => {
+    const firesAt = (difficulty: Difficulty, roll: number) => {
       const { world } = scene(difficulty, { player: [2, 1], tess: [12, 2], squib: [2, 3], bo: [13, 2] });
       updateProgress(world);
       const tess = racerOf(world, 'tess');
-      tess.stack = ['glowLantern'];
-      return wantsBurst(world, tess, { x: 1, y: 0 }, roll * tess.profile.itemAggression);
+      giveItems(tess, ['glowLantern']);
+      return chooseItemSlot(world, tess, { x: 1, y: 0 }, roll * tess.profile.itemAggression) !== null;
     };
 
     // The same draw, as a share of the rival's own aggression.
-    expect(burstsAt('hard', 0.6)).toBe(true);
-    expect(burstsAt('normal', 0.6)).toBe(true);
-    expect(burstsAt('easy', 0.6)).toBe(false);
-    expect(burstsAt('easy', 0.3)).toBe(true);
+    expect(firesAt('hard', 0.6)).toBe(true);
+    expect(firesAt('normal', 0.6)).toBe(true);
+    expect(firesAt('easy', 0.6)).toBe(false);
+    expect(firesAt('easy', 0.3)).toBe(true);
   });
 });
 
@@ -175,18 +175,18 @@ describe('rival catch-up bounds on a course', () => {
 });
 
 describe('the player clam roll', () => {
-  /** How many of 300 opens hand the player Jet Fins, emptying the stack between opens. */
+  /** How many of 300 opens hand the player Jet Fins, emptying the inventory between opens. */
   function jetFinOpens(difficulty: Difficulty): number {
     const { world } = scene(difficulty, { player: [8, 3] });
     const player = racerOf(world, 'player');
     let jets = 0;
     for (let open = 0; open < 300; open++) {
-      player.stack = [];
+      giveItems(player, []);
       world.clams.forEach((clam) => {
         clam.closedFor = 0;
       });
       openClams(world, activeRacers(world));
-      if (player.stack.includes('jetFin')) jets++;
+      if (player.items[0]?.kind === 'jetFin') jets++;
     }
     return jets;
   }
@@ -282,8 +282,8 @@ describe('the squid dodge window', () => {
     placeOnTile(racerOf(world, 'tess'), 4, 2);
     placeOnTile(racerOf(world, 'player'), 14, 2);
     updateProgress(world);
-    racerOf(world, 'tess').stack = ['homingSquid'];
-    fireBurst(world, racerOf(world, 'tess'), { x: 1, y: 0 });
+    giveItems(racerOf(world, 'tess'), ['homingSquid']);
+    fireItem(world, racerOf(world, 'tess'), 0, { x: 1, y: 0 });
     // Rivals may not squid the player on Easy, so the lock is made on Normal and the level swapped after.
     world.difficulty = 'normal';
     for (let tick = 0; ; tick++) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PEARL } from '../powerups/tuning.ts';
 import { activeRacers } from '../racers.ts';
-import { eventsIn, placeOnTile, raceOn, racerOf } from '../test-world.ts';
+import { eventsIn, giveItems, placeOnTile, raceOn, racerOf } from '../test-world.ts';
 import { collectPearls } from './pearls.ts';
 
 /** Pearls at tiles (5, 2) and (6, 2) in open water. */
@@ -65,7 +65,7 @@ describe('collecting pearls', () => {
 describe('two racers reaching one pearl on the same tick', () => {
   it('goes to the first in RACER_IDS order, even when it only reaches by lantern', () => {
     const { world, log, player, tess, racers } = setup();
-    player.stack = ['glowLantern'];
+    giveItems(player, ['glowLantern']);
     placeOnTile(player, 2, 2);
     placeOnTile(tess, 5, 2);
 

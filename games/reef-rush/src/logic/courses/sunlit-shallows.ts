@@ -36,7 +36,7 @@ import type { Course } from './types.ts';
  * order and scenarios name the reef's first clam, at (22, 6), as index 0.
  * One dark zone, the last ledge and the drop (cols 530-610): you see about 60-80 px around
  * you, so the ceiling urchins (6 columns apart) come out of the dark one at a time. Rivals that
- * can't see steer loosely there; Selene and anyone holding a Glow Lantern see as if lit.
+ * can't see steer loosely there; Selene and anyone with a Glow Lantern selected see as if lit.
  */
 const LEVEL: LevelDef = {
   name: 'Sunlit Shallows',

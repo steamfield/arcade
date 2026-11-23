@@ -11,7 +11,7 @@
  * for PROGRESS_BACKSTOP_TICKS racing ticks is sent into the medium's recovery. It is for opponents
  * only: a bot driving the player's slot is a test harness and is left to flounder. Like the speed rule,
  * its count resets while the rival is stunned or trapped; it pauses while an Undertow pulls the
- * rival back, since that loss isn't the rival's steering. A recovering rival never bursts.
+ * rival back, since that loss isn't the rival's steering. A recovering rival never fires an item.
  */
 import type { Rng } from '@arcade/core';
 import type { CatchUpBounds } from '../difficulty-level.ts';
@@ -19,7 +19,7 @@ import { mediumOf } from '../media/index.ts';
 import type { AiDraws, Medium } from '../media/types.ts';
 import { modifiersFor } from '../modifiers.ts';
 import type { AiMemory, Intent, Racer, World } from '../types.ts';
-import { wantsBurst } from './items.ts';
+import { chooseItemSlot } from './items.ts';
 
 /**
  * Racing ticks without a new best progress before the backstop starts a rival's recovery: 10 s, the
@@ -46,8 +46,10 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
   const draws: AiDraws = { wobble: rng.next(), kick: rng.next(), side: rng.next(), item: rng.next() };
   const forceRecover = progressStalled(world, racer, memory);
   const steering = mediumOf(world).steer(world, racer, modifiersFor(world, racer), draws, forceRecover);
-  const burst = !steering.recovering && wantsBurst(world, racer, steering.aim, draws.item);
-  return { move: steering.move, kick: steering.kick, burst, kickHeld: steering.kickHeld };
+  const slot = steering.recovering ? null : chooseItemSlot(world, racer, steering.aim, draws.item);
+  const intent: Intent = { move: steering.move, kick: steering.kick, use: false, cycle: 0, kickHeld: steering.kickHeld };
+  if (slot !== null) intent.useSlot = slot;
+  return intent;
 }
 
 /**

@@ -62,7 +62,7 @@ function referee(world: World) {
 
 const places = (world: World) => Object.fromEntries(world.racers.map((r) => [r.id, r.place]));
 const ofType = (log: EventLog<GameEvent>, type: GameEvent['type']) => log.all().filter((e) => e.type === type);
-const HOLD_RIGHT: TickInput = { move: { x: 1, y: 0 }, kick: true, burst: false };
+const HOLD_RIGHT: TickInput = { move: { x: 1, y: 0 }, kick: true, use: false, cycle: 0 };
 
 describe('countdown', () => {
   it('beeps 3, 2, 1 at ticks 0, 60 and 120, starts at 180 and holds every racer until then', () => {

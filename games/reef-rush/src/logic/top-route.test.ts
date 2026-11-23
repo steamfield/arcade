@@ -26,7 +26,7 @@ describe('TOP_ROUTE on the default seed', () => {
         y: (step.actions.includes('down') ? 1 : 0) - (step.actions.includes('up') ? 1 : 0),
       };
       for (let tick = 0; tick < step.ticks && !player.finished; tick++) {
-        stepWorld(world, { move, kick: false, burst: false }, TICK_DT);
+        stepWorld(world, { move, kick: false, use: false, cycle: 0 }, TICK_DT);
       }
     }
 

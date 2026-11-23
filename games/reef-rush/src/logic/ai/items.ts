@@ -1,11 +1,12 @@
 /**
- * When a computer racer bursts its power-ups. `rivalIntent` asks every tick with
- * that tick's item draw (its fourth, taken holding or not); this module only
- * reads the world.
+ * When a computer racer fires an item, and which slot. `rivalIntent` asks every
+ * tick with that tick's item draw (its fourth, taken holding or not); this module
+ * only reads the world.
  *
  * Distances are between racer centres, in tiles. "Ahead" and "behind" compare
  * progress (lower is ahead). Rivals aim at any racer, so the field fights itself (except the player, where the difficulty level's `mayAttack` says no). The bubble's aim cone is ITEM_USE.aimConeCos either
- * side of the aim. Jet Fins need the whole body to slide 5 tiles along the aim.
+ * side of the aim. Jet Fins (and a Cannonball with no coral to break) need the whole body to slide
+ * 5 tiles along the aim.
  */
 import { itemAggressionMul, mayAttack } from '../difficulty-level.ts';
 import { pickSquidTarget } from '../hazards/squid-target.ts';
@@ -16,7 +17,7 @@ import { activeRacers, centreOf, playerOf } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
 import { hasClearSweep, tileOf } from './steer.ts';
 
-/** How near a use has to be before a rival spends its burst on it. */
+/** How near a use has to be before a rival spends an item on it. */
 export const ITEM_USE = {
   /** Ink: a racer behind within this many tiles. */
   inkBehindTiles: 4,
@@ -29,47 +30,69 @@ export const ITEM_USE = {
    * firing it whenever anyone is in range.
    */
   lanternTiles: FLASH.rangeTiles / 2,
-  /** Puffer: unbroken coral within this many steps ahead (`Medium.coralAhead`). */
+  /** Puffer and Cannonball: unbroken coral within this many steps ahead (`Medium.coralAhead`). */
   pufferCoralSteps: 3,
-  /** Jet Fins: this many tiles of clear water straight along the aim. */
+  /** Jet Fins (and Cannonball without coral): this many tiles of clear water straight along the aim. */
   jetClearTiles: 5,
   /** Riptide: this many tiles of clear water straight along the aim to lay the lane on... */
   riptideClearTiles: 6,
-  /** ...and a racer this close behind, who would draft it (a lane nobody can use is not worth a burst). */
+  /** ...and a racer this close behind, who would draft it (a lane nobody can use is not worth a charge). */
   riptideBehindTiles: 5,
   /** Undertow: a racer this many tiles further ahead makes it worth firing (from 3rd or 4th place only). */
   undertowLeadTiles: 8,
   /** Mimic: drop the decoy when a squid locked on this racer is within this many tiles. */
   mimicSquidTiles: 8,
   /**
-   * A burst fires everything held, so while Jet Fins are in the stack every burst dashes. A dash
-   * from behind is runaway speed, so holding Jet Fins scales the burst chance by this, unless a held
-   * Puffer has coral to break just ahead: a cannonball through coral is worth firing at once, and a
-   * rival that waits at the gate for a burst it almost never takes jams the corridor.
+   * A dash from behind is runaway speed, so firing Jet Fins, or a Cannonball with no coral ahead,
+   * scales the chance by this. A Cannonball or Puffer with coral just ahead is worth firing at once:
+   * a rival that waits at the gate for a use it almost never takes jams the corridor.
    */
   jetChanceMul: 0.02,
 } as const;
 
+/** The kinds that break coral when fired, and so come first when coral is just ahead. */
+const CORAL_BREAKERS: readonly PowerUpKind[] = ['puffer', 'cannonball'];
+
+/** The kinds whose firing scales the chance by ITEM_USE.jetChanceMul when no coral is ahead. */
+const DASHERS: readonly PowerUpKind[] = ['jetFin', 'cannonball'];
+
 /**
- * True when the racer should burst this tick: its burst is ready, at least one held kind has a use,
- * and `roll` is under its chance: `profile.itemAggression`, times ITEM_USE.jetChanceMul while it
- * holds Jet Fins (unless a held Puffer has coral ahead). Uses: inkSac, a racer behind (higher progress) within 4
- * tiles; bubbleShield, a racer ahead within 6 tiles inside the aim cone; glowLantern, a racer ahead
- * within 2 tiles; puffer, unbroken coral within 3 tiles ahead (`Medium.coralAhead`); jetFin, a clear
- * straight path of 5 tiles along the aim; homingSquid, a target in lock range (`pickSquidTarget`);
- * riptide, 6 clear tiles along the aim with a racer within 5 tiles behind to draft it; undertow, in 3rd or 4th with a racer 8 or more tiles ahead;
- * mimic, a squid locked on it within 8 tiles.
+ * The slot the racer fires this tick, or null. Null when its item use is cooling down or nothing held
+ * has a use. The slot is the first holding a Puffer or Cannonball when coral is just ahead
+ * (`pufferHasCoral`), else the first held slot whose kind has a use. It fires only when `roll` is
+ * under `profile.itemAggression` (times the difficulty level's multiplier), times
+ * ITEM_USE.jetChanceMul when that slot is Jet Fins or a Cannonball and no coral is ahead.
+ *
+ * Uses: inkSac, a racer behind (higher progress) within 4 tiles; bubbleShield, a racer ahead within
+ * 6 tiles inside the aim cone; glowLantern, a racer ahead within 2 tiles; puffer, unbroken coral
+ * within 3 tiles ahead (`Medium.coralAhead`); jetFin, a clear straight path of 5 tiles along the aim;
+ * cannonball, either of the last two; homingSquid, a target in lock range (`pickSquidTarget`);
+ * riptide, 6 clear tiles along the aim with a racer within 5 tiles behind to draft it; undertow, in
+ * 3rd or 4th with a racer 8 or more tiles ahead; mimic, a squid locked on it within 8 tiles.
  *
  * @param aim The unit aim the medium's steering chose this tick (`Steering.aim`).
  * @param roll The tick's item draw from the racer's rng, in [0, 1).
  */
-export function wantsBurst(world: World, racer: Racer, aim: Vec, roll: number): boolean {
-  if (racer.stack.length === 0 || racer.burstCooldown > 0) return false;
-  const throughCoral = racer.stack.includes('puffer') && pufferHasCoral(world, racer);
-  const dashes = racer.stack.includes('jetFin') && !throughCoral;
+export function chooseItemSlot(world: World, racer: Racer, aim: Vec, roll: number): number | null {
+  if (racer.useCooldown > 0) return null;
+  const coral = pufferHasCoral(world, racer);
+  const breaker = coral ? slotHolding(racer, CORAL_BREAKERS) : -1;
+  const slot = breaker >= 0 ? breaker : slotWithUse(world, racer, aim);
+  const kind = racer.items[slot]?.kind;
+  if (kind === undefined) return null;
   const aggression = racer.profile.itemAggression * itemAggressionMul(world, racer);
-  if (roll >= aggression * (dashes ? ITEM_USE.jetChanceMul : 1)) return false;
-  return racer.stack.some((kind) => hasUse(world, racer, aim, kind));
+  const dashes = DASHERS.includes(kind) && !coral;
+  return roll < aggression * (dashes ? ITEM_USE.jetChanceMul : 1) ? slot : null;
+}
+
+/** The first slot holding one of `kinds`, or -1. */
+function slotHolding(racer: Racer, kinds: readonly PowerUpKind[]): number {
+  return racer.items.findIndex((item) => item !== null && kinds.includes(item.kind));
+}
+
+/** The first held slot whose kind has a use this tick, or -1. */
+function slotWithUse(world: World, racer: Racer, aim: Vec): number {
+  return racer.items.findIndex((item) => item !== null && hasUse(world, racer, aim, item.kind));
 }
 
 function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolean {
@@ -86,6 +109,8 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
       return pufferHasCoral(world, racer);
     case 'jetFin':
       return clearAhead(world, racer, aim, ITEM_USE.jetClearTiles);
+    case 'cannonball':
+      return pufferHasCoral(world, racer) || clearAhead(world, racer, aim, ITEM_USE.jetClearTiles);
     case 'homingSquid':
       return pickSquidTarget(world, racer.id, centreOf(racer), null) !== null;
     case 'riptide':
@@ -140,7 +165,7 @@ function inAimCone(racer: Racer, aim: Vec, other: Racer): boolean {
   return ((to.x - from.x) * aim.x + (to.y - from.y) * aim.y) / lengths >= ITEM_USE.aimConeCos;
 }
 
-/** True when a Puffer burst would open coral just ahead of the racer, as the medium judges it. */
+/** True when a Puffer or Cannonball would open coral just ahead of the racer, as the medium judges it. */
 function pufferHasCoral(world: World, racer: Racer): boolean {
   return mediumOf(world).coralAhead(world, tileOf(centreOf(racer)), ITEM_USE.pufferCoralSteps);
 }

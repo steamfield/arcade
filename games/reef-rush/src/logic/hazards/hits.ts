@@ -9,7 +9,7 @@ import { invulnerableTicks, mayAttack, statusTicks } from '../difficulty-level.t
 import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
 import { spawnLoose } from '../pickups/loose.ts';
-import { popForHit } from '../powerups/stack.ts';
+import { heldItems, holds, knockForHit } from '../powerups/inventory.ts';
 import { BUBBLE, FLASH } from '../powerups/tuning.ts';
 import { centreOf } from '../racers.ts';
 import type { HitCause, Racer, RacerId, Vec, World } from '../types.ts';
@@ -18,23 +18,23 @@ import { HIT } from './tuning.ts';
 /**
  * Hits `racer`. An invulnerable racer, or one whose ability ignores this cause (`ignoresHazard`),
  * ignores it entirely (returns false, nothing emitted). Otherwise emits `racer.hit {id, cause, by}`, then:
- * - a held Bubble Shield absorbs any cause: `popForHit` removes it (`shield.popped`);
- * - flash: stunned FLASH.stunTicks (`racer.stunned`), stack kept;
- * - bubble: trapped BUBBLE.trapTicks (`racer.trapped {id, by}`), stack kept;
- * - urchin, jelly, puffer, squid: `popForHit` knocks off the newest power-up, which `spawnLoose` floats at the
- *   racer's centre; with an empty stack the racer is stunned HIT.stunTicks (`racer.stunned`).
+ * - a Bubble Shield in any slot absorbs any cause: `knockForHit` empties its slot (`shield.popped`);
+ * - flash: stunned FLASH.stunTicks (`racer.stunned`), items kept;
+ * - bubble: trapped BUBBLE.trapTicks (`racer.trapped {id, by}`), items kept;
+ * - urchin, jelly, puffer, squid: `knockForHit` knocks off the selected item, which `spawnLoose` floats at
+ *   the racer's centre with all its charges; with nothing held the racer is stunned HIT.stunTicks (`racer.stunned`).
  * Stun and trap lengths are scaled by `statusTicks` (the racer's `statusDurationMul`, and the difficulty level's for the player), rounded to whole ticks.
- * Every landed hit ends any dash (`status.dashing = 0`, inflated cannonball dashes included), sets
+ * Every landed hit ends any dash (`status.dashing = 0`; a Cannonball is invulnerable, so none lands on it), sets
  * `status.invulnerable = HIT.invulnerableTicks` and sets the racer's velocity to HIT.knockbackSpeed
  * directly away from `from` (along facing when `from` is its centre), on the axes the medium holds
  * (`effects.dashAxes`: horizontal only keeps the vertical speed gravity gave it). A trapped racer's float
  * replaces that velocity on its next move, so a bubble hit doesn't knock it back.
  *
- * @param by The racer whose burst caused it, or null for urchins and jellies.
+ * @param by The racer whose item caused it, or null for urchins and jellies.
  * @param from Where the hit came from, in world px (urchin tile centre, jelly centre, bubble, puffer or flasher centre, squid).
  * @returns true when the hit landed.
  * @throws {Error} For a bubble hit with no owner, whether or not it would land: bubbles only come
- * from bursts, so `by` is always set.
+ * from items, so `by` is always set.
  */
 export function applyHit(world: World, racer: Racer, cause: HitCause, by: RacerId | null, from: Vec): boolean {
   const blow = blowOf(racer, cause, by);
@@ -54,25 +54,25 @@ type Blow = { cause: 'bubble'; by: RacerId } | { cause: Exclude<HitCause, 'bubbl
 function blowOf(racer: Racer, cause: HitCause, by: RacerId | null): Blow {
   if (cause !== 'bubble') return { cause, by };
   if (by === null) {
-    throw new Error(`Bubble hit on '${racer.id}' has no owner; pass the racer whose burst fired the bubble as 'by'`);
+    throw new Error(`Bubble hit on '${racer.id}' has no owner; pass the racer whose Bubble Shield fired the bubble as 'by'`);
   }
   return { cause, by };
 }
 
-/** What the hit takes or does: a shield, a stun, a trap, or the newest power-up. */
+/** What the hit takes or does: a shield, a stun, a trap, or the selected item. */
 function sufferHit(world: World, racer: Racer, blow: Blow): void {
-  if (racer.stack.includes('bubbleShield')) {
-    popForHit(world, racer);
+  if (holds(racer, 'bubbleShield')) {
+    knockForHit(world, racer);
   } else if (blow.cause === 'flash') {
     stun(world, racer, FLASH.stunTicks);
   } else if (blow.cause === 'bubble') {
     racer.status.trapped = statusTicks(world, racer, BUBBLE.trapTicks, 'trapped');
     world.events.emit({ type: 'racer.trapped', id: racer.id, by: blow.by });
-  } else if (racer.stack.length === 0) {
+  } else if (heldItems(racer).length === 0) {
     stun(world, racer, HIT.stunTicks);
   } else {
-    const lost = popForHit(world, racer);
-    if (lost) spawnLoose(world, lost, centreOf(racer));
+    const knocked = knockForHit(world, racer);
+    if (knocked) spawnLoose(world, knocked.kind, knocked.charges, centreOf(racer));
   }
 }
 

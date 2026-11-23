@@ -2,7 +2,7 @@ import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { applyHit } from '../hazards/hits.ts';
 import { activeRacers, centreOf } from '../racers.ts';
-import { eventsIn, placeAt, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
+import { eventsIn, giveItems, placeAt, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
 import { spawnLoose, updateLoose } from './loose.ts';
 
 const LANES = `
@@ -30,13 +30,13 @@ describe('a power-up lost to a hit', () => {
   it('floats loose at the racer centre with a 30-tick grab delay and a 600-tick life', () => {
     const { world, log } = raceOn(LANES);
     const player = racerOf(world, 'player');
-    player.stack = ['jetFin', 'puffer'];
+    giveItems(player, ['jetFin', { kind: 'puffer', charges: 1 }], 1);
     const centre = centreOf(player);
 
     applyHit(world, player, 'urchin', null, { x: centre.x - 8, y: centre.y });
 
-    expect(world.loose).toEqual([{ kind: 'puffer', x: centre.x, y: centre.y, grabDelay: 30, ttl: 600 }]);
-    expect(eventsIn(log, 'loose.spawned')).toEqual([{ type: 'loose.spawned', kind: 'puffer' }]);
+    expect(world.loose).toEqual([{ kind: 'puffer', charges: 1, x: centre.x, y: centre.y, grabDelay: 30, ttl: 600 }]);
+    expect(eventsIn(log, 'loose.spawned')).toEqual([{ type: 'loose.spawned', kind: 'puffer', charges: 1 }]);
   });
 });
 
@@ -44,18 +44,18 @@ describe('grab delay', () => {
   it('keeps even the racer sitting on it from grabbing it for 30 ticks', () => {
     const { world, log } = raceOn(LANES);
     const player = racerOf(world, 'player');
-    spawnLoose(world, 'inkSac', centreOf(player));
+    spawnLoose(world, 'inkSac', 2, centreOf(player));
 
     step(world, log, 30);
-    expect(player.stack).toEqual([]);
+    expect(player.items).toEqual([null, null, null]);
     expect(world.loose).toHaveLength(1);
 
     step(world, log, 1);
     expect(eventsIn(log, 'loose.grabbed', 'powerup.gained')).toEqual([
-      { type: 'loose.grabbed', id: 'player', kind: 'inkSac' },
-      { type: 'powerup.gained', id: 'player', kind: 'inkSac' },
+      { type: 'loose.grabbed', id: 'player', kind: 'inkSac', charges: 2 },
+      { type: 'powerup.gained', id: 'player', kind: 'inkSac', slot: 0, charges: 2 },
     ]);
-    expect(player.stack).toEqual(['inkSac']);
+    expect(player.items).toEqual([{ kind: 'inkSac', charges: 2 }, null, null]);
     expect(world.loose).toEqual([]);
   });
 });
@@ -67,7 +67,7 @@ describe('grabbing', () => {
     const spot = tileCentre(5, 2);
     placeAt(racerOf(world, 'player'), spot);
     placeAt(racerOf(world, 'tess'), spot);
-    world.loose = [{ kind: 'jetFin', x: spot.x, y: spot.y, grabDelay: 0, ttl: 600 }];
+    world.loose = [{ kind: 'jetFin', charges: 1, x: spot.x, y: spot.y, grabDelay: 0, ttl: 600 }];
     return { world, log };
   }
 
@@ -76,18 +76,35 @@ describe('grabbing', () => {
 
     updateLoose(world, activeRacers(world), TICK_DT);
 
-    expect(eventsIn(log, 'loose.grabbed')).toEqual([{ type: 'loose.grabbed', id: 'player', kind: 'jetFin' }]);
-    expect(racerOf(world, 'tess').stack).toEqual([]);
+    expect(eventsIn(log, 'loose.grabbed')).toEqual([
+      { type: 'loose.grabbed', id: 'player', kind: 'jetFin', charges: 1 },
+    ]);
+    expect(racerOf(world, 'tess').items).toEqual([null, null, null]);
   });
 
-  it('passes over a racer that already holds that kind', () => {
+  it('passes over a racer that already holds that kind, and one whose slots are full', () => {
+    for (const held of [['jetFin'], ['puffer', 'inkSac', 'mimic']] as const) {
+      const { world, log } = crowd();
+      giveItems(racerOf(world, 'player'), held);
+
+      updateLoose(world, activeRacers(world), TICK_DT);
+
+      expect(eventsIn(log, 'loose.grabbed'), held.join()).toEqual([
+        { type: 'loose.grabbed', id: 'tess', kind: 'jetFin', charges: 1 },
+      ]);
+      expect(racerOf(world, 'tess').items[0], held.join()).toEqual({ kind: 'jetFin', charges: 1 });
+    }
+  });
+
+  it('stays loose when everyone touching it holds that kind', () => {
     const { world, log } = crowd();
-    racerOf(world, 'player').stack = ['jetFin'];
+    giveItems(racerOf(world, 'player'), ['jetFin']);
+    giveItems(racerOf(world, 'tess'), ['jetFin']);
 
     updateLoose(world, activeRacers(world), TICK_DT);
 
-    expect(eventsIn(log, 'loose.grabbed')).toEqual([{ type: 'loose.grabbed', id: 'tess', kind: 'jetFin' }]);
-    expect(racerOf(world, 'tess').stack).toEqual(['jetFin']);
+    expect(eventsIn(log)).toEqual([]);
+    expect(world.loose).toHaveLength(1);
   });
 });
 
@@ -95,7 +112,7 @@ describe('drifting', () => {
   it('rises steadily and disappears after 600 ticks when nobody grabs it', () => {
     const { world, log } = raceOn(BOX);
     const start = tileCentre(8, 3);
-    spawnLoose(world, 'glowLantern', start);
+    spawnLoose(world, 'glowLantern', 2, start);
     const racers = activeRacers(world);
 
     for (let i = 0; i < 599; i++) updateLoose(world, racers, TICK_DT);
@@ -114,19 +131,19 @@ describe('expiry and drift details', () => {
     const { world, log } = raceOn(BOX);
     const player = racerOf(world, 'player');
     const at = centreOf(player);
-    world.loose = [{ kind: 'puffer', x: at.x, y: at.y, grabDelay: 0, ttl: 1 }];
+    world.loose = [{ kind: 'puffer', charges: 2, x: at.x, y: at.y, grabDelay: 0, ttl: 1 }];
 
     updateLoose(world, activeRacers(world), TICK_DT);
 
     expect(world.loose).toEqual([]);
-    expect(player.stack).toEqual([]);
+    expect(player.items).toEqual([null, null, null]);
     expect(eventsIn(log)).toEqual([]);
   });
 
   it('rises at 10 px/s', () => {
     const { world } = raceOn(BOX);
     const start = tileCentre(8, 3);
-    spawnLoose(world, 'glowLantern', start);
+    spawnLoose(world, 'glowLantern', 2, start);
 
     for (let i = 0; i < 120; i++) updateLoose(world, activeRacers(world), TICK_DT);
 

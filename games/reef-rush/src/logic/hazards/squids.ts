@@ -26,7 +26,8 @@ import { isSolid } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { cos, length, sin } from '../num.ts';
 import { popDecoy } from '../powerups/decoys.ts';
-import { INK, SQUID } from '../powerups/tuning.ts';
+import { holds } from '../powerups/inventory.ts';
+import { SQUID } from '../powerups/tuning.ts';
 import { centreOf, hitbox } from '../racers.ts';
 import {
   type Box,
@@ -52,11 +53,11 @@ const LOOKAHEAD_TILES = 3;
 /**
  * Fires a squid from `owner`'s centre. It heads for the target `pickSquidTarget` finds (emitting
  * `squid.spawned` with the racer it locked, or null, then `squid.locked` for any target), else along
- * `aim`. `inked` is the inkSquid combo: an ink cloud bursts on the racer it latches.
+ * `aim`.
  *
  * @param aim Unit direction used when there is no target.
  */
-export function launchSquid(world: World, owner: Racer, aim: Vec, inked: boolean): void {
+export function launchSquid(world: World, owner: Racer, aim: Vec): void {
   const from = centreOf(owner);
   const target = pickSquidTarget(world, owner.id, from, null);
   const point = target ? pointOf(world, target) : null;
@@ -69,7 +70,6 @@ export function launchSquid(world: World, owner: Racer, aim: Vec, inked: boolean
     ttl: SQUID.ttlTicks,
     owner: owner.id,
     target,
-    ...(inked ? { inked } : {}),
   });
   world.events.emit({ type: 'squid.spawned', owner: owner.id, target: target?.kind === 'racer' ? target.id : null });
   if (target) world.events.emit({ type: 'squid.locked', owner: owner.id, target: lockedName(target) });
@@ -221,7 +221,7 @@ function touchSomething(world: World, racers: readonly Racer[], squid: Squid): b
     (racer) => racer.id !== squid.owner && racer.id !== squid.dodgedBy && overlaps(box, hitbox(racer)),
   );
   if (!victim) return false;
-  const shielded = victim.stack.includes('bubbleShield');
+  const shielded = holds(victim, 'bubbleShield');
   if (!applyHit(world, victim, 'squid', squid.owner, squid)) {
     // Passing through an invulnerable racer drops the lock, like a dodge: it never turns back for it.
     squid.target = null;
@@ -233,12 +233,8 @@ function touchSomething(world: World, racers: readonly Racer[], squid: Squid): b
   return true;
 }
 
-/** The squid takes hold of `victim`: `status.latched`, the event, and the inkSquid cloud. */
+/** The squid takes hold of `victim`: `status.latched` and the event. */
 function latch(world: World, victim: Racer, squid: Squid): void {
   victim.status.latched = statusTicks(world, victim, SQUID.latchedTicks, 'latched');
   world.events.emit({ type: 'squid.latched', id: victim.id, by: squid.owner });
-  if (!squid.inked) return;
-  const centre = centreOf(victim);
-  world.inks.push({ x: centre.x, y: centre.y, radius: INK.bombRadius, ttl: INK.ttlTicks, owner: squid.owner });
-  world.events.emit({ type: 'ink.spawned', owner: squid.owner });
 }

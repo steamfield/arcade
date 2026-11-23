@@ -7,8 +7,11 @@ import { EventLog, TICK_DT } from '@arcade/core';
 import { registerCourse } from './courses/index.ts';
 import type { Course } from './courses/types.ts';
 import type { GameEvent } from './events.ts';
+import { CHARGES } from './powerups/charges.ts';
 import {
+  type HeldItem,
   type LevelDef,
+  type PowerUpKind,
   type Racer,
   type RacerId,
   type RivalProfile,
@@ -45,11 +48,16 @@ export function courseFromLevel(level: LevelDef | string, medium = 'swim', overr
   return course;
 }
 
-export const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
+export const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
 
-/** Input holding `move` (and optionally kick or burst) for a tick. */
-export function hold(move: Vec, presses: { kick?: boolean; burst?: boolean } = {}): TickInput {
-  return { move, kick: presses.kick ?? false, burst: presses.burst ?? false };
+/** Input holding `move` (and optionally pressing kick, use or a cycle) for a tick. */
+export function hold(
+  move: Vec,
+  presses: { kick?: boolean; use?: boolean; cycle?: -1 | 0 | 1; useSlot?: number } = {},
+): TickInput {
+  const input: TickInput = { move, kick: presses.kick ?? false, use: presses.use ?? false, cycle: presses.cycle ?? 0 };
+  if (presses.useSlot !== undefined) input.useSlot = presses.useSlot;
+  return input;
 }
 
 /**
@@ -67,6 +75,19 @@ export function racerOf(world: World, id: RacerId): Racer {
   const found = world.racers.find((racer) => racer.id === id);
   if (!found) throw new Error(`No racer '${id}' in the world (racers: ${world.racers.map((r) => r.id).join(', ')})`);
   return found;
+}
+
+/**
+ * Fills `racer`'s slots from the left: a kind (with its `CHARGES`), a `HeldItem`, or null for an
+ * empty slot. Slots past the list are emptied. Selects `selected`.
+ */
+export function giveItems(racer: Racer, items: readonly (PowerUpKind | HeldItem | null)[], selected = 0): void {
+  racer.items = racer.items.map((_, slot) => {
+    const item = items[slot] ?? null;
+    if (item === null) return null;
+    return typeof item === 'string' ? { kind: item, charges: CHARGES[item] } : { ...item };
+  });
+  racer.selected = selected;
 }
 
 /** Centre of tile (tx, ty) in world px. */

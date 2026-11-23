@@ -12,8 +12,8 @@ import { RACE_LIMIT_TICKS } from '../race/standings.ts';
 import type { CharacterId, Difficulty, RacerId, TickInput } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
-const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
-const HOLD_RIGHT: TickInput = { move: { x: 1, y: 0 }, kick: false, burst: false };
+const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
+const HOLD_RIGHT: TickInput = { move: { x: 1, y: 0 }, kick: false, use: false, cycle: 0 };
 
 /** When the child stops (race ticks after the GO), for how long, and how long it then holds right. */
 export const SCRIPT = { idleFrom: 1500, idleTicks: 600, holdTicks: 300 } as const;

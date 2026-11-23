@@ -5,16 +5,16 @@
  * Tick order: clock; the Easy guide's record of the player (`trackGuide`, nothing on other levels);
  * intents for every unfinished racer from the start-of-tick
  * state (in RACER_IDS order), the human player's passed through the Easy steering assist,
- * idle while stunned or trapped; each unfinished
+ * cut to item cycling while stunned or trapped; each unfinished
  * racer's movement in the medium (`Medium.sampleEnvironment` then `applyIntent`; a squid's latch and
  * an undertow pull it after), dash, trapped drift and movement through the tiles (RACER_IDS order);
  * one pass of separation over unfinished racers when the medium's racers collide; then the phase 3 systems for unfinished
- * racers only: bursts (from intents), projectiles and inks, squids, riptides, decoys, jellies, contacts
+ * racers only: items (cycle, then use, from intents), projectiles and inks, squids, riptides, decoys, jellies, contacts
  * (hits), pickups (clams, pearls, loose), status counters; then abilities
  * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
  * then progress, finishes, places, race end. Finished racers are out of play:
  * they stay where they crossed the line, nobody bumps them, and they never
- * gain, lose or burst.
+ * gain, lose or use items.
  *
  * Slots are fixed (RACER_IDS); characters are data placed in them. The player's
  * slot gets the chosen character and the rival slots get `pickRivals` from the
@@ -24,7 +24,7 @@
  * module never asks which medium it is.
  */
 import { createRng, type EventSink } from '@arcade/core';
-import { breaksCoralOnContact, bumpMassFor, onBump, onWorldEvents, tickAbilities } from './abilities.ts';
+import { breaksCoralOnContact, bumpMassFor, onBump, onWorldEvents, stackMaxFor, tickAbilities } from './abilities.ts';
 import { PLAYER_PROFILE } from './ai/profiles.ts';
 import { createAiMemory, rivalIntent } from './ai/rival.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
@@ -44,10 +44,10 @@ import { modifiersFor } from './modifiers.ts';
 import { openClams } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
 import { collectPearls } from './pickups/pearls.ts';
-import { driveDash, fireBursts, sustainBursts } from './powerups/burst.ts';
 import { advanceDecoys } from './powerups/decoys.ts';
 import { advanceRiptides } from './powerups/riptides.ts';
 import { applyUndertow } from './powerups/undertow.ts';
+import { driveDash, sustainItems, useItems } from './powerups/use.ts';
 import { moveBody, separateRacers } from './race/collide.ts';
 import { ramCoral } from './race/coral.ts';
 import { buildProgressField } from './race/flowfield.ts';
@@ -85,7 +85,7 @@ export interface WorldOptions {
   difficulty?: Difficulty;
 }
 
-const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
+const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
 
 /**
  * Sets up a race on `course` at the countdown's first tick, with every clam ready, every pearl
@@ -199,7 +199,7 @@ function createRacer(
     finished: null,
     ai: isHuman ? null : createAiMemory(medium),
     profile,
-    ...noItems(),
+    ...noItems(stackMaxFor({ character })),
   };
 }
 
@@ -239,8 +239,8 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
     separateRacers(racing, world.contacts, world.events, bumpMassFor, (a, b) => onBump(world, a, b));
   }
 
-  fireBursts(world, racing, intents);
-  sustainBursts(world, racing);
+  useItems(world, racing, intents);
+  sustainItems(world, racing);
   advanceProjectiles(world, racing, dt);
   advanceSquids(world, racing, dt);
   advanceRiptides(world);
@@ -281,7 +281,10 @@ function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, m
   moveBody(racer.body, world.level, world.broken, dt);
 }
 
-/** Small, stable view for the CLI summary and scenario assertions. `stack` lists held power-ups oldest first. */
+/**
+ * Small, stable view for the CLI summary and scenario assertions. `items` has one entry per slot,
+ * `'kind:charges'` or null, and `selected` is the selected slot.
+ */
 export function summarize(world: World) {
   const player = playerOf(world);
   return {
@@ -292,7 +295,8 @@ export function summarize(world: World) {
     progress: Number.isFinite(player.progress) ? Math.round(player.progress) : null,
     finished: player.finished !== null,
     player: { tile: centreTile(player), kickReady: player.kickCooldown === 0 },
-    stack: [...player.stack],
+    items: player.items.map((item) => (item ? `${item.kind}:${item.charges}` : null)),
+    selected: player.selected,
     pearls: player.pearls,
     stunned: player.status.stunned > 0,
   };

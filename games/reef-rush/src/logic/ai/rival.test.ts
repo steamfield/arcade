@@ -6,7 +6,7 @@ import { swimPilot } from '../media/swim/data.ts';
 import { DARK_STEERING } from '../media/swim/pilot.ts';
 import { updateProgress } from '../race/standings.ts';
 import { noItems } from '../racers.ts';
-import { courseFromLevel, placeOnTile, raceOn, tileCentre } from '../test-world.ts';
+import { courseFromLevel, eventsIn, giveItems, placeOnTile, raceOn, step, tileCentre } from '../test-world.ts';
 import type { Intent, PowerUpKind, Racer, RacerId, TickInput, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 import { ITEM_USE } from './items.ts';
@@ -22,7 +22,7 @@ const BOUNDS = DIFFICULTY.hard.rivalCatchUp;
  */
 const HELD_TICKS = PROGRESS_BACKSTOP_TICKS - 1;
 
-const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
+const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
 
 /** One walled lane per racer, so every aim is straight right and nobody bumps. */
 function lanes(seed = 1) {
@@ -102,14 +102,14 @@ describe('rival racing', () => {
     expect(intents(world, 'squib', 200, moving(0)).some((i) => i.kick)).toBe(true);
   });
 
-  it('never fires a burst', () => {
+  it('never fires an item', () => {
     const { world } = lanes();
     racing(world);
     const moving = (r: Racer) => {
       r.body.vx = 60;
     };
 
-    expect(intents(world, 'squib', 300, moving).some((i) => i.burst)).toBe(false);
+    expect(intents(world, 'squib', 300, moving).some((i) => i.use || i.useSlot !== undefined)).toBe(false);
   });
 
   it('draws the same amount of randomness whether or not it can kick', () => {
@@ -312,7 +312,7 @@ describe('catch-up', () => {
       finished: null,
       ai: null,
       motion: { kind: 'swim' },
-      ...noItems(),
+      ...noItems(3),
     };
     const body = { x: 0, y: 0, vx: 0, vy: 0, w: 12, h: 10 };
     const rival: Racer = {
@@ -401,7 +401,7 @@ type Spots = Partial<Record<RacerId, [number, number]>>;
  * Tess holding `kinds` with item aggression `aggression`. By default she sits mid-arena at (10, 5)
  * and everyone else is about 10 tiles away; `spots` moves racers to other tiles.
  */
-function itemScene(kinds: PowerUpKind[], spots: Spots = {}, aggression = 1, ascii = ARENA) {
+function itemScene(kinds: (PowerUpKind | null)[], spots: Spots = {}, aggression = 1, ascii = ARENA) {
   const { world } = raceOn(ascii);
   const defaults: Spots = ascii === ARENA ? { tess: [10, 5], player: [1, 1], squib: [1, 9], bo: [19, 9] } : {};
   for (const [id, [tx, ty]] of Object.entries({ ...defaults, ...spots }) as [RacerId, [number, number]][]) {
@@ -409,54 +409,55 @@ function itemScene(kinds: PowerUpKind[], spots: Spots = {}, aggression = 1, asci
   }
   updateProgress(world);
   const tess = racer(world, 'tess');
-  tess.stack = kinds;
+  giveItems(tess, kinds);
   tess.profile = { ...tess.profile, itemAggression: aggression };
   const decide = (ticks = 1) => Array.from({ length: ticks }, () => rivalIntent(world, tess, world.rngs['ai.tess']));
   return { world, tess, decide };
 }
 
-const bursts = (intents: Intent[]) => intents.filter((intent) => intent.burst).length;
+/** How many of `intents` fire an item. Rivals fire only through `useSlot`, never `use`. */
+const uses = (intents: Intent[]) => intents.filter((intent) => intent.useSlot !== undefined).length;
 
 describe('using items', () => {
   it('drops ink on a racer close behind', () => {
-    expect(bursts(itemScene(['inkSac'], { player: [7, 5] }).decide())).toBe(1);
+    expect(uses(itemScene(['inkSac'], { player: [7, 5] }).decide())).toBe(1);
   });
 
   it('keeps its ink when nobody is within 4 tiles behind', () => {
-    expect(bursts(itemScene(['inkSac'], { player: [4, 5] }).decide())).toBe(0);
+    expect(uses(itemScene(['inkSac'], { player: [4, 5] }).decide())).toBe(0);
   });
 
   it('fires a bubble at a racer ahead within 6 tiles in its aim', () => {
-    expect(bursts(itemScene(['bubbleShield'], { player: [14, 5] }).decide())).toBe(1);
+    expect(uses(itemScene(['bubbleShield'], { player: [14, 5] }).decide())).toBe(1);
   });
 
   it('holds its bubble when the near racer is behind it', () => {
-    expect(bursts(itemScene(['bubbleShield'], { player: [7, 5] }).decide())).toBe(0);
+    expect(uses(itemScene(['bubbleShield'], { player: [7, 5] }).decide())).toBe(0);
   });
 
   it('flashes its lantern at a racer just ahead, within 2 tiles', () => {
-    expect(bursts(itemScene(['glowLantern'], { player: [12, 5] }).decide())).toBe(1);
+    expect(uses(itemScene(['glowLantern'], { player: [12, 5] }).decide())).toBe(1);
   });
 
   it('saves its lantern for a racer 3 tiles ahead, or one just behind it', () => {
-    expect(bursts(itemScene(['glowLantern'], { player: [13, 5] }).decide())).toBe(0);
-    expect(bursts(itemScene(['glowLantern'], { player: [8, 5] }).decide())).toBe(0);
+    expect(uses(itemScene(['glowLantern'], { player: [13, 5] }).decide())).toBe(0);
+    expect(uses(itemScene(['glowLantern'], { player: [8, 5] }).decide())).toBe(0);
   });
 
   it('aims its items at any racer in reach, another rival as readily as the player', () => {
     const atSquib = itemScene(['glowLantern'], { squib: [12, 5] });
     const atPlayer = itemScene(['glowLantern'], { player: [12, 5] });
 
-    expect(bursts(atSquib.decide())).toBe(1);
-    expect(bursts(atPlayer.decide())).toBe(1);
+    expect(uses(atSquib.decide())).toBe(1);
+    expect(uses(atPlayer.decide())).toBe(1);
   });
 
   it('inflates its puffer for coral on its smash path within 3 tiles', () => {
-    expect(bursts(itemScene(['puffer'], {}, 1, CORAL_LANE).decide())).toBe(1);
+    expect(uses(itemScene(['puffer'], {}, 1, CORAL_LANE).decide())).toBe(1);
   });
 
   it('keeps its puffer with no coral in reach', () => {
-    expect(bursts(itemScene(['puffer']).decide())).toBe(0);
+    expect(uses(itemScene(['puffer']).decide())).toBe(0);
   });
 
   it('steers by the smash field through coral while holding a puffer, and around it without', () => {
@@ -467,22 +468,28 @@ describe('using items', () => {
     expect(without?.move.x).toBeLessThan(0);
   });
 
-  it('steers around coral while its puffer burst cools down', () => {
+  it('steers by the smash field through coral while holding a Cannonball in any slot', () => {
+    const [withCannonball] = itemScene(['inkSac', null, 'cannonball'], {}, 0, CORAL_LANE).decide();
+
+    expect(withCannonball?.move.x).toBeGreaterThan(0.5);
+  });
+
+  it('steers around coral while its item use cools down', () => {
     const { tess, decide } = itemScene(['puffer'], {}, 0, CORAL_LANE);
-    tess.burstCooldown = 100;
+    tess.useCooldown = 100;
 
     expect(decide()[0]?.move.x).toBeLessThan(0);
   });
 
-  it('steers through coral while inflated, even with its burst cooling down', () => {
+  it('steers through coral while inflated, even with its item use cooling down', () => {
     const { tess, decide } = itemScene(['puffer'], {}, 0, CORAL_LANE);
-    tess.burstCooldown = 100;
+    tess.useCooldown = 100;
     tess.status.inflated = 30;
 
     expect(decide()[0]?.move.x).toBeGreaterThan(0.5);
   });
 
-  it('never bursts while swimming sideways to get unstuck', () => {
+  it('never fires while swimming sideways to get unstuck', () => {
     const { tess, decide } = itemScene(['glowLantern'], { player: [12, 5] });
     const pinned = Array.from({ length: 60 }, () => {
       tess.body.vx = 0;
@@ -492,8 +499,8 @@ describe('using items', () => {
     const recovering = pinned.filter(sideways);
 
     expect(recovering.length).toBeGreaterThan(0);
-    expect(recovering.filter((intent) => intent.burst)).toEqual([]);
-    expect(pinned.filter((intent) => !sideways(intent)).every((intent) => intent.burst)).toBe(true);
+    expect(recovering.filter((intent) => intent.useSlot !== undefined)).toEqual([]);
+    expect(pinned.filter((intent) => !sideways(intent)).every((intent) => intent.useSlot === 0)).toBe(true);
   });
 
   it('aims into the coral itself once it reaches it holding a puffer', () => {
@@ -504,7 +511,7 @@ describe('using items', () => {
 
   it('dashes with 5 clear tiles straight ahead, but on only a small share of the ticks it could', () => {
     const { tess, decide } = itemScene(['jetFin']);
-    const dashes = bursts(
+    const dashes = uses(
       Array.from({ length: 1000 }, () => {
         tess.body.vx = 60;
         return decide()[0] as Intent;
@@ -515,10 +522,10 @@ describe('using items', () => {
     expect(dashes / 1000).toBeLessThan(ITEM_USE.jetChanceMul * 1.8);
   });
 
-  it('holds back a lantern flash it would fire every time while Jet Fins ride along in the stack', () => {
-    const flashes = (kinds: PowerUpKind[]) => {
+  it('fires the first held slot with a use: a lantern ahead of Jet Fins every time, Jet Fins first only rarely', () => {
+    const fired = (kinds: PowerUpKind[]) => {
       const { tess, decide } = itemScene(kinds, { player: [12, 5] });
-      return bursts(
+      return uses(
         Array.from({ length: HELD_TICKS }, () => {
           tess.body.vx = 60;
           return decide()[0] as Intent;
@@ -526,16 +533,16 @@ describe('using items', () => {
       );
     };
 
-    expect(flashes(['glowLantern'])).toBe(HELD_TICKS);
-    expect(flashes(['jetFin', 'glowLantern'])).toBeLessThan(HELD_TICKS * 0.15);
+    expect(fired(['glowLantern', 'jetFin'])).toBe(HELD_TICKS);
+    expect(fired(['jetFin', 'glowLantern'])).toBeLessThan(HELD_TICKS * 0.15);
   });
 
   it('holds its dash with a wall 3 tiles ahead', () => {
-    expect(bursts(itemScene(['jetFin'], { tess: [18, 5] }).decide())).toBe(0);
+    expect(uses(itemScene(['jetFin'], { tess: [18, 5] }).decide())).toBe(0);
   });
 
-  it('bursts on about itemAggression of its eligible ticks', () => {
-    // Kept swimming, so it never sits still long enough to start a recovery swim (which holds bursts).
+  it('fires on about itemAggression of its eligible ticks', () => {
+    // Kept swimming, so it never sits still long enough to start a recovery swim (which holds items).
     const swimming = (aggression: number) => {
       const { tess, decide } = itemScene(['glowLantern'], { player: [12, 5] }, aggression);
       return Array.from({ length: 400 }, () => {
@@ -543,19 +550,19 @@ describe('using items', () => {
         return decide()[0] as Intent;
       });
     };
-    const half = bursts(swimming(0.5));
-    const never = bursts(swimming(0));
+    const half = uses(swimming(0.5));
+    const never = uses(swimming(0));
 
     expect(half / 400).toBeGreaterThan(0.35);
     expect(half / 400).toBeLessThan(0.65);
     expect(never).toBe(0);
   });
 
-  it('never bursts while its burst cools down', () => {
+  it('never fires while its item use cools down', () => {
     const { tess, decide } = itemScene(['glowLantern'], { player: [12, 5] });
-    tess.burstCooldown = 10;
+    tess.useCooldown = 10;
 
-    expect(bursts(decide(100))).toBe(0);
+    expect(uses(decide(100))).toBe(0);
   });
 
   it('draws the same randomness each tick whatever it holds', () => {
@@ -567,6 +574,64 @@ describe('using items', () => {
     };
 
     expect(draws(['glowLantern', 'jetFin'])).toBe(draws([]));
+  });
+
+  it('names the slot it fires, past empty slots and kinds with no use', () => {
+    const [intent] = itemScene(['puffer', null, 'glowLantern'], { player: [12, 5] }).decide();
+
+    expect(intent?.useSlot).toBe(2);
+    expect(intent?.use).toBe(false);
+  });
+
+  it('fires a Puffer or Cannonball first when coral is just ahead, at the full chance', () => {
+    const coralFirst = (kinds: PowerUpKind[]) => {
+      const { tess, decide } = itemScene(kinds, {}, 1, CORAL_LANE);
+      return Array.from({ length: 50 }, () => {
+        placeOnTile(tess, 4, 1);
+        tess.body.vx = 60;
+        return decide()[0]?.useSlot;
+      });
+    };
+
+    expect(new Set(coralFirst(['jetFin', 'inkSac', 'cannonball']))).toEqual(new Set([2]));
+    expect(new Set(coralFirst(['inkSac', 'puffer']))).toEqual(new Set([1]));
+  });
+
+  it('fires a Cannonball with no coral ahead only on a clear path, and as rarely as Jet Fins', () => {
+    const { tess, decide } = itemScene(['cannonball']);
+    const fired = uses(
+      Array.from({ length: 1000 }, () => {
+        tess.body.vx = 60;
+        return decide()[0] as Intent;
+      }),
+    );
+
+    expect(fired / 1000).toBeGreaterThan(ITEM_USE.jetChanceMul * 0.4);
+    expect(fired / 1000).toBeLessThan(ITEM_USE.jetChanceMul * 1.8);
+    expect(uses(itemScene(['cannonball'], { tess: [18, 5] }).decide(100))).toBe(0);
+  });
+
+  it('fires the items it chose in the race: its slot empties as the charge is spent', () => {
+    const { world, log } = raceOn(ARENA);
+    for (const [id, [tx, ty]] of Object.entries({ tess: [10, 5], player: [12, 5], squib: [1, 9], bo: [19, 9] }) as [
+      RacerId,
+      [number, number],
+    ][]) {
+      placeOnTile(racer(world, id), tx, ty);
+    }
+    updateProgress(world);
+    const tess = racer(world, 'tess');
+    giveItems(tess, ['inkSac', 'glowLantern']);
+    tess.profile = { ...tess.profile, itemAggression: 1 };
+
+    step(world, log, 1, IDLE);
+
+    expect(eventsIn(log, 'item.selected', 'item.used').filter((event) => 'id' in event && event.id === 'tess')).toEqual(
+      [
+        { type: 'item.selected', id: 'tess', slot: 1, kind: 'glowLantern' },
+        { type: 'item.used', id: 'tess', kind: 'glowLantern', slot: 1, chargesLeft: 1 },
+      ],
+    );
   });
 });
 
@@ -635,7 +700,7 @@ describe('steering in the dark', () => {
 
   it('steers as if lit while it holds a Glow Lantern', () => {
     const withLantern = (tess: Racer) => {
-      tess.stack = ['glowLantern'];
+      giveItems(tess, ['glowLantern']);
       tess.profile = { ...tess.profile, itemAggression: 0 };
     };
 
@@ -698,20 +763,20 @@ describe('abilities in the rival AI', () => {
 
 describe('using the attack items', () => {
   it('fires a squid at a racer ahead within lock range, whoever it is', () => {
-    expect(bursts(itemScene(['homingSquid'], { squib: [15, 5] }).decide())).toBe(1);
-    expect(bursts(itemScene(['homingSquid'], { player: [15, 5] }).decide())).toBe(1);
+    expect(uses(itemScene(['homingSquid'], { squib: [15, 5] }).decide())).toBe(1);
+    expect(uses(itemScene(['homingSquid'], { player: [15, 5] }).decide())).toBe(1);
   });
 
   it('holds its squid with nobody ahead, or the racer ahead beyond 10 tiles', () => {
-    expect(bursts(itemScene(['homingSquid'], { player: [4, 5], squib: [3, 5], bo: [2, 5] }).decide())).toBe(0);
-    expect(bursts(itemScene(['homingSquid'], { tess: [2, 5], squib: [14, 5] }).decide())).toBe(0);
+    expect(uses(itemScene(['homingSquid'], { player: [4, 5], squib: [3, 5], bo: [2, 5] }).decide())).toBe(0);
+    expect(uses(itemScene(['homingSquid'], { tess: [2, 5], squib: [14, 5] }).decide())).toBe(0);
   });
 
   it('fires an undertow from 4th place when a racer is 8 or more tiles ahead', () => {
     const { tess, decide } = itemScene(['undertow'], { tess: [3, 5], player: [14, 5] });
     tess.place = 4;
 
-    expect(bursts(decide())).toBe(1);
+    expect(uses(decide())).toBe(1);
   });
 
   it('holds its undertow from 2nd place, or when the leader is less than 8 tiles ahead', () => {
@@ -720,8 +785,8 @@ describe('using the attack items', () => {
     const close = itemScene(['undertow'], { tess: [3, 5], player: [9, 5], bo: [2, 7] });
     close.tess.place = 4;
 
-    expect(bursts(second.decide())).toBe(0);
-    expect(bursts(close.decide())).toBe(0);
+    expect(uses(second.decide())).toBe(0);
+    expect(uses(close.decide())).toBe(0);
   });
 
   it('lays a riptide with 6 clear tiles ahead and a racer close behind to draft it', () => {
@@ -729,7 +794,7 @@ describe('using the attack items', () => {
     const alone = itemScene(['riptide'], { player: [1, 5], bo: [1, 7] });
     const wall = itemScene(['riptide'], { tess: [18, 5], player: [15, 5] });
 
-    expect([bursts(drafted.decide()), bursts(alone.decide()), bursts(wall.decide())]).toEqual([1, 0, 0]);
+    expect([uses(drafted.decide()), uses(alone.decide()), uses(wall.decide())]).toEqual([1, 0, 0]);
   });
 
   it('drops a mimic when a squid is locked on it within 8 tiles', () => {
@@ -748,18 +813,18 @@ describe('using the attack items', () => {
     const elsewhere = itemScene(['mimic']);
     elsewhere.world.squids.push(squidAt(8, 'bo'));
 
-    expect([bursts(near.decide()), bursts(far.decide()), bursts(elsewhere.decide())]).toEqual([1, 0, 0]);
+    expect([uses(near.decide()), uses(far.decide()), uses(elsewhere.decide())]).toEqual([1, 0, 0]);
   });
 
   it('goes straight for a gate of coral with a puffer and Jet Fins, instead of waiting on a rare dash', () => {
     const { tess, decide } = itemScene(['jetFin', 'puffer'], { tess: [5, 1] }, 1, CORAL_LANE);
-    const burstTicks = bursts(
+    const firedTicks = uses(
       Array.from({ length: 200 }, () => {
         tess.body.vx = 60;
         return decide()[0] as Intent;
       }),
     );
 
-    expect(burstTicks).toBeGreaterThan(150);
+    expect(firedTicks).toBeGreaterThan(150);
   });
 });

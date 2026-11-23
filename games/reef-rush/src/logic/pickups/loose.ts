@@ -5,25 +5,27 @@
  * ignores tiles: a pickup may rise into rock and fade there.
  */
 import { mediumOf } from '../media/index.ts';
-import { gainPowerUp } from '../powerups/stack.ts';
+import { gainItem, holds, inventoryFull } from '../powerups/inventory.ts';
 import { LOOSE } from '../powerups/tuning.ts';
 import { hitbox } from '../racers.ts';
 import type { Box, LoosePowerUp, PowerUpKind, Racer, Vec, World } from '../types.ts';
 
 /**
- * Adds a loose `kind` centred at `at` (world px) with `grabDelay = LOOSE.grabDelayTicks` and
- * `ttl = LOOSE.ttlTicks`, and emits `loose.spawned`. `applyHit` calls it with the hit racer's centre.
+ * Adds a loose `kind` carrying `charges` uses, centred at `at` (world px) with `grabDelay =
+ * LOOSE.grabDelayTicks` and `ttl = LOOSE.ttlTicks`, and emits `loose.spawned {kind, charges}`.
+ * `applyHit` calls it with the hit racer's centre and what the knocked item had left.
  */
-export function spawnLoose(world: World, kind: PowerUpKind, at: Vec): void {
-  world.loose.push({ kind, x: at.x, y: at.y, grabDelay: LOOSE.grabDelayTicks, ttl: LOOSE.ttlTicks });
-  world.events.emit({ type: 'loose.spawned', kind });
+export function spawnLoose(world: World, kind: PowerUpKind, charges: number, at: Vec): void {
+  world.loose.push({ kind, charges, x: at.x, y: at.y, grabDelay: LOOSE.grabDelayTicks, ttl: LOOSE.ttlTicks });
+  world.events.emit({ type: 'loose.spawned', kind, charges });
 }
 
 /**
  * The pickups slot for loose power-ups. Each call, every loose pickup moves the medium's
  * `effects.looseDrift * dt` vertically (water: up at LOOSE.riseSpeed) and loses one `ttl` tick (removed at 0). One with `grabDelay > 0` counts it down instead of being
- * grabbed; otherwise the first racer in `racers` whose hitbox overlaps its LOOSE.size box and who
- * doesn't hold that kind grabs it: removed, `loose.grabbed {id, kind}`, then `gainPowerUp`.
+ * grabbed; otherwise the first racer in `racers` whose hitbox overlaps its LOOSE.size box, who has
+ * an empty slot and who doesn't hold that kind grabs it: removed, `loose.grabbed {id, kind, charges}`,
+ * then `gainItem` with its charges. A pickup nobody can take stays loose.
  *
  * @param dt Tick length in seconds.
  * @throws {Error} When the world names a medium that is neither shipped nor registered.
@@ -47,10 +49,12 @@ function driftAndGrab(world: World, loose: LoosePowerUp, racers: readonly Racer[
     return false;
   }
   const box = { x: loose.x - LOOSE.size / 2, y: loose.y - LOOSE.size / 2, w: LOOSE.size, h: LOOSE.size };
-  const grabber = racers.find((racer) => !racer.stack.includes(loose.kind) && boxesOverlap(hitbox(racer), box));
+  const grabber = racers.find(
+    (racer) => !inventoryFull(racer) && !holds(racer, loose.kind) && boxesOverlap(hitbox(racer), box),
+  );
   if (!grabber) return false;
-  world.events.emit({ type: 'loose.grabbed', id: grabber.id, kind: loose.kind });
-  gainPowerUp(world, grabber, loose.kind);
+  world.events.emit({ type: 'loose.grabbed', id: grabber.id, kind: loose.kind, charges: loose.charges });
+  gainItem(world, grabber, loose.kind, loose.charges);
   return true;
 }
 

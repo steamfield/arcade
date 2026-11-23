@@ -1,6 +1,6 @@
 /**
- * Swim's rival pilot (`Medium.steer`): the aim from the steer field (the smash field while it holds
- * a Puffer it can use: inflated, or its burst ready; the ram field always for a rival that rams
+ * Swim's rival pilot (`Medium.steer`): the aim from the steer field (the smash field while it can
+ * break coral: inflated, or holding a Puffer or Cannonball with its item use ready; the ram field always for a rival that rams
  * coral), a bounded wobble, a bend around any urchin or jelly in the way (`ai/avoid.ts`), the kick
  * decision, and the speed-based stuck recovery.
  *
@@ -17,6 +17,7 @@ import { avoidHazards } from '../../ai/avoid.ts';
 import { steerDirection } from '../../ai/steer.ts';
 import { inDark } from '../../level/query.ts';
 import { cos, length, sin } from '../../num.ts';
+import { holds } from '../../powerups/inventory.ts';
 import type { MoveModifiers, Racer, Vec, World } from '../../types.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { type SwimPilot, swimNav, swimPilot } from './data.ts';
@@ -93,21 +94,26 @@ function canRecover(world: World, racer: Racer, memory: SwimPilot): boolean {
 
 /**
  * Re-reads its field every `reactionTicks` (times `reactionMul`), so slower rivals react later to
- * the course. A rival holding a Puffer that is inflated or ready to burst reads the smash field and
- * aims through coral, which its inflate breaks; while the burst cools down it steers around like
- * everyone else. A rival that rams coral reads the ram field always.
+ * the course. A rival that is inflated, or holds a Puffer or Cannonball in any slot with its item use
+ * ready, reads the smash field and aims through coral, which inflating breaks; while its use cools
+ * down it steers around like everyone else. A rival that rams coral reads the ram field always.
  */
 function replanAim(world: World, racer: Racer, memory: SwimPilot, reactionMul: number): void {
   if (memory.replanIn <= 0) {
     const { level, broken } = world;
     const nav = swimNav(world.nav);
-    const pufferReady = racer.stack.includes('puffer') && (racer.status.inflated > 0 || racer.burstCooldown === 0);
+    const pufferReady = racer.status.inflated > 0 || (holdsCoralBreaker(racer) && racer.useCooldown === 0);
     const rams = breaksCoralOnContact(racer);
     const field = rams ? nav.ram : pufferReady ? nav.smash : nav.steer;
     memory.aim = steerDirection(field, nav, level, broken, racer.body, LOOKAHEAD_TILES, rams || pufferReady);
     memory.replanIn = racer.profile.reactionTicks * reactionMul;
   }
   memory.replanIn--;
+}
+
+/** True when the racer holds a Puffer or Cannonball in any slot. */
+function holdsCoralBreaker(racer: Racer): boolean {
+  return holds(racer, 'puffer') || holds(racer, 'cannonball');
 }
 
 /** One step of the bounded random walk on the steering angle. */

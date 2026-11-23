@@ -1,7 +1,7 @@
 /**
  * The stuck-prone kid: a scripted player who holds toward the finish (right) and steers up or down
  * only after 1.5 s without getting any closer, alternating between the two, kicking rarely and
- * never bursting. Rival bots follow the medium's way and never get stuck, so this is the player the
+ * never using items. Rival bots follow the medium's way and never get stuck, so this is the player the
  * Easy guide is measured on. Races run on the real course; the result is the time spent stuck and
  * the finish place. Test and measurement only; nothing in the game imports it.
  */
@@ -81,7 +81,7 @@ export function kidInput(kid: KidMemory, world: World): Intent {
     kid.nextTry = kid.nextTry === -1 ? 1 : -1;
   }
   const kick = world.race.raceTick > 0 && world.race.raceTick % KID.kickEvery === 0;
-  return { move: { x: 1, y: kid.vertical }, kick, burst: false };
+  return { move: { x: 1, y: kid.vertical }, kick, use: false, cycle: 0 };
 }
 
 /** What one scripted race reports. */
@@ -105,7 +105,7 @@ export function kidRace(character: CharacterId, seed: number, difficulty: Diffic
   let longest = 0;
   for (let i = 0; i < RACE_LIMIT_TICKS + 1000 && world.race.phase !== 'finished'; i++) {
     const racing = world.race.phase === 'racing' && !playerOf(world).finished;
-    const input = racing ? kidInput(kid, world) : { move: { x: 0, y: 0 }, kick: false, burst: false };
+    const input: Intent = racing ? kidInput(kid, world) : { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
     stepWorld(world, input, TICK_DT);
     if (!racing) continue;
     // The tracker reads the state after the step, so a gain on this tick ends the spell this tick.

@@ -15,11 +15,11 @@ import { BOT_PROFILES } from '../ai/profiles.ts';
 import { COURSES, courseOf, DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
-import type { CharacterId, Difficulty, RacerId, RivalProfile, World } from '../types.ts';
+import type { CharacterId, Difficulty, RacerId, RivalProfile, TickInput, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
 const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
-const IDLE = { move: { x: 0, y: 0 }, kick: false, burst: false };
+const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
 
 /**
  * Balance across the cast: every character's expert wins (any margin) on the 30 seeds fall in this
