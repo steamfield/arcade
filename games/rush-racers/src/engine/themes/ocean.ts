@@ -43,7 +43,7 @@ export const OCEAN_THEME = defineTheme({
   },
   terrain: {
     tileset: OceanTex.tiles,
-    // A placeholder bounce cloud for sky-test until the sky theme (see ocean/sprites/terrain.ts).
+    // The bounce cloud is for sky-test, which races in this theme until the sky theme has its own.
     tiles: {
       rock: OceanTile.rock,
       coral: OceanTile.coral,

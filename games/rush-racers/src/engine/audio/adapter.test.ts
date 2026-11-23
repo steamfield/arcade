@@ -2,7 +2,7 @@ import { EventLog, type Stamped } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { raceOn } from '../../logic/test-world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import { type AdapterOptions, createAdapter, enemyWithinHearing } from './adapter.ts';
+import { type AdapterOptions, createAdapter, enemyWithinHearing, stormWithinHearing } from './adapter.ts';
 import type { Sequencer } from './sequencer.ts';
 import type { Synth } from './synth.ts';
 
@@ -31,9 +31,14 @@ const SILENT_SEQUENCER: Sequencer = {
 
 /**
  * The sfx keys heard when `events` are drained together, by owner distance `near`; `enemyAudible`
- * says which enemies are in earshot (every one when left out).
+ * says which enemies are in earshot and `stormAudible` which storm zones (every one when left out).
  */
-function heard(events: RuntimeEvent[], near: boolean, enemyAudible?: AdapterOptions['enemyAudible']): string[] {
+function heard(
+  events: RuntimeEvent[],
+  near: boolean,
+  enemyAudible?: AdapterOptions['enemyAudible'],
+  stormAudible?: AdapterOptions['stormAudible'],
+): string[] {
   const log = new EventLog<RuntimeEvent>();
   const adapter = createAdapter({
     synth: runningSynth(),
@@ -46,6 +51,7 @@ function heard(events: RuntimeEvent[], near: boolean, enemyAudible?: AdapterOpti
     },
     audibleFromLocal: () => near,
     ...(enemyAudible && { enemyAudible }),
+    ...(stormAudible && { stormAudible }),
     raceSong: () => 'race',
   });
   const stamped: Stamped<RuntimeEvent>[] = events.map((event, seq) => ({ ...event, tick: 300, seq }));
@@ -121,5 +127,58 @@ describe('the adapter and the enemies', () => {
       { type: 'racer.hit', id: 'player', cause: 'urchin', by: null },
     ];
     expect(heard(bites, false, () => false)).toEqual(['enemy.bite']);
+  });
+});
+
+describe('the adapter and the sky set pieces', () => {
+  it("plays the player's flap, bounce and ring", () => {
+    const own: RuntimeEvent[] = [
+      { type: 'racer.flapped', id: 'player' },
+      { type: 'racer.bounced', id: 'player' },
+      { type: 'ring.passed', id: 'player', ring: 0 },
+    ];
+    expect(heard(own, true)).toEqual(['flap', 'bounce', 'ring']);
+  });
+
+  it("stays silent for a rival's flap, bounce and ring, even nearby", () => {
+    const rivals: RuntimeEvent[] = [
+      { type: 'racer.flapped', id: 'tess' },
+      { type: 'racer.bounced', id: 'tess' },
+      { type: 'ring.passed', id: 'tess', ring: 0 },
+    ];
+    expect(heard(rivals, true)).toEqual([]);
+  });
+
+  // The player starts at column 1: the zone over columns 6-8 is in earshot, the one over 34-36 (over 500 px off) is not.
+  const { world } = raceOn({
+    name: 'storms',
+    ascii: `
+      ########################################
+      #1....................................F#
+      #2....................................F#
+      #3....................................F#
+      #4....................................F#
+      ########################################
+    `,
+    lightning: [
+      { cols: [6, 8], periodTicks: 150, offsetTicks: 0 },
+      { cols: [34, 36], periodTicks: 150, offsetTicks: 0 },
+    ],
+  });
+  const inEarshot = (zone: number) => stormWithinHearing(world, zone);
+  const [NEAR_ZONE, FAR_ZONE] = [0, 1];
+
+  it('warns of a storm zone near the camera and not of one far off', () => {
+    const warned = (zone: number): RuntimeEvent[] => [{ type: 'lightning.warned', zone }];
+    expect(heard(warned(NEAR_ZONE), true, undefined, inEarshot)).toEqual(['lightning.warn']);
+    expect(heard(warned(FAR_ZONE), true, undefined, inEarshot)).toEqual([]);
+  });
+
+  it('sounds every strike', () => {
+    const strikes: RuntimeEvent[] = [
+      { type: 'lightning.struck', zone: NEAR_ZONE },
+      { type: 'lightning.struck', zone: FAR_ZONE },
+    ];
+    expect(heard(strikes, false, undefined, inEarshot)).toEqual(['lightning.strike', 'lightning.strike']);
   });
 });

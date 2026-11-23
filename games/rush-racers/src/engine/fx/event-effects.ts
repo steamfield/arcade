@@ -1,14 +1,15 @@
 /**
  * Maps one tick's drained events to effects: which burst plays where (including the attack
  * power-ups' fire, lane, pull, shake-off and pop, and the splash of a racer breaching the surface
- * or falling back in), and how much screen shake the local racer's own
- * knocks add (the slot the screen follows; see `local-racer.ts`). Positions come from the event and the world as it stands
+ * or falling back in, a puff under a racer springing off a bounce cloud, and sparkles where the local
+ * racer passes a boost ring), and how much screen shake the local racer's own
+ * knocks and a lightning strike on screen add (the slot the screen follows; see `local-racer.ts`). Positions come from the event and the world as it stands
  * after the tick. Shake is only ever asked for through `shake`, which the caller leaves out
  * under reduced motion.
  */
 import type { Stamped } from '@arcade/core';
 import { CANNONBALL } from '../../logic/powerups/tuning.ts';
-import { type Decoy, type RacerId, type Squid, TILE, type Vec, type World } from '../../logic/types.ts';
+import { type Decoy, RACER_SIZE, type RacerId, type Squid, TILE, type Vec, type World } from '../../logic/types.ts';
 import { localIdOf, localOf } from '../local-racer.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { BubbleTracker } from './bubble-tracker.ts';
@@ -25,6 +26,10 @@ const LOCAL_HIT_TRAUMA = 0.7;
 const SHIELD_POP_TRAUMA = 0.4;
 /** Added once per tick on which the local racer's cannonball smashes coral or a racer; a gate stacks up to a big jolt. */
 const CANNONBALL_TRAUMA = 0.6;
+/** A lightning strike within about half a screen of the local racer, so on screen: a jolt lighter than a hit. */
+const STRIKE_TRAUMA = 0.35;
+/** How far across from the local racer a strike still shakes the screen, px: half the 320 px screen. */
+const STRIKE_SHAKE_REACH_PX = 160;
 /** Bubbles shed along a new Riptide lane, one per this many px of its length. */
 const LANE_BUBBLE_SPACING = 12;
 /** Bubbles shed from each racer an Undertow pulls. */
@@ -64,6 +69,7 @@ export function createEventEffects(
       // A shielded hit emits both racer.hit and shield.popped on one tick; only the lighter shake applies.
       let localHit = false;
       let localShieldPopped = false;
+      let strikeOnScreen = false;
       for (const event of events) {
         switch (event.type) {
           case 'racer.kicked': {
@@ -83,6 +89,17 @@ export function createEventEffects(
           case 'shield.popped':
             racerAt(event.id, bursts.bubblePop);
             if (event.id === local) localShieldPopped = true;
+            break;
+          case 'racer.bounced':
+            racerAt(event.id, (x, y) => bursts.bubblePop(x, y + RACER_SIZE.height / 2));
+            break;
+          case 'ring.passed': {
+            const ring = world.level.rings[event.ring];
+            if (event.id === local && ring) bursts.pearlSparkle(tileCentre(ring.x), tileCentre(ring.y));
+            break;
+          }
+          case 'lightning.struck':
+            if (stormAcrossFrom(world, event.zone) <= STRIKE_SHAKE_REACH_PX) strikeOnScreen = true;
             break;
           case 'pearl.collected': {
             const pearl = world.level.pearls[event.index];
@@ -149,6 +166,7 @@ export function createEventEffects(
       if (localShieldPopped) shake(SHIELD_POP_TRAUMA);
       else if (localHit) shake(LOCAL_HIT_TRAUMA);
       if (cannonballImpact) shake(CANNONBALL_TRAUMA);
+      if (strikeOnScreen) shake(STRIKE_TRAUMA);
       if (bubblesPopped) bubbles.vanished(world, bursts.bubblePop);
       bubbles.remember(world);
       forgetGone(lastSquidAt, world.squids);
@@ -157,6 +175,15 @@ export function createEventEffects(
       track(lastDecoyAt, world.decoys);
     },
   };
+}
+
+/** How far across storm zone `zone` is from the local racer's centre, px; 0 inside it, infinite when there's no such zone. */
+function stormAcrossFrom(world: World, zone: number): number {
+  const storm = world.level.lightning[zone];
+  if (!storm) return Number.POSITIVE_INFINITY;
+  const local = localOf(world);
+  const centre = local.body.x + local.body.w / 2;
+  return Math.max(storm.cols[0] * TILE - centre, centre - (storm.cols[1] + 1) * TILE, 0);
 }
 
 /** Bubbles strung along the newest lane `owner` laid, so a new Riptide announces its length. */
