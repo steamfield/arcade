@@ -243,9 +243,11 @@ Test cases:
 Demo: rivals on `sky-test` pop puff clouds with a dash when it pays, follow ring lines, use bounce clouds, wait out or race past lightning warnings, and pass slower flyers instead of stacking behind them; the expert clearly beats the novice.
 Depends on: phase 2
 
+Scaffold: 4b45545
+
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/logic/media/flight/nav.ts, games/rush-racers/src/logic/media/flight/way.ts, games/rush-racers/src/logic/media/flight/pilot.ts, games/rush-racers/src/logic/media/flight/stick.ts, games/rush-racers/src/logic/media/flight/way-data.ts | contracts, games/rush-racers/src/logic/media/flight/physics.ts | games/rush-racers/src/logic/media/flight/pilot.test.ts, games/rush-racers/src/logic/difficulty/sky-skill.test.ts | opus | pending | | pilot tests and skill margin pass |
+| a | L | games/rush-racers/src/logic/media/flight/nav.ts, games/rush-racers/src/logic/media/flight/way.ts, games/rush-racers/src/logic/media/flight/pilot.ts, games/rush-racers/src/logic/media/flight/stick.ts, games/rush-racers/src/logic/media/flight/way-data.ts | contracts, games/rush-racers/src/logic/media/flight/physics.ts | games/rush-racers/src/logic/media/flight/pilot.test.ts, games/rush-racers/src/logic/difficulty/sky-skill.test.ts | opus | running | deliver/cloudreach-4a | pilot tests and skill margin pass |
 
 One lane: flight's nav, way and pilot are one contract (the pilot executes the nav's plan), so splitting them would make one lane test against a fake of the other. No scaffold: the lane owns every file it changes, and `Medium`'s members don't change. Phase 2's rings, bounce clouds and lightning are in `Level` and `World`, so the lane reads them directly.
 
