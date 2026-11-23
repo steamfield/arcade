@@ -1,17 +1,19 @@
 /**
- * Steering around hazards. The flow fields treat urchin and jelly tiles as open
- * water, so a rival aiming through one is knocked back and swims into it again.
+ * Steering around hazards. The flow fields treat urchin and jelly tiles (and the
+ * enemies swimming over open water) as open water, so a rival aiming through one is knocked back and swims into it again.
  * `avoidHazards` checks the body's path a short way along the aim and, when a
  * hazard is in it, turns the aim by the smallest angle that clears it.
  *
  * Reads the world only. No trig per tick: the turns are precomputed.
  */
 import { ignoresHazard } from '../abilities.ts';
+import { enemyBox, isHarmful } from '../hazards/enemies/contact.ts';
+import { eelReachBox } from '../hazards/enemies/eel.ts';
 import { jellyCentre } from '../hazards/jellies.ts';
 import { JELLY } from '../hazards/tuning.ts';
 import { isSolid } from '../level/query.ts';
 import { cos, sin } from '../num.ts';
-import { type Box, type Racer, TILE, type Vec, type World } from '../types.ts';
+import { type Box, type Enemy, type Racer, TILE, type Vec, type World } from '../types.ts';
 
 /**
  * How far ahead along the aim, in px, the body's path is checked; the step between checks; the
@@ -28,6 +30,9 @@ export const HAZARD_AVOID = {
   turnsDeg: [15, 30, 45, 60, 75, 90],
 } as const;
 
+/** How far ahead along its move, in px, a rival with a dash charge looks for a crab or out eel to dash into. */
+export const BONK_LOOKAHEAD_PX = 24;
+
 /** Turns tried, smallest first, as cos and sin pairs. */
 const TURNS = HAZARD_AVOID.turnsDeg.map((deg) => ({
   cos: cos((deg * Math.PI) / 180),
@@ -38,9 +43,9 @@ const TURNS = HAZARD_AVOID.turnsDeg.map((deg) => ({
  * The aim, or the nearest turn of it either side (left first) whose path is clear, widened by one
  * more step when that is clear too, since the body carries its momentum through the turn. A path
  * is clear when the body's box, grown by the margin, slides `lookaheadPx` along it without touching
- * an urchin tile or a jelly's reach, nor rock within `wallCheckPx`.
+ * an urchin tile, a jelly's reach or an enemy (`enemyDanger`), nor rock within `wallCheckPx`.
  *
- * An inflated racer is urchin-proof, so it steers around jellies only; a racer whose ability
+ * An inflated racer is urchin-proof and bonks enemies, so it steers around jellies only; a racer whose ability
  * ignores jelly stings (`ignoresHazard`) swims straight through jellies.
  *
  * @returns `aim` itself (the same object) when its path is clear or no turn is; a new unit vector
@@ -51,6 +56,7 @@ export function avoidHazards(world: World, racer: Racer, aim: Vec): Vec {
   const hazards = hazardsNear(world, racer.body, {
     urchins: racer.status.inflated === 0,
     jellies: !ignoresHazard(racer, 'jelly'),
+    enemies: racer.status.inflated === 0,
   });
   if (hazards.length === 0 || pathIsClear(world, hazards, racer.body, aim)) return aim;
   const turn = (index: number, side: number): Vec => {
@@ -68,11 +74,11 @@ export function avoidHazards(world: World, racer: Racer, aim: Vec): Vec {
 }
 
 /**
- * Boxes of the active jellies and the urchins, each kind only when it can hurt, near enough to
+ * Boxes of the active jellies, the urchins and the dangerous enemies, each kind only when it can hurt, near enough to
  * matter within the look-ahead. Runs every tick for every rival, so it rules hazards out by
  * position before building any box.
  */
-function hazardsNear(world: World, body: Box, hurts: { urchins: boolean; jellies: boolean }): Box[] {
+function hazardsNear(world: World, body: Box, hurts: { urchins: boolean; jellies: boolean; enemies: boolean }): Box[] {
   const reach = HAZARD_AVOID.lookaheadPx + 2 * TILE;
   const near = (x: number, y: number) => Math.abs(x - body.x) < reach && Math.abs(y - body.y) < reach;
   const found: Box[] = [];
@@ -92,7 +98,43 @@ function hazardsNear(world: World, body: Box, hurts: { urchins: boolean; jellies
       if (near(box.x, box.y)) found.push(box);
     }
   }
+  if (hurts.enemies) {
+    for (const enemy of world.enemies) {
+      const box = enemyDanger(enemy);
+      if (box && near(box.x, box.y)) found.push(box);
+    }
+  }
   return found;
+}
+
+/**
+ * The box a rival keeps out of for `enemy`, or null when it can't hurt: a shark or crab that is
+ * harmful, at its box; an eel from the start of its warning to the end of its lunge, along its whole
+ * reach, since it comes out faster than a rival turns.
+ */
+export function enemyDanger(enemy: Enemy): Box | null {
+  if (enemy.kind === 'eel') {
+    return enemy.mode === 'windup' || enemy.mode === 'lunge' ? eelReachBox(enemy) : null;
+  }
+  return isHarmful(enemy) ? enemyBox(enemy) : null;
+}
+
+/**
+ * True when `racer`'s body, slid up to BONK_LOOKAHEAD_PX along `dir`, touches a live crab or an eel
+ * that is out of its hole: one dash bonk beats either, so a rival with a charge dashes into it.
+ */
+export function aboutToBonk(world: World, racer: Racer, dir: Vec): boolean {
+  if (dir.x === 0 && dir.y === 0) return false;
+  const targets = world.enemies
+    .filter((enemy) => enemy.kind !== 'shark' && isHarmful(enemy))
+    .map((enemy) => enemyBox(enemy));
+  if (targets.length === 0) return false;
+  const { body } = racer;
+  for (let travelled = 0; travelled <= BONK_LOOKAHEAD_PX; travelled += HAZARD_AVOID.stepPx) {
+    const box = { x: body.x + dir.x * travelled, y: body.y + dir.y * travelled, w: body.w, h: body.h };
+    if (targets.some((target) => overlaps(box, target))) return true;
+  }
+  return false;
 }
 
 function pathIsClear(world: World, hazards: readonly Box[], body: Box, dir: Vec): boolean {
