@@ -126,7 +126,8 @@ export const PASSIVE = {
 /**
  * Clam roll weights for 1st and 4th place; 2nd and 3rd interpolate linearly between them
  * (2nd is one third of the way from 1st to 4th). Held kinds are excluded from a roll. Leaders get
- * defence (shields, lanterns, decoys); trailers get speed and the attacks. Undertow is zero for
+ * defence (shields, lanterns, decoys) and a rare Homing Squid; trailers get speed and the attacks,
+ * the Squid most of all. Undertow is zero for
  * anyone ahead of `undertowMinPlace`, whatever the interpolation says (`clamWeights`).
  */
 export const CLAM = {
@@ -139,7 +140,7 @@ export const CLAM = {
     inkSac: 2,
     puffer: 1,
     jetFin: 1,
-    homingSquid: 0,
+    homingSquid: 1,
     riptide: 0,
     undertow: 0,
     mimic: 3,
@@ -151,7 +152,7 @@ export const CLAM = {
     inkSac: 2,
     bubbleShield: 1,
     glowLantern: 1,
-    homingSquid: 3,
+    homingSquid: 4,
     riptide: 2,
     undertow: 2,
     mimic: 0,
@@ -164,8 +165,24 @@ export const CLAM = {
   lastWeights: Record<PowerUpKind, number>;
 };
 
-/** Pearls: a small boost for whoever touches one first. */
-export const PEARL = { boostTicks: 30 } as const;
+/**
+ * Pearls work like coins. Each one collected (from the course or knocked loose) gives a short boost
+ * and adds to the racer's count, which raises swim force by `speedPerPearl` per pearl up to `cap`
+ * pearls. A landed hit knocks up to `dropOnHit` loose; they scatter at `scatterSpeed`, keep
+ * `dragPerTick` of their speed each tick, and vanish after `lifeTicks`. The racer that dropped them
+ * can't collect them for `ownGraceTicks`. A loose pearl is collected by touching its `size` square.
+ */
+export const PEARL = {
+  boostTicks: 30,
+  speedPerPearl: 0.01,
+  cap: 10,
+  dropOnHit: 3,
+  ownGraceTicks: 30,
+  lifeTicks: 600,
+  scatterSpeed: 90,
+  dragPerTick: 0.92,
+  size: 8,
+} as const;
 
 /** A power-up knocked off by a hit, floating at the racer's centre. */
 export const LOOSE = {

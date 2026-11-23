@@ -1,15 +1,19 @@
 /**
- * Pearls: each one can be collected once per race, by the first racer to touch it,
- * for a short boost. A Glow Lantern holder collects them from a distance: "within
- * 3 tiles" is the straight-line distance from the racer's centre to the pearl's
+ * Pearls work like coins: each one collected adds to the racer's count, which raises
+ * its swim force up to a cap (`pearlSpeedMul`), and gives a short boost. A course
+ * pearl can be collected once per race, by the first racer to touch it. A landed hit
+ * knocks some of a racer's pearls loose (`dropPearls`) for anyone to collect.
+ * A Glow Lantern holder collects course pearls from a distance: "within 3 tiles" is the straight-line distance from the racer's centre to the pearl's
  * tile centre, inclusive. When several racers reach a pearl on the same tick,
  * by touch or by lantern alike, the first in RACER_IDS order gets it.
  */
+import { TICK_DT } from '@arcade/core';
 import { overlapsTile } from '../level/query.ts';
 import { selectedItem } from '../powerups/inventory.ts';
 import { PASSIVE, PEARL } from '../powerups/tuning.ts';
 import { centreOf, hitbox } from '../racers.ts';
-import { type Racer, TILE, type Vec, type World } from '../types.ts';
+import { type LoosePearl, type Racer, TILE, type Vec, type World } from '../types.ts';
+import { driftPearl, scatterPearls } from './pearl-drift.ts';
 
 /**
  * The pickups slot for pearls. A pearl not in `world.pearlsTaken` is collected by the first racer
@@ -41,19 +45,58 @@ function reaches(racer: Racer, tile: Vec): boolean {
   return dx * dx + dy * dy <= (PASSIVE.lanternPearlTiles * TILE) ** 2;
 }
 
-/** The swim-force multiplier `racer`'s pearl count gives it. Phase 2 scaffold: lane b fills it in. */
-export function pearlSpeedMul(_racer: Racer): number {
-  return 1;
+/** The swim-force multiplier `racer`'s pearl count gives it: 1 + PEARL.speedPerPearl per pearl, up to PEARL.cap pearls. */
+export function pearlSpeedMul(racer: Racer): number {
+  return 1 + PEARL.speedPerPearl * Math.min(racer.pearls, PEARL.cap);
 }
 
 /**
- * Knocks some of `racer`'s pearls loose after a hit lands, into `world.loosePearls`, emitting
- * `pearls.dropped`. Phase 2 scaffold: lane b fills it in.
+ * Knocks `min(PEARL.dropOnHit, racer.pearls)` of `racer`'s pearls loose after a hit lands: takes them
+ * off its count, scatters them from its centre into `world.loosePearls` (`scatterPearls`) and emits
+ * `pearls.dropped {id, count}`. A racer with no pearls drops nothing and nothing is emitted.
  */
-export function dropPearls(_world: World, _racer: Racer): void {}
+export function dropPearls(world: World, racer: Racer): void {
+  const count = Math.min(PEARL.dropOnHit, racer.pearls);
+  if (count === 0) return;
+  racer.pearls -= count;
+  world.loosePearls.push(...scatterPearls(centreOf(racer), racer.facing, count, racer.id));
+  world.events.emit({ type: 'pearls.dropped', id: racer.id, count });
+}
 
 /**
- * The pickups slot for loose pearls: drifts them, ages them out, and gives each to the first racer
- * that reaches it, emitting `loosePearl.collected`. Phase 2 scaffold: lane b fills it in.
+ * The pickups slot for loose pearls. Each call, every loose pearl drifts one tick (`driftPearl`) and
+ * ages by one; at PEARL.lifeTicks it is gone before anyone can collect it that tick. Otherwise the
+ * first racer in `racers` whose hitbox overlaps its PEARL.size square collects it, except the racer
+ * that dropped it while its age is at most PEARL.ownGraceTicks: removed, 1 added to `racer.pearls`,
+ * `status.boost = PEARL.boostTicks`, and `loosePearl.collected {id, total}`.
  */
-export function collectLoosePearls(_world: World, _racers: readonly Racer[]): void {}
+export function collectLoosePearls(world: World, racers: readonly Racer[]): void {
+  world.loosePearls = world.loosePearls.filter((pearl) => {
+    driftPearl(world, pearl, TICK_DT);
+    pearl.age += 1;
+    if (pearl.age >= PEARL.lifeTicks) return false;
+    const collector = racers.find((racer) => mayCollect(racer, pearl) && touches(racer, pearl));
+    if (!collector) return true;
+    collector.pearls += 1;
+    collector.status.boost = PEARL.boostTicks;
+    world.events.emit({ type: 'loosePearl.collected', id: collector.id, total: collector.pearls });
+    return false;
+  });
+}
+
+/** Whether `racer` may collect `pearl` yet: anyone at once, its dropper only after PEARL.ownGraceTicks. */
+function mayCollect(racer: Racer, pearl: LoosePearl): boolean {
+  return racer.id !== pearl.droppedBy || pearl.age > PEARL.ownGraceTicks;
+}
+
+/** True when `racer`'s hitbox shares some positive area with the pearl's PEARL.size square. */
+function touches(racer: Racer, pearl: LoosePearl): boolean {
+  const box = hitbox(racer);
+  const half = PEARL.size / 2;
+  return (
+    box.x < pearl.at.x + half &&
+    box.x + box.w > pearl.at.x - half &&
+    box.y < pearl.at.y + half &&
+    box.y + box.h > pearl.at.y - half
+  );
+}
