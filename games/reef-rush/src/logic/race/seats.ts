@@ -6,7 +6,14 @@
 import type { Rng } from '@arcade/core';
 import { PLAYER_PROFILE } from '../ai/profiles.ts';
 import { assignCharacters, CHARACTERS } from '../characters.ts';
-import { type CharacterId, type Difficulty, RACER_IDS, type RacerId, type RivalProfile } from '../types.ts';
+import {
+  CHARACTER_IDS,
+  type CharacterId,
+  type Difficulty,
+  RACER_IDS,
+  type RacerId,
+  type RivalProfile,
+} from '../types.ts';
 
 /** The setup options seats are made from: the matching fields of `WorldOptions`. */
 export interface SeatOptions {
@@ -101,6 +108,9 @@ function requireBotSlotHuman(playerBot: RivalProfile | undefined, humans: readon
  */
 function characterChoices({ character, characters = {} }: SeatOptions): Partial<Record<RacerId, CharacterId>> {
   if (character === undefined) return characters;
+  if (!CHARACTER_IDS.includes(character)) {
+    throw new Error(`character is unknown character '${character}'; characters are ${CHARACTER_IDS.join(', ')}`);
+  }
   if (characters.player !== undefined && characters.player !== character) {
     throw new Error(`character '${character}' and characters.player '${characters.player}' disagree; give one`);
   }

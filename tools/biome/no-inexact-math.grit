@@ -33,8 +33,9 @@ or {
       `PI`,
       `SQRT1_2`
     },
-    // Math.pow has its own message above.
+    // Math.pow has its own message above, and no-nondeterminism.grit owns Math.random.
     $name <: not `pow`,
+    $name <: not `random`,
     register_diagnostic(span=$ref, message="This Math member is not on the exact list and may round differently between JavaScript engines. Use src/logic/num.ts.", severity="error")
   },
   // Destructuring and bracket access would hide which function is used, and logic needs neither.

@@ -144,7 +144,7 @@ describe('who races as a human', () => {
     [
       'an unknown character in character',
       { character: 'zed' as CharacterId },
-      /characters gives slot 'player' unknown character 'zed'; characters are rudy, /,
+      /character is unknown character 'zed'; characters are rudy, /,
     ],
   ])('refuses %s, naming the bad value', (_case, options, message) => {
     expect(() => countdownOn(options)).toThrow(message);
