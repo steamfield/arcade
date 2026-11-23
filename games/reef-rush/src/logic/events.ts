@@ -29,6 +29,10 @@ export type GameEvent =
   | { type: 'race.countdown'; n: 3 | 2 | 1 }
   | { type: 'race.started' }
   | { type: 'racer.kicked'; id: RacerId }
+  /** A racer's centre left the water for the air above a surface. */
+  | { type: 'racer.breached'; id: RacerId }
+  /** A racer's centre came back down from the air into the water. */
+  | { type: 'racer.splashed'; id: RacerId }
   | { type: 'racer.bumped'; a: RacerId; b: RacerId }
   | { type: 'coral.broken'; tx: number; ty: number; by: RacerId }
   | { type: 'player.place'; place: number }

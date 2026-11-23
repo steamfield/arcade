@@ -164,6 +164,8 @@ export interface Environment {
   /** Unit direction of the current, or null outside currents. */
   current: Vec | null;
   inKelp: boolean;
+  /** True when the body's centre is in an air tile above a surface. */
+  inAir: boolean;
 }
 
 /** Multipliers and overrides on a racer's swimming. Profiles set them; power-ups change them in phase 3. */

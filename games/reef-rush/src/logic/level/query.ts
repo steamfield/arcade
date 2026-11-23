@@ -52,7 +52,7 @@ export function overlapsTile(body: Box, tx: number, ty: number): boolean {
 export function sampleEnvironment(level: Level, body: Body): Environment {
   const cell = cellAt(level, Math.floor((body.x + body.w / 2) / TILE), Math.floor((body.y + body.h / 2) / TILE));
   const current = CURRENT_DIRECTIONS.get(cell);
-  return { current: current ? { ...current } : null, inKelp: cell === 'kelp' };
+  return { current: current ? { ...current } : null, inKelp: cell === 'kelp', inAir: cell === 'air' };
 }
 
 /**

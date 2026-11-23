@@ -10,7 +10,7 @@ import { SWIM_TUNING as SWIM } from './tuning.ts';
 
 const BASE_MODIFIERS = SWIM.base;
 
-const WATER: SwimEnv = { kind: 'swim', current: null, inKelp: false };
+const WATER: SwimEnv = { kind: 'swim', current: null, inKelp: false, inAir: false };
 const CRUISE = SWIM.force / SWIM.drag;
 const STILL: Vec = { x: 0, y: 0 };
 const RIGHT: Vec = { x: 1, y: 0 };
@@ -158,7 +158,7 @@ describe('swimming', () => {
 
 describe('the water', () => {
   it('lowers cruise speed in kelp', () => {
-    const inKelp = settledSpeed({ move: RIGHT, env: { ...WATER, inKelp: true } });
+    const inKelp = settledSpeed({ move: RIGHT, env: { ...WATER, inKelp: true, inAir: false } });
 
     expect(inKelp).toBeGreaterThan(0);
     expect(inKelp).toBeLessThan(settledSpeed({ move: RIGHT }) / 2);
@@ -232,7 +232,7 @@ describe('a very long tick', () => {
   it('slows a racer in kelp to a stop without reversing it', () => {
     const racer = makeRacer();
     racer.body.vx = 100;
-    const kelp: SwimEnv = { ...WATER, inKelp: true };
+    const kelp: SwimEnv = { ...WATER, inKelp: true, inAir: false };
     applyIntent(
       racer,
       { move: STILL, kick: false, use: false, cycle: 0 },
