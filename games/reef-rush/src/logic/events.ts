@@ -40,6 +40,9 @@ export type GameEvent =
   | { type: 'loose.spawned'; kind: PowerUpKind; charges: number }
   | { type: 'loose.grabbed'; id: RacerId; kind: PowerUpKind; charges: number }
   | { type: 'pearl.collected'; id: RacerId; index: number; total: number }
+  | { type: 'loosePearl.collected'; id: RacerId; total: number }
+  | { type: 'pearls.dropped'; id: RacerId; count: number }
+  | { type: 'racer.dashRecharged'; id: RacerId; charges: number }
   | { type: 'item.used'; id: RacerId; kind: PowerUpKind; slot: number; chargesLeft: number }
   | { type: 'item.selected'; id: RacerId; slot: number; kind: PowerUpKind }
   | { type: 'ink.spawned'; owner: RacerId }

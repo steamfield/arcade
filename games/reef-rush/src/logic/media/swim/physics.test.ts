@@ -25,6 +25,8 @@ function makeRacer(): Racer {
     body: { x: 40, y: 40, vx: 0, vy: 0, w: RACER_SIZE.width, h: RACER_SIZE.height },
     facing: 1,
     kickCooldown: 0,
+    kickCharges: 2,
+    kickRecharge: 0,
     progress: Number.POSITIVE_INFINITY,
     place: 1,
     finished: null,

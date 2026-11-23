@@ -308,6 +308,8 @@ describe('catch-up', () => {
       character: 'rudy' as const,
       facing: 1 as const,
       kickCooldown: 0,
+      kickCharges: 2,
+      kickRecharge: 0,
       place: 1,
       finished: null,
       ai: null,

@@ -122,6 +122,8 @@ function racer(id: RacerId, x: number, mass = 1): Racer {
     body: body(x, 50),
     facing: 1,
     kickCooldown: 0,
+    kickCharges: 2,
+    kickRecharge: 0,
     progress: Number.POSITIVE_INFINITY,
     place: 1,
     finished: null,

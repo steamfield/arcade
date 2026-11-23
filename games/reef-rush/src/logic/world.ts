@@ -43,7 +43,8 @@ import type { LevelProblem, Medium } from './media/types.ts';
 import { modifiersFor } from './modifiers.ts';
 import { openClams } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
-import { collectPearls } from './pickups/pearls.ts';
+import { collectLoosePearls, collectPearls } from './pickups/pearls.ts';
+import { DASH_METER, rechargeDash } from './powerups/dash-meter.ts';
 import { advanceDecoys } from './powerups/decoys.ts';
 import { selectedSlot, slotItems } from './powerups/inventory.ts';
 import { advanceRiptides } from './powerups/riptides.ts';
@@ -133,6 +134,7 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     contacts: new Set(),
     clams: level.clams.map((tile) => ({ tile: { ...tile }, closedFor: 0 })),
     pearlsTaken: new Set(),
+    loosePearls: [],
     loose: [],
     inks: [],
     bubbles: [],
@@ -195,6 +197,8 @@ function createRacer(
     body,
     facing: 1,
     kickCooldown: 0,
+    kickCharges: DASH_METER.charges,
+    kickRecharge: 0,
     progress: Number.POSITIVE_INFINITY,
     place: index + 1,
     finished: null,
@@ -250,8 +254,12 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   resolveContacts(world, racing);
   openClams(world, racing);
   collectPearls(world, racing);
+  collectLoosePearls(world, racing);
   updateLoose(world, racing, dt);
-  for (const racer of racing) tickStatuses(racer);
+  for (const racer of racing) {
+    tickStatuses(racer);
+    rechargeDash(world, racer);
+  }
   // splice(0) empties the buffer the event sink appends to, so each event reaches abilities once.
   onWorldEvents(world, world.recentEvents.splice(0));
   tickAbilities(world, racing);
@@ -296,6 +304,7 @@ export function summarize(world: World) {
     progress: Number.isFinite(player.progress) ? Math.round(player.progress) : null,
     finished: player.finished !== null,
     player: { tile: centreTile(player), kickReady: player.kickCooldown === 0 },
+    dashCharges: player.kickCharges,
     items: slotItems(player).map((item) => (item ? `${item.kind}:${item.charges}` : null)),
     selected: selectedSlot(player),
     pearls: player.pearls,
@@ -329,7 +338,7 @@ function pixelTileKey({ x, y }: { x: number; y: number }): string {
 /**
  * Characters for things on the course, by "x,y" tile: `*` urchin, `o` pearl still in play,
  * `?` clam ready to open, `_` clam shut after opening, `j` jelly (at its home tile), `m` Mimic decoy,
- * `s` Homing Squid (the last two at the tile holding their centre).
+ * `s` Homing Squid (the last two at the tile holding their centre), and `o` for a loose pearl too.
  * Later entries win, so a jelly shows over the tile it bobs around.
  */
 function itemChars(world: World): Map<string, string> {
@@ -343,6 +352,7 @@ function itemChars(world: World): Map<string, string> {
     ...world.jellies.map(({ home }): [string, string] => [`${home.x},${home.y}`, 'j']),
     ...world.decoys.map((decoy): [string, string] => [pixelTileKey(decoy), 'm']),
     ...world.squids.map((squid): [string, string] => [pixelTileKey(squid), 's']),
+    ...world.loosePearls.map(({ at }): [string, string] => [pixelTileKey(at), 'o']),
   ]);
 }
 

@@ -274,6 +274,10 @@ export interface Racer {
   facing: 1 | -1;
   /** Ticks until the next kick is allowed; 0 means ready. */
   kickCooldown: number;
+  /** Dashes (kicks) left on the meter, 0..DASH_METER.charges. A kick needs one (`powerups/dash-meter.ts`). */
+  kickCharges: number;
+  /** Ticks toward the next dash charge while the meter is below full. */
+  kickRecharge: number;
   /** Distance to the finish along the progress field, in tiles. Lower is further ahead. */
   progress: number;
   /** Current standing, 1..4. */
@@ -378,6 +382,18 @@ export interface Clam {
 }
 
 /** A power-up knocked off a racer, drifting up until someone grabs it or it expires. */
+/** A pearl a hit knocked loose: drifts with drag until collected or its life runs out (`pickups/pearls.ts`). */
+export interface LoosePearl {
+  /** Pixel position of its centre. */
+  at: Vec;
+  /** Pixels per second. */
+  vel: Vec;
+  /** Ticks since it was dropped. */
+  age: number;
+  /** Who dropped it; that racer can't collect it for a short grace. */
+  droppedBy: RacerId;
+}
+
 export interface LoosePowerUp {
   kind: PowerUpKind;
   /** Uses it gives whoever grabs it: what the racer it was knocked off had left. */
@@ -513,6 +529,8 @@ export interface World {
   clams: Clam[];
   /** Indices into `level.pearls` already collected; each pearl is taken once per race. */
   pearlsTaken: Set<number>;
+  /** Pearls knocked loose by hits, still in play. */
+  loosePearls: LoosePearl[];
   loose: LoosePowerUp[];
   inks: InkCloud[];
   bubbles: Bubble[];

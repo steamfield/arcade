@@ -51,6 +51,7 @@ New and changed modules, with their single responsibilities:
 ### Phase 1: fire the item you choose (MVP)
 
 Scaffold: ed80dfb
+Tag: reef-rush-v2-phase-1
 Demo: `pnpm arcade dev reef-rush`, race, open clams: Space fires only the framed item and its charge digit drops, Q/E move the frame, a Cannonball smashes the coral gate. `pnpm arcade see reef-rush --scenario cannonball-item`.
 Test cases:
 - Slots are fixed: `items` always has `stackMaxFor(racer)` entries (3, Nib 4), each a `HeldItem` or null, so held items never slide in the HUD.

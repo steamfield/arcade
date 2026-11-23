@@ -40,3 +40,20 @@ function reaches(racer: Racer, tile: Vec): boolean {
   // Squared, because logic avoids Math.hypot (engines may round it differently).
   return dx * dx + dy * dy <= (PASSIVE.lanternPearlTiles * TILE) ** 2;
 }
+
+/** The swim-force multiplier `racer`'s pearl count gives it. Phase 2 scaffold: lane b fills it in. */
+export function pearlSpeedMul(_racer: Racer): number {
+  return 1;
+}
+
+/**
+ * Knocks some of `racer`'s pearls loose after a hit lands, into `world.loosePearls`, emitting
+ * `pearls.dropped`. Phase 2 scaffold: lane b fills it in.
+ */
+export function dropPearls(_world: World, _racer: Racer): void {}
+
+/**
+ * The pickups slot for loose pearls: drifts them, ages them out, and gives each to the first racer
+ * that reaches it, emitting `loosePearl.collected`. Phase 2 scaffold: lane b fills it in.
+ */
+export function collectLoosePearls(_world: World, _racers: readonly Racer[]): void {}
