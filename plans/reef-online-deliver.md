@@ -80,7 +80,7 @@ interface WorldOptions { humans?: readonly RacerId[]; characters?: Partial<Recor
 /** Whether a person started the race in this slot. Never changes during a race. */
 export function isHuman(world: World, id: RacerId): boolean;
 /** Whether the game treats this racer as an AI opponent: not a human slot, or a human slot the AI took over. A test bot driving a human slot is not a rival. */
-export function isRival(world: World, racer: Racer): boolean;
+export function isRival(world: World, id: RacerId): boolean;
 /** Humans still driven by their own input: not taken over. In RACER_IDS order. */
 export function activeHumans(world: World): Racer[];
 
@@ -93,6 +93,7 @@ export function catchUpTarget(world: World): Racer;
 
 // logic/events.ts
 | { type: 'player.place'; id: RacerId; place: number }
+| { type: 'racer.takeover'; id: RacerId }
 
 // engine/runtime.ts
 /** The slot this screen follows. 'player' except in a `?local=` debug race. */
@@ -105,7 +106,7 @@ The invariant every phase is held to: a world created without `humans` or `chara
 
 ### Phase 1: a hash that proves two engines ran the same race (MVP)
 
-Scaffold: 574980e
+Scaffold: 5463a18
 Demo: `pnpm arcade test reef-rush src/logic/hash.test.ts src/logic/top-route.test.ts`, then `pnpm arcade smoke reef-rush`, whose "finished race" test asserts one committed hash on desktop Chromium, the phone project and WebKit.
 
 Test cases (`src/logic/hash.test.ts`, written in the scaffold):
@@ -167,7 +168,69 @@ Depends on: phase 1
 | a | M | games/reef-rush/src/logic/world.ts, games/reef-rush/src/logic/race/standings.ts, games/reef-rush/src/logic/characters.ts, games/reef-rush/src/engine/view/racer-moments.test.ts | contracts, games/reef-rush/src/logic/racers.ts, games/reef-rush/src/logic/ai/rival.ts | games/reef-rush/src/logic/humans.test.ts | opus | pending | | humans tests pass, top-route hash unmoved |
 | b | M | games/reef-rush/src/logic/difficulty-level.ts, games/reef-rush/src/logic/modifiers.ts, games/reef-rush/src/logic/pickups/clams.ts, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/race/catch-up.ts | contracts, games/reef-rush/src/logic/racers.ts | games/reef-rush/src/logic/human-rules.test.ts | opus | pending | | rule tests pass, top-route hash unmoved |
 
-(Test cases and briefs written during phase 1. The scaffold declares the types, implements `isHuman`, `isRival` and `activeHumans` in `racers.ts`, makes `createWorld` store `humans`, and stubs `stepRace` and `catchUpTarget`.)
+The scaffold declares the types, implements `isHuman`, `isRival` and `activeHumans` in `racers.ts`, makes `createWorld` store `humans: ['player']`, adds `humans` to the hash skip list, adds `id` to `player.place` and the `racer.takeover` event, and stubs `stepRace` (throws) and `catchUpTarget` (returns `playerOf(world)`, so the tree stays green for one human). `isRival` takes an id, like `isHuman`: `isRival(world: World, id: RacerId): boolean`.
+
+Test cases, `src/logic/humans.test.ts` (lane a):
+
+- A world created with no `humans` has `humans` equal to `['player']`, and `stepWorld(world, input)` leaves it hashing the same as `stepRace(world, { player: input })` after 400 ticks.
+- `humans: ['tess', 'player']` is stored as `['player', 'tess']`; both racers have no AI memory and `{ ...PLAYER_PROFILE, id }` as profile; `squib` and `bo` have AI memory and their character's rival profile.
+- `humans: ['tess']` leaves `player` AI-driven with its character's rival profile under id `player`.
+- `createWorld` throws, naming the bad value, for: empty `humans`; a repeated slot; an unknown slot; `characters` giving two slots one character; `character` and `characters.player` both given and different; `difficulty: 'easy'` with `humans: ['player', 'tess']`.
+- `characters: { player: 'gil', tess: 'nib' }` puts those characters in those slots and draws the other two from the rest, with no character twice. With only `character` given, the four characters equal what the same seed gives today.
+- Two humans holding right for 300 racing ticks both move right by the same distance from their starts (same profile, same input), and an input for `tess` changes only tess.
+- `playerBot` with an input entry for `player`: the entry is ignored, the bot drives.
+- Takeover: a human with no entry in `inputs` gets AI memory, `tookOverAt` equal to that `world.tick`, its character's rival profile, and one `racer.takeover` event with its id on that tick; it then moves without input. It happens once: later ticks with or without an entry emit nothing more and the entry is ignored. A takeover during the countdown works the same way. A finished human with no entry is not taken over.
+- An input entry for a rival slot is ignored.
+- Race end, two humans (`player`, `tess`) placed by the test: the race does not end when the first human finishes; it ends on the tick the second does. With `tess` taken over and unfinished, the race ends when `player` finishes. With every human taken over, the race ends on the next tick.
+- Grace: `rivalsDoneAt` stays null while two active humans are unfinished even with both rivals home, and is set on the tick the first of them finishes; the race then ends `DNF_GRACE_TICKS` later if the other has not finished. A taken-over human counts as a rival here.
+- `player.place` is emitted with the right `id` for each human whose place changed on a tick, in `RACER_IDS` order, and never for a rival or a taken-over human.
+- `race.finished` still reports slot `player` in `playerPlace` and `playerTicks`.
+- Two peers, the behaviour the whole run exists for: two worlds built separately from the same seed with `humans: ['player', 'tess']` are stepped through a full race on the default course from the same scripted inputs, with `tess`'s input stopping partway so the AI takes her over. Their hashes are equal at every 60th tick, and their `race.finished` events are equal. A second run where one peer gets one different input on one tick has unequal hashes at the next check.
+
+Testing approach (owner, 2026-11-23: prove it through behaviour-driven tests, ce:writing-tests): every case enters through `createWorld`, `stepRace`/`stepWorld` or the exported rule function a caller uses, and asserts on events, hashes, positions and return values. State is reached by stepping the race with inputs where that is practical, and by the existing `test-world.ts` placement helpers where replaying a whole race to reach it is not. No mocks. Each new test is watched failing once, and the lane report says how it was broken. Phase 3 proves the engine side in the real game through Playwright (`tests/local-racer.spec.ts`), asserting on `debugSummary()` and events.
+
+Test cases, `src/logic/human-rules.test.ts` (lane b), each on a world with `humans: ['player', 'tess']` unless it says otherwise:
+
+- `statusTicks`, `invulnerableTicks` and `clamBias` give `tess` the same values as `player` on Normal, and `squib` the rival values.
+- A human in the `tess` slot opening a clam gets one roll; `squib` gets `CLAM.rivalRolls`.
+- `mayAttack`: human on human is true on every level; `squib` on `tess` follows the level's `rivalsAttackPlayer` exactly as `squib` on `player` does; anyone on `squib` is true.
+- After `tess` is taken over (set `tookOverAt` and AI memory through `stepRace` with no entry): `mayAttack(world, 'tess', 'player')` follows `rivalsAttackPlayer`; `mayAttack(world, 'squib', 'tess')` still follows it too (still protected as a target); `itemAggressionMul` for tess is the level's rival multiplier; `statusTicks` for tess is still the human value.
+- `itemAggressionMul` is 1 for a `playerBot` in the player slot (not a rival), and the level's value for `squib`.
+- `modifiersFor`: two humans at the same progress with the same statuses get the same `forceMul`; a human far behind the leader gets `playerCatchUpMul`'s boost whichever slot it is in; a rival's `forceMul` responds to its gap to `catchUpTarget`, not to slot `player`.
+- `catchUpTarget`: with one human it is that human, before and after it finishes; with two unfinished it is the one with less progress left, ties to the earlier slot; with one finished it is the unfinished one; with both finished it is the one with the better finish place.
+- The stuck backstop never fires for a human slot a bot drives (`playerBot`), and does fire for a taken-over human held in place for `PROGRESS_BACKSTOP_TICKS`.
+- A rival's Undertow decision on a level where rivals may not attack humans: it holds the Undertow while any human is ahead of it, and may use it when every human is behind.
+
+#### Lane a brief
+
+- Goal: let a race have several human slots, each driven by its own input, and hand a human slot to the AI on the tick its input is missing.
+- Interface: `WorldOptions` gains `humans?: readonly RacerId[]` and `characters?: Partial<Record<RacerId, CharacterId>>`. `export function stepRace(world: World, inputs: Partial<Record<RacerId, TickInput>>, dt: number): void`. `stepWorld(world, input, dt)` keeps its signature and calls `stepRace(world, { player: input }, dt)`. Use `isHuman`, `isRival`, `activeHumans` from `racers.ts` as they are.
+- Behavior:
+  - `createWorld`: `humans` defaults to `['player']` and is stored in `RACER_IDS` order. Validation and messages per the plan's error model. A slot is human-driven when it is in `humans` and is not the player slot with a `playerBot`. Profiles: the player slot with a `playerBot` gets the bot profile; any other human slot gets `{ ...PLAYER_PROFILE, id }`; every other slot gets `{ id, ...CHARACTERS[character].profile }`.
+  - Characters: `characters[slot]` fixes a slot's character; `character` is the old name for `characters.player`. The remaining slots draw from the `roster` stream among characters nobody was given. When only the player's character is given (or nothing), the draws must be exactly today's `pickRivals(rngs.roster, player)`: same calls on the stream in the same order, so the default world does not change. Generalise `pickRivals` in `characters.ts` or add a sibling there; keep `pickRivals` exported with its current behaviour, since tests use it.
+  - `stepRace`, in tick order: `world.tick++`; return if the race is finished; take over every human-driven, unfinished racer with no entry in `inputs` (in `RACER_IDS` order); then the tick as today, with each human-driven racer's intent built from its own entry and `trackGuide(world, inputs.player ?? IDLE)`.
+  - Takeover sets `racer.ai = createAiMemory(medium)`, `racer.profile = { id, ...CHARACTERS[racer.character].profile }`, `racer.tookOverAt = world.tick`, and emits `{ type: 'racer.takeover', id }`. From then on entries for that racer are ignored. Its AI draws from `world.rngs['ai.<id>']`, which exists for every slot and is untouched until then.
+  - `race/standings.ts`: `rivalsDoneAt` is set on the first tick where every rival (`isRival`) has finished and at most one active human is unfinished. In `endsWhen: 'player'` mode the race is done when no active human is unfinished, or the grace is over, or the limit hits. `updatePlaces` emits `player.place` with `id` for each active human whose place changed, in `RACER_IDS` order. `RaceResult` and `race.finished` do not change shape and keep describing slot `player`.
+  - `assistedIntent` and the Easy guide stay as they are: Easy has exactly one human, in the player slot.
+- Decisions already made: `tookOverAt` lives on the racer, not in a list on the world, so a default race's hash does not change. No event for a human joining. No un-takeover.
+- Out of scope: `difficulty-level.ts`, `modifiers.ts`, `pickups/clams.ts`, `ai/` (lane b), the engine, `summarize`, save data, more than four racers.
+- Done when: `pnpm arcade test reef-rush src/logic/humans.test.ts src/logic/hash.test.ts src/logic/top-route.test.ts src/logic/race src/logic/world.test.ts src/logic/characters.test.ts` passes with the pinned top-route hash unchanged, and `pnpm arcade check reef-rush --skip-tests` passes.
+
+#### Lane b brief
+
+- Goal: make every rule that singles out "the player" apply to any human slot, and every AI-only behaviour apply to any rival, including a human slot the AI took over.
+- Interface: no exported signature changes except `catchUpTarget(world: World): Racer` in the new `race/catch-up.ts` (a stub returning `playerOf(world)` exists). `mayAttack(world, attacker, target)` keeps taking ids. Use `isHuman(world, id)`, `isRival(world, id)` and `activeHumans(world)` from `racers.ts` as they are.
+- Behavior, rule by rule:
+  - `statusTicks`, `invulnerableTicks`, `clamBias`, and the single clam roll in `pickups/clams.ts`: the human value when `isHuman(world, racer.id)`. A taken-over human keeps them.
+  - `itemAggressionMul`: the level's `rivalItemAggressionMul` when `isRival`, else 1.
+  - `mayAttack(world, attacker, target)`: true when the attacker is not a rival, or the target is not a human slot, or the level's `rivalsAttackPlayer` is true. So humans may always attack each other, a taken-over human attacks as a rival, and a taken-over human is still protected as a target.
+  - The stuck backstop in `ai/rival.ts` (`progressStalled`) runs only for rivals. A test bot driving the player slot is not a rival.
+  - `modifiersFor`: a human slot gets `playerCatchUpMul(racer, world.racers, tuning)` unchanged (it measures against every other racer, humans included). Every other racer gets `tuning.rivalForceMul` times, after the delay, `catchUpMul(racer, catchUpTarget(world), rivalCatchUpFor(world))`.
+  - `catchUpTarget`: among human slots (taken over or not), the unfinished one with the least progress left, ties to the earlier `RACER_IDS` slot; when every human slot has finished, the one with the best finish place. With one human this is always that human, which is what `playerOf(world)` gives today in races that run on after the player finishes.
+  - `undertowSparesPlayer` in `ai/items.ts`: true when, for every human slot other than the user, either `mayAttack(world, user, human)` or that human is not ahead of the user. Rename it for what it now checks.
+- Decisions already made: `logic/guide.ts` and `hazards/enemies/shark.ts` keep their `'player'` checks, because Easy is single-player in the player slot. A world created without `humans` must behave bit for bit as before: the pinned hash in `top-route.test.ts`, `sanity/bars.test.ts` and the difficulty project are the guards and may not be edited.
+- Out of scope: `world.ts`, `race/standings.ts`, `characters.ts` (lane a), the engine, retuning any number in `DIFFICULTY`.
+- Done when: `pnpm arcade test reef-rush src/logic/human-rules.test.ts src/logic/top-route.test.ts src/logic/difficulty-level.test.ts src/logic/modifiers.test.ts src/logic/ai src/logic/pickups src/logic/hazards src/logic/powerups` passes with the pinned top-route hash unchanged, and `pnpm arcade check reef-rush --skip-tests` passes. Lane b's tests that need a takeover drive it through `stepRace`, which lane a implements; until the lanes merge, those cases fail on the `stepRace` stub and that is expected. Say which cases they were in your report.
 
 ### Phase 3: the screen follows any slot
 
