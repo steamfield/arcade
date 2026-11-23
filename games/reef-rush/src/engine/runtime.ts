@@ -31,6 +31,7 @@ import {
   type World,
 } from '../logic/types.ts';
 import { createWorld, stepWorld } from '../logic/world.ts';
+import { enemyWithinHearing } from './audio/adapter.ts';
 import { withinHearing } from './audio/attack-sfx.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
 import { moveCharacter } from './character-select.ts';
@@ -198,7 +199,10 @@ export class Runtime {
       options.ctx,
       this.settings,
       this.events,
-      (id) => this.audibleFromPlayer(id),
+      {
+        audibleFromPlayer: (id) => this.audibleFromPlayer(id),
+        enemyAudible: (index) => (this.world ? enemyWithinHearing(this.world, index) : true),
+      },
       () => this.course.song,
     );
   }

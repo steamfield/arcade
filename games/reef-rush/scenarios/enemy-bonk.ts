@@ -8,15 +8,17 @@ const EASY_SAVE = {
 };
 
 /**
- * The `enemies` stage stands the player on the floor with a crab on it 3 tiles ahead. After the
- * countdown, swim right for half a second and dash: the dash lands on the crab inside its bonk
- * window (about 7 to 11 ticks after the dash at Easy's swim speed), so the one bonk beats it and
- * it bursts into a pearl. On Easy the shark further on never winds up on the player.
+ * The `enemies` stage stands the player on the floor with a crab on it 3 tiles ahead, walking away
+ * at 20 px/s from GO, and puts the rivals up out of the way. Swim right for 40 ticks to close in,
+ * then dash: the dash meets the crab about 11 ticks later, inside its 12-tick bonk window, so the one
+ * bonk beats it and it bursts into a pearl. Dashing anywhere from 38 to 44 ticks in lands it; 36 or
+ * sooner reaches the crab after the window and the crab hits the player instead. On Easy the shark
+ * further on never winds up on the player.
  */
 export default scenario({
   description: 'a dash into the crab bonks it once, beats it and bursts a pearl out of it',
   start: { save: EASY_SAVE, seed: 1, query: { stage: 'enemies' } },
-  input: [...TITLE_TO_RACE, wait(180), hold('right', 30), hold(['right', 'dash'], 1), hold('right', 30)],
+  input: [...TITLE_TO_RACE, wait(180), hold('right', 40), hold(['right', 'dash'], 1), hold('right', 30)],
   expect({ events }) {
     expect(events.filter((e) => e.type === 'racer.kicked' && e.id === 'player')).toHaveLength(1);
     expect(events.filter((e) => e.type === 'enemy.defeated')).toMatchObject([{ kind: 'crab', by: 'player' }]);

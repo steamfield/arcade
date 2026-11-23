@@ -14,7 +14,8 @@
  * `dark` moves the pack into the first dark zone with a squid and a decoy near the player; `guide`
  * stands the player against the first wall whose way on is up or down, already stuck for 2.5 s, so
  * the Easy guide arrow shows from the GO (and does nothing on a course with no such wall); `enemies` stands the
- * player on the floor with a crab on the floor 3 tiles ahead and a shark about 6 tiles ahead facing them;
+ * player on the floor with a crab on the floor 3 tiles ahead walking away from them and a shark about 6 tiles
+ * ahead facing them, and moves the rivals up out of the way;
  * `enemy-modes` lines up each enemy kind in each of its modes ahead of the player on the floor, for reviewing
  * their look (the logic moves them on from there once the race starts).
  */
@@ -157,22 +158,52 @@ export function applyStage(world: World, stage: StageName): void {
 }
 
 /**
- * Stands the player on the floor below its start, with a crab on the floor 3 tiles ahead and a
- * shark 6 tiles ahead in the first open water 2 or more tiles above the floor, facing the player.
+ * Stands the player on the floor below its start, with a crab on the floor 3 tiles ahead walking
+ * away from them (so it can't walk into the player before a dash) and a shark 6 tiles ahead in the
+ * first open water 2 or more tiles above the floor, facing the player. The rivals go to the top of
+ * the player's start column, out of the way, so none of them dashes into the crab first.
  */
 function stageEnemies(world: World, player: Racer): void {
+  const column = Math.floor(centreOf(player).x / TILE);
   const start = standOnFloor(world, player);
   const shark = openWaterAbove(world.level, start.x + 6, floorBelow(world.level, start.x + 6, start.y) - 2);
   world.enemies.push(
-    stagedEnemy(world.level, 'crab', { x: start.x + 3, y: floorBelow(world.level, start.x + 3, start.y) }),
+    {
+      ...stagedEnemy(world.level, 'crab', { x: start.x + 3, y: floorBelow(world.level, start.x + 3, start.y) }),
+      facing: 1,
+    },
     { ...stagedEnemy(world.level, 'shark', shark), facing: -1 },
   );
+  const rivals = world.racers.filter((racer) => racer !== player);
+  const topRows = openRowsFromTop(world.level, column, rivals.length);
+  rivals.forEach((rival, index) => {
+    const row = topRows[index] as number;
+    rival.body.x = (column + 0.5) * TILE - rival.body.w / 2;
+    rival.body.y = (row + 0.5) * TILE - rival.body.h / 2;
+    rival.body.vx = 0;
+    rival.body.vy = 0;
+  });
 }
 
 /**
- * Stands the player on the floor and lines up, ahead of them: on the floor, a walking crab, a
- * staggered crab and an eel hidden, warning and out; above, a shark patrolling, winding up on the
- * player and charging, and one staggered.
+ * The first `count` water rows in column `x`, top down.
+ *
+ * @throws {Error} When the column has fewer, naming it.
+ */
+function openRowsFromTop(level: Level, x: number, count: number): number[] {
+  const rows = [...Array(level.height).keys()].filter((y) => cellAt(level, x, y) === 'water').slice(0, count);
+  if (rows.length < count) {
+    throw new Error(
+      `The enemies stage needs ${count} open water tiles in column ${x} for the rivals, and has ${rows.length}`,
+    );
+  }
+  return rows;
+}
+
+/**
+ * Stands the player on the floor and lines up, ahead of them: on the floor, an eel hidden, warning
+ * and out (each in the floor, lunging up), a walking crab and a staggered crab; above, a shark
+ * patrolling, winding up on the player and charging, and one staggered.
  */
 function stageEnemyModes(world: World, player: Racer): void {
   const start = standOnFloor(world, player);
@@ -181,13 +212,13 @@ function stageEnemyModes(world: World, player: Racer): void {
     const floor = onFloor(dx);
     return openWaterAbove(world.level, floor.x, floor.y - rise);
   };
-  const lunging = stagedEnemy(world.level, 'eel', onFloor(8));
+  const lunging = stagedEnemy(world.level, 'eel', onFloor(5));
   lunging.at.y -= 1.5 * TILE;
   world.enemies.push(
-    { ...stagedEnemy(world.level, 'crab', onFloor(2)), vel: { x: -20, y: 0 } },
-    { ...stagedEnemy(world.level, 'crab', onFloor(4)), mode: 'stagger' },
-    { ...stagedEnemy(world.level, 'eel', onFloor(6)), mode: 'hidden' },
-    { ...stagedEnemy(world.level, 'eel', onFloor(7)), mode: 'windup', modeTicks: 10 },
+    { ...stagedEnemy(world.level, 'crab', onFloor(7)), vel: { x: -20, y: 0 } },
+    { ...stagedEnemy(world.level, 'crab', onFloor(9)), mode: 'stagger' },
+    { ...stagedEnemy(world.level, 'eel', onFloor(1)), mode: 'hidden' },
+    { ...stagedEnemy(world.level, 'eel', onFloor(3)), mode: 'windup', modeTicks: 10 },
     { ...lunging, mode: 'lunge' },
     { ...stagedEnemy(world.level, 'shark', above(3, 5)), facing: 1, hp: 2 },
     { ...stagedEnemy(world.level, 'shark', above(6, 5)), mode: 'windup', target: 'player', hp: 2 },

@@ -66,7 +66,7 @@ describe('applying a stage', () => {
     }
   });
 
-  it('stands the player on the floor with a crab 3 tiles ahead on it and a shark 6 ahead facing them', () => {
+  it('stands the player on the floor, a crab 3 tiles ahead walking away, a shark 6 ahead facing them, rivals up top', () => {
     const { world } = raceOn(ARENA);
     applyStage(world, 'enemies');
     const player = world.racers.find((r) => r.id === 'player');
@@ -76,9 +76,13 @@ describe('applying a stage', () => {
     };
     expect(tile).toEqual({ x: 1, y: 4 });
     expect(world.enemies.map(({ kind, home, facing, mode }) => ({ kind, home, facing, mode }))).toEqual([
-      { kind: 'crab', home: { x: 4, y: 4 }, facing: -1, mode: 'patrol' },
+      { kind: 'crab', home: { x: 4, y: 4 }, facing: 1, mode: 'patrol' },
       { kind: 'shark', home: { x: 7, y: 2 }, facing: -1, mode: 'patrol' },
     ]);
+    const rivalRows = world.racers
+      .filter((r) => r.id !== 'player')
+      .map((r) => Math.floor((r.body.y + r.body.h / 2) / 16));
+    expect(rivalRows).toEqual([1, 2, 3]);
   });
 
   it('lines up every enemy kind in each of its modes for enemy-modes', () => {

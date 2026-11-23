@@ -1,7 +1,8 @@
 import { EventLog, type Stamped } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import { raceOn } from '../../logic/test-world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import { createAdapter } from './adapter.ts';
+import { type AdapterOptions, createAdapter, enemyWithinHearing } from './adapter.ts';
 import type { Sequencer } from './sequencer.ts';
 import type { Synth } from './synth.ts';
 
@@ -28,8 +29,11 @@ const SILENT_SEQUENCER: Sequencer = {
   dispose() {},
 };
 
-/** The sfx keys heard when `events` are drained together, by owner distance `near`. */
-function heard(events: RuntimeEvent[], near: boolean): string[] {
+/**
+ * The sfx keys heard when `events` are drained together, by owner distance `near`; `enemyAudible`
+ * says which enemies are in earshot (every one when left out).
+ */
+function heard(events: RuntimeEvent[], near: boolean, enemyAudible?: AdapterOptions['enemyAudible']): string[] {
   const log = new EventLog<RuntimeEvent>();
   const adapter = createAdapter({
     synth: runningSynth(),
@@ -41,6 +45,7 @@ function heard(events: RuntimeEvent[], near: boolean): string[] {
       throw error;
     },
     audibleFromPlayer: () => near,
+    ...(enemyAudible && { enemyAudible }),
     raceSong: () => 'race',
   });
   const stamped: Stamped<RuntimeEvent>[] = events.map((event, seq) => ({ ...event, tick: 300, seq }));
@@ -69,5 +74,52 @@ describe('the adapter and the attack power-ups', () => {
     const fired: RuntimeEvent[] = [{ type: 'squid.spawned', owner: 'tess', target: null }];
     expect(heard(fired, false)).toEqual([]);
     expect(heard(fired, true)).toEqual(['squid.fire']);
+  });
+});
+
+describe('the adapter and the enemies', () => {
+  // The player starts at column 1: the shark and eel at column 7 are in earshot, those at 36 (over 500 px off) are not.
+  const { world } = raceOn(`
+    ########################################
+    #1.....S............................S.F#
+    #2....................................F#
+    #3....................................F#
+    #4.....E............................E.F#
+    ########################################
+  `);
+  const inEarshot = (index: number) => enemyWithinHearing(world, index);
+  const [NEAR_SHARK, FAR_SHARK, NEAR_EEL, FAR_EEL] = [0, 1, 2, 3];
+
+  it('hears a shark wind up and an eel warn nearby, and neither out of earshot', () => {
+    const tells = (shark: number, eel: number): RuntimeEvent[] => [
+      { type: 'enemy.telegraphed', index: shark, kind: 'shark' },
+      { type: 'enemy.telegraphed', index: eel, kind: 'eel' },
+    ];
+    expect(world.enemies.map((enemy) => enemy.kind)).toEqual(['shark', 'shark', 'eel', 'eel']);
+    expect(heard(tells(NEAR_SHARK, NEAR_EEL), true, inEarshot)).toEqual(['shark.windup', 'eel.warn']);
+    expect(heard(tells(FAR_SHARK, FAR_EEL), true, inEarshot)).toEqual([]);
+  });
+
+  it('hears a bonk and a defeat nearby, sounding the bonk that beats an enemy as its defeat', () => {
+    const near: RuntimeEvent[] = [
+      { type: 'enemy.bonked', index: NEAR_SHARK, kind: 'shark', by: 'player', hpLeft: 1 },
+      { type: 'enemy.bonked', index: NEAR_SHARK, kind: 'shark', by: 'player', hpLeft: 0 },
+      { type: 'enemy.defeated', index: NEAR_SHARK, kind: 'shark', by: 'player' },
+    ];
+    expect(heard(near, true, inEarshot)).toEqual(['enemy.bonk', 'enemy.defeat']);
+    const far: RuntimeEvent[] = [
+      { type: 'enemy.bonked', index: FAR_SHARK, kind: 'shark', by: 'tess', hpLeft: 1 },
+      { type: 'enemy.defeated', index: FAR_SHARK, kind: 'shark', by: 'tess' },
+    ];
+    expect(heard(far, true, inEarshot)).toEqual([]);
+  });
+
+  it('always hears an enemy get the player, and never one getting a rival', () => {
+    const bites: RuntimeEvent[] = [
+      { type: 'racer.hit', id: 'player', cause: 'crab', by: null },
+      { type: 'racer.hit', id: 'tess', cause: 'shark', by: null },
+      { type: 'racer.hit', id: 'player', cause: 'urchin', by: null },
+    ];
+    expect(heard(bites, false, () => false)).toEqual(['enemy.bite']);
   });
 });
