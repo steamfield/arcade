@@ -1,23 +1,26 @@
 /**
  * The race screen. It assembles the views (backdrop, course, pickups, hazards,
  * the attack power-ups in the water, racers and their power-up effects, the darkness
- * over dark zones, HUD, camera, debug overlay) over the runtime's world and syncs them every rendered frame.
+ * over dark zones, HUD, the hints for young players, camera, debug overlay) over the runtime's world and syncs them every rendered frame.
  * Event-driven visuals arrive through the runtime's per-tick listener.
  * Ticking, input and the move to results all happen in the runtime.
  */
 import { TICK_HZ } from '@arcade/core';
 import Phaser from 'phaser';
+import { stackMaxFor } from '../../logic/abilities.ts';
 import { playerOf } from '../../logic/racers.ts';
 import type { World } from '../../logic/types.ts';
 import { createFx } from '../fx/index.ts';
 import type { Runtime } from '../runtime.ts';
 import { createAttackView } from '../view/attack-view.ts';
 import { createBackdrop } from '../view/backdrop.ts';
+import { createBurstButtonIcon } from '../view/burst-button.ts';
 import { followRacer } from '../view/camera.ts';
 import { createDarkView } from '../view/dark-view.ts';
 import { createDebugOverlay } from '../view/debug-overlay.ts';
 import { createHazardView } from '../view/hazard-view.ts';
-import { createHud } from '../view/hud.ts';
+import { createHintView } from '../view/hint-view.ts';
+import { comboCentreY, createHud, wellLayout } from '../view/hud.ts';
 import { createLevelView } from '../view/level-view.ts';
 import { createPickupView } from '../view/pickup-view.ts';
 import { createPowerupView } from '../view/powerup-view.ts';
@@ -65,6 +68,9 @@ export class RaceScene extends Phaser.Scene {
     }));
     const dark = createDarkView(this, world, reducedMotion);
     const hud = createHud(this, world, reducedMotion);
+    const wellWidth = wellLayout(stackMaxFor(playerOf(world))).width;
+    const hints = createHintView(this, reducedMotion, wellWidth, comboCentreY);
+    const burstIcon = createBurstButtonIcon(this);
     const fx = createFx(this, world, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
@@ -79,7 +85,10 @@ export class RaceScene extends Phaser.Scene {
       }
       fx.onEvents(events, tick);
     });
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopListening);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      stopListening();
+      burstIcon.destroy();
+    });
 
     let lastTick = world.tick;
     const sync = (current: World) => {
@@ -93,7 +102,9 @@ export class RaceScene extends Phaser.Scene {
         view.sync(racer, current.tick);
         effects.sync(racer, current.tick);
       }
-      hud.sync(current);
+      hud.sync(current, this.rt.hints);
+      hints.sync(current, this.rt.hints, this.cameras.main.worldView);
+      burstIcon.sync(playerOf(current).stack);
       fx.sync(current);
       // After the camera moved, so the darkness lines up with this frame's scroll.
       dark.sync(current);

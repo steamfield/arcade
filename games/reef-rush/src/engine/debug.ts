@@ -6,13 +6,15 @@ import type { SaveStatus } from '@arcade/save';
 import { playerOf } from '../logic/racers.ts';
 import type { World } from '../logic/types.ts';
 import { summarize, toAscii } from '../logic/world.ts';
+import { HOW_TO_PLAY_PAGES } from './how-to-play.ts';
 import type { Runtime } from './runtime.ts';
 import { formatBest } from './view/race-text.ts';
 import { squidHuntingPlayer } from './view/threat-math.ts';
 
 /**
- * Scene, save status, the character the player races as (the select cursor while picking) and
- * the world summary, plus the menu on menu screens, the best line as shown on the title, and the
+ * Scene, save status, the character the player races as (the select cursor while picking), the
+ * difficulty in force and the world summary (with the difficulty the race was built on and the in-race `hints` showing), plus the menu on
+ * menu screens, the best line as shown on the title, the 1-based page on How to Play, and the
  * race outcome on results.
  *
  * @param sceneRunning Whether Phaser is actually running `rt.scene`. When it isn't, the
@@ -24,7 +26,10 @@ export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: 
     scene: sceneRunning ? rt.scene : 'none',
     save: saveStatus,
     character: rt.selectedCharacter,
-    ...(world ? { ...summarize(world), threat: threatOf(world) } : {}),
+    difficulty: rt.settings.difficulty,
+    ...(world
+      ? { ...summarize(world), raceDifficulty: world.difficulty, threat: threatOf(world), hints: rt.hints }
+      : {}),
     ...(menu ? { menu: { options: menu.options, selected: menu.selected } } : {}),
     ...sceneDetails(rt),
   };
@@ -38,6 +43,7 @@ function threatOf(world: World) {
 function sceneDetails(rt: Runtime): Record<string, unknown> {
   const best = rt.save?.best;
   if (rt.scene === 'title') return { best: best ? formatBest(best) : null };
+  if (rt.scene === 'howToPlay') return { howToPlay: { page: rt.howToPage + 1, pages: HOW_TO_PLAY_PAGES } };
   if (rt.scene !== 'results' || !rt.lastResult) return {};
   const { result, newBest, saveFailed } = rt.lastResult;
   return { result: { place: result.playerPlace, ticks: result.playerTicks, newBest, saveFailed } };
