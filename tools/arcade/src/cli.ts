@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { assemble, type Include } from './assemble.ts';
+import { assemble, type Include, includeForBranch } from './assemble.ts';
+import { attract } from './attract.ts';
 import { check } from './check.ts';
 import { findGame, listGames, UsageError } from './games.ts';
 import { newGame } from './new-game.ts';
@@ -45,7 +46,10 @@ const HELP = `arcade: build, check and see games in this repo
 
   pnpm arcade dev <slug> [--port n]      Vite dev server for one game (prints the URL)
   pnpm arcade new <slug> --template <phaser-2d|three-3d> [--title "Name"]
-  pnpm arcade assemble [--include published|preview|all]
+  pnpm arcade assemble [--include published|preview|all|branch]
+      branch: published on main, preview elsewhere, from WORKERS_CI_BRANCH (Cloudflare Workers Builds)
+  pnpm arcade attract <slug>             Record the landing page's gameplay loop and cover into the game's
+                                         public/ (settings in its package.json "arcade.attract"; needs ffmpeg)
   pnpm arcade list                       Games and templates with their status
 
 Examples:
@@ -118,12 +122,15 @@ async function main(argv: string[]): Promise<number> {
         ...(values.crop !== undefined && { crop: values.crop }),
         ...(values.events !== undefined && { events: values.events }),
       });
+    case 'attract':
+      return attract(requireSlug());
     case 'smoke':
       return smoke(slug);
     case 'assemble': {
-      const include = values.include as Include;
+      const include =
+        values.include === 'branch' ? includeForBranch(process.env.WORKERS_CI_BRANCH) : (values.include as Include);
       if (!['published', 'preview', 'all'].includes(include))
-        throw new UsageError('--include must be published, preview or all');
+        throw new UsageError('--include must be published, preview, all or branch');
       const result = await assemble(include);
       console.log(result.report.join('\n'));
       return result.ok ? 0 : 1;

@@ -24,6 +24,14 @@ export function selectGames(include: Include, only?: string): GameInfo[] {
   return games;
 }
 
+/**
+ * What a Cloudflare Workers Builds run ships, from the branch it built (WORKERS_CI_BRANCH).
+ * The production branch gets published games; every other branch is a preview that adds drafts.
+ */
+export function includeForBranch(branch: string | undefined, production = 'main'): Include {
+  return !branch || branch === production ? 'published' : 'preview';
+}
+
 /** Build the site and the selected games, then copy them into dist/ as the Worker serves it. */
 export async function assemble(include: Include, only?: string): Promise<{ ok: boolean; report: string[] }> {
   const start = performance.now();

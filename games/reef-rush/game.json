@@ -7,5 +7,7 @@
   "engine": "phaser",
   "inputs": ["keyboard", "touch"],
   "orientation": "landscape",
-  "status": "draft"
+  "status": "published",
+  "cover": "cover.png",
+  "attract": "attract.mp4"
 }

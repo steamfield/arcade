@@ -29,6 +29,13 @@
     "fake-indexeddb": "catalog:"
   },
   "arcade": {
+    "attract": {
+      "scenario": "race-to-finish",
+      "from": 150,
+      "to": 1050,
+      "every": 3,
+      "cover": 1500
+    },
     "testGroups": {
       "behavior": [
         "src/engine/audio/sfx-pin.test.ts"

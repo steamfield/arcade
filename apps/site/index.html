@@ -2,20 +2,83 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Arcade</title>
-    <meta name="description" content="Free browser games. No installs, no accounts." />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Arcade · Steamfield</title>
+    <meta name="description" content="Free browser games. No installs, no accounts. Your progress stays on your device." />
+    <meta name="theme-color" content="#0b0a1e" />
+    <meta property="og:title" content="Steamfield Arcade" />
+    <meta property="og:description" content="Free browser games. No installs, no accounts." />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/src/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/style.css" />
+    <script type="module" src="/src/select.ts"></script>
   </head>
   <body>
-    <header>
-      <h1>Arcade</h1>
-      <p>Free browser games. No installs, no accounts. Your progress stays on your device.</p>
-    </header>
-    <main>
-      <ul class="games">
-        <!-- games -->
-      </ul>
-    </main>
+    <div class="room">
+      <div class="cabinet">
+        <header class="marquee">
+          <div class="marquee-glass">
+            <h1><span class="sr-only">Steamfield Arcade</span><!-- logo:arcade --></h1>
+            <p class="maker">Steamfield</p>
+          </div>
+        </header>
+
+        <div class="bezel">
+          <main class="screen" id="screen">
+            <div class="screen-inner">
+              <div class="hud hud-top">
+                <span>Select game</span>
+                <span class="free-play">Free play</span>
+              </div>
+
+              <section class="feature" id="feature" aria-live="polite" aria-label="Selected game">
+                <!-- feature -->
+              </section>
+
+              <nav class="shelf" aria-label="Games">
+                <ul id="shelf">
+                  <!-- shelf -->
+                </ul>
+              </nav>
+
+              <div class="hud hud-bottom" aria-hidden="true">
+                <span class="hint hint-pointer">Tap a game to play</span>
+                <span class="hint hint-keys"><kbd class="key-arrow key-left" aria-label="Left"></kbd><kbd class="key-arrow key-right" aria-label="Right"></kbd> Select</span>
+                <span class="hint hint-keys"><kbd>Enter</kbd> Start</span>
+                <span class="hint hint-keys"><kbd>M</kbd> <span id="sound-state">Sound off</span></span>
+                <span class="hint pad-state" id="pad-state" hidden>Gamepad ready</span>
+              </div>
+            </div>
+            <div class="scanlines" aria-hidden="true"></div>
+            <div class="glare" aria-hidden="true"></div>
+          </main>
+        </div>
+
+        <div class="deck">
+          <div class="stick" id="stick" aria-hidden="true">
+            <span class="stick-base"></span>
+            <span class="stick-shaft"></span>
+            <span class="stick-ball"></span>
+          </div>
+          <div class="deck-buttons">
+            <button type="button" class="deck-btn deck-btn-start" id="deck-start">
+              <span class="cap" aria-hidden="true"></span><span class="deck-label">1P Start</span>
+            </button>
+            <button type="button" class="deck-btn deck-btn-sound" id="deck-sound" aria-pressed="false">
+              <span class="cap" aria-hidden="true"></span><span class="deck-label">Sound</span>
+            </button>
+          </div>
+          <div class="coin-door" aria-hidden="true">
+            <span class="coin-slot"></span>
+            <span class="coin-light">Free play</span>
+          </div>
+        </div>
+      </div>
+
+      <footer class="floor-sign">
+        <p>Games that run in your browser. No installs, no accounts. Your progress stays on this device.</p>
+      </footer>
+    </div>
+    <!-- games-data -->
   </body>
 </html>

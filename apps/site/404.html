@@ -2,14 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Not found · Arcade</title>
+    <meta name="theme-color" content="#0b0a1e" />
+    <link rel="icon" href="/src/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <header>
-      <h1>Nothing here</h1>
-      <p><a href="/">Back to the arcade</a></p>
-    </header>
+    <div class="room">
+      <div class="cabinet">
+        <div class="bezel bezel-solo">
+          <main class="screen">
+            <div class="screen-inner game-over">
+              <div class="hud hud-top">
+                <span>Error 404</span>
+                <span class="free-play">Free play</span>
+              </div>
+              <div class="game-over-body">
+                <h1><span class="sr-only">Game over</span><!-- logo:game-over --></h1>
+                <p>There's no game at this address.</p>
+                <a class="start-btn" href="/">Continue?</a>
+              </div>
+              <div class="hud hud-bottom"><span>Insert no coin. It's free.</span></div>
+            </div>
+            <div class="scanlines" aria-hidden="true"></div>
+            <div class="glare" aria-hidden="true"></div>
+          </main>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

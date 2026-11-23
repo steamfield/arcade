@@ -14,8 +14,10 @@ export const gameManifestSchema = z.object({
   orientation: z.enum(['landscape', 'portrait', 'any']),
   /** template: checked by CI, never deployed. draft: deployed to previews only. published: on the site. */
   status: z.enum(['template', 'draft', 'published']),
-  /** Path to a cover image relative to the game folder, shown on the landing page. */
+  /** Still image in the game's public/ folder (served at /games/<slug>/<cover>): og:image and the landing page poster. */
   cover: z.string().optional(),
+  /** Muted gameplay loop in public/, played on the landing page. `pnpm arcade attract <slug>` records it and the cover. */
+  attract: z.string().optional(),
 });
 
 export type GameManifest = z.infer<typeof gameManifestSchema>;

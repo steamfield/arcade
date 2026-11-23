@@ -18,8 +18,9 @@ Where everything is, so you can open the right file instead of searching. Every 
 | Change the Vite or TypeScript setup for every game | `packages/config/src/vite.ts`, `packages/config/tsconfig.*.json` |
 | Change the `game.json` schema | `packages/config/src/manifest.ts` |
 | Change the landing page | `apps/site/` |
+| Record a game's landing-page footage and cover | `pnpm arcade attract <slug>`, settings in its package.json `arcade.attract` |
 | Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans |
-| Change CI or deploys | `.github/workflows/ci.yml`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts` |
+| Change CI or deploys | `.github/workflows/ci.yml`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts`, `cf:build` in `package.json` |
 
 `<game>` is `games/<slug>` or `templates/<name>`.
 
@@ -29,13 +30,13 @@ Where everything is, so you can open the right file instead of searching. Every 
 | --- | --- |
 | `AGENTS.md` | Agent guide: commands, rules, versions, test rules, definition of done. `CLAUDE.md` imports it. |
 | `README.md` | Human-facing quick start. |
-| `package.json` | Root scripts: `fix`, `test:update`, `build`, `deploy`. `pnpm arcade` resolves to the CLI's bin. |
+| `package.json` | Root scripts: `fix`, `test:update`, `build`, `cf:build` (Cloudflare's build command), `deploy`. `pnpm arcade` resolves to the CLI's bin. |
 | `pnpm-workspace.yaml` | Workspace globs and the `catalog:` of tooling versions. Engines are pinned per game, not here. |
 | `turbo.json` | `typecheck`, `test`, `build` task graph and cache inputs. |
 | `biome.json` | Lint and format, with per-folder overrides (test files, game `src/`, logic folders). |
 | `tsconfig.json` | Editor-level config. Each package has its own. |
-| `wrangler.jsonc` | Cloudflare Workers static assets config. Serves `dist/`. |
-| `.github/workflows/ci.yml` | CI: `arcade check --all`, `arcade smoke`, preview upload on PRs, deploy on main. |
+| `wrangler.jsonc` | Cloudflare Workers static assets config. Serves `dist/` at the `arcade.steamfield.io` custom domain. |
+| `.github/workflows/ci.yml` | CI: `arcade check --all`, `arcade smoke`. Deploys run in Cloudflare Workers Builds, not here. |
 | `.nvmrc` | Node 24. |
 
 Generated and ignored, never worth searching: `node_modules/`, `dist/` (assembled site), `.arcade/runs/` (`arcade see` output, `latest` symlink), `test-results/`, `.turbo/`, `.wrangler/`.
@@ -132,7 +133,10 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths, `@group`s from the game's package.json, or `-t`; one line when green. |
 | `tools/arcade/src/test.test.ts` | `@group` expansion for `arcade test`. |
 | `tools/arcade/src/smoke.ts` | `smoke`: assemble, `wrangler dev`, Playwright per game against the production build. |
-| `tools/arcade/src/assemble.ts` | `assemble`, `selectGames`: builds site plus games into `dist/`, writes `_headers`, checks Cloudflare limits. |
+| `tools/arcade/src/assemble.ts` | `assemble`, `selectGames`, `includeForBranch`: builds site plus games into `dist/`, writes `_headers`, checks Cloudflare limits. |
+| `tools/arcade/src/assemble.test.ts` | Which games a Cloudflare build ships per branch. |
+| `tools/arcade/src/attract.ts` | `attract`: plays a scenario headlessly and records a game's landing-page loop (`public/attract.mp4`) and cover (`public/cover.png`) with ffmpeg. Settings in the game's package.json `arcade.attract`. |
+| `tools/arcade/src/attract.test.ts` | Which ticks `attract` records. |
 | `tools/arcade/src/new-game.ts` | `newGame`: copies a template, renames, registers it in `.claude/launch.json`, installs. |
 | `tools/arcade/src/repo-map.test.ts` | Keeps this map in sync with the files on disk. |
 | `tools/biome/no-nondeterminism.grit` | Biome plugin banning `Math.random`, `Date.now`, `new Date` in logic folders. |
@@ -141,10 +145,14 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 
 | Path | What it is |
 | --- | --- |
-| `apps/site/vite.config.ts` | Build plus a plugin that renders the game list from `games/*/game.json` (filtered by `ARCADE_INCLUDE`). |
-| `apps/site/index.html` | Landing page template. |
-| `apps/site/404.html` | Not-found page Cloudflare serves. |
-| `apps/site/src/style.css` | Site styles, light and dark. |
+| `apps/site/vite.config.ts` | Build plus a plugin that renders the select screen (featured game, cartridge shelf, game data as JSON) from `games/*/game.json` (filtered by `ARCADE_INCLUDE`); in dev it also serves each game's `public/` media. |
+| `apps/site/index.html` | Landing page template: the cabinet (marquee, CRT screen, control deck). |
+| `apps/site/404.html` | Not-found page Cloudflare serves, a game-over screen. |
+| `apps/site/src/style.css` | Site styles: physical cabinet around a pixel-crisp CRT screen, dark only, self-hosted pixel fonts (`@fontsource`). |
+| `apps/site/src/pixel.ts` | Build-time pixel art: the marquee lettering (`pixelLogo`) and input icons (`pixelIcon`) as SVG. |
+| `apps/site/src/sfx.ts` | Square-wave UI sounds via WebAudio, off until the player turns them on. |
+| `apps/site/src/favicon.svg` | Pixel favicon. |
+| `apps/site/src/select.ts` | Select screen behaviour: selection and gameplay loop, keyboard, gamepad, deck buttons, sound, saved-progress detection, idle cycling, launch transition. |
 
 ## Anatomy of a game
 

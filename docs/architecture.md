@@ -35,7 +35,7 @@ Non-goals for now: a shared engine abstraction, accounts, cloud saves, multiplay
 
 Two decisions can't be reversed once players have saves:
 
-- **The final domain.** IndexedDB is scoped to the origin. If we launch on `*.workers.dev` and move later, every player's saves stay behind on the old origin. Open Graph images also need absolute URLs, so share previews depend on the domain. Until the domain is set, deploys are throwaway and show a banner saying saves won't carry over.
+- **The final domain: `arcade.steamfield.io`**, set as a custom domain in `wrangler.jsonc`. IndexedDB is scoped to the origin, so moving later would leave every player's saves behind on the old one. Open Graph images also need absolute URLs; `cf:build` sets `ARCADE_SITE_URL` to this origin.
 - **A stable `gameId` per game.** It lives in `game.json` and is independent of the folder slug. Saves are keyed by `gameId`. If a slug is renamed, it gets a `_redirects` entry so shared links keep working.
 
 ## Stack
@@ -59,7 +59,7 @@ Two decisions can't be reversed once players have saves:
 | Landing page              | Vite app + build-time render from `game.json`    |                              | One index page; Astro would add a second toolchain and a TS 6 pin for one page                                 |
 | Hosting                   | Cloudflare Workers static assets via Wrangler    | 4.166                        | Static requests free and unlimited; Cloudflare now points new projects to Workers                              |
 | Production telemetry      | Cloudflare Web Analytics                         |                              | Free, cookieless, real-user load metrics with no backend                                                       |
-| CI / deploy               | GitHub Actions + `wrangler deploy`               |                              | Checks, smoke tests and deploy in one pipeline; preview URLs via `wrangler versions upload`                    |
+| CI / deploy               | GitHub Actions checks; Cloudflare Workers Builds deploys |                       | Actions runs check and smoke; the Git connector runs `pnpm cf:build`, then `wrangler deploy` on main and `wrangler versions upload` (preview URLs) on other branches |
 
 Considered and not chosen:
 
@@ -178,7 +178,7 @@ Audio goes through Web Audio, which is Phaser's default. Workers static assets a
 
 Players share links to `/games/<slug>/`, which is the game's own `index.html`. `defineGameConfig` uses `transformIndexHtml` to inject title, description, canonical URL and OG/Twitter tags from `game.json` into that page.
 
-The landing page (`apps/site`) is a single Vite page whose HTML is rendered at build time from the validated manifests. A few dozen lines replace a second framework. If the site grows to need content pages, Astro can replace it then.
+The landing page (`apps/site`) is a single Vite page whose HTML is rendered at build time from the validated manifests, styled as a cabinet select screen. Each game's `cover` and `attract` (a muted gameplay loop recorded by `pnpm arcade attract` from a scenario, so it is deterministic and reproducible) live in the game's `public/` and are served from `/games/<slug>/`. The page works as plain links without JavaScript; `select.ts` adds keyboard, gamepad, sound and the transitions. If the site grows to need content pages, Astro can replace it then.
 
 Only `published` games appear on the production site. `draft` games are assembled into PR preview builds, unlisted, so they can be opened on a real phone before publishing.
 
@@ -192,7 +192,7 @@ The limits are 20,000 files per deployment, shared by all games, and 25 MiB per 
 
 On pull requests, CI runs typecheck, lint, unit tests and builds for affected packages only (`turbo --affected`, with `fetch-depth: 0` on checkout). It then assembles everything and runs the full smoke suite on affected games. Unchanged games come from the Turbo cache and get a cheap check that their HTML and entry JS return 200.
 
-The merge gate is a green PR. On `main`, the same affected-only run deploys. A failing game blocks the deploy only if that game changed, and Playwright retries twice to absorb flakes. We are not building a "ship last-good build" fallback until flakes prove it's needed.
+The merge gate is a green PR. Cloudflare Workers Builds deploys every push to `main` without waiting for Actions, so `main` needs branch protection that requires the `check` job. A failing game blocks the deploy only if that game changed, and Playwright retries twice to absorb flakes. We are not building a "ship last-good build" fallback until flakes prove it's needed.
 
 Changes under `packages/` affect every game, so they go in their own PR. That PR runs every game's smoke test plus a screenshot diff of the touch overlay. `AGENTS.md` states this rule, and CODEOWNERS routes those PRs to the owner.
 

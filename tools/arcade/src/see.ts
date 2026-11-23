@@ -210,7 +210,7 @@ export function parseQuery(pairs: string[]): Record<string, string> {
   return out;
 }
 
-async function loadScenario(gameDir: string, name: string): Promise<Scenario> {
+export async function loadScenario(gameDir: string, name: string): Promise<Scenario> {
   const file = join(gameDir, 'scenarios', `${name.replace(/\.ts$/, '')}.ts`);
   if (!existsSync(file)) {
     const known = existsSync(join(gameDir, 'scenarios'))
