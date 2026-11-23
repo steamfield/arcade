@@ -2,15 +2,17 @@
  * Turns the game's drained events into sound: an effect per player-facing
  * event, and the music each screen wants (title theme, race theme from GO with
  * a tempo lift on the final stretch, a win or lose jingle into the results
- * loop). Every sound that actually starts is announced once as `audio.played`,
+ * loop). Enemies are heard when they are within about a screen of the player: a shark's
+ * wind-up and an eel's warning, a bonk and a defeat; an enemy getting the player always is. Every sound that actually starts is announced once as `audio.played`,
  * on the game's tick, so tests can hear the game. Nothing plays or is announced
  * while the AudioContext is not running (before the first gesture).
  */
 import type { EventSink, Rng, Stamped } from '@arcade/core';
-import type { RacerId } from '../../logic/types.ts';
+import { playerOf } from '../../logic/racers.ts';
+import { ENEMY_KINDS, type EnemyKind, type HitCause, type RacerId, type World } from '../../logic/types.ts';
 import { FINAL_STRETCH_AT } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import { createAttackSfx } from './attack-sfx.ts';
+import { createAttackSfx, HEARING_PX } from './attack-sfx.ts';
 import type { AudioPort } from './index.ts';
 import type { Song } from './notation.ts';
 import type { Sequencer } from './sequencer.ts';
@@ -37,6 +39,8 @@ export interface AdapterOptions {
   onError(error: unknown): void;
   /** Whether racer `id` is near enough the player to hear what it does; every racer is when omitted. */
   audibleFromPlayer?(id: RacerId): boolean;
+  /** Whether enemy `index` (in `world.enemies`) is near enough the player to hear; every enemy is when omitted. */
+  enemyAudible?(index: number): boolean;
   /** The song the current race plays: the course's own (`Course.song`). Read when each race starts. */
   raceSong(): SongName;
 }
@@ -47,6 +51,23 @@ const LIFT_TEMPO = 1.1;
 const PITCH_SPREAD = 0.05;
 /** Musical cues that must stay in tune with each other, so they skip the random pitch. */
 const STEADY: ReadonlySet<SfxKey> = new Set(['countdown', 'go']);
+
+/** The warning each enemy kind sounds when it telegraphs; a crab gives none. */
+const TELL_SFX: Record<EnemyKind, SfxKey | null> = { shark: 'shark.windup', eel: 'eel.warn', crab: null };
+
+/** Whether enemy `index` in `world` is within `HEARING_PX` of the player, like a racer's attack. */
+export function enemyWithinHearing(world: World, index: number): boolean {
+  const enemy = world.enemies[index];
+  if (!enemy) return false;
+  const player = playerOf(world);
+  const dx = enemy.at.x - (player.body.x + player.body.w / 2);
+  const dy = enemy.at.y - (player.body.y + player.body.h / 2);
+  return Math.hypot(dx, dy) <= HEARING_PX;
+}
+
+function isEnemy(cause: HitCause): cause is EnemyKind {
+  return (ENEMY_KINDS as readonly HitCause[]).includes(cause);
+}
 
 /** The song for `name`. The single place songs are chosen. */
 export function songFor(name: SongName): Song {
@@ -70,6 +91,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
   let won: boolean | null = null;
 
   const attacks = createAttackSfx(options.audibleFromPlayer);
+  const enemyAudible = options.enemyAudible ?? (() => true);
   const announce = (key: string, kind: 'sfx' | 'song') => events.emit({ type: 'audio.played', key, kind });
 
   const sfx = (key: SfxKey) => {
@@ -149,6 +171,21 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
         return;
       case 'coral.broken':
         return sfx('coral');
+      case 'enemy.telegraphed': {
+        const tell = TELL_SFX[event.kind];
+        if (tell && enemyAudible(event.index)) sfx(tell);
+        return;
+      }
+      case 'enemy.bonked':
+        // The bonk that beats an enemy sounds as its defeat instead.
+        if (event.hpLeft > 0 && enemyAudible(event.index)) sfx('enemy.bonk');
+        return;
+      case 'enemy.defeated':
+        if (enemyAudible(event.index)) sfx('enemy.defeat');
+        return;
+      case 'racer.hit':
+        if (event.id === 'player' && isEnemy(event.cause)) sfx('enemy.bite');
+        return;
       case 'menu.selected':
         return sfx('menu.confirm');
       case 'howToPlay.page':

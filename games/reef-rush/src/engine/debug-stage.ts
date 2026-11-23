@@ -13,14 +13,28 @@
  * with a rival riding it; `decoy` leaves a rival's decoy beside it; `undertow` pulls two racers back;
  * `dark` moves the pack into the first dark zone with a squid and a decoy near the player; `guide`
  * stands the player against the first wall whose way on is up or down, already stuck for 2.5 s, so
- * the Easy guide arrow shows from the GO (and does nothing on a course with no such wall).
+ * the Easy guide arrow shows from the GO (and does nothing on a course with no such wall); `enemies` stands the
+ * player on the floor with a crab on the floor 3 tiles ahead and a shark about 6 tiles ahead facing them;
+ * `enemy-modes` lines up each enemy kind in each of its modes ahead of the player on the floor, for reviewing
+ * their look (the logic moves them on from there once the race starts).
  */
 import { guideDistanceAt, guideFor } from '../logic/guide.ts';
+import { createEnemies } from '../logic/hazards/enemies/index.ts';
 import { cellAt } from '../logic/level/query.ts';
 import { CHARGES } from '../logic/powerups/charges.ts';
 import { setItems, slotItems } from '../logic/powerups/inventory.ts';
 import { playerOf } from '../logic/racers.ts';
-import { type Level, type PowerUpKind, type Racer, type RacerId, TILE, type Vec, type World } from '../logic/types.ts';
+import {
+  type Enemy,
+  type EnemyKind,
+  type Level,
+  type PowerUpKind,
+  type Racer,
+  type RacerId,
+  TILE,
+  type Vec,
+  type World,
+} from '../logic/types.ts';
 
 /** Every stage name `applyStage` knows. */
 export const STAGES = [
@@ -37,6 +51,8 @@ export const STAGES = [
   'undertow',
   'dark',
   'guide',
+  'enemies',
+  'enemy-modes',
 ] as const;
 
 /** A name from `STAGES`. */
@@ -131,7 +147,103 @@ export function applyStage(world: World, stage: StageName): void {
       rival.status.undertow = STAGED_TICKS;
       racer(world, 'squib').status.undertow = STAGED_TICKS;
       return;
+    case 'enemies':
+      stageEnemies(world, player);
+      return;
+    case 'enemy-modes':
+      stageEnemyModes(world, player);
+      return;
   }
+}
+
+/**
+ * Stands the player on the floor below its start, with a crab on the floor 3 tiles ahead and a
+ * shark 6 tiles ahead in the first open water 2 or more tiles above the floor, facing the player.
+ */
+function stageEnemies(world: World, player: Racer): void {
+  const start = standOnFloor(world, player);
+  const shark = openWaterAbove(world.level, start.x + 6, floorBelow(world.level, start.x + 6, start.y) - 2);
+  world.enemies.push(
+    stagedEnemy(world.level, 'crab', { x: start.x + 3, y: floorBelow(world.level, start.x + 3, start.y) }),
+    { ...stagedEnemy(world.level, 'shark', shark), facing: -1 },
+  );
+}
+
+/**
+ * Stands the player on the floor and lines up, ahead of them: on the floor, a walking crab, a
+ * staggered crab and an eel hidden, warning and out; above, a shark patrolling, winding up on the
+ * player and charging, and one staggered.
+ */
+function stageEnemyModes(world: World, player: Racer): void {
+  const start = standOnFloor(world, player);
+  const onFloor = (dx: number) => ({ x: start.x + dx, y: floorBelow(world.level, start.x + dx, start.y) });
+  const above = (dx: number, rise: number) => {
+    const floor = onFloor(dx);
+    return openWaterAbove(world.level, floor.x, floor.y - rise);
+  };
+  const lunging = stagedEnemy(world.level, 'eel', onFloor(8));
+  lunging.at.y -= 1.5 * TILE;
+  world.enemies.push(
+    { ...stagedEnemy(world.level, 'crab', onFloor(2)), vel: { x: -20, y: 0 } },
+    { ...stagedEnemy(world.level, 'crab', onFloor(4)), mode: 'stagger' },
+    { ...stagedEnemy(world.level, 'eel', onFloor(6)), mode: 'hidden' },
+    { ...stagedEnemy(world.level, 'eel', onFloor(7)), mode: 'windup', modeTicks: 10 },
+    { ...lunging, mode: 'lunge' },
+    { ...stagedEnemy(world.level, 'shark', above(3, 5)), facing: 1, hp: 2 },
+    { ...stagedEnemy(world.level, 'shark', above(6, 5)), mode: 'windup', target: 'player', hp: 2 },
+    {
+      ...stagedEnemy(world.level, 'shark', above(3, 2)),
+      mode: 'charge',
+      target: 'player',
+      facing: -1,
+      vel: { x: -180, y: 0 },
+    },
+    { ...stagedEnemy(world.level, 'shark', above(7, 2)), mode: 'stagger', hp: 1 },
+  );
+}
+
+/** A fresh enemy of `kind` on `tile` of `level`, as `createEnemies` makes one from a glyph there (and checks it fits). */
+function stagedEnemy(level: Level, kind: EnemyKind, tile: Vec): Enemy {
+  const [enemy] = createEnemies({ ...level, enemies: [{ kind, tile }] });
+  if (!enemy) throw new Error(`createEnemies made no ${kind} for the stage`);
+  return enemy;
+}
+
+/** Puts the player at rest on the floor below its start tile and returns that tile. */
+function standOnFloor(world: World, player: Racer): Vec {
+  const centre = centreOf(player);
+  const x = Math.floor(centre.x / TILE);
+  const tile = { x, y: floorBelow(world.level, x, Math.floor(centre.y / TILE)) };
+  player.body.x = (tile.x + 0.5) * TILE - player.body.w / 2;
+  player.body.y = (tile.y + 0.5) * TILE - player.body.h / 2;
+  player.body.vx = 0;
+  player.body.vy = 0;
+  player.facing = 1;
+  return tile;
+}
+
+/**
+ * The first row at or below `fromY` in column `x` that isn't rock and has rock under it.
+ *
+ * @throws {Error} When the column has no such floor, naming it.
+ */
+function floorBelow(level: Level, x: number, fromY: number): number {
+  for (let y = Math.max(0, fromY); y < level.height - 1; y++) {
+    if (cellAt(level, x, y) !== 'rock' && cellAt(level, x, y + 1) === 'rock') return y;
+  }
+  throw new Error(`The enemy stages need a floor below row ${fromY} in column ${x}, and there is none`);
+}
+
+/**
+ * The first water tile in column `x` from row `fromY` upward.
+ *
+ * @throws {Error} When the column has no open water there, naming it.
+ */
+function openWaterAbove(level: Level, x: number, fromY: number): Vec {
+  for (let y = fromY; y >= 0; y--) {
+    if (cellAt(level, x, y) === 'water') return { x, y };
+  }
+  throw new Error(`The enemy stages need open water above row ${fromY} in column ${x}, and there is none`);
 }
 
 /**

@@ -35,7 +35,12 @@ export type SfxKey =
   | 'pearl'
   | 'pearl.drop'
   | 'menu.move'
-  | 'menu.confirm';
+  | 'menu.confirm'
+  | 'shark.windup'
+  | 'eel.warn'
+  | 'enemy.bonk'
+  | 'enemy.defeat'
+  | 'enemy.bite';
 
 /** A pitched part. `note` is a MIDI number; `slide` is semitones reached by the end. Times in seconds. */
 interface TonePart {
@@ -176,6 +181,24 @@ const SFX: Record<SfxKey, readonly Part[]> = {
   ],
   'menu.move': [pulse(81, 0, 0.03, 0.25, { duty: 0.125 })],
   'menu.confirm': [pulse(76, 0, 0.05, 0.3, { duty: 0.25 }), pulse(83, 0.05, 0.1, 0.3, { duty: 0.25 })],
+  // A shark winding up: a low growl swelling under a rising warning whine, as long as its tell.
+  'shark.windup': [
+    tri(33, 0, 0.42, 0.55, { slide: 5, envelope: env(0.08, 0.1, 0.8, 0.08) }),
+    pulse(64, 0.05, 0.36, 0.18, { duty: 0.125, slide: 12, vibrato: true }),
+  ],
+  // An eel about to strike: three wet bubbles gurgling up out of its hole.
+  'eel.warn': [
+    pulse(55, 0, 0.05, 0.22, { duty: 0.5, slide: 7 }),
+    pulse(58, 0.08, 0.05, 0.22, { duty: 0.5, slide: 7 }),
+    pulse(62, 0.16, 0.06, 0.22, { duty: 0.5, slide: 9 }),
+    hiss('bandpass', 900, 0, 0.22, 0.15),
+  ],
+  // A dash bonk: a springy boing up and a thump.
+  'enemy.bonk': [tri(52, 0, 0.16, 0.6, { slide: 14 }), hiss('lowpass', 700, 0, 0.05, 0.4)],
+  // An enemy beaten: a pop, then a bright run of pearl pings.
+  'enemy.defeat': [hiss('bandpass', 2600, 0, 0.06, 0.5), ...arpeggio([79, 84, 88, 91], 0.05, 0.3, 0.125)],
+  // An enemy gets the player: a snapping chomp.
+  'enemy.bite': [hiss('highpass', 1200, 0, 0.04, 0.5), tri(40, 0.03, 0.14, 0.6, { slide: -10 })],
 };
 
 /**
