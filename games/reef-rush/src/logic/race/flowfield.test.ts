@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { steerDirection } from '../ai/steer.ts';
-import { OCEAN_LEVEL } from '../level/levels.ts';
+import { DEFAULT_COURSE, levelOf } from '../courses/index.ts';
 import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
-import { SWIM } from '../swim/physics.ts';
-import { type Body, type Level, TILE } from '../types.ts';
+import { type Body, type Level, RACER_SIZE, TILE } from '../types.ts';
 import { buildFlowFields, progressAt, unreachableStarts } from './flowfield.ts';
 
 /** A four-lane straight with one column (x = 3) of `fill`. The finish is at x = 6. */
@@ -38,12 +37,12 @@ const hook = (): Level =>
 const at = (field: Float32Array, level: Level, x: number, y: number) => field[tileIndex(level, x, y)];
 
 const bodyCentredOn = (tx: number, ty: number): Body => ({
-  x: tx * TILE + (TILE - SWIM.width) / 2,
-  y: ty * TILE + (TILE - SWIM.height) / 2,
+  x: tx * TILE + (TILE - RACER_SIZE.width) / 2,
+  y: ty * TILE + (TILE - RACER_SIZE.height) / 2,
   vx: 0,
   vy: 0,
-  w: SWIM.width,
-  h: SWIM.height,
+  w: RACER_SIZE.width,
+  h: RACER_SIZE.height,
 });
 
 describe('the progress field', () => {
@@ -111,14 +110,14 @@ describe('the progress field', () => {
 });
 
 describe('the coral gate on the ocean course', () => {
-  const level = parseLevel(OCEAN_LEVEL);
+  const level = levelOf(DEFAULT_COURSE);
   const fields = buildFlowFields(level, new Set());
   /** A racer-sized body at the centre of tile (tx, ty). */
   const bodyAt = (tx: number, ty: number): Body => ({
-    x: (tx + 0.5) * TILE - SWIM.width / 2,
-    y: (ty + 0.5) * TILE - SWIM.height / 2,
-    w: SWIM.width,
-    h: SWIM.height,
+    x: (tx + 0.5) * TILE - RACER_SIZE.width / 2,
+    y: (ty + 0.5) * TILE - RACER_SIZE.height / 2,
+    w: RACER_SIZE.width,
+    h: RACER_SIZE.height,
     vx: 0,
     vy: 0,
   });

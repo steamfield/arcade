@@ -2,11 +2,16 @@
  * Shared shapes for Reef Rush's rules. Every logic module and the engine agree
  * on these, so they hold data only: no functions live here.
  */
+
 import type { EventSink, Rng } from '@arcade/core';
 import type { GameEvent } from './events.ts';
+import type { RacerMotion } from './media/types.ts';
 
 /** Tile size in world pixels. Levels are grids of TILE x TILE cells. */
 export const TILE = 16;
+
+/** Every racer's hitbox in pixels, whatever the medium. */
+export const RACER_SIZE = { width: 12, height: 10 } as const;
 
 /**
  * A racer slot: the player's and three rival slots. Characters are data assigned to slots, so tick
@@ -64,6 +69,8 @@ export interface Intent {
   move: Vec;
   kick: boolean;
   burst: boolean;
+  /** The kick button is down this tick (a press or a hold). Media with variable jumps read it; swim ignores it. Absent means not held. */
+  kickHeld?: boolean;
 }
 
 /** Player input as plain data. The engine reads `@arcade/input` and passes this in. */
@@ -79,11 +86,19 @@ export type Cell =
   | 'current-up'
   | 'current-down';
 
+/** An extra level glyph: the base cell it behaves as, and the art key a theme draws it with. */
+export interface LegendEntry {
+  cell: Cell;
+  art: string;
+}
+
 /** A course as authored: ASCII rows plus dark zones given as inclusive tile-column ranges. */
 export interface LevelDef {
   name: string;
   ascii: string;
   dark?: readonly (readonly [from: number, to: number])[];
+  /** Extra glyphs this level uses, each behaving as a base cell but drawn its own way. */
+  legend?: Readonly<Record<string, LegendEntry>>;
 }
 
 /** A parsed course. Positions are tile coordinates; `cells[y][x]`. */
@@ -92,6 +107,8 @@ export interface Level {
   width: number;
   height: number;
   cells: Cell[][];
+  /** The glyph written at each tile, `glyphs[y][x]`, so a theme can draw legend glyphs their own way. */
+  glyphs: string[][];
   /** Start tiles in RACER_IDS order. */
   starts: Vec[];
   /** Tile column of the finish line. A racer finishes when its centre crosses `finishX * TILE`. */
@@ -238,6 +255,8 @@ export interface RacerStatus {
 export interface Racer {
   /** The slot this racer races in. */
   id: RacerId;
+  /** Movement state the world's medium owns (`Medium.createMotion`). */
+  motion: RacerMotion;
   /** Who is swimming in the slot: sprite, name and ability. */
   character: CharacterId;
   body: Body;
@@ -446,6 +465,10 @@ export interface GuideMemory {
 }
 
 export interface World {
+  /** Id of the course being raced (`courseOf(world)`). */
+  course: string;
+  /** Id of the medium the course races in (`mediumOf(world)`). */
+  medium: string;
   level: Level;
   /** Fixed for the race. */
   difficulty: Difficulty;

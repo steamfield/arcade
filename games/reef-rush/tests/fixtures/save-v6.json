@@ -1,0 +1,18 @@
+{
+  "version": 6,
+  "savedAt": "2026-11-22T00:00:00.000Z",
+  "data": {
+    "bests": {
+      "sunlit-shallows": {
+        "easy": { "ticks": 3100, "place": 3 },
+        "normal": null,
+        "hard": { "ticks": 2650, "place": 1 }
+      },
+      "retired-course": { "easy": null, "normal": { "ticks": 4000, "place": 2 }, "hard": null }
+    },
+    "lastCourse": "sunlit-shallows",
+    "races": 9,
+    "settings": { "muted": false, "reducedMotion": null, "difficulty": "normal" },
+    "character": "selene"
+  }
+}

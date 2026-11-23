@@ -4,10 +4,43 @@
  * stamps. Test-only; nothing in the game imports it.
  */
 import { EventLog, TICK_DT } from '@arcade/core';
+import { registerCourse } from './courses/index.ts';
+import type { Course } from './courses/types.ts';
 import type { GameEvent } from './events.ts';
-import { parseLevel } from './level/parse.ts';
-import { type Racer, type RacerId, type RivalProfile, TILE, type TickInput, type Vec, type World } from './types.ts';
+import {
+  type LevelDef,
+  type Racer,
+  type RacerId,
+  type RivalProfile,
+  TILE,
+  type TickInput,
+  type Vec,
+  type World,
+} from './types.ts';
 import { createWorld, stepWorld } from './world.ts';
+
+let testCourses = 0;
+
+/**
+ * A fresh unlisted course on `level` (a definition, or bare ASCII), registered so a world can hold
+ * its id. Each call makes its own course, so two tests never share a level.
+ */
+export function courseFromLevel(level: LevelDef | string, medium = 'swim'): Course {
+  testCourses++;
+  const def = typeof level === 'string' ? { name: 'test', ascii: level } : level;
+  const course: Course = {
+    id: `test-${testCourses}`,
+    name: def.name,
+    level: def,
+    medium,
+    theme: 'ocean',
+    song: 'race',
+    listed: false,
+    parTicks: 60 * 60,
+  };
+  registerCourse(course);
+  return course;
+}
 
 export const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
@@ -22,7 +55,7 @@ export function hold(move: Vec, presses: { kick?: boolean; burst?: boolean } = {
  */
 export function raceOn(ascii: string, options: { seed?: number; playerBot?: RivalProfile } = {}) {
   const log = new EventLog<GameEvent>(100_000);
-  const world = createWorld(parseLevel({ name: 'test', ascii }), log, { seed: options.seed ?? 1, ...options });
+  const world = createWorld(courseFromLevel(ascii), log, { seed: options.seed ?? 1, ...options });
   world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
   return { world, log };
 }

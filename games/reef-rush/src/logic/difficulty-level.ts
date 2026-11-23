@@ -120,6 +120,15 @@ export function tuningOf(world: World): DifficultyTuning {
 }
 
 /**
+ * The rivals' catch-up bounds for the world's course and level: the level's own bounds, with any
+ * per-level override the course makes (`Course.catchUp`) merged in. Lane 8/c adds the course merge;
+ * until then every course races the table's bounds.
+ */
+export function rivalCatchUpFor(world: World): CatchUpBounds {
+  return tuningOf(world).rivalCatchUp;
+}
+
+/**
  * A stun, trap or latch length for `racer`, in ticks: `baseTicks` times the character's own
  * multiplier, and for the player times the level's `playerStatusMul`, rounded to whole ticks.
  */

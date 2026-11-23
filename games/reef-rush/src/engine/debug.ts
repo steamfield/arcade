@@ -4,6 +4,7 @@
  */
 import type { SaveStatus } from '@arcade/save';
 import { playerOf } from '../logic/racers.ts';
+import { bestFor } from '../logic/records.ts';
 import type { World } from '../logic/types.ts';
 import { summarize, toAscii } from '../logic/world.ts';
 import { HOW_TO_PLAY_PAGES } from './how-to-play.ts';
@@ -13,7 +14,7 @@ import { squidHuntingPlayer } from './view/threat-math.ts';
 
 /**
  * Scene, save status, the character the player races as (the select cursor while picking), the
- * difficulty in force and the world summary (with the difficulty the race was built on, the
+ * course and its medium, the difficulty in force and the world summary (with the difficulty the race was built on, the
  * `levelBanner` the countdown shows, null once it ends, and the in-race `hints` showing), plus the menu on
  * menu screens, the best line as shown on the title (for the level now selected), the 1-based page on How to Play, and the
  * race outcome on results.
@@ -27,6 +28,8 @@ export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: 
     scene: sceneRunning ? rt.scene : 'none',
     save: saveStatus,
     character: rt.selectedCharacter,
+    course: rt.course.id,
+    medium: rt.course.medium,
     difficulty: rt.settings.difficulty,
     ...(world
       ? {
@@ -48,7 +51,7 @@ function threatOf(world: World) {
 }
 
 function sceneDetails(rt: Runtime): Record<string, unknown> {
-  const best = rt.save?.best[rt.settings.difficulty];
+  const best = rt.save ? bestFor(rt.save, rt.course.id, rt.settings.difficulty) : null;
   if (rt.scene === 'title') return { best: best ? formatBest(best) : null };
   if (rt.scene === 'howToPlay') return { howToPlay: { page: rt.howToPage + 1, pages: HOW_TO_PLAY_PAGES } };
   if (rt.scene !== 'results' || !rt.lastResult) return {};

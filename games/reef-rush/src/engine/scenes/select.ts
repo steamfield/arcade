@@ -14,8 +14,7 @@
  * strokes, and under reduced motion both hold still.
  */
 import Phaser from 'phaser';
-import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
-import { parseLevel } from '../../logic/level/parse.ts';
+import { levelOf } from '../../logic/courses/index.ts';
 import { CHARACTER_IDS, type CharacterId } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { Frame, Tex } from '../art/keys.ts';
@@ -92,7 +91,7 @@ export class SelectScene extends Phaser.Scene {
 
   create(): void {
     const rt = this.rt;
-    this.backdrop = createBackdrop(this, parseLevel(OCEAN_LEVEL), {
+    this.backdrop = createBackdrop(this, levelOf(rt.course), {
       get reducedMotion() {
         return rt.settings.reducedMotion;
       },

@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../level/parse.ts';
 import { buildFlowFields } from '../race/flowfield.ts';
-import { SWIM } from '../swim/physics.ts';
-import { type Body, type Level, TILE, type Vec } from '../types.ts';
+import { type Body, type Level, RACER_SIZE, TILE, type Vec } from '../types.ts';
 import { steerDirection } from './steer.ts';
 
 /** Starts in a pocket at the bottom; the only way out is up the left column, then right along the top. */
@@ -20,12 +19,12 @@ const hook = (): Level =>
   });
 
 const bodyCentredOn = (tx: number, ty: number): Body => ({
-  x: tx * TILE + (TILE - SWIM.width) / 2,
-  y: ty * TILE + (TILE - SWIM.height) / 2,
+  x: tx * TILE + (TILE - RACER_SIZE.width) / 2,
+  y: ty * TILE + (TILE - RACER_SIZE.height) / 2,
   vx: 0,
   vy: 0,
-  w: SWIM.width,
-  h: SWIM.height,
+  w: RACER_SIZE.width,
+  h: RACER_SIZE.height,
 });
 
 /** True when walking `distance` px from the body centre along `dir` enters a rock tile. */

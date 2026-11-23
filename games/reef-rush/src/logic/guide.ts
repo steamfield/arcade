@@ -52,6 +52,14 @@ export function guideFor(world: World, racer: Racer): Guide {
 }
 
 /**
+ * How far the player at `tile` is from the finish, as the guide measures getting closer (lower is
+ * closer; Infinity where the finish can't be reached). The engine's debug stage reads it too.
+ */
+export function guideDistanceAt(world: World, tile: Vec): number {
+  return fieldAt(world.fields.steer, world.fields, tile);
+}
+
+/**
  * Updates the player's guide memory from this tick's raw input. The stuck time resets whenever the
  * player's tile is closer to the finish than any before, grows while the stick is held without
  * that, and holds while the stick is let go or the player can't act (stunned or trapped). The
@@ -64,7 +72,7 @@ export function trackGuide(world: World, input: Intent): void {
   if (!tuning.enabled) return;
   const player = playerOf(world);
   if (player.finished || player.status.stunned > 0 || player.status.trapped > 0) return;
-  const here = fieldAt(world.fields.steer, world.fields, tileOf(centreOf(player)));
+  const here = guideDistanceAt(world, tileOf(centreOf(player)));
   const memory = world.guide;
   const pushing = length(input.move.x, input.move.y) >= PUSH_THRESHOLD;
   if (here < memory.bestSteer) {

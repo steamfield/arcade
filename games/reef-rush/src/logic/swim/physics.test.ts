@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_PROFILE } from '../ai/profiles.ts';
 import type { GameEvent } from '../events.ts';
 import { noItems } from '../racers.ts';
-import type { Environment, MoveModifiers, Racer, Vec } from '../types.ts';
+import { type Environment, type MoveModifiers, RACER_SIZE, type Racer, type Vec } from '../types.ts';
 import { applyIntent, BASE_MODIFIERS, SWIM } from './physics.ts';
 
 const WATER: Environment = { current: null, inKelp: false };
@@ -17,7 +17,8 @@ function makeRacer(): Racer {
   return {
     id: 'player',
     character: 'rudy',
-    body: { x: 40, y: 40, vx: 0, vy: 0, w: SWIM.width, h: SWIM.height },
+    motion: {},
+    body: { x: 40, y: 40, vx: 0, vy: 0, w: RACER_SIZE.width, h: RACER_SIZE.height },
     facing: 1,
     kickCooldown: 0,
     progress: Number.POSITIVE_INFINITY,

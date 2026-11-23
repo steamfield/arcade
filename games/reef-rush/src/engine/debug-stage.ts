@@ -14,9 +14,8 @@
  * stands the player against the first wall whose way on is up or down, already stuck for 2.5 s, so
  * the Easy guide arrow shows from the GO (and does nothing on a course with no such wall).
  */
-import { guideFor } from '../logic/guide.ts';
+import { guideDistanceAt, guideFor } from '../logic/guide.ts';
 import { cellAt } from '../logic/level/query.ts';
-import { fieldAt } from '../logic/race/flowfield.ts';
 import { playerOf } from '../logic/racers.ts';
 import { type Level, type Racer, type RacerId, TILE, type Vec, type World } from '../logic/types.ts';
 
@@ -213,7 +212,7 @@ function standAtWall(world: World, player: Racer): void {
       player.body.vy = 0;
       const way = guideFor(world, player).dir;
       if (way?.x !== 0) continue;
-      world.guide.bestSteer = fieldAt(world.fields.steer, world.fields, { x: tx, y: ty });
+      world.guide.bestSteer = guideDistanceAt(world, { x: tx, y: ty });
       world.guide.stuckTicks = STAGED_STUCK_TICKS;
       return;
     }

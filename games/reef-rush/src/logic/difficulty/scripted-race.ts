@@ -5,15 +5,13 @@
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { BOT_PROFILES } from '../ai/profiles.ts';
+import { DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
-import { OCEAN_LEVEL } from '../level/levels.ts';
-import { parseLevel } from '../level/parse.ts';
 import { length } from '../num.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
 import type { CharacterId, Difficulty, RacerId, TickInput } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
-const LEVEL = parseLevel(OCEAN_LEVEL);
 const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
 const HOLD_RIGHT: TickInput = { move: { x: 1, y: 0 }, kick: false, burst: false };
 
@@ -30,7 +28,7 @@ export interface ScriptedRun {
 
 /** Races the toddler bot as `character`, with the idle-then-hold-right interruption of `SCRIPT`. */
 export function scriptedRace(character: CharacterId, seed: number, difficulty: Difficulty): ScriptedRun {
-  const world = createWorld(LEVEL, new EventLog<GameEvent>(100_000), {
+  const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(100_000), {
     seed,
     difficulty,
     playerBot: BOT_PROFILES.toddler,

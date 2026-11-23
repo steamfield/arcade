@@ -11,8 +11,8 @@
  * runtime's tick so captures repeat.
  */
 import Phaser from 'phaser';
-import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
-import { parseLevel } from '../../logic/level/parse.ts';
+import { levelOf } from '../../logic/courses/index.ts';
+import { bestFor } from '../../logic/records.ts';
 import { NEW_GAME } from '../../logic/save.ts';
 import type { CharacterId, Difficulty } from '../../logic/types.ts';
 import { DIFFICULTIES } from '../../logic/types.ts';
@@ -87,7 +87,7 @@ export class TitleScene extends Phaser.Scene {
   create(): void {
     const rt = this.rt;
     // The backdrop reads this every update, so a Motion toggle stills it at once.
-    this.backdrop = createBackdrop(this, parseLevel(OCEAN_LEVEL), {
+    this.backdrop = createBackdrop(this, levelOf(rt.course), {
       get reducedMotion() {
         return rt.settings.reducedMotion;
       },
@@ -103,10 +103,10 @@ export class TitleScene extends Phaser.Scene {
     this.pressA = isTouchScreen()
       ? createLabel(this, PRESS_A.x, PRESS_A.top + 3, 'PRESS A', { align: 'center', outline: true })
       : null;
-    const bests = rt.save?.best ?? NEW_GAME.best;
+    const save = rt.save ?? NEW_GAME;
     this.bestCards = {};
     for (const level of DIFFICULTIES) {
-      const best = bests[level];
+      const best = bestFor(save, rt.course.id, level);
       if (best) this.bestCards[level] = addBestCard(this, best, rt.save?.character ?? NEW_GAME.character);
     }
     this.rt.entered('title');

@@ -1,14 +1,14 @@
 import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
-import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
+import { courseFromLevel } from '../test-world.ts';
 import { createWorld, toAscii } from '../world.ts';
 import { breakCoral } from './coral.ts';
 
 /** Coral at (3,1) blocks the top lane; the other lanes stay open so every start can still finish. */
 function setup() {
-  const level = parseLevel({
+  const course = courseFromLevel({
     name: 'reef',
     ascii: `
       ########
@@ -20,7 +20,7 @@ function setup() {
     `,
   });
   const log = new EventLog<GameEvent>();
-  return { world: createWorld(level, log, { seed: 1 }), log };
+  return { world: createWorld(course, log, { seed: 1 }), log };
 }
 
 const steerAt = (world: ReturnType<typeof setup>['world'], x: number, y: number) =>

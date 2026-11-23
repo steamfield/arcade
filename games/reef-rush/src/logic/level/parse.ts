@@ -76,6 +76,8 @@ export function parseLevel(def: LevelDef): Level {
     width,
     height: rows.length,
     cells,
+    // Legend glyphs (LevelDef.legend) arrive in lane 8/c; until then every glyph is a built-in one.
+    glyphs: rows.map((row) => [...row]),
     starts: requireAllStarts(markers.starts),
     finishX: requireFinish(markers.finishX),
     pearls: markers.pearls,

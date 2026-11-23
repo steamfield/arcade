@@ -7,16 +7,13 @@
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { tileOf } from '../ai/steer.ts';
+import { DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
-import { OCEAN_LEVEL } from '../level/levels.ts';
-import { parseLevel } from '../level/parse.ts';
 import { fieldAt } from '../race/flowfield.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
 import { centreOf, playerOf } from '../racers.ts';
 import type { CharacterId, Difficulty, Intent, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
-
-const LEVEL = parseLevel(OCEAN_LEVEL);
 
 /** How the kid plays, in ticks (60 per second). */
 export const KID = {
@@ -102,7 +99,7 @@ export interface KidRun {
 
 /** Races the kid as `character` on `difficulty` until the player finishes. */
 export function kidRace(character: CharacterId, seed: number, difficulty: Difficulty): KidRun {
-  const world = createWorld(LEVEL, new EventLog<GameEvent>(100_000), { seed, difficulty, character });
+  const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(100_000), { seed, difficulty, character });
   const kid = newKid();
   const watch = newKid();
   let stuckTicks = 0;

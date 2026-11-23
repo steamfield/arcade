@@ -13,8 +13,7 @@ import { overlaps, squareAt } from '../hazards/boxes.ts';
 import { applyHit } from '../hazards/hits.ts';
 import { activeRacers, hitbox } from '../racers.ts';
 import { moveBody } from '../swim/collide.ts';
-import { SWIM } from '../swim/physics.ts';
-import { type Body, type Decoy, type Racer, type RacerId, TILE, type World } from '../types.ts';
+import { type Body, type Decoy, RACER_SIZE, type Racer, type RacerId, TILE, type World } from '../types.ts';
 import { BUBBLE, MIMIC } from './tuning.ts';
 
 /** Tiles down the steer field a decoy aims at. */
@@ -76,10 +75,10 @@ export function advanceDecoys(world: World, dt: number): void {
 /** One tick of swimming straight down the steer field, stopped by walls like any body. */
 function swimOn(world: World, decoy: Decoy, dt: number): void {
   const body: Body = {
-    x: decoy.x - SWIM.width / 2,
-    y: decoy.y - SWIM.height / 2,
-    w: SWIM.width,
-    h: SWIM.height,
+    x: decoy.x - RACER_SIZE.width / 2,
+    y: decoy.y - RACER_SIZE.height / 2,
+    w: RACER_SIZE.width,
+    h: RACER_SIZE.height,
     vx: 0,
     vy: 0,
   };

@@ -33,6 +33,7 @@ export async function startPhaser(ctx: GameContext, saves: SaveStore<SaveData>):
     saves,
     save,
     prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    search: window.location.search,
     startScene: (scene) => {
       if (game) switchScene(game, scene);
     },

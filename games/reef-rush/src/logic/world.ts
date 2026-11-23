@@ -25,6 +25,8 @@ import { breaksCoralOnContact, bumpMassFor, onBump, onWorldEvents, tickAbilities
 import { PLAYER_PROFILE } from './ai/profiles.ts';
 import { createAiMemory, rivalIntent } from './ai/rival.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
+import { levelOf } from './courses/index.ts';
+import type { Course } from './courses/types.ts';
 import type { GameEvent } from './events.ts';
 import { assistedIntent, trackGuide } from './guide.ts';
 import { resolveContacts } from './hazards/contacts.ts';
@@ -34,6 +36,8 @@ import { advanceProjectiles } from './hazards/projectiles.ts';
 import { advanceSquids } from './hazards/squids.ts';
 import { LevelError } from './level/parse.ts';
 import { sampleEnvironment } from './level/query.ts';
+import { mediumById } from './media/index.ts';
+import type { Medium } from './media/types.ts';
 import { modifiersFor } from './modifiers.ts';
 import { openClams } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
@@ -48,7 +52,7 @@ import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgres
 import { activeRacers, centreOf, noItems, playerOf } from './racers.ts';
 import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
 import { moveBody, separateRacers } from './swim/collide.ts';
-import { applyIntent, SWIM } from './swim/physics.ts';
+import { applyIntent } from './swim/physics.ts';
 import {
   type CharacterId,
   type Difficulty,
@@ -56,6 +60,7 @@ import {
   type Level,
   type MoveModifiers,
   RACER_IDS,
+  RACER_SIZE,
   type Racer,
   type RacerId,
   type RivalProfile,
@@ -82,15 +87,20 @@ export interface WorldOptions {
 const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
 /**
- * Sets up a race on `level` at the countdown's first tick, with every clam ready, every pearl
+ * Sets up a race on `course` at the countdown's first tick, with every clam ready, every pearl
  * in play, jellies at their homes and nothing held or in flight. The player's slot holds
  * `options.character` and the rival slots hold `pickRivals` drawn from the `roster` stream; each
  * rival slot races with its character's profile.
  *
+ * @param course A shipped course, or one registered for a test (`courseFromLevel`).
  * @param events Usually the engine's EventLog, so one stream holds race, menu and save events.
  * @throws {LevelError} When a start tile cannot reach the finish without breaking coral.
+ * @throws {Error} When the course names a medium that is neither shipped nor registered.
  */
-export function createWorld(level: Level, events: EventSink<GameEvent>, options: WorldOptions): World {
+export function createWorld(course: Course, events: EventSink<GameEvent>, options: WorldOptions): World {
+  const medium = mediumById(course.medium);
+  if (!medium) throw new Error(`Course '${course.id}' names unknown medium '${course.medium}'`);
+  const level = levelOf(course);
   const broken = new Set<number>();
   const fields = buildFlowFields(level, broken);
   const sealed = unreachableStarts(level, fields);
@@ -108,11 +118,15 @@ export function createWorld(level: Level, events: EventSink<GameEvent>, options:
   const characters: CharacterId[] = [player, ...pickRivals(rngs.roster, player)];
   const recentEvents: GameEvent[] = [];
   const world: World = {
+    course: course.id,
+    medium: medium.id,
     level,
     difficulty: options.difficulty ?? 'hard',
     fields,
     broken,
-    racers: RACER_IDS.map((id, index) => createRacer(level, id, index, characters[index] ?? player, options.playerBot)),
+    racers: RACER_IDS.map((id, index) =>
+      createRacer(level, medium, id, index, characters[index] ?? player, options.playerBot),
+    ),
     race: { phase: 'countdown', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: options.endsWhen ?? 'player' },
     tick: 0,
     rngs,
@@ -137,6 +151,7 @@ export function createWorld(level: Level, events: EventSink<GameEvent>, options:
 
 function createRacer(
   level: Level,
+  medium: Medium,
   id: RacerId,
   index: number,
   character: CharacterId,
@@ -146,17 +161,19 @@ function createRacer(
   if (!start) throw new LevelError(`Level has no start ${index + 1}`);
   const isHuman = id === 'player' && !playerBot;
   const profile = id === 'player' ? (playerBot ?? PLAYER_PROFILE) : { id, ...CHARACTERS[character].profile };
+  const body = {
+    x: start.x * TILE + (TILE - RACER_SIZE.width) / 2,
+    y: start.y * TILE + (TILE - RACER_SIZE.height) / 2,
+    vx: 0,
+    vy: 0,
+    w: RACER_SIZE.width,
+    h: RACER_SIZE.height,
+  };
   return {
     id,
     character,
-    body: {
-      x: start.x * TILE + (TILE - SWIM.width) / 2,
-      y: start.y * TILE + (TILE - SWIM.height) / 2,
-      vx: 0,
-      vy: 0,
-      w: SWIM.width,
-      h: SWIM.height,
-    },
+    motion: medium.createMotion(body),
+    body,
     facing: 1,
     kickCooldown: 0,
     progress: Number.POSITIVE_INFINITY,

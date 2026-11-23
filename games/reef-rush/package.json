@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.logic.json",
-    "test": "vitest run",
+    "test": "vitest run --project unit",
+    "test:difficulty": "vitest run --project difficulty",
     "test:e2e": "playwright test"
   },
   "dependencies": {

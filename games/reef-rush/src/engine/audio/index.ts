@@ -10,6 +10,7 @@ import type { RacerId } from '../../logic/types.ts';
 import type { RuntimeEvent, Settings } from '../runtime.ts';
 import { createAdapter } from './adapter.ts';
 import { createSequencer } from './sequencer.ts';
+import type { SongName } from './songs/index.ts';
 import { createSynth, type Synth } from './synth.ts';
 
 /** Everything that plays sound reads events through this port, never from logic directly. */
@@ -49,6 +50,7 @@ export function createAudio(
   settings: Settings,
   events: EventSink<RuntimeEvent>,
   audibleFromPlayer: (id: RacerId) => boolean,
+  raceSong: () => SongName,
 ): AudioPort {
   const reportError = (error: unknown) => ctx.reportError('audio', error);
   const context = openContext(reportError);
@@ -66,6 +68,7 @@ export function createAudio(
     rng: createRng((ctx.params.seed ^ COSMETIC_SALT) >>> 0),
     onError: reportError,
     audibleFromPlayer,
+    raceSong,
   });
   log.debug('audio ready', { state: context.state, muted: settings.muted });
   return {

@@ -6,14 +6,12 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../ai/profiles.ts';
+import { DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
-import { OCEAN_LEVEL } from '../level/levels.ts';
-import { parseLevel } from '../level/parse.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
 import type { RacerId } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
-const LEVEL = parseLevel(OCEAN_LEVEL);
 const IDLE = { move: { x: 0, y: 0 }, kick: false, burst: false };
 const GATE_COLUMNS = [481, 482];
 /** A tile column well past the gate. */
@@ -23,7 +21,7 @@ const PAST_GATE = 495;
 function seedsWithBaron(count: number): { seed: number; slot: RacerId }[] {
   const found: { seed: number; slot: RacerId }[] = [];
   for (let seed = 1; found.length < count; seed++) {
-    const world = createWorld(LEVEL, new EventLog<GameEvent>(), { seed, playerBot: BOT_PROFILES.expert });
+    const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed, playerBot: BOT_PROFILES.expert });
     const baron = world.racers.find((racer) => racer.character === 'baron');
     if (baron) found.push({ seed, slot: baron.id });
   }
@@ -33,7 +31,7 @@ function seedsWithBaron(count: number): { seed: number; slot: RacerId }[] {
 /** Races until Baron is past the gate; true when he broke gate coral on the way. */
 function baronRamsTheGate(seed: number, slot: RacerId): boolean {
   const log = new EventLog<GameEvent>(1_000_000);
-  const world = createWorld(LEVEL, log, { seed, playerBot: BOT_PROFILES.expert, endsWhen: 'everyone' });
+  const world = createWorld(DEFAULT_COURSE, log, { seed, playerBot: BOT_PROFILES.expert, endsWhen: 'everyone' });
   const baron = world.racers.find((racer) => racer.id === slot);
   if (!baron) throw new Error(`Seed ${seed} has no racer in slot ${slot}`);
   for (let i = 0; i < RACE_LIMIT_TICKS && baron.body.x < PAST_GATE * 16 && world.race.phase !== 'finished'; i++) {

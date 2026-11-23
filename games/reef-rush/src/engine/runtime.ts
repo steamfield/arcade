@@ -12,11 +12,11 @@
 import { createLogger, EventLog, FixedStep, type Stamped } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import type { GameContext } from '@arcade/shell';
+import { courseById, DEFAULT_COURSE } from '../logic/courses/index.ts';
+import type { Course } from '../logic/courses/types.ts';
 import type { GameEvent } from '../logic/events.ts';
-import { OCEAN_LEVEL } from '../logic/level/levels.ts';
-import { parseLevel } from '../logic/level/parse.ts';
 import { playerOf } from '../logic/racers.ts';
-import { isNewBest, recordResult } from '../logic/records.ts';
+import { isNewBest, recordRace } from '../logic/records.ts';
 import { NEW_GAME, type SaveData } from '../logic/save.ts';
 import {
   type CharacterId,
@@ -47,7 +47,8 @@ import {
 } from './view/hints.ts';
 
 /** Phaser scene keys, one per screen. */
-export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'select' | 'race' | 'results';
+/** `course` (course select) has no scene until lane 8/b adds it; nothing goes to it yet. */
+export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'course' | 'select' | 'race' | 'results';
 
 /** Events the engine adds on top of the world's. */
 export type EngineEvent =
@@ -94,6 +95,8 @@ export interface RuntimeOptions {
   prefersReducedMotion: boolean;
   /** Stops the running scenes and starts `scene`. Phaser does the switch; the runtime only asks for it. */
   startScene(scene: SceneKey): void;
+  /** The page's query string (`location.search`), read once for `?course=`. Empty when there is none. */
+  search?: string;
 }
 
 /** The one save slot Reef Rush uses. */
@@ -125,6 +128,8 @@ export class Runtime {
    * saved pick, and goes back to it each time the select screen opens.
    */
   selectedCharacter: CharacterId;
+  /** The course the next race runs on: `?course=`, else the save's last listed course, else the default. Race again keeps it. */
+  course: Course;
   readonly audio: AudioPort;
   /** True when the current race was staged for a capture (`?stage=`); its result is never saved. */
   staged = false;
@@ -170,7 +175,14 @@ export class Runtime {
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.startScene = options.startScene;
     this.selectedCharacter = this.savedCharacter;
-    this.audio = createAudio(options.ctx, this.settings, this.events, (id) => this.audibleFromPlayer(id));
+    this.course = startingCourse(options.search ?? '', options.save?.lastCourse ?? null);
+    this.audio = createAudio(
+      options.ctx,
+      this.settings,
+      this.events,
+      (id) => this.audibleFromPlayer(id),
+      () => this.course.song,
+    );
   }
 
   /** True while any save write is queued or running. The test harness waits on it through idle(). */
@@ -233,7 +245,7 @@ export class Runtime {
   startRace(): void {
     const seed = this.ctx.params.seed + (this.save?.races ?? 0);
     const { difficulty } = this.settings;
-    this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, {
+    this.world = createWorld(this.course, this.events, {
       seed,
       character: this.selectedCharacter,
       difficulty,
@@ -427,11 +439,28 @@ export class Runtime {
     const result: RaceResult = { standings, playerPlace, playerTicks };
     const before = this.save ?? NEW_GAME;
     const difficulty = this.world?.difficulty ?? this.settings.difficulty;
-    this.lastResult = { result, newBest: isNewBest(before, result, difficulty), saveFailed: false };
+    const courseId = this.world?.course ?? this.course.id;
+    this.lastResult = { result, newBest: isNewBest(before, courseId, difficulty, result), saveFailed: false };
     this.resultsIn = RESULTS_DELAY_TICKS;
     if (this.staged) return;
-    void this.persist(recordResult(before, result, difficulty), 'Race result');
+    void this.persist(recordRace(before, courseId, difficulty, result), 'Race result');
   }
+}
+
+/**
+ * The course a session starts on: the one `?course=` names (listed or not), else the save's last
+ * course when it is still listed, else the default. An unknown `?course=` is warned about once and
+ * ignored.
+ */
+function startingCourse(search: string, lastCourse: string | null): Course {
+  const asked = new URLSearchParams(search).get('course');
+  if (asked !== null) {
+    const course = courseById(asked);
+    if (course) return course;
+    log.warn('unknown course in ?course=, racing the default', { course: asked, default: DEFAULT_COURSE.id });
+  }
+  const last = lastCourse === null ? null : courseById(lastCourse);
+  return last?.listed ? last : DEFAULT_COURSE;
 }
 
 /** The next difficulty in the cycle EASY, NORMAL, HARD, then back to EASY. */

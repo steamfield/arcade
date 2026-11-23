@@ -2,10 +2,9 @@ import { createRng, EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTY } from '../difficulty-level.ts';
 import type { GameEvent } from '../events.ts';
-import { parseLevel } from '../level/parse.ts';
 import { updateProgress } from '../race/standings.ts';
 import { noItems } from '../racers.ts';
-import { placeOnTile, raceOn, tileCentre } from '../test-world.ts';
+import { courseFromLevel, placeOnTile, raceOn, tileCentre } from '../test-world.ts';
 import type { Intent, PowerUpKind, Racer, RacerId, TickInput, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 import { ITEM_USE } from './items.ts';
@@ -19,7 +18,7 @@ const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
 /** One walled lane per racer, so every aim is straight right and nobody bumps. */
 function lanes(seed = 1) {
-  const level = parseLevel({
+  const course = courseFromLevel({
     name: 'lanes',
     ascii: `
       ####################
@@ -34,7 +33,7 @@ function lanes(seed = 1) {
     `,
   });
   const log = new EventLog<GameEvent>(100_000);
-  return { world: createWorld(level, log, { seed }), log };
+  return { world: createWorld(course, log, { seed }), log };
 }
 
 function racer(world: World, id: RacerId): Racer {
@@ -216,6 +215,7 @@ describe('catch-up', () => {
       place: 1,
       finished: null,
       ai: null,
+      motion: {},
       ...noItems(),
     };
     const body = { x: 0, y: 0, vx: 0, vy: 0, w: 12, h: 10 };
@@ -476,7 +476,7 @@ describe('using items', () => {
 
 /** One wide lane per racer; `dark` covers every column when set. */
 function darkLanes(dark: boolean) {
-  const level = parseLevel({
+  const course = courseFromLevel({
     name: 'dark lanes',
     ascii: `
       ##############################
@@ -493,7 +493,7 @@ function darkLanes(dark: boolean) {
     `,
     dark: dark ? [[0, 29]] : [],
   });
-  const world = createWorld(level, new EventLog<GameEvent>(100_000), { seed: 3 });
+  const world = createWorld(course, new EventLog<GameEvent>(100_000), { seed: 3 });
   racing(world);
   return world;
 }

@@ -26,9 +26,6 @@ export const SWIM = {
   kick: 110,
   /** Hard cap on speed, px/s. */
   maxSpeed: 180,
-  /** Racer hitbox, px. */
-  width: 12,
-  height: 10,
 } as const;
 
 /** Modifiers for a racer with no profile bonuses or power-ups. */

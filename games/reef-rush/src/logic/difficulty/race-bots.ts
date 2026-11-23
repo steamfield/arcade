@@ -11,16 +11,14 @@
 import { EventLog, TICK_DT, TICK_HZ } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../ai/profiles.ts';
+import { DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
-import { OCEAN_LEVEL } from '../level/levels.ts';
-import { parseLevel } from '../level/parse.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
 import type { CharacterId, Difficulty, RacerId, RivalProfile } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
 const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
 const IDLE = { move: { x: 0, y: 0 }, kick: false, burst: false };
-const LEVEL = parseLevel(OCEAN_LEVEL);
 
 /**
  * Balance across the cast: every character's expert wins (any margin) on the 30 seeds fall in this
@@ -47,7 +45,7 @@ export interface Run {
 /** One whole race with `bot` driving the player's racer as `character`, on `difficulty` (Hard by default). */
 export function race(bot: RivalProfile, character: CharacterId, seed: number, difficulty: Difficulty = 'hard'): Run {
   const log = new EventLog<GameEvent>(100_000);
-  const world = createWorld(LEVEL, log, {
+  const world = createWorld(DEFAULT_COURSE, log, {
     seed,
     difficulty,
     playerBot: bot,

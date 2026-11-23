@@ -1,12 +1,22 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from './ai/profiles.ts';
+import { DEFAULT_COURSE } from './courses/index.ts';
 import type { GameEvent } from './events.ts';
-import { OCEAN_LEVEL } from './level/levels.ts';
-import { LevelError, parseLevel } from './level/parse.ts';
+import { LevelError } from './level/parse.ts';
 import { fireBurst } from './powerups/burst.ts';
 import { COUNTDOWN_TICKS, DNF_GRACE_TICKS, RACE_LIMIT_TICKS, updateProgress } from './race/standings.ts';
-import { eventsIn, hold, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from './test-world.ts';
+import {
+  courseFromLevel,
+  eventsIn,
+  hold,
+  placeAt,
+  placeOnTile,
+  raceOn,
+  racerOf,
+  step,
+  tileCentre,
+} from './test-world.ts';
 import { type RacerId, RNG_SALTS, type RngStream, type TickInput, type Vec } from './types.ts';
 import { createWorld, stepWorld, summarize, toAscii } from './world.ts';
 
@@ -15,7 +25,7 @@ const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
 /** A race on the ocean course with an idle player, stepped up to `ticks` times or until it ends. */
 function idleRace(seed: number, ticks: number) {
   const log = new EventLog<GameEvent>(100_000);
-  const world = createWorld(parseLevel(OCEAN_LEVEL), log, { seed });
+  const world = createWorld(DEFAULT_COURSE, log, { seed });
   for (let i = 0; i < ticks && world.race.phase !== 'finished'; i++) {
     log.tick = world.tick;
     stepWorld(world, IDLE, TICK_DT);
@@ -52,7 +62,7 @@ describe('determinism', () => {
 
 describe('level checks', () => {
   it('refuses a level whose player start is walled in by coral, naming the start tile', () => {
-    const level = parseLevel({
+    const course = courseFromLevel({
       name: 'sealed',
       ascii: `
         ########
@@ -63,7 +73,7 @@ describe('level checks', () => {
         ########
       `,
     });
-    const create = () => createWorld(level, new EventLog<GameEvent>(), { seed: 1 });
+    const create = () => createWorld(course, new EventLog<GameEvent>(), { seed: 1 });
 
     expect(create).toThrow(LevelError);
     expect(create).toThrow(expect.objectContaining({ row: 2, col: 1 }));
@@ -73,7 +83,7 @@ describe('level checks', () => {
 describe('finished racers', () => {
   /** One lane, so rivals queue nose to tail and the leader stops against the wall past the line. */
   const queue = () =>
-    parseLevel({
+    courseFromLevel({
       name: 'queue',
       ascii: `
         ############
@@ -112,10 +122,9 @@ describe('finished racers', () => {
 
 describe('random streams', () => {
   it('never repeat another stream or another seed', () => {
-    const level = parseLevel(OCEAN_LEVEL);
     const owner = new Map<string, string>();
     for (let seed = 1; seed <= 8; seed++) {
-      const { rngs } = createWorld(level, new EventLog<GameEvent>(), { seed });
+      const { rngs } = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed });
       for (const stream of Object.keys(RNG_SALTS) as RngStream[]) {
         const draws = Array.from({ length: 4 }, () => rngs[stream].next()).join(',');
         expect(owner.get(draws), `${stream} at seed ${seed}`).toBeUndefined();
@@ -128,7 +137,7 @@ describe('random streams', () => {
 /** A full race on the ocean course with the expert bot driving the player, items and all. */
 function expertRace(seed: number) {
   const log = new EventLog<GameEvent>(100_000);
-  const world = createWorld(parseLevel(OCEAN_LEVEL), log, { seed, playerBot: BOT_PROFILES.expert });
+  const world = createWorld(DEFAULT_COURSE, log, { seed, playerBot: BOT_PROFILES.expert });
   while (world.race.phase !== 'finished' && world.tick <= COUNTDOWN_TICKS + RACE_LIMIT_TICKS) {
     log.tick = world.tick;
     stepWorld(world, IDLE, TICK_DT);

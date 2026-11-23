@@ -5,7 +5,7 @@
  */
 import { abilityModifiers } from './abilities.ts';
 import { catchUpMul } from './ai/rival.ts';
-import { playerCatchUpMul, tuningOf } from './difficulty-level.ts';
+import { playerCatchUpMul, rivalCatchUpFor, tuningOf } from './difficulty-level.ts';
 import { withPassives } from './powerups/passives.ts';
 import { playerOf } from './racers.ts';
 import { BASE_MODIFIERS } from './swim/physics.ts';
@@ -24,7 +24,7 @@ export function modifiersFor(world: World, racer: Racer): MoveModifiers {
       : tuning.rivalForceMul *
         (world.race.raceTick < tuning.rivalCatchUpDelayTicks
           ? 1
-          : catchUpMul(racer, playerOf(world), tuning.rivalCatchUp));
+          : catchUpMul(racer, playerOf(world), rivalCatchUpFor(world)));
   return abilityModifiers(
     racer,
     withPassives(racer, { ...BASE_MODIFIERS, forceMul: racer.profile.forceMul * levelMul }),
