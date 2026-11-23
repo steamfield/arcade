@@ -33,7 +33,7 @@ import { SQUID } from '../../logic/powerups/tuning.ts';
 import { centreOf, playerOf } from '../../logic/racers.ts';
 import type { Difficulty, PowerUpKind, Racer, Vec, World } from '../../logic/types.ts';
 import { localOf } from '../local-racer.ts';
-import { squidHuntingPlayer } from './threat-math.ts';
+import { squidHuntingLocal } from './threat-math.ts';
 
 /** Ticks PRESS FIRE stays up after the first item lands when it times out (not on Easy), and when the HUD pulse takes over. */
 export const PRESS_FIRE_TICKS = 240;
@@ -195,11 +195,11 @@ function guideArrow(world: World, dashPrompt: boolean, pressFire: boolean): Vec 
   return dir;
 }
 
-/** A squid locked on the player is inside the dodge window plus the lead, and the player can kick now (ready, with a dash charge). */
+/** A squid locked on the local racer is inside the dodge window plus the lead, and the local racer can kick now (ready, with a dash charge). */
 function kickIsUseful(world: World): boolean {
   const local = localOf(world);
   if (local.status.latched > 0 || local.kickCooldown > 0 || !canDash(local)) return false;
-  const squid = squidHuntingPlayer(world);
+  const squid = squidHuntingLocal(world);
   if (squid === null) return false;
   const reach = (dodgeTicks(world) + KICK_LEAD_TICKS) * SQUID.speed * TICK_DT;
   const at = centreOf(local);

@@ -29,7 +29,7 @@ import { Layer } from './layers.ts';
 import { createRaceSplash, formatRaceTime, ordinal, slideRemaining, TONE_CSS } from './race-text.ts';
 import type { ScreenLayout } from './screen-layout.ts';
 import { createThreatHud } from './threat-hud.ts';
-import { squidHuntingPlayer } from './threat-math.ts';
+import { squidHuntingLocal } from './threat-math.ts';
 
 /** The race HUD; `sync` redraws it from the world. */
 export interface Hud {
@@ -274,7 +274,7 @@ export function captionText(world: World, view: CaptionView): string {
   if (status.latched > 0) return '';
   if (status.trapped > 0) return 'TRAPPED!';
   if (status.stunned > 0) return 'STUNNED!';
-  if (squidHuntingPlayer(world)) return 'LOCKED ON!';
+  if (squidHuntingLocal(world)) return 'LOCKED ON!';
   if (status.slowed > 0) return 'SLOWED BY INK';
   const px = local.body.x + local.body.w / 2;
   const py = local.body.y + local.body.h / 2;

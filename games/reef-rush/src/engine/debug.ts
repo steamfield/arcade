@@ -5,21 +5,21 @@
 import type { SaveStatus } from '@arcade/save';
 import { hashWorld } from '../logic/hash.ts';
 import { bestFor } from '../logic/records.ts';
-import type { Racer, RacerId, World } from '../logic/types.ts';
+import type { World } from '../logic/types.ts';
 import { summarize, toAscii } from '../logic/world.ts';
 import { HOW_TO_PLAY_PAGES } from './how-to-play.ts';
 import { localOf } from './local-racer.ts';
 import type { Runtime } from './runtime.ts';
 import { formatBest, levelBanner } from './view/race-text.ts';
-import { squidHuntingPlayer } from './view/threat-math.ts';
+import { squidHuntingLocal } from './view/threat-math.ts';
 
 /**
  * Scene, save status, the character slot 1 races as (the select cursor while picking), the
  * course and its medium, the difficulty in force and the world summary of the local racer (with the difficulty the race was built on, the
  * `levelBanner` the countdown shows, null once it ends, and the in-race `hints` showing), plus the menu on
  * menu screens, the best line as shown on the title (for the level now selected), the 1-based page on How to Play, and the
- * race outcome on results. `local` names the slot the screen follows, and is present only when it
- * is not 'player'.
+ * race outcome on results. `local` names the slot the screen follows, and is present only when
+ * a `?local=` was accepted (a debug race, never saved).
  *
  * @param sceneRunning Whether Phaser is actually running `rt.scene`. When it isn't, the
  * scene reads 'none', so a runtime that believes in a scene Phaser stopped is visible.
@@ -35,36 +35,22 @@ export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: 
     difficulty: rt.settings.difficulty,
     ...(world
       ? {
-          ...summarizeFor(world, rt.localRacer),
+          ...summarize(world, rt.localRacer),
           raceDifficulty: world.difficulty,
           levelBanner: levelBanner(world),
           threat: threatOf(world),
           hints: rt.hints,
         }
       : {}),
-    ...(rt.localRacer === 'player' ? {} : { local: rt.localRacer }),
+    ...(rt.localSlot === null ? {} : { local: rt.localSlot }),
     ...(menu ? { menu: { options: menu.options, selected: menu.selected } } : {}),
     ...sceneDetails(rt),
   };
 }
 
-/**
- * `summarize(world)` about racer `id` instead of slot 1. `summarize` describes the racer in slot
- * 'player', so it is handed a shallow copy of the world in which `id` and 'player' swap ids.
- */
-function summarizeFor(world: World, id: RacerId): ReturnType<typeof summarize> {
-  if (id === 'player') return summarize(world);
-  const swapped = (racer: Racer): Racer => {
-    if (racer.id === id) return { ...racer, id: 'player' as const };
-    if (racer.id === 'player') return { ...racer, id };
-    return racer;
-  };
-  return summarize({ ...world, racers: world.racers.map(swapped) });
-}
-
 /** What the squid warnings on the HUD are showing: a squid locked on the local racer, and a squid latched on it. */
 function threatOf(world: World) {
-  return { lockedOn: squidHuntingPlayer(world) !== null, latched: localOf(world).status.latched > 0 };
+  return { lockedOn: squidHuntingLocal(world) !== null, latched: localOf(world).status.latched > 0 };
 }
 
 function sceneDetails(rt: Runtime): Record<string, unknown> {

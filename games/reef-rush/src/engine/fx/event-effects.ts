@@ -19,7 +19,7 @@ export interface EventEffects {
 }
 
 /** Trauma (0..1, see `shake.ts`) for a hit that lands on the local racer. */
-const PLAYER_HIT_TRAUMA = 0.7;
+const LOCAL_HIT_TRAUMA = 0.7;
 /** A Bubble Shield soaking up a hit on the local racer: felt, but lighter than a hit. */
 const SHIELD_POP_TRAUMA = 0.4;
 /** Added once per tick on which the local racer's cannonball smashes coral or a racer; a gate stacks up to a big jolt. */
@@ -141,7 +141,7 @@ export function createEventEffects(
         }
       }
       if (localShieldPopped) shake(SHIELD_POP_TRAUMA);
-      else if (localHit) shake(PLAYER_HIT_TRAUMA);
+      else if (localHit) shake(LOCAL_HIT_TRAUMA);
       if (cannonballImpact) shake(CANNONBALL_TRAUMA);
       if (bubblesPopped) bubbles.vanished(world, bursts.bubblePop);
       bubbles.remember(world);

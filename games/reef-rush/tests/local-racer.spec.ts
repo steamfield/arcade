@@ -29,9 +29,11 @@ function centreTile({ body }: RacerState): [number, number] {
   return [Math.floor((body.x + body.w / 2) / TILE), Math.floor((body.y + body.h / 2) / TILE)];
 }
 
-/** Opens the game with `query`, loads `save` when given, and starts a race from the title. */
-async function startRace(game: GameDriver, options: { debug: boolean; local: string; save?: unknown }) {
-  await game.open({ debug: options.debug, query: { local: options.local } });
+/** Opens the game with `?local=` (and `?stage=` when given), loads `save` when given, and starts a race from the title. */
+async function startRace(game: GameDriver, options: { debug: boolean; local: string; save?: unknown; stage?: string }) {
+  const query: Record<string, string> = { local: options.local };
+  if (options.stage) query.stage = options.stage;
+  await game.open({ debug: options.debug, query });
   if (options.save) await game.loadState(options.save);
   await game.play(TITLE_TO_RACE);
 }
@@ -136,4 +138,20 @@ test('a finished ?local=tess race shows tess on the results and writes no save',
   await game.open({ debug: true, query: { local: 'tess' } });
   expect(await game.summary()).toMatchObject({ scene: 'title' });
   expect(await game.state()).toMatchObject({ save: { races: before.races, bests: before.bests } });
+});
+
+test('?debug=1&local=player races as slot 1 and still says it is a ?local= race', async ({ game }) => {
+  await startRace(game, { debug: true, local: 'player', save: HARD_SAVE });
+  await game.play([wait(COUNTDOWN_TICKS), hold('right', SWIM_TICKS)]);
+
+  const summary = await game.summary();
+  const racers = await racersBySlot(game);
+  expect(summary).toMatchObject({ scene: 'race', local: 'player', raceDifficulty: 'hard' });
+  expect((summary.player as { tile: number[] }).tile).toEqual(centreTile(racers.player as RacerState));
+});
+
+test('a stage in a ?local=tess race is set up around tess: a staged squid locks on her', async ({ game }) => {
+  await startRace(game, { debug: true, local: 'tess', save: HARD_SAVE, stage: 'squid-lockon' });
+  await game.advance(2);
+  expect(await game.summary()).toMatchObject({ local: 'tess', threat: { lockedOn: true, latched: false } });
 });

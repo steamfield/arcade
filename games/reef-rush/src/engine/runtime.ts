@@ -175,8 +175,8 @@ export class Runtime {
   private readonly prefersReducedMotion: boolean;
   private readonly startScene: (scene: SceneKey) => void;
   private readonly search: string;
-  /** The slot `?local=` asks this screen to follow, or null when it names none (or `?debug=1` is missing). */
-  private readonly localSlot: RacerId | null;
+  /** The slot an accepted `?local=` asks this screen to follow, or null when it names none or `?debug=1` is missing. */
+  readonly localSlot: RacerId | null;
   private readonly listeners = new Set<EventListener>();
   private cursor = 0;
   /** Which screen opened the select screens, so dash goes back there. Set each time the results or title menu opens them. */
@@ -204,7 +204,7 @@ export class Runtime {
       this.settings,
       this.events,
       {
-        audibleFromPlayer: (id) => this.audibleFromPlayer(id),
+        audibleFromLocal: (id) => this.audibleFromLocal(id),
         enemyAudible: (index) => (this.world ? enemyWithinHearing(this.world, index) : true),
         localRacer: () => this.localRacer,
       },
@@ -362,7 +362,7 @@ export class Runtime {
   }
 
   /** Whether racer `id` is within about a screen of the local racer, whom the camera follows. */
-  private audibleFromPlayer(id: RacerId): boolean {
+  private audibleFromLocal(id: RacerId): boolean {
     return this.world ? withinHearing(this.world, id) : true;
   }
 

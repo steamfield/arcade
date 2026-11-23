@@ -4,10 +4,10 @@
  * tile just below the HUD.
  */
 import type Phaser from 'phaser';
-import { centreOf } from '../../logic/racers.ts';
-import { TILE, type World } from '../../logic/types.ts';
+import type { World } from '../../logic/types.ts';
+import { summarize } from '../../logic/world.ts';
 import { createLabel } from '../art/font.ts';
-import { localOf } from '../local-racer.ts';
+import { localIdOf } from '../local-racer.ts';
 import { Layer } from './layers.ts';
 
 /** The debug overlay; `sync` redraws hitboxes and the readout from the world. */
@@ -25,8 +25,8 @@ export function createDebugOverlay(scene: Phaser.Scene): DebugOverlay {
     sync(world) {
       hitboxes.clear().lineStyle(1, HITBOX_COLOUR);
       for (const { body } of world.racers) hitboxes.strokeRect(body.x, body.y, body.w, body.h);
-      const centre = centreOf(localOf(world));
-      readout.setText(`tick ${world.tick}  tile ${Math.floor(centre.x / TILE)},${Math.floor(centre.y / TILE)}`);
+      const { tick, player } = summarize(world, localIdOf(world));
+      readout.setText(`tick ${tick}  tile ${player.tile.join(',')}`);
     },
   };
 }

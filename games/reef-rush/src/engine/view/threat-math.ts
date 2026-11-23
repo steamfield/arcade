@@ -35,7 +35,7 @@ const STANDOFF = 14;
 const EIGHTH_TURN = Math.PI / 4;
 
 /** The squid closest to the local racer among those that have locked on to it, or null when none has. */
-export function squidHuntingPlayer(world: World): Squid | null {
+export function squidHuntingLocal(world: World): Squid | null {
   const local = localOf(world);
   const px = local.body.x + local.body.w / 2;
   const py = local.body.y + local.body.h / 2;

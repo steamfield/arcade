@@ -18,7 +18,7 @@ import { isTouchScreen } from '../touch.ts';
 import { Layer } from './layers.ts';
 import { TONE_CSS } from './race-text.ts';
 import { BASE_LAYOUT, type ScreenLayout } from './screen-layout.ts';
-import { type Marker, markerFor, newMarker, type Rect, squidHuntingPlayer } from './threat-math.ts';
+import { type Marker, markerFor, newMarker, type Rect, squidHuntingLocal } from './threat-math.ts';
 
 /** The squid warnings; `sync` redraws them from the world. */
 export interface ThreatHud {
@@ -78,7 +78,7 @@ export function createThreatHud(
   const touch = isTouchScreen();
   // Reused every frame, so the warnings allocate nothing per frame.
   const marker: Marker = newMarker();
-  const playerAt = { x: 0, y: 0 };
+  const localAt = { x: 0, y: 0 };
   const squidAt = { x: 0, y: 0 };
   const splash = layout.splashRect;
   const avoidSplash: Rect[] = [splash];
@@ -87,15 +87,15 @@ export function createThreatHud(
   return {
     sync(world, view, splashShowing) {
       const local = localOf(world);
-      playerAt.x = local.body.x + local.body.w / 2 - view.x;
-      playerAt.y = local.body.y + local.body.h / 2 - view.y;
-      const squid = squidHuntingPlayer(world);
+      localAt.x = local.body.x + local.body.w / 2 - view.x;
+      localAt.y = local.body.y + local.body.h / 2 - view.y;
+      const squid = squidHuntingLocal(world);
       const blinkOn = reducedMotion || world.tick % ARROW_BLINK.period < ARROW_BLINK.on;
       arrow.setVisible(squid !== null && blinkOn);
       if (squid) {
         squidAt.x = squid.x - view.x;
         squidAt.y = squid.y - view.y;
-        markerFor(playerAt, squidAt, marker, splashShowing ? avoidSplash : avoidNothing, layout);
+        markerFor(localAt, squidAt, marker, splashShowing ? avoidSplash : avoidNothing, layout);
         arrow.setPosition(Math.round(marker.x), Math.round(marker.y)).setRotation(marker.angle);
       }
 
@@ -107,10 +107,10 @@ export function createThreatHud(
       // The block (DASH!, then PRESS B on touch) is placed as one, so it clears the player together.
       const height = DISPLAY_FACE.height + (text.hint ? PROMPT_GAP + TEXT_FACE.height : 0);
       const half = Math.ceil(height / 2);
-      let centre = anchorY(playerAt.y, height);
+      let centre = anchorY(localAt.y, height);
       // A banner at the centre of the screen would bury the prompt: go under the player instead.
       if (splashShowing && centre - half < splash.y + splash.h && centre + half > splash.y) {
-        centre = Math.min(playerAt.y + PROMPT_CLEARANCE + half, layout.lowest - half);
+        centre = Math.min(localAt.y + PROMPT_CLEARANCE + half, layout.lowest - half);
       }
       const top = centre - half;
       prompt.setOffset(0, top + Math.ceil(DISPLAY_FACE.height / 2));

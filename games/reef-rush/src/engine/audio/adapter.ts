@@ -38,7 +38,7 @@ export interface AdapterOptions {
    */
   onError(error: unknown): void;
   /** Whether racer `id` is near enough the local racer to hear what it does; every racer is when omitted. */
-  audibleFromPlayer?(id: RacerId): boolean;
+  audibleFromLocal?(id: RacerId): boolean;
   /** Whether enemy `index` (in `world.enemies`) is near enough the local racer to hear; every enemy is when omitted. */
   enemyAudible?(index: number): boolean;
   /** The slot the screen follows, whose own moments sound; 'player' when omitted. */
@@ -95,7 +95,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
   let localFinished = false;
 
   const local = options.localRacer ?? (() => 'player');
-  const attacks = createAttackSfx(options.audibleFromPlayer, local);
+  const attacks = createAttackSfx(options.audibleFromLocal, local);
   const enemyAudible = options.enemyAudible ?? (() => true);
   const announce = (key: string, kind: 'sfx' | 'song') => events.emit({ type: 'audio.played', key, kind });
 

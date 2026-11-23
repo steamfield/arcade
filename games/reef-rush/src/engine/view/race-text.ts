@@ -145,8 +145,8 @@ export interface SplashMoments {
 export interface SplashClock {
   tick: number;
   race: Pick<RaceState, 'phase' | 'raceTick' | 'result'>;
-  /** Whether the local racer crossed the line, for FINISH or TIME UP. Omitted, slot 1's time in the result decides. */
-  localFinished?: boolean;
+  /** Whether the local racer (the slot the screen follows) crossed the line: FINISH if so, else TIME UP. */
+  localFinished: boolean;
 }
 
 /**
@@ -177,7 +177,7 @@ export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean, ce
   // Reused every frame, so the splash allocates nothing per frame.
   const frame: SplashFrame = { text: '', tone: 'foam', dx: 0, dy: 0 };
   const levelView = createLevelView(scene, centreX);
-  const clock: Required<SplashClock> = {
+  const clock: SplashClock = {
     tick: 0,
     race: { phase: 'countdown', raceTick: 0, result: null },
     localFinished: false,
@@ -257,8 +257,7 @@ export function splashFrame(
   }
   if (moments.endedAt !== null) {
     // Coral is not allowed over the water (UI.md), so running out of time reads by its words, in foam.
-    const crossed = world.localFinished ?? race.result?.playerTicks !== null;
-    const [text, tone] = crossed ? (['FINISH', 'sun'] as const) : ([NO_TIME_TEXT, 'foam'] as const);
+    const [text, tone] = world.localFinished ? (['FINISH', 'sun'] as const) : ([NO_TIME_TEXT, 'foam'] as const);
     return banner(out, text, tone, world.tick - moments.endedAt, reducedMotion);
   }
   if (moments.stretchAt !== null && isBannerUp(world.tick - moments.stretchAt))

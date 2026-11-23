@@ -16,7 +16,7 @@ export const LOCK_CUE_GAP_TICKS = 90;
 /** How far from the local racer another racer's attack is still heard: about a screen. */
 export const HEARING_PX = 320;
 
-/** Decides each attack event's sound. `audibleFromPlayer(id)` says whether racer `id` is near enough to hear. */
+/** Decides each attack event's sound. `audibleFromLocal(id)` says whether racer `id` is near enough to hear. */
 export interface AttackSfx {
   /** The sound for `event` drained on world tick `tick`, or null when it makes none. */
   forEvent(event: RuntimeEvent, tick: number): SfxKey | null;
@@ -28,7 +28,7 @@ export interface AttackSfx {
  * @param localRacer The slot the screen follows, read per event; 'player' when omitted.
  */
 export function createAttackSfx(
-  audibleFromPlayer: (id: RacerId) => boolean = () => true,
+  audibleFromLocal: (id: RacerId) => boolean = () => true,
   localRacer: () => RacerId = () => 'player',
 ): AttackSfx {
   let lastLockCue = Number.NEGATIVE_INFINITY;
@@ -37,7 +37,7 @@ export function createAttackSfx(
       const local = localRacer();
       switch (event.type) {
         case 'squid.spawned':
-          return audibleFromPlayer(event.owner) ? 'squid.fire' : null;
+          return audibleFromLocal(event.owner) ? 'squid.fire' : null;
         case 'squid.locked':
           if (event.target !== local || tick - lastLockCue < LOCK_CUE_GAP_TICKS) return null;
           lastLockCue = tick;
@@ -51,13 +51,13 @@ export function createAttackSfx(
         case 'squid.lost':
           return event.owner === local ? 'squid.lost' : null;
         case 'riptide.spawned':
-          return audibleFromPlayer(event.owner) ? 'riptide' : null;
+          return audibleFromLocal(event.owner) ? 'riptide' : null;
         case 'undertow.fired':
           return event.id === local || event.pulled.includes(local) ? 'undertow' : null;
         case 'decoy.spawned':
-          return audibleFromPlayer(event.owner) ? 'decoy.spawn' : null;
+          return audibleFromLocal(event.owner) ? 'decoy.spawn' : null;
         case 'decoy.popped':
-          return audibleFromPlayer(event.owner) ? 'decoy.pop' : null;
+          return audibleFromLocal(event.owner) ? 'decoy.pop' : null;
         default:
           return null;
       }
