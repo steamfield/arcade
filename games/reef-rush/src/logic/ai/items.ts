@@ -53,7 +53,7 @@ export const ITEM_USE = {
 /** The kinds that break coral when fired, and so come first when coral is just ahead. */
 const CORAL_BREAKERS: readonly PowerUpKind[] = ['puffer', 'cannonball'];
 
-/** The kinds whose firing scales the chance by ITEM_USE.jetChanceMul when no coral is ahead. */
+/** The kinds that start a dash, so `fireItem` turns them down while one is running. */
 const DASHERS: readonly PowerUpKind[] = ['jetFin', 'cannonball'];
 
 /**
@@ -81,18 +81,25 @@ export function chooseItemSlot(world: World, racer: Racer, aim: Vec, roll: numbe
   const kind = racer.items[slot]?.kind;
   if (kind === undefined) return null;
   const aggression = racer.profile.itemAggression * itemAggressionMul(world, racer);
-  const dashes = DASHERS.includes(kind) && !coral;
+  const dashes = kind === 'jetFin' || (kind === 'cannonball' && !coral);
   return roll < aggression * (dashes ? ITEM_USE.jetChanceMul : 1) ? slot : null;
 }
 
-/** The first slot holding one of `kinds`, or -1. */
+/** The first slot holding one of `kinds` that can fire now, or -1. */
 function slotHolding(racer: Racer, kinds: readonly PowerUpKind[]): number {
-  return racer.items.findIndex((item) => item !== null && kinds.includes(item.kind));
+  return racer.items.findIndex((item) => item !== null && kinds.includes(item.kind) && firesNow(racer, item.kind));
 }
 
-/** The first held slot whose kind has a use this tick, or -1. */
+/** The first held slot whose kind can fire now and has a use this tick, or -1. */
 function slotWithUse(world: World, racer: Racer, aim: Vec): number {
-  return racer.items.findIndex((item) => item !== null && hasUse(world, racer, aim, item.kind));
+  return racer.items.findIndex(
+    (item) => item !== null && firesNow(racer, item.kind) && hasUse(world, racer, aim, item.kind),
+  );
+}
+
+/** False for a dash item while a dash is running, which `fireItem` would turn down. */
+function firesNow(racer: Racer, kind: PowerUpKind): boolean {
+  return !(DASHERS.includes(kind) && racer.status.dashing > 0);
 }
 
 function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolean {

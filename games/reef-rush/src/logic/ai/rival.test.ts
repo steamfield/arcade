@@ -611,6 +611,14 @@ describe('using items', () => {
     expect(uses(itemScene(['cannonball'], { tess: [18, 5] }).decide(100))).toBe(0);
   });
 
+  it('passes over Jet Fins and Cannonball while a dash runs, to a later slot with a use', () => {
+    const { tess, decide } = itemScene(['cannonball', 'jetFin', 'glowLantern'], { player: [12, 5] });
+    tess.status.dashing = 30;
+    tess.body.vx = 60;
+
+    expect(decide()[0]?.useSlot).toBe(2);
+  });
+
   it('fires the items it chose in the race: its slot empties as the charge is spent', () => {
     const { world, log } = raceOn(ARENA);
     for (const [id, [tx, ty]] of Object.entries({ tess: [10, 5], player: [12, 5], squib: [1, 9], bo: [19, 9] }) as [
