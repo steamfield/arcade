@@ -99,9 +99,9 @@ Scaffold: 8944bb6
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/net/codec.ts, games/rush-racers/src/net/codec.test.ts, games/rush-racers/src/net/session.ts, games/rush-racers/src/net/session.test.ts | plan, RFC 5.3 and 5.4, src/net/transport/memory.ts, src/logic/two-peers.test.ts | | opus | pending | | codec and session tests pass |
-| b | M | games/rush-racers/src/net/lobby.ts, games/rush-racers/src/net/lobby.test.ts, games/rush-racers/src/net/messages.test.ts | plan, src/net/messages.ts, apps/api/src/protocol.ts | | opus | pending | | lobby and messages tests pass |
-| c | M | apps/api/src/index.ts, apps/api/src/origin.ts, apps/api/src/codes.ts, apps/api/src/room.ts, apps/api/test/ | plan, RFC 5.5, apps/api/src/protocol.ts, games/rush-racers/src/net/transport/memory.ts | | opus | pending | | room service tests pass |
+| a | M | games/rush-racers/src/net/codec.ts, games/rush-racers/src/net/codec.test.ts, games/rush-racers/src/net/session.ts, games/rush-racers/src/net/session.test.ts | plan, RFC 5.3 and 5.4, src/net/transport/memory.ts, src/logic/two-peers.test.ts | | opus | running | deliver/reef-net-1a | codec and session tests pass |
+| b | M | games/rush-racers/src/net/lobby.ts, games/rush-racers/src/net/lobby.test.ts, games/rush-racers/src/net/messages.test.ts | plan, src/net/messages.ts, apps/api/src/protocol.ts | | opus | running | deliver/reef-net-1b | lobby and messages tests pass |
+| c | M | apps/api/src/index.ts, apps/api/src/origin.ts, apps/api/src/codes.ts, apps/api/src/room.ts, apps/api/test/ | plan, RFC 5.5, apps/api/src/protocol.ts, games/rush-racers/src/net/transport/memory.ts | | opus | running | deliver/reef-net-1c | room service tests pass |
 
 #### Lane a brief
 
