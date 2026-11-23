@@ -83,14 +83,18 @@ export interface DifficultyTuning {
   shark: SharkTuning;
 }
 
-/** Today's shark (scaffold: every level uses it until phase 1 lane a sets Normal and Hard). */
+/** Easy's shark: short sight, a narrow lane, a long rest after a charge, and a charge that never turns. */
 const PATIENT_SHARK: SharkTuning = { sightTiles: 6, patrolTiles: 3, recoverTicks: 40, chargeTurn: 0 };
+
+/** Normal and Hard's shark: sees further, guards a wider lane, rests less and steers at its target mid-charge. */
+const HUNTING_SHARK: SharkTuning = { sightTiles: 8, patrolTiles: 4, recoverTicks: 24, chargeTurn: 0.05 };
 
 /** The guide off: Normal and Hard leave the player's input and the screen alone. */
 const NO_GUIDE: GuideTuning = { enabled: false, assistGraceTicks: 0, assistHoldTicks: 0, assistBlend: 0, showTicks: 0 };
 
 /**
- * The knob table. Hard is exactly the tuning before difficulty levels existed.
+ * The knob table. Hard is exactly the tuning before difficulty levels existed, except its shark,
+ * which hunts harder than that tuning's (Easy keeps the old one).
  *
  * Normal's rival catch-up `lagTiles` went 10 -> 2 in v2 phase 4. Since rivals swim at par, a 10-tile
  * lag held every rival 10 tiles behind whoever led them, so a player who never dashed or fired won
@@ -111,7 +115,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     playerCatchUp: { startTiles: 6, perTile: 0, maxBoost: 0 },
     playerClamWeightMul: {},
     guide: NO_GUIDE,
-    shark: PATIENT_SHARK,
+    shark: HUNTING_SHARK,
   },
   normal: {
     rivalForceMul: 0.95,
@@ -125,7 +129,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     playerCatchUp: { startTiles: 5, perTile: 0.02, maxBoost: 0.2 },
     playerClamWeightMul: {},
     guide: NO_GUIDE,
-    shark: PATIENT_SHARK,
+    shark: HUNTING_SHARK,
   },
   easy: {
     rivalForceMul: 0.85,

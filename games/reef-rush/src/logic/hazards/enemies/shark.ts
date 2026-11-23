@@ -1,20 +1,26 @@
 /**
  * Sharks: patrol a lane either side of home, wind up on a racer they see ahead, then charge at where
- * it was when the wind-up ended. A bonk staggers one (harmless, knocked back along the bonk).
+ * it was when the wind-up ended, turning after it mid-charge on levels that allow it. A bonk staggers
+ * one (harmless, knocked back along the bonk).
  *
  * Modes: 'patrol' → 'windup' (SHARK.windupTicks, `enemy.telegraphed`) → 'charge' (up to
- * SHARK.chargeTicks, `enemy.charged`, cut short by rock) → 'recover' (SHARK.recoverTicks, still) →
- * 'patrol'. A wind-up whose target has finished goes straight back to 'patrol'. A bonk from any of them goes to
- * 'stagger' for SHARK.staggerTicks, then 'patrol'. Deterministic: no randomness.
+ * SHARK.chargeTicks, `enemy.charged`, cut short by rock) → 'recover' (the level's `recoverTicks`,
+ * still) → 'patrol'. A wind-up whose target has finished goes straight back to 'patrol'. A bonk from
+ * any of them goes to 'stagger' for SHARK.staggerTicks, then 'patrol'. How far it sees and patrols,
+ * how long it recovers and how hard it turns mid-charge come from the level's `SharkTuning`
+ * (`tuningOf(world).shark`). Deterministic: no randomness.
  */
 import { TICK_DT } from '@arcade/core';
 import { hasClearSweep } from '../../ai/steer.ts';
+import { tuningOf } from '../../difficulty-level.ts';
 import { length } from '../../num.ts';
 import { centreOf } from '../../racers.ts';
 import { isDowned, isInvulnerable } from '../../status.ts';
 import { type Enemy, type EnemyMode, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { enemyBox } from './contact.ts';
 import { SHARK } from './tuning.ts';
+
+const ORIGIN: Vec = { x: 0, y: 0 };
 
 /**
  * One shark's tick, by mode. Emits `enemy.telegraphed` when a wind-up starts and `enemy.charged` when
@@ -27,8 +33,8 @@ export function stepShark(world: World, shark: Enemy, index: number, racers: rea
   shark.modeTicks += 1;
   if (shark.mode === 'patrol') patrol(world, shark, index, racers);
   else if (shark.mode === 'windup') windUp(world, shark, index, racers);
-  else if (shark.mode === 'charge') charge(world, shark);
-  else if (shark.mode === 'recover') recover(shark);
+  else if (shark.mode === 'charge') charge(world, shark, racers);
+  else if (shark.mode === 'recover') recover(world, shark);
   else if (shark.mode === 'stagger') stagger(world, shark);
 }
 
@@ -42,12 +48,12 @@ export function staggerShark(shark: Enemy, racer: Racer): void {
 
 /**
  * Swims along its facing at SHARK.patrolSpeed, drifting back to its home row, and turns at the end
- * of its lane or at rock. Within its lane (SHARK.patrolTiles of home) it starts a wind-up on the
+ * of its lane or at rock. Within its lane (the level's `patrolTiles` of home) it starts a wind-up on the
  * racer it spots, if any; outside it, it only swims back.
  */
 function patrol(world: World, shark: Enemy, index: number, racers: readonly Racer[]): void {
   const home = { x: (shark.home.x + 0.5) * TILE, y: (shark.home.y + 0.5) * TILE };
-  const reach = SHARK.patrolTiles * TILE;
+  const reach = tuningOf(world).shark.patrolTiles * TILE;
   // Away from its lane (after a charge) it swims home before it hunts again, so it guards one stretch.
   const inLane = Math.abs(shark.at.x - home.x) <= reach;
   const spotted = inLane ? spot(world, shark, racers) : null;
@@ -87,16 +93,37 @@ function windUp(world: World, shark: Enemy, index: number, racers: readonly Race
   world.events.emit({ type: 'enemy.charged', index, kind: 'shark', target: target.id });
 }
 
-/** Moves straight on until the charge runs out or rock stops it, then recovers. */
-function charge(world: World, shark: Enemy): void {
-  if (shark.modeTicks <= SHARK.chargeTicks && move(world, shark)) return;
+/** Moves on, turning toward its target as the level allows, until the charge runs out or rock stops it, then recovers. */
+function charge(world: World, shark: Enemy, racers: readonly Racer[]): void {
+  if (shark.modeTicks <= SHARK.chargeTicks) {
+    steerCharge(world, shark, racers);
+    if (move(world, shark)) return;
+  }
   enter(shark, 'recover');
   shark.vel = { x: 0, y: 0 };
 }
 
-/** Sits still for SHARK.recoverTicks, then patrols again. */
-function recover(shark: Enemy): void {
-  if (shark.modeTicks < SHARK.recoverTicks) return;
+/**
+ * Blends the level's `chargeTurn` of the unit direction to its target into its heading, keeping
+ * SHARK.chargeSpeed, while that target is still racing and neither downed nor invulnerable. With a
+ * `chargeTurn` of 0 or no such target it keeps its heading.
+ */
+function steerCharge(world: World, shark: Enemy, racers: readonly Racer[]): void {
+  const turn = tuningOf(world).shark.chargeTurn;
+  if (turn === 0) return;
+  const target = racers.find((racer) => racer.id === shark.target && racer.finished === null);
+  if (!target || isDowned(target) || isInvulnerable(target)) return;
+  const heading = unitFrom(ORIGIN, shark.vel, { x: shark.facing, y: 0 });
+  const toTarget = unitFrom(shark.at, centreOf(target), heading);
+  const blended = { x: heading.x + turn * toTarget.x, y: heading.y + turn * toTarget.y };
+  const dir = unitFrom(ORIGIN, blended, heading);
+  shark.vel = { x: dir.x * SHARK.chargeSpeed, y: dir.y * SHARK.chargeSpeed };
+  if (shark.vel.x !== 0) shark.facing = shark.vel.x > 0 ? 1 : -1;
+}
+
+/** Sits still for the level's `recoverTicks`, then patrols again. */
+function recover(world: World, shark: Enemy): void {
+  if (shark.modeTicks < tuningOf(world).shark.recoverTicks) return;
   enter(shark, 'patrol');
   shark.target = null;
 }
@@ -112,12 +139,12 @@ function stagger(world: World, shark: Enemy): void {
 }
 
 /**
- * The nearest racer it can see: ahead in its facing within SHARK.sightTiles, no further off level
+ * The nearest racer it can see: ahead in its facing within the level's `sightTiles`, no further off level
  * than ahead (45 degrees), with a clear sweep from its box, and neither downed nor invulnerable.
  * On Easy it never picks the player. Ties go to the earlier racer in tick order.
  */
 function spot(world: World, shark: Enemy, racers: readonly Racer[]): Racer | null {
-  const sight = SHARK.sightTiles * TILE;
+  const sight = tuningOf(world).shark.sightTiles * TILE;
   let best: Racer | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const racer of racers) {
