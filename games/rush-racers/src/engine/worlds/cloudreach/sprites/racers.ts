@@ -19,13 +19,16 @@ import { CloudreachPalette } from './palette.ts';
 /** One slot's two wing-beat frames: `a` wings up, `b` wings down. */
 type WingBeats = Readonly<Record<typeof Frame.a | typeof Frame.b, PixelRows>>;
 
-/** Bumper the puffin: a white face under a black cap, a tall orange beak, short black wings. */
+/**
+ * Bumper the puffin: a white face under a black cap with aviator goggles pushed up on it, a tall
+ * orange beak, short black wings.
+ */
 const BUMPER: WingBeats = {
   [Frame.a]: [
     '..000...........',
     '.02220..........',
     '..02220..0000...',
-    '...02220022220..',
+    '...02220021320..',
     '..00022221101330',
     '.022222221111333',
     '0222222211111330',
@@ -39,7 +42,7 @@ const BUMPER: WingBeats = {
     '................',
     '................',
     '.........0000...',
-    '...000000222200.',
+    '...000000213200.',
     '..02222221101330',
     '.022222221111333',
     '0222222211111330',
@@ -147,39 +150,42 @@ const NOX: WingBeats = {
   ],
 };
 
-/** Pip the flying squirrel: a square gliding membrane between its paws, goggles and a flat tail. */
+/**
+ * Pip the flying squirrel: a square gliding membrane between its paws, a big dark eye, a satchel on
+ * a strap and a flat tail. The membrane's corners lift in frame `a` and droop in frame `b`.
+ */
 const PIP: WingBeats = {
   [Frame.a]: [
     '................',
-    '..1.............',
-    '...1......1.0.0.',
-    '...0000000001330',
-    '..01111111111110',
-    '01011111111110..',
-    '0101222222210...',
-    '0101111111110...',
-    '.00000000000....',
-    '................',
+    '.1.......1......',
+    '.00......00.....',
+    '.010....010.0.0.',
+    '.011000011101110',
+    '1011111131111010',
+    '1011333311112220',
+    '.01133311110000.',
+    '..022222220.....',
+    '...0000000......',
     '................',
     '................',
   ],
   [Frame.b]: [
     '................',
     '................',
-    '............0.0.',
-    '...0000000001330',
-    '..01111111111110',
-    '01011111111110..',
-    '0101222222210...',
-    '0101111111110...',
-    '.00000000000....',
-    '...1.......1....',
-    '..1.........1...',
     '................',
+    '...000000...0.0.',
+    '..01111111001110',
+    '1011111131111010',
+    '1011333311112220',
+    '.01133311110000.',
+    '.01222222210....',
+    '.01000000010....',
+    '.00.......00....',
+    '.1.........1....',
   ],
 };
 
-/** Commodore Pouch the pelican: a navy hat, a long golden bill over a round pouch, broad wings. */
+/** Admiral Pouch the pelican: an admiral's navy hat, a long golden bill over a round pouch, broad wings. */
 const POUCH: WingBeats = {
   [Frame.a]: [
     '.00........333..',

@@ -5,9 +5,9 @@
  * own). Portraits look straight out; light comes from the top left in the shading.
  *
  * The heads ride side by side on the strip, so each has its own outline and still tells apart in
- * grayscale: a black cap over an orange beak, a needle beak under a ruby throat, swept wings
- * under a dark mask, tall ears and red eyes, goggles, a hat over a pouch, feathery antennae over
- * eyespots and a hooked beak under a heavy brow.
+ * grayscale: goggles over an orange beak, a needle beak under a ruby throat, swept wings under a
+ * dark mask, tall ears and red eyes, round ears over a satchel strap, a hat over a pouch, feathery
+ * antennae over eyespots and a hooked beak under a heavy brow.
  */
 import type { CharacterId } from '../../../../logic/types.ts';
 import { CHARACTER_IDS } from '../../../../logic/types.ts';
@@ -24,13 +24,13 @@ interface Face {
 
 const FACES: Record<CharacterId, Face> = {
   rudy: {
-    head: ['.00000.', '0222220', '0201020', '0213120', '0133310', '.01310.', '..000..'],
+    head: ['.00000.', '0130130', '0222220', '0101010', '0133310', '.01310.', '..000..'],
     portrait: [
       '................',
       '.....000000.....',
       '...0022222200...',
-      '..022222222220..',
-      '.02221111112220.',
+      '..001130031100..',
+      '.02000022000020.',
       '.02111111111120.',
       '.02101111110120.',
       '.02111333311120.',
@@ -108,23 +108,23 @@ const FACES: Record<CharacterId, Face> = {
     ],
   },
   nib: {
-    head: ['00...00', '0100010', '0000000', '0330330', '0000000', '0122210', '.00000.'],
+    head: ['00...00', '0100010', '0111110', '0101010', '0122210', '0322210', '.03000.'],
     portrait: [
       '................',
       '..00........00..',
       '.0110......0110.',
       '.01110000001110.',
       '.01111111111110.',
-      '.00000000000000.',
-      '.03333011033330.',
-      '.03333011033330.',
-      '.00000000000000.',
-      '.01222111122210.',
+      '.01001111110010.',
+      '.01001111110010.',
+      '.01111111111110.',
       '.01222100122210.',
-      '..012222222210..',
-      '...0122222210...',
-      '0000011111100000',
-      '0111111111111110',
+      '..032222222210..',
+      '...0322222210...',
+      '0000033111100000',
+      '0111111331111110',
+      '0111111113333110',
+      '0111111113333110',
       '0000000000000000',
     ],
   },

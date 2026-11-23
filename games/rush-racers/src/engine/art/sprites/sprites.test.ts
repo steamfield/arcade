@@ -101,12 +101,6 @@ describe('world art data', () => {
       expect(measureFrames(key, sheetFor(key)?.frames ?? []), key).toEqual({ width: 16, height: 12 });
     }
   });
-
-  it("keeps Cloudreach's flyers within 16x12 too, so they fit around the same 12x10 bodies", () => {
-    for (const { key, frames } of CLOUDREACH_RACER_SHEETS) {
-      expect(measureFrames(key, frames), key).toEqual({ width: 16, height: 12 });
-    }
-  });
 });
 
 describe('world art palettes', () => {

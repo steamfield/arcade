@@ -29,6 +29,9 @@ interface BuiltTexture {
 /** Rows 0 to 5 of a 12-row racer frame: where raised wings show. */
 const RACER_TOP_HALF = 6;
 
+/** Pixels a wing beat must move between halves, so the two frames read as a stroke and not a twitch. */
+const MIN_BEAT_PIXELS = 6;
+
 /**
  * The parts of a Phaser scene the art builders touch, recording what each texture was made of.
  * Only Phaser is faked; the cast, its sprites and the builders are the real ones.
@@ -163,8 +166,13 @@ describe('Cloudreach cast skin', () => {
           runs.filter((run) => inHalf(run.y)).reduce((sum, run) => sum + run.width, 0);
         return [area((y) => y < RACER_TOP_HALF), area((y) => y >= RACER_TOP_HALF)];
       });
-      expect(upTop, `${slot} top half`).toBeGreaterThan(downTop ?? 0);
-      expect(downBottom, `${slot} bottom half`).toBeGreaterThan(upBottom ?? 0);
+      expect((upTop ?? 0) - (downTop ?? 0), `${slot}: frame a's extra pixels in the top half`).toBeGreaterThanOrEqual(
+        MIN_BEAT_PIXELS,
+      );
+      expect(
+        (downBottom ?? 0) - (upBottom ?? 0),
+        `${slot}: frame b's extra pixels in the bottom half`,
+      ).toBeGreaterThanOrEqual(MIN_BEAT_PIXELS);
     }
   });
 
