@@ -47,6 +47,7 @@ Error model: as today. Bad course data throws `LevelError` with row and col from
 
 ### Phase 1: tougher sharks and eels (MVP)
 
+Scaffold: f27b733
 Demo: `pnpm arcade see reef-rush --scenario enemy-bonk` and `pnpm arcade see reef-rush --input "_*180 right*900"` on Hard; logic tests in `src/logic/hazards/enemies`.
 Test cases:
 - Hard shark spots a racer 7.5 tiles ahead (Easy shark doesn't).
