@@ -8,7 +8,7 @@
  *   it stays up until then; on other levels (first race only) it gives up after 4 seconds. It shows
  *   the fire control (SPACE on a keyboard, A on touch).
  * - KICK: a Homing Squid is locked on and is inside the dodge window (plus a short lead) while the
- *   player's kick is ready, since a kick only dodges in the last moments before contact. The
+ *   player's kick is ready with a dash charge to spend, since a kick only dodges in the last moments before contact. The
  *   player sees it as DASH! with the dash control.
  * - SWAP: the first time the player holds two items while no other hint wants the screen, the next
  *   item control (E on a keyboard, the swap button on touch) and SWAP!, once a race: it goes when
@@ -19,12 +19,14 @@
  *   on a level with the guide on (Easy): an arrow beside the player pointing the way on. KICK always
  *   outranks it, PRESS FIRE does for the first `GUIDE_OVER_PRESS_FIRE_TICKS` of being stuck and then
  *   gives way to it, so a child holding an item they never fire still finds out which way to swim.
+ *   It never shows while a squid is latched, since the threat HUD's DASH! holds the spot.
  *
  * Hints run on the first race of a save and on every Easy race; otherwise they stay silent.
  */
 import { TICK_DT } from '@arcade/core';
 import { dodgeTicks, tuningOf } from '../../logic/difficulty-level.ts';
 import { guideFor } from '../../logic/guide.ts';
+import { canDash } from '../../logic/powerups/dash-meter.ts';
 import { heldItems, selectedItem, selectedSlot, slotItems } from '../../logic/powerups/inventory.ts';
 import { SQUID } from '../../logic/powerups/tuning.ts';
 import { centreOf, playerOf } from '../../logic/racers.ts';
@@ -135,9 +137,9 @@ export function updateHints(memory: HintMemory, world: World, config: HintConfig
   const pulseAfter = config.easy ? UNUSED_PULSE_TICKS : PRESS_FIRE_TICKS;
   const pressFire = holding && !memory.useLearned && firstHeldAt !== null && pressFireOpen;
   const kick = kickIsUseful(world);
-  const guide = guideArrow(world, kick, pressFire);
   // A latched squid puts the threat HUD's own DASH! prompt in the hint spot.
   const latched = player.status.latched > 0;
+  const guide = guideArrow(world, kick || latched, pressFire);
   const showPressFire = pressFire && guide === null && !kick && !latched;
   const spotTaken = latched || kick || showPressFire || guide !== null;
   const swap = !spotTaken && swapIsDue(memory, held);
@@ -180,20 +182,21 @@ function swappedSince(last: SeenSelection | null, racer: Racer): boolean {
 /**
  * The way on to point at, or null: the guide is on for this level, the player has been stuck for the
  * level's `showTicks` (the arrow fades as soon as they get closer, which resets the count), and
- * neither KICK nor a PRESS FIRE that is still within its turn wants the spot.
+ * neither a dash prompt (`dashPrompt`: KICK, or the threat HUD's DASH! while latched) nor a PRESS FIRE
+ * that is still within its turn wants the spot.
  */
-function guideArrow(world: World, kick: boolean, pressFire: boolean): Vec | null {
+function guideArrow(world: World, dashPrompt: boolean, pressFire: boolean): Vec | null {
   const tuning = tuningOf(world).guide;
-  if (!tuning.enabled || kick) return null;
+  if (!tuning.enabled || dashPrompt) return null;
   const { dir, stuckTicks } = guideFor(world, playerOf(world));
   if (stuckTicks < tuning.showTicks || (pressFire && stuckTicks < GUIDE_OVER_PRESS_FIRE_TICKS)) return null;
   return dir;
 }
 
-/** A squid locked on the player is inside the dodge window plus the lead, and the player can kick now. */
+/** A squid locked on the player is inside the dodge window plus the lead, and the player can kick now (ready, with a dash charge). */
 function kickIsUseful(world: World): boolean {
   const player = playerOf(world);
-  if (player.status.latched > 0 || player.kickCooldown > 0) return false;
+  if (player.status.latched > 0 || player.kickCooldown > 0 || !canDash(player)) return false;
   const squid = squidHuntingPlayer(world);
   if (squid === null) return false;
   const reach = (dodgeTicks(world) + KICK_LEAD_TICKS) * SQUID.speed * TICK_DT;

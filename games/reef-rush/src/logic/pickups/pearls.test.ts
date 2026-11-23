@@ -5,6 +5,7 @@ import { PEARL } from '../powerups/tuning.ts';
 import { activeRacers, centreOf } from '../racers.ts';
 import { eventsIn, giveItems, hold, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
 import { type LoosePearl, TILE, type Vec } from '../types.ts';
+import { scatterPearls } from './pearl-drift.ts';
 import { collectPearls } from './pearls.ts';
 
 /** Pearls at tiles (5, 2) and (6, 2) in open water. */
@@ -208,6 +209,16 @@ describe('loose pearls', () => {
     expect(player.pearls).toBe(4);
     // The boost was set this tick and the status counters already took one off.
     expect(player.status.boost).toBe(PEARL.boostTicks - 1);
+  });
+
+  it('scattered with no dropper, as from a beaten enemy, go at once to whoever touches them', () => {
+    const { world, log, player } = quiet();
+    world.loosePearls = scatterPearls(centreOf(player), 1, 1, null);
+
+    step(world, log, 1);
+
+    expect(eventsIn(log, ...LOOSE_EVENTS)).toEqual([{ type: 'loosePearl.collected', id: 'player', total: 1 }]);
+    expect(world.loosePearls).toEqual([]);
   });
 
   it('vanish after 600 ticks when nobody collects them', () => {

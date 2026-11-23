@@ -124,6 +124,15 @@ export function separateRacers(
   }
 }
 
+/**
+ * Whether `a` and `b` pass through each other this tick rather than touch: either is downed
+ * (`isDowned`), or `contacts` still holds the pair's ghost key because they overlapped while one was
+ * down and haven't come apart since. Anything resolved between racers (bumps, puffer hits) skips such a pair.
+ */
+export function passesThrough(contacts: ReadonlySet<string>, a: Racer, b: Racer): boolean {
+  return isDowned(a) || isDowned(b) || contacts.has(ghostKey(contactKey(a, b)));
+}
+
 type MassOf = (racer: Racer) => number;
 type OnBump = (a: Racer, b: Racer) => void;
 
@@ -144,17 +153,13 @@ function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump }: 
     y: overlapLength(a.body.y, a.body.h, b.body.y, b.body.h),
   };
   const overlapping = penetration.x > 0 && penetration.y > 0;
-  if (isDowned(a) || isDowned(b)) {
+  // A pair that overlapped while one was down keeps passing through after it recovers, until the two
+  // come apart; shoving them out at once would jump a racer (maybe into rock) and bump for nothing.
+  if (passesThrough(contacts, a, b)) {
     contacts.delete(key);
     if (overlapping) contacts.add(ghost);
     else contacts.delete(ghost);
     return;
-  }
-  // A pair that overlapped while one was down keeps passing through after it recovers, until the two
-  // come apart; shoving them out at once would jump a racer (maybe into rock) and bump for nothing.
-  if (contacts.has(ghost)) {
-    if (overlapping) return;
-    contacts.delete(ghost);
   }
   if (penetration.x < 0 || penetration.y < 0) {
     contacts.delete(key);

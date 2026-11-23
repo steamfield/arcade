@@ -7,9 +7,13 @@ import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../../events.ts';
 import { LevelError } from '../../level/parse.ts';
+import { centreOf, hitbox } from '../../racers.ts';
 import { courseFromLevel, eventsIn, giveItems, hold, placeOnTile, racerOf, step } from '../../test-world.ts';
 import { TILE, type Vec } from '../../types.ts';
 import { createWorld, toAscii } from '../../world.ts';
+import { overlaps } from '../boxes.ts';
+import { applyHit } from '../hits.ts';
+import { enemyBox } from './contact.ts';
 import { ARENA_TOP, arena, enemyAt, swimUntilNear } from './test-arena.ts';
 import { CRAB } from './tuning.ts';
 
@@ -83,6 +87,26 @@ describe('touching a crab', () => {
       { type: 'pearls.burst', index: 0, count: CRAB.pearls },
     ]);
     expect(toAscii(world)).not.toContain('K');
+  });
+
+  it('is not bonked by a racer knocked into it by a hit just after its dash', () => {
+    const { world, log } = arena(FLOOR);
+    const crab = enemyAt(world);
+    const player = racerOf(world, 'player');
+    swimUntilNear(world, log, crab, 20);
+    step(world, log, 1, hold(RIGHT, { kick: true }));
+    // A sting from behind stuns the player (nothing held) and knocks it on toward the crab.
+    const centre = centreOf(player);
+    applyHit(world, player, 'jelly', null, { x: centre.x - TILE, y: centre.y });
+    let touched = false;
+    for (let tick = 0; tick < 11; tick++) {
+      step(world, log, 1, hold(RIGHT));
+      touched ||= overlaps(enemyBox(crab), hitbox(player));
+    }
+
+    expect(touched, 'the knocked racer reached the crab').toBe(true);
+    expect(eventsIn(log, 'enemy.bonked', 'enemy.defeated')).toEqual([]);
+    expect(crab.mode).toBe('patrol');
   });
 
   it('stays defeated for the race and touches nobody after', () => {

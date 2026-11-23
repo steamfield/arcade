@@ -26,6 +26,20 @@ const OPEN = `
   ##################
 `;
 
+/** A wall with its only gap in the bottom row: from beside it the way on is down. */
+const WALLED = `
+  ####################
+  #1....#...........F#
+  #2....#...........F#
+  #3....#...........F#
+  #4................F#
+  ####################
+`;
+const UP: TickInput = { move: { x: 0, y: -1 }, kick: false, use: false, cycle: 0 };
+const DOWN: TickInput = { move: { x: 0, y: 1 }, kick: false, use: false, cycle: 0 };
+/** The guide arrow's way on from beside WALLED's wall. */
+const WAY_ON = { x: 0, y: 1 };
+
 const FIRE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: true, cycle: 0 };
 const NEXT: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 1 };
 
@@ -283,6 +297,15 @@ describe('one hint at a time', () => {
     expect(seen.kick, 'DASH showed').toBeGreaterThan(0);
     expect(seen.swap, 'SWAP showed').toBeGreaterThan(0);
   });
+
+  it('shows nothing on Easy while a squid is latched, even with the player stuck behind a wall', () => {
+    const { world, player, run } = race(EASY, WALLED);
+    world.difficulty = 'easy';
+    placeOnTile(player, 5, 1);
+    expect(run(150, UP).guide, 'the guide arrow before the latch').toEqual(WAY_ON);
+    player.status.latched = 60;
+    for (let tick = 0; tick < 30; tick++) expect(run(1, UP), `tick ${tick} of the latch`).toEqual(NO_HINTS);
+  });
 });
 
 describe('KICK', () => {
@@ -323,6 +346,13 @@ describe('KICK', () => {
     expect(run(1).kick).toBe(false);
   });
 
+  it('stays quiet while the dash meter is empty, since a kick would do nothing', () => {
+    const { world, player, run } = race();
+    lockSquidOnPlayer(world, Math.round(windowPx));
+    player.kickCharges = 0;
+    expect(run(1).kick).toBe(false);
+  });
+
   it('gives way to the latched prompt once the squid has wrapped the player', () => {
     const { world, player, run } = race();
     lockSquidOnPlayer(world, Math.round(windowPx));
@@ -340,19 +370,6 @@ describe('KICK', () => {
 });
 
 describe('the guide arrow', () => {
-  /** A wall with its only gap in the bottom row: from beside it the way on is down. */
-  const WALLED = `
-  ####################
-  #1....#...........F#
-  #2....#...........F#
-  #3....#...........F#
-  #4................F#
-  ####################
-`;
-  const UP: TickInput = { move: { x: 0, y: -1 }, kick: false, use: false, cycle: 0 };
-  const DOWN: TickInput = { move: { x: 0, y: 1 }, kick: false, use: false, cycle: 0 };
-  const WAY_ON = { x: 0, y: 1 };
-
   /** A race with the player beside the wall; pushing up is the wrong way, so the steering assist stays out of it. */
   function stuckRace(difficulty: 'easy' | 'normal' | 'hard' = 'easy') {
     const built = race(EASY, WALLED);

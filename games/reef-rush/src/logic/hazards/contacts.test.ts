@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { activeRacers, centreOf } from '../racers.ts';
-import { eventsIn, placeAt, placeOnTile, raceOn, racerOf } from '../test-world.ts';
+import { eventsIn, placeAt, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
 import type { Bubble, Jelly, RacerId, World } from '../types.ts';
+import { overlaps } from './boxes.ts';
 import { resolveContacts } from './contacts.ts';
 import { jellyCentre } from './jellies.ts';
 
@@ -172,5 +173,24 @@ describe('inflated puffers', () => {
     contacts();
 
     expect(eventsIn(log)).toEqual([]);
+  });
+
+  it('pass through a racer whose latch wears off mid-overlap, until the two separate', () => {
+    const { world, log, player, tess } = setup();
+    placeOnTile(player, 6, 1);
+    // Close enough that their bodies overlap, not just the puffed-up hitbox, so they pass through.
+    placeAt(tess, { x: centreOf(player).x + 6, y: centreOf(player).y });
+    player.status.inflated = 30;
+    tess.status.latched = 3;
+    const overlappingAfterLatch: boolean[] = [];
+
+    for (let tick = 0; tick < 6; tick++) {
+      step(world, log);
+      if (tess.status.latched === 0) overlappingAfterLatch.push(overlaps(player.body, tess.body));
+    }
+
+    // The bodies still overlap for ticks after the latch is gone, so the ghost pass-through is what spares tess.
+    expect(overlappingAfterLatch).toEqual([true, true, true, true]);
+    expect(eventsIn(log, 'racer.hit')).toEqual([]);
   });
 });
