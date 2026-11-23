@@ -32,8 +32,8 @@ const CLOUDREACH_OBJECTS: ObjectSkin = {
     trapped: 'CLOUD',
     attackCaptions: { homingSquid: 'HOMING GULL', riptide: 'JET STREAM', undertow: 'HEADWIND', mimic: 'MIRAGE' },
     enemyCaptions: { crab: 'CLOUD CRAB', shark: 'CROW DIVES', eel: 'EEL LUNGES' },
-    cratesHeading: 'POP BALLOONS',
-    pearlsHeading: 'GRAB FEATHERS',
+    cratesHeading: 'BALLOON POP',
+    pearlsHeading: 'FEATHERS',
   },
 };
 

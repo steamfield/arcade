@@ -42,8 +42,8 @@ describe("How to Play's pages per medium", () => {
     expect(mediumPagesFor('flight')).toBe(MEDIUM_PAGES.flight);
     expect(MEDIUM_PAGES.flight.move.build).not.toBe(MEDIUM_PAGES.swim.move.build);
     expect(headings[0]).toMatch(/FLAP/);
-    expect(headings[1]).toBe('POP BALLOONS');
-    expect(headings[3]).toBe('GRAB FEATHERS');
+    expect(headings[1]).toBe('BALLOON POP');
+    expect(headings[3]).toBe('FEATHERS');
     expect(headings).toHaveLength(HOW_TO_PLAY_PAGES);
   });
 
