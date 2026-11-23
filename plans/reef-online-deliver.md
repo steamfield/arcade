@@ -107,6 +107,7 @@ The invariant every phase is held to: a world created without `humans` or `chara
 ### Phase 1: a hash that proves two engines ran the same race (MVP)
 
 Scaffold: 5463a18
+Tag: reef-online/phase-1
 Demo: `pnpm arcade test reef-rush src/logic/hash.test.ts src/logic/top-route.test.ts`, then `pnpm arcade smoke reef-rush`, whose "finished race" test asserts one committed hash on desktop Chromium, the phone project and WebKit.
 
 Test cases (`src/logic/hash.test.ts`, written in the scaffold):

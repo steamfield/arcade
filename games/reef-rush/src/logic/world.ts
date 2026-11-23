@@ -87,6 +87,13 @@ export interface WorldOptions {
   endsWhen?: 'player' | 'everyone';
   /** Who the player races as. Default 'rudy'. The rivals are drawn from the rest by seed. */
   character?: CharacterId;
+  /**
+   * Slots people race in, each driven by its own entry in `stepRace`'s inputs. Default `['player']`.
+   * Easy allows only that default, since its guide follows the player slot.
+   */
+  humans?: readonly RacerId[];
+  /** Who races in each slot. Slots left out are drawn from the rest by seed. `characters.player` is `character`. */
+  characters?: Partial<Record<RacerId, CharacterId>>;
   /** How hard the rivals race. Default 'hard', so tests that don't say keep the tuning they were written against; the engine always passes the saved setting. */
   difficulty?: Difficulty;
 }
@@ -124,6 +131,7 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     medium: medium.id,
     level,
     difficulty: options.difficulty ?? 'hard',
+    humans: ['player'],
     progress: buildProgressField(level),
     nav,
     broken,
@@ -229,6 +237,15 @@ function createRngs(seed: number): World['rngs'] {
     // Mixed first because with a bare XOR, stream A at seed s equals stream B at s ^ saltA ^ saltB.
     streams.map((stream) => [stream, createRng((Math.imul(seed, 0x9e3779b1) ^ RNG_SALTS[stream]) >>> 0)]),
   ) as World['rngs'];
+}
+
+/**
+ * Advances the race by one fixed tick with each human slot's own input. A human slot with no entry
+ * in `inputs` is handed to the AI on that tick and stays with it; entries for AI-driven and
+ * finished racers are ignored.
+ */
+export function stepRace(_world: World, _inputs: Partial<Record<RacerId, TickInput>>, _dt: number): void {
+  throw new Error('stepRace is not implemented');
 }
 
 /** Advances the race by one fixed tick. `input` drives the player's racer unless a bot does. */

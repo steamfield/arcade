@@ -274,6 +274,8 @@ export interface RacerStatus {
 export interface Racer {
   /** The slot this racer races in. */
   id: RacerId;
+  /** World tick on which the AI took this racer over from its player. Absent until then. */
+  tookOverAt?: number;
   /** Movement state the world's medium owns (`Medium.createMotion`). */
   motion: RacerMotion;
   /** Who is swimming in the slot: sprite, name and ability. */
@@ -535,6 +537,8 @@ export interface GuideMemory {
 }
 
 export interface World {
+  /** Slots a person started the race in, in RACER_IDS order. Fixed for the race. */
+  humans: readonly RacerId[];
   /** Id of the course being raced (`courseOf(world)`). */
   course: string;
   /** Id of the medium the course races in (`mediumOf(world)`). */

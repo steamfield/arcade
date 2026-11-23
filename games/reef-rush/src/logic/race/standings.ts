@@ -83,7 +83,7 @@ export function updatePlaces(world: World): void {
   rankRacers(world.racers).forEach((racer, index) => {
     racer.place = index + 1;
   });
-  if (player.place !== before) world.events.emit({ type: 'player.place', place: player.place });
+  if (player.place !== before) world.events.emit({ type: 'player.place', id: player.id, place: player.place });
 }
 
 /** Ends the race when the player finishes, the DNF grace expires or the time limit hits; emits `race.finished` once. */
