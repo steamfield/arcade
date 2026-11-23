@@ -1,10 +1,11 @@
 /**
- * Moving bodies through the tile grid without entering solid tiles, and
- * pushing apart racers that overlap.
+ * Moving bodies through the tile grid without entering solid tiles, reporting what they ran into,
+ * the rules a world's medium moves bodies by, and pushing apart racers that overlap.
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
-import { bodyTiles, isSolid, overlapsTile } from '../level/query.ts';
+import { blocksBody, bodyTiles, isLedge, overlapsTile, tileIndex } from '../level/query.ts';
+import { mediumOf } from '../media/index.ts';
 import { isDowned } from '../status.ts';
 import {
   type Body,
@@ -27,54 +28,73 @@ const MAX_STEP = TILE / 2;
 const MAX_SUBSTEPS = 64;
 
 /**
- * Integrates a body's position by its velocity for one tick, resolving X then Y
- * against solid tiles and zeroing the blocked velocity component. Sub-steps fast
- * movement so a body never tunnels through a tile. A body that starts inside a solid
- * (a bump can push one into a wall) is first moved out along its shallower overlap.
+ * How far, in px, a body's bottom may sit below a ledge's top and still count as above it. Landing
+ * puts a body flush by arithmetic that can leave it a rounding error low.
+ */
+const LEDGE_TOLERANCE = 1e-6;
+
+/** The rules of a medium with no platformer seams: a solid bottom edge, no extra solid tiles. */
+export const NO_MOVE_RULES: MoveRules = { pitBelow: false, solidTiles: new Set() };
+
+/** One `moveBody` call's grid and rules, and what the body has run into so far this tick. */
+interface TileMove {
+  level: Level;
+  broken: ReadonlySet<number>;
+  rules: MoveRules;
+  /** The body's bottom edge before this tick's move; a ledge holds it only from at or above its top. */
+  bottomAtStart: number;
+  contacts: MoveContacts;
+}
+
+/**
+ * Integrates a body's position by its velocity for one tick, resolving X then Y against tiles that
+ * block it (`blocksBody` under `rules`, and ledges from above) and zeroing the blocked velocity
+ * component. Sub-steps fast movement so a body never tunnels through a tile. A body that starts
+ * inside a blocking tile (a bump can push one into a wall) is first moved out along its shallower
+ * overlap; a ledge never pushes a body out.
  *
  * @param dt Tick length in seconds. A tick needing more than MAX_SUBSTEPS sub-steps moves the
  *   body at most MAX_SUBSTEPS * MAX_STEP pixels, less than its velocity asks for.
+ * @returns What the body ran into this tick; all clear for a body that doesn't move.
  */
 export function moveBody(
   body: Body,
   level: Level,
   broken: ReadonlySet<number>,
   dt: number,
-  _rules: MoveRules = NO_MOVE_RULES,
+  rules: MoveRules = NO_MOVE_RULES,
 ): MoveContacts {
-  // Scaffold: lane 1/c applies the rules and reports real contacts.
-  pushOutOfSolids(body, level, broken);
+  const contacts = noContacts();
+  pushOutOfSolids(body, level, broken, rules);
   const speed = Math.sqrt(body.vx * body.vx + body.vy * body.vy);
-  if (speed === 0) return noContacts();
+  if (speed === 0) return contacts;
 
+  const move: TileMove = { level, broken, rules, bottomAtStart: body.y + body.h, contacts };
   const steps = Math.min(MAX_SUBSTEPS, Math.max(1, Math.ceil((speed * dt) / MAX_STEP)));
   const stepDt = Math.min(dt / steps, MAX_STEP / speed);
   for (let step = 0; step < steps; step++) {
     body.x += body.vx * stepDt;
-    resolveX(body, level, broken);
+    resolveX(body, move);
     body.y += body.vy * stepDt;
-    resolveY(body, level, broken);
+    resolveY(body, move);
   }
-  return noContacts();
+  return contacts;
 }
-
-/** The rules of a medium with no platformer seams: open floor nowhere, no extra solid tiles. */
-export const NO_MOVE_RULES: MoveRules = { pitBelow: false, solidTiles: new Set() };
 
 function noContacts(): MoveContacts {
   return { floor: false, ceiling: false, wallLeft: false, wallRight: false, ceilingTiles: [] };
 }
 
 /**
- * Moves a body out of each solid tile it overlaps, along the axis it overlaps that tile least.
- * The X and Y resolvers assume the body starts the tick outside every solid; without this, a
+ * Moves a body out of each blocking tile it overlaps, along the axis it overlaps that tile least.
+ * The X and Y resolvers assume the body starts the tick outside every blocking tile; without this, a
  * body pushed into a wall would snap to a row boundary on its next vertical move and stick.
  */
-function pushOutOfSolids(body: Body, level: Level, broken: ReadonlySet<number>): void {
+function pushOutOfSolids(body: Body, level: Level, broken: ReadonlySet<number>, rules: MoveRules): void {
   const tiles = bodyTiles(body);
   for (let ty = tiles.top; ty <= tiles.bottom; ty++) {
     for (let tx = tiles.left; tx <= tiles.right; tx++) {
-      if (isSolid(level, broken, tx, ty) && overlapsTile(body, tx, ty)) pushOutOfTile(body, tx, ty);
+      if (blocksBody(level, broken, rules, tx, ty) && overlapsTile(body, tx, ty)) pushOutOfTile(body, tx, ty);
     }
   }
 }
@@ -90,32 +110,79 @@ function pushOutOfTile(body: Body, tx: number, ty: number): void {
   }
 }
 
-/** Puts a body that moved into a solid column back flush against it. */
-function resolveX(body: Body, level: Level, broken: ReadonlySet<number>): void {
+/** Puts a body that moved into a blocking column back flush against it, noting the wall. */
+function resolveX(body: Body, move: TileMove): void {
+  const { level, broken, rules, contacts } = move;
   const tiles = bodyTiles(body);
   for (let ty = tiles.top; ty <= tiles.bottom; ty++) {
-    if (body.vx > 0 && isSolid(level, broken, tiles.right, ty)) {
+    if (body.vx > 0 && blocksBody(level, broken, rules, tiles.right, ty)) {
       body.x = tiles.right * TILE - body.w;
       body.vx = 0;
-    } else if (body.vx < 0 && isSolid(level, broken, tiles.left, ty)) {
+      contacts.wallRight = true;
+    } else if (body.vx < 0 && blocksBody(level, broken, rules, tiles.left, ty)) {
       body.x = (tiles.left + 1) * TILE;
       body.vx = 0;
+      contacts.wallLeft = true;
     }
   }
 }
 
-/** Puts a body that moved into a solid row back flush against it. */
-function resolveY(body: Body, level: Level, broken: ReadonlySet<number>): void {
+/** Puts a body that moved into a blocking row back flush against it: a landing or a head bump. */
+function resolveY(body: Body, move: TileMove): void {
+  if (body.vy > 0) landOnFloor(body, move);
+  else if (body.vy < 0) bumpCeiling(body, move);
+}
+
+/** Stops a falling body on the row under it when any tile it spans there holds it. */
+function landOnFloor(body: Body, move: TileMove): void {
   const tiles = bodyTiles(body);
   for (let tx = tiles.left; tx <= tiles.right; tx++) {
-    if (body.vy > 0 && isSolid(level, broken, tx, tiles.bottom)) {
-      body.y = tiles.bottom * TILE - body.h;
-      body.vy = 0;
-    } else if (body.vy < 0 && isSolid(level, broken, tx, tiles.top)) {
-      body.y = (tiles.top + 1) * TILE;
-      body.vy = 0;
+    if (!holdsFromAbove(move, tx, tiles.bottom)) continue;
+    body.y = tiles.bottom * TILE - body.h;
+    body.vy = 0;
+    move.contacts.floor = true;
+    return;
+  }
+}
+
+/** Whether the tile stops a body coming down onto it: anything blocking, or a ledge it was above. */
+function holdsFromAbove(move: TileMove, tx: number, ty: number): boolean {
+  if (blocksBody(move.level, move.broken, move.rules, tx, ty)) return true;
+  return isLedge(move.level, tx, ty) && move.bottomAtStart <= ty * TILE + LEDGE_TOLERANCE;
+}
+
+/** Stops a rising body under the row over it, listing every blocking tile its head spans there. */
+function bumpCeiling(body: Body, move: TileMove): void {
+  const { level, broken, rules, contacts } = move;
+  const tiles = bodyTiles(body);
+  const hit: number[] = [];
+  for (let tx = tiles.left; tx <= tiles.right; tx++) {
+    if (blocksBody(level, broken, rules, tx, tiles.top)) hit.push(tileIndex(level, tx, tiles.top));
+  }
+  if (hit.length === 0) return;
+  body.y = (tiles.top + 1) * TILE;
+  body.vy = 0;
+  contacts.ceiling = true;
+  contacts.ceilingTiles = [...contacts.ceilingTiles, ...hit];
+}
+
+/**
+ * What `moveBody` treats as solid beyond the level's tiles for `world`'s medium right now: whether
+ * the bottom edge is open (`pitBelow`), and the tiles of ready clams when the medium's clams are
+ * solid crates. A medium with neither gets NO_MOVE_RULES.
+ *
+ * @throws {Error} When the world names a medium that is neither shipped nor registered.
+ */
+export function moveRulesFor(world: World): MoveRules {
+  const { pitBelow, solidClams } = mediumOf(world).effects;
+  if (!pitBelow && !solidClams) return NO_MOVE_RULES;
+  const solidTiles = new Set<number>();
+  if (solidClams) {
+    for (const clam of world.clams) {
+      if (clam.closedFor === 0) solidTiles.add(tileIndex(world.level, clam.tile.x, clam.tile.y));
     }
   }
+  return { pitBelow, solidTiles };
 }
 
 /**
@@ -131,6 +198,8 @@ function resolveY(body: Body, level: Level, broken: ReadonlySet<number>): void {
  * @param onBump Called with the pair in RACER_IDS order when a contact starts, after `racer.bumped`
  *   and after the pair has been pushed apart, but with the velocities they bumped with: the closing
  *   speed they share is worked out before the call and added after it.
+ * @param pushAxis 'shallowest' pushes each pair apart along the axis they overlap least; 'x' always
+ *   pushes sideways, so a racer dropping onto another keeps falling (a medium's 'horizontal' collision).
  */
 export function separateRacers(
   racers: Racer[],
@@ -138,12 +207,13 @@ export function separateRacers(
   events: EventSink<GameEvent>,
   massOf: MassOf = (racer) => racer.profile.mass,
   onBump: OnBump = () => {},
+  pushAxis: PushAxis = 'shallowest',
 ): void {
   for (let i = 0; i < racers.length; i++) {
     for (let j = i + 1; j < racers.length; j++) {
       const first = racers[i];
       const second = racers[j];
-      if (first && second) separatePair(first, second, { contacts, events, massOf, onBump });
+      if (first && second) separatePair(first, second, { contacts, events, massOf, onBump, pushAxis });
     }
   }
 }
@@ -160,16 +230,20 @@ export function passesThrough(contacts: ReadonlySet<string>, a: Racer, b: Racer)
 type MassOf = (racer: Racer) => number;
 type OnBump = (a: Racer, b: Racer) => void;
 
+/** Which way overlapping racers are pushed apart: along their shallower overlap, or only sideways. */
+export type PushAxis = 'shallowest' | 'x';
+
 /** What separating a pair reads and reports to, shared by every pair in one pass. */
 interface Separation {
   contacts: Set<string>;
   events: EventSink<GameEvent>;
   massOf: MassOf;
   onBump: OnBump;
+  pushAxis: PushAxis;
 }
 
 /** Separates one pair and keeps its contact bookkeeping current. */
-function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump }: Separation): void {
+function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump, pushAxis }: Separation): void {
   const key = contactKey(a, b);
   const ghost = ghostKey(key);
   const penetration = {
@@ -193,7 +267,7 @@ function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump }: 
   // pressing into another racer doesn't re-announce a bump every other tick.
   if (penetration.x === 0 || penetration.y === 0) return;
 
-  const axis = penetration.x <= penetration.y ? 'x' : 'y';
+  const axis = pushAxis === 'x' || penetration.x <= penetration.y ? 'x' : 'y';
   const masses = { a: massOf(a), b: massOf(b) };
   pushApart(a, b, masses, axis, penetration[axis]);
   const shared = closingSpeedShares(a, b, masses, axis);
@@ -262,14 +336,4 @@ function contactKey(a: Racer, b: Racer): string {
 /** The key marking a pair that overlapped while one of them was down and hasn't come apart since. */
 function ghostKey(key: string): string {
   return `~${key}`;
-}
-
-/**
- * What `moveBody` treats as solid beyond the level's tiles for `world`'s medium: whether there is a
- * floor below the last row, and the ready crate tiles when crates are solid.
- *
- * @throws {Error} Always, until lane 1/c implements it.
- */
-export function moveRulesFor(_world: World): MoveRules {
-  throw new Error('moveRulesFor: not implemented');
 }

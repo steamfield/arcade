@@ -8,8 +8,12 @@
  * cut to item cycling while stunned or trapped, and with no kick while the dash meter is empty
  * (`canDash`); each unfinished
  * racer's movement in the medium (`Medium.sampleEnvironment` then `applyIntent`; a squid's latch and
- * an undertow pull it after), dash, trapped drift and movement through the tiles (RACER_IDS order);
- * a dash charge spent for each `racer.kicked` that movement emitted; one pass of separation over unfinished racers when the medium's racers collide; then the phase 3 systems for unfinished
+ * an undertow pull it after), dash, trapped drift and movement through the tiles under the medium's
+ * move rules (`moveRulesFor`), then the medium's `afterMove` with what that movement ran into, then
+ * crates its head hit opened from below (`openClamsFromBelow`; RACER_IDS order);
+ * a dash charge spent for each `racer.kicked` that movement emitted; one pass of separation over
+ * unfinished racers when the medium's racers collide (`racerCollision`: 'solid' along the shallower
+ * overlap, 'horizontal' sideways only, 'ghost' not at all); then the phase 3 systems for unfinished
  * racers only: items (cycle, then use, from intents), projectiles and inks, squids, riptides, decoys, jellies, contacts
  * (hits), pickups (clams, pearls, loose), status counters and dash recharge; then abilities
  * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
@@ -44,7 +48,7 @@ import { LevelError } from './level/parse.ts';
 import { effectiveTuning, mediumById, mediumOf } from './media/index.ts';
 import type { LevelProblem, Medium } from './media/types.ts';
 import { modifiersFor } from './modifiers.ts';
-import { openClams } from './pickups/clams.ts';
+import { openClams, openClamsFromBelow } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
 import { collectLoosePearls, collectPearls } from './pickups/pearls.ts';
 import { canDash, DASH_METER, rechargeDash, spendDash } from './powerups/dash-meter.ts';
@@ -53,7 +57,7 @@ import { selectedSlot, slotItems } from './powerups/inventory.ts';
 import { advanceRiptides } from './powerups/riptides.ts';
 import { applyUndertow } from './powerups/undertow.ts';
 import { driveDash, sustainItems, useItems } from './powerups/use.ts';
-import { moveBody, separateRacers } from './race/collide.ts';
+import { moveBody, moveRulesFor, separateRacers } from './race/collide.ts';
 import { ramCoral } from './race/coral.ts';
 import { buildProgressField } from './race/flowfield.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
@@ -249,8 +253,9 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
     moveRacer(world, medium, racer, dashGated(racer, intents[index] ?? IDLE), modifiersFor(world, racer), dt);
   });
   spendKickedDashes(world);
-  if (medium.racerCollision === 'solid') {
-    separateRacers(racing, world.contacts, world.events, bumpMassFor, (a, b) => onBump(world, a, b));
+  if (medium.racerCollision !== 'ghost') {
+    const pushAxis = medium.racerCollision === 'horizontal' ? 'x' : 'shallowest';
+    separateRacers(racing, world.contacts, world.events, bumpMassFor, (a, b) => onBump(world, a, b), pushAxis);
   }
 
   useItems(world, racing, intents);
@@ -306,7 +311,8 @@ function spendKickedDashes(world: World): void {
 
 /**
  * One racer's velocity for the tick (the medium's response to its intent, then a dash or a trapped
- * drift overriding it), then its move, breaking the coral ahead first when its ability rams through coral.
+ * drift overriding it), then its move, breaking the coral ahead first when its ability rams through
+ * coral; then the medium's `afterMove` and any crates its head hit.
  */
 function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
   const env = medium.sampleEnvironment(world, racer);
@@ -316,7 +322,9 @@ function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, m
   driveDash(world, racer);
   floatTrapped(world, racer);
   if (breaksCoralOnContact(racer)) ramCoral(world, racer, dt);
-  moveBody(racer.body, world.level, world.broken, dt);
+  const contacts = moveBody(racer.body, world.level, world.broken, dt, moveRulesFor(world));
+  medium.afterMove(world, racer, contacts, world.events);
+  openClamsFromBelow(world, racer, contacts);
 }
 
 /**

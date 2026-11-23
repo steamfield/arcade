@@ -9,7 +9,7 @@
  */
 import { overlaps, squareAt } from '../hazards/boxes.ts';
 import { mediumOf } from '../media/index.ts';
-import { moveBody } from '../race/collide.ts';
+import { moveBody, moveRulesFor } from '../race/collide.ts';
 import { activeRacers, hitbox } from '../racers.ts';
 import { type Body, type Decoy, RACER_SIZE, type Racer, type RacerId, TILE, type World } from '../types.ts';
 import { BUBBLE, MIMIC } from './tuning.ts';
@@ -66,7 +66,8 @@ export function advanceDecoys(world: World, dt: number): void {
 }
 
 /**
- * One tick of swimming straight along the medium's way, stopped by walls like any body. A decoy
+ * One tick of swimming straight along the medium's way, stopped by walls like any body under the
+ * medium's move rules (solid crates, an open pit floor). A decoy
  * isn't a body the medium moves, so it follows the aim on both axes in every medium.
  */
 function swimOn(world: World, decoy: Decoy, dt: number): void {
@@ -81,7 +82,7 @@ function swimOn(world: World, decoy: Decoy, dt: number): void {
   const aim = mediumOf(world).aimFrom(world, body, LOOKAHEAD_TILES);
   body.vx = aim.x * MIMIC.speed;
   body.vy = aim.y * MIMIC.speed;
-  moveBody(body, world.level, world.broken, dt);
+  moveBody(body, world.level, world.broken, dt, moveRulesFor(world));
   decoy.x = body.x + body.w / 2;
   decoy.y = body.y + body.h / 2;
   decoy.vx = body.vx;
