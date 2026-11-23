@@ -1,9 +1,11 @@
+import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { chooseItemSlot } from './ai/items.ts';
 import { BOT_PROFILES, PLAYER_PROFILE } from './ai/profiles.ts';
 import { createAiMemory, PROGRESS_BACKSTOP_TICKS, rivalIntent } from './ai/rival.ts';
 import { CHARACTERS } from './characters.ts';
 import { DIFFICULTY } from './difficulty-level.ts';
+import type { GameEvent } from './events.ts';
 import { applyHit } from './hazards/hits.ts';
 import { HIT } from './hazards/tuning.ts';
 import { mediumOf } from './media/index.ts';
@@ -16,8 +18,17 @@ import { fireItem } from './powerups/use.ts';
 import { catchUpTarget } from './race/catch-up.ts';
 import { recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
 import { activeRacers, centreOf } from './racers.ts';
-import { giveItems, placeOnTile, raceOn, racerOf } from './test-world.ts';
-import { type Difficulty, type Intent, RACER_IDS, type RacerId, type RivalProfile, type World } from './types.ts';
+import { courseFromLevel, giveItems, IDLE, placeOnTile, racerOf } from './test-world.ts';
+import {
+  type Difficulty,
+  type Intent,
+  RACER_IDS,
+  type RacerId,
+  type RivalProfile,
+  type TickInput,
+  type World,
+} from './types.ts';
+import { createWorld, stepRace } from './world.ts';
 
 /** Open water with a clam on tile (8, 3), all four racers on the left edge and the finish on the right. */
 const ARENA = `
@@ -46,27 +57,13 @@ const LANES = `
 const ARENA_FINISH_COLUMN = 29;
 
 /**
- * Makes `tess` a second human slot: listed in `world.humans`, driven by input, swimming with the
- * human profile. Stands in for `createWorld(course, log, { humans: ['player', 'tess'] })` until lane
- * 2/a's `createWorld` lands; swap the call for that option after the merge.
- */
-function addHumanTess(world: World): void {
-  world.humans = ['player', 'tess'];
-  const tess = racerOf(world, 'tess');
-  tess.ai = null;
-  tess.profile = { ...PLAYER_PROFILE, id: 'tess' };
-}
-
-/**
- * Hands the human slot `id` to the AI on this tick, as a missing input does. Stands in for
- * `stepRace` with no entry for `id` until lane 2/a's `stepRace` lands; swap the call for that after
- * the merge.
+ * Hands the human slot `id` to the AI the way the game does: one tick of `stepRace` with an input
+ * for every other human and none for `id`.
  */
 function takeOver(world: World, id: RacerId): void {
-  const racer = racerOf(world, id);
-  racer.ai = createAiMemory(mediumOf(world));
-  racer.profile = { id, ...CHARACTERS[racer.character].profile };
-  racer.tookOverAt = world.tick;
+  const inputs: Partial<Record<RacerId, TickInput>> = {};
+  for (const human of world.humans) if (human !== id) inputs[human] = IDLE;
+  stepRace(world, inputs, TICK_DT);
 }
 
 /**
@@ -83,9 +80,15 @@ function scene(
     playerBot,
   }: { twoHumans?: boolean; ascii?: string; playerBot?: RivalProfile } = {},
 ) {
-  const { world } = raceOn(ascii, playerBot ? { playerBot } : {});
+  // Created on the default level and switched after, so the Easy rules can be read for a second
+  // human: createWorld refuses two humans on Easy, but the rule functions must not depend on that.
+  const world = createWorld(courseFromLevel(ascii), new EventLog<GameEvent>(100_000), {
+    seed: 1,
+    ...(twoHumans ? { humans: ['player', 'tess'] as const } : {}),
+    ...(playerBot ? { playerBot } : {}),
+  });
+  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
   world.difficulty = difficulty;
-  if (twoHumans) addHumanTess(world);
   for (const [id, [tx, ty]] of Object.entries(spots) as [RacerId, [number, number]][]) {
     placeOnTile(racerOf(world, id), tx, ty);
   }
