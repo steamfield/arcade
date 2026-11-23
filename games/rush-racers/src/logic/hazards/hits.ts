@@ -44,7 +44,7 @@ export type HitOutcome = 'absorbed' | 'stunned' | 'trapped' | 'knocked';
  *
  * @param by The racer whose item caused it, or null for urchins and jellies.
  * @param from Where the hit came from, in world px (urchin tile centre, jelly centre, bubble, puffer or flasher centre, squid).
- * @returns What the landed hit did, or null when it didn't land.
+ * @returns What the landed hit did, or null when it didn't land (also for a fallen racer).
  * @throws {Error} For a bubble hit with no owner, whether or not it would land: bubbles only come
  * from items, so `by` is always set.
  */
@@ -58,6 +58,8 @@ export function applyHit(
   const blow = blowOf(racer, cause, by);
   if (by !== null && !mayAttack(world, by, racer.id)) return null;
   if (isInvulnerable(racer) || ignoresHazard(racer, cause)) return null;
+  // A racer that fell out of the level is parked below it until it respawns; nothing reaches it there.
+  if (racer.status.fallen > 0) return null;
   world.events.emit({ type: 'racer.hit', id: racer.id, cause, by });
   const outcome = sufferHit(world, racer, blow);
   if (outcome !== 'absorbed') dropPearls(world, racer);
