@@ -18,7 +18,7 @@
  * cell and names the art a theme draws it with (a shipwreck hull that is rock, a sand bar that is
  * kelp). `Level.glyphs` keeps the character written at every tile, so a theme can tell them apart.
  */
-import { type Cell, type Level, type LevelDef, RACER_IDS, type Vec } from '../types.ts';
+import { type Cell, type EnemyKind, type Level, type LevelDef, RACER_IDS, type Vec } from '../types.ts';
 
 /** A course that can't be parsed or raced. `row` and `col` are 0-based and null when the whole level is at fault. */
 export class LevelError extends Error {
@@ -53,9 +53,18 @@ const OBJECTS: ReadonlyMap<string, ObjectList> = new Map([
   ['j', 'jellies'],
 ]);
 
+/** Enemy glyphs; the tile under one is water. */
+const ENEMY_GLYPHS: ReadonlyMap<string, EnemyKind> = new Map([
+  ['S', 'shark'],
+  ['E', 'eel'],
+  ['K', 'crab'],
+]);
+
 const START_DIGITS = '1234';
 const FINISH = 'F';
-const VALID_CHARACTERS = [...TERRAIN.keys(), ...START_DIGITS, FINISH, ...OBJECTS.keys()].join('');
+const VALID_CHARACTERS = [...TERRAIN.keys(), ...START_DIGITS, FINISH, ...OBJECTS.keys(), ...ENEMY_GLYPHS.keys()].join(
+  '',
+);
 const BASE_CELLS: readonly Cell[] = [...TERRAIN.values()];
 
 /** A level's extra glyphs, each to the base cell it behaves as. */
@@ -70,6 +79,7 @@ interface Markers {
   clams: Vec[];
   urchins: Vec[];
   jellies: Vec[];
+  enemies: { kind: EnemyKind; tile: Vec }[];
 }
 
 /**
@@ -83,7 +93,7 @@ export function parseLevel(def: LevelDef): Level {
   const legend = readLegend(def.legend ?? {});
   const rows = readRows(def.ascii);
   const width = requireEqualWidths(rows);
-  const markers: Markers = { starts: [], finishX: null, pearls: [], clams: [], urchins: [], jellies: [] };
+  const markers: Markers = { starts: [], finishX: null, pearls: [], clams: [], urchins: [], jellies: [], enemies: [] };
   const cells = rows.map((row, y) => [...row].map((ch, x) => readTile(ch, x, y, markers, legend)));
 
   return {
@@ -98,6 +108,7 @@ export function parseLevel(def: LevelDef): Level {
     clams: markers.clams,
     urchins: markers.urchins,
     jellies: markers.jellies,
+    enemies: markers.enemies,
     dark: requireDarkZonesOnMap(def.dark ?? [], width),
   };
 }
@@ -155,7 +166,9 @@ function readTile(ch: string, x: number, y: number, markers: Markers, legend: Le
   if (terrain) return terrain;
 
   const objectList = OBJECTS.get(ch);
+  const enemy = ENEMY_GLYPHS.get(ch);
   if (objectList) markers[objectList].push({ x, y });
+  else if (enemy) markers.enemies.push({ kind: enemy, tile: { x, y } });
   else if (START_DIGITS.includes(ch)) recordStart(markers, Number(ch) - 1, x, y);
   else if (ch === FINISH) recordFinish(markers, x, y);
   else throw errorAt(`Unknown tile "${ch}" (expected one of ${VALID_CHARACTERS}${[...legend.keys()].join('')})`, y, x);

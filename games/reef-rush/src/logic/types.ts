@@ -125,6 +125,8 @@ export interface Level {
   clams: Vec[];
   urchins: Vec[];
   jellies: Vec[];
+  /** Enemies placed by glyph (`S` shark, `E` eel, `K` crab), in reading order. The tile underneath is water. */
+  enemies: { kind: EnemyKind; tile: Vec }[];
   dark: [from: number, to: number][];
 }
 
@@ -234,7 +236,11 @@ export interface HeldItem {
 }
 
 /** What hurt a racer. Urchins and jellies have no owner; the rest come from another racer's item. */
-export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash' | 'squid';
+export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash' | 'squid' | EnemyKind;
+
+/** Creatures on the course that a racer can beat with a dash bonk (`hazards/enemies/`). */
+export type EnemyKind = 'shark' | 'eel' | 'crab';
+export const ENEMY_KINDS: readonly EnemyKind[] = ['shark', 'eel', 'crab'];
 
 /**
  * Timed conditions on a racer, each a count of ticks left (0 = off). `tickStatuses` (status.ts)
@@ -261,6 +267,8 @@ export interface RacerStatus {
   latched: number;
   /** Undertow: pulled back along the medium's way to the finish. */
   undertow: number;
+  /** Just dashed (kicked): a dash bonk lands on an enemy touched while this is above 0. */
+  bonking: number;
 }
 
 export interface Racer {
@@ -391,7 +399,7 @@ export interface LoosePearl {
   /** Ticks since it was dropped. */
   age: number;
   /** Who dropped it; that racer can't collect it for a short grace. */
-  droppedBy: RacerId;
+  droppedBy: RacerId | null;
 }
 
 export interface LoosePowerUp {
@@ -466,6 +474,28 @@ export interface Decoy {
   owner: RacerId;
 }
 
+/** What an enemy is doing. Each kind uses its own subset; lane briefs in the v2 plan say which. */
+export type EnemyMode = 'patrol' | 'windup' | 'charge' | 'stagger' | 'hidden' | 'lunge' | 'defeated';
+
+/** One enemy on the course, made from a `level.enemies` entry. */
+export interface Enemy {
+  kind: EnemyKind;
+  /** The tile it was placed on; patrols and lunges are measured from here. */
+  home: Vec;
+  /** Pixel position of its centre. */
+  at: Vec;
+  /** Pixels per second. */
+  vel: Vec;
+  facing: 1 | -1;
+  mode: EnemyMode;
+  /** Ticks spent in `mode` so far. */
+  modeTicks: number;
+  /** Bonks it can still take before it is defeated. */
+  hp: number;
+  /** The racer a shark is winding up for or charging, else null. */
+  target: RacerId | null;
+}
+
 /** A jellyfish bobbing around its home tile. */
 export interface Jelly {
   home: Vec;
@@ -536,6 +566,8 @@ export interface World {
   bubbles: Bubble[];
   /** One per `level.jellies`, same order. */
   jellies: Jelly[];
+  /** One per `level.enemies`, same order; event `index` fields index this list. */
+  enemies: Enemy[];
   /** Homing Squids in flight. */
   squids: Squid[];
   /** Riptide lanes in the water. */

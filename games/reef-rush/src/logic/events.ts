@@ -23,7 +23,7 @@
  * lists the racers given `status.undertow`. `decoy.popped.by` is null when the decoy simply
  * expires.
  */
-import type { HitCause, PowerUpKind, RacerId } from './types.ts';
+import type { EnemyKind, HitCause, PowerUpKind, RacerId } from './types.ts';
 
 export type GameEvent =
   | { type: 'race.countdown'; n: 3 | 2 | 1 }
@@ -43,6 +43,11 @@ export type GameEvent =
   | { type: 'loosePearl.collected'; id: RacerId; total: number }
   | { type: 'pearls.dropped'; id: RacerId; count: number }
   | { type: 'racer.dashRecharged'; id: RacerId; charges: number }
+  | { type: 'enemy.telegraphed'; index: number; kind: EnemyKind }
+  | { type: 'enemy.charged'; index: number; kind: EnemyKind; target: RacerId }
+  | { type: 'enemy.bonked'; index: number; kind: EnemyKind; by: RacerId; hpLeft: number }
+  | { type: 'enemy.defeated'; index: number; kind: EnemyKind; by: RacerId }
+  | { type: 'pearls.burst'; index: number; count: number }
   | { type: 'item.used'; id: RacerId; kind: PowerUpKind; slot: number; chargesLeft: number }
   | { type: 'item.selected'; id: RacerId; slot: number; kind: PowerUpKind }
   | { type: 'ink.spawned'; owner: RacerId }

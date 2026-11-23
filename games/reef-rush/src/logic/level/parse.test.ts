@@ -52,6 +52,17 @@ describe('parseLevel reading tiles', () => {
     expect(parsed.dark).toEqual([]);
   });
 
+  it('reads enemies in reading order, each on open water', () => {
+    const parsed = parseLevel(level('1234SEKF'));
+
+    expect(parsed.enemies).toEqual([
+      { kind: 'shark', tile: { x: 4, y: 0 } },
+      { kind: 'eel', tile: { x: 5, y: 0 } },
+      { kind: 'crab', tile: { x: 6, y: 0 } },
+    ]);
+    expect(parsed.cells).toEqual([Array(8).fill('water')]);
+  });
+
   it('makes start, finish and object tiles open water', () => {
     const parsed = parseLevel(level('1234o?*jF'));
 
@@ -115,7 +126,7 @@ describe('parseLevel reading a legend', () => {
     const error = levelErrorFrom(legendLevel('#1234F\n#.x..F', WRECK_AND_SAND));
 
     expect(error).toMatchObject({ row: 1, col: 2 });
-    expect(error.message).toContain('jws)');
+    expect(error.message).toContain('jSEKws)');
   });
 
   it.each([

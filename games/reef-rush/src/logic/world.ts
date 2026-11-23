@@ -34,6 +34,8 @@ import type { Course } from './courses/types.ts';
 import type { GameEvent } from './events.ts';
 import { assistedIntent, trackGuide } from './guide.ts';
 import { resolveContacts } from './hazards/contacts.ts';
+import { createEnemies, stepEnemies } from './hazards/enemies/index.ts';
+import { ENEMY } from './hazards/enemies/tuning.ts';
 import { moveJellies } from './hazards/jellies.ts';
 import { driftLatched } from './hazards/latch.ts';
 import { advanceProjectiles } from './hazards/projectiles.ts';
@@ -60,6 +62,7 @@ import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
 import {
   type CharacterId,
   type Difficulty,
+  type EnemyKind,
   type Intent,
   type Level,
   type MoveModifiers,
@@ -140,6 +143,7 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     inks: [],
     bubbles: [],
     jellies: level.jellies.map((home) => ({ home: { ...home }, phase: 0, stunned: 0 })),
+    enemies: createEnemies(level),
     squids: [],
     riptides: [],
     decoys: [],
@@ -253,6 +257,7 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   advanceRiptides(world);
   advanceDecoys(world, dt);
   moveJellies(world);
+  stepEnemies(world, racing);
   resolveContacts(world, racing);
   openClams(world, racing);
   collectPearls(world, racing);
@@ -282,12 +287,17 @@ function dashGated(racer: Racer, intent: Intent): Intent {
   return intent.kick && !canDash(racer) ? { ...intent, kick: false } : intent;
 }
 
-/** Spends a dash charge for every `racer.kicked` emitted this tick (the movement loop's kicks). */
+/**
+ * Spends a dash charge for every `racer.kicked` emitted this tick (the movement loop's kicks), and
+ * opens that racer's bonk window (`status.bonking`) for enemies.
+ */
 function spendKickedDashes(world: World): void {
   for (const event of world.recentEvents) {
     if (event.type !== 'racer.kicked') continue;
     const racer = world.racers.find((candidate) => candidate.id === event.id);
-    if (racer) spendDash(world, racer);
+    if (!racer) continue;
+    spendDash(world, racer);
+    racer.status.bonking = ENEMY.bonkTicks;
   }
 }
 
@@ -351,10 +361,13 @@ function pixelTileKey({ x, y }: { x: number; y: number }): string {
   return `${Math.floor(x / TILE)},${Math.floor(y / TILE)}`;
 }
 
+const ENEMY_CHARS: Record<EnemyKind, string> = { shark: 'S', eel: 'E', crab: 'K' };
+
 /**
  * Characters for things on the course, by "x,y" tile: `*` urchin, `o` pearl still in play,
  * `?` clam ready to open, `_` clam shut after opening, `j` jelly (at its home tile), `m` Mimic decoy,
- * `s` Homing Squid (the last two at the tile holding their centre), and `o` for a loose pearl too.
+ * `s` Homing Squid (the last two at the tile holding their centre), `o` for a loose pearl too, and
+ * enemies still in play as `S` shark, `E` eel, `K` crab at the tile holding their centre.
  * Later entries win, so a jelly shows over the tile it bobs around.
  */
 function itemChars(world: World): Map<string, string> {
@@ -369,6 +382,9 @@ function itemChars(world: World): Map<string, string> {
     ...world.decoys.map((decoy): [string, string] => [pixelTileKey(decoy), 'm']),
     ...world.squids.map((squid): [string, string] => [pixelTileKey(squid), 's']),
     ...world.loosePearls.map(({ at }): [string, string] => [pixelTileKey(at), 'o']),
+    ...world.enemies
+      .filter((enemy) => enemy.mode !== 'defeated')
+      .map((enemy): [string, string] => [pixelTileKey(enemy.at), ENEMY_CHARS[enemy.kind]]),
   ]);
 }
 
