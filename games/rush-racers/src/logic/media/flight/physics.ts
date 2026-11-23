@@ -4,9 +4,8 @@
  * (`move.y < -0.5`) flaps, Up held caps the fall (a glide), Down held dives, and letting go of Down
  * carries the dive into forward speed. Left and right steer toward a cruise speed with momentum. The
  * dash is a forward burst that pops puff clouds for a few ticks (`flightRamsCoral`). Wind cells push
- * along their arrow and fog lowers cruise.
- *
- * Scaffold baseline: phase 1 lane a replaces the body of this file behind the same exports.
+ * along their arrow and fog lowers cruise. Every number comes from the `tuning` passed in (the
+ * world's effective tuning), so a course's overrides and Easy's lighter gravity apply.
  */
 import type { EventSink } from '@arcade/core';
 import { jumpMulFor } from '../../abilities.ts';
@@ -22,9 +21,17 @@ const DOWN_THRESHOLD = 0.5;
 /** How much of forceMul's deviation from 1 reaches horizontal acceleration and cruise: 1.4 flies 20 % faster. */
 const FORCE_SHARE = 0.5;
 
-/** Fresh motion state for a flyer at its start. */
-export function createFlightMotion(_body: Body): FlightMotion {
-  return { kind: 'flight', upWasHeld: false, flapCooldown: 0, diving: false, dashWindow: 0 };
+/** Fresh motion state for a flyer at its start, which is its first safe spot. */
+export function createFlightMotion(body: Body): FlightMotion {
+  return {
+    kind: 'flight',
+    upWasHeld: false,
+    flapCooldown: 0,
+    diving: false,
+    dashWindow: 0,
+    lastSafe: { x: body.x, y: body.y },
+    parkedAt: { x: body.x, y: body.y },
+  };
 }
 
 /**
@@ -53,17 +60,14 @@ export function applyFlightIntent(
   if (motion.flapCooldown > 0) motion.flapCooldown -= 1;
   if (motion.dashWindow > 0) motion.dashWindow -= 1;
   if (racer.status.fallen > 0) {
-    body.vx = 0;
-    body.vy = 0;
-    motion.dashWindow = 0;
-    coolDownKick(racer);
+    park(racer, motion);
     return;
   }
   const upHeld = intent.move.y < UP_THRESHOLD;
   const downHeld = intent.move.y > DOWN_THRESHOLD;
   const pressed = upHeld && !motion.upWasHeld;
   motion.upWasHeld = upHeld;
-  const carry = motion.diving && !downHeld ? Math.max(0, body.vy) * extra.diveCarry : 0;
+  const carry = diveCarryOnRelease(motion, body.vy, downHeld, extra);
   motion.diving = downHeld;
   updateFacing(racer, intent.move.x);
 
@@ -118,6 +122,23 @@ export function flightExtra(tuning: MediumTuning): FlightExtra {
   return Object.fromEntries(entries) as FlightExtra;
 }
 
+/** A fallen flyer waits out of sight: no velocity, so no gravity carries it further, and no dash window. */
+function park(racer: Racer, motion: FlightMotion): void {
+  racer.body.vx = 0;
+  racer.body.vy = 0;
+  motion.dashWindow = 0;
+  coolDownKick(racer);
+}
+
+/**
+ * Forward speed, px/s, a dive hands on: `diveCarry` of the downward speed `vy` on the tick Down is
+ * let go after a dive, else 0.
+ */
+function diveCarryOnRelease(motion: FlightMotion, vy: number, downHeld: boolean, extra: FlightExtra): number {
+  if (!motion.diving || downHeld) return 0;
+  return Math.max(0, vy) * extra.diveCarry;
+}
+
 /** Faces the way the flyer is steering; no horizontal input keeps the old facing. */
 function updateFacing(racer: Racer, moveX: number): void {
   if (moveX > 0) racer.facing = 1;
@@ -154,15 +175,19 @@ function cruise(
 
 /**
  * Gravity, or the dive's pull while Down is held, plus any updraft or downdraft, with the fall
- * capped at `diveMaxFall` diving, `glideFall` with Up held and `maxFall` otherwise.
+ * capped at `diveMaxFall` diving, `glideFall` with Up held and `maxFall` otherwise. An updraft
+ * stronger than gravity never lifts a flyer faster than `maxFall`; a rise already faster than that
+ * is left alone.
  */
 function fall(body: Body, upHeld: boolean, downHeld: boolean, air: FlightEnv, extra: FlightExtra, dt: number): void {
   const draft = (air.wind?.y ?? 0) * extra.draftForce;
   const pull = downHeld ? extra.diveAccel : extra.gravity;
   const cap = downHeld ? extra.diveMaxFall : upHeld ? extra.glideFall : extra.maxFall;
-  body.vy = Math.min(cap, body.vy + (pull + draft) * dt);
+  const fastestRise = Math.min(body.vy, -extra.maxFall);
+  body.vy = Math.max(fastestRise, Math.min(cap, body.vy + (pull + draft) * dt));
 }
 
+/** Sets the flyer rising at least `flapLift` times its jump multiplier, starts the flap cooldown and emits `racer.flapped`. */
 function flap(racer: Racer, motion: FlightMotion, extra: FlightExtra, events: EventSink<GameEvent>): void {
   racer.body.vy = Math.min(racer.body.vy, -extra.flapLift * jumpMulFor(racer));
   motion.flapCooldown = extra.flapCooldownTicks;
@@ -194,6 +219,7 @@ function coolDownKick(racer: Racer): void {
   if (racer.kickCooldown > 0) racer.kickCooldown -= 1;
 }
 
+/** `value` moved toward `target` by at most `step`, never past it. */
 function approach(value: number, target: number, step: number): number {
   if (value < target) return Math.min(target, value + step);
   return Math.max(target, value - step);
