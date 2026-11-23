@@ -20,6 +20,8 @@ export interface ScenarioStart {
   /** Launch parameter ?scene= */
   scene?: string;
   seed?: number;
+  /** Extra launch parameters, e.g. `{ stage: 'guide' }` for a game's debug-gated `?stage=`. */
+  query?: Record<string, string>;
 }
 
 export interface ScenarioResult {

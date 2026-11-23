@@ -7,6 +7,7 @@ import { findGame, listGames, UsageError } from './games.ts';
 import { newGame } from './new-game.ts';
 import { see } from './see.ts';
 import { smoke } from './smoke.ts';
+import { testGame } from './test.ts';
 
 const HELP = `arcade: build, check and see games in this repo
 
@@ -14,18 +15,25 @@ const HELP = `arcade: build, check and see games in this repo
       Typecheck, lint and unit tests. With a slug: that game plus every package changed since
       HEAD and all their dependents. Prints one line when everything passes.
 
+  pnpm arcade test <slug> [paths...] [-t <name pattern>]
+      Only the game's unit tests (Vitest), narrowed to files, folders or a test name. For the
+      inner loop; run check before handing back. Paths may be repo- or game-relative.
+
   pnpm arcade see <slug> [options]
       Run the game headlessly to an exact state and capture it. Writes to .arcade/runs/latest/:
       frame-<tick>.png (frames.png contact sheet for several), state.json, events.jsonl,
       console.log, summary.txt. Prints the summary.
         --scenario <name>   play scenarios/<name>.ts and check its expectations
         --input "<steps>"   right*30 = hold 30 ticks, jump = tap, right+jump*10 = chord, _*20 = wait
-        --at 0,30,end       capture at these ticks (default: end)
+        --at 0,30,end       capture at these ticks (default: end); ticks past the input wait idle
         --seed <n>  --scene <name>  --debug  --mobile (phone viewport + touch controls)
+        --query k=v         extra launch parameter, repeatable (e.g. --query stage=guide)
         --ascii             print the tile map as text (games that expose debugState().ascii)
         --field <path>      print one value from debugState(), e.g. --field world.player
         --events <type>     list events with their ticks ("all", or a prefix like "player")
         --crop x,y,w,h      zoom the captured frames into a region
+        --out <dir>         write the run to <dir> (kept; .arcade/runs keeps only the last 50)
+        --compare <dir>     diff each frame against <dir>/frame-<tick>.png; writes diff-<tick>.png
 
   pnpm arcade smoke [slug]
       Production build, assemble into dist/, serve with wrangler dev, run each game's Playwright
@@ -53,6 +61,10 @@ async function main(argv: string[]): Promise<number> {
       at: { type: 'string' },
       seed: { type: 'string' },
       scene: { type: 'string' },
+      query: { type: 'string', multiple: true },
+      out: { type: 'string' },
+      compare: { type: 'string' },
+      'test-name': { type: 'string', short: 't' },
       debug: { type: 'boolean', default: false },
       mobile: { type: 'boolean', default: false },
       ascii: { type: 'boolean', default: false },
@@ -79,6 +91,11 @@ async function main(argv: string[]): Promise<number> {
   switch (command) {
     case 'check':
       return check(slug, { all: values.all });
+    case 'test':
+      return testGame(requireSlug(), [
+        ...positionals.slice(1),
+        ...(values['test-name'] !== undefined ? ['-t', values['test-name']] : []),
+      ]);
     case 'see':
       return see(requireSlug(), {
         debug: values.debug,
@@ -89,6 +106,9 @@ async function main(argv: string[]): Promise<number> {
         ...(values.at !== undefined && { at: values.at }),
         ...(values.seed !== undefined && { seed: values.seed }),
         ...(values.scene !== undefined && { scene: values.scene }),
+        ...(values.query !== undefined && { query: values.query }),
+        ...(values.out !== undefined && { out: values.out }),
+        ...(values.compare !== undefined && { compare: values.compare }),
         ...(values.field !== undefined && { field: values.field }),
         ...(values.crop !== undefined && { crop: values.crop }),
         ...(values.events !== undefined && { events: values.events }),

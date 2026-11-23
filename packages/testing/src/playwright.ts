@@ -44,6 +44,7 @@ export async function defineScenarioTests(dir: URL): Promise<void> {
       await game.open({
         ...(scenario.start?.seed !== undefined && { seed: scenario.start.seed }),
         ...(scenario.start?.scene !== undefined && { scene: scenario.start.scene }),
+        ...(scenario.start?.query !== undefined && { query: scenario.start.query }),
       });
       const result = await game.runScenario(scenario);
       await scenario.expect?.(result);

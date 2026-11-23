@@ -150,6 +150,7 @@ Play sounds from logic events (drain the `EventLog`, see `game-feel`), never fro
 
 - `debugSummary()` is small and stable: scene, status, counts, the player's tile. It's printed by `arcade see` and asserted in scenarios.
 - `debugState()` can be big: full logic state plus `ascii` for tile games (`toAscii(world)`), which `arcade see --ascii` prints.
+- Debug stages make rare moments reviewable: `?stage=<name>`, honoured only with `?debug=1` or in test mode, writes plain world state right after the world is built (an item in the player's stack, a rival mid-attack, the player at a hard spot) and marks the run so it never saves. Keep the gate a pure function of the launch params and the stage names in one exported list, as in `games/reef-rush/src/engine/debug-stage.ts`. A stage that needs a level feature throws an error naming it when the level has none. Scenarios reach a stage with `start.query`, and `arcade see` with `--query stage=<name>`. Add a stage whenever a new level or feature has a moment a seed rarely reaches.
 - `?debug=1` (`ctx.params.debug`) shows an overlay: hitboxes from logic state, tick and tile. Draw it from logic data, not from Phaser bodies, so it shows what logic believes.
 
 ## 8. Pitfalls seen in practice
