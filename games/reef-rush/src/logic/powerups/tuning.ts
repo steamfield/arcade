@@ -25,6 +25,12 @@ export const DASH = { ticks: 24, speed: 200 } as const;
  */
 export const CANNONBALL = { ticks: 75, speed: DASH.speed * 1.25 } as const;
 
+/**
+ * The kinds that break coral when fired (they inflate): rivals fire them first when coral is just
+ * ahead, and steer through coral while holding one.
+ */
+export const CORAL_BREAKERS: readonly PowerUpKind[] = ['puffer', 'cannonball'];
+
 /** Bubble Shield use: a bubble fired along the input (or facing) that traps the first other racer it touches. */
 export const BUBBLE = {
   speed: 150,

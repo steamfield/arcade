@@ -320,10 +320,10 @@ describe('Selene: Moonlight', () => {
   it('shrugs off jelly stings but not urchins', () => {
     const { world, log, player } = raceAs('selene');
 
-    expect(applyHit(world, player, 'jelly', null, tileCentre(9, 1))).toBe(false);
+    expect(applyHit(world, player, 'jelly', null, tileCentre(9, 1))).toBeNull();
     expect(player.status).toMatchObject({ stunned: 0, invulnerable: 0 });
     expect(eventsIn(log)).toEqual([]);
-    expect(applyHit(world, player, 'urchin', null, tileCentre(20, 3))).toBe(true);
+    expect(applyHit(world, player, 'urchin', null, tileCentre(20, 3))).toBe('stunned');
   });
 
   it('swims through a jelly that stings anyone else', () => {

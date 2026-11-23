@@ -4,10 +4,12 @@
  * stamps. Test-only; nothing in the game imports it.
  */
 import { EventLog, TICK_DT } from '@arcade/core';
+import { stackMaxFor } from './abilities.ts';
 import { registerCourse } from './courses/index.ts';
 import type { Course } from './courses/types.ts';
 import type { GameEvent } from './events.ts';
 import { CHARGES } from './powerups/charges.ts';
+import { setItems } from './powerups/inventory.ts';
 import {
   type HeldItem,
   type LevelDef,
@@ -80,14 +82,16 @@ export function racerOf(world: World, id: RacerId): Racer {
 /**
  * Fills `racer`'s slots from the left: a kind (with its `CHARGES`), a `HeldItem`, or null for an
  * empty slot. Slots past the list are emptied. Selects `selected`.
+ *
+ * @throws {Error} As `setItems` does: a kind given twice, or `selected` on an empty slot.
  */
 export function giveItems(racer: Racer, items: readonly (PowerUpKind | HeldItem | null)[], selected = 0): void {
-  racer.items = racer.items.map((_, slot) => {
+  const slots = Array.from({ length: stackMaxFor(racer) }, (_, slot): HeldItem | null => {
     const item = items[slot] ?? null;
     if (item === null) return null;
-    return typeof item === 'string' ? { kind: item, charges: CHARGES[item] } : { ...item };
+    return typeof item === 'string' ? { kind: item, charges: CHARGES[item] } : item;
   });
-  racer.selected = selected;
+  setItems(racer, slots, selected);
 }
 
 /** Centre of tile (tx, ty) in world px. */

@@ -7,11 +7,56 @@
  * slot moves the selection to the next held slot to the right, wrapping, and leaves it put when
  * nothing is held.
  */
+import { stackMaxFor } from '../abilities.ts';
 import type { HeldItem, PowerUpKind, Racer, World } from '../types.ts';
 
 /** The item in the selected slot, or null when nothing is held. */
 export function selectedItem(racer: Racer): HeldItem | null {
-  return racer.items[racer.selected] ?? null;
+  return itemAt(racer, racer.selected);
+}
+
+/** The selected slot's index. It points at a held slot whenever anything is held. */
+export function selectedSlot(racer: Racer): number {
+  return racer.selected;
+}
+
+/** The item in `slot`, or null for an empty or out-of-range slot. */
+export function itemAt(racer: Racer, slot: number): HeldItem | null {
+  return racer.items[slot] ?? null;
+}
+
+/** Every slot in order, a held item or null, for readers that lay out the slots (HUD, summary). */
+export function slotItems(racer: Racer): readonly (HeldItem | null)[] {
+  return racer.items;
+}
+
+/** The first slot whose held item satisfies `pred`, or -1. Empty slots are never offered to `pred`. */
+export function firstSlotWhere(racer: Racer, pred: (item: HeldItem, slot: number) => boolean): number {
+  return racer.items.findIndex((item, slot) => item !== null && pred(item, slot));
+}
+
+/**
+ * Replaces the whole inventory with copies of `items` and selects `selected`. For staging a race
+ * (tests, debug stages); play changes the inventory only by gaining, cycling, spending and hits.
+ *
+ * @throws {Error} When `items` isn't `stackMaxFor(racer)` long, holds a kind twice, or `selected` is an
+ *   empty or out-of-range slot while anything is held.
+ */
+export function setItems(racer: Racer, items: readonly (HeldItem | null)[], selected: number): void {
+  const slots = stackMaxFor(racer);
+  if (items.length !== slots) {
+    throw new Error(`setItems for '${racer.id}' got ${items.length} slots; ${racer.character} has ${slots}`);
+  }
+  const kinds = items.flatMap((item) => (item ? [item.kind] : []));
+  const repeated = kinds.find((kind, i) => kinds.indexOf(kind) !== i);
+  if (repeated !== undefined) {
+    throw new Error(`setItems for '${racer.id}' holds '${repeated}' twice (${kinds.join(', ')}); a kind is held once`);
+  }
+  if (kinds.length > 0 && !items[selected]) {
+    throw new Error(`setItems for '${racer.id}' selects slot ${selected}, which is empty; select a held slot`);
+  }
+  racer.items = items.map((item) => (item ? { ...item } : null));
+  racer.selected = selected;
 }
 
 /** Every held item, in slot order. */
@@ -85,20 +130,26 @@ export function spendCharge(world: World, racer: Racer, slot: number): void {
 }
 
 /**
- * Removes what a hit takes. A Bubble Shield in any slot absorbs it: that slot empties and
- * `shield.popped` is emitted. Otherwise the selected item and all its charges come off, emitting
- * `powerup.lost {cause: 'hit'}`. Either way the selection moves on as for a used-up item. `applyHit`
- * floats a knocked item loose and stuns a racer who held nothing.
+ * Pops a Bubble Shield held in any slot: empties that slot, moves the selection on as for a used-up
+ * item, and emits `shield.popped`.
  *
- * @returns The item removed (a Bubble Shield when one absorbed the hit), or null when nothing is held.
+ * @returns true when a shield was popped; false, changing nothing, when none is held.
  */
-export function knockForHit(world: World, racer: Racer): HeldItem | null {
-  const shieldSlot = racer.items.findIndex((item) => item?.kind === 'bubbleShield');
-  if (shieldSlot >= 0) {
-    const shield = emptySlot(racer, shieldSlot);
-    world.events.emit({ type: 'shield.popped', id: racer.id });
-    return shield;
-  }
+export function popShield(world: World, racer: Racer): boolean {
+  const shieldSlot = firstSlotWhere(racer, (item) => item.kind === 'bubbleShield');
+  if (shieldSlot < 0) return false;
+  emptySlot(racer, shieldSlot);
+  world.events.emit({ type: 'shield.popped', id: racer.id });
+  return true;
+}
+
+/**
+ * Knocks the selected item and all its charges off, emitting `powerup.lost {cause: 'hit'}`, and moves
+ * the selection on as for a used-up item. `applyHit` floats the item loose.
+ *
+ * @returns The item knocked off, or null (nothing changed or emitted) when nothing is held.
+ */
+export function knockSelected(world: World, racer: Racer): HeldItem | null {
   const knocked = emptySlot(racer, racer.selected);
   if (knocked) world.events.emit({ type: 'powerup.lost', id: racer.id, kind: knocked.kind, cause: 'hit' });
   return knocked;

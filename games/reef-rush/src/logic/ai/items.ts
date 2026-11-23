@@ -12,7 +12,9 @@ import { itemAggressionMul, mayAttack } from '../difficulty-level.ts';
 import { pickSquidTarget } from '../hazards/squid-target.ts';
 import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
-import { CLAM, FLASH } from '../powerups/tuning.ts';
+import { firstSlotWhere, itemAt } from '../powerups/inventory.ts';
+import { CLAM, CORAL_BREAKERS, FLASH } from '../powerups/tuning.ts';
+import { canFire } from '../powerups/use.ts';
 import { activeRacers, centreOf, playerOf } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
 import { hasClearSweep, tileOf } from './steer.ts';
@@ -50,12 +52,6 @@ export const ITEM_USE = {
   jetChanceMul: 0.02,
 } as const;
 
-/** The kinds that break coral when fired, and so come first when coral is just ahead. */
-const CORAL_BREAKERS: readonly PowerUpKind[] = ['puffer', 'cannonball'];
-
-/** The kinds that start a dash, so `fireItem` turns them down while one is running. */
-const DASHERS: readonly PowerUpKind[] = ['jetFin', 'cannonball'];
-
 /**
  * The slot the racer fires this tick, or null. Null when its item use is cooling down or nothing held
  * has a use. The slot is the first holding a Puffer or Cannonball when coral is just ahead
@@ -78,28 +74,21 @@ export function chooseItemSlot(world: World, racer: Racer, aim: Vec, roll: numbe
   const coral = pufferHasCoral(world, racer);
   const breaker = coral ? slotHolding(racer, CORAL_BREAKERS) : -1;
   const slot = breaker >= 0 ? breaker : slotWithUse(world, racer, aim);
-  const kind = racer.items[slot]?.kind;
+  const kind = itemAt(racer, slot)?.kind;
   if (kind === undefined) return null;
   const aggression = racer.profile.itemAggression * itemAggressionMul(world, racer);
   const dashes = kind === 'jetFin' || (kind === 'cannonball' && !coral);
   return roll < aggression * (dashes ? ITEM_USE.jetChanceMul : 1) ? slot : null;
 }
 
-/** The first slot holding one of `kinds` that can fire now, or -1. */
+/** The first slot holding one of `kinds` that can fire now (`canFire`), or -1. */
 function slotHolding(racer: Racer, kinds: readonly PowerUpKind[]): number {
-  return racer.items.findIndex((item) => item !== null && kinds.includes(item.kind) && firesNow(racer, item.kind));
+  return firstSlotWhere(racer, (item, slot) => kinds.includes(item.kind) && canFire(racer, slot));
 }
 
-/** The first held slot whose kind can fire now and has a use this tick, or -1. */
+/** The first held slot that can fire now (`canFire`) and whose kind has a use this tick, or -1. */
 function slotWithUse(world: World, racer: Racer, aim: Vec): number {
-  return racer.items.findIndex(
-    (item) => item !== null && firesNow(racer, item.kind) && hasUse(world, racer, aim, item.kind),
-  );
-}
-
-/** False for a dash item while a dash is running, which `fireItem` would turn down. */
-function firesNow(racer: Racer, kind: PowerUpKind): boolean {
-  return !(DASHERS.includes(kind) && racer.status.dashing > 0);
+  return firstSlotWhere(racer, (item, slot) => canFire(racer, slot) && hasUse(world, racer, aim, item.kind));
 }
 
 function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolean {

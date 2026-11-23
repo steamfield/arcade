@@ -8,6 +8,7 @@
 import { popDecoy } from '../powerups/decoys.ts';
 import { BUBBLE, FLASH } from '../powerups/tuning.ts';
 import { activeRacers, centreOf, hitbox } from '../racers.ts';
+import { isInvulnerable } from '../status.ts';
 import { type Box, type Racer, TILE, type Vec, type World } from '../types.ts';
 import { overlaps, squareAt } from './boxes.ts';
 import { applyHit } from './hits.ts';
@@ -78,7 +79,7 @@ function touchJellies(world: World, racer: Racer, box: Box): void {
 }
 
 function touchBubbles(world: World, racer: Racer, box: Box): void {
-  if (racer.status.invulnerable > 0) return;
+  if (isInvulnerable(racer)) return;
   const bubble = world.bubbles.find(
     (candidate) => candidate.owner !== racer.id && overlaps(box, squareAt(candidate, BUBBLE.size)),
   );

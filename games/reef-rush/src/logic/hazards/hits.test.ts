@@ -31,7 +31,7 @@ describe('a hit on a racer holding nothing', () => {
   it('stuns the racer for 50 ticks, shortened by its ability (the default Rudy shakes it off)', () => {
     const { log, player, hit } = setup();
 
-    expect(hit()).toBe(true);
+    expect(hit()).toBe('stunned');
 
     expect(player.status.stunned).toBe(Math.round(HIT.stunTicks * ABILITY.shakeItOff.statusMul));
     expect(eventsIn(log)).toEqual([
@@ -49,7 +49,7 @@ describe('invulnerability', () => {
     const after = { items: structuredClone(player.items), events: eventsIn(log).length };
 
     expect(player.status.invulnerable).toBe(60);
-    expect(hit()).toBe(false);
+    expect(hit()).toBeNull();
 
     expect(player.items).toEqual(after.items);
     expect(eventsIn(log)).toHaveLength(after.events);
@@ -62,7 +62,7 @@ describe('invulnerability', () => {
     hit();
 
     expect(player.status.invulnerable).toBe(60);
-    expect(hit()).toBe(false);
+    expect(hit()).toBeNull();
   });
 
   it('runs out after 60 ticks, when hits land again', () => {
@@ -70,9 +70,9 @@ describe('invulnerability', () => {
     hit();
 
     step(world, log, 59);
-    expect(hit()).toBe(false);
+    expect(hit()).toBeNull();
     step(world, log, 1);
-    expect(hit()).toBe(true);
+    expect(hit()).toBe('stunned');
   });
 });
 

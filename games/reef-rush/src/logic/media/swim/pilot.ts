@@ -18,6 +18,7 @@ import { steerDirection } from '../../ai/steer.ts';
 import { inDark } from '../../level/query.ts';
 import { cos, length, sin } from '../../num.ts';
 import { holds } from '../../powerups/inventory.ts';
+import { CORAL_BREAKERS } from '../../powerups/tuning.ts';
 import type { MoveModifiers, Racer, Vec, World } from '../../types.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { type SwimPilot, swimNav, swimPilot } from './data.ts';
@@ -102,18 +103,14 @@ function replanAim(world: World, racer: Racer, memory: SwimPilot, reactionMul: n
   if (memory.replanIn <= 0) {
     const { level, broken } = world;
     const nav = swimNav(world.nav);
-    const pufferReady = racer.status.inflated > 0 || (holdsCoralBreaker(racer) && racer.useCooldown === 0);
+    const holdsBreaker = CORAL_BREAKERS.some((kind) => holds(racer, kind));
+    const pufferReady = racer.status.inflated > 0 || (holdsBreaker && racer.useCooldown === 0);
     const rams = breaksCoralOnContact(racer);
     const field = rams ? nav.ram : pufferReady ? nav.smash : nav.steer;
     memory.aim = steerDirection(field, nav, level, broken, racer.body, LOOKAHEAD_TILES, rams || pufferReady);
     memory.replanIn = racer.profile.reactionTicks * reactionMul;
   }
   memory.replanIn--;
-}
-
-/** True when the racer holds a Puffer or Cannonball in any slot. */
-function holdsCoralBreaker(racer: Racer): boolean {
-  return holds(racer, 'puffer') || holds(racer, 'cannonball');
 }
 
 /** One step of the bounded random walk on the steering angle. */

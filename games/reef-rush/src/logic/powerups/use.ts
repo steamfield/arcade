@@ -5,8 +5,9 @@
  * Per-kind effects of `fireItem` (tuning in `powerups/tuning.ts`). "Aim" is the unit input, or
  * facing when there is none.
  * - jetFin: a boost. `status.dashing = DASH.ticks` at DASH.speed along the aim, held by `driveDash`.
- * - cannonball: a dash of CANNONBALL.ticks at CANNONBALL.speed, inflated and invulnerable for its
- *   whole length, so it breaks coral and hits the racers it touches and no hit ends it.
+ * - cannonball: a dash of CANNONBALL.ticks at CANNONBALL.speed, inflated and immune to hits for its
+ *   whole length (`status.cannonball`, see `isInvulnerable`), so it breaks coral and hits the racers
+ *   it touches and no hit ends it.
  * - bubbleShield: a trap bubble moving BUBBLE.speed along the aim (`bubble.spawned`).
  * - puffer: inflates for INFLATE.ticks, never shortening a longer inflation.
  * - inkSac: one ink cloud INK.behind px behind the racer (`ink.spawned`).
@@ -27,13 +28,21 @@ import { breakCoral } from '../race/coral.ts';
 import { centreOf, hitbox } from '../racers.ts';
 import type { Intent, PowerUpKind, Racer, Vec, World } from '../types.ts';
 import { spawnDecoy } from './decoys.ts';
-import { cycleSelection, selectSlot, spendCharge } from './inventory.ts';
+import { cycleSelection, itemAt, selectedSlot, selectSlot, spendCharge } from './inventory.ts';
 import { layRiptide } from './riptides.ts';
 import { BUBBLE, CANNONBALL, DASH, INFLATE, INK, USE_COOLDOWN_TICKS } from './tuning.ts';
 import { fireUndertow } from './undertow.ts';
 
-/** The kinds that start a dash, and so can't fire while one is running. */
-const DASHING_KINDS: readonly PowerUpKind[] = ['jetFin', 'cannonball'];
+/**
+ * True when `fireItem` would fire `slot` now: the slot holds an item, the use cooldown is 0, and it
+ * isn't Jet Fins or a Cannonball while a dash is running.
+ */
+export function canFire(racer: Racer, slot: number): boolean {
+  const item = itemAt(racer, slot);
+  if (!item || racer.useCooldown > 0) return false;
+  const startsDash = item.kind === 'jetFin' || item.kind === 'cannonball';
+  return !(startsDash && racer.status.dashing > 0);
+}
 
 /**
  * The items slot of `stepWorld`. For each racer: a `cycle` moves its selection first, then a
@@ -46,7 +55,7 @@ export function useItems(world: World, racers: readonly Racer[], intents: readon
     if (!intent) return;
     if (intent.cycle !== 0) cycleSelection(world, racer, intent.cycle);
     if (intent.useSlot !== undefined) fireItem(world, racer, intent.useSlot, intent.move);
-    else if (intent.use) fireItem(world, racer, racer.selected, intent.move);
+    else if (intent.use) fireItem(world, racer, selectedSlot(racer), intent.move);
   });
 }
 
@@ -56,13 +65,11 @@ export function useItems(world: World, racers: readonly Racer[], intents: readon
  * spends one charge (`spendCharge`, which empties the slot at 0).
  *
  * @param move The racer's input this tick; it aims dashes, bubbles, squids and lanes.
- * @returns true when it fired; false, changing nothing and emitting nothing, when the slot is empty
- *   or out of range, the cooldown is running, or a dashing kind is pressed mid-dash.
+ * @returns true when it fired; false, changing nothing and emitting nothing, when `canFire` says no.
  */
 export function fireItem(world: World, racer: Racer, slot: number, move: Vec): boolean {
-  const item = racer.items[slot];
-  if (!item || racer.useCooldown > 0) return false;
-  if (DASHING_KINDS.includes(item.kind) && racer.status.dashing > 0) return false;
+  const item = itemAt(racer, slot);
+  if (!item || !canFire(racer, slot)) return false;
   selectSlot(world, racer, slot);
   racer.useCooldown = USE_COOLDOWN_TICKS;
   world.events.emit({ type: 'item.used', id: racer.id, kind: item.kind, slot, chargesLeft: item.charges - 1 });
@@ -144,7 +151,7 @@ function startDash(world: World, racer: Racer, aim: Vec, dash: { ticks: number; 
 function fireCannonball(world: World, racer: Racer, aim: Vec): void {
   startDash(world, racer, aim, CANNONBALL);
   racer.status.inflated = Math.max(racer.status.inflated, CANNONBALL.ticks);
-  racer.status.invulnerable = Math.max(racer.status.invulnerable, CANNONBALL.ticks);
+  racer.status.cannonball = CANNONBALL.ticks;
 }
 
 function fireBubble(world: World, racer: Racer, aim: Vec): void {

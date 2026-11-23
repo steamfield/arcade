@@ -26,7 +26,6 @@ import { isSolid } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { cos, length, sin } from '../num.ts';
 import { popDecoy } from '../powerups/decoys.ts';
-import { holds } from '../powerups/inventory.ts';
 import { SQUID } from '../powerups/tuning.ts';
 import { centreOf, hitbox } from '../racers.ts';
 import {
@@ -221,14 +220,14 @@ function touchSomething(world: World, racers: readonly Racer[], squid: Squid): b
     (racer) => racer.id !== squid.owner && racer.id !== squid.dodgedBy && overlaps(box, hitbox(racer)),
   );
   if (!victim) return false;
-  const shielded = holds(victim, 'bubbleShield');
-  if (!applyHit(world, victim, 'squid', squid.owner, squid)) {
+  const outcome = applyHit(world, victim, 'squid', squid.owner, squid);
+  if (outcome === null) {
     // Passing through an invulnerable racer drops the lock, like a dodge: it never turns back for it.
     squid.target = null;
     squid.dodgedBy = victim.id;
     return false;
   }
-  if (shielded) return lose(world, squid);
+  if (outcome === 'absorbed') return lose(world, squid);
   latch(world, victim, squid);
   return true;
 }
