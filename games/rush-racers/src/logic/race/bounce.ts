@@ -2,10 +2,10 @@
  * Bounce clouds (`B`): a racer coming down onto one leaves upward at the medium's
  * `effects.bounceSpeed`. To the tiles a bounce cloud is rock (`isRockLike`), so meeting one from the
  * side or below just blocks; only a floor contact springs.
- *
- * Scaffold stub: cloudreach phase 2 lane a fills it in. Until then nobody bounces.
  */
-import type { MoveContacts, Racer, World } from '../types.ts';
+import { bodyTiles, cellAt } from '../level/query.ts';
+import { mediumOf } from '../media/index.ts';
+import { type Body, type Level, type MoveContacts, type Racer, TILE, type World } from '../types.ts';
 
 /**
  * Springs `racer` up off a bounce cloud it came down onto this tick: with a floor contact and a
@@ -13,5 +13,20 @@ import type { MoveContacts, Racer, World } from '../types.ts';
  * `racer.bounced {id}` is emitted. Does nothing when the world's medium has no bounce clouds
  * (`effects.bounceSpeed` null) or the racer is fallen. `stepRace` calls it for each unfinished racer
  * right after the medium's `afterMove`, with the contacts of that racer's move.
+ *
+ * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
-export function bounceOffClouds(_world: World, _racer: Racer, _contacts: MoveContacts): void {}
+export function bounceOffClouds(world: World, racer: Racer, contacts: MoveContacts): void {
+  const { bounceSpeed } = mediumOf(world).effects;
+  if (bounceSpeed === null || racer.status.fallen > 0 || !contacts.floor) return;
+  if (!standsOnBounceCloud(world.level, racer.body)) return;
+  racer.body.vy = -bounceSpeed;
+  world.events.emit({ type: 'racer.bounced', id: racer.id });
+}
+
+/** True when the tile just under either bottom corner of `body` is a bounce cloud. */
+function standsOnBounceCloud(level: Level, body: Body): boolean {
+  const { left, right } = bodyTiles(body);
+  const rowBelow = Math.floor((body.y + body.h) / TILE);
+  return cellAt(level, left, rowBelow) === 'bounce' || cellAt(level, right, rowBelow) === 'bounce';
+}
