@@ -6,7 +6,7 @@ import type { LevelDef } from '../types.ts';
 import type { Course } from './types.ts';
 
 /**
- * Sunlit Shallows, the ocean course: about 112 s for a good swimmer. Each section
+ * Sunlit Shallows, the ocean course: about 127 s for a good swimmer. Each section
  * shows one idea gently, then tests it.
  *
  * - Cols 0-94, the reef: a start bay, a current tunnel over a kelp bed, a pillar
@@ -20,29 +20,37 @@ import type { Course } from './types.ts';
  *   jelly columns alternating high and low. All jellies bob together, so the middle
  *   line is pinched from above, then from below; pearls sit on the side that opens.
  *   Two jellies, one high and one low, guard the way out.
- * - Cols 365-466, the urchin gauntlet: urchins growing out of both walls, a clam
+ * - Cols 365-460, the surface: the ceiling opens to the sky over cols 371-453, with the
+ *   sea's surface at row 9. Swim up fast and you breach into the air; gravity brings you
+ *   back. Clams float just above the waterline and pearl arcs trace the jumps between
+ *   ridges; a shark patrols the water below and eels guard two of the ridges.
+ * - Cols 461-562, the urchin gauntlet: urchins growing out of both walls, a clam
  *   pocket, then a fork. The straight tube is shortest but lined with urchins (thread
  *   it, or carry a Bubble Shield through); the roads over and under are clean and longer.
  *   A clam pair on the climb out gives whoever trails a chance at a Puffer for the gate.
- * - Cols 467-615, the coral gate and the final drop: clams in the approach, then a
- *   two-tile coral gate on the straight line (a Puffer or Cannonball opens it) or a
- *   chimney up and a tunnel over the top. A last ledge with pearls under ceiling
- *   urchins ends in a current that drops you to the floor run and the finish. From
- *   the ledge on (cols 530-610) the water is dark.
+ * - Cols 563-711, the coral gate and the cave: clams in the approach, then a two-tile
+ *   coral gate on the straight line (a Puffer or Cannonball opens it) or a chimney up
+ *   and a tunnel over the top. Past the gate a shark guards the exit, then the reef
+ *   closes into a cave (legend `R` cave rock, `T` stalactite, `L` stalagmite) whose
+ *   urchins, stalactites and eels sit at irregular spacing, so no straight line runs
+ *   clean. The cave is dark (cols 628-706) and drops to the floor run and the finish.
  *
- * Enemies (all past col 60, so start-area scenarios are unchanged): a shark guards the hall
- * (228, 8) and another the coral gate's exit (522, 9); eels lunge from the corridor floor into the
- * jelly field (262, 10), the jelly room's ceiling (325, 2) and the block beside the coral gate
- * (480, 11); crabs walk the hall floor under its current (230, 17), the road under the urchin
- * tube (410, 15), the dark ledge (570, 10) and the floor run to the finish (598, 16).
+ * Enemies (all past col 60, so start-area scenarios are unchanged): sharks guard the hall
+ * (228, 8), the surface water (413, 10) and the coral gate's exit (618, 9). Seventeen eels sit at
+ * chokepoints, each starting its cycle at a different point so neighbours lunge out of step:
+ * the highway (134, 7), (205, 7); the jelly field (252, 7), (262, 10), (290, 16), (325, 2),
+ * (352, 10), (360, 6); the surface ridges (396, 12), (428, 11); the gate approach (576, 11) and exit (612, 4);
+ * the cave (629, 12), (641, 8), (662, 7), (670, 8) and the floor run (700, 16).
+ * Crabs walk the hall floor (230, 17), the road under the urchin tube (506, 15), a cave ledge
+ * (646, 12) and the floor run (694, 16).
  *
  * Past the reef, clams sit in pairs with a row or more between them, so one racer opens
  * at most one and the racer just behind still finds the other ready; a roll favours speed
  * the further back you are. No clam sits above row 6: clams are numbered in reading
  * order and scenarios name the reef's first clam, at (22, 6), as index 0.
- * One dark zone, the last ledge and the drop (cols 530-610): you see about 60-80 px around
- * you, so the ceiling urchins (6 columns apart) come out of the dark one at a time. Rivals that
- * can't see steer loosely there; Selene and anyone with a Glow Lantern selected see as if lit.
+ * One dark zone, the cave (cols 628-706): you see about 60-80 px around you, so its hazards
+ * come out of the dark one at a time. Rivals that can't see steer loosely there; Selene and
+ * anyone with a Glow Lantern selected see as if lit.
  */
 const LEVEL: LevelDef = {
   name: 'Sunlit Shallows',

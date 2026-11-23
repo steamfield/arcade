@@ -56,7 +56,7 @@ You race as one of eight characters; the race fills the three rival slots with t
 | Selene | moon jellyfish with a starlight glow | Moonlight: sees through dark zones, immune to jelly stings |
 | Rook | hammerhead shark | Frenzy: +25% swim force for 1.5 s when a racer within 5 tiles is hit |
 
-Dark zones (`Level.dark`) draw a veil (`view/dark-view.ts`, maths in `view/dark-math.ts`) with a light pool around each racer: yours is 64 px and leans ahead as you swim, a Glow Lantern widens it, and urchins and jellies show a faint glint so you can see them coming. Racers who see in the dark (`racerSeesInDark`) get only a light tint. The course has one dark range, columns 530-610 (the last ledge and drop).
+Dark zones (`Level.dark`) draw a veil (`view/dark-view.ts`, maths in `view/dark-math.ts`) with a light pool around each racer: yours is 64 px and leans ahead as you swim, a Glow Lantern widens it, and urchins and jellies show a faint glint so you can see them coming. Racers who see in the dark (`racerSeesInDark`) get only a light tint. The course has one dark range, columns 628-706: an underwater cave of craggy rock, stalactites and stalagmites (legend glyphs `R`, `T`, `L`), drawn with a cave-mouth backdrop (`BackdropSpec.cave`).
 
 ## Enemies
 
@@ -64,11 +64,11 @@ Course creatures you beat with a dash bonk (`logic/hazards/enemies/`, numbers in
 
 | Enemy | Does | Beat it |
 | --- | --- | --- |
-| Shark | patrols its lane; sees a racer ahead, winds up for 0.5 s (flash and `!`), charges in a straight line, then rests | two bonks (each staggers it), or one Homing Squid; bursts 5 pearls |
-| Eel | hides in a wall hole; eyes and bubbles warn for 0.6 s, then it lunges 2 tiles out and back every 2.5 s | one bonk while it is out; 2 pearls |
+| Shark | patrols its lane; sees a racer ahead, winds up for 0.5 s (flash and `!`), charges, then rests. Per level (`DIFFICULTY[level].shark`): Easy sees 6 tiles, patrols 3 and rests 40 ticks, charging straight; Normal and Hard see 8, patrol 4, rest 24 and turn after their target mid-charge | two bonks (each staggers it), or one Homing Squid; bursts 5 pearls |
+| Eel | hides in a wall hole; eyes and bubbles warn for 0.6 s, then it lunges 2 tiles out and back every 2.5 s. Each eel starts at a point in its cycle set by its column and row (`startEel`), so neighbours lunge out of step | one bonk while it is out; 2 pearls |
 | Crab | walks the floor, turning at walls and drops | one bonk; 1 pearl |
 
-On Easy a shark never winds up on the player. Rivals steer around enemies and dash into a crab or an out eel when they have a charge. Sunlit Shallows has 2 sharks, 3 eels and 4 crabs after column 60.
+On Easy a shark never winds up on the player. Rivals steer around enemies, keep out of a winding-up or charging shark's path, and dash into a crab, an out eel or a charging shark about to reach them when they have a charge. Sunlit Shallows has 3 sharks, 17 eels and 4 crabs after column 60, the eels at chokepoints (the course file lists them).
 
 ## Power-ups
 
@@ -126,7 +126,9 @@ Every sprite is palette-indexed pixel text, global art in `engine/art/sprites/` 
 
 ## The course
 
-About 90 s for a good player, 616 columns in five sections: the reef (columns 0-94, the opening the power-up scenarios rely on); the current highway (95-246: a current tunnel up top or a kelp bed with clams below, then a floor-current hall); the jelly field (247-364: jellies bobbing high and low in step); the urchin gauntlet (365-466: an urchin-lined tube or clean roads over and under, with a clam pair at its exit); and the coral gate and final drop (467-615: smash the 2-tile gate with a Puffer or climb over it, then ride a downward current to the finish at column 611).
+About 127 s for a good player, 712 columns in six sections: the reef (columns 0-94, the opening the power-up scenarios rely on); the current highway (95-246: a current tunnel up top or a kelp bed with clams below, then a floor-current hall); the jelly field (247-364: jellies bobbing high and low in step); the surface (365-460: open sky over columns 371-453, where you breach to reach floating clams and pearl arcs, over a patrolling shark); the urchin gauntlet (461-562: an urchin-lined tube or clean roads over and under, with a clam pair at its exit); and the coral gate and the cave (563-711: smash the 2-tile gate with a Puffer or climb over it, pass the gate's shark, then thread the dark cave's irregular urchins, stalactites and eels to the finish at column 707).
+
+The surface (`LevelDef.surface`, `level/surface.ts`) turns the water above its row to air. A racer swimming up through it fast enough breaches: in the air gravity pulls it down at 450 px/s² with light drag and only a little steering (`airGravity`, `airDrag`, `airSteer` in `media/swim/tuning.ts`), a dash or Jet Fins still push, and it splashes back in. `racer.breached` and `racer.splashed` fire on the change. Enemies, loose power-ups and drifting pearls stay in the water.
 
 ## Course format
 
