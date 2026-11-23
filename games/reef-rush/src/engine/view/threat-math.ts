@@ -5,19 +5,14 @@
  */
 import { playerOf } from '../../logic/racers.ts';
 import type { Squid, World } from '../../logic/types.ts';
+import { BASE_LAYOUT, type Rect, type ScreenLayout } from './screen-layout.ts';
+
+export type { Rect } from './screen-layout.ts';
 
 /** A point in px. */
 export interface Point {
   x: number;
   y: number;
-}
-
-/** A rectangle in px, `(x, y)` its top-left corner. */
-export interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
 }
 
 /** The lock-on arrow's place and the way it points. */
@@ -27,16 +22,12 @@ export interface Marker extends Point {
 }
 
 /**
- * Where the arrow may sit: inside the screen's margin and below the HUD row and caption line
- * (which end at y 48), so it never covers a panel.
+ * Where the arrow may sit on the 320x180 base: inside the screen's margin and below the HUD row and
+ * caption line (which end at y 48), so it never covers a panel. Other view sizes: `screenLayout`.
  */
-export const MARKER_BOUNDS: Rect = { x: 8, y: 52, w: 304, h: 120 };
-/** UI.md "Safe zones": the back link, the d-pad and the A/B buttons, which the arrow must stay out of. */
-export const TOUCH_ZONES: readonly Rect[] = [
-  { x: 248, y: 0, w: 72, h: 26 },
-  { x: 0, y: 76, w: 108, h: 104 },
-  { x: 228, y: 118, w: 92, h: 62 },
-];
+export const MARKER_BOUNDS: Rect = BASE_LAYOUT.markerBounds;
+/** UI.md "Safe zones" on the base: the back link, the d-pad and the A/B buttons, which the arrow must stay out of. */
+export const TOUCH_ZONES: readonly Rect[] = BASE_LAYOUT.touchZones;
 /** How far short of an on-screen squid its arrow sits, so the arrow points at it without covering it. */
 const STANDOFF = 14;
 const EIGHTH_TURN = Math.PI / 4;
@@ -67,35 +58,42 @@ export function newMarker(): Marker {
 /**
  * The arrow for a squid at `squid` hunting a player at `player` (both screen px), written into `out`
  * and returned. Off-screen, it sits where the line from the player to the squid leaves
- * `MARKER_BOUNDS`, so it points the way the squid really is; in view, just short of the squid.
- * Always inside `MARKER_BOUNDS` and clear of `TOUCH_ZONES` and of `avoid` (such as a splash on
+ * `layout`'s marker bounds, so it points the way the squid really is; in view, just short of the squid.
+ * Always inside those bounds and clear of `layout`'s touch zones and of `avoid` (such as a splash on
  * screen), pointing along the player-to-squid line to the nearest 45 degrees.
  */
-export function markerFor(player: Point, squid: Point, out: Marker = newMarker(), avoid: readonly Rect[] = []): Marker {
+export function markerFor(
+  player: Point,
+  squid: Point,
+  out: Marker = newMarker(),
+  avoid: readonly Rect[] = [],
+  layout: ScreenLayout = BASE_LAYOUT,
+): Marker {
+  const bounds = layout.markerBounds;
   const dx = squid.x - player.x;
   const dy = squid.y - player.y;
   const length = Math.hypot(dx, dy) || 1;
-  if (contains(MARKER_BOUNDS, squid)) {
+  if (contains(bounds, squid)) {
     out.x = squid.x - (dx / length) * STANDOFF;
     out.y = squid.y - (dy / length) * STANDOFF;
   } else {
-    exitPoint(player, dx, dy, out);
+    exitPoint(bounds, player, dx, dy, out);
   }
-  clampInto(MARKER_BOUNDS, out);
-  clearOfZones(out, avoid);
+  clampInto(bounds, out);
+  clearOfZones(bounds, [...layout.touchZones, ...avoid], out);
   out.angle = Math.round(Math.atan2(dy, dx) / EIGHTH_TURN) * EIGHTH_TURN;
   return out;
 }
 
-/** Where the ray from `from` along (dx, dy) first leaves `MARKER_BOUNDS`, written into `out`. A start outside the bounds counts as on their nearest edge. */
-function exitPoint(from: Point, dx: number, dy: number, out: Point): void {
+/** Where the ray from `from` along (dx, dy) first leaves `bounds`, written into `out`. A start outside the bounds counts as on their nearest edge. */
+function exitPoint(bounds: Rect, from: Point, dx: number, dy: number, out: Point): void {
   const start = { x: from.x, y: from.y };
-  clampInto(MARKER_BOUNDS, start);
+  clampInto(bounds, start);
   const reach = (origin: number, delta: number, min: number, max: number) =>
     delta > 0 ? (max - origin) / delta : delta < 0 ? (min - origin) / delta : Number.POSITIVE_INFINITY;
   const t = Math.min(
-    reach(start.x, dx, MARKER_BOUNDS.x, MARKER_BOUNDS.x + MARKER_BOUNDS.w),
-    reach(start.y, dy, MARKER_BOUNDS.y, MARKER_BOUNDS.y + MARKER_BOUNDS.h),
+    reach(start.x, dx, bounds.x, bounds.x + bounds.w),
+    reach(start.y, dy, bounds.y, bounds.y + bounds.h),
   );
   out.x = start.x + dx * t;
   out.y = start.y + dy * t;
@@ -110,9 +108,8 @@ function clampInto(rect: Rect, point: Point): void {
   point.y = Math.min(rect.y + rect.h, Math.max(rect.y, point.y));
 }
 
-/** Moves `point` out of every touch zone and `avoid` rectangle by the shortest way that stays inside the bounds. */
-function clearOfZones(point: Point, avoid: readonly Rect[]): void {
-  const zones = [...TOUCH_ZONES, ...avoid];
+/** Moves `point` out of every one of `zones` by the shortest way that stays inside `bounds`. */
+function clearOfZones(bounds: Rect, zones: readonly Rect[], point: Point): void {
   for (const zone of zones) {
     if (!contains(zone, point)) continue;
     const exits: Point[] = [
@@ -120,7 +117,7 @@ function clearOfZones(point: Point, avoid: readonly Rect[]): void {
       { x: zone.x - 1, y: point.y },
       { x: zone.x + zone.w + 1, y: point.y },
       { x: point.x, y: zone.y + zone.h + 1 },
-    ].filter((exit) => contains(MARKER_BOUNDS, exit) && !zones.some((other) => contains(other, exit)));
+    ].filter((exit) => contains(bounds, exit) && !zones.some((other) => contains(other, exit)));
     const [best] = exits.sort(
       (a, b) => Math.hypot(a.x - point.x, a.y - point.y) - Math.hypot(b.x - point.x, b.y - point.y),
     );

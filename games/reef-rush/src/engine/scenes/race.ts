@@ -31,6 +31,7 @@ import { createLevelView } from '../view/level-view.ts';
 import { createPickupView } from '../view/pickup-view.ts';
 import { createPowerupView } from '../view/powerup-view.ts';
 import { createRacerView } from '../view/racer-view.ts';
+import { screenLayout } from '../view/screen-layout.ts';
 
 /** Everything the race scene draws, rebuilt on each create(). */
 interface RaceViews {
@@ -77,9 +78,16 @@ export class RaceScene extends Phaser.Scene {
     }));
     const themeLayers = theme.extraLayers(this, world);
     const dark = createDarkView(this, world, theme.dark, reducedMotion);
-    const hud = createHud(this, world, reducedMotion);
-    const hints = createHintView(this, reducedMotion, hud.right, besidePlayerY);
-    const guide = createGuideView(this, reducedMotion);
+    const layout = screenLayout(this.scale);
+    const hud = createHud(this, world, reducedMotion, layout);
+    const hints = createHintView(
+      this,
+      reducedMotion,
+      hud.right,
+      (y, height) => besidePlayerY(y, height, layout),
+      layout,
+    );
+    const guide = createGuideView(this, reducedMotion, layout);
     const fireIcon = createFireButtonIcon(this);
     const fx = createFx(this, world, theme, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);

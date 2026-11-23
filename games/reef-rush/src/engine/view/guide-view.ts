@@ -13,8 +13,7 @@ import type { Vec, World } from '../../logic/types.ts';
 import { Frame, Tex } from '../art/keys.ts';
 import { GUIDE_SIZE } from '../art/sprites/guide.ts';
 import { Layer } from './layers.ts';
-import { SPLASH_RECT } from './threat-hud.ts';
-import { MARKER_BOUNDS } from './threat-math.ts';
+import { BASE_LAYOUT, type ScreenLayout } from './screen-layout.ts';
 
 /** How far from the player's centre the arrow's centre sits at rest, px. */
 const REACH = 24;
@@ -54,26 +53,31 @@ export interface ArrowPlacement {
  *
  * @throws {Error} When `dir` is not one of the eight offsets.
  */
-export function arrowPlacement(dir: Vec, player: Vec, tick: number, reducedMotion: boolean): ArrowPlacement {
+export function arrowPlacement(
+  dir: Vec,
+  player: Vec,
+  tick: number,
+  reducedMotion: boolean,
+  layout: ScreenLayout = BASE_LAYOUT,
+): ArrowPlacement {
   const pose = TURNS[`${dir.x},${dir.y}`];
   if (!pose) throw new Error(`The guide can point along the 8 neighbour offsets, not (${dir.x}, ${dir.y})`);
   const unit = dir.x !== 0 && dir.y !== 0 ? Math.SQRT1_2 : 1;
   const bob = reducedMotion ? 0 : (Math.abs((tick % BOB_TICKS) - BOB_TICKS / 2) / (BOB_TICKS / 2)) * BOB_PX;
   const reach = REACH + bob;
   const half = Math.ceil(GUIDE_SIZE / 2);
-  const x = clamp(player.x + dir.x * unit * reach, MARKER_BOUNDS.x + half, MARKER_BOUNDS.x + MARKER_BOUNDS.w - half);
-  const y = clamp(player.y + dir.y * unit * reach, MARKER_BOUNDS.y + half, MARKER_BOUNDS.y + MARKER_BOUNDS.h - half);
-  return { x, y: clearOfSplash(x, y, half), frame: pose.frame, angle: pose.turns * QUARTER };
+  const bounds = layout.markerBounds;
+  const x = clamp(player.x + dir.x * unit * reach, bounds.x + half, bounds.x + bounds.w - half);
+  const y = clamp(player.y + dir.y * unit * reach, bounds.y + half, bounds.y + bounds.h - half);
+  return { x, y: clearOfSplash(layout, x, y, half), frame: pose.frame, angle: pose.turns * QUARTER };
 }
 
 /** `y`, or just under the splash band when an arrow centred at (`x`, `y`) would sit across it. */
-function clearOfSplash(x: number, y: number, half: number): number {
+function clearOfSplash(layout: ScreenLayout, x: number, y: number, half: number): number {
+  const splash = layout.splashRect;
   const across =
-    x + half > SPLASH_RECT.x &&
-    x - half < SPLASH_RECT.x + SPLASH_RECT.w &&
-    y + half > SPLASH_RECT.y &&
-    y - half < SPLASH_RECT.y + SPLASH_RECT.h;
-  return across ? SPLASH_RECT.y + SPLASH_RECT.h + half : y;
+    x + half > splash.x && x - half < splash.x + splash.w && y + half > splash.y && y - half < splash.y + splash.h;
+  return across ? splash.y + splash.h + half : y;
 }
 
 function clamp(value: number, low: number, high: number): number {
@@ -87,7 +91,7 @@ export interface GuideView {
 }
 
 /** Adds the arrow to `scene`, hidden until the first `sync` that has a way to show. */
-export function createGuideView(scene: Phaser.Scene, reducedMotion: boolean): GuideView {
+export function createGuideView(scene: Phaser.Scene, reducedMotion: boolean, layout: ScreenLayout): GuideView {
   const arrow = scene.add
     .image(0, 0, Tex.guideArrow, Frame.guideStraight)
     .setScrollFactor(0)
@@ -108,7 +112,7 @@ export function createGuideView(scene: Phaser.Scene, reducedMotion: boolean): Gu
       if (!lastWay || !arrow.visible) return;
       const body = playerOf(world).body;
       const player = { x: body.x + body.w / 2 - view.x, y: body.y + body.h / 2 - view.y };
-      const placement = arrowPlacement(lastWay, player, world.tick, reducedMotion);
+      const placement = arrowPlacement(lastWay, player, world.tick, reducedMotion, layout);
       arrow.setFrame(placement.frame).setPosition(Math.round(placement.x), Math.round(placement.y));
       arrow.setRotation(placement.angle);
     },

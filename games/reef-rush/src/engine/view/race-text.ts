@@ -111,13 +111,16 @@ export interface RaceSplash {
   sync(world: World): boolean;
 }
 
-/** Where every splash is centred (UI.md "Splash"); FINAL STRETCH, the widest, spans x 53-267, y 50-74. */
-const SPLASH_CENTRE = { x: 160, y: 62 } as const;
+/**
+ * Where every splash centres vertically (UI.md "Splash"), on the view's centre across; FINAL STRETCH,
+ * the widest, spans x 53-267, y 50-74 on the base.
+ */
+const SPLASH_Y = 62;
 /**
  * The countdown's level word (display, centred) and pips (6 px squares with a 1 px outline, 4 px
  * apart, centred), under the numeral, in the safe column and clear of the lock-on caption above.
  */
-const LEVEL_BANNER = { x: 160, wordY: 88, pipsY: 98, pip: 6, gap: 4 } as const;
+const LEVEL_BANNER = { wordY: 88, pipsY: 98, pip: 6, gap: 4 } as const;
 const COUNTDOWN_TICKS_PER_NUMBER = 60;
 const COUNTDOWN_DROP = { px: 6, ticks: 6 } as const;
 const BANNER_SLIDE = { px: 12, ticks: 8 } as const;
@@ -157,8 +160,8 @@ export function noteSplashMoments(moments: SplashMoments, phase: RacePhase, tick
  * Adds the splash to `scene`, pinned to the screen above the HUD. The final stretch is the same
  * `raceProgress` crossing of `FINAL_STRETCH_AT` that lifts the music.
  */
-export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean): RaceSplash {
-  const label = createLabel(scene, SPLASH_CENTRE.x, SPLASH_CENTRE.y, '', {
+export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean, centreX: number): RaceSplash {
+  const label = createLabel(scene, centreX, SPLASH_Y, '', {
     size: 'display',
     scale: 2,
     outline: true,
@@ -171,7 +174,7 @@ export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean): R
   const moments: SplashMoments = { stretchAt: null, endedAt: null };
   // Reused every frame, so the splash allocates nothing per frame.
   const frame: SplashFrame = { text: '', tone: 'foam', dx: 0, dy: 0 };
-  const levelView = createLevelView(scene);
+  const levelView = createLevelView(scene, centreX);
 
   return {
     sync(world) {
@@ -190,8 +193,8 @@ export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean): R
  * level's number, so a child who can't read EASY still sees one, two or three. Returns the redraw,
  * which hides everything for a null banner.
  */
-function createLevelView(scene: Phaser.Scene): (banner: LevelBanner | null) => void {
-  const word = createLabel(scene, LEVEL_BANNER.x, LEVEL_BANNER.wordY, '', {
+function createLevelView(scene: Phaser.Scene, centreX: number): (banner: LevelBanner | null) => void {
+  const word = createLabel(scene, centreX, LEVEL_BANNER.wordY, '', {
     size: 'display',
     outline: true,
     align: 'center',
@@ -202,7 +205,7 @@ function createLevelView(scene: Phaser.Scene): (banner: LevelBanner | null) => v
   const pips = DIFFICULTIES.map((_, index) =>
     scene.add
       .rectangle(
-        LEVEL_BANNER.x - span / 2 + index * (LEVEL_BANNER.pip + LEVEL_BANNER.gap),
+        centreX - span / 2 + index * (LEVEL_BANNER.pip + LEVEL_BANNER.gap),
         LEVEL_BANNER.pipsY,
         LEVEL_BANNER.pip,
         LEVEL_BANNER.pip,

@@ -249,6 +249,8 @@ export class Runtime {
    * select screen puts its cursor on the saved pick.
    */
   entered(scene: SceneKey): void {
+    // The same screen built again after a resize (no goTo in between) keeps its cursor, page and menu.
+    if (scene === this.scene && !this.loading) return;
     this.scene = scene;
     this.loading = false;
     if (scene === 'title') this.world = null;

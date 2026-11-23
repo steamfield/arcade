@@ -22,8 +22,10 @@ import { BUTTON_HEIGHT } from '../art/ui/button.ts';
 import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
+import { centreOnStage } from '../centre-on-stage.ts';
 import { MENU_OPTIONS, type MenuOption } from '../menu.ts';
 import type { Runtime, Settings } from '../runtime.ts';
+import { baseOffset } from '../stage.ts';
 import { themeFor } from '../themes/index.ts';
 import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
@@ -32,7 +34,8 @@ import { formatRaceTime, ordinal } from '../view/race-text.ts';
 
 /** UI.md "Title" rects, in game px. */
 const LOGO_AT = { x: 67, y: 28, scale: 2 } as const;
-const RACER_LANE = { y: 62, width: 320 } as const;
+/** The lane the racers swim along: base y 62, across the whole view, behind the menu. */
+const RACER_LANE = { y: 62, depth: -1 } as const;
 /**
  * The five buttons share one width so their fins line up. 80 is the widest that keeps the fin
  * (x 109-117) clear of the d-pad zone (x < 108) with the column centred on the logo.
@@ -75,6 +78,8 @@ export class TitleScene extends Phaser.Scene {
   private menuView: MenuView | null = null;
   private backdrop: Backdrop | null = null;
   private swimmers: { image: Phaser.GameObjects.Image; speed: number; offset: number }[] = [];
+  /** The view's width: the swimmers' lane runs across all of it. */
+  private laneWidth = 0;
   private pressA: Label | null = null;
   private levelPips: Phaser.GameObjects.Rectangle[] = [];
   /** Each level's best-time card, for the levels that have a best; one shows at a time. */
@@ -86,6 +91,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
+    centreOnStage(this);
     const rt = this.rt;
     // The backdrop reads this every update, so a Motion toggle stills it at once.
     const backdropCourse = rt.menuCourse;
@@ -95,10 +101,16 @@ export class TitleScene extends Phaser.Scene {
       },
     });
     this.add.image(LOGO_AT.x, LOGO_AT.y, UiTex.logo, 'logo').setOrigin(0, 0).setScale(LOGO_AT.scale);
+    // Drawn by the full-view camera (depth below 0), so they swim from edge to edge of the window.
+    const at = baseOffset(this.scale);
+    this.laneWidth = this.scale.width;
     this.swimmers = SWIMMERS.map(({ character, speed, offset }) => ({
       speed,
-      offset,
-      image: this.add.image(0, RACER_LANE.y, Tex[character], Frame.a).setOrigin(0, 0),
+      offset: offset + at.x,
+      image: this.add
+        .image(0, RACER_LANE.y + at.y, Tex[character], Frame.a)
+        .setOrigin(0, 0)
+        .setDepth(RACER_LANE.depth),
     }));
     this.menuView = createMenuView(this, MENU, MENU_OPTIONS.title, (option) => optionText(option, rt.settings));
     this.levelPips = addLevelPips(this);
@@ -127,7 +139,8 @@ export class TitleScene extends Phaser.Scene {
     for (const shown of DIFFICULTIES) this.bestCards[shown]?.setVisible(shown === difficulty);
     this.pressA?.setVisible(reducedMotion || tick % (BLINK.on + BLINK.off) < BLINK.on);
     const stroke = reducedMotion || Math.floor(tick / STROKE_TICKS) % 2 === 0 ? Frame.a : Frame.b;
-    for (const swimmer of this.swimmers) swimmer.image.setX(swimmerX(swimmer, tick, reducedMotion)).setFrame(stroke);
+    for (const swimmer of this.swimmers)
+      swimmer.image.setX(swimmerX(swimmer, this.laneWidth, tick, reducedMotion)).setFrame(stroke);
   }
 }
 
@@ -157,8 +170,13 @@ function addLevelPips(scene: Phaser.Scene): Phaser.GameObjects.Rectangle[] {
 }
 
 /** A swimmer's x in the lane at `tick`, wrapping from off the right edge back to off the left. Still under reduced motion. */
-function swimmerX({ speed, offset }: { speed: number; offset: number }, tick: number, reducedMotion: boolean): number {
-  const span = RACER_LANE.width + RACER_WIDTH;
+function swimmerX(
+  { speed, offset }: { speed: number; offset: number },
+  laneWidth: number,
+  tick: number,
+  reducedMotion: boolean,
+): number {
+  const span = laneWidth + RACER_WIDTH;
   const travelled = reducedMotion ? offset : offset + tick * speed;
   return Math.floor(travelled % span) - RACER_WIDTH;
 }

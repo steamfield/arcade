@@ -10,6 +10,7 @@ import type { Course } from '../../logic/courses/types.ts';
 import { bestFor } from '../../logic/records.ts';
 import { NEW_GAME, type SaveData } from '../../logic/save.ts';
 import type { Difficulty } from '../../logic/types.ts';
+import { centreOnStage } from '../centre-on-stage.ts';
 import type { Runtime } from '../runtime.ts';
 import { themeFor } from '../themes/index.ts';
 import { isTouchScreen } from '../touch.ts';
@@ -32,6 +33,7 @@ export class CourseScene extends Phaser.Scene {
   }
 
   create(): void {
+    centreOnStage(this);
     const rt = this.rt;
     const backdropCourse = rt.menuCourse;
     this.backdrop = createBackdrop(this, levelOf(backdropCourse), themeFor(backdropCourse), {

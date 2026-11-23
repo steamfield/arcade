@@ -14,6 +14,7 @@ import { createLabel } from '../art/font.ts';
 import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import type { PanelStyle, UiToneName } from '../art/ui/palette.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
+import { centreOnStage } from '../centre-on-stage.ts';
 import { MENU_OPTIONS } from '../menu.ts';
 import type { RaceOutcome, Runtime } from '../runtime.ts';
 import { themeFor } from '../themes/index.ts';
@@ -71,6 +72,7 @@ export class ResultsScene extends Phaser.Scene {
   }
 
   create(): void {
+    centreOnStage(this);
     const { world, lastResult, settings } = this.rt;
     if (!world || !lastResult) throw new Error('The results scene started before a race finished');
     const course = courseOf(world);

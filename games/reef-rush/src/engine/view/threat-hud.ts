@@ -16,6 +16,7 @@ import { DISPLAY_FACE, TEXT_FACE } from '../art/ui/typeface.ts';
 import { isTouchScreen } from '../touch.ts';
 import { Layer } from './layers.ts';
 import { TONE_CSS } from './race-text.ts';
+import { BASE_LAYOUT, type ScreenLayout } from './screen-layout.ts';
 import { type Marker, markerFor, newMarker, type Rect, squidHuntingPlayer } from './threat-math.ts';
 
 /** The squid warnings; `sync` redraws them from the world. */
@@ -39,14 +40,13 @@ export function promptText(world: World, touch: boolean): PromptText {
   return { headline: latched ? 'DASH!' : '', hint: latched && touch ? 'PRESS B' : '' };
 }
 
-/** Where a centre splash (countdown, GO, FINAL STRETCH, FINISH) draws, widest case: the arrow keeps out of it while one shows. */
-export const SPLASH_RECT: Rect = { x: 53, y: 50, w: 214, h: 24 };
-/** The prompt centres on the middle of the safe column, like the hint lines. */
-const PROMPT_X = 168;
+/**
+ * Where a centre splash (countdown, GO, FINAL STRETCH, FINISH) draws on the base, widest case: the
+ * arrow keeps out of it while one shows. Other view sizes: `ScreenLayout.splashRect`.
+ */
+export const SPLASH_RECT: Rect = BASE_LAYOUT.splashRect;
 /** How far the prompt's nearest edge stays from the player's centre when it drops below them, as the hint lines do. */
 const PROMPT_CLEARANCE = 16;
-/** The lowest the prompt may reach: the bottom margin. */
-const PROMPT_LOWEST = 174;
 /** Gap between DASH! and PRESS B, px. */
 const PROMPT_GAP = 2;
 /** The arrow is on for 14 of every 20 ticks: 3 blinks a second. */
@@ -63,6 +63,7 @@ export function createThreatHud(
   scene: Phaser.Scene,
   reducedMotion: boolean,
   anchorY: (playerY: number, height: number) => number,
+  layout: ScreenLayout,
 ): ThreatHud {
   const arrow = scene.add
     .image(0, 0, UiTex.icons, IconFrame.warnArrow)
@@ -70,14 +71,16 @@ export function createThreatHud(
     .setDepth(Layer.banner)
     .setVisible(false);
   const options = { outline: true, align: 'center', fixed: true, depth: Layer.banner } as const;
-  const prompt = createLabel(scene, PROMPT_X, 0, '', { ...options, size: 'display', tone: 'sun' });
-  const touchHint = createLabel(scene, PROMPT_X, 0, '', { ...options, tone: 'foam' });
+  // The prompt centres on the middle of the safe column, like the hint lines.
+  const prompt = createLabel(scene, layout.besideX, 0, '', { ...options, size: 'display', tone: 'sun' });
+  const touchHint = createLabel(scene, layout.besideX, 0, '', { ...options, tone: 'foam' });
   const touch = isTouchScreen();
   // Reused every frame, so the warnings allocate nothing per frame.
   const marker: Marker = newMarker();
   const playerAt = { x: 0, y: 0 };
   const squidAt = { x: 0, y: 0 };
-  const avoidSplash: Rect[] = [SPLASH_RECT];
+  const splash = layout.splashRect;
+  const avoidSplash: Rect[] = [splash];
   const avoidNothing: Rect[] = [];
 
   return {
@@ -91,7 +94,7 @@ export function createThreatHud(
       if (squid) {
         squidAt.x = squid.x - view.x;
         squidAt.y = squid.y - view.y;
-        markerFor(playerAt, squidAt, marker, splashShowing ? avoidSplash : avoidNothing);
+        markerFor(playerAt, squidAt, marker, splashShowing ? avoidSplash : avoidNothing, layout);
         arrow.setPosition(Math.round(marker.x), Math.round(marker.y)).setRotation(marker.angle);
       }
 
@@ -105,8 +108,8 @@ export function createThreatHud(
       const half = Math.ceil(height / 2);
       let centre = anchorY(playerAt.y, height);
       // A banner at the centre of the screen would bury the prompt: go under the player instead.
-      if (splashShowing && centre - half < SPLASH_RECT.y + SPLASH_RECT.h && centre + half > SPLASH_RECT.y) {
-        centre = Math.min(playerAt.y + PROMPT_CLEARANCE + half, PROMPT_LOWEST - half);
+      if (splashShowing && centre - half < splash.y + splash.h && centre + half > splash.y) {
+        centre = Math.min(playerAt.y + PROMPT_CLEARANCE + half, layout.lowest - half);
       }
       const top = centre - half;
       prompt.setOffset(0, top + Math.ceil(DISPLAY_FACE.height / 2));

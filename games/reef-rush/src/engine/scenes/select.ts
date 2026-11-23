@@ -21,6 +21,7 @@ import { createLabel, type Label } from '../art/font.ts';
 import { Frame, Tex } from '../art/keys.ts';
 import { IconFrame, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
+import { centreOnStage } from '../centre-on-stage.ts';
 import { abilityTextFor, SELECT_COLUMNS } from '../character-select.ts';
 import type { Runtime } from '../runtime.ts';
 import { themeFor } from '../themes/index.ts';
@@ -92,6 +93,7 @@ export class SelectScene extends Phaser.Scene {
   }
 
   create(): void {
+    centreOnStage(this);
     const rt = this.rt;
     const backdropCourse = rt.menuCourse;
     this.backdrop = createBackdrop(this, levelOf(backdropCourse), themeFor(backdropCourse), {

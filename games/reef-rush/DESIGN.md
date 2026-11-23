@@ -114,7 +114,7 @@ A hit (urchin `*`, jelly `j`, bubble, puffer, flash) pops a Bubble Shield from a
 
 ## Engine layout
 
-`engine/game.ts` wires Phaser to the shell. `engine/runtime.ts` is the only place logic ticks (`game.ts` feeds its clock once per Phaser step): it reads input, steps the world or the menu, drains each tick's events once and hands them to audio and to views that listen. Scenes in `engine/scenes/` build views from `engine/view/` and sync them every frame. Screens follow `UI.md` (palette, type scale, layout grid, safe zones, motion). Text goes only through `art/font.ts` `createLabel`; global textures through `art/keys.ts`, a course's own through its theme (`themeFor(course)`).
+`engine/game.ts` wires Phaser to the shell. `engine/runtime.ts` is the only place logic ticks (`game.ts` feeds its clock once per Phaser step): it reads input, steps the world or the menu, drains each tick's events once and hands them to audio and to views that listen. Scenes in `engine/scenes/` build views from `engine/view/` and sync them every frame. Screens follow `UI.md` (palette, type scale, layout grid, safe zones, motion). The canvas fills the window at a whole-number zoom (`engine/stage.ts`); a resize that changes the view size rebuilds the screen showing, keeping the runtime's menu cursor, page and race. Text goes only through `art/font.ts` `createLabel`; global textures through `art/keys.ts`, a course's own through its theme (`themeFor(course)`).
 
 ## Art and audio
 

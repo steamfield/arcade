@@ -38,7 +38,7 @@ Text is drawn in capitals. Shadows and outlines are one glyph pixel wide (2 px a
 
 ## Grid and padding
 
-- The screen is 320x180 on a 2 px grid, with a 6 px outer margin.
+- Screens are laid out on a 320x180 base on a 2 px grid, with a 6 px outer margin. The view grows past the base to fill the window at a whole-number zoom, between 4:3 and 21:9 (`engine/stage.ts`): a 1600x1000 window is 320x200 at 5x, a phone in landscape about 420x180 at 2x. Menus centre the base layout over a backdrop that fills the view; the race shows more of the course, keeps the HUD row in the top-left corner, centres its splashes and caption on the view, and moves the zones below with the edges they hang from (`engine/view/screen-layout.ts`).
 - Panels have a 3 px frame (`PANEL_INSET`).
 - Single-line readouts (timer, buttons, ribbon) get 1 px padding inside the frame, which makes a one-line text panel 15 px tall. Every other panel gets at least 1 px of padding.
 - HUD pieces sit 4 px apart.
@@ -46,7 +46,7 @@ Text is drawn in capitals. Shadows and outlines are one glyph pixel wide (2 px a
 
 ## Safe zones
 
-Game px = `(CSS extent - letterbox) / scale`. The extent is measured from the screen edge, and the letterbox is the CSS gap between that edge and the canvas. The worst case is letterbox 0 at the smallest scale.
+Game px = `CSS extent / scale`, measured from the screen edge. The table gives the zones on the base view; on a larger view the back link and A/B zones keep their distance from the right edge, and the d-pad and A/B zones from the bottom edge.
 
 | Zone | CSS source | Game px | Worst case |
 | --- | --- | --- | --- |
@@ -112,7 +112,7 @@ Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.t
 | Element | Rect | Notes |
 | --- | --- | --- |
 | Logo | 67, 28, 186, 30 | `ui-logo` at 2x |
-| Racer lane | 0, 62, 320, 12 | racers swim past left to right (sprites, not text); still under reduced motion |
+| Racer lane | 0, 62, view width, 12 | racers swim past left to right across the whole view, not just the base (sprites, not text); still under reduced motion |
 | Race button | 120, 78, 80, 15 | cursor fin at x 109-117 |
 | How to play button | 120, 95, 80, 15 | HOW TO PLAY opens the How to Play screen |
 | Level button | 120, 112, 80, 15 | EASY / NORMAL / HARD, centred; each press cycles to the next and saves, and the text changes the moment the setting does. Three 3 px pips at x 126, 131 and 136 (y 118) show the level without reading: 1 lit (sun) for Easy, 2 Normal, 3 Hard, the rest dim |

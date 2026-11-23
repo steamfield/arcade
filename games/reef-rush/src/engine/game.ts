@@ -5,7 +5,7 @@
  * the shell and tests drive. No game rules or scene logic live here.
  */
 import type { SaveStore } from '@arcade/save';
-import { type GameContext, type GameHandle, integerScale } from '@arcade/shell';
+import type { GameContext, GameHandle } from '@arcade/shell';
 import Phaser from 'phaser';
 import type { SaveData } from '../logic/save.ts';
 import { debugState, debugSummary } from './debug.ts';
@@ -17,9 +17,7 @@ import { RaceScene } from './scenes/race.ts';
 import { ResultsScene } from './scenes/results.ts';
 import { SelectScene } from './scenes/select.ts';
 import { TitleScene } from './scenes/title.ts';
-
-const WIDTH = 320;
-const HEIGHT = 180;
+import { type Stage, stageFor } from './stage.ts';
 
 /**
  * Starts Reef Rush inside `ctx.container`.
@@ -55,11 +53,13 @@ async function loadSave(ctx: GameContext, saves: SaveStore<SaveData>): Promise<S
 }
 
 function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
+  const stage = containerStage(ctx.container);
   return new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.container,
-    width: WIDTH,
-    height: HEIGHT,
+    width: stage.width,
+    height: stage.height,
+    zoom: stage.zoom,
     pixelArt: true,
     backgroundColor: '#0b3d6b',
     banner: false,
@@ -87,14 +87,33 @@ function switchScene(game: Phaser.Game, scene: SceneKey): void {
   game.scene.start(scene);
 }
 
+/** The stage for the container's content box (inside the shell's safe-area padding). */
+function containerStage(container: HTMLElement): Stage {
+  const style = getComputedStyle(container);
+  const px = (value: string) => Number.parseFloat(value) || 0;
+  return stageFor({
+    width: container.clientWidth - px(style.paddingLeft) - px(style.paddingRight),
+    height: container.clientHeight - px(style.paddingTop) - px(style.paddingBottom),
+  });
+}
+
 /**
- * Integer zoom that follows the container, the logic clock fed once per game step (not per
+ * A view that fills the container at integer zoom and follows its size (a new view size restarts
+ * the screens showing so they lay out again), the logic clock fed once per game step (not per
  * scene, so a scene switch mid-step can't tick twice), plus the context-loss hookup once
  * Phaser is ready.
  */
 function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
   game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => rt.frame(deltaMs));
-  const fitToContainer = () => game.scale.setZoom(integerScale(WIDTH, HEIGHT, ctx.container));
+  const fitToContainer = () => {
+    const stage = containerStage(ctx.container);
+    if (stage.width !== game.scale.width || stage.height !== game.scale.height) {
+      game.scale.resize(stage.width, stage.height);
+      // Mid-load a scene is still being built at the old size; it lays out at the new one when it starts.
+      if (!rt.loading) for (const running of game.scene.getScenes(true)) running.scene.restart();
+    }
+    game.scale.setZoom(stage.zoom);
+  };
   new ResizeObserver(fitToContainer).observe(ctx.container);
   game.events.once(Phaser.Core.Events.READY, () => {
     fitToContainer();

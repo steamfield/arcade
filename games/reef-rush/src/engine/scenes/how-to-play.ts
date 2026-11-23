@@ -13,6 +13,7 @@ import { createLabel, type Label } from '../art/font.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { measureText, TEXT_FACE } from '../art/ui/typeface.ts';
+import { centreOnStage } from '../centre-on-stage.ts';
 import type { Runtime } from '../runtime.ts';
 import { themeFor } from '../themes/index.ts';
 import { isTouchScreen } from '../touch.ts';
@@ -48,6 +49,7 @@ export class HowToPlayScene extends Phaser.Scene {
   }
 
   create(): void {
+    centreOnStage(this);
     const rt = this.rt;
     // How to Play shows swimming, so it stays on the ocean course whatever course is picked.
     this.backdrop = createBackdrop(this, levelOf(DEFAULT_COURSE), themeFor(DEFAULT_COURSE), {

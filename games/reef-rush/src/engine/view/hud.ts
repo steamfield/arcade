@@ -27,6 +27,7 @@ import { besidePlayerY } from './beside-player.ts';
 import { addHudIcon as addIcon, createDashMeter, createWell } from './hud-well.ts';
 import { Layer } from './layers.ts';
 import { createRaceSplash, formatRaceTime, ordinal, slideRemaining, TONE_CSS } from './race-text.ts';
+import type { ScreenLayout } from './screen-layout.ts';
 import { createThreatHud } from './threat-hud.ts';
 import { squidHuntingPlayer } from './threat-math.ts';
 
@@ -53,14 +54,15 @@ const HUD_GAP = 4;
 const PEARLS = { y: 23, h: 17, pad: 4, iconY: 28, textTop: 28, textGap: 3, maxShown: 99 } as const;
 const PEARL_SIZE = 7;
 const PEARLS_WIDTH = PEARLS.pad * 2 + PEARL_SIZE + PEARLS.textGap + 11;
-const CAPTION_CENTRE = { x: 160, y: 45 } as const;
+/** The caption line centres on the view's centre at this y. */
+const CAPTION_Y = 45;
 
 /** UI.md "Motion": a place arrow slides 4 px in over 8 ticks; the arrow and the numeral's tone last 30. */
 const PLACE_POP = { slidePx: 4, slideTicks: 8, ticks: 30 } as const;
 /** A rival bubble this many tiles away, outside the view, gets a caption. */
 const THREAT_RANGE_TILES = 10;
 /** Adds the HUD for `world`'s race to `scene`, pinned to the screen, with each racer's character on its portrait and head. */
-export function createHud(scene: Phaser.Scene, world: World, reducedMotion: boolean): Hud {
+export function createHud(scene: Phaser.Scene, world: World, reducedMotion: boolean, layout: ScreenLayout): Hud {
   const place = createPlacePanel(scene, playerOf(world).character, reducedMotion);
   const timer = createTimer(scene);
   let shownTime = -1;
@@ -69,9 +71,9 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
   const meter = createDashMeter(scene, slots, reducedMotion);
   const pearls = createPearlCounter(scene, meter.right + HUD_GAP);
   const strip = createProgressStrip(scene, world);
-  const splash = createRaceSplash(scene, reducedMotion);
-  const threat = createThreatHud(scene, reducedMotion, besidePlayerY);
-  const caption = createLabel(scene, CAPTION_CENTRE.x, CAPTION_CENTRE.y, '', {
+  const splash = createRaceSplash(scene, reducedMotion, layout.centreX);
+  const threat = createThreatHud(scene, reducedMotion, (y, height) => besidePlayerY(y, height, layout), layout);
+  const caption = createLabel(scene, layout.centreX, CAPTION_Y, '', {
     tone: 'foam',
     outline: true,
     align: 'center',
