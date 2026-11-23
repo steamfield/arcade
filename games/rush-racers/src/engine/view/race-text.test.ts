@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_COURSE } from '../../logic/courses/index.ts';
 import {
   levelBanner,
   noteSplashMoments,
@@ -83,15 +84,15 @@ describe('a results row', () => {
   const finishedAt = (ticks: number) => ({ finished: { tick: ticks } });
 
   it('keeps a six-letter name apart from a time over a minute', () => {
-    expect(standingsRow({ character: 'streak', ...finishedAt(11030) }, 2)).toBe('2ND STREAK 3:03.83');
-    expect(standingsRow({ character: 'selene', ...finishedAt(11030) }, 3)).toBe('3RD SELENE 3:03.83');
+    expect(standingsRow({ character: 'streak', ...finishedAt(11030) }, 2, DEFAULT_COURSE)).toBe('2ND STREAK 3:03.83');
+    expect(standingsRow({ character: 'selene', ...finishedAt(11030) }, 3, DEFAULT_COURSE)).toBe('3RD SELENE 3:03.83');
   });
 
   it('lines the times up whatever the name, and stays 18 characters (UI.md rows are 107 px)', () => {
     const rows = [
-      standingsRow({ character: 'onyx', ...finishedAt(5400) }, 1),
-      standingsRow({ character: 'baron', ...finishedAt(5400) }, 4),
-      standingsRow({ character: 'rudy', finished: null }, 4),
+      standingsRow({ character: 'onyx', ...finishedAt(5400) }, 1, DEFAULT_COURSE),
+      standingsRow({ character: 'baron', ...finishedAt(5400) }, 4, DEFAULT_COURSE),
+      standingsRow({ character: 'rudy', finished: null }, 4, DEFAULT_COURSE),
     ];
     expect(rows).toEqual(['1ST ONYX   1:30.00', '4TH BARON  1:30.00', '4TH RUDY   TIME UP']);
     for (const row of rows) expect(row).toHaveLength(18);

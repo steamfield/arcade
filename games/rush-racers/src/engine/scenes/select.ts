@@ -6,7 +6,8 @@
  * racer swimming in place under the card, and a footer showing fire races and
  * dash goes back (as the A and B buttons on touch screens). Everything sits
  * clear of the back link, d-pad and A/B zones. The backdrop is the last listed course raced
- * (Sunlit Shallows until then), as on the title.
+ * (Sunlit Shallows until then), as on the title. Racer art and names come from the world cast of
+ * the course the race will run on.
  *
  * The runtime moves the cursor and starts the race; this scene only draws
  * `rt.selectedCharacter`. Motion is timed from the runtime tick and reads
@@ -16,10 +17,11 @@
  */
 import Phaser from 'phaser';
 import { levelOf } from '../../logic/courses/index.ts';
+import type { Course } from '../../logic/courses/types.ts';
 import { CHARACTER_IDS, type CharacterId } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
-import { Frame, Tex } from '../art/keys.ts';
-import { IconFrame, PortraitFrame, UiTex } from '../art/ui/keys.ts';
+import { Frame } from '../art/keys.ts';
+import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
 import { centreOnStage } from '../centre-on-stage.ts';
 import { abilityTextFor, SELECT_COLUMNS } from '../character-select.ts';
@@ -28,6 +30,7 @@ import { themeFor } from '../themes/index.ts';
 import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { racerName, racerShortName, slideRemaining, TONE_CSS } from '../view/race-text.ts';
+import { skinFor } from '../worlds/index.ts';
 
 /** UI.md "Select" rects, in game px. */
 const HEADING = { x: 160, y: 12 } as const;
@@ -92,6 +95,11 @@ export class SelectScene extends Phaser.Scene {
     this.rt = rt;
   }
 
+  /** The course the race will run on, whose world cast the screen shows. */
+  private get course(): Course {
+    return this.rt.course;
+  }
+
   create(): void {
     centreOnStage(this);
     const rt = this.rt;
@@ -107,9 +115,11 @@ export class SelectScene extends Phaser.Scene {
       outline: true,
       align: 'center',
     });
-    this.cells = CHARACTER_IDS.map((character, index) => addCell(this, character, index));
-    this.card = addCard(this);
-    this.preview = this.add.image(PREVIEW.x, PREVIEW.y, Tex.rudy, Frame.a).setScale(PREVIEW.scale);
+    this.cells = CHARACTER_IDS.map((character, index) => addCell(this, character, index, this.course));
+    this.card = addCard(this, this.course, rt.selectedCharacter);
+    this.preview = this.add
+      .image(PREVIEW.x, PREVIEW.y, skinFor(this.course).cast.racers[this.rt.selectedCharacter], Frame.a)
+      .setScale(PREVIEW.scale);
     addFooter(this);
     this.shown = null;
     rt.entered('select');
@@ -140,33 +150,34 @@ export class SelectScene extends Phaser.Scene {
       cell.panel.setStyle(isSelected ? 'accent' : 'raised');
       cell.name.setColor(TONE_CSS[isSelected ? 'sun' : 'foam']);
     }
-    const ability = abilityTextFor(selected);
-    this.card?.portrait.setFrame(PortraitFrame[selected]);
-    this.card?.name.setText(racerName(selected).toUpperCase());
+    const { cast } = skinFor(this.course);
+    const ability = abilityTextFor(selected, cast);
+    this.card?.portrait.setTexture(cast.portraits[selected].texture, cast.portraits[selected].frame);
+    this.card?.name.setText(racerName(selected, this.course).toUpperCase());
     this.card?.ability.setText(ability.name);
     this.card?.blurb.setText(ability.blurb);
-    this.preview?.setTexture(Tex[selected], Frame.a);
+    this.preview?.setTexture(cast.racers[selected], Frame.a);
   }
 }
 
 /** A framed grid cell at `index` in reading order, with the character's portrait and short name. */
-function addCell(scene: Phaser.Scene, character: CharacterId, index: number): Cell {
+function addCell(scene: Phaser.Scene, character: CharacterId, index: number, course: Course): Cell {
+  const portrait = skinFor(course).cast.portraits[character];
   const x = GRID.x + (index % SELECT_COLUMNS) * (GRID.cellW + GRID.colGap);
   const y = GRID.y + Math.floor(index / SELECT_COLUMNS) * (GRID.cellH + GRID.rowGap);
   const panel = createPanel(scene, x, y, GRID.cellW, GRID.cellH, 'raised');
-  scene.add
-    .image(x + CELL_PORTRAIT.dx, y + CELL_PORTRAIT.dy, UiTex.portraits, PortraitFrame[character])
-    .setOrigin(0, 0);
-  const name = createLabel(scene, x + CELL_NAME.dx, y + CELL_NAME.dy, racerShortName(character).toUpperCase());
+  scene.add.image(x + CELL_PORTRAIT.dx, y + CELL_PORTRAIT.dy, portrait.texture, portrait.frame).setOrigin(0, 0);
+  const name = createLabel(scene, x + CELL_NAME.dx, y + CELL_NAME.dy, racerShortName(character, course).toUpperCase());
   return { character, panel, name };
 }
 
 /** The raised card: a 2x portrait, then the full name in display sun, the ability in foam and its blurb in dim. */
-function addCard(scene: Phaser.Scene): Card {
+function addCard(scene: Phaser.Scene, course: Course, selected: CharacterId): Card {
+  const portrait = skinFor(course).cast.portraits[selected];
   createPanel(scene, CARD.x, CARD.y, CARD.w, CARD.h, 'raised');
   return {
     portrait: scene.add
-      .image(CARD_PORTRAIT.x, CARD_PORTRAIT.y, UiTex.portraits, PortraitFrame.rudy)
+      .image(CARD_PORTRAIT.x, CARD_PORTRAIT.y, portrait.texture, portrait.frame)
       .setOrigin(0, 0)
       .setScale(CARD_PORTRAIT.scale),
     name: createLabel(scene, CARD_TEXT_X, CARD_NAME_Y, '', { size: 'display', tone: 'sun' }),

@@ -15,14 +15,18 @@
  */
 import type Phaser from 'phaser';
 import { stackMaxFor } from '../../logic/abilities.ts';
+import { courseOf } from '../../logic/courses/index.ts';
 import { playerOf } from '../../logic/racers.ts';
-import { type CharacterId, type RacePhase, TILE, type World } from '../../logic/types.ts';
+import { type RacePhase, TILE, type World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { Frame, Tex } from '../art/keys.ts';
-import { IconFrame, PortraitFrame, UiTex } from '../art/ui/keys.ts';
+import { IconFrame } from '../art/ui/keys.ts';
 import type { UiToneName } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { spreadHeads } from '../race-progress.ts';
+import type { ArtRef } from '../worlds/art-ref.ts';
+import type { CastSkin } from '../worlds/cast-skin.ts';
+import { skinFor } from '../worlds/index.ts';
 import { besidePlayerY } from './beside-player.ts';
 import { addHudIcon as addIcon, createDashMeter, createWell } from './hud-well.ts';
 import { Layer } from './layers.ts';
@@ -61,16 +65,20 @@ const CAPTION_Y = 45;
 const PLACE_POP = { slidePx: 4, slideTicks: 8, ticks: 30 } as const;
 /** A rival bubble this many tiles away, outside the view, gets a caption. */
 const THREAT_RANGE_TILES = 10;
-/** Adds the HUD for `world`'s race to `scene`, pinned to the screen, with each racer's character on its portrait and head. */
+/**
+ * Adds the HUD for `world`'s race to `scene`, pinned to the screen, with each racer's portrait and
+ * head drawn from the cast of the course's world.
+ */
 export function createHud(scene: Phaser.Scene, world: World, reducedMotion: boolean, layout: ScreenLayout): Hud {
-  const place = createPlacePanel(scene, playerOf(world).character, reducedMotion);
+  const { cast } = skinFor(courseOf(world));
+  const place = createPlacePanel(scene, cast.portraits[playerOf(world).character], reducedMotion);
   const timer = createTimer(scene);
   let shownTime = -1;
   const slots = stackMaxFor(playerOf(world));
   const well = createWell(scene, slots);
   const meter = createDashMeter(scene, slots, reducedMotion);
   const pearls = createPearlCounter(scene, meter.right + HUD_GAP);
-  const strip = createProgressStrip(scene, world);
+  const strip = createProgressStrip(scene, world, cast.heads);
   const splash = createRaceSplash(scene, reducedMotion, layout.centreX);
   const threat = createThreatHud(scene, reducedMotion, (y, height) => besidePlayerY(y, height, layout), layout);
   const caption = createLabel(scene, layout.centreX, CAPTION_Y, '', {
@@ -165,11 +173,11 @@ export function isPlacePopping(track: PlaceTrack, tick: number): boolean {
 }
 
 /** The gold place panel: the player's portrait, place numeral (hidden in the countdown), and the change arrow under it. */
-function createPlacePanel(scene: Phaser.Scene, character: CharacterId, reducedMotion: boolean): WorldView {
+function createPlacePanel(scene: Phaser.Scene, portrait: ArtRef, reducedMotion: boolean): WorldView {
   const { x, y, w, h } = PLACE_PANEL;
   createPanel(scene, x, y, w, h, 'accent', { fixed: true, depth: Layer.hud });
   scene.add
-    .image(PORTRAIT_AT.x, PORTRAIT_AT.y, UiTex.portraits, PortraitFrame[character])
+    .image(PORTRAIT_AT.x, PORTRAIT_AT.y, portrait.texture, portrait.frame)
     .setOrigin(0, 0)
     .setScrollFactor(0)
     .setDepth(Layer.hud);
@@ -214,7 +222,7 @@ function createTimer(scene: Phaser.Scene): Label {
 }
 
 /** The progress strip: a 7x7 head per racer, showing its character, travelling toward the finish flag. */
-function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
+function createProgressStrip(scene: Phaser.Scene, world: World, headArt: CastSkin['heads']): WorldView {
   const { x, y, w, h, headY, headFrom, headTo } = STRIP;
   createPanel(scene, x, y, w, h, 'inset', { fixed: true, depth: Layer.hud });
   addIcon(scene, FLAG_AT.x, FLAG_AT.y, IconFrame.finishFlag);
@@ -223,7 +231,7 @@ function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
     world.racers.map((racer) => [
       racer.id,
       scene.add
-        .image(headFrom, headY, UiTex.heads, PortraitFrame[racer.character])
+        .image(headFrom, headY, headArt[racer.character].texture, headArt[racer.character].frame)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(racer.id === 'player' ? Layer.banner : Layer.hud),
