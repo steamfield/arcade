@@ -20,8 +20,10 @@ import type { ShippedCourse } from './types.ts';
  *   below it, stardust and a supply pod; the finish is col 118.
  *
  * Two gravity wells: a planet (its body is the asteroid rock at the inside of the first bend, col 37
- * row 11) whose pull swings a racer round the bend, and a black hole in the rock above the shortcut
- * (col 89 row 2), its reach dipping into the tunnel's upper row and its horizon wholly inside rock.
+ * row 11) whose pull swings a racer round the bend, and a black hole in the open pocket above the
+ * shortcut's mouth (col 78 row 2). Its horizon swallows a racer that flies into rows 2-3 at cols
+ * 77-79, and its reach holds the supply pod at col 77 row 4, while the corridor from row 5 down,
+ * where the main way turns down and the tunnel opens, stays outside the reach.
  */
 const LEVEL: LevelDef = {
   name: 'Drift Test',
@@ -53,15 +55,15 @@ const LEVEL: LevelDef = {
   `,
   wells: [
     { col: 37, row: 11, reach: 6, pull: 160 },
-    { col: 89, row: 2, reach: 3.5, pull: 300, horizon: 1.5 },
+    { col: 78, row: 2, reach: 3, pull: 300, horizon: 1.5 },
   ],
 };
 
 /**
- * The expert bot's mean Hard finish (835 ticks over seeds 1-25 and all eight characters, measured on
- * lane a's physics before phase 1 landed) plus 30 %, the slack the test courses keep.
+ * The expert bot's mean Hard finish (852 ticks over seeds 1-25 and all eight characters, measured
+ * with phase 2's gravity wells pulling) plus 30 %, the slack the test courses keep.
  */
-const PAR_TICKS = 1086;
+const PAR_TICKS = 1108;
 
 /** Drift Test: the drift medium's test course in Farside, reachable only by `?course=drift-test` and tests. */
 export const DRIFT_TEST: ShippedCourse = {

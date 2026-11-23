@@ -14,10 +14,16 @@ import { centreOf } from '../../racers.ts';
 import { courseFromLevel, IDLE, placeOnTile, racerOf, step } from '../../test-world.ts';
 import { RACER_IDS, TILE, type Vec, type WellDef } from '../../types.ts';
 import { createWorld } from '../../world.ts';
+import { effectiveTuning } from '../index.ts';
+import type { AiDraws } from '../types.ts';
+import { DRIFT_MEDIUM } from './index.ts';
 import { ticksOfRacer } from './test-kit.ts';
+import { DRIFT_TUNING } from './tuning.ts';
 import { driftDistanceAt, driftNextTile } from './way.ts';
 
 const SEEDS = [1, 2, 3, 4, 5];
+/** Draws that never dash and put no jitter on the aim. */
+const STEADY: AiDraws = { wobble: 0.5, kick: 1, side: 0, item: 1 };
 const wellCentre = (well: WellDef): Vec => ({ x: (well.col + 0.5) * TILE, y: (well.row + 0.5) * TILE });
 const distance = (a: Vec, b: Vec) => Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
 
@@ -167,6 +173,26 @@ describe('the drift pilot round a planet', () => {
 
     expect(without).toBeLessThan(1500);
     expect(withPlanet).toBeLessThanOrEqual(Math.ceil(without * 1.03));
+  });
+
+  it('flies at cruise through a planet ahead on a straight without burning against its aim or turning about', () => {
+    const planet: WellDef = { col: 30, row: 5, reach: 6, pull: 160 };
+    const { world, log, tess } = tessOn(room(60, 9, 3), [planet], { x: 12, y: planet.row });
+    tess.body.vx = DRIFT_TUNING.extra.cruise;
+    const mods = effectiveTuning(world).base;
+    const backward: string[] = [];
+    const facings = new Set<number>();
+    for (let ticks = 0; ticks < 600 && centreOf(tess).x < (planet.col + planet.reach + 1) * TILE; ticks++) {
+      const { move, aim } = DRIFT_MEDIUM.steer(world, tess, mods, STEADY, false);
+      step(world, log, 1, IDLE);
+      if (distance(centreOf(tess), wellCentre(planet)) >= planet.reach * TILE) continue;
+      facings.add(tess.facing);
+      if (move.x * aim.x + move.y * aim.y < 0)
+        backward.push(`tick ${ticks}: stick ${move.x.toFixed(2)},${move.y.toFixed(2)}`);
+    }
+
+    expect(backward).toEqual([]);
+    expect([...facings]).toEqual([1]);
   });
 });
 
