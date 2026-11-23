@@ -5,12 +5,12 @@
 import { describe, expect, it } from 'vitest';
 import { EndSchema, LobbySchema, RelayedGameMessageSchema, StartSchema } from './messages.ts';
 
-const LOBBY = { type: 'lobby', character: 'gil', ping: 40, ready: true, course: 'reef', difficulty: 'hard' };
+const LOBBY = { type: 'lobby', character: 'gil', ping: 40, ready: true, course: 'sunlit-shallows', difficulty: 'hard' };
 
 const START = {
   type: 'start',
   seed: 12345,
-  course: 'reef',
+  course: 'sunlit-shallows',
   difficulty: 'normal',
   slots: { '1': 'player', '3': 'tess' },
   characters: { player: 'rudy', tess: 'gil' },
@@ -33,6 +33,7 @@ describe('LobbySchema', () => {
     ['a wrong type', { ...LOBBY, type: 'start' }],
     ['an unknown character', { ...LOBBY, character: 'mario' }],
     ['a difficulty of easy', { ...LOBBY, difficulty: 'easy' }],
+    ['a course this build does not have', { ...LOBBY, course: 'moon-base' }],
   ])('rejects %s', (_case, message) => {
     expect(LobbySchema.safeParse(message).success).toBe(false);
   });
@@ -48,8 +49,15 @@ describe('StartSchema', () => {
     ['an unknown character', { ...START, characters: { player: 'rudy', tess: 'mario' } }],
     ['a delay of 13', { ...START, delay: 13 }],
     ['a difficulty of easy', { ...START, difficulty: 'easy' }],
+    ['a course this build does not have', { ...START, course: 'moon-base' }],
+    ['a slots key of 256', { ...START, slots: { '1': 'player', '256': 'tess' } }],
+    ['a slots key of 999', { ...START, slots: { '1': 'player', '999': 'tess' } }],
   ])('rejects %s', (_case, message) => {
     expect(StartSchema.safeParse(message).success).toBe(false);
+  });
+
+  it('accepts a slots key of 255, the largest peer id', () => {
+    expect(StartSchema.safeParse({ ...START, slots: { '1': 'player', '255': 'tess' } }).success).toBe(true);
   });
 
   it('rejects a slots entry naming an unknown slot', () => {
