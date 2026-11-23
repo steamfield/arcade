@@ -16,9 +16,9 @@ The test for every item below: does it let an agent find out whether its change 
 ## The inner loop
 
 1. Edit code. A hook formats the file.
-2. `pnpm arcade check <slug>`: typecheck, lint and unit tests. Quiet on success, short on failure. Target under 10 seconds.
+2. `pnpm arcade test <slug> <paths or @groups>` and `pnpm arcade check <slug> --skip-tests`: the tests covering the change, then typecheck and lint. Quiet on success, short on failure. Seconds.
 3. `pnpm arcade see <slug> --scenario <name>`: a headless run to a known state. The agent reads the screenshot and the state summary.
-4. `pnpm arcade smoke <slug>`: the production-build smoke test before handing work back.
+4. At the merge, once, by whoever merges: `pnpm arcade check <slug>` (every unit test), any slow project the game defines, and `pnpm arcade smoke <slug>`, the production-build smoke test. Subagents stop at step 3 (AGENTS.md "Test scope").
 
 CI runs the same `arcade` commands, so "passes locally" and "passes in CI" mean the same thing.
 

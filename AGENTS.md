@@ -85,11 +85,12 @@ Follow the behavior-first approach: test what a player or caller can observe.
 
 ## Test scope
 
-Run the narrowest tests that prove your change, and leave the full suite for the merge.
+Run the narrowest tests that prove your change, and leave the full suite for the merge. Two roles: a subagent (a lane builder, a reviewer, any agent given a brief) iterates on the tests that cover its own files, and the orchestrator (whoever merges) runs the full suite once and owns what it turns up.
 
 - While working, and before reporting, run `pnpm arcade test <slug>` with the paths or `@groups` that cover the files you touched, plus any guard the change could break (a game's `@behavior` group, for example, if it has one), and `pnpm arcade check <slug> --skip-tests`. Name the paths you ran in your report.
-- Don't run `pnpm arcade check <slug>` without `--skip-tests`, the game's whole Vitest suite, slow test projects or `pnpm arcade smoke` unless your brief asks for them or you are the one merging. Several agents run at once on one machine, and full runs from each of them slow everyone down and time out tests.
+- Don't run `pnpm arcade check <slug>` without `--skip-tests`, the game's whole Vitest suite, slow test projects (Rush Racers' `difficulty` project and `@bars` group, for example: run only the bars file you changed) or `pnpm arcade smoke` unless your brief asks for them or you are the one merging. Several agents run at once on one machine, and full runs from each of them slow everyone down and time out tests. This holds even when a skill's checklist or a doc lists the full commands: those are the merge gate.
 - The full suite runs once per merge: whoever merges a branch runs `pnpm arcade check <slug>`, any slow project the game defines, and `pnpm arcade smoke <slug>` on the merged result. `rr suite -- <slug>` shards the Vitest part across the remote hosts in `.rr.yaml`.
+- Failures the full suite finds are the orchestrator's to fix, on the merged result. When one is handed back to a subagent, the brief names the failing test path so the subagent reruns that test, not the suite. A brief never asks a subagent to run the full suite "to be safe".
 - A game lists related tests as named groups in its `package.json` (`"arcade": { "testGroups": { "courses": ["src/logic/courses", "src/logic/conformance"] } }`), run with `pnpm arcade test <slug> @courses`. An unknown group lists the ones that exist. Add a group when you find yourself typing the same set of paths twice.
 
 ## Done means
