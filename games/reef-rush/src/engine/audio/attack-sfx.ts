@@ -50,8 +50,6 @@ export function createAttackSfx(audibleFromPlayer: (id: RacerId) => boolean = ()
           return audibleFromPlayer(event.owner) ? 'decoy.spawn' : null;
         case 'decoy.popped':
           return audibleFromPlayer(event.owner) ? 'decoy.pop' : null;
-        case 'burst.fired':
-          return event.id === 'player' ? comboSfx(event.combo) : null;
         default:
           return null;
       }
@@ -67,12 +65,4 @@ export function withinHearing(world: World, id: RacerId): boolean {
   const dx = racer.body.x - player.body.x;
   const dy = racer.body.y - player.body.y;
   return Math.hypot(dx, dy) <= HEARING_PX;
-}
-
-/** The accent for the combos that came with the attack power-ups; the older combos have no adapter cue yet. */
-function comboSfx(combo: string | null): SfxKey | null {
-  if (combo === 'surfline') return 'combo.surfline';
-  if (combo === 'inkSquid') return 'combo.inkSquid';
-  if (combo === 'bubbleDecoy') return 'combo.bubbleDecoy';
-  return null;
 }

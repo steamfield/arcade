@@ -38,6 +38,8 @@ export const ItemPalette = {
   inkSac: [0x0a0614, 0x3c2a66, 0x7a64b0, 0xffffff],
   /** Glow Lantern: outline, frame, glow, white core. */
   glowLantern: [0x2a1a08, 0x8a5a20, 0xffe060, 0xffffff],
+  /** Cannonball: outline, iron, shine, the lit fuse's spark. */
+  cannonball: [0x101018, 0x4a4e66, 0xb4bcd4, 0xff8a30],
   /** Ink cloud: core and dithered edge. */
   inkCloud: [0x0a0614, 0x241a3c],
   /** Trapping bubble: rim and shine. */

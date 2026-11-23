@@ -3,6 +3,7 @@
  * a Mimic decoy when one is at least as near. A pure read of the world; `squids.ts` acts on it.
  */
 import { mayAttack } from '../difficulty-level.ts';
+import { selectedItem } from '../powerups/inventory.ts';
 import { MIMIC, SQUID } from '../powerups/tuning.ts';
 import { progressAt } from '../race/flowfield.ts';
 import { activeRacers, centreOf } from '../racers.ts';
@@ -13,10 +14,10 @@ const squaredDistance = (a: Vec, b: Vec): number => (a.x - b.x) ** 2 + (a.y - b.
 
 /**
  * How far a squid reaches to lock `racer`, in px: SQUID.lockTiles, times MIMIC.lockRangeMul for a
- * racer holding a Mimic Octopus.
+ * racer with a Mimic selected.
  */
 export function lockRangePx(racer: Racer): number {
-  return SQUID.lockTiles * TILE * (racer.stack.includes('mimic') ? MIMIC.lockRangeMul : 1);
+  return SQUID.lockTiles * TILE * (selectedItem(racer)?.kind === 'mimic' ? MIMIC.lockRangeMul : 1);
 }
 
 /** The decoy `owner` swam out, or undefined when none is in the water. */

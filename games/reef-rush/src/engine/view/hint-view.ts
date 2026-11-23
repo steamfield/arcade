@@ -1,8 +1,8 @@
 /**
- * Draws the in-race hints that `hints.ts` decides on: a short line beside the player ("PRESS B!"
- * with the burst control's glyph, "KICK!" with the kick control's) and the burst glyph pulsing next
- * to the HUD's power-up well while the stack holds something unused. Text over the water is sun,
- * outlined, and sits where the combo name does (`comboCentreY`), so it never covers the player.
+ * Draws the in-race hints that `hints.ts` decides on: a short line beside the player ("PRESS [A]!"
+ * with the fire control's glyph, "[B] DASH!" with the dash control's) and the fire glyph pulsing
+ * next to the HUD's item well while items sit unused. Text over the water is sun, outlined, and
+ * sits beside the player (`besidePlayerY`), so it never covers them.
  * Glyphs are key caps on a keyboard and round buttons on a touch screen. Under reduced motion the
  * pulse holds steady instead of blinking.
  */
@@ -12,13 +12,14 @@ import type { World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { DISPLAY_FACE, measureText } from '../art/ui/typeface.ts';
 import { isTouchScreen } from '../touch.ts';
+import { BESIDE_PLAYER_X } from './beside-player.ts';
 import { type ActionName, actionGlyphWidth, createActionGlyph, GLYPH_SIZE } from './control-glyphs.ts';
 import type { HintState } from './hints.ts';
 import { Layer } from './layers.ts';
 import { SPLASH_RECT } from './threat-hud.ts';
 
-/** The hint line centres on x 168, the middle of the safe column, like the combo name. */
-const LINE_X = 168;
+/** The hint line centres on x 168, the middle of the safe column. */
+const LINE_X = BESIDE_PLAYER_X;
 /** Space between the words and the glyph. */
 const PART_GAP = 3;
 /** A hint dropped below the player keeps this far clear of them, and stays above the bottom margin. */
@@ -48,8 +49,8 @@ interface HintLine {
 
 /**
  * Adds the hint lines and the HUD glyph to `scene`. `wellWidth` is the width of the HUD's
- * power-up well, so the glyph can sit just right of it; `anchorY(playerY, height)` is the combo
- * name's rule for where text of that height centres beside a player at screen y `playerY`.
+ * item well, so the glyph can sit just right of it; `anchorY(playerY, height)` is the rule for
+ * where text of that height centres beside a player at screen y `playerY` (`besidePlayerY`).
  */
 export function createHintView(
   scene: Phaser.Scene,
@@ -58,9 +59,9 @@ export function createHintView(
   anchorY: (playerY: number, height: number) => number,
 ): HintView {
   const touch = isTouchScreen();
-  const pressB = createLine(scene, touch, 'PRESS', 'burst', '!');
-  const kick = createLine(scene, touch, '', 'kick', 'KICK!');
-  const pulse = createActionGlyph(scene, 'burst', touch, { fixed: true, depth: Layer.hud });
+  const pressFire = createLine(scene, touch, 'PRESS', 'fire', '!');
+  const kick = createLine(scene, touch, '', 'dash', 'DASH!');
+  const pulse = createActionGlyph(scene, 'fire', touch, { fixed: true, depth: Layer.hud });
   pulse.setPosition(WELL_LEFT + wellWidth + PULSE_GAP, WELL_TOP + Math.floor((WELL_HEIGHT - GLYPH_SIZE) / 2));
   pulse.setVisible(false);
 
@@ -69,16 +70,16 @@ export function createHintView(
       const body = playerOf(world).body;
       const playerY = body.y + body.h / 2 - view.y;
       const centreY = clearOfSplash(anchorY(playerY, GLYPH_SIZE), playerY);
-      // A kick hint outranks PRESS B: a squid on the way is the more urgent thing to do.
+      // A dash hint outranks PRESS FIRE: a squid on the way is the more urgent thing to do.
       const lit = !reducedMotion && Math.floor(world.tick / PULSE_TICKS) % 2 === 1;
-      const showPressB = hints.pressB && !hints.kick;
-      pressB.setVisible(showPressB);
+      const showPressFire = hints.pressFire && !hints.kick;
+      pressFire.setVisible(showPressFire);
       kick.setVisible(hints.kick);
-      pressB.setHighlighted(lit);
+      pressFire.setHighlighted(lit);
       kick.setHighlighted(lit);
-      if (showPressB) pressB.place(centreY);
+      if (showPressFire) pressFire.place(centreY);
       if (hints.kick) kick.place(centreY);
-      pulse.setVisible(hints.pulseStack);
+      pulse.setVisible(hints.pulseItems);
       pulse.setHighlighted(reducedMotion || lit);
     },
   };

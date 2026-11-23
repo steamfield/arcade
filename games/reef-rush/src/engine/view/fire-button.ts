@@ -1,32 +1,32 @@
 /**
- * Puts the newest held power-up's icon on the on-screen B button, so a child can link the button
+ * Puts the selected item's icon on the on-screen A (fire) button, so a child can link the button
  * to the item it fires. The touch controls are DOM buttons owned by `@arcade/input`; this only adds
- * an image inside the B button while the stack holds something, and takes it away (back to the
- * plain "B") when it empties or the race scene closes. The icon is cut from the UI icon sheet
+ * an image inside the A button while an item is held, and takes it away (back to the plain "A")
+ * when nothing is held or the race scene closes. The icon is cut from the UI icon sheet
  * and scaled with crisp pixels. Without touch controls it does nothing.
  */
 import type Phaser from 'phaser';
 import type { PowerUpKind } from '../../logic/types.ts';
 import { UiTex } from '../art/ui/keys.ts';
-import { burstButton } from '../touch.ts';
-import { POWER_UP_ICON } from './hud.ts';
+import { fireButton } from '../touch.ts';
+import { POWER_UP_ICON } from './hud-well.ts';
 
-/** The B button's icon; `sync` follows the player's stack and `destroy` restores the button. */
-export interface BurstButtonIcon {
-  /** `stack` is the player's held power-ups, oldest first; the last one is shown. */
-  sync(stack: readonly PowerUpKind[]): void;
+/** The A button's icon; `sync` follows the player's selected item and `destroy` restores the button. */
+export interface FireButtonIcon {
+  /** `selected` is the kind in the player's selected slot, or null when nothing is held. */
+  sync(selected: PowerUpKind | null): void;
   destroy(): void;
 }
 
-/** CSS px the 9x9 icon is shown at: 4x, leaving room under it for the button's own "B". */
+/** CSS px the 9x9 icon is shown at: 4x, leaving room under it for the button's own "A". */
 const ICON_CSS_PX = 36;
 
 /** A button that does nothing, for screens without touch controls. */
-const NO_ICON: BurstButtonIcon = { sync() {}, destroy() {} };
+const NO_ICON: FireButtonIcon = { sync() {}, destroy() {} };
 
-/** Adds the icon to the B button if the touch controls are up; the returned icon is inert otherwise. */
-export function createBurstButtonIcon(scene: Phaser.Scene): BurstButtonIcon {
-  const button = burstButton();
+/** Adds the icon to the A button if the touch controls are up; the returned icon is inert otherwise. */
+export function createFireButtonIcon(scene: Phaser.Scene): FireButtonIcon {
+  const button = fireButton();
   if (!button) return NO_ICON;
   const urls = new Map<PowerUpKind, string>();
   const image = document.createElement('img');
@@ -55,16 +55,15 @@ export function createBurstButtonIcon(scene: Phaser.Scene): BurstButtonIcon {
   };
 
   return {
-    sync(stack) {
-      const newest = stack.at(-1);
-      if (newest === undefined) hide();
-      else if (newest !== shown) show(newest);
+    sync(selected) {
+      if (selected === null) hide();
+      else if (selected !== shown) show(selected);
     },
     destroy: hide,
   };
 }
 
-/** The button's layout while it holds an icon: the icon over the "B", both centred. */
+/** The button's layout while it holds an icon: the icon over the "A", both centred. */
 const STACKED = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } as const;
 
 function toCssName(property: string): string {
@@ -79,7 +78,7 @@ function iconUrl(scene: Phaser.Scene, kind: PowerUpKind): string {
   canvas.height = frame.cutHeight;
   const context = canvas.getContext('2d');
   if (!context)
-    throw new Error('Cannot draw the power-up icon for the B button: this browser gave no 2D canvas context');
+    throw new Error('Cannot draw the power-up icon for the A button: this browser gave no 2D canvas context');
   const source = frame.source.image as CanvasImageSource;
   context.drawImage(
     source,

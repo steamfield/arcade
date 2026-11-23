@@ -5,11 +5,12 @@ import { DEFAULT_COURSE } from './courses/index.ts';
 import type { Course } from './courses/types.ts';
 import type { GameEvent } from './events.ts';
 import { LevelError } from './level/parse.ts';
-import { fireBurst } from './powerups/burst.ts';
+import { fireItem } from './powerups/use.ts';
 import { COUNTDOWN_TICKS, DNF_GRACE_TICKS, RACE_LIMIT_TICKS, updateProgress } from './race/standings.ts';
 import {
   courseFromLevel,
   eventsIn,
+  giveItems,
   hold,
   placeAt,
   placeOnTile,
@@ -21,7 +22,7 @@ import {
 import { type RacerId, RNG_SALTS, type RngStream, type TickInput, type Vec } from './types.ts';
 import { createWorld, stepWorld, summarize, toAscii } from './world.ts';
 
-const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
+const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
 
 /** A race on the ocean course with an idle player, stepped up to `ticks` times or until it ends. */
 function idleRace(seed: number, ticks: number) {
@@ -248,13 +249,13 @@ describe('finished racers and items', () => {
     const tess = racerOf(world, 'tess');
     placeAt(tess, { x: 6 * 16, y: tileCentre(5, 3).y });
     tess.finished = { tick: 0, place: 1, overshoot: 0 };
-    tess.stack = ['jetFin'];
+    giveItems(tess, ['jetFin']);
 
     step(world, log, 300);
 
     const tessEvents = eventsIn(log).filter((event) => 'id' in event && event.id === 'tess');
     expect(tessEvents).toEqual([]);
-    expect(tess.stack).toEqual(['jetFin']);
+    expect(tess.items).toEqual([{ kind: 'jetFin', charges: 3 }, null, null]);
     expect(world.clams[0]?.closedFor).toBe(0);
   });
 });
@@ -285,16 +286,16 @@ describe('statuses in the step', () => {
     expect(eventsIn(log, 'racer.kicked')).toEqual([]);
   });
 
-  it('counters and the burst cooldown run down one per tick and stop at 0', () => {
+  it('counters and the item use cooldown run down one per tick and stop at 0', () => {
     const { world, log } = raceOn(LANES);
     const player = racerOf(world, 'player');
     player.status = { ...player.status, stunned: 5, invulnerable: 5, trapped: 5 };
-    player.burstCooldown = 5;
+    player.useCooldown = 5;
     const counters = () => [
       player.status.stunned,
       player.status.invulnerable,
       player.status.trapped,
-      player.burstCooldown,
+      player.useCooldown,
     ];
 
     step(world, log, 3);
@@ -305,14 +306,19 @@ describe('statuses in the step', () => {
 });
 
 describe('summary and ASCII', () => {
-  it('summarize reports the player stack, pearls and stun', () => {
+  it('summarize reports the player items per slot, the selection, pearls and stun', () => {
     const { world } = raceOn(LANES);
     const player = racerOf(world, 'player');
-    player.stack = ['jetFin', 'puffer'];
+    giveItems(player, ['jetFin', null, { kind: 'puffer', charges: 1 }], 2);
     player.pearls = 2;
     player.status.stunned = 3;
 
-    expect(summarize(world)).toMatchObject({ stack: ['jetFin', 'puffer'], pearls: 2, stunned: true });
+    expect(summarize(world)).toMatchObject({
+      items: ['jetFin:3', null, 'puffer:1'],
+      selected: 2,
+      pearls: 2,
+      stunned: true,
+    });
   });
 
   it('toAscii shows ready and shut clams, pearls in play, urchins and jellies', () => {
@@ -360,14 +366,14 @@ describe('attack power-ups in the step', () => {
     tess.status.stunned = 100_000;
     placeOnTile(tess, 3, 2);
     placeAt(racerOf(world, 'player'), tileCentre(12, 2));
-    tess.stack = ['homingSquid'];
-    fireBurst(world, tess, { x: 1, y: 0 });
+    giveItems(tess, ['homingSquid']);
+    fireItem(world, tess, 0, { x: 1, y: 0 });
 
     const player = racerOf(world, 'player');
     // Rudy's ability would shorten the latch; Gil's does not touch it, so it runs its full 90 ticks.
     player.character = 'gil';
     // Holding something, so the hit takes it instead of stunning the player, who could not kick through a stun.
-    player.stack = ['jetFin'];
+    giveItems(player, ['jetFin']);
     for (let i = 0; i < 120 && player.status.latched === 0; i++) step(world, log, 1, IDLE);
     expect(eventsIn(log, 'squid.latched')).toEqual([{ type: 'squid.latched', id: 'player', by: 'tess' }]);
     expect(player.status.latched).toBeGreaterThan(0);
@@ -394,7 +400,7 @@ describe('attack power-ups in the step', () => {
     updateProgress(world);
     for (const id of ['tess', 'squib'] as const) {
       const rival = racerOf(world, id);
-      rival.stack = ['homingSquid'];
+      giveItems(rival, ['homingSquid']);
       rival.profile = { ...rival.profile, itemAggression: 1 };
     }
 

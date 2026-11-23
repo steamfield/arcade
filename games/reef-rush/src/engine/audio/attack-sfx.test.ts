@@ -22,25 +22,9 @@ describe('the sound of an attack power-up event', () => {
     ['an Undertow the player fires', { type: 'undertow.fired', id: 'player', pulled: [] }, 'undertow'],
     ['an Undertow between rivals', { type: 'undertow.fired', id: 'tess', pulled: ['squib'] }, null],
     ['a decoy appearing', { type: 'decoy.spawned', owner: 'squib' }, 'decoy.spawn'],
-    ['a decoy popping', { type: 'decoy.popped', owner: 'squib', by: 'player', trapped: null }, 'decoy.pop'],
-    ['a decoy expiring', { type: 'decoy.popped', owner: 'squib', by: null, trapped: null }, 'decoy.pop'],
-    [
-      'the player’s Surfline',
-      { type: 'burst.fired', id: 'player', kinds: ['jetFin', 'riptide'], combo: 'surfline' },
-      'combo.surfline',
-    ],
-    [
-      'the player’s Ink Squid',
-      { type: 'burst.fired', id: 'player', kinds: ['homingSquid', 'inkSac'], combo: 'inkSquid' },
-      'combo.inkSquid',
-    ],
-    [
-      'the player’s Bubble Decoy',
-      { type: 'burst.fired', id: 'player', kinds: ['mimic', 'bubbleShield'], combo: 'bubbleDecoy' },
-      'combo.bubbleDecoy',
-    ],
-    ['a rival’s Surfline', { type: 'burst.fired', id: 'tess', kinds: ['jetFin', 'riptide'], combo: 'surfline' }, null],
-    ['a burst with no combo', { type: 'burst.fired', id: 'player', kinds: ['homingSquid'], combo: null }, null],
+    ['a decoy popping', { type: 'decoy.popped', owner: 'squib', by: 'player' }, 'decoy.pop'],
+    ['a decoy expiring', { type: 'decoy.popped', owner: 'squib', by: null }, 'decoy.pop'],
+    ['an item the player fires', { type: 'item.used', id: 'player', kind: 'jetFin', slot: 0, chargesLeft: 2 }, null],
     ['an unrelated event', { type: 'racer.kicked', id: 'player' }, null],
   ])('%s', (_case, event, key) => {
     expect(createAttackSfx().forEvent(event, 500)).toBe(key);
@@ -64,7 +48,7 @@ describe('other racers\u2019 attacks', () => {
     ['a squid fired out of earshot', { type: 'squid.spawned', owner: 'tess', target: null }, null],
     ['a riptide laid out of earshot', { type: 'riptide.spawned', owner: 'tess' }, null],
     ['a decoy left out of earshot', { type: 'decoy.spawned', owner: 'tess' }, null],
-    ['a decoy popping out of earshot', { type: 'decoy.popped', owner: 'tess', by: null, trapped: null }, null],
+    ['a decoy popping out of earshot', { type: 'decoy.popped', owner: 'tess', by: null }, null],
     [
       'an Undertow that pulls the player, wherever the user is',
       { type: 'undertow.fired', id: 'tess', pulled: ['player'] },

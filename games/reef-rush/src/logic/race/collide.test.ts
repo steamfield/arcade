@@ -127,7 +127,7 @@ function racer(id: RacerId, x: number, mass = 1): Racer {
     finished: null,
     ai: null,
     profile: { ...PLAYER_PROFILE, id, mass },
-    ...noItems(),
+    ...noItems(3),
   };
 }
 

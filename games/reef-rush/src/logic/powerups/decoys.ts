@@ -5,11 +5,9 @@
  * Each tick (`advanceDecoys`) a decoy ages and pops (`decoy.popped {by: null}`) when its ttl runs out
  * or it crosses the finish line; otherwise it steers and moves like a swimmer. Anything that hits it
  * pops it (`popDecoy`): a racer other than its owner touching it, a bubble of another owner (which
- * pops too), a squid (in `hazards/squids.ts`), or a flash (in `hazards/contacts.ts`). A bubbled decoy
- * (the bubbleDecoy combo) traps the racer whose attack hit it.
+ * pops too), a squid (in `hazards/squids.ts`), or a flash (in `hazards/contacts.ts`).
  */
 import { overlaps, squareAt } from '../hazards/boxes.ts';
-import { applyHit } from '../hazards/hits.ts';
 import { mediumOf } from '../media/index.ts';
 import { moveBody } from '../race/collide.ts';
 import { activeRacers, hitbox } from '../racers.ts';
@@ -22,10 +20,8 @@ const LOOKAHEAD_TILES = 3;
 /**
  * Puts a decoy of `owner` in the water at its centre, swimming on at MIMIC.speed along the medium's
  * way; the owner's previous decoy, if any, pops (`decoy.popped {by: null}`). Emits `decoy.spawned`.
- *
- * @param bubbled The bubbleDecoy combo: whatever hits the decoy is trapped.
  */
-export function spawnDecoy(world: World, owner: Racer, bubbled: boolean): void {
+export function spawnDecoy(world: World, owner: Racer): void {
   for (const old of world.decoys.filter((decoy) => decoy.owner === owner.id)) popDecoy(world, old, null);
   const { x, y, w, h } = owner.body;
   world.decoys.push({
@@ -35,22 +31,18 @@ export function spawnDecoy(world: World, owner: Racer, bubbled: boolean): void {
     vy: 0,
     ttl: MIMIC.ttlTicks,
     owner: owner.id,
-    ...(bubbled ? { bubbled } : {}),
   });
   world.events.emit({ type: 'decoy.spawned', owner: owner.id });
 }
 
 /**
- * Removes `decoy` and emits `decoy.popped {owner, by}`. When it is bubbled and `by` names a racer
- * still in play, that racer is trapped by a bubble hit (`applyHit`, cause 'bubble', owned by the decoy's owner).
+ * Removes `decoy` and emits `decoy.popped {owner, by}`.
  *
  * @param by The racer whose attack or touch popped it, or null when it simply ran out.
  */
 export function popDecoy(world: World, decoy: Decoy, by: RacerId | null): void {
   world.decoys = world.decoys.filter((candidate) => candidate !== decoy);
-  const victim = decoy.bubbled && by !== null ? activeRacers(world).find((racer) => racer.id === by) : undefined;
-  const trapped = victim && applyHit(world, victim, 'bubble', decoy.owner, decoy) && victim.status.trapped > 0;
-  world.events.emit({ type: 'decoy.popped', owner: decoy.owner, by, trapped: trapped && victim ? victim.id : null });
+  world.events.emit({ type: 'decoy.popped', owner: decoy.owner, by });
 }
 
 /**

@@ -1,6 +1,6 @@
 /**
  * The Easy bars for the weakest child: the toddler bot wobbles hard, reacts late and never kicks or
- * bursts, and a scripted race has the child stop swimming for 10 s and then push into a wall.
+ * uses items, and a scripted race has the child stop swimming for 10 s and then push into a wall.
  */
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../ai/profiles.ts';

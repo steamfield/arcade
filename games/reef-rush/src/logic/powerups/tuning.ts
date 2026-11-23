@@ -1,41 +1,43 @@
 /**
- * Power-up and pickup numbers every phase 3 module agrees on: stack size, burst
- * cooldown, each burst's effect, combos, passives, clams, pearls and loose
- * power-ups. Data only. Durations are ticks (1/60 s), speeds px/s, sizes px.
+ * Power-up and pickup numbers every item module agrees on: slot count, use
+ * cooldown, each item's effect, passives, clams, pearls and loose power-ups.
+ * Charges per kind are in `charges.ts`. Data only. Durations are ticks (1/60 s),
+ * speeds px/s, sizes px.
  */
-import type { ComboName, PowerUpKind } from '../types.ts';
+import type { PowerUpKind } from '../types.ts';
 
-/** Most power-ups a racer holds; gaining a fourth drops the oldest. */
+/** Item slots a racer has (Nib's ability adds one, `stackMaxFor`). */
 export const STACK_MAX = 3;
 
-/** Ticks between bursts, shared by every held power-up. */
-export const BURST_COOLDOWN_TICKS = 150;
+/** Ticks after an item use before the next one, shared by every slot. */
+export const USE_COOLDOWN_TICKS = 20;
 
 /**
- * Jet Fins burst: velocity held at `speed` along the input (or facing) for `ticks` ticks, counting
+ * Jet Fins boost: velocity held at `speed` along the input (or facing) for `ticks` ticks, counting
  * the firing tick, ignoring drag. The firing tick sets velocity after the body has moved, so the
  * dash moves the body on `ticks - 1` ticks.
  */
 export const DASH = { ticks: 24, speed: 200 } as const;
 
-/** Bubble Shield burst: a bubble fired along the input (or facing) that traps the first other racer it touches. */
+/**
+ * Cannonball: a dash like Jet Fins' but longer and faster, inflated and invulnerable for its whole
+ * length, so it breaks coral and hits the racers it touches and nothing ends it early.
+ */
+export const CANNONBALL = { ticks: 75, speed: DASH.speed * 1.25 } as const;
+
+/** Bubble Shield use: a bubble fired along the input (or facing) that traps the first other racer it touches. */
 export const BUBBLE = {
   speed: 150,
   ttlTicks: 90,
   /** Side of the bubble's square hitbox, centred on it. */
   size: 10,
   trapTicks: 60,
-  /** lanternBubble: lights the dark within this many tiles of the bubble (the engine draws it)... */
-  lightTiles: 3,
-  /** ...and stuns every jelly whose centre it passes within this many tiles, for this many ticks. */
-  jellyStunTiles: 1.5,
-  jellyStunTicks: 45,
 } as const;
 
-/** Puffer burst: a larger hitbox centred on the body that breaks coral and hits racers it touches. */
+/** Puffer use: a larger hitbox centred on the body that breaks coral and hits racers it touches. */
 export const INFLATE = { ticks: 60, size: 20 } as const;
 
-/** Ink Sac burst: a cloud behind the racer that slows every other racer inside it. */
+/** Ink Sac use: a cloud behind the racer that slows every other racer inside it. */
 export const INK = {
   /** 32 px across. */
   radius: 16,
@@ -44,30 +46,14 @@ export const INK = {
   ttlTicks: 240,
   /** Slow applied to a racer inside, refreshed every tick it stays inside. */
   slowTicks: 90,
-  /** inkBomb: 48 px across and centred on the racer. */
-  bombRadius: 24,
-  /** inkTrail: one cloud every this many ticks of the dash, starting on the firing tick. */
-  trailEveryTicks: 8,
 } as const;
 
-/** Glow Lantern burst: stuns other racers and jellies whose centres are within range of the racer's centre. */
+/** Glow Lantern use: stuns other racers and jellies whose centres are within range of the racer's centre. */
 export const FLASH = { rangeTiles: 4, stunTicks: 45 } as const;
-
-/** Combos in priority order: with three held, the first pair listed that is held is the reported combo. */
-export const COMBO_PAIRS: readonly { name: ComboName; kinds: readonly [PowerUpKind, PowerUpKind] }[] = [
-  { name: 'cannonball', kinds: ['jetFin', 'puffer'] },
-  { name: 'inkTrail', kinds: ['jetFin', 'inkSac'] },
-  { name: 'lanternBubble', kinds: ['bubbleShield', 'glowLantern'] },
-  { name: 'inkBomb', kinds: ['puffer', 'inkSac'] },
-  { name: 'comet', kinds: ['jetFin', 'glowLantern'] },
-  { name: 'surfline', kinds: ['jetFin', 'riptide'] },
-  { name: 'inkSquid', kinds: ['homingSquid', 'inkSac'] },
-  { name: 'bubbleDecoy', kinds: ['mimic', 'bubbleShield'] },
-];
 
 /**
  * Homing Squid. It flies at `speed` px/s, turning at most `turnPerTick` radians a tick, and locks the
- * nearest unfinished racer ahead of its owner within `lockTiles` (a Mimic holder only from
+ * nearest unfinished racer ahead of its owner within `lockTiles` (a racer with a Mimic selected only from
  * `MIMIC.lockRangeMul` of that). It gives up after `ttlTicks`. A kick by its target in the last
  * `dodgeTicks` before contact (distance at squid speed) makes it miss. A latched racer swims at
  * `latchedForceMul` force for `latchedTicks`, drifting sideways by up to `driftAccel` px/s² on a
@@ -93,8 +79,8 @@ export const SQUID = {
 /**
  * Riptide: a lane `widthTiles` wide and up to `lengthTiles` long from the racer's centre along the
  * aim (snapped to the dominant axis), clipped at the first solid tile, lasting `ttlTicks`. Inside it
- * a racer feels `currentForceMul` times a plain current. Holders feel every current `currentMul`
- * harder. `surfline` (Jet Fins + Riptide) lays a longer, stronger lane at the end of the dash.
+ * a racer feels `currentForceMul` times a plain current. A racer with a Riptide selected feels every current `currentMul`
+ * harder.
  */
 export const RIPTIDE = {
   currentMul: 1.5,
@@ -102,7 +88,6 @@ export const RIPTIDE = {
   lengthTiles: 8,
   ttlTicks: 180,
   currentForceMul: 2,
-  surfline: { lengthTiles: 12, currentForceMul: 3 },
 } as const;
 
 /**
@@ -113,11 +98,11 @@ export const UNDERTOW = { ticks: 90, baseForce: 120, perTile: 6, maxMul: 3, kick
 
 /**
  * Mimic: the decoy lives `ttlTicks` and swims `speed` px/s along the steer field; a squid fired at a
- * Mimic holder locks on only from `lockRangeMul` of the usual range.
+ * racer with a Mimic selected locks on only from `lockRangeMul` of the usual range.
  */
 export const MIMIC = { ttlTicks: 300, lockRangeMul: 0.5, speed: 80, size: 12 } as const;
 
-/** Passive effects of held power-ups and statuses on swimming and bumping. */
+/** Passive effects of the selected item and of statuses on swimming and bumping. */
 export const PASSIVE = {
   jetForceMul: 1.15,
   jetKickCooldownTicks: 22,
@@ -126,9 +111,9 @@ export const PASSIVE = {
   /** Inside another racer's ink. */
   slowedForceMul: 0.5,
   inflatedForceMul: 0.8,
-  /** A Puffer holder bumps like a racer of this many times its mass. */
+  /** A racer with a Puffer selected bumps like a racer of this many times its mass. */
   pufferMassMul: 2,
-  /** A Glow Lantern holder collects pearls whose tile centre is within this many tiles of its centre. */
+  /** A racer with a Glow Lantern selected collects pearls whose tile centre is within this many tiles of its centre. */
   lanternPearlTiles: 3,
 } as const;
 
@@ -152,6 +137,7 @@ export const CLAM = {
     riptide: 0,
     undertow: 0,
     mimic: 3,
+    cannonball: 0,
   },
   lastWeights: {
     jetFin: 3,
@@ -163,6 +149,7 @@ export const CLAM = {
     riptide: 2,
     undertow: 2,
     mimic: 0,
+    cannonball: 2,
   },
 } as const satisfies {
   closedTicks: number;

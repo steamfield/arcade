@@ -4,16 +4,9 @@ import { POWER_UP_KINDS } from '../../logic/types.ts';
 import { ICON_SHEETS } from '../art/ui/icons.ts';
 import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { PanelPalette } from '../art/ui/palette.ts';
-import {
-  captionText,
-  comboCentreY,
-  isPlacePopping,
-  NOT_READY_ALPHA,
-  type PlaceTrack,
-  POWER_UP_ICON,
-  trackPlace,
-  wellLayout,
-} from './hud.ts';
+import { besidePlayerY } from './beside-player.ts';
+import { captionText, isPlacePopping, type PlaceTrack, trackPlace } from './hud.ts';
+import { chargeText, NOT_READY_ALPHA, POWER_UP_ICON, wellLayout } from './hud-well.ts';
 import { promptText } from './threat-hud.ts';
 
 describe('the place panel', () => {
@@ -45,9 +38,9 @@ describe('the place panel', () => {
   });
 });
 
-describe('the combo name', () => {
+describe('text beside the player', () => {
   const clearOfPlayer = (playerY: number, height: number) => {
-    const centre = comboCentreY(playerY, height);
+    const centre = besidePlayerY(playerY, height);
     const top = centre - Math.ceil(height / 2);
     const bottom = centre + Math.ceil(height / 2);
     return bottom <= playerY - 16 || top >= playerY + 16;
@@ -59,7 +52,7 @@ describe('the combo name', () => {
     ['above a player at the screen centre', 90, 12, 'above'],
     ['above a player at the bottom edge', 170, 7, 'above'],
   ])('sits %s', (_case, playerY, height, side) => {
-    const centre = comboCentreY(playerY, height);
+    const centre = besidePlayerY(playerY, height);
     expect(centre < playerY ? 'above' : 'below').toBe(side);
     expect(clearOfPlayer(playerY, height)).toBe(true);
   });
@@ -67,7 +60,7 @@ describe('the combo name', () => {
   it('stays under the caption line and above the bottom margin wherever the player is', () => {
     for (let playerY = 0; playerY <= 180; playerY++) {
       for (const height of [7, 12]) {
-        const centre = comboCentreY(playerY, height);
+        const centre = besidePlayerY(playerY, height);
         expect(centre - Math.ceil(height / 2), `player at ${playerY}`).toBeGreaterThanOrEqual(50);
         expect(centre + Math.ceil(height / 2), `player at ${playerY}`).toBeLessThanOrEqual(174);
       }
@@ -75,18 +68,22 @@ describe('the combo name', () => {
   });
 });
 
-describe('the kick and power-up well', () => {
-  it('frames three slots after kick and burst for a racer who holds three', () => {
-    expect(wellLayout(3)).toEqual({ width: 61, slotX: [92, 103, 114] });
+describe('the dash and item well', () => {
+  it('frames three item slots after the dash icon for a racer with three slots', () => {
+    expect(wellLayout(3)).toEqual({ width: 71, slotX: [86, 102, 118] });
   });
 
-  it('grows by one slot for a racer who holds four, like Nib', () => {
+  it('grows by one slot for a racer with four, like Nib', () => {
     const { width, slotX } = wellLayout(4);
-    expect(slotX).toEqual([92, 103, 114, 125]);
-    // The panel keeps 1 px padding and its 3 px frame past the fourth icon (x 125-133).
-    expect(66 + width - 1).toBe(137);
+    expect(slotX).toEqual([86, 102, 118, 134]);
+    // The panel keeps 1 px padding and its 3 px frame past the fourth slot's digit (x 144-148).
+    expect(66 + width - 1).toBe(152);
     // It stays left of the back link (x 248 and right), and the d-pad zone starts at y 76, below it.
     expect(66 + width).toBeLessThan(248);
+  });
+
+  it('shows a held item\u2019s charges as one digit and nothing for an empty slot', () => {
+    expect([chargeText({ kind: 'jetFin', charges: 3 }), chargeText(null)]).toEqual(['3', '']);
   });
 });
 
@@ -114,7 +111,7 @@ describe('a dimmed well icon', () => {
   const frames = ICON_SHEETS.find((sheet) => sheet.key === UiTex.icons)?.frames ?? [];
 
   // The silhouette of each icon that dims: its rim (index 0) and main fill (index 1).
-  it.each([IconFrame.kick, IconFrame.burst])('%s keeps 3:1 against the well when not ready', (name) => {
+  it.each([IconFrame.dash])('%s keeps 3:1 against the well when not ready', (name) => {
     const palette = frames.find((frame) => frame.name === name)?.palette ?? [];
     expect(palette.length).toBeGreaterThan(1);
     for (const colour of palette.slice(0, 2)) {
@@ -161,18 +158,18 @@ describe('the squid warnings on the HUD', () => {
     expect(captionText(world, view)).toBe('');
   });
 
-  it('leaves the caption to the KICK! prompt while a squid is latched, and prompts', () => {
+  it('leaves the caption to the DASH! prompt while a squid is latched, and prompts', () => {
     const world = lockedOnPlayer();
     racerOf(world, 'player').status.latched = 100;
     expect(captionText(world, view)).toBe('');
-    expect(promptText(world, false)).toEqual({ headline: 'KICK!', hint: '' });
+    expect(promptText(world, false)).toEqual({ headline: 'DASH!', hint: '' });
   });
 
-  it('adds PRESS A on a touch screen, and prompts nothing when not latched', () => {
+  it('adds PRESS B on a touch screen, and prompts nothing when not latched', () => {
     const world = lockedOnPlayer();
     expect(promptText(world, true)).toEqual({ headline: '', hint: '' });
     racerOf(world, 'player').status.latched = 100;
-    expect(promptText(world, true)).toEqual({ headline: 'KICK!', hint: 'PRESS A' });
+    expect(promptText(world, true)).toEqual({ headline: 'DASH!', hint: 'PRESS B' });
   });
 
   it('lets a trapped player see TRAPPED! rather than LOCKED ON!', () => {

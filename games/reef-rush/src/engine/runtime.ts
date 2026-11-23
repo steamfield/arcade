@@ -6,7 +6,7 @@
  * Scenes render from it and never change gameplay themselves.
  *
  * Screens: title, then course select (pick a course; skipped while only one course is listed),
- * then select (pick a character; kick races, burst goes back), then race and results. Race again
+ * then select (pick a character; fire races, dash goes back), then race and results. Race again
  * skips both selects and races the same course and pick. The title also opens How to Play, a few
  * pages the player turns with the move and action buttons.
  */
@@ -107,7 +107,7 @@ export const SAVE_SLOT = 'main';
 
 /** Ticks between `race.finished` and the results screen, so the finish can be seen. */
 const RESULTS_DELAY_TICKS = 90;
-/** Ticks a menu ignores kick after its screen appears, so a kick still being mashed from the race can't pick an option unseen. */
+/** Ticks a menu ignores fire after its screen appears, so a fire still being mashed from the race can't pick an option unseen. */
 const MENU_ARM_TICKS = 20;
 
 const MENUS: Partial<Record<SceneKey, readonly MenuOption[]>> = MENU_OPTIONS;
@@ -175,7 +175,7 @@ export class Runtime {
   private cursor = 0;
   /** Ticks left before the results screen, or null when no race has finished. */
   private resultsIn: number | null = null;
-  /** Ticks left before the current menu or the select screen accepts kick. */
+  /** Ticks left before the current menu or the select screen accepts fire. */
   private menuArmIn = 0;
 
   constructor(options: RuntimeOptions) {
@@ -354,7 +354,7 @@ export class Runtime {
       this.menuArmIn--;
       return;
     }
-    if (!input.justPressed('kick')) return;
+    if (!input.justPressed('fire')) return;
     const option = selectedOption(menu);
     this.events.emit({ type: 'menu.selected', option });
     if (option === 'Sound') this.changeSettings({ muted: !this.settings.muted });
@@ -366,7 +366,7 @@ export class Runtime {
     else this.startRace();
   }
 
-  /** Moves the course cursor up and down, wrapping; after the arming ticks kick picks the course and burst goes back. */
+  /** Moves the course cursor up and down, wrapping; after the arming ticks fire picks the course and dash goes back. */
   private tickCourse(): void {
     const count = this.listedCourses.length;
     if (input.justPressed('down')) this.courseCursor = (this.courseCursor + 1) % count;
@@ -375,14 +375,14 @@ export class Runtime {
       this.menuArmIn--;
       return;
     }
-    if (input.justPressed('burst')) this.goTo('title');
-    else if (input.justPressed('kick')) {
+    if (input.justPressed('dash')) this.goTo('title');
+    else if (input.justPressed('fire')) {
       this.course = this.listedCourses[this.courseCursor] ?? this.course;
       this.goTo('select');
     }
   }
 
-  /** Moves the select cursor on the d-pad; after the arming ticks kick races as the pick and burst goes back. */
+  /** Moves the select cursor on the d-pad; after the arming ticks fire races as the pick and dash goes back. */
   private tickSelect(): void {
     if (input.justPressed('left')) this.selectedCharacter = moveCharacter(this.selectedCharacter, -1, 0);
     if (input.justPressed('right')) this.selectedCharacter = moveCharacter(this.selectedCharacter, 1, 0);
@@ -392,8 +392,8 @@ export class Runtime {
       this.menuArmIn--;
       return;
     }
-    if (input.justPressed('burst')) this.goTo(this.courseSelectShown ? 'course' : 'title');
-    else if (input.justPressed('kick')) this.pickCharacter();
+    if (input.justPressed('dash')) this.goTo(this.courseSelectShown ? 'course' : 'title');
+    else if (input.justPressed('fire')) this.pickCharacter();
   }
 
   /**
@@ -513,19 +513,29 @@ function nextDifficulty(current: Difficulty): Difficulty {
 
 /** The page button pressed this tick, if any. */
 function readPagePress(): PagePress | null {
-  for (const press of ['kick', 'burst', 'right', 'left'] as const) {
+  for (const press of ['fire', 'dash', 'right', 'left'] as const) {
     if (input.justPressed(press)) return press;
   }
   return null;
 }
 
-/** The player's input this tick as plain data for `stepWorld`. */
+/**
+ * The player's input this tick as plain data for `stepWorld`: fire uses the selected item, dash
+ * kicks, and prev and next cycle the selection (cancelling out when both are pressed).
+ */
 function readPlayerInput(): TickInput {
   const move = input.vector('move');
   return {
     move: { x: move.x, y: move.y },
-    kick: input.justPressed('kick'),
-    kickHeld: input.isDown('kick'),
-    burst: input.justPressed('burst'),
+    kick: input.justPressed('dash'),
+    kickHeld: input.isDown('dash'),
+    use: input.justPressed('fire'),
+    cycle: cycleStep(input.justPressed('prev'), input.justPressed('next')),
   };
+}
+
+/** The selection step for this tick's prev and next presses. */
+function cycleStep(prev: boolean, next: boolean): TickInput['cycle'] {
+  if (prev === next) return 0;
+  return next ? 1 : -1;
 }

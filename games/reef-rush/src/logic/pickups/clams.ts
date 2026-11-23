@@ -1,13 +1,15 @@
 /**
- * Clams: power-up boxes on the course. A racer touching a ready clam opens it,
- * gets a place-weighted roll from the `pickups` stream, and the clam stays shut
- * for a while. A roll walks POWER_UP_KINDS in order over the cumulative weights
- * of the kinds the racer doesn't hold, so one draw maps to one kind.
+ * Clams: power-up boxes on the course. A racer with an empty slot touching a ready
+ * clam opens it, gets a place-weighted roll from the `pickups` stream with the
+ * charges that kind comes with (`chargesFor`), and the clam stays shut for a while.
+ * A roll walks POWER_UP_KINDS in order over the cumulative weights of the kinds the
+ * racer doesn't hold, so one draw maps to one kind.
  */
 import type { Rng } from '@arcade/core';
 import { clamBias } from '../difficulty-level.ts';
 import { overlapsTile } from '../level/query.ts';
-import { gainPowerUp } from '../powerups/stack.ts';
+import { chargesFor } from '../powerups/charges.ts';
+import { gainItem, heldItems, inventoryFull } from '../powerups/inventory.ts';
 import { CLAM } from '../powerups/tuning.ts';
 import { hitbox } from '../racers.ts';
 import { POWER_UP_KINDS, type PowerUpKind, RACER_IDS, type Racer, type World } from '../types.ts';
@@ -16,10 +18,11 @@ const LAST_PLACE = RACER_IDS.length;
 
 /**
  * The pickups slot for clams. Each call, a clam with `closedFor > 0` counts it down by one instead
- * of opening. A ready clam whose tile the hitbox of a racer overlaps (first in `racers` order) opens:
- * `rollClam(world.rngs.pickups, racer.place, racer.stack, bias)`, `clam.opened {id, index, kind}`, then
- * `gainPowerUp`, and `closedFor = CLAM.closedTicks`. So a racer parked on a clam opens it on one
- * call and again CLAM.closedTicks + 1 calls later.
+ * of opening. A ready clam opens for the first racer in `racers` order whose hitbox overlaps its tile
+ * and who has an empty slot: `rollClam(world.rngs.pickups, racer.place, held kinds, bias)`,
+ * `clam.opened {id, index, kind}`, then `gainItem` with `chargesFor(kind, racer.place)`, and
+ * `closedFor = CLAM.closedTicks`. A clam that only full racers touch stays ready. So a racer parked
+ * on a clam opens it on one call and again CLAM.closedTicks + 1 calls later.
  */
 export function openClams(world: World, racers: readonly Racer[]): void {
   world.clams.forEach((clam, index) => {
@@ -27,11 +30,14 @@ export function openClams(world: World, racers: readonly Racer[]): void {
       clam.closedFor -= 1;
       return;
     }
-    const opener = racers.find((racer) => overlapsTile(hitbox(racer), clam.tile.x, clam.tile.y));
+    const opener = racers.find(
+      (racer) => !inventoryFull(racer) && overlapsTile(hitbox(racer), clam.tile.x, clam.tile.y),
+    );
     if (!opener) return;
-    const kind = rollClam(world.rngs.pickups, opener.place, opener.stack, clamBias(world, opener));
+    const held = heldItems(opener).map((item) => item.kind);
+    const kind = rollClam(world.rngs.pickups, opener.place, held, clamBias(world, opener));
     world.events.emit({ type: 'clam.opened', id: opener.id, index, kind });
-    gainPowerUp(world, opener, kind);
+    gainItem(world, opener, kind, chargesFor(kind, opener.place));
     clam.closedFor = CLAM.closedTicks;
   });
 }
@@ -58,9 +64,9 @@ export function clamWeights(place: number): Record<PowerUpKind, number> {
 /**
  * Picks a power-up the racer doesn't hold, weighted by `clamWeights(place)` times `bias` per kind
  * (the difficulty level's `playerClamWeightMul` for the player; none by default), with one draw from `rng`.
- * Kinds with weight 0 never roll. A stack holds at most 4 kinds and at least seven have weight, so there is always something to roll.
+ * Kinds with weight 0 never roll. A racer holds at most 4 kinds and at least seven have weight, so there is always something to roll.
  *
- * @throws {Error} When `held` already covers every rollable kind, which a valid stack never does.
+ * @throws {Error} When `held` already covers every rollable kind, which a valid inventory never does.
  */
 export function rollClam(
   rng: Rng,

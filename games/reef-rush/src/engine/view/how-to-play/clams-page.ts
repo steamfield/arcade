@@ -8,7 +8,7 @@ import type { PowerUpKind } from '../../../logic/types.ts';
 import { Frame, Tex } from '../../art/keys.ts';
 import { IconFrame } from '../../art/ui/keys.ts';
 import { UiRamp } from '../../art/ui/palette.ts';
-import { POWER_UP_ICON } from '../hud.ts';
+import { POWER_UP_ICON } from '../hud-well.ts';
 import { POWER_UP_TEX } from '../powerup-view.ts';
 import { easeOut, type PageBuilder, stroke } from './kit.ts';
 

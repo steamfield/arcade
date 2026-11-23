@@ -41,7 +41,7 @@ export function swimDistanceAt(world: World, tile: Vec): number {
 }
 
 /**
- * True when unbroken coral lies within `steps` tiles down the smash field from `tile`, so a Puffer burst would open the way.
+ * True when unbroken coral lies within `steps` tiles down the smash field from `tile`, so a Puffer or Cannonball would open the way.
  *
  * @throws {Error} When the world's nav was built by another medium.
  */

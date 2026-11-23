@@ -1,10 +1,10 @@
 import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { updateProgress } from '../race/standings.ts';
-import { eventsIn, hold, IDLE, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
+import { eventsIn, giveItems, hold, IDLE, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
 import type { RacerId } from '../types.ts';
-import { fireBurst } from './burst.ts';
 import { applyUndertow } from './undertow.ts';
+import { fireItem } from './use.ts';
 
 /** A long open pool with the finish at the right end. */
 const POOL = `
@@ -32,9 +32,9 @@ function pool(spots: Spots) {
 describe('firing an Undertow', () => {
   it('pulls every racer ahead of the user for 90 ticks, and nobody behind', () => {
     const { world, log } = pool({ player: 10, tess: 16, squib: 22, bo: 4 });
-    racerOf(world, 'player').stack = ['undertow'];
+    giveItems(racerOf(world, 'player'), ['undertow']);
 
-    fireBurst(world, racerOf(world, 'player'), RIGHT);
+    fireItem(world, racerOf(world, 'player'), 0, RIGHT);
 
     expect(eventsIn(log, 'undertow.fired')).toEqual([
       { type: 'undertow.fired', id: 'player', pulled: ['tess', 'squib'] },
@@ -47,16 +47,16 @@ describe('firing an Undertow', () => {
     ]);
   });
 
-  it('is used up: it leaves the stack with powerup.lost cause used, and the rest stays', () => {
+  it('is used up: its slot empties with powerup.lost cause used, and the rest stays', () => {
     const { world, log } = pool({ player: 10, tess: 16 });
     const player = racerOf(world, 'player');
-    player.stack = ['jetFin', 'undertow'];
+    giveItems(player, ['jetFin', 'undertow'], 1);
 
-    fireBurst(world, player, RIGHT);
+    fireItem(world, player, 1, RIGHT);
 
-    expect(player.stack).toEqual(['jetFin']);
-    expect(eventsIn(log, 'burst.fired')).toEqual([
-      { type: 'burst.fired', id: 'player', kinds: ['jetFin', 'undertow'], combo: null },
+    expect(player.items).toEqual([{ kind: 'jetFin', charges: 3 }, null, null]);
+    expect(eventsIn(log, 'item.used')).toEqual([
+      { type: 'item.used', id: 'player', kind: 'undertow', slot: 1, chargesLeft: 0 },
     ]);
     expect(eventsIn(log, 'powerup.lost')).toEqual([
       { type: 'powerup.lost', id: 'player', kind: 'undertow', cause: 'used' },
@@ -66,20 +66,20 @@ describe('firing an Undertow', () => {
   it('is used up with nobody to pull, when the user leads', () => {
     const { world, log } = pool({ player: 20, tess: 10, squib: 8, bo: 6 });
     const player = racerOf(world, 'player');
-    player.stack = ['undertow'];
+    giveItems(player, ['undertow']);
 
-    fireBurst(world, player, RIGHT);
+    fireItem(world, player, 0, RIGHT);
 
     expect(eventsIn(log, 'undertow.fired')).toEqual([{ type: 'undertow.fired', id: 'player', pulled: [] }]);
-    expect(player.stack).toEqual([]);
+    expect(player.items).toEqual([null, null, null]);
   });
 
   it('leaves racers who have finished alone', () => {
     const { world, log } = pool({ player: 10, tess: 16, squib: 22 });
     racerOf(world, 'squib').finished = { tick: 1, place: 1, overshoot: 0 };
-    racerOf(world, 'player').stack = ['undertow'];
+    giveItems(racerOf(world, 'player'), ['undertow']);
 
-    fireBurst(world, racerOf(world, 'player'), RIGHT);
+    fireItem(world, racerOf(world, 'player'), 0, RIGHT);
 
     expect(eventsIn(log, 'undertow.fired')).toEqual([{ type: 'undertow.fired', id: 'player', pulled: ['tess'] }]);
   });
@@ -93,8 +93,8 @@ describe('being pulled', () => {
       tess.status.stunned = 0;
       const player = racerOf(world, 'player');
       if (fire) {
-        player.stack = ['undertow'];
-        fireBurst(world, player, RIGHT);
+        giveItems(player, ['undertow']);
+        fireItem(world, player, 0, RIGHT);
       }
       step(world, log, 80, IDLE);
       return tess.body.x;

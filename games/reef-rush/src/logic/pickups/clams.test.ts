@@ -1,8 +1,9 @@
 import { createRng } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import { CHARGES } from '../powerups/charges.ts';
 import { CLAM } from '../powerups/tuning.ts';
 import { activeRacers } from '../racers.ts';
-import { eventsIn, placeOnTile, raceOn, racerOf } from '../test-world.ts';
+import { eventsIn, giveItems, placeOnTile, raceOn, racerOf } from '../test-world.ts';
 import { POWER_UP_KINDS, type PowerUpKind } from '../types.ts';
 import { clamWeights, openClams, rollClam } from './clams.ts';
 
@@ -32,16 +33,18 @@ function rollShares(place: number, held: readonly PowerUpKind[], rolls = 4000): 
 }
 
 describe('opening a clam', () => {
-  it('opens on touch, grants the roll and shuts for 240 ticks', () => {
+  it('opens on touch, grants the roll with its charges in the first empty slot and shuts for 240 ticks', () => {
     const { world, log, player, racers } = parkedOnClam();
 
     openClams(world, racers);
 
-    const kind = player.stack[0];
-    expect(player.stack).toHaveLength(1);
+    const kind = player.items[0]?.kind ?? 'none';
+    expect(kind).not.toBe('none');
+    const charges = CHARGES[kind as PowerUpKind];
+    expect(player.items).toEqual([{ kind, charges }, null, null]);
     expect(eventsIn(log)).toEqual([
       { type: 'clam.opened', id: 'player', index: 0, kind },
-      { type: 'powerup.gained', id: 'player', kind },
+      { type: 'powerup.gained', id: 'player', kind, slot: 0, charges },
     ]);
     expect(world.clams[0]?.closedFor).toBe(CLAM.closedTicks);
   });
@@ -75,7 +78,7 @@ describe('opening a clam', () => {
 
     openClams(opened.world, opened.racers);
 
-    expect(opened.player.stack).toEqual([rollClam(fresh.world.rngs.pickups, 1, [])]);
+    expect(opened.player.items[0]?.kind).toBe(rollClam(fresh.world.rngs.pickups, 1, []));
     expect(opened.world.rngs.pickups.state()).toBe(fresh.world.rngs.pickups.state());
     expect(opened.world.rngs['ai.tess'].state()).toBe(parkedOnClam(5).world.rngs['ai.tess'].state());
   });
@@ -140,7 +143,7 @@ describe('who opens a clam', () => {
     const asFourth = rollClam(parkedOnClam(4).world.rngs.pickups, 4, []);
     // The seed is one where 1st and 4th place roll differently, so the place really decides.
     expect(rollClam(parkedOnClam(4).world.rngs.pickups, 1, [])).not.toBe(asFourth);
-    expect(fourth.player.stack).toEqual([asFourth]);
+    expect(fourth.player.items[0]?.kind).toBe(asFourth);
   });
 
   it('goes to the first racer in RACER_IDS order when two touch it at once', () => {
@@ -150,7 +153,45 @@ describe('who opens a clam', () => {
     openClams(world, racers);
 
     expect(eventsIn(log, 'clam.opened').map((event) => 'id' in event && event.id)).toEqual(['player']);
-    expect(racerOf(world, 'tess').stack).toEqual([]);
+    expect(racerOf(world, 'tess').items).toEqual([null, null, null]);
+  });
+
+  it('passes over a racer whose slots are all full to the next racer touching it', () => {
+    const { world, log, player, racers } = parkedOnClam();
+    giveItems(player, ['jetFin', 'puffer', 'inkSac']);
+    placeOnTile(racerOf(world, 'squib'), 5, 2);
+
+    openClams(world, racers);
+
+    expect(eventsIn(log, 'clam.opened').map((event) => 'id' in event && event.id)).toEqual(['squib']);
+    expect(player.items.map((item) => item?.kind)).toEqual(['jetFin', 'puffer', 'inkSac']);
+  });
+
+  it('stays ready, drawing nothing, when only a full racer touches it', () => {
+    const { world, log, player, racers } = parkedOnClam();
+    giveItems(player, ['jetFin', 'puffer', 'inkSac']);
+    const before = world.rngs.pickups.state();
+
+    openClams(world, racers);
+
+    expect(eventsIn(log)).toEqual([]);
+    expect(world.clams[0]?.closedFor).toBe(0);
+    expect(world.rngs.pickups.state()).toBe(before);
+  });
+
+  it('gives a Homing Squid one charge in 2nd and three in 3rd or 4th (1st never rolls one)', () => {
+    const squidCharges = [2, 3, 4].map((place) => {
+      // The first seed whose first pickups draw rolls a Squid in this place, found rather than pinned.
+      const seed = Array.from({ length: 500 }, (_, i) => i + 1).find(
+        (candidate) => rollClam(parkedOnClam(candidate).world.rngs.pickups, place, []) === 'homingSquid',
+      );
+      const scene = parkedOnClam(seed);
+      scene.player.place = place;
+      openClams(scene.world, scene.racers);
+      return scene.player.items[0];
+    });
+
+    expect(squidCharges).toEqual([1, 3, 3].map((charges) => ({ kind: 'homingSquid', charges })));
   });
 
   it('rejects a place outside 1 to 4', () => {

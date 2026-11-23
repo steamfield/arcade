@@ -64,11 +64,19 @@ export interface Vec {
   y: number;
 }
 
-/** What a racer wants this tick. `move` components are in [-1, 1]; `kick` and `burst` are presses on this tick. */
+/**
+ * What a racer wants this tick. `move` components are in [-1, 1]; `kick` and `use` are presses on
+ * this tick. In one tick `cycle` applies before `use`, so pressing both fires the newly selected item.
+ */
 export interface Intent {
   move: Vec;
   kick: boolean;
-  burst: boolean;
+  /** Fire the selected item. */
+  use: boolean;
+  /** Move the item selection to the next (1) or previous (-1) held slot; 0 leaves it. */
+  cycle: -1 | 0 | 1;
+  /** Select this slot and fire it in the same tick (how rivals fire). Absent means none. */
+  useSlot?: number;
   /** The kick button is down this tick (a press or a hold). Media with variable jumps read it; swim ignores it. Absent means not held. */
   kickHeld?: boolean;
 }
@@ -162,7 +170,7 @@ export interface RivalProfile {
   reactionTicks: number;
   /** Relative mass in bumps; heavier racers get pushed less. */
   mass: number;
-  /** How readily it bursts power-ups, 0..1. Read from phase 3. */
+  /** How readily it fires an item that has a use, 0..1. */
   itemAggression: number;
   /**
    * How well it pilots in media that reward skill beyond wobble and kicks, 0..1. Absent means 1.
@@ -192,7 +200,7 @@ export interface Finish {
   overshoot: number;
 }
 
-/** The nine power-ups. A racer holds each kind at most once. The last four are the attack kinds (phase 7). */
+/** The ten power-ups. A racer holds each kind at most once. */
 export type PowerUpKind =
   | 'jetFin'
   | 'bubbleShield'
@@ -202,7 +210,8 @@ export type PowerUpKind =
   | 'homingSquid'
   | 'riptide'
   | 'undertow'
-  | 'mimic';
+  | 'mimic'
+  | 'cannonball';
 
 /** Every power-up kind, in a fixed order that clam rolls and tests iterate. */
 export const POWER_UP_KINDS: readonly PowerUpKind[] = [
@@ -215,20 +224,16 @@ export const POWER_UP_KINDS: readonly PowerUpKind[] = [
   'riptide',
   'undertow',
   'mimic',
+  'cannonball',
 ];
 
-/** Named pairs of held power-ups whose bursts change each other. Pairs are listed in `powerups/tuning.ts`. */
-export type ComboName =
-  | 'cannonball'
-  | 'inkTrail'
-  | 'lanternBubble'
-  | 'inkBomb'
-  | 'comet'
-  | 'surfline'
-  | 'inkSquid'
-  | 'bubbleDecoy';
+/** A power-up in an inventory slot and the uses it has left (at least 1 while held). */
+export interface HeldItem {
+  kind: PowerUpKind;
+  charges: number;
+}
 
-/** What hurt a racer. Urchins and jellies have no owner; the rest come from another racer's burst. */
+/** What hurt a racer. Urchins and jellies have no owner; the rest come from another racer's item. */
 export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash' | 'squid';
 
 /**
@@ -244,9 +249,9 @@ export interface RacerStatus {
   slowed: number;
   /** Inside a bubble: input ignored, floats straight up. */
   trapped: number;
-  /** Puffer burst: larger hitbox that breaks coral and hits racers, urchin-proof. */
+  /** Puffer or Cannonball: larger hitbox that breaks coral and hits racers, urchin-proof. */
   inflated: number;
-  /** Jet Fins burst: velocity held along `dashDir`. A landed hit ends it (`applyHit` sets 0). */
+  /** Jet Fins or Cannonball: velocity held at `dashSpeed` along `dashDir`. A landed hit ends it (`applyHit` sets 0). */
   dashing: number;
   /** Pearl boost: swims with more force. */
   boost: number;
@@ -275,20 +280,22 @@ export interface Racer {
   /** Null for the player unless a bot drives it in tests. */
   ai: AiMemory | null;
   profile: RivalProfile;
-  /** Held power-ups, oldest first: at most `stackMaxFor(racer)`, never two of a kind. */
-  stack: PowerUpKind[];
-  /** Ticks until the next burst is allowed; 0 means ready. Shared by every held power-up. */
-  burstCooldown: number;
+  /**
+   * Inventory slots, always `stackMaxFor(racer)` long: a held item or null. Never two of a kind.
+   * Read and change it only through `powerups/inventory.ts`.
+   */
+  items: (HeldItem | null)[];
+  /** Index of the selected slot. While anything is held it points at a held slot. */
+  selected: number;
+  /** Ticks until the next item use is allowed; 0 means ready. Shared by every slot. */
+  useCooldown: number;
   /** Pearls collected this race. */
   pearls: number;
   status: RacerStatus;
   /** Unit direction of the current dash; meaningful only while `status.dashing` is above 0. */
   dashDir: Vec;
-  /**
-   * Combos fixed when the current dash was fired, so gaining or losing a kind mid-dash never
-   * starts one; empty when no dash is running. A hit that knocks off half of a pair removes it.
-   */
-  dashCombos: ComboName[];
+  /** Speed in px/s of the current dash (Jet Fins or Cannonball); meaningful only while dashing. */
+  dashSpeed: number;
   ability: AbilityState;
   /**
    * Undertow: how many tiles ahead of the user this racer was when it was pulled, which sets the
@@ -336,9 +343,9 @@ export interface ProgressField extends GridSize {
 /**
  * Swim's navigation: distance-to-finish fields over the tile grid, indexed `y * width + x`, in tile
  * units. `steer` guides swimmers (kelp and currents weighted, coral blocked unless broken). `smash`
- * is `steer` with coral passable at a high cost, for racers that can break it with a Puffer burst.
+ * is `steer` with coral passable at a high cost, for racers that can break it with a Puffer or Cannonball.
  * `ram` is `steer` with coral passable at a low cost, for a racer that breaks coral just by swimming
- * into it (Baron's bulldozer): no burst to wait for, so coral is cheaper for him than for a Puffer
+ * into it (Baron's bulldozer): no item to wait for, so coral is cheaper for him than for a Puffer
  * holder. Only the swim medium reads these (`logic/media/swim/`).
  */
 export interface FlowFields extends GridSize {
@@ -371,6 +378,8 @@ export interface Clam {
 /** A power-up knocked off a racer, drifting up until someone grabs it or it expires. */
 export interface LoosePowerUp {
   kind: PowerUpKind;
+  /** Uses it gives whoever grabs it: what the racer it was knocked off had left. */
+  charges: number;
   /** Centre in world pixels. */
   x: number;
   y: number;
@@ -390,7 +399,7 @@ export interface InkCloud {
   owner: RacerId;
 }
 
-/** A Bubble Shield burst in flight: traps the first other racer it touches. */
+/** A Bubble Shield's trap bubble in flight: traps the first other racer it touches. */
 export interface Bubble {
   /** Centre in world pixels. */
   x: number;
@@ -400,11 +409,6 @@ export interface Bubble {
   vy: number;
   ttl: number;
   owner: RacerId;
-  /**
-   * Set by the lanternBubble combo: the bubble lights the dark around it (`BUBBLE.lightTiles`, which
-   * the engine reads) and stuns jellies it passes. The name is from when it homed; it no longer steers.
-   */
-  seeking: boolean;
 }
 
 /** What a Homing Squid chases: a racer, a Mimic decoy (named by its owner), or nothing (it swims straight). */
@@ -421,8 +425,6 @@ export interface Squid {
   target: SquidTarget | null;
   /** The racer whose kick made it miss. It flies on without a lock and never chases that racer again. */
   dodgedBy?: RacerId;
-  /** Fired with the inkSquid combo: an ink cloud bursts on whoever it latches. */
-  inked?: boolean;
 }
 
 /** A Riptide lane: a strong current over the box (x, y, w, h) in world pixels, pushing along the unit vector `dir`. */
@@ -434,8 +436,6 @@ export interface Riptide {
   dir: Vec;
   ttl: number;
   owner: RacerId;
-  /** How many times a plain current's push it gives; `RIPTIDE.currentForceMul` when absent (surfline lanes are stronger). */
-  strength?: number;
 }
 
 /** A Mimic decoy: looks like its owner and swims on along the steer field. Centre in world pixels. */
@@ -446,8 +446,6 @@ export interface Decoy {
   vy: number;
   ttl: number;
   owner: RacerId;
-  /** Made by the bubbleDecoy combo: whatever hits it (a squid's owner, a racer) is trapped. */
-  bubbled?: boolean;
 }
 
 /** A jellyfish bobbing around its home tile. */

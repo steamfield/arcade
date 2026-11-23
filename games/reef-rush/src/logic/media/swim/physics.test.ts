@@ -30,7 +30,7 @@ function makeRacer(): Racer {
     finished: null,
     ai: null,
     profile: PLAYER_PROFILE,
-    ...noItems(),
+    ...noItems(3),
   };
 }
 
@@ -51,7 +51,7 @@ function swim(
   let top = 0;
   for (let i = 0; i < ticks; i++) {
     log.tick = i;
-    applyIntent(racer, { move, kick, burst: false }, env, SWIM, mods, log, TICK_DT);
+    applyIntent(racer, { move, kick, use: false, cycle: 0 }, env, SWIM, mods, log, TICK_DT);
     top = Math.max(top, speed(racer));
   }
   return { top, log };
@@ -233,7 +233,7 @@ describe('a very long tick', () => {
     const kelp: SwimEnv = { ...WATER, inKelp: true };
     applyIntent(
       racer,
-      { move: STILL, kick: false, burst: false },
+      { move: STILL, kick: false, use: false, cycle: 0 },
       kelp,
       SWIM,
       BASE_MODIFIERS,

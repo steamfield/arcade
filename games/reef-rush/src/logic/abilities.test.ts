@@ -15,7 +15,7 @@ import { HIT } from './hazards/tuning.ts';
 import { SWIM_TUNING as SWIM } from './media/swim/tuning.ts';
 import { modifiersFor } from './modifiers.ts';
 import { length } from './num.ts';
-import { gainPowerUp } from './powerups/stack.ts';
+import { gainItem } from './powerups/inventory.ts';
 import { BUBBLE } from './powerups/tuning.ts';
 import { centreOf } from './racers.ts';
 import { courseFromLevel, eventsIn, hold, placeAt, placeOnTile, racerOf, step, tileCentre } from './test-world.ts';
@@ -233,21 +233,18 @@ describe('Onyx: Ambush', () => {
 
 describe('Nib: Deep pockets', () => {
   const fill = (character: CharacterId) => {
-    const { world, log, player } = raceAs(character);
+    const { world, player } = raceAs(character);
     const kinds: PowerUpKind[] = ['jetFin', 'bubbleShield', 'puffer', 'inkSac', 'glowLantern'];
-    for (const kind of kinds) gainPowerUp(world, player, kind);
-    return { stack: player.stack, lost: eventsIn(log, 'powerup.lost') };
+    const gained = kinds.filter((kind) => gainItem(world, player, kind, 1));
+    return { gained, slots: player.items.length };
   };
 
-  it('holds four power-ups, so only a fifth pushes out the oldest', () => {
-    expect(fill('nib')).toEqual({
-      stack: ['bubbleShield', 'puffer', 'inkSac', 'glowLantern'],
-      lost: [{ type: 'powerup.lost', id: 'player', kind: 'jetFin', cause: 'full' }],
-    });
+  it('has four item slots, so a fifth item finds no room', () => {
+    expect(fill('nib')).toEqual({ gained: ['jetFin', 'bubbleShield', 'puffer', 'inkSac'], slots: 4 });
   });
 
   it('leaves everyone else at three', () => {
-    expect(fill('rook').stack).toEqual(['puffer', 'inkSac', 'glowLantern']);
+    expect(fill('rook')).toEqual({ gained: ['jetFin', 'bubbleShield', 'puffer'], slots: 3 });
   });
 });
 

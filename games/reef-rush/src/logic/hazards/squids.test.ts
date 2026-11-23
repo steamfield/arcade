@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { downhillPath, openTiles } from '../ai/steer.ts';
 import { DEFAULT_COURSE, levelOf } from '../courses/index.ts';
 import { swimNav } from '../media/swim/data.ts';
-import { fireBurst } from '../powerups/burst.ts';
 import { spawnDecoy } from '../powerups/decoys.ts';
 import { SQUID } from '../powerups/tuning.ts';
+import { fireItem } from '../powerups/use.ts';
 import { updateProgress } from '../race/standings.ts';
 import { activeRacers, centreOf } from '../racers.ts';
-import { eventsIn, hold, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
-import type { PowerUpKind, RacerId, Vec, World } from '../types.ts';
+import { eventsIn, giveItems, hold, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
+import type { RacerId, Vec, World } from '../types.ts';
 import { advanceSquids } from './squids.ts';
 
 /** Open water, all four racers on the left edge and the finish on the right. */
@@ -59,10 +59,11 @@ function scene(spots: Spots, ascii = ARENA) {
     placeOnTile(racerOf(world, id), tx, ty);
   }
   updateProgress(world);
-  /** Fires the owner's squid along `aim`, holding only a Homing Squid unless told otherwise. */
-  const fire = (owner: RacerId, aim: Vec = RIGHT, stack: PowerUpKind[] = ['homingSquid']) => {
-    racerOf(world, owner).stack = stack;
-    fireBurst(world, racerOf(world, owner), aim);
+  /** Fires the owner's squid along `aim` from a fresh one-charge Homing Squid in its first slot. */
+  const fire = (owner: RacerId, aim: Vec = RIGHT) => {
+    giveItems(racerOf(world, owner), ['homingSquid']);
+    racerOf(world, owner).useCooldown = 0;
+    fireItem(world, racerOf(world, owner), 0, aim);
   };
   /** Advances only the squids, so nobody swims: the racers stay where the test put them. */
   const fly = (ticks = 1) => {
@@ -109,11 +110,11 @@ describe('launching a squid', () => {
     expect(world.squids[0]).toMatchObject({ ...centreOf(racerOf(world, 'player')), vx: 0, vy: 160, target: null });
   });
 
-  it('is not locked from the usual range onto a racer holding a Mimic Octopus: only from half of it', () => {
+  it('is not locked from the usual range onto a racer with a Mimic Octopus selected: only from half of it', () => {
     const far = scene({ player: [3, 2], tess: [11, 2] });
-    racerOf(far.world, 'tess').stack = ['mimic'];
+    giveItems(racerOf(far.world, 'tess'), ['mimic']);
     const near = scene({ player: [3, 2], tess: [7, 2] });
-    racerOf(near.world, 'tess').stack = ['mimic'];
+    giveItems(racerOf(near.world, 'tess'), ['mimic']);
 
     far.fire('player');
     near.fire('player');
@@ -138,9 +139,9 @@ describe('a squid on its way', () => {
     expect(world.squids).toEqual([]);
   });
 
-  it('knocks the newest power-up off its target, or stuns one holding none', () => {
+  it('knocks the selected item off its target, or stuns one holding none', () => {
     const holding = scene({ player: [3, 2], tess: [12, 2] });
-    racerOf(holding.world, 'tess').stack = ['jetFin', 'puffer'];
+    giveItems(racerOf(holding.world, 'tess'), ['jetFin', 'puffer'], 1);
     const empty = scene({ player: [3, 2], tess: [12, 2] });
     holding.fire('player');
     empty.fire('player');
@@ -148,14 +149,14 @@ describe('a squid on its way', () => {
     holding.fly(80);
     empty.fly(80);
 
-    expect(racerOf(holding.world, 'tess').stack).toEqual(['jetFin']);
+    expect(racerOf(holding.world, 'tess').items).toEqual([{ kind: 'jetFin', charges: 3 }, null, null]);
     expect(holding.world.loose.map((loose) => loose.kind)).toEqual(['puffer']);
     expect(racerOf(empty.world, 'tess').status.stunned).toBe(50);
   });
 
   it('is absorbed by a Bubble Shield: no latch, the shield pops, the squid is lost', () => {
     const { world, log, fire, fly } = scene({ player: [3, 2], tess: [12, 2] });
-    racerOf(world, 'tess').stack = ['bubbleShield', 'jetFin'];
+    giveItems(racerOf(world, 'tess'), ['bubbleShield', 'jetFin'], 1);
     fire('player');
 
     fly(80);
@@ -164,7 +165,7 @@ describe('a squid on its way', () => {
       { type: 'shield.popped', id: 'tess' },
       { type: 'squid.lost', owner: 'player' },
     ]);
-    expect(racerOf(world, 'tess').stack).toEqual(['jetFin']);
+    expect(racerOf(world, 'tess').items).toEqual([null, { kind: 'jetFin', charges: 3 }, null]);
     expect(racerOf(world, 'tess').status.latched).toBe(0);
   });
 
@@ -283,7 +284,7 @@ describe('a squid on its way', () => {
 describe('decoys and squids', () => {
   it('prefers a decoy that is at least as near as its racer target, and pops it', () => {
     const { world, log, fire, fly } = scene({ player: [3, 2], tess: [12, 2], squib: [1, 3], bo: [1, 4] });
-    spawnDecoy(world, racerOf(world, 'tess'), false);
+    spawnDecoy(world, racerOf(world, 'tess'));
     placeAt(racerOf(world, 'tess'), tileCentre(13, 2));
     Object.assign(decoyOf(world), tileCentre(9, 2));
     updateProgress(world);
@@ -292,7 +293,7 @@ describe('decoys and squids', () => {
     fly(60);
 
     expect(events(log, 'squid.locked')).toEqual([{ type: 'squid.locked', owner: 'player', target: 'decoy' }]);
-    expect(events(log, 'decoy.popped')).toEqual([{ type: 'decoy.popped', owner: 'tess', by: 'player', trapped: null }]);
+    expect(events(log, 'decoy.popped')).toEqual([{ type: 'decoy.popped', owner: 'tess', by: 'player' }]);
     expect(events(log, 'squid.latched')).toEqual([]);
     expect(racerOf(world, 'tess').status.latched).toBe(0);
     expect(world.squids).toEqual([]);
@@ -300,29 +301,13 @@ describe('decoys and squids', () => {
 
   it('keeps its racer when the decoy is further away', () => {
     const { world, log, fire } = scene({ player: [3, 2], tess: [8, 2], squib: [1, 3], bo: [1, 4] });
-    spawnDecoy(world, racerOf(world, 'tess'), false);
+    spawnDecoy(world, racerOf(world, 'tess'));
     Object.assign(decoyOf(world), tileCentre(12, 2));
     updateProgress(world);
 
     fire('player');
 
     expect(events(log, 'squid.locked')).toEqual([{ type: 'squid.locked', owner: 'player', target: 'tess' }]);
-  });
-
-  it('traps its owner when it pops a decoy in a bubble', () => {
-    const { world, log, fire, fly } = scene({ player: [3, 2], tess: [12, 2], squib: [1, 3], bo: [1, 4] });
-    spawnDecoy(world, racerOf(world, 'tess'), true);
-    Object.assign(decoyOf(world), tileCentre(8, 2));
-    fire('player');
-
-    fly(60);
-
-    expect(racerOf(world, 'player').status.trapped).toBeGreaterThan(0);
-    expect(events(log, 'racer.trapped')).toEqual([{ type: 'racer.trapped', id: 'player', by: 'tess' }]);
-    expect(events(log, 'decoy.popped')).toEqual([
-      { type: 'decoy.popped', owner: 'tess', by: 'player', trapped: 'player' },
-    ]);
-    expect(racerOf(world, 'tess').status.latched).toBe(0);
   });
 });
 
@@ -340,8 +325,8 @@ function squidClosingOnPlayer(within: number) {
   placeOnTile(racerOf(world, 'tess'), 4, 2);
   placeOnTile(racerOf(world, 'player'), 14, 2);
   updateProgress(world);
-  racerOf(world, 'tess').stack = ['homingSquid'];
-  fireBurst(world, racerOf(world, 'tess'), RIGHT);
+  giveItems(racerOf(world, 'tess'), ['homingSquid']);
+  fireItem(world, racerOf(world, 'tess'), 0, RIGHT);
   // Nobody moves but the squid and the player, who sinks slowly and so stays on its row.
   for (let tick = 0; gap(world, 'player') > within; tick++) {
     if (tick >= 200) throw new Error(`The squid never came within ${within} px of the player in 200 ticks`);
@@ -421,11 +406,11 @@ describe('on the ocean course', () => {
       if (!(tess.progress < player.progress)) continue;
       pairs++;
       tess.status.invulnerable = 0;
-      player.stack = ['homingSquid'];
-      player.burstCooldown = 0;
+      giveItems(player, ['homingSquid']);
+      player.useCooldown = 0;
       world.squids = [];
       const latchedBefore = eventsIn(log, 'squid.latched').length;
-      fireBurst(world, player, RIGHT);
+      fireItem(world, player, 0, RIGHT);
       for (let tick = 0; tick < 360 && world.squids.length > 0; tick++) {
         world.recentEvents.splice(0);
         advanceSquids(world, activeRacers(world), TICK_DT);

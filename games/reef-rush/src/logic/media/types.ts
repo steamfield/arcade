@@ -146,7 +146,7 @@ export interface Medium {
   distanceAt(world: World, tile: Vec): number;
   /**
    * True when unbroken coral lies within `steps` tiles from `tile` along the medium's way for a racer
-   * that can break coral, so a Puffer burst would open the way. Rival item choice asks it.
+   * that can break coral, so a Puffer or Cannonball would open the way. Rival item choice asks it.
    */
   coralAhead(world: World, tile: Vec, steps: number): boolean;
   /** Why `level` can't be raced in this medium; empty when it can. */

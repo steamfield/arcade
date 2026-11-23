@@ -10,12 +10,12 @@ import { GLIDE_KICK_RULES, GLIDE_MEDIUM } from '../conformance/glide.ts';
 import type { GameEvent } from '../events.ts';
 import { applyHit } from '../hazards/hits.ts';
 import { spawnLoose, updateLoose } from '../pickups/loose.ts';
-import { driveDash, fireBurst } from '../powerups/burst.ts';
 import { advanceDecoys, spawnDecoy } from '../powerups/decoys.ts';
 import { DASH } from '../powerups/tuning.ts';
+import { driveDash, fireItem } from '../powerups/use.ts';
 import { updateProgress } from '../race/standings.ts';
 import { centreOf } from '../racers.ts';
-import { courseFromLevel, eventsIn, hold, IDLE, placeOnTile, racerOf, step } from '../test-world.ts';
+import { courseFromLevel, eventsIn, giveItems, hold, IDLE, placeOnTile, racerOf, step } from '../test-world.ts';
 import type { Racer, World } from '../types.ts';
 import { createWorld } from '../world.ts';
 import { MEDIA, registerMedium } from './index.ts';
@@ -63,6 +63,7 @@ describe('velocity effects follow effects.dashAxes', () => {
       const player = movingPlayer(world, 0, 25);
       player.status.dashing = 5;
       player.dashDir = { x: 0.6, y: -0.8 };
+      player.dashSpeed = DASH.speed;
       driveDash(world, player);
       return { vx: player.body.vx, vy: player.body.vy };
     });
@@ -99,7 +100,7 @@ describe('velocity effects follow effects.dashAxes', () => {
     const climbs = ['swim', 'glide'].map((medium) => {
       const { world, player } = racingIn(medium, shaft);
       placeOnTile(player, 1, 3);
-      spawnDecoy(world, player, false);
+      spawnDecoy(world, player);
       advanceDecoys(world, TICK_DT);
       return world.decoys[0]?.vy;
     });
@@ -128,7 +129,7 @@ describe('drift effects follow effects.trappedDrift and effects.looseDrift', () 
   it('a loose power-up rises in water and falls in glide', () => {
     const moved = ['swim', 'glide'].map((medium) => {
       const { world } = racingIn(medium);
-      spawnLoose(world, 'jetFin', { x: 200, y: 60 });
+      spawnLoose(world, 'jetFin', 3, { x: 200, y: 60 });
       updateLoose(world, [], TICK_DT);
       return (world.loose[0]?.y ?? Number.NaN) - 60;
     });
@@ -173,8 +174,8 @@ describe('kick counters follow kickRules', () => {
       placeOnTile(tess, 4, 2);
       placeOnTile(player, 14, 2);
       updateProgress(world);
-      tess.stack = ['homingSquid'];
-      fireBurst(world, tess, { x: 1, y: 0 });
+      giveItems(tess, ['homingSquid']);
+      fireItem(world, tess, 0, { x: 1, y: 0 });
       for (let tick = 0; tick < 200 && squidGap(world, player) > 30; tick++) step(world, log, 1, IDLE);
       step(world, log, 1, KICK);
       step(world, log, 40, IDLE);

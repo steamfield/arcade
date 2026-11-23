@@ -6,7 +6,7 @@ import { TILE } from '../types.ts';
 
 /** What a landed hit does to a racer (causes other than flash and bubble; see `applyHit`). */
 export const HIT = {
-  /** Stun when a hit finds an empty stack. */
+  /** Stun when a hit finds nothing held. */
   stunTicks: 50,
   /** Every landed hit, absorbed or not, makes the racer ignore hits for this long. */
   invulnerableTicks: 60,

@@ -1,20 +1,22 @@
 /**
  * What a racer's timed statuses do to its control and how they run out. Stunned
  * and trapped racers lose their input, trapped racers drift straight up or down as
- * the medium says, and every counter (plus the burst cooldown) loses one tick at the
- * end of each tick.
+ * the medium says, and every counter (plus the item use cooldown) loses one tick at
+ * the end of each tick.
  */
 import { mediumOf } from './media/index.ts';
 import { noItems } from './racers.ts';
 import type { Intent, Racer, RacerStatus, World } from './types.ts';
 
-const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
+const STATUS_KEYS = Object.keys(noItems(0).status) as (keyof RacerStatus)[];
 
-const STATUS_KEYS = Object.keys(noItems().status) as (keyof RacerStatus)[];
-
-/** The intent a racer actually acts on: idle (no move, kick or burst) while stunned or trapped. */
+/**
+ * The intent a racer actually acts on. While stunned or trapped it can't move, kick or use an item,
+ * but it can still cycle its selection, so the intent keeps only `cycle`.
+ */
 export function controlledIntent(racer: Racer, intent: Intent): Intent {
-  return racer.status.stunned > 0 || racer.status.trapped > 0 ? IDLE : intent;
+  if (racer.status.stunned === 0 && racer.status.trapped === 0) return intent;
+  return { move: { x: 0, y: 0 }, kick: false, use: false, cycle: intent.cycle };
 }
 
 /**
@@ -30,7 +32,7 @@ export function floatTrapped(world: World, racer: Racer): void {
 }
 
 /**
- * Takes one tick off every status counter and the burst cooldown, stopping at 0. Runs once per
+ * Takes one tick off every status counter and the item use cooldown, stopping at 0. Runs once per
  * tick for each racer in play, after every other phase 3 system, so a counter set to N during a
  * tick reads N - 1 after that tick and 0 after N ticks.
  */
@@ -38,5 +40,5 @@ export function tickStatuses(racer: Racer): void {
   for (const key of STATUS_KEYS) {
     if (racer.status[key] > 0) racer.status[key] -= 1;
   }
-  if (racer.burstCooldown > 0) racer.burstCooldown -= 1;
+  if (racer.useCooldown > 0) racer.useCooldown -= 1;
 }

@@ -21,6 +21,25 @@ describe('which stage a launch gets', () => {
 });
 
 describe('applying a stage', () => {
+  /** A coral gate two tiles tall at columns 9-10, rows 2-3, with a way round below. */
+  const GATE = `
+    ####################
+    #1................F#
+    #2.......CC.......F#
+    #3.......CC.......F#
+    #4................F#
+    ####################
+  `;
+
+  it('holds a Cannonball three tiles before the first coral, level with the middle of the gate', () => {
+    const { world } = raceOn(GATE);
+    applyStage(world, 'cannonball');
+    const player = world.racers.find((racer) => racer.id === 'player');
+    const centre = player && { x: player.body.x + player.body.w / 2, y: player.body.y + player.body.h / 2 };
+    expect(player?.items).toEqual([{ kind: 'cannonball', charges: 1 }, null, null]);
+    expect(centre).toEqual({ x: 6.5 * 16, y: 3 * 16 });
+  });
+
   const ARENA = `
     ####################
     #1................F#
@@ -39,8 +58,8 @@ describe('applying a stage', () => {
     expect(world.racers.find((r) => r.id === 'player')?.status.latched).toBeGreaterThan(0);
   });
 
-  it('knows every stage it names, except those that need a current or a dark zone in the course', () => {
-    for (const stage of STAGES.filter((name) => name !== 'riptide' && name !== 'dark')) {
+  it('knows every stage it names, except those that need a current, a dark zone or coral in the course', () => {
+    for (const stage of STAGES.filter((name) => name !== 'riptide' && name !== 'dark' && name !== 'cannonball')) {
       const { world } = raceOn(ARENA);
       expect(() => applyStage(world, stage), stage).not.toThrow();
     }

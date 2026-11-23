@@ -1,7 +1,7 @@
 /**
  * What the HUD says about a Homing Squid hunting the player: an arrow on the screen's edge that
- * points at the squid while it is locked on, and a big KICK! prompt (with PRESS A on touch screens,
- * where A is the kick button) while one is latched on, since kicks are how it is shaken off. The
+ * points at the squid while it is locked on, and a big DASH! prompt (with PRESS B on touch screens,
+ * where B is the dash button) while one is latched on, since dashes are how it is shaken off. The
  * prompt sits by the player, above them when that fits, so a player looking at their own racer sees
  * it without looking away. The short LOCKED ON! caption is the HUD's own caption line. Everything
  * reads world state only; the arrow blinks at 3 Hz, the WCAG ceiling, and shows steadily under
@@ -33,31 +33,31 @@ export interface PromptText {
   hint: string;
 }
 
-/** What the KICK! prompt says: a latched squid wants kicks, and on a touch screen says which button. */
+/** What the DASH! prompt says: a latched squid wants dashes, and on a touch screen says which button. */
 export function promptText(world: World, touch: boolean): PromptText {
   const latched = playerOf(world).status.latched > 0;
-  return { headline: latched ? 'KICK!' : '', hint: latched && touch ? 'PRESS A' : '' };
+  return { headline: latched ? 'DASH!' : '', hint: latched && touch ? 'PRESS B' : '' };
 }
 
 /** Where a centre splash (countdown, GO, FINAL STRETCH, FINISH) draws, widest case: the arrow keeps out of it while one shows. */
 export const SPLASH_RECT: Rect = { x: 53, y: 50, w: 214, h: 24 };
-/** The prompt centres on the middle of the safe column, like the combo name. */
+/** The prompt centres on the middle of the safe column, like the hint lines. */
 const PROMPT_X = 168;
-/** How far the prompt's nearest edge stays from the player's centre when it drops below them, as the combo name does. */
+/** How far the prompt's nearest edge stays from the player's centre when it drops below them, as the hint lines do. */
 const PROMPT_CLEARANCE = 16;
 /** The lowest the prompt may reach: the bottom margin. */
 const PROMPT_LOWEST = 174;
-/** Gap between KICK! and PRESS A, px. */
+/** Gap between DASH! and PRESS B, px. */
 const PROMPT_GAP = 2;
 /** The arrow is on for 14 of every 20 ticks: 3 blinks a second. */
 const ARROW_BLINK = { on: 14, period: 20 } as const;
-/** The KICK! prompt changes tone every this many ticks (3 changes a second). */
+/** The DASH! prompt changes tone every this many ticks (3 changes a second). */
 const PROMPT_PULSE_TICKS = 10;
 
 /**
- * Adds the lock-on arrow and the KICK! prompt to `scene`, pinned to the screen. `anchorY(playerY,
+ * Adds the lock-on arrow and the DASH! prompt to `scene`, pinned to the screen. `anchorY(playerY,
  * height)` says where a block of text `height` px tall centres vertically beside a player at screen
- * y `playerY` (the combo name's rule), so the prompt and the combo name share one placement.
+ * y `playerY` (`besidePlayerY`), so the prompt and the hint lines share one placement.
  */
 export function createThreatHud(
   scene: Phaser.Scene,
@@ -100,7 +100,7 @@ export function createThreatHud(
       prompt.setText(text.headline).setColor(TONE_CSS[pulse ? 'foam' : 'sun']);
       touchHint.setText(text.hint);
       if (text.headline === '') return;
-      // The block (KICK!, then PRESS A on touch) is placed as one, so it clears the player together.
+      // The block (DASH!, then PRESS B on touch) is placed as one, so it clears the player together.
       const height = DISPLAY_FACE.height + (text.hint ? PROMPT_GAP + TEXT_FACE.height : 0);
       const half = Math.ceil(height / 2);
       let centre = anchorY(playerAt.y, height);

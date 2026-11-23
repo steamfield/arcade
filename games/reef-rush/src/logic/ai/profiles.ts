@@ -19,7 +19,7 @@ export const PLAYER_PROFILE: RivalProfile = {
 /**
  * Bots that drive the player's racer in tests, to measure difficulty with the player's physics.
  * An expert kicks well, steers clean and uses items. A novice steers loosely, reacts late, never
- * bursts, and kicks now and then: about once every 2.3 s on the course, measured.
+ * uses items, and kicks now and then: about once every 2.3 s on the course, measured.
  */
 export const BOT_PROFILES = {
   expert: { ...PLAYER_PROFILE, kickSkill: 0.95, wobble: 0.04, reactionTicks: 2, itemAggression: 0.8 },

@@ -10,7 +10,7 @@ const down = (count: number) => Array.from({ length: count }, () => [tap('down')
  */
 export default scenario({
   description: 'the title menu toggles sound and motion and saves both',
-  input: [wait(25), ...down(3), tap('kick'), wait(5), tap('down'), tap('kick'), wait(5)],
+  input: [wait(25), ...down(3), tap('fire'), wait(5), tap('down'), tap('fire'), wait(5)],
   expect({ state, events }) {
     expect(events.filter((e) => e.type === 'settings.changed')).toMatchObject([
       { muted: true, reducedMotion: false },

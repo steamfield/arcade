@@ -17,7 +17,7 @@ export interface Character {
 
 /**
  * The cast. Each profile is how the character races as a rival, in the personality the roster
- * gives it. They all swim harder than the player (forceMul near 1.45) and kick and burst less
+ * gives it. They all swim harder than the player (forceMul near 1.45) and kick and use items less
  * than a good player; the tests in `difficulty/` hold the whole field to its bars for every pick.
  *
  * Swim force sits between 1.38 and 1.50 and is fitted per character, to two decimals, so that every
@@ -29,7 +29,7 @@ export interface Character {
  * - Rudy, the plucky hero: the all-rounder; middling kicks, steering and item use.
  * - Gil, lanky and springy: kicks the most, steers the loosest, light in bumps, sparing with items.
  * - Streak, the cocky speedster: the cleanest line (least wobble) and quick to react, but barely
- *   kicks and seldom bursts; its wind-up does the work.
+ *   kicks and seldom uses items; its wind-up does the work.
  * - Onyx, the brooding rival: tight steering and solid in bumps, and the least item use of all; his
  *   threat is the ambush, so his items are kept rare.
  * - Nib, the tinkerer: by far the most item-happy (3x anyone else), a little scatty, the lightest.
@@ -38,7 +38,7 @@ export interface Character {
  * - Selene, the mystic: smooth and unhurried, a little less swim force, reacts late.
  * - Rook, the hunter: the quickest to react, heavy for his size, kicks readily, moderate items.
  *
- * `itemAggression` is the chance per tick to burst when a held power-up has a use; about 3 bursts
+ * `itemAggression` is the chance per tick to fire when a held item has a use; about 3 uses
  * per rival per race on average.
  */
 export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {

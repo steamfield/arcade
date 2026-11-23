@@ -10,6 +10,7 @@ import { TICK_HZ } from '@arcade/core';
 import Phaser from 'phaser';
 import { stackMaxFor } from '../../logic/abilities.ts';
 import { courseOf } from '../../logic/courses/index.ts';
+import { selectedItem } from '../../logic/powerups/inventory.ts';
 import { playerOf } from '../../logic/racers.ts';
 import type { World } from '../../logic/types.ts';
 import { createFx } from '../fx/index.ts';
@@ -17,14 +18,16 @@ import type { Runtime } from '../runtime.ts';
 import { themeFor } from '../themes/index.ts';
 import { createAttackView } from '../view/attack-view.ts';
 import { createBackdrop } from '../view/backdrop.ts';
-import { createBurstButtonIcon } from '../view/burst-button.ts';
+import { besidePlayerY } from '../view/beside-player.ts';
 import { followRacer } from '../view/camera.ts';
 import { createDarkView } from '../view/dark-view.ts';
 import { createDebugOverlay } from '../view/debug-overlay.ts';
+import { createFireButtonIcon } from '../view/fire-button.ts';
 import { createGuideView } from '../view/guide-view.ts';
 import { createHazardView } from '../view/hazard-view.ts';
 import { createHintView } from '../view/hint-view.ts';
-import { comboCentreY, createHud, wellLayout } from '../view/hud.ts';
+import { createHud } from '../view/hud.ts';
+import { wellLayout } from '../view/hud-well.ts';
 import { createLevelView } from '../view/level-view.ts';
 import { createPickupView } from '../view/pickup-view.ts';
 import { createPowerupView } from '../view/powerup-view.ts';
@@ -76,9 +79,9 @@ export class RaceScene extends Phaser.Scene {
     const dark = createDarkView(this, world, theme.dark, reducedMotion);
     const hud = createHud(this, world, reducedMotion);
     const wellWidth = wellLayout(stackMaxFor(playerOf(world))).width;
-    const hints = createHintView(this, reducedMotion, wellWidth, comboCentreY);
+    const hints = createHintView(this, reducedMotion, wellWidth, besidePlayerY);
     const guide = createGuideView(this, reducedMotion);
-    const burstIcon = createBurstButtonIcon(this);
+    const fireIcon = createFireButtonIcon(this);
     const fx = createFx(this, world, theme, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
@@ -86,7 +89,6 @@ export class RaceScene extends Phaser.Scene {
     const stopListening = this.rt.listen((events) => {
       const tick = this.rt.world?.tick ?? 0;
       level.onEvents(events);
-      hud.onEvents(events, tick);
       for (const { view, effects } of racers) {
         view.onEvents(events, tick);
         effects.onEvents(events, tick);
@@ -95,7 +97,7 @@ export class RaceScene extends Phaser.Scene {
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       stopListening();
-      burstIcon.destroy();
+      fireIcon.destroy();
     });
 
     let lastTick = world.tick;
@@ -111,10 +113,10 @@ export class RaceScene extends Phaser.Scene {
         view.sync(racer, current.tick);
         effects.sync(racer, current.tick);
       }
-      hud.sync(current, this.rt.hints);
+      hud.sync(current);
       hints.sync(current, this.rt.hints, this.cameras.main.worldView);
       guide.sync(current, this.rt.hints.guide, this.cameras.main.worldView);
-      burstIcon.sync(playerOf(current).stack);
+      fireIcon.sync(selectedItem(playerOf(current))?.kind ?? null);
       fx.sync(current);
       // After the camera moved, so the darkness lines up with this frame's scroll.
       dark.sync(current);

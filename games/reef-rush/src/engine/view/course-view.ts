@@ -1,7 +1,7 @@
 /**
  * Draws course select, laid out to UI.md "Course select": the PICK A COURSE heading, one framed row
  * per listed course (its name, and the player's best there on the level in force, right-aligned;
- * the row under the cursor in a gold frame with its name in sun), and a footer showing kick picks
+ * the row under the cursor in a gold frame with its name in sun), and a footer showing fire picks
  * and burst goes back (as the A and B buttons on touch screens). The layout is plain functions with
  * no Phaser in them, so a test can hold every rect to the screen and the touch zones; the runtime
  * moves the cursor and this view only shows it.
@@ -74,7 +74,7 @@ export function courseRows(count: number): CourseRowLayout[] {
   });
 }
 
-/** The footer's two controls: kick PICK and burst BACK, as icons on a keyboard and as A and B on touch. */
+/** The footer's two controls: fire PICK and dash BACK, as icons on a keyboard and as A and B on touch. */
 export function courseFooterItems(touch: boolean): FooterItem[] {
   const item = (x: number, word: string): FooterItem => ({
     glyph: touch
@@ -138,8 +138,8 @@ function addFooter(scene: Phaser.Scene, touch: boolean): void {
   createPanel(scene, COURSE_FOOTER.x, COURSE_FOOTER.y, COURSE_FOOTER.w, COURSE_FOOTER.h, 'inset');
   const [pick, back] = courseFooterItems(touch);
   for (const [item, icon, letter] of [
-    [pick, IconFrame.kick, 'A'],
-    [back, IconFrame.burst, 'B'],
+    [pick, IconFrame.fire, 'A'],
+    [back, IconFrame.dash, 'B'],
   ] as const) {
     if (!item) continue;
     if (touch) createLabel(scene, item.glyph.x, item.glyph.y, letter, { tone: 'sun' });

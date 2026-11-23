@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { centreOf } from '../racers.ts';
-import { eventsIn, IDLE, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
-import { fireBurst } from './burst.ts';
+import { eventsIn, giveItems, IDLE, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
 import { advanceRiptides, feltCurrent, riptideCurrentAt } from './riptides.ts';
+import { fireItem } from './use.ts';
 
 /** A long open pool, three rows deep, with a wall at the right end and a pillar in row 2 at column 9. */
 const POOL = `
@@ -29,7 +29,7 @@ const RIGHT = { x: 1, y: 0 };
 function holdingRiptide(ascii = POOL) {
   const { world, log } = raceOn(ascii);
   const player = racerOf(world, 'player');
-  player.stack = ['riptide'];
+  giveItems(player, ['riptide']);
   return { world, log, player };
 }
 
@@ -38,14 +38,14 @@ describe('laying a lane', () => {
     const { world, log, player } = holdingRiptide();
     placeOnTile(player, 11, 3);
 
-    fireBurst(world, player, RIGHT);
+    fireItem(world, player, 0, RIGHT);
 
     const centre = centreOf(player);
     expect(world.riptides).toEqual([
-      { x: centre.x, y: centre.y - 16, w: 128, h: 32, dir: RIGHT, ttl: 180, owner: 'player', strength: 2 },
+      { x: centre.x, y: centre.y - 16, w: 128, h: 32, dir: RIGHT, ttl: 180, owner: 'player' },
     ]);
     expect(eventsIn(log, 'riptide.spawned')).toEqual([{ type: 'riptide.spawned', owner: 'player' }]);
-    expect(player.stack).toEqual(['riptide']);
+    expect(player.items[0]).toEqual({ kind: 'riptide', charges: 1 });
   });
 
   it('snaps a slanted aim to its stronger axis, in either direction', () => {
@@ -54,8 +54,8 @@ describe('laying a lane', () => {
     const upward = holdingRiptide();
     placeOnTile(upward.player, 20, 4);
 
-    fireBurst(horizontal.world, horizontal.player, { x: -0.9, y: 0.4 });
-    fireBurst(upward.world, upward.player, { x: 0.2, y: -0.98 });
+    fireItem(horizontal.world, horizontal.player, 0, { x: -0.9, y: 0.4 });
+    fireItem(upward.world, upward.player, 0, { x: 0.2, y: -0.98 });
 
     const left = horizontal.world.riptides[0];
     const up = upward.world.riptides[0];
@@ -70,7 +70,7 @@ describe('laying a lane', () => {
     // The pillar in row 2 is 4 tiles right of tile (5, 2): the lane ends at its near face.
     placeOnTile(player, 5, 2);
 
-    fireBurst(world, player, RIGHT);
+    fireItem(world, player, 0, RIGHT);
 
     const [lane] = world.riptides;
     expect((lane?.x ?? 0) + (lane?.w ?? 0)).toBeLessThanOrEqual(9 * 16);
@@ -81,7 +81,7 @@ describe('laying a lane', () => {
     const { world, log, player } = holdingRiptide();
     placeOnTile(player, 8, 2);
 
-    fireBurst(world, player, RIGHT);
+    fireItem(world, player, 0, RIGHT);
 
     expect(world.riptides).toEqual([]);
     expect(eventsIn(log, 'riptide.spawned')).toEqual([]);
@@ -89,7 +89,7 @@ describe('laying a lane', () => {
 
   it('fades after 180 ticks', () => {
     const { world, player } = holdingRiptide();
-    fireBurst(world, player, RIGHT);
+    fireItem(world, player, 0, RIGHT);
 
     for (let i = 0; i < 179; i++) advanceRiptides(world);
     expect(world.riptides).toHaveLength(1);
@@ -137,41 +137,36 @@ describe('riding a lane', () => {
     expect(riptideCurrentAt(world, player.body)).not.toBeNull();
   });
 
-  it('pushes with the lane strength: twice a plain current, or as the lane says', () => {
+  it('pushes twice as hard as a plain current, along the lane', () => {
     const { world } = raceOn(POOL);
     const player = racerOf(world, 'player');
     world.riptides.push({ x: 160, y: 40, w: 128, h: 32, dir: RIGHT, ttl: 180, owner: 'tess' });
-    world.riptides.push({ x: 160, y: 120, w: 128, h: 32, dir: { x: 0, y: -1 }, ttl: 180, owner: 'tess', strength: 3 });
 
     placeOnTile(player, 12, 3);
-    const plain = riptideCurrentAt(world, player.body);
-    placeOnTile(player, 12, 8);
-    const strong = riptideCurrentAt(world, player.body);
 
-    expect(plain).toEqual({ x: 2, y: 0 });
-    expect(strong).toEqual({ x: 0, y: -3 });
+    expect(riptideCurrentAt(world, player.body)).toEqual({ x: 2, y: 0 });
   });
 });
 
-describe("a Riptide holder's passive", () => {
+describe("a selected Riptide's passive", () => {
   const swept = (kinds: ('riptide' | 'jetFin')[]) => {
     const { world, log } = raceOn(CURRENT);
     for (const id of ['tess', 'squib', 'bo'] as const) racerOf(world, id).status.stunned = 100_000;
     const player = racerOf(world, 'player');
-    player.stack = kinds;
+    giveItems(player, kinds);
     placeOnTile(player, 3, 2);
     step(world, log, 30, IDLE);
     return player.body.x - tileCentre(3, 2).x;
   };
 
-  it('feels a tile current 1.5 times as hard', () => {
+  it('feels a tile current 1.5 times as hard, only while the Riptide is selected', () => {
     const { world } = raceOn(CURRENT);
     const player = racerOf(world, 'player');
-    player.stack = ['riptide'];
+    giveItems(player, ['riptide']);
 
     expect(feltCurrent(world, player, { x: 1, y: 0 })).toEqual({ x: 1.5, y: 0 });
     expect(feltCurrent(world, player, null)).toBeNull();
-    player.stack = [];
+    giveItems(player, ['jetFin', 'riptide']);
     expect(feltCurrent(world, player, { x: 1, y: 0 })).toEqual({ x: 1, y: 0 });
   });
 
@@ -182,7 +177,7 @@ describe("a Riptide holder's passive", () => {
   it('feels a lane 1.5 times as hard as well', () => {
     const { world } = raceOn(POOL);
     const player = racerOf(world, 'player');
-    player.stack = ['riptide'];
+    giveItems(player, ['riptide']);
     placeOnTile(player, 12, 3);
     world.riptides.push({ x: 160, y: 40, w: 128, h: 32, dir: RIGHT, ttl: 180, owner: 'tess' });
 

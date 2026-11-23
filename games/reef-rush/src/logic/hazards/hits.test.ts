@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ABILITY } from '../abilities.ts';
 import { centreOf } from '../racers.ts';
-import { eventsIn, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
+import { eventsIn, giveItems, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
 import type { Vec } from '../types.ts';
 import { applyHit } from './hits.ts';
 import { HIT } from './tuning.ts';
@@ -27,7 +27,7 @@ function setup() {
   return { world, log, player, offset, hit };
 }
 
-describe('a hit on an empty stack', () => {
+describe('a hit on a racer holding nothing', () => {
   it('stuns the racer for 50 ticks, shortened by its ability (the default Rudy shakes it off)', () => {
     const { log, player, hit } = setup();
 
@@ -44,20 +44,20 @@ describe('a hit on an empty stack', () => {
 describe('invulnerability', () => {
   it('follows every landed hit for 60 ticks, and hits during it do nothing', () => {
     const { log, player, hit } = setup();
-    player.stack = ['jetFin', 'puffer'];
+    giveItems(player, ['jetFin', 'puffer']);
     hit();
-    const after = { stack: [...player.stack], events: eventsIn(log).length };
+    const after = { items: structuredClone(player.items), events: eventsIn(log).length };
 
     expect(player.status.invulnerable).toBe(60);
     expect(hit()).toBe(false);
 
-    expect(player.stack).toEqual(after.stack);
+    expect(player.items).toEqual(after.items);
     expect(eventsIn(log)).toHaveLength(after.events);
   });
 
   it('follows a hit a Bubble Shield absorbed too', () => {
     const { player, hit } = setup();
-    player.stack = ['bubbleShield'];
+    giveItems(player, ['bubbleShield']);
 
     hit();
 

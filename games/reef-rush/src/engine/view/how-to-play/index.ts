@@ -9,15 +9,15 @@ import type { CharacterId } from '../../../logic/types.ts';
 import { HOW_TO_PLAY_PAGES } from '../../how-to-play.ts';
 import { controlName } from '../control-glyphs.ts';
 import { buildAttacksPage } from './attacks-page.ts';
-import { buildBurstPage } from './burst-page.ts';
 import { buildClamsPage } from './clams-page.ts';
 import { buildDodgePage } from './dodge-page.ts';
+import { buildFirePage } from './fire-page.ts';
 import { createPage, type Page, type PageBuilder } from './kit.ts';
 import { buildMovePage } from './move-page.ts';
 
 export type { Page } from './kit.ts';
 
-/** A page's heading (at most four short words, naming the burst control as the player's screen does) and builder. */
+/** A page's heading (at most four short words, naming the fire control as the player's screen does) and builder. */
 interface PageSpec {
   heading: (touch: boolean) => string;
   build: PageBuilder;
@@ -31,7 +31,7 @@ export interface MovePage {
 
 /** Page 1 for each shipped medium, so shipping a medium without a move page fails to compile. */
 export const MOVE_PAGES: Readonly<Record<ShippedMediumId, MovePage>> = {
-  swim: { heading: 'SWIM AND KICK', build: buildMovePage },
+  swim: { heading: 'SWIM AND DASH', build: buildMovePage },
 };
 
 /** The medium whose move page stands in for one How to Play has no page for. */
@@ -40,9 +40,9 @@ const FALLBACK_MEDIUM: ShippedMediumId = 'swim';
 /** The pages after the move page, the same in every medium. */
 const SHARED_PAGES: readonly PageSpec[] = [
   { heading: () => 'OPEN CLAMS', build: buildClamsPage },
-  { heading: (touch) => `${controlName('burst', touch)} USES ALL!`, build: buildBurstPage },
+  { heading: (touch) => `${controlName('fire', touch)} FIRES ONE`, build: buildFirePage },
   { heading: () => 'ATTACKS', build: buildAttacksPage },
-  { heading: () => 'KICK TO DODGE', build: buildDodgePage },
+  { heading: () => 'DASH TO DODGE', build: buildDodgePage },
 ];
 
 /**

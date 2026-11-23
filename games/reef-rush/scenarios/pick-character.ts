@@ -3,14 +3,14 @@ import { scenario, tap, wait } from './kit.ts';
 
 /**
  * Title Race opens the select screen on the saved pick (Rudy on a fresh save). Right, right, down
- * moves the cursor Rudy -> Gil -> Streak -> Selene; after the screen's 20 arming ticks, kick races
+ * moves the cursor Rudy -> Gil -> Streak -> Selene; after the screen's 20 arming ticks, fire races
  * as Selene and saves the pick.
  */
 export default scenario({
   description: 'picking a character on the select screen races as that character and saves the pick',
   input: [
     wait(25),
-    tap('kick'),
+    tap('fire'),
     wait(5),
     tap('right'),
     wait(3),
@@ -18,7 +18,7 @@ export default scenario({
     wait(3),
     tap('down'),
     wait(20),
-    tap('kick'),
+    tap('fire'),
     wait(10),
   ],
   expect({ summary, state, events }) {

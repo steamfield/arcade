@@ -1,5 +1,5 @@
 /**
- * The UI icon set: 9x9 icons for the HUD and menus (kick, burst, the nine
+ * The UI icon set: 9x9 icons for the HUD and menus (dash, fire, the ten
  * power-ups, the finish flag, place arrows, the lock-on arrow and the menu cursor fin) and 12x14
  * medals for the results podium. Each is a bold silhouette with a 1 px foam
  * rim (index 0), sticker style: an ink outline would vanish into the indigo
@@ -21,8 +21,8 @@ const withRim = (palette: Palette): Palette => [ICON_RIM, ...palette.slice(1)];
 
 /** Icon palettes: rim first, then the icon's own colours. */
 const IconPalette = {
-  kick: [ICON_RIM, 0x4cc8f0, 0xd8f6ff],
-  burst: [ICON_RIM, UiColour.sun, 0xfff3c4, UiRamp.sunDark],
+  dash: [ICON_RIM, 0x4cc8f0, 0xd8f6ff],
+  fire: [ICON_RIM, UiColour.sun, 0xfff3c4, UiRamp.sunDark],
   flag: [ICON_RIM, 0xd8d4e8, 0x2a2a3a, 0x8a8aa0],
   up: [ICON_RIM, UiColour.sun, 0xfff3c4],
   down: [ICON_RIM, UiColour.coral, 0xffc0b8],
@@ -36,6 +36,7 @@ const IconPalette = {
   riptide: withRim(AttackPalette.riptide),
   undertow: withRim(AttackPalette.undertow),
   mimic: withRim(AttackPalette.mimic),
+  cannonball: withRim(ItemPalette.cannonball),
   warn: [ICON_RIM, UiColour.coral, 0xffc0b8],
 } as const satisfies Record<string, Palette>;
 
@@ -53,8 +54,8 @@ export const ICON_SHEETS: readonly UiSheet[] = [
   {
     key: UiTex.icons,
     frames: [
-      // Two chevrons: a kick is a short dash forward.
-      icon(IconFrame.kick, IconPalette.kick, [
+      // Two chevrons: a dash is a short burst of speed forward.
+      icon(IconFrame.dash, IconPalette.dash, [
         '.........',
         '00..00...',
         '010.010..',
@@ -65,8 +66,8 @@ export const ICON_SHEETS: readonly UiSheet[] = [
         '00..00...',
         '.........',
       ]),
-      // A starburst: burst spends every stacked power-up at once.
-      icon(IconFrame.burst, IconPalette.burst, [
+      // A starburst: fire uses the selected item.
+      icon(IconFrame.fire, IconPalette.fire, [
         '....0....',
         '.1.010.1.',
         '..01210..',
@@ -142,6 +143,18 @@ export const ICON_SHEETS: readonly UiSheet[] = [
       icon(IconFrame.riptide, IconPalette.riptide, ATTACK_ICON_ROWS.riptide),
       icon(IconFrame.undertow, IconPalette.undertow, ATTACK_ICON_ROWS.undertow),
       icon(IconFrame.mimic, IconPalette.mimic, ATTACK_ICON_ROWS.mimic),
+      // Cannonball: an iron ball with a lit fuse.
+      icon(IconFrame.cannonball, IconPalette.cannonball, [
+        '......3.3',
+        '.......3.',
+        '..00000..',
+        '.0122110.',
+        '012111110',
+        '011111110',
+        '011111110',
+        '.0111110.',
+        '..00000..',
+      ]),
       // Lock-on warning: a wedge pointing right at the squid; the HUD turns it to face it.
       icon(IconFrame.warnArrow, IconPalette.warn, [
         '.0.......',

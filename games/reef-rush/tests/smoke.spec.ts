@@ -13,10 +13,10 @@ test('starts on WebGL, races from the title through the select screen, and swims
     best: null,
   });
 
-  // Menus and the select screen ignore kick for their first 20 ticks.
-  await game.play(parseInput('_*20 kick _*2'));
+  // Menus and the select screen ignore fire for their first 20 ticks.
+  await game.play(parseInput('_*20 fire _*2'));
   expect(await game.summary()).toMatchObject({ scene: 'select', character: 'rudy' });
-  await game.play(parseInput('_*20 kick _*2'));
+  await game.play(parseInput('_*20 fire _*2'));
   expect(await game.summary()).toMatchObject({ scene: 'race', phase: 'countdown', character: 'rudy' });
 
   await game.play(parseInput('_*180 right*60'));
@@ -38,11 +38,11 @@ test('on-screen controls pick a racer, start the race and swim the player @touch
     await button.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
   };
   await game.advance(20);
-  await hold('kick', 1);
+  await hold('fire', 1);
   await game.advance(21);
   await hold('right', 1);
   await game.advance(1);
-  await hold('kick', 1);
+  await hold('fire', 1);
   await game.advance(182);
   await hold('right', 60);
   const summary = await game.summary();

@@ -1,5 +1,5 @@
 /**
- * Undertow: a one-use burst that drags every racer ahead of the user back down the course. The
+ * Undertow: a one-use item that drags every racer ahead of the user back down the course. The
  * pull comes from `status.undertow` (ticks left) and `Racer.undertowGapTiles` (how far ahead the
  * victim was when pulled), applied each tick in `stepWorld`'s swim step.
  */
@@ -15,8 +15,7 @@ const LOOKAHEAD_TILES = 3;
 /**
  * Pulls every racer in play that is ahead of `user` (lower progress) and that `mayAttack` lets it pull: `status.undertow` becomes
  * UNDERTOW.ticks and `undertowGapTiles` the tiles of lead it had. Emits `undertow.fired {id, pulled}`
- * with the pulled racers in RACER_IDS order, even when there are none. The user is not consumed
- * here; `fireBurst` removes the power-up.
+ * with the pulled racers in RACER_IDS order, even when there are none. `fireItem` spends its charge.
  */
 export function fireUndertow(world: World, user: Racer): void {
   const pulled = activeRacers(world).filter(

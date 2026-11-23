@@ -39,7 +39,7 @@ export function resolveContacts(world: World, racers: readonly Racer[]): void {
  * A Glow Lantern flash from `racer`: emits `flash.fired {id}`, then hits every other racer in play
  * whose centre is within FLASH.rangeTiles tiles of the racer's centre (cause 'flash'), and sets
  * `stunned = FLASH.stunTicks` on every jelly whose centre is that close and pops every other racer's
- * Mimic decoy that close (`popDecoy`). Called by `burst.ts`.
+ * Mimic decoy that close (`popDecoy`). Called by `use.ts`.
  */
 export function flashAround(world: World, racer: Racer): void {
   world.events.emit({ type: 'flash.fired', id: racer.id });

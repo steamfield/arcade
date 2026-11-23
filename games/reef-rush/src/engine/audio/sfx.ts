@@ -6,7 +6,7 @@
 import type { Duty, Envelope } from './notation.ts';
 import { env, midiToHz, type Synth } from './synth.ts';
 
-/** Every effect the game can play. Combo keys accent a burst that formed a named combo. */
+/** Every effect the game can play. */
 export type SfxKey =
   | 'countdown'
   | 'go'
@@ -19,15 +19,7 @@ export type SfxKey =
   | 'clam'
   | 'powerup.gain'
   | 'powerup.lost'
-  | 'burst'
-  | 'combo.cannonball'
-  | 'combo.inkTrail'
-  | 'combo.lanternBubble'
-  | 'combo.inkBomb'
-  | 'combo.comet'
-  | 'combo.surfline'
-  | 'combo.inkSquid'
-  | 'combo.bubbleDecoy'
+  | 'item.use'
   | 'squid.fire'
   | 'squid.lock'
   | 'squid.latch'
@@ -127,21 +119,11 @@ const SFX: Record<SfxKey, readonly Part[]> = {
   clam: [pulse(67, 0, 0.12, 0.35, { duty: 0.25, slide: 12 }), pulse(79, 0.12, 0.08, 0.3, { duty: 0.25 })],
   'powerup.gain': arpeggio([72, 76, 79, 84], 0.045, 0.35, 0.25),
   'powerup.lost': [pulse(79, 0, 0.25, 0.35, { slide: -12 })],
-  burst: [hiss('bandpass', 3000, 0, 0.2, 0.4, { sweepTo: 500 }), pulse(48, 0, 0.15, 0.3, { duty: 0.125, slide: 12 })],
-  'combo.cannonball': [tri(43, 0.05, 0.2, 0.6, { slide: -7 }), hiss('lowpass', 500, 0.05, 0.12, 0.4)],
-  'combo.inkTrail': [pulse(70, 0.05, 0.08, 0.3, { duty: 0.125 }), pulse(65, 0.13, 0.12, 0.3, { duty: 0.125 })],
-  'combo.lanternBubble': [pulse(84, 0.05, 0.08, 0.3, { duty: 0.25 }), pulse(91, 0.13, 0.2, 0.3, { vibrato: true })],
-  'combo.inkBomb': [tri(40, 0.05, 0.25, 0.6), hiss('lowpass', 300, 0.05, 0.2, 0.45)],
-  'combo.comet': arpeggio([88, 93, 96], 0.04, 0.3, 0.125).map((part) => ({ ...part, offset: part.offset + 0.05 })),
-  // Surfline: a rising wash, like a wave lifting the racer.
-  'combo.surfline': [
-    hiss('bandpass', 500, 0.05, 0.25, 0.3, { sweepTo: 3000 }),
-    pulse(72, 0.05, 0.1, 0.25, { duty: 0.25, slide: 12 }),
+  // The player fires an item: a falling whoosh over a rising blip.
+  'item.use': [
+    hiss('bandpass', 3000, 0, 0.2, 0.4, { sweepTo: 500 }),
+    pulse(48, 0, 0.15, 0.3, { duty: 0.125, slide: 12 }),
   ],
-  // Ink Squid: a wet pop and a low wobble.
-  'combo.inkSquid': [tri(47, 0.05, 0.2, 0.55, { slide: 5, vibrato: true }), hiss('lowpass', 600, 0.05, 0.1, 0.4)],
-  // Bubble Decoy: two airy pops, the second higher.
-  'combo.bubbleDecoy': [pulse(84, 0.05, 0.05, 0.3, { duty: 0.125 }), pulse(91, 0.11, 0.07, 0.3, { duty: 0.125 })],
   // A squid fired: a quick rising hiss.
   'squid.fire': [
     hiss('bandpass', 700, 0, 0.14, 0.3, { sweepTo: 2600 }),
