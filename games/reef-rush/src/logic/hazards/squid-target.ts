@@ -10,7 +10,11 @@ import { activeRacers, centreOf } from '../racers.ts';
 import { type Decoy, type Racer, type RacerId, type SquidTarget, TILE, type Vec, type World } from '../types.ts';
 
 /** Squared distance between two points in world px. */
-const squaredDistance = (a: Vec, b: Vec): number => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+const squaredDistance = (a: Vec, b: Vec): number => {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
+};
 
 /**
  * How far a squid reaches to lock `racer`, in px: SQUID.lockTiles, times MIMIC.lockRangeMul for a
@@ -45,7 +49,8 @@ export function pickSquidTarget(world: World, owner: RacerId, from: Vec, exclude
     if (!mayAttack(world, owner, racer.id)) continue;
     const squared = squaredDistance(centreOf(racer), from);
     // Strictly nearer only, so equal distances go to the earlier racer in RACER_IDS order.
-    if (squared > lockRangePx(racer) ** 2 || squared >= bestSquared) continue;
+    const lockRange = lockRangePx(racer);
+    if (squared > lockRange * lockRange || squared >= bestSquared) continue;
     bestRacer = racer;
     bestSquared = squared;
   }
@@ -56,7 +61,8 @@ export function pickSquidTarget(world: World, owner: RacerId, from: Vec, exclude
 
 /** The nearest other-owned decoy ahead of `owner` and within SQUID.lockTiles of `from`, with its squared distance. */
 function nearestDecoyAhead(world: World, owner: Racer, from: Vec): { owner: RacerId; squared: number } | null {
-  const reach = (SQUID.lockTiles * TILE) ** 2;
+  const reachPx = SQUID.lockTiles * TILE;
+  const reach = reachPx * reachPx;
   let best: { owner: RacerId; squared: number } | null = null;
   for (const decoy of world.decoys) {
     if (decoy.owner === owner.id) continue;

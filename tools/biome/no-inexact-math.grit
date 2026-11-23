@@ -1,0 +1,36 @@
+// Lockstep multiplayer needs every JavaScript engine to compute the same race bit for bit.
+// Exponentiation and the transcendental Math functions are not required to round identically
+// across engines, so logic uses multiplication and the exact helpers in src/logic/num.ts.
+// The Math patterns match the member itself, not only a call, so `values.map(Math.sin)` is caught.
+or {
+  `$base ** $exponent` as $power where {
+    register_diagnostic(span=$power, message="Exponentiation may round differently between JavaScript engines, and a lockstep race must match bit for bit. Multiply instead.", severity="error")
+  },
+  // Grit cannot bind an assignment's operator token, so match the assignment that contains `**=`.
+  JsAssignmentExpression() as $power where {
+    $power <: contains `**=`,
+    register_diagnostic(span=$power, message="Exponentiation may round differently between JavaScript engines, and a lockstep race must match bit for bit. Multiply instead.", severity="error")
+  },
+  `Math.pow` as $ref where {
+    register_diagnostic(span=$ref, message="Exponentiation may round differently between JavaScript engines, and a lockstep race must match bit for bit. Multiply instead.", severity="error")
+  },
+  `Math.$name` as $ref where {
+    $name <: or {
+      `sin`,
+      `cos`,
+      `tan`,
+      `atan2`,
+      `hypot`,
+      `exp`,
+      `log`
+    },
+    register_diagnostic(span=$ref, message="This Math function may round differently between JavaScript engines. Use src/logic/num.ts.", severity="error")
+  },
+  // Destructuring and bracket access would hide which function is used, and logic needs neither.
+  `const { $props } = Math` as $destructure where {
+    register_diagnostic(span=$destructure, message="This Math function may round differently between JavaScript engines. Use src/logic/num.ts.", severity="error")
+  },
+  `Math[$key]` as $ref where {
+    register_diagnostic(span=$ref, message="This Math function may round differently between JavaScript engines. Use src/logic/num.ts.", severity="error")
+  }
+}
