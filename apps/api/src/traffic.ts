@@ -1,54 +1,76 @@
 /**
- * When the room last heard from each peer and how many messages it sent this second, and how long
- * a silence must last before a kick. The only room state kept in memory: hibernation wipes it, and
- * that fails safe, because a peer the room has no time for is never kicked and a fresh counter only
- * lets a peer send more.
+ * When the room last heard inputs from each peer, how much of its message allowance it has left,
+ * and how long a silence must last before a kick. The only room state kept in memory: hibernation
+ * wipes it, and that fails safe. A peer the room knows nothing about counts as heard when the
+ * object woke, so a kick still works one silence window later, and a fresh allowance only lets a
+ * peer send more.
  */
 import type { Env } from './index.ts';
-import { KICK_SILENCE_MS } from './protocol.ts';
+import { KICK_SILENCE_MS, MAX_MESSAGES_PER_SECOND, MESSAGE_BURST } from './protocol.ts';
 
-/** The window message rates are counted over, in milliseconds. */
-const RATE_WINDOW_MS = 1000;
+const MS_PER_SECOND = 1000;
 
 interface PeerCounts {
-  /** When the room last heard from the peer, or accepted its socket. */
+  /** When the room last heard inputs from the peer, or accepted its socket, or started its race. */
   heardAt: number;
-  /** When the current rate window began. */
-  windowStart: number;
-  /** Messages received in the current rate window. */
-  sent: number;
+  /** Messages the peer may still send at once: a token bucket holding up to `MESSAGE_BURST`. */
+  tokens: number;
+  /** When `tokens` was last topped up. */
+  refilledAt: number;
 }
 
-/** Per-peer heard times and message counts, keyed by peer id. */
+/** Per-peer heard times and message allowances, keyed by peer id. */
 export class PeerTraffic {
   #counts = new Map<number, PeerCounts>();
+  #wokeAt: number;
+
+  /** @param wokeAt - When the Room object was constructed: the heard time of every peer it has no record of. */
+  constructor(wokeAt: number) {
+    this.#wokeAt = wokeAt;
+  }
 
   /** Starts tracking a peer whose socket was just accepted at `now`, as if it had just spoken. */
   joined(peer: number, now: number): void {
-    this.#counts.set(peer, { heardAt: now, windowStart: now, sent: 0 });
+    this.#counts.set(peer, { heardAt: now, tokens: MESSAGE_BURST, refilledAt: now });
   }
 
-  /** Records a message from `peer` at `now` and returns how many it has sent in the current second. */
-  heard(peer: number, now: number): number {
-    const counts = this.#counts.get(peer);
-    if (counts === undefined || now - counts.windowStart >= RATE_WINDOW_MS) {
-      this.#counts.set(peer, { heardAt: now, windowStart: now, sent: 1 });
-      return 1;
-    }
-    counts.heardAt = now;
-    counts.sent += 1;
-    return counts.sent;
+  /**
+   * Takes one message from `peer`'s allowance at `now`, after refilling it at
+   * `MAX_MESSAGES_PER_SECOND`. Returns false when the allowance is spent.
+   */
+  spend(peer: number, now: number): boolean {
+    const counts = this.#countsOf(peer, now);
+    const refill = ((now - counts.refilledAt) * MAX_MESSAGES_PER_SECOND) / MS_PER_SECOND;
+    counts.tokens = Math.min(MESSAGE_BURST, counts.tokens + refill);
+    counts.refilledAt = now;
+    if (counts.tokens < 1) return false;
+    counts.tokens -= 1;
+    return true;
   }
 
-  /** How long `peer` has been silent at `now`, or null when the room has not heard it since waking. */
-  silentFor(peer: number, now: number): number | null {
-    const counts = this.#counts.get(peer);
-    return counts === undefined ? null : now - counts.heardAt;
+  /** Records that the room heard inputs from `peer`, or that its race started, at `now`. */
+  heard(peer: number, now: number): void {
+    this.#countsOf(peer, now).heardAt = now;
+  }
+
+  /** How long `peer` has been silent at `now`. */
+  silentFor(peer: number, now: number): number {
+    return now - (this.#counts.get(peer)?.heardAt ?? this.#wokeAt);
   }
 
   /** Stops tracking a peer that has gone. */
   forget(peer: number): void {
     this.#counts.delete(peer);
+  }
+
+  /** The record for `peer`, starting one heard at waking with a full allowance when there is none. */
+  #countsOf(peer: number, now: number): PeerCounts {
+    let counts = this.#counts.get(peer);
+    if (counts === undefined) {
+      counts = { heardAt: this.#wokeAt, tokens: MESSAGE_BURST, refilledAt: now };
+      this.#counts.set(peer, counts);
+    }
+    return counts;
   }
 }
 

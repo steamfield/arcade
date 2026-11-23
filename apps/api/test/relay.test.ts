@@ -4,7 +4,15 @@
  */
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { PING, PONG } from '../src/protocol.ts';
-import { createRoom, joinPeer, joinPeers, type RoomService, roomWithPeers, startRoomService } from './room-kit.ts';
+import {
+  createRoom,
+  joinPeer,
+  joinPeers,
+  type RoomService,
+  roomWithPeers,
+  startRoomService,
+  type TestSocket,
+} from './room-kit.ts';
 
 let service: RoomService;
 
@@ -31,13 +39,38 @@ test('JSON is relayed with from and not echoed to the sender', async () => {
   expect(await first.nextJson()).toEqual({ type: 'probe', from: 2 });
 });
 
-test("binary is relayed with the sender's id in front", async () => {
+/** Has the host start a race for `racers` and drains the `start` and `phase` messages it causes. */
+async function startRace(peers: readonly TestSocket[], ...racers: number[]): Promise<void> {
+  const [host, ...others] = peers;
+  host?.sendJson(startFor(...racers));
+  for (const peer of others) await peer.nextJson();
+  for (const peer of peers) await peer.nextJson();
+}
+
+test("a racer's binary reaches the other racers with the sender's id in front", async () => {
   const [first, second, third] = await roomWithPeers(service, 3);
+  await startRace([first, second, third], 1, 2, 3);
 
   third.send(new Uint8Array([1, 9, 0, 0, 0, 4, 2]));
 
   expect(await first.nextBinary()).toEqual([3, 1, 9, 0, 0, 0, 4, 2]);
   expect(await second.nextBinary()).toEqual([3, 1, 9, 0, 0, 0, 4, 2]);
+});
+
+test('a peer waiting in the lobby during a race gets no binary and its binary reaches nobody', async () => {
+  const [first, second, third] = await roomWithPeers(service, 3);
+  await startRace([first, second, third], 1, 2);
+
+  third.send(new Uint8Array([1, 7]));
+  third.sendJson({ type: 'probe' });
+  expect(await first.nextJson()).toEqual({ type: 'probe', from: 3 });
+  expect(await second.nextJson()).toEqual({ type: 'probe', from: 3 });
+  first.send(new Uint8Array([1, 8]));
+  first.sendJson({ type: 'probe' });
+
+  expect(await second.nextBinary()).toEqual([1, 1, 8]);
+  expect(await second.nextJson()).toEqual({ type: 'probe', from: 1 });
+  expect(await third.nextJson()).toEqual({ type: 'probe', from: 1 });
 });
 
 test('start from a peer that is not host is not relayed', async () => {

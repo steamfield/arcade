@@ -3,7 +3,7 @@
  * after hibernating lives in each socket's attachment, so the host, the phase and the peer list are
  * derived here from `ctx.getWebSockets()` on every event rather than kept in fields.
  */
-import { MAX_PEER_ID, MAX_PEERS, PROTOCOL_VERSION, type RoomPhase } from './protocol.ts';
+import { BUILD_ID_PATTERN, MAX_PEER_ID, MAX_PEERS, PROTOCOL_VERSION, type RoomPhase } from './protocol.ts';
 
 /** What the room keeps on each accepted socket; it survives hibernation. */
 export interface PeerAttachment {
@@ -48,9 +48,14 @@ export function hostOf(peers: readonly Peer[]): number {
   return peers[0]?.attachment.peer ?? 0;
 }
 
-/** The race phase: racing while any connected peer is in the current race and has not sent `end`. */
+/** Whether a peer is in the current race and has not sent `end`: it sends and receives inputs. */
+export function isRacing(attachment: PeerAttachment): boolean {
+  return attachment.racing && !attachment.ended;
+}
+
+/** The race phase: racing while any connected peer is racing. */
 export function phaseOf(peers: readonly Peer[]): RoomPhase {
-  return peers.some(({ attachment }) => attachment.racing && !attachment.ended) ? 'racing' : 'lobby';
+  return peers.some(({ attachment }) => isRacing(attachment)) ? 'racing' : 'lobby';
 }
 
 /** The connected peer on `socket`, or undefined when that socket's peer has departed. */
@@ -79,6 +84,7 @@ export function joinRefusal(request: JoinRequest): Refusal | null {
   if (!request.claimed) return 'unknownRoom';
   if (request.peers.length >= MAX_PEERS) return 'full';
   if (request.version !== String(PROTOCOL_VERSION)) return 'version';
+  if (!BUILD_ID_PATTERN.test(request.build)) return 'version';
   if (request.peers.some(({ attachment }) => attachment.build !== request.build)) return 'version';
   if (request.nextPeer > MAX_PEER_ID) return 'unavailable';
   return null;

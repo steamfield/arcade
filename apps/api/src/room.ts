@@ -4,17 +4,25 @@
  *
  * It uses the WebSocket Hibernation API, so it may be evicted between any two events. Every
  * decision is therefore made from the sockets' attachments (`peers.ts`) and storage (the claimed
- * flag and the next peer id); only heard times and rate counters live in memory (`traffic.ts`).
+ * flag and the next peer id); only heard times and message allowances live in memory (`traffic.ts`).
  */
 import { DurableObject } from 'cloudflare:workers';
 import { byteLength, parseRelayed, type Relayed } from './incoming.ts';
 import type { Env } from './index.ts';
-import { connectedPeers, hostOf, joinRefusal, type Peer, peerOnSocket, phaseOf, updateAttachment } from './peers.ts';
+import {
+  connectedPeers,
+  hostOf,
+  isRacing,
+  joinRefusal,
+  type Peer,
+  peerOnSocket,
+  phaseOf,
+  updateAttachment,
+} from './peers.ts';
 import {
   CLOSE,
   KickSchema,
   MAX_MESSAGE_BYTES,
-  MAX_MESSAGES_PER_SECOND,
   PING,
   PONG,
   RESERVED_TYPES,
@@ -37,7 +45,7 @@ type DepartureCause = 'kicked' | 'limit' | 'idle';
 
 /** One room. See `protocol.ts` for everything it reads and sends. */
 export class Room extends DurableObject<Env> {
-  #traffic = new PeerTraffic();
+  #traffic = new PeerTraffic(Date.now());
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -65,8 +73,8 @@ export class Room extends DurableObject<Env> {
     // Written before the socket is accepted, so a failed write leaves no accepted socket behind.
     await this.ctx.storage.put(NEXT_PEER_KEY, nextPeer + 1);
     const { 0: client, 1: server } = new WebSocketPair();
-    this.ctx.acceptWebSocket(server);
     server.serializeAttachment({ peer: nextPeer, build, racing: false, ended: false, departed: false });
+    this.ctx.acceptWebSocket(server);
     this.#traffic.joined(nextPeer, Date.now());
     this.#greet(server, nextPeer);
     await this.#postponeIdleClose();
@@ -77,15 +85,13 @@ export class Room extends DurableObject<Env> {
   override async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
     const sender = peerOnSocket(this.#peers(), socket);
     if (sender === undefined) return;
-    const { peer } = sender.attachment;
-    const sentThisSecond = this.#traffic.heard(peer, Date.now());
-    if (byteLength(message) > MAX_MESSAGE_BYTES || sentThisSecond > MAX_MESSAGES_PER_SECOND) {
-      return this.#depart(socket, 'limit');
-    }
-    if (typeof message !== 'string') return this.#relayBinary(sender, message);
+    const now = Date.now();
+    const withinAllowance = this.#traffic.spend(sender.attachment.peer, now);
+    if (byteLength(message) > MAX_MESSAGE_BYTES || !withinAllowance) return this.#depart(socket, 'limit');
+    if (typeof message !== 'string') return this.#relayBinary(sender, message, now);
     const relayed = parseRelayed(message);
     if (relayed === null) return;
-    if (relayed.type === 'kick') return this.#kick(relayed);
+    if (relayed.type === 'kick') return this.#kick(sender, relayed);
     await this.#relayJson(sender, relayed);
   }
 
@@ -126,12 +132,20 @@ export class Room extends DurableObject<Env> {
     this.#broadcast(JSON.stringify({ type: 'joined', peer, host } satisfies RoomMessage), socket);
   }
 
-  /** Passes binary on to every other peer with the sender's id as its first byte. */
-  #relayBinary(sender: Peer, message: ArrayBuffer): void {
+  /**
+   * Passes a racer's binary (its inputs and hashes) on to every other racer with the sender's id as
+   * its first byte, and counts the sender as heard for the kick check. Binary from a peer that is
+   * not racing is dropped, and peers waiting in the lobby never receive any.
+   */
+  #relayBinary(sender: Peer, message: ArrayBuffer, now: number): void {
+    if (!isRacing(sender.attachment)) return;
+    this.#traffic.heard(sender.attachment.peer, now);
     const prefixed = new Uint8Array(message.byteLength + 1);
     prefixed[0] = sender.attachment.peer;
     prefixed.set(new Uint8Array(message), 1);
-    this.#broadcast(prefixed, sender.socket);
+    for (const { socket, attachment } of this.#peers()) {
+      if (socket !== sender.socket && isRacing(attachment)) sendQuietly(socket, prefixed);
+    }
   }
 
   /** Passes a JSON message on to every other peer with `from` added, applying `start` and `end` to the phase. */
@@ -152,22 +166,27 @@ export class Room extends DurableObject<Env> {
     const peers = this.#peers();
     const start = StartRelaySchema.safeParse(message);
     if (!start.success || phase !== 'lobby' || hostOf(peers) !== sender.attachment.peer) return false;
+    const now = Date.now();
     for (const { socket, attachment } of peers) {
-      updateAttachment(socket, { racing: String(attachment.peer) in start.data.slots, ended: false });
+      const racing = String(attachment.peer) in start.data.slots;
+      updateAttachment(socket, { racing, ended: false });
+      // Nobody owes inputs before the race begins, so every racer's silence starts now.
+      if (racing) this.#traffic.heard(attachment.peer, now);
     }
     await this.#postponeIdleClose();
     return true;
   }
 
-  /** Closes the socket a `kick` names, but only during a race and only if the room has heard nothing from it for the silence window. */
-  async #kick(message: Relayed): Promise<void> {
+  /**
+   * Closes the socket a `kick` names, but only when both the sender and the target are racing and
+   * the room has heard no inputs from the target for the silence window.
+   */
+  async #kick(sender: Peer, message: Relayed): Promise<void> {
     const kick = KickSchema.safeParse(message);
-    if (!kick.success) return;
-    const peers = this.#peers();
-    const target = peers.find(({ attachment }) => attachment.peer === kick.data.peer);
-    if (target === undefined || phaseOf(peers) !== 'racing') return;
-    const silentFor = this.#traffic.silentFor(kick.data.peer, Date.now());
-    if (silentFor === null || silentFor < kickSilenceMs(this.env)) return;
+    if (!kick.success || !isRacing(sender.attachment)) return;
+    const target = this.#peers().find(({ attachment }) => attachment.peer === kick.data.peer);
+    if (target === undefined || !isRacing(target.attachment)) return;
+    if (this.#traffic.silentFor(kick.data.peer, Date.now()) < kickSilenceMs(this.env)) return;
     await this.#depart(target.socket, 'kicked');
   }
 

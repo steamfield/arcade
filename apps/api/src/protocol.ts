@@ -1,8 +1,9 @@
 /**
  * The room wire protocol: everything the room service itself reads or sends. A room is a relay.
  * It does not know the game: any JSON object with a string `type` that is not listed here is passed
- * to the other peers with the sender's id added as `from`, and binary messages are passed on with
- * the sender's id as their first byte. Two relayed types also move the room's phase: `start` (from
+ * to the other peers with the sender's id added as `from`, and binary messages (inputs and hashes)
+ * pass only between peers in the current race, with the sender's id as their first byte; binary
+ * from anyone else is dropped. Two relayed types also move the room's phase: `start` (from
  * the host, in the lobby) begins a race for the connected peers its `slots` names, and `end` marks
  * its sender done. The room never relays a message carrying one of its own types (`RESERVED_TYPES`).
  *
@@ -28,10 +29,22 @@ export const ROOM_CODE_LENGTH = 6;
 /** The largest message a peer may send, in bytes. */
 export const MAX_MESSAGE_BYTES = 1024;
 
-/** The most messages a peer may send in any one second. */
+/** The steady rate a peer may send at, in messages per second: its allowance refills this fast. */
 export const MAX_MESSAGES_PER_SECOND = 80;
 
-/** How long a peer must have been silent before the room honours a `kick` naming it, in milliseconds. */
+/**
+ * The most messages a peer may send at once, above the steady rate: the capacity of its allowance.
+ * Large enough that a racer flushing a backlog after a network stall is not closed.
+ */
+export const MESSAGE_BURST = 240;
+
+/** What a `build` query parameter must look like: lower-case letters, digits and dashes, 1 to 32 of them. */
+export const BUILD_ID_PATTERN = /^[0-9a-z-]{1,32}$/;
+
+/**
+ * How long a racer must have sent no binary before the room honours a `kick` naming it, in
+ * milliseconds. Only racers may kick and be kicked, and a race's start counts as hearing every racer.
+ */
 export const KICK_SILENCE_MS = 5000;
 
 /** How long a room lives without a join, a start or a race ending, in milliseconds. */
@@ -49,7 +62,7 @@ export const PONG = 'pong';
 export const CLOSE = {
   /** The room already holds `MAX_PEERS` sockets. */
   full: 4001,
-  /** The joiner's protocol version or build differs from the room's; reloading fixes it. */
+  /** The joiner's protocol version or build differs from the room's, or its build id is malformed; reloading fixes it. */
   version: 4002,
   /** Nobody created a room with this code, or it has expired. */
   unknownRoom: 4003,
@@ -57,7 +70,7 @@ export const CLOSE = {
   unavailable: 4004,
   /** Another peer reported this one silent during a race and the room agreed. */
   kicked: 4005,
-  /** The peer sent too much: a message over `MAX_MESSAGE_BYTES` or more than `MAX_MESSAGES_PER_SECOND`. */
+  /** The peer sent too much: a message over `MAX_MESSAGE_BYTES`, or more than its allowance of `MESSAGE_BURST` refilled at `MAX_MESSAGES_PER_SECOND`. */
   limit: 4006,
   /** The room sat idle for `ROOM_IDLE_MS`. */
   idle: 4007,
