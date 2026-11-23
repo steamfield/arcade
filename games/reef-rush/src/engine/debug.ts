@@ -3,6 +3,7 @@
  * summary for assertions and the CLI (with a `threat` readout of the squid warnings), and a fuller state dump for state.json.
  */
 import type { SaveStatus } from '@arcade/save';
+import { hashWorld } from '../logic/hash.ts';
 import { playerOf } from '../logic/racers.ts';
 import { bestFor } from '../logic/records.ts';
 import type { World } from '../logic/types.ts';
@@ -81,5 +82,6 @@ export function debugState(rt: Runtime, saveStatus: SaveStatus, sceneRunning: bo
         finished,
       })) ?? [],
     ascii: world ? toAscii(world) : null,
+    ...(world ? { worldHash: hashWorld(world) } : {}),
   };
 }
