@@ -91,6 +91,7 @@ const RUN_EXTRAS = [
   'windSpeed',
   'draftForce',
   'mudSpeedMul',
+  'dashDrag',
 ] as const;
 
 /** Run's extras from the tuning, by name. */
@@ -169,8 +170,9 @@ function forceScale(mods: MoveModifiers): number {
 
 /**
  * Moves `vx` toward the held direction's top speed plus any gust. Over that speed (after a dash or
- * a hit) the runner slows by friction instead of snapping back, and with nothing held it slows to
- * the gust's drift.
+ * a hit) while still steering that way, the runner glides back at `dashDrag`, on the ground or in
+ * the air, so a dash carries through a jump; with nothing held it slows at full friction to the
+ * gust's drift.
  */
 function run(
   body: Body,
@@ -193,7 +195,8 @@ function run(
   }
   const target = Math.sign(wanted) * top + drift;
   const overTarget = Math.sign(body.vx) === Math.sign(target) && Math.abs(body.vx) > Math.abs(target);
-  body.vx = approach(body.vx, target, overTarget ? friction : accel);
+  const glide = extra.dashDrag * mods.dragMul * dt;
+  body.vx = approach(body.vx, target, overTarget ? glide : accel);
 }
 
 function jump(racer: Racer, motion: RunMotion, speed: number, events: EventSink<GameEvent>): void {

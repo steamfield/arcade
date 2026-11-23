@@ -19,8 +19,10 @@ import { runPilot } from './way-data.ts';
 
 const run = MEDIA.run;
 
-/** A draw that passes no skill roll, so a rival never dashes on it. */
-const NO_DASH: AiDraws = { wobble: 0, kick: 0.999, side: 0, item: 0 };
+/** A draw that passes no skill roll, so a rival never dashes on it nor lets go of the stick. */
+const NO_DASH: AiDraws = { wobble: 0.999, kick: 0.999, side: 0, item: 0 };
+/** A draw that a loose profile's wobble lets go of the stick on. */
+const SHAKY: AiDraws = { ...NO_DASH, wobble: 0 };
 /** A draw that passes every skill roll the expert profile allows. */
 const DASH_ROLL: AiDraws = { ...NO_DASH, kick: 0 };
 
@@ -137,6 +139,46 @@ describe('the run rival pilot on the ground', () => {
     const standingStill = standingRival(world, 2, 6);
     standingStill.kickCooldown = 0;
     expect(steer(world, standingStill, DASH_ROLL).kick).toBe(false);
+  });
+});
+
+describe('the run rival pilot among other racers', () => {
+  /** Tess running right at `speed` on tile (2, 6) of the pit level, with Squib on the next tile at `aheadSpeed`. */
+  function closingOn(speed: number, aheadSpeed: number): { world: World; tess: Racer } {
+    const world = runWorld(PIT_LEVEL);
+    const tess = standingRival(world, 2, 6);
+    tess.body.vx = speed;
+    const squib = racerOf(world, 'squib');
+    placeOnTile(squib, 3, 6);
+    squib.body.y = tess.body.y;
+    squib.body.vx = aheadSpeed;
+    return { world, tess };
+  }
+
+  it('hops over a slower racer just ahead on flat ground', () => {
+    const { world, tess } = closingOn(160, 100);
+
+    expect(upTicks(world, tess)).toBeGreaterThan(0);
+  });
+
+  it('follows a racer ahead running as fast as it is', () => {
+    const { world, tess } = closingOn(100, 100);
+
+    expect(steer(world, tess).move).toEqual({ x: 1, y: 0 });
+  });
+});
+
+describe('the run rival pilot with loose steering', () => {
+  it('now and then lets go of the stick on flat ground when its profile is loose, and never when steady', () => {
+    const world = runWorld(PIT_LEVEL);
+    const loose = standingRival(world, 2, 6);
+    loose.profile = BOT_PROFILES.novice;
+    const steadyWorld = runWorld(PIT_LEVEL);
+    const steady = standingRival(steadyWorld, 2, 6);
+    steady.profile = { ...BOT_PROFILES.novice, wobble: 0 };
+
+    expect([steer(world, loose, SHAKY).move.x, steer(world, loose, NO_DASH).move.x]).toEqual([0, 1]);
+    expect(steer(steadyWorld, steady, SHAKY).move.x).toBe(1);
   });
 });
 

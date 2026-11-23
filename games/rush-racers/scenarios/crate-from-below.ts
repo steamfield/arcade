@@ -32,7 +32,7 @@ export default scenario({
     wait(180),
     hold('right', 130),
     hold(['right', 'up'], 20),
-    hold('right', 62),
+    hold('right', 59),
     hold(['right', 'up'], 4),
     wait(20),
     hold('right', 5),

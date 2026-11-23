@@ -2,11 +2,13 @@
  * Run's rival pilot: it follows the best link out of the stand tile it is on. It runs toward a walk
  * or a drop, starts a jump at the link's take-off with Up held for the link's hold ticks, steers in
  * the air toward the tile it means to land on, lets go of Up before it lands, and plans again from
- * where it stands. It dashes on flat ground. When the generic backstop sends `forceRecover`, it backs
- * off from the finish, then jumps toward it.
+ * where it stands. It dashes on flat ground, hops over a slower racer it would otherwise push into,
+ * and a loose (high-wobble) profile now and then lets go of the stick on flat ground. When the
+ * generic backstop sends `forceRecover`, it backs off from the finish, then jumps toward it.
  */
 import { isLedge, isSolid } from '../../level/query.ts';
 import { canDash } from '../../powerups/dash-meter.ts';
+import { isDowned } from '../../status.ts';
 import { type MoveModifiers, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { runMotion } from './data.ts';
@@ -23,6 +25,28 @@ const TAKEOFF_SLACK_PX = 2;
 const LANDING_DEADBAND_PX = 3;
 /** Tiles of flat, open ground ahead a rival wants before it dashes. */
 const DASH_CLEAR_TILES = 3;
+/** Tiles of flat ground with open air above it a runner wants ahead before it hops over a racer. */
+const HOP_CLEAR_TILES = 4;
+/** Ticks of Up a hop over a racer holds: enough to clear a racer's height with room to spare. */
+const HOP_HOLD_TICKS = 6;
+/** How much faster, px/s, a runner must be closing on a racer ahead before it hops it rather than following. */
+const HOP_CLOSING_SPEED = 15;
+/** How close ahead, px between the two racers' facing edges, a racer has to be before a runner hops it. */
+const HOP_REACH_PX = 10;
+/**
+ * Chance per tick, per unit of profile wobble, that a runner on flat ground lets go of the stick:
+ * loose steering on land, where a direction is all the stick sets. The novice's 0.5 lets go on 30 %
+ * of those ticks; the expert's 0.04 on about 2 %.
+ */
+const HESITATE_PER_WOBBLE = 0.6;
+/**
+ * The most often a runner lets go of the stick, per tick. Past about 44 % ground friction (900)
+ * outweighs running acceleration (700) and a runner could never get back up to pace, so the
+ * toddler's wobble of 1 is held here: loose, not stopped.
+ */
+const HESITATE_MAX = 0.35;
+/** Walk links after the current one that must follow before a runner may hesitate: room to get back up to speed. */
+const HESITATE_CLEAR_LINKS = 2;
 
 /** The tile column under a runner's centre and the row its feet are in. */
 interface Footing {
@@ -80,11 +104,15 @@ export function steerRunner(
   if (grounded) memory.landingTile = link?.to ?? null;
   if (stand !== null && link?.kind === 'jump' && canPress(memory) && atTakeOff(nav, racer, stand, link)) {
     memory.holdUpTicks = link.holdTicks;
+  } else if (link?.kind === 'walk' && canPress(memory) && wantsHop(world, racer, link.dir)) {
+    memory.holdUpTicks = HOP_HOLD_TICKS;
+    memory.landingTile = null;
   }
   const up = memory.holdUpTicks > 0;
   if (up) memory.holdUpTicks--;
   memory.upHeld = up;
-  const x = grounded ? (link?.dir ?? heading) : airSteer(nav, racer, memory.landingTile, heading);
+  const hesitates = grounded && !up && link !== null && hesitatesOn(nav, link, racer, draws.wobble);
+  const x = hesitates ? 0 : grounded ? (link?.dir ?? heading) : airSteer(nav, racer, memory.landingTile, heading);
   const kick = grounded && !up && link?.kind === 'walk' && wantsDash(world, racer, link.dir, draws.kick);
   return { move: { x, y: up ? -1 : 0 }, kick, kickHeld: kick, aim, recovering: false };
 }
@@ -149,6 +177,21 @@ function airSteer(nav: RunNav, racer: Racer, landingTile: number | null, heading
   return Math.abs(offset) <= LANDING_DEADBAND_PX ? 0 : Math.sign(offset);
 }
 
+/**
+ * Loose steering on land: true when the wobble roll lets go of the stick this tick, only while
+ * `link` and the next HESITATE_CLEAR_LINKS links after it are walks, so a hesitation never costs
+ * the run-up a planned jump needs.
+ */
+function hesitatesOn(nav: RunNav, link: RunLink, racer: Racer, roll: number): boolean {
+  if (roll >= Math.min(HESITATE_MAX, racer.profile.wobble * HESITATE_PER_WOBBLE)) return false;
+  let next: RunLink | null = link;
+  for (let links = 0; links <= HESITATE_CLEAR_LINKS; links++) {
+    if (next?.kind !== 'walk') return false;
+    next = nav.best[next.to] ?? null;
+  }
+  return true;
+}
+
 /** Rock, coral or a ledge: something a runner can stand on. */
 function isGround(world: World, col: number, row: number): boolean {
   return isSolid(world.level, world.broken, col, row) || isLedge(world.level, col, row);
@@ -164,4 +207,36 @@ function wantsDash(world: World, racer: Racer, dir: -1 | 1, roll: number): boole
     if (isSolid(world.level, world.broken, col, at.row) || !isGround(world, col, at.row + 1)) return false;
   }
   return roll < racer.profile.kickSkill;
+}
+
+/**
+ * True when a slower racer on its feet is just ahead along `dir` and the ground beyond is flat with
+ * open air above: running on would only push into it (racers block each other sideways), so the
+ * runner hops over, passing through it on the way down.
+ */
+function wantsHop(world: World, racer: Racer, dir: -1 | 1): boolean {
+  if (!blockedByRacer(world, racer, dir)) return false;
+  const at = footingOf(racer);
+  for (let tiles = 0; tiles <= HOP_CLEAR_TILES; tiles++) {
+    const col = at.col + dir * tiles;
+    if (tiles > 0 && !isGround(world, col, at.row + 1)) return false;
+    for (let up = 0; up <= 2; up++) if (isSolid(world.level, world.broken, col, at.row - up)) return false;
+  }
+  return true;
+}
+
+/**
+ * True when another racer still racing is within HOP_REACH_PX ahead of `racer` along `dir`, at its
+ * height, and at least HOP_CLOSING_SPEED slower along `dir`. Downed racers don't count: they pass through.
+ */
+function blockedByRacer(world: World, racer: Racer, dir: -1 | 1): boolean {
+  const { body } = racer;
+  return world.racers.some((other) => {
+    if (other === racer || other.finished || isDowned(other)) return false;
+    const gap = dir === 1 ? other.body.x - (body.x + body.w) : body.x - (other.body.x + other.body.w);
+    const level = Math.abs(other.body.y - body.y) < body.h / 2;
+    return (
+      level && gap > -body.w / 2 && gap <= HOP_REACH_PX && other.body.vx * dir <= body.vx * dir - HOP_CLOSING_SPEED
+    );
+  });
 }

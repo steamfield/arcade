@@ -352,6 +352,24 @@ describe('dash', () => {
     expect(eventsIn(log)).toEqual([{ type: 'racer.kicked', id: 'player' }]);
   });
 
+  it('glides back to running pace over about half a second while right is held', () => {
+    const racer = bareRunner();
+    racer.body.vx = RUN_TUNING.extra.runSpeed;
+    runFor(racer, 1, hold(RIGHT, { kick: true }));
+    const { speeds } = runFor(racer, ticksIn(1), hold(RIGHT));
+
+    expect(speeds[ticksIn(0.25) - 1]).toBeGreaterThan(RUN_TUNING.extra.runSpeed * 1.3);
+    expect(speeds.at(-1)).toBe(RUN_TUNING.extra.runSpeed);
+  });
+
+  it('stops within 0.3 s of letting go straight after a dash', () => {
+    const racer = bareRunner();
+    runFor(racer, 1, hold(RIGHT, { kick: true }));
+    const { speeds } = runFor(racer, ticksIn(0.3), hold(STILL));
+
+    expect(speeds.at(-1)).toBe(0);
+  });
+
   it('spends a dash charge as a swim kick does', () => {
     const { world, log, player } = runWorld(FLAT);
     step(world, log, SETTLE);

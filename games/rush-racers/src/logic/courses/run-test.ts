@@ -38,11 +38,13 @@ const LEVEL: LevelDef = {
 };
 
 /**
- * The rivals' mean Hard finish (548 ticks) plus 30 %, measured over seeds 1-5 and all eight player
- * characters with the expert bot as the player, with the jump-link pilot: 120 rival runs, none
- * failed to finish, the slowest took 669.
+ * The rivals' mean Hard finish (525 ticks) plus 40 %, measured over seeds 1-5 and all eight player
+ * characters with the expert bot as the player, with the jump-link pilot and v2 phase 5's lasting
+ * dash: 120 rival runs, none failed to finish, the slowest took 708. It was plus 30 % before the
+ * dash carried; with races that much shorter, 30 % (683) no longer covered a rival that falls into
+ * the pit once.
  */
-const PAR_TICKS = 713;
+const PAR_TICKS = 735;
 
 /** Run Test: the run medium's test course in Thornwood, reachable only by `?course=run-test` and tests. */
 export const RUN_TEST: Course = {
