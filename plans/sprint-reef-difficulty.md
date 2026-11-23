@@ -85,7 +85,7 @@ Depends on: phase 1
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/reef-rush/src/logic/level/, games/reef-rush/src/logic/media/swim/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/hazards/enemies/shark.ts, games/reef-rush/src/logic/hazards/enemies/shark.test.ts, games/reef-rush/src/logic/status.ts, games/reef-rush/src/logic/surface.test.ts | contracts | | opus | running | sprint/reef-difficulty-2a | surface logic tests pass |
-| b | M | games/reef-rush/src/engine/themes/, games/reef-rush/src/engine/view/level-view.ts, games/reef-rush/src/engine/view/backdrop.ts, games/reef-rush/src/engine/fx/event-effects.ts | contracts | | opus | running | sprint/reef-difficulty-2b | theme tests pass, see capture shows sky, waterline and cave |
+| b | M | games/reef-rush/src/engine/themes/, games/reef-rush/src/engine/view/level-view.ts, games/reef-rush/src/engine/view/backdrop.ts, games/reef-rush/src/engine/fx/event-effects.ts | contracts | | opus | merged | sprint/reef-difficulty-2b | theme tests pass, see capture shows sky, waterline and cave |
 
 Phase 2 scaffold (when phase 1 tags): `Environment.inAir: boolean` in types.ts (query.ts sets it false until lane a), GameEvents `{ type: 'racer.breached'; id: RacerId }` and `{ type: 'racer.splashed'; id: RacerId }` in events.ts, and a test level in `src/logic/surface.test.ts` scaffolded empty for lane a.
 
@@ -127,6 +127,7 @@ Inline: insert the surface section, reshape the cave with irregular urchins, eel
 ## Log
 
 - Lane 1a merged (24ad540). Lane review: eel offset comment and shark turn guard fixed; DESIGN.md shark/eel rows deferred to phase 3's docs pass. Lane review ran in parallel with the merge rather than before it.
+- phase-1 tagged at 3effaaa with two bars red by one: Selene novice places 3rd/4th in 17/30 (needs 18), Baron Hard sanity wins 2/5 (needs 3). Owned by phase 3's balance pass, since phase 3 reshapes the course. Everything else in the difficulty project passes (36/37 files).
 - Phase 2 started before phase 1 tagged: its lanes don't import phase 1 code, and phase 1's Hard sanity bar (Baron 2/5 wins) is being tuned inline meanwhile.
 
 - Plan critique (sonnet): (1) shark count wording fixed: 2 now, 3 after phase 3. (2) Normal and patrol-lane test cases added to lane 1a by message. (3) Inline course and route work for phase 1 named above; bars may drop before phase 3, handled there. (4) Lane 1a told to export the eel start-state helper from eel.ts. (5) Phase 2 notes folded into its briefs: steerCost needs an air case, loose.ts, pearl-drift.ts and status.ts each drift on their own, hasClearSweep is shared with rivals so the shark's air block goes in shark.ts.
