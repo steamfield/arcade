@@ -2,8 +2,9 @@
  * The race as one deterministic step function. This module only sets the order
  * things happen in each tick; every rule lives in the module it calls.
  *
- * Tick order: the AI takes over each human slot whose input is missing; clock; the Easy guide's
- * record of the player (`trackGuide`, nothing on other levels);
+ * Tick order: the tick count, and nothing more once the race is finished; the AI takes over each
+ * human slot whose input is missing; clock; the Easy guide's record of the player (`trackGuide`,
+ * nothing on other levels);
  * intents for every unfinished racer from the start-of-tick
  * state (in RACER_IDS order), each person-driven racer's from its own input passed through the Easy steering assist,
  * cut to item cycling while stunned or trapped, and with no kick while the dash meter is empty
@@ -18,18 +19,16 @@
  * they stay where they crossed the line, nobody bumps them, and they never
  * gain, lose or use items.
  *
- * Slots are fixed (RACER_IDS); characters are data placed in them. Chosen
- * characters keep their slots and the rest are drawn from the `roster` stream
- * (`assignCharacters`), so a new pick never shifts another random stream.
+ * Slots are fixed (RACER_IDS); characters are data placed in them. Who sits in
+ * each slot and how it is driven is `race/seats.ts`; the cast is drawn from the
+ * `roster` stream, so a new pick never shifts another random stream.
  *
  * Everything that depends on how racers move goes through the world's medium (`mediumOf`); this
  * module never asks which medium it is.
  */
 import { createRng, type EventSink } from '@arcade/core';
 import { breaksCoralOnContact, bumpMassFor, onBump, onWorldEvents, stackMaxFor, tickAbilities } from './abilities.ts';
-import { PLAYER_PROFILE } from './ai/profiles.ts';
 import { createAiMemory, rivalIntent } from './ai/rival.ts';
-import { assignCharacters, CHARACTERS } from './characters.ts';
 import { courseById, levelOf } from './courses/index.ts';
 import type { Course } from './courses/types.ts';
 import type { GameEvent } from './events.ts';
@@ -57,6 +56,7 @@ import { driveDash, sustainItems, useItems } from './powerups/use.ts';
 import { moveBody, separateRacers } from './race/collide.ts';
 import { ramCoral } from './race/coral.ts';
 import { buildProgressField } from './race/flowfield.ts';
+import { rivalProfileOf, type Seat, seatsFor } from './race/seats.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
 import { activeHumans, activeRacers, centreOf, noItems, playerOf } from './racers.ts';
 import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
@@ -67,7 +67,6 @@ import {
   type Intent,
   type Level,
   type MoveModifiers,
-  RACER_IDS,
   RACER_SIZE,
   type Racer,
   type RacerId,
@@ -103,9 +102,8 @@ const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 }
 
 /**
  * Sets up a race on `course` at the countdown's first tick, with every clam ready, every pearl
- * in play, jellies at their homes and nothing held or in flight. Slots hold the chosen characters
- * and the rest are drawn from the `roster` stream (`assignCharacters`). Human slots race with the
- * player profile and no AI; every other slot with its character's rival profile.
+ * in play, jellies at their homes and nothing held or in flight. Who sits in each slot and how it
+ * is driven comes from `seatsFor`, which draws the cast from the `roster` stream.
  *
  * @param course A shipped course, or one registered for a test (`courseFromLevel`).
  * @param events Usually the engine's EventLog, so one stream holds race, menu and save events.
@@ -127,9 +125,8 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
   const nav = medium.buildNav(level, broken);
   throwOnProblems(medium.validateLevel(level, nav));
   const difficulty = options.difficulty ?? 'hard';
-  const humans = humanSlots(options.humans, difficulty);
   const rngs = createRngs(options.seed);
-  const characters = assignCharacters(rngs.roster, characterChoices(options));
+  const { humans, seats } = seatsFor(options, rngs.roster, difficulty);
   const recentEvents: GameEvent[] = [];
   const world: World = {
     course: course.id,
@@ -140,9 +137,7 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     progress: buildProgressField(level),
     nav,
     broken,
-    racers: RACER_IDS.map((id, index) =>
-      createRacer(level, medium, seatFor(id, index, characters[id], humans, options.playerBot)),
-    ),
+    racers: seats.map((seat) => createRacer(level, medium, seat)),
     race: { phase: 'countdown', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: options.endsWhen ?? 'player' },
     tick: 0,
     rngs,
@@ -180,42 +175,6 @@ function requireRegistered(course: Course): void {
   );
 }
 
-/**
- * The human slots in RACER_IDS order, `['player']` when not given.
- *
- * @throws {Error} When `humans` is empty, repeats a slot or names a slot not in RACER_IDS, or when
- *   `difficulty` is 'easy' and `humans` is anything but `['player']` (the Easy guide follows that slot).
- */
-function humanSlots(humans: readonly RacerId[] | undefined, difficulty: Difficulty): RacerId[] {
-  if (humans === undefined) return ['player'];
-  if (humans.length === 0) throw new Error('humans is empty; a race needs at least one human slot');
-  const unknown = humans.find((id) => !RACER_IDS.includes(id));
-  if (unknown !== undefined) {
-    throw new Error(`humans names unknown slot '${unknown}'; slots are ${RACER_IDS.join(', ')}`);
-  }
-  const repeated = humans.find((id, index) => humans.indexOf(id) !== index);
-  if (repeated !== undefined) throw new Error(`humans repeats slot '${repeated}'; list each slot once`);
-  if (difficulty === 'easy' && (humans.length !== 1 || humans[0] !== 'player')) {
-    throw new Error(
-      `humans is [${humans.join(', ')}] on Easy, which is single-player; use ['player'] or another level`,
-    );
-  }
-  return RACER_IDS.filter((id) => humans.includes(id));
-}
-
-/**
- * The characters chosen per slot, with `character` read as `characters.player`.
- *
- * @throws {Error} When `character` and `characters.player` are both given and differ.
- */
-function characterChoices({ character, characters = {} }: WorldOptions): Partial<Record<RacerId, CharacterId>> {
-  if (character === undefined) return characters;
-  if (characters.player !== undefined && characters.player !== character) {
-    throw new Error(`character '${character}' and characters.player '${characters.player}' disagree; give one`);
-  }
-  return { ...characters, player: character };
-}
-
 /** Throws a LevelError at the first problem, naming the rest after it; does nothing for none. */
 function throwOnProblems(problems: readonly LevelProblem[]): void {
   const [first, ...rest] = problems;
@@ -224,40 +183,8 @@ function throwOnProblems(problems: readonly LevelProblem[]): void {
   throw new LevelError(message, first.row, first.col);
 }
 
-/** Who races in a slot at the start line and how they are driven. */
-interface Seat {
-  id: RacerId;
-  /** Position in RACER_IDS, which is also the start number. */
-  index: number;
-  character: CharacterId;
-  profile: RivalProfile;
-  /** A person's input steers this racer; otherwise the AI does from the first tick. */
-  drivenByPerson: boolean;
-}
-
-/**
- * The seat for slot `id`. The player slot with a `playerBot` is that bot's; any other human slot is
- * a person's with the player profile, so humans are equal whatever slot they hold; the rest race
- * with their character's rival profile.
- */
-function seatFor(
-  id: RacerId,
-  index: number,
-  character: CharacterId,
-  humans: readonly RacerId[],
-  playerBot: RivalProfile | undefined,
-): Seat {
-  if (id === 'player' && playerBot) return { id, index, character, profile: playerBot, drivenByPerson: false };
-  if (humans.includes(id)) return { id, index, character, profile: { ...PLAYER_PROFILE, id }, drivenByPerson: true };
-  return { id, index, character, profile: rivalProfileOf(id, character), drivenByPerson: false };
-}
-
-/** How `character` races when the AI drives it in slot `id`. */
-function rivalProfileOf(id: RacerId, character: CharacterId): RivalProfile {
-  return { id, ...CHARACTERS[character].profile };
-}
-
-function createRacer(level: Level, medium: Medium, { id, index, character, profile, drivenByPerson }: Seat): Racer {
+/** A racer at its start, as `seat` says, with nothing held and the dash meter full. */
+function createRacer(level: Level, medium: Medium, { id, index, character, profile, driver }: Seat): Racer {
   const start = level.starts[index];
   if (!start) throw new LevelError(`Level has no start ${index + 1}`);
   const body = {
@@ -280,8 +207,10 @@ function createRacer(level: Level, medium: Medium, { id, index, character, profi
     progress: Number.POSITIVE_INFINITY,
     place: index + 1,
     finished: null,
-    ai: drivenByPerson ? null : createAiMemory(medium),
+    ai: driver === 'person' ? null : createAiMemory(medium),
     profile,
+    // Only set for a bot, so a default world's racers (and its hash) are as they were.
+    ...(driver === 'testBot' ? { testBot: true as const } : {}),
     ...noItems(stackMaxFor({ character })),
   };
 }
@@ -355,19 +284,23 @@ export function stepRace(world: World, inputs: Partial<Record<RacerId, TickInput
   checkRaceEnd(world);
 }
 
-/** Advances the race by one fixed tick. `input` drives the player's racer unless a bot does. */
+/**
+ * Advances the race by one fixed tick. `input` drives the player's racer unless a bot does. In a
+ * world whose `humans` is not exactly `['player']`, every other human slot has no input here and is
+ * taken over by the AI on its first tick; step such worlds with `stepRace`.
+ */
 export function stepWorld(world: World, input: TickInput, dt: number): void {
   stepRace(world, { player: input }, dt);
 }
 
 /**
- * Hands every unfinished racer a person still drives to the AI when `inputs` has no entry for it,
+ * Hands every unfinished racer a person still drives (never a test bot) to the AI when `inputs` has no entry for it,
  * in RACER_IDS order: AI memory, its character's rival profile, `tookOverAt` and one `racer.takeover`.
  */
 function takeOverAbsentHumans(world: World, inputs: Partial<Record<RacerId, TickInput>>): void {
   const medium = mediumOf(world);
   for (const racer of activeHumans(world)) {
-    if (racer.ai || racer.finished || inputs[racer.id] !== undefined) continue;
+    if (racer.testBot || racer.finished || inputs[racer.id] !== undefined) continue;
     racer.ai = createAiMemory(medium);
     racer.profile = rivalProfileOf(racer.id, racer.character);
     racer.tookOverAt = world.tick;

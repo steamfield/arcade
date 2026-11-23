@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES, PLAYER_PROFILE } from './ai/profiles.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
 import { DEFAULT_COURSE } from './courses/index.ts';
+import { botDriver } from './difficulty/bot-driver.ts';
 import type { GameEvent } from './events.ts';
 import { hashWorld } from './hash.ts';
 import { COUNTDOWN_TICKS, DNF_GRACE_TICKS } from './race/standings.ts';
@@ -184,6 +185,17 @@ describe('several humans each driving their own racer', () => {
 
     expect(hashWorld(pressed.world)).toBe(hashWorld(absent.world));
     expect(eventsIn(absent.log, 'racer.takeover')).toEqual([]);
+
+    // The no-dash harness lifts the player's AI memory out between its own calls.
+    const noDashGiven = racingOn({ playerBot: BOT_PROFILES.noDash });
+    const noDashAbsent = racingOn({ playerBot: BOT_PROFILES.noDash });
+    botDriver(noDashGiven.world, BOT_PROFILES.noDash);
+    botDriver(noDashAbsent.world, BOT_PROFILES.noDash);
+    stepWith(noDashGiven.world, noDashGiven.log, { player: IDLE }, 50);
+    stepWith(noDashAbsent.world, noDashAbsent.log, {}, 50);
+
+    expect(eventsIn(noDashAbsent.log, 'racer.takeover')).toEqual([]);
+    expect(hashWorld(noDashAbsent.world)).toBe(hashWorld(noDashGiven.world));
   });
 
   it('ignores an input entry for a rival slot', () => {
