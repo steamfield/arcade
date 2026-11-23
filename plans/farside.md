@@ -148,9 +148,56 @@ Depends on: phase 1
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/rush-racers/src/logic/level/wells.ts, games/rush-racers/src/logic/media/drift/swallow.ts, games/rush-racers/src/logic/media/drift/after-move.ts, games/rush-racers/src/logic/media/drift/physics.ts, games/rush-racers/src/logic/media/drift/env.ts, games/rush-racers/src/logic/media/drift/data.ts, games/rush-racers/src/logic/media/drift/tuning.ts | contracts | games/rush-racers/src/logic/level/wells.test.ts, games/rush-racers/src/logic/media/drift/wells.test.ts, games/rush-racers/src/logic/media/drift/swallow.test.ts | opus | pending | | pull, swallow and respawn pass |
 | b | M | games/rush-racers/src/logic/media/drift/nav.ts, games/rush-racers/src/logic/media/drift/pilot.ts, games/rush-racers/src/logic/media/drift/way-data.ts, games/rush-racers/src/logic/courses/drift-test.ts | contracts | games/rush-racers/src/logic/media/drift/well-pilot.test.ts, games/rush-racers/src/logic/conformance/course.test.ts | opus | pending | | rivals swing planets and avoid holes |
-| c | M | games/rush-racers/src/engine/view/well-view.ts, games/rush-racers/src/engine/view/how-to-play/drift-page.ts, games/rush-racers/src/engine/view/racer-moments.ts | contracts | games/rush-racers/src/engine/view/well-view.test.ts, games/rush-racers/src/engine/view/how-to-play/index.test.ts | opus | pending | | wells drawn, page shows a swing and a hole |
+| c | M | games/rush-racers/src/engine/view/well-view.ts, games/rush-racers/src/engine/view/how-to-play/drift-page.ts | contracts | games/rush-racers/src/engine/view/well-view.test.ts, games/rush-racers/src/engine/view/how-to-play/index.test.ts | opus | pending | | wells drawn, page shows a swing and a hole |
 
-(Test cases and briefs written during phase 1.)
+Contracts (this phase's scaffold, paths under `games/rush-racers/src/`):
+
+    logic/types.ts             WellDef { col, row, reach, pull, horizon? } (tiles, tiles, px/s², tiles); LevelDef.wells?; Well { centre: Vec (px), reach, horizon: number | null (px), pull }; Level.wells: Well[]
+    logic/level/wells.ts       parseWells(def, width, height): Well[] (throws LevelError); pullAt(level, point): Vec, the summed pull in px/s² before any tuning; holeAt(level, point): Well | null, the black hole whose horizon holds the point; inHoleReach(level, point): boolean
+    logic/level/parse.ts       fills Level.wells through parseWells (scaffold)
+    logic/media/types.ts       MediumEffects.gravityWells: boolean, false for swim, run, flight and the conformance media; true for drift
+    logic/world.ts             createWorld throws LevelError for a level with wells in a medium whose effects.gravityWells is false, and for a start tile inside a black hole's reach (scaffold, with tests)
+    logic/pickups/*            a racer with status.fallen > 0 collects no pearls, clams or loose items (scaffold, with a test)
+    logic/media/drift/data.ts  DriftEnv.pull: Vec (px/s², already times wellPull); DriftMotion gains parkedAt and lastFree (top-left of the last spot its centre was outside every hole's reach)
+    logic/media/drift/tuning.ts  extras wellPull 1 (Easy x0.6), respawnTicks 60, respawnInvulnTicks 60
+    logic/media/drift/swallow.ts     swallowOrRespawn(world, racer, events): the hole check, the wait and the respawn through ../fall-out.ts
+    logic/media/drift/after-move.ts  afterDriftMove: bounce, then swallow; wiring only (index.ts points here)
+    engine/view/well-view.ts   wellMarks(level): what to draw for each well (centre, reach ring, horizon disc), pure; createWellView(scene, level) draws them with placeholder graphics; wired in scenes/race.ts by the scaffold
+    logic/courses/drift-test.ts  gains one planet on a bend and one black hole beside a shortcut (lane b)
+
+Test cases (the scaffold writes them; lanes treat them as read-only):
+- Wells data: a level's wells parse to pixel centres, reach and horizon; `LevelError` with row and col for a centre off the map, a non-positive `reach` or `pull`, a `horizon` that is not positive or not smaller than its `reach`; a level with wells raced in swim throws naming the medium; a start inside a hole's reach throws at that start; `pullAt` is zero at and beyond `reach`, points at the centre, grows linearly to `pull` at the centre (half way in it is `pull / 2`), is zero exactly at the centre, and sums two overlapping wells; `holeAt` finds the hole only inside its horizon and never a planet.
+- Pull: `sampleDriftEnvironment` reports `pullAt` times `wellPull`; Easy's is 0.6 of Hard's; an idle racer at rest inside a reach accelerates toward the centre at that rate; pull can take a racer over cruise and never past `maxSpeed`; a racer coasting past a planet at cruise, a set distance off its surface, leaves with its heading turned toward the planet's side by at least 30 degrees and its speed within 15 % of what it came in with (the swing); a trapped racer is not pulled; wells do nothing to a loose item, a projectile or the decoy.
+- Swallow: a racer whose centre enters a horizon emits `racer.fell`, is parked at rest and hidden from hits (downed) for `respawnTicks`, then `racer.respawned` puts it at its last free spot at rest with `respawnInvulnTicks` of invulnerability; the last free spot is outside every hole's reach and not inside rock; an invulnerable, dashing (item) or cannonballing racer is swallowed too; a swallowed racer collects nothing while out; a racer that respawns and does nothing is pulled in again only if it started inside a reach (it never does: the spot is outside); rivals are swallowed by the same rule; two holes with overlapping reaches still respawn outside both; a planet (no horizon) never swallows.
+- Nav and pilot: `buildDriftNav` treats tiles whose centre is inside a horizon as impassable and tiles inside a hole's reach as dear; `validateDriftLevel` reports a start whose only way to the finish crosses a horizon; a rival flying a corridor with a hole's reach covering half its width keeps to the far half and is never swallowed on seeds 1-5; a rival rounding a bend with a planet on the inside finishes the bend no slower than on the same bend with no planet; a rival dropped at rest just inside a hole's reach (outside its horizon) flies out; every rival finishes drift-test with its planet and hole on seeds 1-5 and none is swallowed more than once.
+- Engine: `wellMarks` gives one mark per well with its centre and reach in pixels, a horizon only for holes; `?course=drift-test` boots with the wells drawn and no console errors; How to Play's drift move page names a fourth beat, PLANETS PULL YOU IN, shown with the others under reduced motion.
+
+#### Lane a brief
+
+- Goal: gravity that racers feel, and black holes that swallow them and put them back.
+- Interface: `logic/level/wells.ts` as in the contracts (pure functions over `Level.wells`); `sampleDriftEnvironment` fills `DriftEnv.pull`; `applyDriftIntent` adds `pull * dt` to velocity where it adds wind; `swallowOrRespawn` in `swallow.ts` uses `fallOut`, `waitOut` and `respawnAt` from `../fall-out.ts`, as `run/respawn.ts` does for pits; `after-move.ts` calls the bounce then the swallow.
+- Behavior: the Wells data, Pull and Swallow test cases. Pull strength is `pull * (1 - d / reach)` toward the centre for `d` in `(0, reach)`, zero otherwise, summed over wells, then times `wellPull`. A racer is swallowed when its centre is inside a horizon and it isn't already out. While out it is held parked and takes no thrust, wind or pull. `lastFree` updates on every tick the racer's centre is outside every hole's reach and it isn't out.
+- Decisions already made: only racers feel wells. The numbers `wellPull`, `respawnTicks` and `respawnInvulnTicks` are starting values; change values if a case can't hold, never keys.
+- Out of scope: nav, the pilot, drawing, sound, moving wells, wells in other media.
+- Done when: `pnpm arcade test rush-racers src/logic/level/wells.test.ts src/logic/media/drift/wells.test.ts src/logic/media/drift/swallow.test.ts src/logic/media/drift/physics.test.ts src/logic/media/drift/bounce.test.ts` and `pnpm arcade check rush-racers --skip-tests` pass.
+
+#### Lane b brief
+
+- Goal: rivals that use planets and keep out of black holes, and a test course that has one of each.
+- Interface: `buildDriftNav` and `validateDriftLevel` in `nav.ts` read `level.wells` through `logic/level/wells.ts`; `steerDrifter` reads the pull at the racer through `pullAt` (times the tuning's `wellPull`); `drift-test.ts` gains `wells`.
+- Behavior: the Nav and pilot test cases. The stick becomes the direction of the acceleration the rival needs: toward its wanted velocity, less the pull it is already getting, so it lets a planet turn it where the pull points the way it wants to go and burns against it otherwise. Horizon tiles are impassable and reach tiles cost more the closer they are to the horizon, so the way keeps clear of a hole where there is room. On drift-test the planet sits inside a bend so the fast line swings round it, and the hole sits beside a shortcut that is narrower than the main way.
+- Decisions already made: no orbit planning or prediction beyond the one-tick pull; if a bar in phase 3 needs more, that is that phase's work.
+- Out of scope: physics, swallowing, drawing.
+- Done when: `pnpm arcade test rush-racers src/logic/media/drift/well-pilot.test.ts src/logic/media/drift/pilot.test.ts src/logic/media/drift/way.test.ts` and `pnpm arcade test rush-racers src/logic/conformance/course.test.ts src/logic/conformance/medium.test.ts -t drift` and `pnpm arcade check rush-racers --skip-tests` pass.
+
+#### Lane c brief
+
+- Goal: a player can see where gravity is and where not to go, before art exists.
+- Interface: `engine/view/well-view.ts` exports the pure `wellMarks(level)` and `createWellView(scene, level)`, which draws each mark with Phaser graphics: a soft filled disc for the body at the centre, a faint ring at the reach, and for a hole a black disc at the horizon with a bright rim. `drift-page.ts` gains the fourth beat.
+- Behavior: the Engine test cases. Rings and rims don't animate under reduced motion. Depth: behind racers and pickups, in front of the backdrop.
+- Decisions already made: placeholder shapes only; phase 4's theme replaces them through the same marks.
+- Out of scope: sprites, sound, the HUD, any logic.
+- Done when: `pnpm arcade test rush-racers src/engine/view/well-view.test.ts src/engine/view/how-to-play` and `pnpm arcade check rush-racers --skip-tests` pass, and you have looked at a `pnpm arcade see rush-racers --query course=drift-test` frame showing a well.
 
 ### Phase 3: Slingshot Alley
 
