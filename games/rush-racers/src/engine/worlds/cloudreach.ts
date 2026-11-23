@@ -1,7 +1,8 @@
 /**
  * Cloudreach's world skin. Until Cloudreach has its own art (phase 3) it draws with Reef's racer and
  * object textures, so only the words here are Cloudreach's. Each string stays within the longest
- * Reef string of the same kind, which is what the select card, HUD and How to Play lay out for.
+ * Reef or Thornwood string of the same kind, which is what the select card, HUD and How to Play lay
+ * out for, except the attack captions, which the attacks page fits up to 11 characters.
  */
 import type { CastSkin } from './cast-skin.ts';
 import type { ObjectSkin } from './object-skin.ts';

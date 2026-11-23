@@ -1,8 +1,9 @@
 /**
  * Page 1 on a flying course, FLAP AND SWOOP. The arrows light as the player's racer flies right
- * through open sky: taps of Up flap it higher, holding Up glides it down slowly, and holding Down
- * dives it, with a caption naming each move as it plays. Below, the dash control lights and the
- * racer lurches forward into a puff cloud, which pops.
+ * through open sky: taps of Up flap it higher, holding Up on from a flap glides it down slowly, and
+ * holding Down dives it, with a caption naming each move as it plays. Below, the dash control
+ * lights and the racer lurches forward into a puff cloud, which pops. Under reduced motion the
+ * flyer holds still and one caption beside it lists all three moves.
  */
 import { Frame } from '../../art/keys.ts';
 import type { Direction } from '../control-glyphs.ts';
@@ -12,6 +13,8 @@ const ARROWS_AT = { x: 56, centreY: 54 } as const;
 /** Where the flyer crosses the page: its x from and to, and the y of its centre at zero lift. */
 const FLIGHT = { fromX: 130, toX: 210, levelY: 60 } as const;
 const CAPTION = { x: 168, top: 94 } as const;
+/** The reduced-motion caption, in the open sky right of the still flyer. */
+const STILL_CAPTION = { x: 232, top: 42 } as const;
 /** The dash row sits in the safe column, clear of the d-pad and the A/B buttons. */
 const DASH_ROW = { glyphX: 112, centreY: 120, racerX: 172 } as const;
 const DASH = { period: 120, atTick: 30, pressTicks: 12, settleTicks: 18, lurchPx: 14 } as const;
@@ -21,6 +24,7 @@ const PUFF = { x: 204, popAfter: 5, ringTicks: 10, backAfter: 80, colour: 0xf6f0
 const FLAP = 'TAP UP TO FLAP';
 const GLIDE = 'HOLD UP TO GLIDE';
 const DIVE = 'HOLD DOWN TO DIVE';
+const ALL_MOVES = [FLAP, GLIDE, DIVE].join('\n');
 
 /** One beat of the flight: how long it lasts, the arrow lit, the caption, and the lift (px up) it ends at. */
 interface Beat {
@@ -32,14 +36,14 @@ interface Beat {
 
 /**
  * The flight loop: two flaps climb, a glide sinks slowly, a dive drops fast, and flaps climb back to
- * where it started. Between flaps the racer falls a little, as gravity always pulls.
+ * where it started. Between flaps the racer falls a little, as gravity always pulls. Up stays held
+ * from the second flap into the glide, since a fresh press of Up always flaps.
  */
 const BEATS: readonly Beat[] = [
   { ticks: 6, arrow: 'up', caption: FLAP, liftTo: 8 },
   { ticks: 18, arrow: 'right', caption: FLAP, liftTo: 4 },
   { ticks: 6, arrow: 'up', caption: FLAP, liftTo: 12 },
-  { ticks: 20, arrow: 'right', caption: FLAP, liftTo: 9 },
-  { ticks: 60, arrow: 'up', caption: GLIDE, liftTo: 3 },
+  { ticks: 80, arrow: 'up', caption: GLIDE, liftTo: 3 },
   { ticks: 36, arrow: 'down', caption: DIVE, liftTo: -12 },
   { ticks: 6, arrow: 'up', caption: FLAP, liftTo: -5 },
   { ticks: 16, arrow: 'right', caption: FLAP, liftTo: -7 },
@@ -47,7 +51,7 @@ const BEATS: readonly Beat[] = [
   { ticks: 26, arrow: 'right', caption: FLAP, liftTo: 0 },
 ];
 const FLIGHT_PERIOD = BEATS.reduce((total, beat) => total + beat.ticks, 0);
-/** Reduced motion holds the end of the first flap: Up lit, the racer risen, the flap caption. */
+/** Reduced motion holds the end of the first flap: Up lit and the racer risen. */
 const STILL_FLIGHT_TICK = 5;
 
 /** Where the flight is `t` ticks into its loop: the beat playing and the racer's lift in px. */
@@ -59,7 +63,7 @@ function flightAt(t: number): { beat: Beat; lift: number } {
     start += beat.ticks;
     from = beat.liftTo;
   }
-  // `t` is taken modulo the loop's length, so only a beat list summing to it reaches here.
+  // FLIGHT_PERIOD is the sum of the beats, so only a `t` outside [0, FLIGHT_PERIOD) reaches here.
   throw new Error(`Flight page tick ${t} is past its ${FLIGHT_PERIOD}-tick loop`);
 }
 
@@ -82,6 +86,7 @@ export const buildFlightMovePage: PageBuilder = (kit) => {
   arrows.setPosition(ARROWS_AT.x, ARROWS_AT.centreY - arrows.height / 2);
   const flyer = kit.sprite(FLIGHT.fromX, FLIGHT.levelY, kit.racer, Frame.a, 2);
   const caption = kit.words(CAPTION.x, CAPTION.top, FLAP);
+  const stillCaption = kit.words(STILL_CAPTION.x, STILL_CAPTION.top, ALL_MOVES);
 
   const dash = kit.action('dash', 2);
   dash.setPosition(DASH_ROW.glyphX, DASH_ROW.centreY - dash.height / 2);
@@ -99,7 +104,8 @@ export const buildFlightMovePage: PageBuilder = (kit) => {
     const x = FLIGHT.fromX + ((FLIGHT.toX - FLIGHT.fromX) * t) / FLIGHT_PERIOD;
     flyer.setPosition(Math.round(x), FLIGHT.levelY - Math.round(lift)).setFrame(stroke(tick, reducedMotion));
     arrows.setPressed(beat.arrow);
-    caption.setText(beat.caption);
+    caption.setText(beat.caption).setVisible(!reducedMotion);
+    stillCaption.setVisible(reducedMotion);
 
     // Reduced motion holds the dash half out, the cloud just popped.
     const sinceDash = reducedMotion ? DASH.pressTicks / 2 : (tick % DASH.period) - DASH.atTick;
