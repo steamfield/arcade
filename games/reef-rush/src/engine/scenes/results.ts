@@ -15,16 +15,14 @@ import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/
 import type { PanelStyle, UiToneName } from '../art/ui/palette.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
 import { MENU_OPTIONS } from '../menu.ts';
-import { COURSE_SELECT_SHOWN, type RaceOutcome, type Runtime } from '../runtime.ts';
+import type { RaceOutcome, Runtime } from '../runtime.ts';
 import { themeFor } from '../themes/index.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { createMenuView, type MenuView } from '../view/menu-view.ts';
 import { slideRemaining, standingsRow, TONE_CSS } from '../view/race-text.ts';
+import { RESULTS_COURSE_NAME_AT, RESULTS_HEADING } from './results-layout.ts';
 
 /** UI.md "Results" rects, in game px. */
-const HEADING_CENTRE = { x: 160, y: 12 } as const;
-/** Top left, clear of the heading (x 130-190), the podium portraits (y 27 and below) and the back link. */
-const COURSE_NAME_AT = { x: 6, y: 9 } as const;
 interface Plinth {
   x: number;
   y: number;
@@ -77,14 +75,16 @@ export class ResultsScene extends Phaser.Scene {
     if (!world || !lastResult) throw new Error('The results scene started before a race finished');
     const course = courseOf(world);
     this.backdrop = createBackdrop(this, world.level, themeFor(course), { reducedMotion: settings.reducedMotion });
-    createLabel(this, HEADING_CENTRE.x, HEADING_CENTRE.y, 'RESULTS', {
+    createLabel(this, RESULTS_HEADING.x, RESULTS_HEADING.y, RESULTS_HEADING.text, {
       size: 'display',
       tone: 'sun',
       outline: true,
       align: 'center',
     });
-    if (COURSE_SELECT_SHOWN)
-      createLabel(this, COURSE_NAME_AT.x, COURSE_NAME_AT.y, course.name.toUpperCase(), { outline: true });
+    if (this.rt.courseSelectShown)
+      createLabel(this, RESULTS_COURSE_NAME_AT.x, RESULTS_COURSE_NAME_AT.y, course.name.toUpperCase(), {
+        outline: true,
+      });
     const { standings } = lastResult.result;
     for (const [index, plinth] of PLINTHS.entries()) {
       const id = standings[index];

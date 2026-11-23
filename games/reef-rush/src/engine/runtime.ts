@@ -98,6 +98,8 @@ export interface RuntimeOptions {
   startScene(scene: SceneKey): void;
   /** The page's query string (`location.search`), read for `?course=` and `?stage=`. Empty when there is none. */
   search?: string;
+  /** The courses course select offers, in menu order. Defaults to `LISTED_COURSES`; tests pass their own. */
+  listedCourses?: readonly Course[];
 }
 
 /** The one save slot Reef Rush uses. */
@@ -109,9 +111,6 @@ const RESULTS_DELAY_TICKS = 90;
 const MENU_ARM_TICKS = 20;
 
 const MENUS: Partial<Record<SceneKey, readonly MenuOption[]>> = MENU_OPTIONS;
-
-/** Course select only shows when there is a choice to make; while it is skipped, screens don't name the course either. */
-export const COURSE_SELECT_SHOWN = LISTED_COURSES.length > 1;
 
 const log = createLogger('reef-rush');
 
@@ -134,7 +133,11 @@ export class Runtime {
   selectedCharacter: CharacterId;
   /** The course the next race runs on: `?course=`, else the save's last listed course, else the default. Race again keeps it. */
   course: Course;
-  /** The course select cursor, an index into `LISTED_COURSES`; put on the current course each time the screen opens. */
+  /** The courses course select offers, in menu order. */
+  readonly listedCourses: readonly Course[];
+  /** Course select only shows when there is a choice to make; while it is skipped, screens don't name the course either. */
+  readonly courseSelectShown: boolean;
+  /** The course select cursor, an index into `listedCourses`; put on the current course each time the screen opens. */
   courseCursor = 0;
   readonly audio: AudioPort;
   /** True when the current race was staged for a capture (`?stage=`); its result is never saved. */
@@ -182,6 +185,8 @@ export class Runtime {
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.startScene = options.startScene;
     this.search = options.search ?? '';
+    this.listedCourses = options.listedCourses ?? LISTED_COURSES;
+    this.courseSelectShown = this.listedCourses.length > 1;
     this.selectedCharacter = this.savedCharacter;
     this.course = startingCourse(this.search, options.save?.lastCourse ?? null);
     assertCourseAssets(this.course);
@@ -240,7 +245,7 @@ export class Runtime {
     this.loading = false;
     if (scene === 'title') this.world = null;
     if (scene === 'select') this.selectedCharacter = this.savedCharacter;
-    if (scene === 'course') this.courseCursor = Math.max(0, LISTED_COURSES.indexOf(this.course));
+    if (scene === 'course') this.courseCursor = Math.max(0, this.listedCourses.indexOf(this.course));
     if (scene === 'howToPlay') this.showHowToPlayPage(0);
     const options = MENUS[scene];
     this.menu = options ? createMenu(options) : null;
@@ -357,13 +362,13 @@ export class Runtime {
     else if (option === 'Difficulty') this.changeSettings({ difficulty: nextDifficulty(this.settings.difficulty) });
     else if (option === 'How to play') this.goTo('howToPlay');
     else if (option === 'Title') this.goTo('title');
-    else if (option === 'Race') this.goTo(COURSE_SELECT_SHOWN ? 'course' : 'select');
+    else if (option === 'Race') this.goTo(this.courseSelectShown ? 'course' : 'select');
     else this.startRace();
   }
 
   /** Moves the course cursor up and down, wrapping; after the arming ticks kick picks the course and burst goes back. */
   private tickCourse(): void {
-    const count = LISTED_COURSES.length;
+    const count = this.listedCourses.length;
     if (input.justPressed('down')) this.courseCursor = (this.courseCursor + 1) % count;
     if (input.justPressed('up')) this.courseCursor = (this.courseCursor + count - 1) % count;
     if (this.menuArmIn > 0) {
@@ -372,7 +377,7 @@ export class Runtime {
     }
     if (input.justPressed('burst')) this.goTo('title');
     else if (input.justPressed('kick')) {
-      this.course = LISTED_COURSES[this.courseCursor] ?? this.course;
+      this.course = this.listedCourses[this.courseCursor] ?? this.course;
       this.goTo('select');
     }
   }
@@ -387,7 +392,7 @@ export class Runtime {
       this.menuArmIn--;
       return;
     }
-    if (input.justPressed('burst')) this.goTo(COURSE_SELECT_SHOWN ? 'course' : 'title');
+    if (input.justPressed('burst')) this.goTo(this.courseSelectShown ? 'course' : 'title');
     else if (input.justPressed('kick')) this.pickCharacter();
   }
 

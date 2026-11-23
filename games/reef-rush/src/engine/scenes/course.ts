@@ -5,7 +5,7 @@
  * runtime never comes here.
  */
 import Phaser from 'phaser';
-import { LISTED_COURSES, levelOf } from '../../logic/courses/index.ts';
+import { levelOf } from '../../logic/courses/index.ts';
 import type { Course } from '../../logic/courses/types.ts';
 import { bestFor } from '../../logic/records.ts';
 import { NEW_GAME, type SaveData } from '../../logic/save.ts';
@@ -40,7 +40,7 @@ export class CourseScene extends Phaser.Scene {
       },
     });
     const save = rt.save ?? NEW_GAME;
-    const rows = LISTED_COURSES.map((course) => rowText(course, save, rt.settings.difficulty));
+    const rows = rt.listedCourses.map((course) => rowText(course, save, rt.settings.difficulty));
     this.view = createCourseView(this, rows, isTouchScreen());
     rt.entered('course');
     this.update();

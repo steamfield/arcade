@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { COURSES } from '../../logic/courses/index.ts';
+import { COURSES, LISTED_COURSES } from '../../logic/courses/index.ts';
 import type { Course } from '../../logic/courses/types.ts';
 import { courseFromLevel } from '../../logic/test-world.ts';
+import { DISPLAY_FACE, measureText, TEXT_FACE } from '../art/ui/typeface.ts';
+import { RESULTS_COURSE_NAME_AT, RESULTS_HEADING } from '../scenes/results-layout.ts';
+import { COURSE_NAME_WIDTH } from '../view/course-view.ts';
 import { assertCourseAssets } from './course-assets.ts';
 
 describe('engine conformance', () => {
@@ -21,4 +24,18 @@ describe('engine conformance', () => {
     const course = { ...courseFromLevel('#1F#'), song: 'nope' } as unknown as Course;
     expect(() => assertCourseAssets(course)).toThrow(`Course '${course.id}' names song 'nope'`);
   });
+});
+
+describe('listed course names', () => {
+  const headingLeft = RESULTS_HEADING.x - measureText(DISPLAY_FACE, RESULTS_HEADING.text).width / 2;
+
+  it.each(LISTED_COURSES.map((course) => [course.name] as const))(
+    '%s fits its course select row and ends before the results heading',
+    (name) => {
+      expect(measureText(TEXT_FACE, name).width).toBeLessThanOrEqual(COURSE_NAME_WIDTH);
+      // The outline adds a pixel on the right; it must still clear the heading's first glyph.
+      const nameRight = RESULTS_COURSE_NAME_AT.x + measureText(TEXT_FACE, name.toUpperCase()).width + 1;
+      expect(nameRight).toBeLessThan(headingLeft);
+    },
+  );
 });

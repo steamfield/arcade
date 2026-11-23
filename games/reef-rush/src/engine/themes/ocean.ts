@@ -33,8 +33,8 @@ const OCEAN_CONTRAST_BANDS: readonly ContrastBand[] = [
 export const OCEAN_THEME = defineTheme({
   id: 'ocean',
   registerTextures(scene) {
-    drawSheets(scene, OCEAN_SHEETS);
-    registerLoops(scene, OCEAN_LOOPS);
+    drawSheets(scene, OCEAN_SHEETS, 'ocean');
+    registerLoops(scene, OCEAN_LOOPS, 'ocean');
   },
   terrain: {
     tileset: OceanTex.tiles,
