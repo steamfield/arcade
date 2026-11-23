@@ -1,6 +1,7 @@
 /**
  * Maps one tick's drained events to effects: which burst plays where (including the attack
- * power-ups' fire, lane, pull, shake-off and pop), and how much screen shake the player's own
+ * power-ups' fire, lane, pull, shake-off and pop, and the splash of a racer breaching the surface
+ * or falling back in), and how much screen shake the player's own
  * knocks add. Positions come from the event and the world as it stands
  * after the tick. Shake is only ever asked for through `shake`, which the caller leaves out
  * under reduced motion.
@@ -119,6 +120,11 @@ export function createEventEffects(
             break;
           }
           case 'racer.shaken':
+            racerAt(event.id, bursts.bubblePop);
+            break;
+          // Leaving the water and falling back in both throw droplets, which move by the theme's splash physics.
+          case 'racer.breached':
+          case 'racer.splashed':
             racerAt(event.id, bursts.bubblePop);
             break;
           case 'riptide.spawned':
