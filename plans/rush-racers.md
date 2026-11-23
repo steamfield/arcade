@@ -126,6 +126,7 @@ Demo: `pnpm arcade dev rush-racers`, open `/games/rush-racers/?course=run-test&d
 Depends on: phase 1
 
 Scaffold: 6c1e0e0
+Tag: rush-racers-phase-2
 Scaffold contents: `ShippedMediumId` and `MEDIA` gain `run`; `ShippedWorldId`, `WORLDS` gain `thornwood` (`logic/worlds/thornwood.ts`, names from Assumptions); `media/run/` holds a working baseline ported from the ground spike: `data.ts` (`RunMotion`, `RunEnv`, accessors), `way-data.ts` (`RunNav`, `RunPilot`), `tuning.ts` (`RUN_TUNING`, `RUN_EFFECTS`, `RUN_STOMP_BOUNCE` 220, `RUN_KICK_RULES`), `physics.ts` (`createRunMotion`, `applyRunIntent`, `runExtra`: run, a jump on a fresh Up press with coyote and buffer emitting `racer.jumped`, the short-hop cut, gravity), `env.ts` (`sampleRunEnvironment`: grounded), `respawn.ts` (`afterRunMove`: grounded from `contacts.floor`, last safe spot, instant return from a pit), `simple-way.ts` (uniform distance field, horizontal-only `runAimFrom`, start-reach check), `simple-pilot.ts` (run along the way, hold Up 14 ticks at a wall or a climb), `index.ts` (`RUN_MEDIUM`, `racerCollision: 'horizontal'`). `abilities.ts` has a `jumpMulFor` stub returning 1. `engine/worlds/thornwood.ts` is Reef's skin under id `thornwood`; `MOVE_PAGES.run` points at the swim page. Run's conformance cases fail until lanes a and b land.
 
 Test cases:
