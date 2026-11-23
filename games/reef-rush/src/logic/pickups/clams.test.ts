@@ -33,7 +33,7 @@ function rollShares(place: number, held: readonly PowerUpKind[], rolls = 4000): 
 }
 
 describe('opening a clam', () => {
-  it('opens on touch, grants the roll with its charges in the first empty slot and shuts for 30 ticks', () => {
+  it('opens on touch, grants the roll with its charges in the first empty slot and shuts for 90 ticks', () => {
     const { world, log, player, racers } = parkedOnClam();
 
     openClams(world, racers);
@@ -49,7 +49,7 @@ describe('opening a clam', () => {
     expect(world.clams[0]?.closedFor).toBe(CLAM.closedTicks);
   });
 
-  it('stays shut for 30 ticks under a racer parked on it, then opens again', () => {
+  it('stays shut for 90 ticks under a racer parked on it, then opens again', () => {
     const { world, log, racers } = parkedOnClam();
     const openedOn: number[] = [];
 

@@ -594,17 +594,16 @@ describe('using items', () => {
     expect(fires(1, [13, 5])).toBe(0);
   });
 
-  it('never drops ink or a decoy on the player while leading on Easy, but does on a rival', () => {
-    const fires = (kind: PowerUpKind, behind: RacerId) => {
-      const { world, tess, decide } = itemScene([kind], { [behind]: [7, 5] });
+  it('never drops its decoy for the player chasing it while leading on Easy, but does for a rival', () => {
+    const fires = (behind: RacerId) => {
+      const { world, tess, decide } = itemScene(['mimic'], { [behind]: [7, 5] });
       world.difficulty = 'easy';
       tess.place = 1;
       // Easy scales the chance per tick down, so ask for 30 ticks rather than one.
       return uses(decide(30)) > 0;
     };
 
-    expect([fires('inkSac', 'player'), fires('mimic', 'player')]).toEqual([false, false]);
-    expect([fires('inkSac', 'squib'), fires('mimic', 'squib')]).toEqual([true, true]);
+    expect([fires('player'), fires('squib')]).toEqual([false, true]);
   });
 
   it('never fires while its item use cools down', () => {

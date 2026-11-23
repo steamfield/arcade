@@ -147,14 +147,20 @@ const looseAt = (at: Vec, droppedBy: LoosePearl['droppedBy'] = 'tess'): LoosePea
 });
 
 describe('loose pearls', () => {
-  it('scatter from a racer that swims into an urchin, into open water only', () => {
+  it('scatter far enough from a racer that swims into an urchin that it swims on without them', () => {
     const { world, log } = raceOn(URCHIN_LANES);
     const player = racerOf(world, 'player');
     player.pearls = 4;
-
-    step(world, log, 120, hold({ x: 1, y: 0 }));
+    const swimOn = hold({ x: 1, y: 0 });
+    for (let tick = 0; tick < 120 && eventsIn(log, 'pearls.dropped').length === 0; tick++) step(world, log, 1, swimOn);
 
     expect(eventsIn(log, 'pearls.dropped')).toEqual([{ type: 'pearls.dropped', id: 'player', count: 3 }]);
+    expect([player.pearls, world.loosePearls.length]).toEqual([1, 3]);
+
+    step(world, log, 60, swimOn);
+
+    // Swimming on into the urchin once the hit's invulnerability ends knocks the last pearl loose too.
+    expect(eventsIn(log, 'loosePearl.collected')).toEqual([]);
     expect(player.pearls + world.loosePearls.length).toBe(4);
     for (const pearl of world.loosePearls) {
       expect(Math.floor(pearl.at.y / TILE), `pearl at ${pearl.at.x},${pearl.at.y}`).toBe(1);

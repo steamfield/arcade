@@ -40,7 +40,7 @@ export const ITEM_USE = {
   riptideClearTiles: 6,
   /** ...and a racer this close behind, who would draft it (a lane nobody can use is not worth a charge). */
   riptideBehindTiles: 5,
-  /** Leading with Ink Sac or Mimic: a racer behind within this many tiles makes it worth dropping. */
+  /** Leading with a Mimic: a racer behind within this many tiles makes it worth dropping. */
   defendBehindTiles: 4,
   /** Undertow: a racer this many tiles further ahead makes it worth firing (from 3rd or 4th place only). */
   undertowLeadTiles: 8,
@@ -66,8 +66,8 @@ export const ITEM_USE = {
  * within 3 tiles ahead (`Medium.coralAhead`); jetFin, a clear straight path of 5 tiles along the aim;
  * cannonball, either of the last two; homingSquid, a target in lock range (`pickSquidTarget`);
  * riptide, 6 clear tiles along the aim with a racer within 5 tiles behind to draft it; undertow, in
- * 3rd or 4th with a racer 8 or more tiles ahead; mimic, a squid locked on it within 8 tiles. Leading
- * the race, inkSac and mimic also have a use whenever a racer is within 4 tiles behind.
+ * 3rd or 4th with a racer 8 or more tiles ahead; mimic, a squid locked on it within 8 tiles, or, while
+ * leading the race, a racer within 4 tiles behind. Ink Sac's own rule already covers a leader's chaser.
  *
  * @param aim The unit aim the medium's steering chose this tick (`Steering.aim`).
  * @param roll The tick's item draw from the racer's rng, in [0, 1).
@@ -87,7 +87,8 @@ export function chooseItemSlot(world: World, racer: Racer, aim: Vec, roll: numbe
  * The chance per tick that `racer` fires an item that has a use: its `itemAggression` (times the
  * difficulty level's multiplier) over its `reactionTicks`. So with a use in front of it a rival fires
  * after `reactionTicks / itemAggression` ticks on average, sooner for quick and eager characters.
- * A chance and not a countdown, so the decision stays one draw a tick and needs no memory.
+ * There is no minimum reaction delay: it is a chance every tick, so a rival can fire on the first
+ * tick a use appears. A countdown would need AI memory; the chance keeps one draw a tick and none.
  */
 function fireChance(world: World, racer: Racer): number {
   const aggression = racer.profile.itemAggression * itemAggressionMul(world, racer);
@@ -145,11 +146,12 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
 }
 
 /**
- * The items a leading rival drops behind it on a chaser: ink in the chaser's way, a decoy for the
- * squid it may fire. A Bubble Shield would need aiming backwards, which the rival's intent can't do
- * yet, so it keeps its shield.
+ * The items a leading rival drops on a chaser beyond their own rules: a Mimic, a decoy for the squid
+ * the chaser may fire. Ink Sac needs no entry, since its own rule already fires on any racer within
+ * 4 tiles behind. A Bubble Shield fired behind is out of scope: it needs `ai/rival.ts` to aim the
+ * intent backwards, so a leading rival keeps its shield.
  */
-const DEFENSIVE_KINDS: readonly PowerUpKind[] = ['inkSac', 'mimic'];
+const DEFENSIVE_KINDS: readonly PowerUpKind[] = ['mimic'];
 
 /** True when `racer` leads the race (place 1) with another racer within ITEM_USE.defendBehindTiles behind it. */
 function chasedWhileLeading(world: World, racer: Racer): boolean {

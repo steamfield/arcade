@@ -39,7 +39,8 @@ export interface Character {
  *
  * `itemAggression` is how eagerly it fires an item that has a use: with one in reach it fires after
  * `reactionTicks / itemAggression` ticks on average (`ai/items.ts`). On Normal the median rival
- * uses 7 items a race (Sunlit Shallows, seeds 1-20, novice player bot), inside the 6-10 target.
+ * uses 4 items a race (Sunlit Shallows, seeds 1-20, novice player bot), short of the 6-10 target:
+ * rivals use most of what they get, so clam supply (`CLAM.closedTicks`), not eagerness, limits it.
  */
 export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
   rudy: {

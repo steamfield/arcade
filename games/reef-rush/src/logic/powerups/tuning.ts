@@ -131,7 +131,7 @@ export const PASSIVE = {
  * anyone ahead of `undertowMinPlace`, whatever the interpolation says (`clamWeights`).
  */
 export const CLAM = {
-  closedTicks: 30,
+  closedTicks: 90,
   /** Undertow only rolls for racers in this place or worse (3rd or 4th). */
   undertowMinPlace: 3,
   firstWeights: {
@@ -169,8 +169,9 @@ export const CLAM = {
  * Pearls work like coins. Each one collected (from the course or knocked loose) gives a short boost
  * and adds to the racer's count, which raises swim force by `speedPerPearl` per pearl up to `cap`
  * pearls. A landed hit knocks up to `dropOnHit` loose; they scatter at `scatterSpeed`, keep
- * `dragPerTick` of their speed each tick, and vanish after `lifeTicks`. The racer that dropped them
- * can't collect them for `ownGraceTicks`. A loose pearl is collected by touching its `size` square.
+ * `dragPerTick` of their speed each tick (so in open water they settle about 57 px, 3.5 tiles, out:
+ * far enough that the knocked-back dropper doesn't swim straight back over them), and vanish after
+ * `lifeTicks`. The racer that dropped them can't collect them for `ownGraceTicks`. A loose pearl is collected by touching its `size` square.
  */
 export const PEARL = {
   boostTicks: 30,
@@ -179,7 +180,7 @@ export const PEARL = {
   dropOnHit: 3,
   ownGraceTicks: 30,
   lifeTicks: 600,
-  scatterSpeed: 90,
+  scatterSpeed: 300,
   dragPerTick: 0.92,
   size: 8,
 } as const;
