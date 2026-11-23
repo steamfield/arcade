@@ -107,16 +107,15 @@ export function fieldAt(field: Float32Array, size: GridSize, tile: Vec): number 
  * centres around it. The reading is continuous as the body moves, including through turns, so
  * places don't flicker when two racers round a corner side by side.
  *
- * A body lower than the top of the last row (falling out through a pit) reads as if its top were
- * there, so a fall never turns into Infinity and reorders places.
+ * A body whose centre is below the last row's centre (falling out through a pit) reads the last
+ * row, so a fall never turns into Infinity and reorders places.
  *
  * @returns Infinity only when all four surrounding tiles are unreachable.
  */
 export function progressAt(progress: ProgressField, body: Box): number {
-  const top = Math.min(body.y, (progress.height - 1) * TILE);
   // Field values sit at tile centres, so the 2x2 block starts half a tile up and left of the body.
   const gridX = (body.x + body.w / 2) / TILE - 0.5;
-  const gridY = (top + body.h / 2) / TILE - 0.5;
+  const gridY = Math.min((body.y + body.h / 2) / TILE - 0.5, progress.height - 1);
   const left = Math.floor(gridX);
   const upperRow = Math.floor(gridY);
   const corners = filledCorners(progress, left, upperRow);

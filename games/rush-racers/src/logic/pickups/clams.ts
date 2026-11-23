@@ -27,6 +27,12 @@ import {
 const LAST_PLACE = RACER_IDS.length;
 
 /**
+ * How long a crate opened from below stays shut. Movement opens it before the pickups slot
+ * (`openClams`) counts every shut clam down on the same tick, so it gets that tick back.
+ */
+const SHUT_TICKS_FROM_BELOW = CLAM.closedTicks + 1;
+
+/**
  * The pickups slot for clams. Each call, a clam with `closedFor > 0` counts it down by one instead
  * of opening. In a medium whose clams aren't solid, a ready clam opens (`openClamFor`) for the first
  * racer in `racers` order whose hitbox overlaps its tile and who has an empty slot; a clam that only
@@ -46,14 +52,15 @@ export function openClams(world: World, racers: readonly Racer[]): void {
     const opener = racers.find(
       (racer) => !inventoryFull(racer) && overlapsTile(hitbox(racer), clam.tile.x, clam.tile.y),
     );
-    if (opener) openClamFor(world, clam, index, opener);
+    if (opener) openClamFor(world, clam, index, opener, CLAM.closedTicks);
   });
 }
 
 /**
  * Opens each ready clam whose tile is in `contacts.ceilingTiles` for `racer` (`openClamFor`), as a
  * head bump from below does in a solid-crate medium (`MediumEffects.solidClams`). A racer with a
- * full inventory leaves the crate shut. Does nothing in a medium whose clams aren't solid.
+ * full inventory leaves the crate shut. Does nothing in a medium whose clams aren't solid. A crate
+ * opened here is ready again on the same tick as a clam opened by touch on this tick.
  *
  * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
@@ -62,7 +69,7 @@ export function openClamsFromBelow(world: World, racer: Racer, contacts: MoveCon
   world.clams.forEach((clam, index) => {
     if (clam.closedFor > 0 || inventoryFull(racer)) return;
     if (contacts.ceilingTiles.includes(tileIndex(world.level, clam.tile.x, clam.tile.y))) {
-      openClamFor(world, clam, index, racer);
+      openClamFor(world, clam, index, racer, SHUT_TICKS_FROM_BELOW);
     }
   });
 }
@@ -70,11 +77,13 @@ export function openClamsFromBelow(world: World, racer: Racer, contacts: MoveCon
 /**
  * Opens a ready clam for `opener`: `rollClam(world.rngs.pickups, opener.place, held kinds, bias)`,
  * `clam.opened {id, index, kind}`, then `gainItem` with `chargesFor(kind, opener.place)`, and
- * `closedFor = CLAM.closedTicks`. A rival opener rolls again while it has an empty slot, up to
+ * `closedFor = shutTicks`. A rival opener rolls again while it has an empty slot, up to
  * CLAM.rivalRolls rolls in all; a later roll draws from the same stream and shows only as its
  * `powerup.gained`, so `clam.opened` names the first.
+ *
+ * @param shutTicks What `closedFor` starts at: how many `openClams` countdowns it waits before it is ready.
  */
-function openClamFor(world: World, clam: Clam, index: number, opener: Racer): void {
+function openClamFor(world: World, clam: Clam, index: number, opener: Racer, shutTicks: number): void {
   const first = rollFor(world, opener);
   world.events.emit({ type: 'clam.opened', id: opener.id, index, kind: first });
   gainItem(world, opener, first, chargesFor(first, opener.place));
@@ -83,7 +92,7 @@ function openClamFor(world: World, clam: Clam, index: number, opener: Racer): vo
     const kind = rollFor(world, opener);
     gainItem(world, opener, kind, chargesFor(kind, opener.place));
   }
-  clam.closedFor = CLAM.closedTicks;
+  clam.closedFor = shutTicks;
 }
 
 /** One clam roll for `racer` from the pickups stream, leaving out the kinds it holds. */

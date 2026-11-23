@@ -7,8 +7,8 @@ import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../level/parse.ts';
 import { type Body, type Level, RACER_SIZE, TILE } from '../types.ts';
-import { moveBody } from './collide.ts';
 import { buildProgressField, progressAt } from './flowfield.ts';
+import { moveBody } from './move.ts';
 
 /** A floor with a two-tile gap at columns 4-5 in the last row. */
 const GAP: Level = parseLevel({
@@ -63,7 +63,8 @@ describe('a pit', () => {
   it('reads progress below the level as the last row, never Infinity', () => {
     const field = buildProgressField(GAP);
     const below = body(4 * TILE + 2, (GAP.height + 3) * TILE, 0, 0);
-    const lastRow = body(4 * TILE + 2, (GAP.height - 1) * TILE, 0, 0);
+    // Centred on the last row, so its reading is that row's value alone.
+    const lastRow = body(4 * TILE + 2, (GAP.height - 0.5) * TILE - RACER_SIZE.height / 2, 0, 0);
 
     expect(progressAt(field, below)).toBe(progressAt(field, lastRow));
     expect(Number.isFinite(progressAt(field, below))).toBe(true);

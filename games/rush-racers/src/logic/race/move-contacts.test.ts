@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
 import { type Body, type Level, type MoveContacts, type MoveRules, RACER_SIZE } from '../types.ts';
-import { moveBody } from './collide.ts';
+import { moveBody } from './move.ts';
 
 /** A room 10 wide: rock round the edge, one rock tile at column 4, row 2. */
 const ROOM: Level = parseLevel({

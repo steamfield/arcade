@@ -6,7 +6,7 @@ import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../level/parse.ts';
 import { type Body, type Level, type MoveRules, RACER_SIZE, TILE } from '../types.ts';
-import { moveBody } from './collide.ts';
+import { moveBody } from './move.ts';
 
 /** A ledge three tiles wide at row 3 (top at y 48), open air above and below it. */
 const SHELF: Level = parseLevel({

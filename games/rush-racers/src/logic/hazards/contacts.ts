@@ -7,7 +7,7 @@
 
 import { popDecoy } from '../powerups/decoys.ts';
 import { BUBBLE, FLASH } from '../powerups/tuning.ts';
-import { passesThrough } from '../race/collide.ts';
+import { passesThrough } from '../race/separate.ts';
 import { activeRacers, centreOf, hitbox } from '../racers.ts';
 import { isInvulnerable } from '../status.ts';
 import { type Box, type Racer, TILE, type Vec, type World } from '../types.ts';

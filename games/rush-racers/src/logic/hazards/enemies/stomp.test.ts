@@ -37,6 +37,41 @@ describe('stomping an enemy', () => {
     expect(eventsIn(log, 'racer.hit')).toEqual([]);
   });
 
+  it('counts as a stomp, not a dash bonk, for a racer landing on it mid-dash', () => {
+    const { world, log } = platformArena(FLOOR);
+    const player = racerOf(world, 'player');
+    dropOnto(world, player, 1, 120);
+    player.status.bonking = 10;
+
+    step(world, log, 1);
+
+    expect(eventsIn(log, 'enemy.bonked')).toEqual([
+      expect.objectContaining({ by: 'player', kind: 'crab', how: 'stomp' }),
+    ]);
+    expect(player.body.vy).toBeLessThan(-PLATFORM_STOMP_BOUNCE * 0.8);
+  });
+
+  it('stomps both of two enemies side by side that it lands on in one tick, and is not hurt', () => {
+    const { world, log } = platformArena(
+      ['################', '#..............F', '#..............F', '#1.......KK....F', '################'].map(
+        (row) => `${row}#`,
+      ),
+    );
+    const player = racerOf(world, 'player');
+    const left = enemyBox(enemyAt(world, 0));
+    const right = enemyBox(enemyAt(world, 1));
+    placeAt(player, { x: (left.x + left.w + right.x) / 2, y: left.y - 1 - player.body.h / 2 });
+    player.body.vy = 120;
+
+    step(world, log, 1);
+
+    expect(eventsIn(log, 'enemy.bonked')).toEqual([
+      expect.objectContaining({ by: 'player', index: 0, how: 'stomp' }),
+      expect.objectContaining({ by: 'player', index: 1, how: 'stomp' }),
+    ]);
+    expect(eventsIn(log, 'racer.hit')).toEqual([]);
+  });
+
   it('hurts a racer that walks into it from the side', () => {
     const { world, log } = platformArena(FLOOR);
     const player = racerOf(world, 'player');

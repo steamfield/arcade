@@ -51,12 +51,14 @@ export function isBonking(racer: Racer): boolean {
 
 /**
  * Resolves every touchable enemy against `racers`, in `racers` order. A racer whose hitbox overlaps
- * an enemy's box bonks it when `isBonking` (once per contact: it goes on `enemy.bonkedBy` until it
- * stops touching, and is ignored by that enemy until then), stomps it when `isStomping` (a bonk that
- * also bounces the racer up at the medium's `stompBounce`), and is otherwise hit with the enemy's
- * kind as cause when the enemy is harmful and the racer isn't downed (`applyHit` passes over an
- * invulnerable one). A bonk emits `enemy.bonked` with how it happened and takes 1 hp; at 0 the enemy
- * is defeated (`defeatEnemy`), else `onBonked` reacts (a shark staggers).
+ * an enemy's box, in a medium with a `stompBounce`, stomps it when `isStomping` (judged on the speed
+ * it fell at before any bounce this pass, even mid-dash); otherwise it bonks it when `isBonking`, and
+ * is otherwise hit with the enemy's kind as cause when the enemy is harmful and the racer isn't
+ * downed (`applyHit` passes over an invulnerable one). Bonks and stomps count once per contact: the
+ * racer goes on `enemy.bonkedBy` until it stops touching, and is ignored by that enemy until then. A
+ * bonk emits `enemy.bonked` with how it happened and takes 1 hp; at 0 the enemy is defeated
+ * (`defeatEnemy`), else `onBonked` reacts (a shark staggers). After every enemy, each racer that
+ * stomped leaves upward at `stompBounce`.
  *
  * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
@@ -66,6 +68,10 @@ export function touchEnemies(
   onBonked: (enemy: Enemy, racer: Racer) => void,
 ): void {
   const { stompBounce } = mediumOf(world).effects;
+  // Read before any bounce, so a racer landing on two enemies at once stomps both instead of
+  // bouncing off the first and being hurt by the second.
+  const fallSpeeds = new Map(racers.map((racer) => [racer, racer.body.vy]));
+  const stompers = new Set<Racer>();
   world.enemies.forEach((enemy, index) => {
     if (!canTouch(enemy)) return;
     for (const racer of racers) {
@@ -76,26 +82,29 @@ export function touchEnemies(
         continue;
       }
       if (enemy.bonkedBy.includes(racer.id)) continue;
-      if (isBonking(racer)) bonk(world, { enemy, index, racer, how: 'dash' }, onBonked);
-      else if (stompBounce !== null && isStomping(racer, enemy)) {
+      if (stompBounce !== null && isStomping(racer, enemy, fallSpeeds.get(racer) ?? 0)) {
         bonk(world, { enemy, index, racer, how: 'stomp' }, onBonked);
-        racer.body.vy = -stompBounce;
-      } else if (isHarmful(enemy) && !isDowned(racer)) applyHit(world, racer, enemy.kind, null, enemy.at);
+        stompers.add(racer);
+      } else if (isBonking(racer)) bonk(world, { enemy, index, racer, how: 'dash' }, onBonked);
+      else if (isHarmful(enemy) && !isDowned(racer)) applyHit(world, racer, enemy.kind, null, enemy.at);
     }
   });
+  if (stompBounce === null) return;
+  for (const racer of stompers) racer.body.vy = -stompBounce;
 }
 
 /**
  * Whether `racer`, touching `enemy`, came down onto it from above this tick: it is falling and not
  * downed, and sinks into the enemy's top no deeper than one tick's fall plus STOMP_SLACK. Needs
  * no stored positions; a racer meeting the enemy side on overlaps it far deeper than that.
+ *
+ * @param fallSpeed The racer's vertical speed this tick, px/s, positive down.
  */
-export function isStomping(racer: Racer, enemy: Enemy): boolean {
-  const { vy } = racer.body;
-  if (vy <= 0 || isDowned(racer)) return false;
+export function isStomping(racer: Racer, enemy: Enemy, fallSpeed: number): boolean {
+  if (fallSpeed <= 0 || isDowned(racer)) return false;
   const box = hitbox(racer);
   const depthFromAbove = box.y + box.h - enemyBox(enemy).y;
-  return depthFromAbove <= vy * TICK_DT + STOMP_SLACK;
+  return depthFromAbove <= fallSpeed * TICK_DT + STOMP_SLACK;
 }
 
 /** One bonk: which enemy (and its index in `world.enemies`), by whom, and how. */
