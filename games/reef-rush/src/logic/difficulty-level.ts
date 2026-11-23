@@ -72,7 +72,15 @@ export interface DifficultyTuning {
 /** The guide off: Normal and Hard leave the player's input and the screen alone. */
 const NO_GUIDE: GuideTuning = { enabled: false, assistGraceTicks: 0, assistHoldTicks: 0, assistBlend: 0, showTicks: 0 };
 
-/** The knob table. Hard is exactly the tuning before difficulty levels existed. */
+/**
+ * The knob table. Hard is exactly the tuning before difficulty levels existed.
+ *
+ * Normal's rival catch-up `lagTiles` went 10 -> 2 in v2 phase 4. Since rivals swim at par, a 10-tile
+ * lag held every rival 10 tiles behind whoever led them, so a player who never dashed or fired won
+ * 99% of Normal races and the expert 100%: skill didn't show. At 2 the no-dash player still places
+ * top 3 in 9-10 of 10 races per character but wins only 1-4, and the expert wins 9-10
+ * (`difficulty/normal-bars.ts`).
+ */
 export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
   hard: {
     rivalForceMul: 1,
@@ -89,7 +97,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
   },
   normal: {
     rivalForceMul: 0.95,
-    rivalCatchUp: { lagTiles: 10, perTile: 0.05, min: 0.6, max: 1.25 },
+    rivalCatchUp: { lagTiles: 2, perTile: 0.05, min: 0.6, max: 1.25 },
     rivalCatchUpDelayTicks: 0,
     rivalItemAggressionMul: 0.7,
     rivalsAttackPlayer: true,
