@@ -8,9 +8,9 @@ description: The loop for checking that a change to a game in this repo works, u
 
 You can't watch the game, so verify through three commands that print short summaries and write details to files. Run them in this order and read what they say before changing more code.
 
-While iterating on logic, `pnpm arcade test <slug> [paths] [-t name]` runs only the game's Vitest tests, narrowed to files, folders or a test name, in well under a second per file. Use it instead of `pnpm exec vitest`, `npx vitest` or `pnpm --filter ... exec vitest`. It fails when a filter matches no test, so a typo can't pass silently. It is not a substitute for `check`.
+Prove a change with the narrowest tests that cover it: `pnpm arcade test <slug> <paths or @groups> [-t name]` runs only those Vitest files (well under a second per file), and `pnpm arcade check <slug> --skip-tests` gives typecheck and lint in about a second. Use them instead of `pnpm exec vitest`, `npx vitest` or `pnpm --filter ... exec vitest`. `arcade test` fails when a filter matches no test, so a typo can't pass silently, and an unknown `@group` lists the game's groups. The full `check` and `smoke` below are the pre-merge gate: run them when you merge, or when your brief asks, not after every edit (AGENTS.md "Test scope").
 
-## 1. `pnpm arcade check <slug>` (seconds)
+## 1. `pnpm arcade check <slug>` (seconds; before a merge)
 
 Typecheck, lint and unit tests for the game, plus every package changed since HEAD and everything depending on it. Green prints one line. Red prints one line per lint error (`file:line rule message`) and the failing typecheck/test output grouped by package.
 
@@ -49,9 +49,9 @@ When `see` reproduces a bug, copy the input into `scenarios/<bug-name>.ts` with 
 
 When the user has the game open from `pnpm arcade dev` (or the preview pane), that tab's save is theirs. Don't drive it with synthetic key presses to test something: inputs on the same tick can be dropped, and a menu press lands in their real settings (it once flipped a player's difficulty to Hard). Verify with `see` or a scenario, and if you must use a browser, open a fresh tab with `?test=1` or a different port.
 
-## 3. `pnpm arcade smoke <slug>` (10-30 s)
+## 3. `pnpm arcade smoke <slug>` (10-30 s; before a merge)
 
-Production build, assembled the way Cloudflare serves it, under `wrangler dev`. Runs the game's Playwright suite (scenarios plus `tests/smoke.spec.ts`) on desktop Chromium, a phone, and WebKit for 2D games. This catches wrong base paths, missing assets and Safari-only failures that dev mode hides. Run it before saying you're done.
+Production build, assembled the way Cloudflare serves it, under `wrangler dev`. Runs the game's Playwright suite (scenarios plus `tests/smoke.spec.ts`) on desktop Chromium, a phone, and WebKit for 2D games. This catches wrong base paths, missing assets and Safari-only failures that dev mode hides. Run it before a merge, or before handing back work nobody else will merge.
 
 Failure output shows Playwright's assertion diff. Traces and screenshots are in `<game>/test-results/`.
 

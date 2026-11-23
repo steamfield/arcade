@@ -211,6 +211,12 @@ An agent that reproduces a bug with `see` saves the input as a scenario, and it 
 
 No sleeps anywhere: the harness waits on `ready`, `idle()`, ticks or events.
 
+### Running tests
+
+Agents prove a change with the tests that cover it, and the full suite runs once, before a merge (AGENTS.md "Test scope"). `pnpm arcade test <slug>` takes paths and named groups (`@courses`, defined under `"arcade": { "testGroups" }` in the game's `package.json`), and `pnpm arcade check <slug> --skip-tests` gives typecheck and lint without the unit tests. Several lanes building at once on one machine was the reason: each running the whole suite pushed a 5-second check past a minute and timed tests out.
+
+`.rr.yaml` runs the same commands on the remote hosts in `~/.rr/config.yaml` through rr: `rr test -- <slug> <paths>`, `rr check -- <slug>`, and `rr suite -- <slug>`, which splits a game's whole Vitest suite into four shards across hosts. The hosts have Node but not the repo's pnpm, so the config runs `pnpm@12.9.1` through an npx shim (`.rr-bin/`, ignored) and installs before each run. Measured on Reef Rush in November 2026: the full suite takes about 33 s on an idle 16-core laptop and 51-56 s through `rr suite` (shards of 15-34 s plus sync and install), so rr is for when the laptop is busy with other agents or for long seeded reports, not a faster default. The fingerprint tests pass on the remote hosts (Node 26 on macOS, Node 24 on Linux), so results don't depend on the machine.
+
 ## Context for agents
 
 `AGENTS.md` at the root is short:

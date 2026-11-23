@@ -11,13 +11,17 @@ import { testGame } from './test.ts';
 
 const HELP = `arcade: build, check and see games in this repo
 
-  pnpm arcade check [slug] [--all]
+  pnpm arcade check [slug] [--all] [--skip-tests]
       Typecheck, lint and unit tests. With a slug: that game plus every package changed since
-      HEAD and all their dependents. Prints one line when everything passes.
+      HEAD and all their dependents. Prints one line when everything passes. The full run is
+      the pre-merge gate; --skip-tests gives typecheck and lint alone while you prove a change
+      with arcade test.
 
-  pnpm arcade test <slug> [paths...] [-t <name pattern>]
-      Only the game's unit tests (Vitest), narrowed to files, folders or a test name. For the
-      inner loop; run check before handing back. Paths may be repo- or game-relative.
+  pnpm arcade test <slug> [paths... | @group...] [-t <name pattern>]
+      Only the game's Vitest tests, narrowed to files, folders, named groups or a test name. This
+      is how an agent proves its change; the full check and smoke run once, before a merge.
+      Paths may be repo- or game-relative; groups come from the game's package.json
+      ("arcade": { "testGroups": { ... } }), and an unknown group lists the defined ones.
 
   pnpm arcade see <slug> [options]
       Run the game headlessly to an exact state and capture it. Writes to .arcade/runs/latest/:
@@ -56,6 +60,7 @@ async function main(argv: string[]): Promise<number> {
     allowPositionals: true,
     options: {
       all: { type: 'boolean', default: false },
+      'skip-tests': { type: 'boolean', default: false },
       scenario: { type: 'string' },
       input: { type: 'string' },
       at: { type: 'string' },
@@ -90,7 +95,7 @@ async function main(argv: string[]): Promise<number> {
 
   switch (command) {
     case 'check':
-      return check(slug, { all: values.all });
+      return check(slug, { all: values.all, skipTests: values['skip-tests'] });
     case 'test':
       return testGame(requireSlug(), [
         ...positionals.slice(1),

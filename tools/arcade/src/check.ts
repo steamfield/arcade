@@ -4,10 +4,11 @@ import { elapsed, run } from './run.ts';
 /**
  * Typecheck, lint and unit tests. With a slug: that game plus every package
  * changed since HEAD and everything that depends on them, so editing a shared
- * package while working on one game still checks the others.
+ * package while working on one game still checks the others. `skipTests` leaves
+ * out the unit tests, for an agent that proves its change with `arcade test`.
  * Prints one line on success; only the failing output otherwise.
  */
-export async function check(slug: string | undefined, options: { all: boolean }): Promise<number> {
+export async function check(slug: string | undefined, options: { all: boolean; skipTests: boolean }): Promise<number> {
   const start = performance.now();
   const filters: string[] = [];
   let scope = 'all packages';
@@ -28,7 +29,15 @@ export async function check(slug: string | undefined, options: { all: boolean })
 
   const [lint, tasks] = await Promise.all([
     run('pnpm', ['exec', 'biome', 'check', '.', '--reporter=github', '--colors=off', '--max-diagnostics=100']),
-    run('pnpm', ['exec', 'turbo', 'run', 'typecheck', 'test', '--output-logs=errors-only', ...filters]),
+    run('pnpm', [
+      'exec',
+      'turbo',
+      'run',
+      'typecheck',
+      ...(options.skipTests ? [] : ['test']),
+      '--output-logs=errors-only',
+      ...filters,
+    ]),
   ]);
 
   const affected = /Packages in scope: (.*)/.exec(tasks.output)?.[1]?.split(', ') ?? [];
@@ -37,7 +46,8 @@ export async function check(slug: string | undefined, options: { all: boolean })
   if (tasks.code !== 0) failures.push(`── typecheck/test ──\n${trimTurbo(tasks.output)}`);
 
   if (failures.length === 0) {
-    console.log(`✓ check passed (${scope}: ${affected.length} packages) in ${elapsed(start)}`);
+    const what = options.skipTests ? 'typecheck and lint passed, tests skipped' : 'check passed';
+    console.log(`✓ ${what} (${scope}: ${affected.length} packages) in ${elapsed(start)}`);
     return 0;
   }
   console.log(failures.join('\n\n'));
