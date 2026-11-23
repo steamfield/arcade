@@ -31,11 +31,8 @@ export default scenario({
     const respawns = events.filter((e) => e.type === 'racer.respawned' && e.id === 'player');
     expect(falls).toHaveLength(1);
     expect(respawns).toHaveLength(1);
-    const [fell] = falls;
-    const [respawned] = respawns;
-    expect(respawned.tick - fell.tick).toBe(60);
+    expect((respawns[0]?.tick ?? 0) - (falls[0]?.tick ?? 0)).toBe(60);
     // The pit spans columns 29-31 (x 464-512); the runner comes back before it.
-    expect(respawned).toMatchObject({ type: 'racer.respawned', id: 'player' });
-    expect((respawned as { x: number }).x).toBeLessThan(464);
+    expect(Number(respawns[0]?.x)).toBeLessThan(464);
   },
 });
