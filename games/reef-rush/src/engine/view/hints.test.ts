@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { gainPowerUp } from '../../logic/powerups/stack.ts';
 import { SQUID } from '../../logic/powerups/tuning.ts';
-import { IDLE, raceOn, racerOf, step } from '../../logic/test-world.ts';
+import { IDLE, placeOnTile, raceOn, racerOf, step } from '../../logic/test-world.ts';
 import type { TickInput, World } from '../../logic/types.ts';
 import {
+  GUIDE_OVER_PRESS_B_TICKS,
   type HintConfig,
   type HintMemory,
   hintConfig,
@@ -30,8 +31,8 @@ const EASY: HintConfig = hintConfig(0, 'easy');
 const NORMAL_FIRST_RACE: HintConfig = hintConfig(0, 'normal');
 
 /** A racing world and a memory that has seen nothing; `run` steps it and asks for hints after every tick. */
-function race(config: HintConfig = EASY) {
-  const { world, log } = raceOn(OPEN);
+function race(config: HintConfig = EASY, ascii = OPEN) {
+  const { world, log } = raceOn(ascii);
   const memory: HintMemory = newHintMemory();
   const player = racerOf(world, 'player');
   const run = (ticks: number, input = IDLE, using = config) => {
@@ -208,5 +209,64 @@ describe('KICK', () => {
     const [squid] = world.squids;
     if (squid) squid.target = { kind: 'racer', id: 'tess' };
     expect(run(1).kick).toBe(false);
+  });
+});
+
+describe('the guide arrow', () => {
+  /** A wall with its only gap in the bottom row: from beside it the way on is down. */
+  const WALLED = `
+  ####################
+  #1....#...........F#
+  #2....#...........F#
+  #3....#...........F#
+  #4................F#
+  ####################
+`;
+  const UP: TickInput = { move: { x: 0, y: -1 }, kick: false, burst: false };
+  const DOWN: TickInput = { move: { x: 0, y: 1 }, kick: false, burst: false };
+  const WAY_ON = { x: 0, y: 1 };
+
+  /** A race with the player beside the wall; pushing up is the wrong way, so the steering assist stays out of it. */
+  function stuckRace(difficulty: 'easy' | 'normal' | 'hard' = 'easy') {
+    const built = race(EASY, WALLED);
+    built.world.difficulty = difficulty;
+    placeOnTile(built.player, 5, 1);
+    return built;
+  }
+
+  it('points the way on once the player has pushed a while without getting closer, and not before', () => {
+    const { run } = stuckRace();
+    expect(run(60, UP).guide).toBeNull();
+    expect(run(60, UP).guide).toEqual(WAY_ON);
+  });
+
+  it('fades as soon as the player gets closer to the finish', () => {
+    const { run } = stuckRace();
+    expect(run(120, UP).guide).toEqual(WAY_ON);
+    expect(run(30, DOWN).guide).toBeNull();
+  });
+
+  it('stays off on Normal and Hard, however long the player is stuck', () => {
+    for (const difficulty of ['normal', 'hard'] as const) {
+      const { run } = stuckRace(difficulty);
+      expect(run(300, UP).guide, difficulty).toBeNull();
+    }
+  });
+
+  it('gives way to KICK!', () => {
+    const { world, run } = stuckRace();
+    run(120, UP);
+    lockSquidOnPlayer(world, 60);
+    const hints = run(1, UP);
+    expect([hints.kick, hints.guide]).toEqual([true, null]);
+  });
+
+  it('waits behind PRESS B! at first, then takes over so a child who never fires still finds the way', () => {
+    const { world, player, run } = stuckRace();
+    gainPowerUp(world, player, 'jetFin');
+    const early = run(150, UP);
+    expect([early.pressB, early.guide]).toEqual([true, null]);
+    const late = run(GUIDE_OVER_PRESS_B_TICKS, UP);
+    expect([late.pressB, late.guide]).toEqual([false, WAY_ON]);
   });
 });

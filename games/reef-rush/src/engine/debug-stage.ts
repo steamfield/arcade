@@ -10,8 +10,13 @@
  * `squid-lockon` locks one on the player from in view and `squid-lockon-far` from off-screen;
  * `squid-latched` latches squids on the player and a rival; `riptide` lays a lane over a current
  * with a rival riding it; `decoy` leaves a rival's decoy beside it; `undertow` pulls two racers back;
- * `dark` moves the pack into the first dark zone with a squid and a decoy near the player.
+ * `dark` moves the pack into the first dark zone with a squid and a decoy near the player; `guide`
+ * stands the player against the first wall whose way on is up or down, already stuck for 2.5 s, so
+ * the Easy guide arrow shows from the GO (and does nothing on a course with no such wall).
  */
+import { guideFor } from '../logic/guide.ts';
+import { cellAt } from '../logic/level/query.ts';
+import { fieldAt } from '../logic/race/flowfield.ts';
 import { playerOf } from '../logic/racers.ts';
 import { type Level, type Racer, type RacerId, TILE, type Vec, type World } from '../logic/types.ts';
 
@@ -28,6 +33,7 @@ export const STAGES = [
   'decoy',
   'undertow',
   'dark',
+  'guide',
 ] as const;
 
 /** A name from `STAGES`. */
@@ -36,6 +42,8 @@ export type StageName = (typeof STAGES)[number];
 /** Ticks a staged effect lasts; long enough to still be showing when a capture is taken. */
 const STAGED_TICKS = 600;
 const SQUID_SPEED = 110;
+/** How long the `guide` stage has the player stuck already (150 ticks, 2.5 s: past the arrow's 1.5 s). */
+const STAGED_STUCK_TICKS = 150;
 
 /** The launch parameters a stage depends on. */
 export interface StageGate {
@@ -95,6 +103,9 @@ export function applyStage(world: World, stage: StageName): void {
     }
     case 'dark':
       stageInDarkZone(world, player, rival);
+      return;
+    case 'guide':
+      standAtWall(world, player);
       return;
     case 'undertow':
       rival.status.undertow = STAGED_TICKS;
@@ -184,4 +195,27 @@ function stageInDarkZone(world: World, player: Racer, rival: Racer): void {
   place(rival, cx + 70, cy);
   world.squids.push(squid(cx + 36, cy - 14, -SQUID_SPEED, 0, 'tess', { kind: 'racer', id: 'player' }));
   world.decoys.push({ x: cx + 70, y: cy + 22, vx: 66, vy: 0, ttl: STAGED_TICKS, owner: 'tess' });
+}
+
+/**
+ * Puts the player at rest on the first open tile (scanning columns left to right from the start, each from the bottom up) whose
+ * right-hand neighbour is rock and whose way on is straight up or down, and records them as stuck
+ * there. Leaves the world alone when the course has no such tile.
+ */
+function standAtWall(world: World, player: Racer): void {
+  const { level } = world;
+  for (let tx = 4; tx < level.width - 1; tx++) {
+    for (let ty = level.height - 2; ty >= 1; ty--) {
+      if (cellAt(level, tx, ty) !== 'water' || cellAt(level, tx + 1, ty) !== 'rock') continue;
+      player.body.x = tx * TILE + (TILE - player.body.w) / 2;
+      player.body.y = ty * TILE + (TILE - player.body.h) / 2;
+      player.body.vx = 0;
+      player.body.vy = 0;
+      const way = guideFor(world, player).dir;
+      if (way?.x !== 0) continue;
+      world.guide.bestSteer = fieldAt(world.fields.steer, world.fields, { x: tx, y: ty });
+      world.guide.stuckTicks = STAGED_STUCK_TICKS;
+      return;
+    }
+  }
 }

@@ -432,6 +432,19 @@ export interface Jelly {
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
 
+/**
+ * What the Easy guide remembers about the player's way through the course (see `guide.ts`).
+ * Only tracked on levels where the guide is on; zeros elsewhere.
+ */
+export interface GuideMemory {
+  /** The lowest steer-field value the player's tile has had this race (Infinity before the first tick). */
+  bestSteer: number;
+  /** Ticks the player has pushed without reaching a tile closer to the finish by the steer field. */
+  stuckTicks: number;
+  /** Ticks of pushing the steering assist stays on for after it engaged against a wall. */
+  helpTicks: number;
+}
+
 export interface World {
   level: Level;
   /** Fixed for the race. */
@@ -466,4 +479,6 @@ export interface World {
   riptides: Riptide[];
   /** Mimic decoys swimming. */
   decoys: Decoy[];
+  /** The player's way-finding record for the Easy guide. */
+  guide: GuideMemory;
 }

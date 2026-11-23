@@ -20,6 +20,22 @@ export interface CatchUpBounds {
   max: number;
 }
 
+/**
+ * The way-finding help for a player who holds toward the finish and steers only after hitting a wall
+ * (see `guide.ts`). Off means the world tracks nothing and the player's input is never touched.
+ */
+export interface GuideTuning {
+  enabled: boolean;
+  /** Ticks without progress (while pushing) before the steering assist starts to slide the player along the wall. */
+  assistGraceTicks: number;
+  /** Ticks of pushing the assist stays on for once it engaged, so it carries the player along the whole wall. */
+  assistHoldTicks: number;
+  /** The most the guide direction adds to the stick, as a fraction of a full stick. */
+  assistBlend: number;
+  /** Ticks without progress before the engine shows the guide arrow. */
+  showTicks: number;
+}
+
 /** Everything a difficulty level changes. */
 export interface DifficultyTuning {
   /** Multiplies every rival's swim force, on top of its profile and catch-up. */
@@ -48,7 +64,12 @@ export interface DifficultyTuning {
   playerCatchUp: { startTiles: number; perTile: number; maxBoost: number };
   /** Multiplies the player's clam roll weight of these kinds (those not listed stay 1), so Easy hands over helpful power-ups. */
   playerClamWeightMul: Partial<Record<PowerUpKind, number>>;
+  /** The Easy way-finding guide and steering assist. */
+  guide: GuideTuning;
 }
+
+/** The guide off: Normal and Hard leave the player's input and the screen alone. */
+const NO_GUIDE: GuideTuning = { enabled: false, assistGraceTicks: 0, assistHoldTicks: 0, assistBlend: 0, showTicks: 0 };
 
 /** The knob table. Hard is exactly the tuning before difficulty levels existed. */
 export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
@@ -63,6 +84,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     squidDodgeTicks: 12,
     playerCatchUp: { startTiles: 6, perTile: 0, maxBoost: 0 },
     playerClamWeightMul: {},
+    guide: NO_GUIDE,
   },
   normal: {
     rivalForceMul: 0.95,
@@ -75,6 +97,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     squidDodgeTicks: 18,
     playerCatchUp: { startTiles: 5, perTile: 0.02, maxBoost: 0.2 },
     playerClamWeightMul: {},
+    guide: NO_GUIDE,
   },
   easy: {
     rivalForceMul: 0.65,
@@ -87,6 +110,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     squidDodgeTicks: 24,
     playerCatchUp: { startTiles: 3, perTile: 0.05, maxBoost: 0.6 },
     playerClamWeightMul: { jetFin: 3, bubbleShield: 2 },
+    guide: { enabled: true, assistGraceTicks: 30, assistHoldTicks: 90, assistBlend: 1, showTicks: 90 },
   },
 };
 
