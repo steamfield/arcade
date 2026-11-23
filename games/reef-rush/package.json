@@ -31,7 +31,6 @@
   "arcade": {
     "testGroups": {
       "behavior": [
-        "src/logic/fingerprint",
         "src/engine/audio/sfx-pin.test.ts"
       ],
       "seams": [

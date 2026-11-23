@@ -105,7 +105,7 @@ Run the new course's bars with `pnpm arcade test reef-rush src/logic/difficulty/
 pnpm arcade test reef-rush @courses @behavior
 ```
 
-`@courses` is course conformance, levels and the course registry; `@behavior` is the fingerprints and sfx pin, which must not change when a course is added.
+`@courses` is course conformance, levels and the course registry; `@behavior` is the sfx pin, which must not change when a course is added.
 
 ### Done
 

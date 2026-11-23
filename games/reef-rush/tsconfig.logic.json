@@ -1,5 +1,5 @@
 {
   "extends": "@arcade/config/tsconfig.logic.json",
   "include": ["src/logic"],
-  "exclude": ["src/logic/**/*.test.ts", "src/logic/fingerprint/check.ts"]
+  "exclude": ["src/logic/**/*.test.ts"]
 }
