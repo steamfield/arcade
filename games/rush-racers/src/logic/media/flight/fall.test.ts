@@ -141,8 +141,8 @@ describe('falling out of the sky', () => {
     const tess = racerOf(world, 'tess');
     const start = { x: tess.body.x, y: tess.body.y };
     placeOnTile(tess, GAP_COLUMN + 3, FLOOR_ROW);
-    // Already through the gap's bottom edge, so no pilot can flap it back in.
-    tess.body.y = (FLOOR_ROW + 1) * TILE;
+    // Half a tile through the bottom edge: one flap tick lifts her only a few pixels, so no pilot can flap back in.
+    tess.body.y = (FLOOR_ROW + 1) * TILE + TILE / 2;
     tess.body.vy = 100;
     for (let tick = 0; tick < 200 && eventsIn(log, 'racer.respawned').length === 0; tick++) step(world, log, 1, IDLE);
 
