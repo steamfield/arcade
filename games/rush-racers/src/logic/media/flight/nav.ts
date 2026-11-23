@@ -4,7 +4,7 @@
  * a price), and the level check that every start can reach the finish without popping one. Its nav
  * is a `FlightNav` (`way-data.ts`); `way.ts` reads it.
  */
-import { cellAt } from '../../level/query.ts';
+import { cellAt, isRockLike } from '../../level/query.ts';
 import { distancesToFinish, type EntryCost, fieldAt } from '../../race/flowfield.ts';
 import type { Cell, Level, Vec } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
@@ -34,9 +34,13 @@ const WIND_DIRECTION: Partial<Record<Cell, Vec>> = {
   'current-down': { x: 0, y: 1 },
 };
 
-/** What a flyer feels: rock and unbroken puff clouds are walls, fog is slow, wind helps or hinders. Flight's `enterCost`. */
+/**
+ * What a flyer feels wherever it is: thunderheads (rock), bounce clouds and unbroken puff clouds
+ * are walls, fog is slow, wind helps or hinders. The steer field adds the low-sky price on top
+ * (`flightEnterCost`).
+ */
 export const flightCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
-  if (cell === 'rock') return Number.POSITIVE_INFINITY;
+  if (isRockLike(cell)) return Number.POSITIVE_INFINITY;
   if (cell === 'coral') return isBroken ? 1 : Number.POSITIVE_INFINITY;
   if (cell === 'kelp') return FOG_COST;
   const wind = WIND_DIRECTION[cell];
@@ -73,18 +77,30 @@ export function buildFlightNav(level: Level, broken: ReadonlySet<number>, _tunin
   };
 }
 
-/** `cost` with LOW_SKY_EXTRA added for entering an open tile in the bottom LOW_SKY_ROWS rows of a column open to the sky below. */
+/**
+ * Flight's `enterCost`: what its steer field charges to enter `tile` of `level` along `move`,
+ * `flightCost` with the low-sky price added.
+ */
+export const flightEnterCost = (cell: Cell, isBroken: boolean, move: Vec, tile: Vec, level: Level): number =>
+  withLowSky(level, tile, flightCost(cell, isBroken, move));
+
+/** `cost` with the low-sky price added (`withLowSky`). */
 function keptOffLowSky(level: Level, cost: (cell: Cell, isBroken: boolean, move: Vec) => number): EntryCost {
-  return (cell, isBroken, move, tile) => {
-    const price = cost(cell, isBroken, move);
-    return Number.isFinite(price) && isLowSky(level, tile) ? price + LOW_SKY_EXTRA : price;
-  };
+  return (cell, isBroken, move, tile) => withLowSky(level, tile, cost(cell, isBroken, move));
 }
 
-/** Whether `tile` is in the bottom LOW_SKY_ROWS rows of a column whose last row is open sky (not rock or a puff cloud). */
+/** `price` plus LOW_SKY_EXTRA when it is open and `tile` is low over open sky (`isLowSky`). */
+function withLowSky(level: Level, tile: Vec, price: number): number {
+  return Number.isFinite(price) && isLowSky(level, tile) ? price + LOW_SKY_EXTRA : price;
+}
+
+/**
+ * Whether `tile` is in the bottom LOW_SKY_ROWS rows of a column whose last row is open sky (not a
+ * thunderhead, bounce cloud or puff cloud).
+ */
 function isLowSky(level: Level, tile: Vec): boolean {
   const bottom = cellAt(level, tile.x, level.height - 1);
-  return tile.y >= level.height - LOW_SKY_ROWS && bottom !== 'rock' && bottom !== 'coral';
+  return tile.y >= level.height - LOW_SKY_ROWS && !isRockLike(bottom) && bottom !== 'coral';
 }
 
 /**

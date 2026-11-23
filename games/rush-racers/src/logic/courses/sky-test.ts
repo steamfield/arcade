@@ -8,9 +8,12 @@ import type { ShippedCourse } from './types.ts';
 /**
  * A sunset sky over a thunderhead floor, flown left to right. Rows 0 and 23 are the ceiling and the
  * floor; flight reads `#` as thunderhead, `C` as puff cloud, `~` as fog, `^` as updraft, `o` as a
- * feather, `?` as a balloon, `*` as a spark cloud and `j` as a static wisp.
+ * feather, `?` as a balloon, `*` as a spark cloud, `j` as a static wisp, `B` as a bounce cloud and
+ * `@` as a boost ring.
  *
  * - Cols 1-8: the starts on the floor, with feathers up the line of the first climb.
+ * - Cols 11-13: a bounce cloud in the floor, just past the starts, that springs a flyer coming down
+ *   onto it up toward the first climb.
  * - Cols 18-28: the thunderhead weave: a tower from the floor to climb over (open above row 10),
  *   then one from the ceiling to dive under (open below row 13). A balloon sits between them.
  * - Cols 40-52: a thunderhead block. The open way climbs over its top (rows 1-4, feathers there);
@@ -20,8 +23,9 @@ import type { ShippedCourse } from './types.ts';
  *   the bottom row is open sky, with feathers and a static wisp under it.
  * - Cols 73-78: a fog bank at mid height, with a balloon below it.
  * - Cols 84-88: an updraft column up the face of a floor tower that is open above row 6.
- * - Cols 89-117: the run home past a balloon, a static wisp, feathers and a spark cloud; the
- *   finish is col 118.
+ * - Cols 89-117: the run home: a line of four boost rings stepping down from the tower top (cols
+ *   91-100, rows 5-8), then a balloon, a static wisp and feathers, and the storm cell, a lightning
+ *   zone over cols 107-111 around a spark cloud; the finish is col 118.
  */
 const LEVEL: LevelDef = {
   name: 'Sky Test',
@@ -31,10 +35,10 @@ const LEVEL: LevelDef = {
     #.........................###..................o.........############.................................................F#
     #.........................###.................o..........############.......................?.........................F#
     #.........................###............................############...............^^................................F#
-    #.........................###...........#############....############...............^^................................F#
-    #......................?..###...........#############....############...............^^................................F#
-    #.........................###...........#############....############....~~~~~~.....^^###...................*.........F#
-    #.........................###...........#############....############....~~~~~~.....^^###.............................F#
+    #.........................###...........#############....############...............^^.....@..........................F#
+    #......................?..###...........#############....############...............^^........@.......................F#
+    #.........................###...........#############....############....~~~~~~.....^^###........@..........*.........F#
+    #.........................###...........#############....############....~~~~~~.....^^###...........@.................F#
     #.........................###...........#############....############....~~~~~~.....^^###.............................F#
     #.........................###...........#############....############....~~~~~~.....^^###.............................F#
     #.................###.....###...........#############....############....~~~~~~.....^^###.............................F#
@@ -49,8 +53,10 @@ const LEVEL: LevelDef = {
     #.................###.........................C............................?........^^###.............................F#
     #.................###............*............C.....................................^^###.............................F#
     #.1.2.3.4.........###.........................C.....................................^^###.............................F#
-    #############################################################.....######################################################
+    ###########BBB###############################################.....######################################################
   `,
+  // The storm cell: warns, then strikes, every 2.5 s from the start signal.
+  lightning: [{ cols: [107, 111], periodTicks: 150, offsetTicks: 0 }],
 };
 
 /**

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ABILITY } from '../abilities.ts';
+import { FLASH } from '../powerups/tuning.ts';
 import { centreOf } from '../racers.ts';
 import { eventsIn, giveItems, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
 import type { Vec } from '../types.ts';
@@ -108,6 +109,31 @@ describe('a bubble hit', () => {
     player.status.invulnerable = 20;
 
     expect(() => applyHit(world, player, 'bubble', null, offset(-8, 0))).toThrow(/has no owner/);
+  });
+});
+
+describe('a lightning hit', () => {
+  it('stuns like a flash and keeps the items the racer holds', () => {
+    const { world, log, player, offset } = setup();
+    giveItems(player, ['jetFin']);
+
+    expect(applyHit(world, player, 'lightning', null, offset(0, -8))).toBe('stunned');
+
+    expect(player.status.stunned).toBe(Math.round(FLASH.stunTicks * ABILITY.shakeItOff.statusMul));
+    expect(player.items[0]).toEqual({ kind: 'jetFin', charges: expect.any(Number) });
+    expect(eventsIn(log)).toEqual([
+      { type: 'racer.hit', id: 'player', cause: 'lightning', by: null },
+      { type: 'racer.stunned', id: 'player' },
+    ]);
+  });
+
+  it('lands on Selene, who ignores only static wisps (jellies)', () => {
+    const { world, log, player, offset } = setup();
+    player.character = 'selene';
+
+    expect(applyHit(world, player, 'jelly', null, offset(0, -8))).toBeNull();
+    expect(applyHit(world, player, 'lightning', null, offset(0, -8))).toBe('stunned');
+    expect(eventsIn(log, 'racer.hit')).toEqual([{ type: 'racer.hit', id: 'player', cause: 'lightning', by: null }]);
   });
 });
 

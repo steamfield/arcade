@@ -100,6 +100,40 @@ describe('parseLevel reading tiles', () => {
     ]);
   });
 
+  it('reads B as a bounce cloud and @ as a boost ring over open sky, rings in reading order', () => {
+    const parsed = parseLevel(
+      level(`
+        #.@.B.F
+        1234@BF
+      `),
+    );
+
+    expect(parsed.cells).toEqual([
+      ['rock', 'water', 'water', 'water', 'bounce', 'water', 'water'],
+      ['water', 'water', 'water', 'water', 'water', 'bounce', 'water'],
+    ]);
+    expect(parsed.rings).toEqual([
+      { x: 2, y: 0 },
+      { x: 4, y: 1 },
+    ]);
+  });
+
+  it('reads no rings and no storm zones from a level without them', () => {
+    const parsed = parseLevel(level('#1234F'));
+
+    expect(parsed.rings).toEqual([]);
+    expect(parsed.lightning).toEqual([]);
+  });
+
+  it('passes storm zones through in order', () => {
+    const zones = [
+      { cols: [1, 2], periodTicks: 57, offsetTicks: 0 },
+      { cols: [4, 5], periodTicks: 120, offsetTicks: 30 },
+    ] satisfies LevelDef['lightning'];
+
+    expect(parseLevel({ ...level('#1234.F'), lightning: zones }).lightning).toEqual(zones);
+  });
+
   it('trims indentation and blank edge lines and accepts CRLF line endings', () => {
     const parsed = parseLevel(level('\r\n\r\n    #1234F\r\n    #....F   \r\n\r\n'));
 
@@ -126,7 +160,7 @@ describe('parseLevel reading a legend', () => {
     const error = levelErrorFrom(legendLevel('#1234F\n#.x..F', WRECK_AND_SAND));
 
     expect(error).toMatchObject({ row: 1, col: 2 });
-    expect(error.message).toContain('jSEKws)');
+    expect(error.message).toContain('j@SEKws)');
   });
 
   it.each([
@@ -212,6 +246,47 @@ describe('parseLevel rejecting bad levels', () => {
 
   it('rejects a dark zone whose start column is after its end column', () => {
     expect(levelErrorFrom(level('#1234..F', [[5, 2]]))).toBeInstanceOf(LevelError);
+  });
+});
+
+describe('parseLevel rejecting bad storm zones', () => {
+  /** An 8-column level with the given storm zones. */
+  const stormy = (...lightning: NonNullable<LevelDef['lightning']>): LevelDef => ({
+    ...level('#1234..F'),
+    lightning,
+  });
+  const zone = (from: number, to: number, periodTicks = 120, offsetTicks = 0) => ({
+    cols: [from, to] as [number, number],
+    periodTicks,
+    offsetTicks,
+  });
+
+  it.each([
+    { cols: [5, 8], why: 'past the right edge' },
+    { cols: [-1, 2], why: 'before the left edge' },
+  ] as const)('rejects a zone $why, naming the zone and the map columns', ({ cols }) => {
+    expect(levelErrorFrom(stormy(zone(1, 2), zone(cols[0], cols[1])))).toMatchObject({
+      message: `Lightning zone 1 covers columns ${cols[0]}-${cols[1]} but the map has columns 0-7`,
+      row: null,
+      col: null,
+    });
+  });
+
+  it('rejects a zone whose columns run backwards', () => {
+    expect(levelErrorFrom(stormy(zone(5, 2))).message).toBe('Lightning zone 0 runs backwards from column 5 to 2');
+  });
+
+  it('rejects zones sharing a column, naming both', () => {
+    expect(levelErrorFrom(stormy(zone(1, 3), zone(5, 6), zone(3, 4))).message).toBe(
+      'Lightning zone 2 (columns 3-4) overlaps zone 0 (columns 1-3)',
+    );
+  });
+
+  it('rejects a period too short to warn before it strikes, and accepts one exactly long enough', () => {
+    expect(levelErrorFrom(stormy(zone(1, 2, 56))).message).toBe(
+      'Lightning zone 0 repeats every 56 ticks, shorter than its 45-tick warning plus 12-tick strike; use at least 57',
+    );
+    expect(parseLevel(stormy(zone(1, 2, 57))).lightning).toEqual([zone(1, 2, 57)]);
   });
 });
 

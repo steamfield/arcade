@@ -8,7 +8,7 @@
 import type { Medium } from '../types.ts';
 import { sampleFlightEnvironment } from './env.ts';
 import { afterFlightMove } from './fall.ts';
-import { buildFlightNav, flightCost, validateFlightLevel } from './nav.ts';
+import { buildFlightNav, flightEnterCost, validateFlightLevel } from './nav.ts';
 import { applyFlightIntent, createFlightMotion, flightRamsCoral } from './physics.ts';
 import { createFlightPilot, steerFlyer } from './pilot.ts';
 import { FLIGHT_EFFECTS, FLIGHT_KICK_RULES, FLIGHT_TUNING } from './tuning.ts';
@@ -24,7 +24,7 @@ export const FLIGHT_MEDIUM: Medium = {
   applyIntent: applyFlightIntent,
   buildNav: buildFlightNav,
   steer: steerFlyer,
-  enterCost: flightCost,
+  enterCost: flightEnterCost,
   aimFrom: flightAimFrom,
   nextTile: flightNextTile,
   distanceAt: flightDistanceAt,

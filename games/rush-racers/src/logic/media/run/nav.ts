@@ -5,6 +5,7 @@
  * read the stand tile it falls to, or the nearest one on its row at a price.
  */
 import { TICK_DT } from '@arcade/core';
+import { isRockLike } from '../../level/query.ts';
 import { PriorityQueue } from '../../race/priority-queue.ts';
 import { type Cell, type Level, TILE } from '../../types.ts';
 import type { MediumTuning } from '../types.ts';
@@ -16,9 +17,9 @@ import type { RunLink, RunNav } from './way-data.ts';
 /** Ticks added to a tile over a pit for being in the air with nothing to land on: about a second. */
 const OVER_PIT_PENALTY_TICKS = 60;
 
-/** Every open tile costs the same; rock and unbroken coral are closed. Run's `enterCost`. */
+/** Every open tile costs the same; rock, bounce clouds and unbroken coral are closed. Run's `enterCost`. */
 export const runCost = (cell: Cell, isBroken: boolean): number => {
-  if (cell === 'rock') return Number.POSITIVE_INFINITY;
+  if (isRockLike(cell)) return Number.POSITIVE_INFINITY;
   if (cell === 'coral' && !isBroken) return Number.POSITIVE_INFINITY;
   return 1;
 };

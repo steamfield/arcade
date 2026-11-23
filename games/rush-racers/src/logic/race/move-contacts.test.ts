@@ -95,3 +95,33 @@ describe('move contacts', () => {
     expect(rising.y).toBeGreaterThanOrEqual(48);
   });
 });
+
+describe('a bounce cloud', () => {
+  /** ROOM with a bounce cloud where its rock tile was (column 4, row 2: pixels 64..80 by 32..48). */
+  const CLOUD_ROOM = parseLevel({
+    name: 'cloud room',
+    ascii: `
+      ##########
+      #........F
+      #...B....F
+      #........F
+      #1234....F
+      ##########
+    `,
+  });
+
+  it('stops a body from every side like rock', () => {
+    const landing = body(66, 10, 0, 80);
+    const rising = body(66, 60, 0, -80);
+    const fromLeft = body(40, 35, 80, 0);
+    const fromRight = body(90, 35, -80, 0);
+
+    expect(anyOf(contactsOver(landing, CLOUD_ROOM, 20), 'floor')).toBe(true);
+    expect(contactsOver(rising, CLOUD_ROOM, 20).find((c) => c.ceiling)?.ceilingTiles).toEqual([
+      tileIndex(CLOUD_ROOM, 4, 2),
+    ]);
+    expect(anyOf(contactsOver(fromLeft, CLOUD_ROOM, 20), 'wallRight')).toBe(true);
+    expect(anyOf(contactsOver(fromRight, CLOUD_ROOM, 20), 'wallLeft')).toBe(true);
+    expect([landing.y + landing.h, rising.y, fromLeft.x + fromLeft.w, fromRight.x]).toEqual([32, 48, 64, 80]);
+  });
+});

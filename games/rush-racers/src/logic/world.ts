@@ -12,12 +12,13 @@
  * racer's movement in the medium (`Medium.sampleEnvironment` then `applyIntent`; a squid's latch and
  * an undertow pull it after), dash, trapped drift and movement through the tiles under the medium's
  * move rules (`moveRulesFor`), then the medium's `afterMove` with what that movement ran into, then
+ * a spring off any bounce cloud it came down onto (`bounceOffClouds`), then
  * crates its head hit opened from below (`openClamsFromBelow`; RACER_IDS order);
  * a dash charge spent for each `racer.kicked` that movement emitted; one pass of separation over
  * unfinished racers when the medium's racers collide (`racerCollision`: 'solid' along the shallower
  * overlap, 'horizontal' sideways only, 'ghost' not at all); then the phase 3 systems for unfinished
- * racers only: items (cycle, then use, from intents), projectiles and inks, squids, riptides, decoys, jellies, contacts
- * (hits), pickups (clams, pearls, loose), status counters and dash recharge; then abilities
+ * racers only: items (cycle, then use, from intents), projectiles and inks, squids, riptides, decoys, jellies,
+ * enemies, lightning, contacts (hits), pickups (clams, pearls, rings, loose), status counters and dash recharge; then abilities
  * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
  * then progress, finishes, places, race end. Finished racers are out of play:
  * they stay where they crossed the line, nobody bumps them, and they never
@@ -42,6 +43,7 @@ import { createEnemies, stepEnemies } from './hazards/enemies/index.ts';
 import { ENEMY } from './hazards/enemies/tuning.ts';
 import { moveJellies } from './hazards/jellies.ts';
 import { driftLatched } from './hazards/latch.ts';
+import { strikeLightning } from './hazards/lightning.ts';
 import { advanceProjectiles } from './hazards/projectiles.ts';
 import { advanceSquids } from './hazards/squids.ts';
 import { LevelError } from './level/parse.ts';
@@ -51,12 +53,14 @@ import { modifiersFor } from './modifiers.ts';
 import { openClams, openClamsFromBelow } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
 import { collectLoosePearls, collectPearls } from './pickups/pearls.ts';
+import { passRings } from './pickups/rings.ts';
 import { canDash, DASH_METER, rechargeDash, spendDash } from './powerups/dash-meter.ts';
 import { advanceDecoys } from './powerups/decoys.ts';
 import { selectedSlot, slotItems } from './powerups/inventory.ts';
 import { advanceRiptides } from './powerups/riptides.ts';
 import { applyUndertow } from './powerups/undertow.ts';
 import { driveDash, sustainItems, useItems } from './powerups/use.ts';
+import { bounceOffClouds } from './race/bounce.ts';
 import { ramCoral } from './race/coral.ts';
 import { buildProgressField } from './race/flowfield.ts';
 import { moveBody, moveRulesFor } from './race/move.ts';
@@ -117,9 +121,9 @@ const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 }
  *
  * @param course A shipped course, or one registered for a test (`courseFromLevel`).
  * @param events Usually the engine's EventLog, so one stream holds race, menu and save events.
- * @throws {LevelError} When the medium can't race the level (a ledge in a medium without ledges, or
- *   a problem from `Medium.validateLevel`), located at the first problem, with any others appended
- *   to the message after `; `.
+ * @throws {LevelError} When the medium can't race the level (a ledge in a medium without ledges, a
+ *   bounce cloud in a medium without bounce clouds, or a problem from `Medium.validateLevel`), located
+ *   at the first problem, with any others appended to the message after `; `.
  * @throws {Error} When `course` isn't the course its id is registered to (unregistered, or a copy
  *   with changes), since the world keeps only the id and reads the rest back from the registry.
  * @throws {Error} When the course names an unknown world, or its world a medium that is neither shipped nor registered.
@@ -140,7 +144,11 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
   // The difficulty comes first: it can scale the medium's numbers, which the first nav is built with.
   const difficulty = options.difficulty ?? 'hard';
   const nav = medium.buildNav(level, broken, effectiveTuning({ course: course.id, medium: medium.id, difficulty }));
-  throwOnProblems([...ledgeProblems(level, medium), ...medium.validateLevel(level, nav)]);
+  throwOnProblems([
+    ...ledgeProblems(level, medium),
+    ...bounceProblems(level, medium),
+    ...medium.validateLevel(level, nav),
+  ]);
   const rngs = createRngs(options.seed);
   const { humans, seats } = seatsFor(options, rngs.roster, difficulty);
   const recentEvents: GameEvent[] = [];
@@ -162,6 +170,7 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     contacts: new Set(),
     clams: level.clams.map((tile) => ({ tile: { ...tile }, closedFor: 0 })),
     pearlsTaken: new Set(),
+    ringsPassed: { player: [], tess: [], squib: [], bo: [] },
     loosePearls: [],
     loose: [],
     inks: [],
@@ -191,18 +200,33 @@ function requireRegistered(course: Course): void {
   );
 }
 
-/** Throws a LevelError at the first problem, naming the rest after it; does nothing for none. */
 /** One problem per ledge tile (`=`) when `medium` has no ledges (`effects.allowsLedges`), located at its tile. */
 function ledgeProblems(level: Level, medium: Medium): LevelProblem[] {
   if (medium.effects.allowsLedges) return [];
-  return level.cells.flatMap((row, y) =>
-    row.flatMap((cell, x) =>
-      cell === 'ledge'
-        ? [{ message: `Ledge "=" at row ${y}, col ${x}: medium '${medium.id}' has no ledges`, row: y, col: x }]
-        : [],
-    ),
+  return problemsAt(level, 'ledge', (y, x) => `Ledge "=" at row ${y}, col ${x}: medium '${medium.id}' has no ledges`);
+}
+
+/**
+ * One problem per bounce cloud tile (`B`) when `medium` has no bounce clouds (`effects.bounceSpeed`
+ * null), located at its tile.
+ */
+function bounceProblems(level: Level, medium: Medium): LevelProblem[] {
+  if (medium.effects.bounceSpeed !== null) return [];
+  return problemsAt(
+    level,
+    'bounce',
+    (y, x) => `Bounce cloud "B" at row ${y}, col ${x}: medium '${medium.id}' has no bounce clouds`,
   );
 }
+
+/** One problem located at each tile of `level` holding `cell`, in reading order, worded by `message`. */
+function problemsAt(level: Level, cell: Cell, message: (row: number, col: number) => string): LevelProblem[] {
+  return level.cells.flatMap((row, y) =>
+    row.flatMap((at, x) => (at === cell ? [{ message: message(y, x), row: y, col: x }] : [])),
+  );
+}
+
+/** Throws a LevelError at the first problem, naming the rest after it; does nothing for none. */
 
 function throwOnProblems(problems: readonly LevelProblem[]): void {
   const [first, ...rest] = problems;
@@ -294,9 +318,11 @@ export function stepRace(world: World, inputs: Partial<Record<RacerId, TickInput
   advanceDecoys(world, dt);
   moveJellies(world);
   stepEnemies(world, racing);
+  strikeLightning(world, racing);
   resolveContacts(world, racing);
   openClams(world, racing);
   collectPearls(world, racing);
+  passRings(world, racing);
   collectLoosePearls(world, racing);
   updateLoose(world, racing, dt);
   for (const racer of racing) {
@@ -372,7 +398,8 @@ function spendKickedDashes(world: World): void {
 /**
  * One racer's velocity for the tick (the medium's response to its intent, then a dash or a trapped
  * drift overriding it), then its move, breaking the coral ahead first when its ability or its medium
- * (`Medium.ramsCoral`) rams through coral; then the medium's `afterMove` and any crates its head hit.
+ * (`Medium.ramsCoral`) rams through coral; then the medium's `afterMove`, a spring off a bounce cloud,
+ * and any crates its head hit.
  */
 function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
   const env = medium.sampleEnvironment(world, racer);
@@ -384,6 +411,7 @@ function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, m
   if (breaksCoralOnContact(racer) || medium.ramsCoral(racer)) ramCoral(world, racer, dt);
   const contacts = moveBody(racer.body, world.level, world.broken, dt, moveRulesFor(world));
   medium.afterMove(world, racer, contacts, world.events);
+  bounceOffClouds(world, racer, contacts);
   openClamsFromBelow(world, racer, contacts);
 }
 
@@ -428,6 +456,7 @@ const CELL_CHAR = {
   'current-up': '^',
   'current-down': 'v',
   ledge: '=',
+  bounce: 'B',
   air: ' ',
 } as const satisfies Record<Cell, string>;
 
@@ -468,7 +497,8 @@ function itemChars(world: World): Map<string, string> {
 /**
  * The course as text: racers (`@ T S B`) at their centre tiles over items (see `itemChars`: urchins `*`,
  * pearls `o`, clams `?` `_`, jellies `j`, Mimic decoys `m` and Homing Squids `s`) over
- * tiles in the level's own characters, with broken coral shown as water. Readable in test failures
+ * tiles in the level's own characters (bounce clouds `B`), with broken coral shown as water. Rings
+ * aren't shown: `@` is the player. Readable in test failures
  * and `arcade see --ascii`.
  */
 export function toAscii(world: World): string {

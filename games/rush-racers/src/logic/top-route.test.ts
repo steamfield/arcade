@@ -24,7 +24,7 @@ const TOP_ROUTE_MARGIN_TICKS = 300;
  * this number changed the simulation. The smoke test pins its own number for the browsers, whose
  * replay feeds diagonals differently and steps on past the finish.
  */
-const TOP_ROUTE_HASH = 4218947567;
+const TOP_ROUTE_HASH = 1324527001;
 
 /**
  * `hashWorld` at the end of `busyRace` on each level. The top route never dashes or uses an item,
@@ -32,13 +32,15 @@ const TOP_ROUTE_HASH = 4218947567;
  * player is home. Easy and Normal have their own because the rules that protect or chase the
  * player (who may attack whom, clam odds, catch-up) only act there. All three were the same on
  * the commit before worlds could hold several humans; re-pinned when the course gained its surface
- * section and cave, and again when racers gained `status.fallen` (with it left out, all four pins
- * hash to the values before it, so the swim simulation did not change).
+ * section and cave, again when racers gained `status.fallen` (with it left out, all four pins
+ * hash to the values before it, so the swim simulation did not change), and again with all five
+ * when racers gained `status.ringBoost` and the world `ringsPassed` (with both left out, every pin
+ * here and the smoke test's hash to the values before them).
  */
 const BUSY_RACE_HASHES: readonly [Difficulty, number][] = [
-  ['easy', 2782999100],
-  ['normal', 3420315660],
-  ['hard', 3387469038],
+  ['easy', 408151228],
+  ['normal', 3612446006],
+  ['hard', 3683695234],
 ];
 
 const KICK_EVERY_TICKS = 45;

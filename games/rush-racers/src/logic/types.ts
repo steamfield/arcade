@@ -94,6 +94,7 @@ export type Cell =
   | 'current-up'
   | 'current-down'
   | 'ledge'
+  | 'bounce'
   | 'air';
 
 /**
@@ -137,6 +138,19 @@ export interface LevelDef {
   surface?: readonly SurfaceDef[];
   /** Extra glyphs this level uses, each behaving as a base cell but drawn its own way. */
   legend?: Readonly<Record<string, LegendEntry>>;
+  /** Storm zones where lightning strikes on a timer (`hazards/lightning.ts`); none when left out. */
+  lightning?: readonly LightningZone[];
+}
+
+/**
+ * A storm zone: lightning strikes every racer in columns `cols[0]..cols[1]` (inclusive) at any
+ * height, on a cycle of `periodTicks` race ticks shifted by `offsetTicks`, after a warning. A course
+ * hazard, the same in every world; a pure function of the race tick.
+ */
+export interface LightningZone {
+  cols: [from: number, to: number];
+  periodTicks: number;
+  offsetTicks: number;
 }
 
 /** One stretch of open sky over the water: columns `from..to` inclusive, surface at the top of row `row`. */
@@ -162,11 +176,15 @@ export interface Level {
   clams: Vec[];
   urchins: Vec[];
   jellies: Vec[];
+  /** Boost rings (`@`), in reading order; the tile under each is open sky (water). */
+  rings: Vec[];
   /** Enemies placed by glyph (`S` shark, `E` eel, `K` crab), in reading order. The tile underneath is water. */
   enemies: { kind: EnemyKind; tile: Vec }[];
   dark: [from: number, to: number][];
   /** Stretches open to the sky (`LevelDef.surface`); their water above `row` parsed as 'air'. */
   surface: SurfaceDef[];
+  /** Storm zones (`LevelDef.lightning`), checked to be on the map, apart and long enough to warn before they strike. */
+  lightning: LightningZone[];
 }
 
 /** An axis-aligned box in world pixels: top-left corner and size. */
@@ -276,8 +294,11 @@ export interface HeldItem {
   charges: number;
 }
 
-/** What hurt a racer. Urchins and jellies have no owner; the rest come from another racer's item. */
-export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash' | 'squid' | EnemyKind;
+/**
+ * What hurt a racer. Urchins, jellies, enemies and lightning have no owner; the rest come from
+ * another racer's item. Lightning stuns like a flash.
+ */
+export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash' | 'squid' | 'lightning' | EnemyKind;
 
 /** Creatures on the course that a racer can beat with a dash bonk (`hazards/enemies/`). */
 export type EnemyKind = 'shark' | 'eel' | 'crab';
@@ -305,6 +326,8 @@ export interface RacerStatus {
   dashing: number;
   /** Pearl boost: swims with more force. */
   boost: number;
+  /** Boost ring: moves with more force (`PASSIVE.ringBoostForceMul`), so in flight cruise rises with it. */
+  ringBoost: number;
   /** Held by a Homing Squid: swims at reduced force with a sideways drift; kicks shorten it. */
   latched: number;
   /** Undertow: pulled back along the medium's way to the finish. */
@@ -623,6 +646,11 @@ export interface World {
   clams: Clam[];
   /** Indices into `level.pearls` already collected; each pearl is taken once per race. */
   pearlsTaken: Set<number>;
+  /**
+   * Indices into `level.rings` each racer has passed, in the order it passed them. Rings are never
+   * used up: each boosts every racer once per race (`pickups/rings.ts`).
+   */
+  ringsPassed: Record<RacerId, number[]>;
   /** Pearls knocked loose by hits, still in play. */
   loosePearls: LoosePearl[];
   loose: LoosePowerUp[];

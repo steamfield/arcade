@@ -5,7 +5,7 @@
  * the same search over 8 neighbours from the finish column. Media price tiles their own way
  * (`Medium.enterCost`); the progress field's cost is uniform and medium-free.
  */
-import { cellAt, tileIndex } from '../level/query.ts';
+import { cellAt, isRockLike, tileIndex } from '../level/query.ts';
 import { length } from '../num.ts';
 import { type Box, type Cell, type GridSize, type Level, type ProgressField, TILE, type Vec } from '../types.ts';
 import { PriorityQueue } from './priority-queue.ts';
@@ -38,8 +38,8 @@ export const NEIGHBOURS: readonly Vec[] = [
   { x: -1, y: -1 },
 ];
 
-/** Uniform cost with only rock closed, so places don't depend on terrain or broken coral. */
-const progressCost: EntryCost = (cell) => (cell === 'rock' ? Number.POSITIVE_INFINITY : 1);
+/** Uniform cost with only rock (and bounce clouds, rock-like) closed, so places don't depend on terrain or broken coral. */
+const progressCost: EntryCost = (cell) => (isRockLike(cell) ? Number.POSITIVE_INFINITY : 1);
 
 /**
  * The corner rule shared by every walk over the grid: a diagonal step from `tile` by `offset` is

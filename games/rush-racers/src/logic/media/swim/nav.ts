@@ -3,6 +3,7 @@
  * prices (see FlowFields), and the level check that every start can reach the finish. Walking the
  * fields lives in `way.ts` and `ai/steer.ts`.
  */
+import { isRockLike } from '../../level/query.ts';
 import { distancesToFinish, fieldAt } from '../../race/flowfield.ts';
 import type { Cell, Level, Vec } from '../../types.ts';
 import type { LevelProblem, MediumNav } from '../types.ts';
@@ -24,11 +25,12 @@ const CURRENT_DIRECTION: Partial<Record<Cell, Vec>> = {
 };
 
 /**
- * What a swimmer feels: kelp drags, currents help or hinder, unbroken coral is a wall, air is dear.
+ * What a swimmer feels: rock (and a bounce cloud, rock-like) and unbroken coral are walls, kelp
+ * drags, currents help or hinder, air is dear.
  * Swim's `enterCost`.
  */
 export const steerCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
-  if (cell === 'rock') return Number.POSITIVE_INFINITY;
+  if (isRockLike(cell)) return Number.POSITIVE_INFINITY;
   if (cell === 'coral') return isBroken ? 1 : Number.POSITIVE_INFINITY;
   if (cell === 'kelp') return KELP_COST;
   if (cell === 'air') return AIR_COST;

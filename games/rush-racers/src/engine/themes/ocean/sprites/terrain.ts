@@ -1,6 +1,6 @@
 /**
  * The solid and decorative course tiles: the tileset (rock, coral, the sky and
- * cave tiles drawn in `surface.ts` and `cave.ts`, and the ledge), coral debris,
+ * cave tiles drawn in `surface.ts` and `cave.ts`, the ledge and a placeholder bounce cloud), coral debris,
  * swaying kelp and the finish banner. Tiles are 16x16 and seamless, since the same tile
  * repeats across whole walls and kelp beds.
  */
@@ -23,7 +23,32 @@ const LEDGE_ROWS = [
   ...Array.from({ length: 12 }, () => '................'),
 ];
 
-/** Terrain sheets. The tileset frames sit in `OceanTile` order: rock, coral, sky, the cave tiles, then the ledge. */
+/** Coral's tile: branching stems in four tones, seamless both ways. */
+const CORAL_ROWS = [
+  '2211001122110011',
+  '2100011221000112',
+  '1103112211001122',
+  '1100112211001122',
+  '2110011221100112',
+  '2211001122110011',
+  '1221100112231001',
+  '1221100112211001',
+  '1221100112211001',
+  '1221100112211001',
+  '1122110011221100',
+  '0112213001122110',
+  '0011221100112211',
+  '0011221100112231',
+  '0012211000122110',
+  '1122110011221100',
+];
+
+/**
+ * Terrain sheets. The tileset frames sit in `OceanTile` order: rock, coral, sky, the cave tiles, the
+ * ledge, then the bounce cloud. The bounce cloud is a placeholder for sky-test (which races in the
+ * ocean theme until the sky theme lands): coral's tile in the pale waterline colours, until
+ * cloudreach phase 2 lane c draws a proper pale, springy cloud block.
+ */
 export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
   {
     key: OceanTex.tiles,
@@ -50,31 +75,11 @@ export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
           '1000011000330011',
         ],
       },
-      {
-        name: 'coral',
-        palette: TerrainPalette.coral,
-        rows: [
-          '2211001122110011',
-          '2100011221000112',
-          '1103112211001122',
-          '1100112211001122',
-          '2110011221100112',
-          '2211001122110011',
-          '1221100112231001',
-          '1221100112211001',
-          '1221100112211001',
-          '1221100112211001',
-          '1122110011221100',
-          '0112213001122110',
-          '0011221100112211',
-          '0011221100112231',
-          '0012211000122110',
-          '1122110011221100',
-        ],
-      },
+      { name: 'coral', palette: TerrainPalette.coral, rows: CORAL_ROWS },
       SKY_TILE,
       ...CAVE_TILES,
       { name: 'ledge', palette: BRANCH_PALETTE, rows: LEDGE_ROWS },
+      { name: 'bounce', palette: TerrainPalette.waterline, rows: CORAL_ROWS },
     ],
   },
   sheet(OceanTex.coralDebris, TerrainPalette.coral, {
