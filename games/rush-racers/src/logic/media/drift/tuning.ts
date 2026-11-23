@@ -27,7 +27,7 @@ export const DRIFT_TUNING = {
   extra: {
     cruise: 115,
     overDrag: 44,
-    idleBrake: 8,
+    idleBrake: 6,
     bounce: 0.5,
     bounceMinSpeed: 40,
     dustCruiseMul: 0.6,
