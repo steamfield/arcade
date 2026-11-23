@@ -83,8 +83,6 @@ interface Card {
 /** Select scene. The runtime reads input for it each tick. */
 export class SelectScene extends Phaser.Scene {
   private readonly rt: Runtime;
-  /** The course the race will run on, whose world cast the screen shows. */
-  private course: Course;
   private backdrop: Backdrop | null = null;
   private cells: Cell[] = [];
   private card: Card | null = null;
@@ -95,7 +93,11 @@ export class SelectScene extends Phaser.Scene {
   constructor(rt: Runtime) {
     super('select');
     this.rt = rt;
-    this.course = rt.course;
+  }
+
+  /** The course the race will run on, whose world cast the screen shows. */
+  private get course(): Course {
+    return this.rt.course;
   }
 
   create(): void {
@@ -113,7 +115,6 @@ export class SelectScene extends Phaser.Scene {
       outline: true,
       align: 'center',
     });
-    this.course = rt.course;
     this.cells = CHARACTER_IDS.map((character, index) => addCell(this, character, index, this.course));
     this.card = addCard(this, this.course, rt.selectedCharacter);
     this.preview = this.add

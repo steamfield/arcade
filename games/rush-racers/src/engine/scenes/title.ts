@@ -15,7 +15,7 @@ import { levelOf } from '../../logic/courses/index.ts';
 import { bestFor } from '../../logic/records.ts';
 import { NEW_GAME } from '../../logic/save.ts';
 import type { CharacterId, Difficulty } from '../../logic/types.ts';
-import { DIFFICULTIES } from '../../logic/types.ts';
+import { CHARACTER_IDS, DIFFICULTIES } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { Frame } from '../art/keys.ts';
 import { BUTTON_HEIGHT } from '../art/ui/button.ts';
@@ -61,13 +61,21 @@ const BLINK = { on: 32, off: 16 } as const;
 /** Racer sprites are 16 px wide and swap swim frames this often. */
 const RACER_WIDTH = 16;
 const STROKE_TICKS = 8;
-/** Who swims past, each one's speed across the lane in px per tick, and where it starts, so they spread out and overtake. */
-const SWIMMERS: readonly { character: CharacterId; speed: number; offset: number }[] = [
-  { character: 'rudy', speed: 0.75, offset: 210 },
-  { character: 'gil', speed: 0.6, offset: 150 },
-  { character: 'streak', speed: 0.9, offset: 60 },
-  { character: 'onyx', speed: 0.5, offset: 0 },
+/**
+ * Each title racer's speed across the lane in px per tick and where it starts, so they spread out and
+ * overtake. The first four character slots take these in order.
+ */
+const LANE_PACE: readonly { speed: number; offset: number }[] = [
+  { speed: 0.75, offset: 210 },
+  { speed: 0.6, offset: 150 },
+  { speed: 0.9, offset: 60 },
+  { speed: 0.5, offset: 0 },
 ];
+/** Who swims past: the first character slots, one per lane pace. */
+const SWIMMERS: readonly { character: CharacterId; speed: number; offset: number }[] = LANE_PACE.map((pace, index) => ({
+  character: CHARACTER_IDS[index] as CharacterId,
+  ...pace,
+}));
 const MEDAL_FOR_PLACE: Partial<Record<number, MedalFrameKey>> = {
   1: MedalFrame.first,
   2: MedalFrame.second,

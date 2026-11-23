@@ -96,7 +96,7 @@ export class ResultsScene extends Phaser.Scene {
       const id = standings[index];
       if (id) addPlinth(this, cast, racerIn(world, id).character, plinth);
     }
-    this.standings = createStandings(this, world, standings, course);
+    this.standings = createStandings(this, world, standings, course, cast);
     this.rowsSettleAt = (standings.length - 1) * ROW_EVERY_TICKS + ROW_SLIDE.ticks;
     this.ribbon = createRibbon(this);
     this.menuView = createMenuView(this, MENU, MENU_OPTIONS.results);
@@ -149,8 +149,9 @@ function createStandings(
   world: World,
   standings: readonly RacerId[],
   course: Course,
+  cast: CastSkin,
 ): StandingsView {
-  const { heads } = skinFor(course).cast;
+  const { heads } = cast;
   const rows = standings.map((id, index) => {
     const racer = racerIn(world, id);
     const y = ROWS.y + index * ROWS.pitch;
