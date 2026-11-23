@@ -2,8 +2,10 @@
  * Drift's rival pilot (`Medium.steer`). It steers by velocity: from the aim along the way (the smash
  * field while it can break ice, the ram field always for a rival that rams ice), a bounded wobble
  * and a bend round any hazard in the way (`ai/avoid.ts`), it works out the velocity it wants and
- * holds the stick from its current velocity toward that one, so one rule brakes, corrects sideways
- * drift and turns.
+ * holds the stick along the acceleration it needs to get there: toward that velocity, less the pull
+ * of the gravity wells it is already getting. So one rule brakes, corrects sideways drift and turns,
+ * lets a planet do the turning where its pull points the way it wants to go, and burns against a
+ * pull that points elsewhere, such as out of a black hole's reach.
  *
  * The speed it wants is the larger of its cruise and the speed it already has along its aim, so it
  * keeps what a dash or a wind lane gave it, capped at the speed it can shed with its thrust over the
@@ -17,6 +19,7 @@
  *
  * It reads only the draws it is handed, never the rng.
  */
+import { TICK_DT } from '@arcade/core';
 import { breaksCoralOnContact, racerSeesInDark } from '../../abilities.ts';
 import { avoidHazards } from '../../ai/avoid.ts';
 import { playerHasLanternLight } from '../../difficulty-level.ts';
@@ -25,9 +28,11 @@ import { cos, length, sin } from '../../num.ts';
 import { canDash, dashCharges } from '../../powerups/dash-meter.ts';
 import { holds } from '../../powerups/inventory.ts';
 import { CORAL_BREAKERS } from '../../powerups/tuning.ts';
+import { centreOf } from '../../racers.ts';
 import { type MoveModifiers, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
+import { driftPullAt } from './env.ts';
 import { freeDistanceAlong, wayRunsStraight } from './lookahead.ts';
 import { driftCruise, driftExtras } from './tuning.ts';
 import { type DriftRoute, driftRouteAim } from './way.ts';
@@ -48,6 +53,8 @@ const BRAKE_LOOKAHEAD_PX = 8 * TILE;
 const BRAKE_SHARE = 0.6;
 /** Below this gap, in px/s, between its velocity and the one it wants, it simply thrusts along its aim. */
 const SETTLED_PX_S = 0.5;
+/** The acceleration, px/s², of closing a settled gap in one tick: below it there is nothing to burn for. */
+const SETTLED_PX_S2 = SETTLED_PX_S / TICK_DT;
 /** Dash only when moving within about 37 degrees of the aim. */
 const DASH_ALIGNMENT = 0.8;
 /** Tiles the way must run straight ahead for a dash. */
@@ -105,7 +112,7 @@ export function steerDrifter(
   // A swerving rival holds its dash, which would carry it on toward the hazard.
   const kick = !swerving && wantsDash(world, racer, aim, draws.kick);
   // A dash fires along the stick, so on its tick the stick points where it wants to go.
-  const move = kick ? unitOr(wanted, aim) : stickToward(racer, wanted, aim);
+  const move = kick ? unitOr(wanted, aim) : stickToward(world, racer, wanted, aim, mods);
   return { move, kick, kickHeld: kick, aim, recovering: false };
 }
 
@@ -170,12 +177,30 @@ function unitOr(vector: Vec, fallback: Vec): Vec {
   return size === 0 ? { ...fallback } : { x: vector.x / size, y: vector.y / size };
 }
 
-/** The unit stick from the racer's velocity toward `wanted`; along `aim` once it is there. */
-function stickToward(racer: Racer, wanted: Vec, aim: Vec): Vec {
-  const dx = wanted.x - racer.body.vx;
-  const dy = wanted.y - racer.body.vy;
-  const gap = length(dx, dy);
-  return gap < SETTLED_PX_S ? { ...aim } : { x: dx / gap, y: dy / gap };
+/**
+ * The unit stick along the acceleration that takes the racer's velocity to `wanted`: the gap closed
+ * in one tick, no harder than its thrust, less the pull of the wells on it. Along `aim` once nothing
+ * is left to do.
+ *
+ * @throws {Error} When the world's tuning lacks one of drift's extras.
+ */
+function stickToward(world: World, racer: Racer, wanted: Vec, aim: Vec, mods: MoveModifiers): Vec {
+  const thrust = effectiveTuning(world).force * mods.forceMul;
+  const closing = limitLength(
+    { x: (wanted.x - racer.body.vx) / TICK_DT, y: (wanted.y - racer.body.vy) / TICK_DT },
+    thrust,
+  );
+  const pull = driftPullAt(world, centreOf(racer));
+  const needed = { x: closing.x - pull.x, y: closing.y - pull.y };
+  const size = length(needed.x, needed.y);
+  return size < SETTLED_PX_S2 ? { ...aim } : { x: needed.x / size, y: needed.y / size };
+}
+
+/** `vector` shortened to `limit` if it is longer. */
+function limitLength(vector: Vec, limit: number): Vec {
+  const size = length(vector.x, vector.y);
+  if (size <= limit) return vector;
+  return { x: (vector.x / size) * limit, y: (vector.y / size) * limit };
 }
 
 /**

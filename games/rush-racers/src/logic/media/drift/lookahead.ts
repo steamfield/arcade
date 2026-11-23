@@ -1,8 +1,10 @@
 /**
  * What a drift pilot looks ahead for: how far a racer can slide before a wall, and whether the way
- * on runs straight. Only the pilot reads these; the `Medium` members live in `way.ts`.
+ * on runs straight. A tile whose centre is inside a black hole's horizon counts as a wall. Only the
+ * pilot reads these; the `Medium` members live in `way.ts`.
  */
-import { downhillPath, hasClearSweep, openTiles, tileOf } from '../../ai/steer.ts';
+import { downhillPath, openTiles, tileOf } from '../../ai/steer.ts';
+import { holeAt } from '../../level/wells.ts';
 import { length } from '../../num.ts';
 import { type Box, TILE, type Vec, type World } from '../../types.ts';
 import { driftNav } from './way-data.ts';
@@ -18,13 +20,22 @@ const centreOf = (body: Box): Vec => ({ x: body.x + body.w / 2, y: body.y + body
 const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE });
 
 /**
- * How far, in px, `body` can slide along the unit `dir` before its box touches a solid tile, up to
- * `maxPx`. `maxPx` when `dir` is zero. With `throughIce`, unbroken ice counts as open, for a racer
- * that will break what it flies into.
+ * Which tiles a pilot may fly into: open ones (and unbroken ice with `throughIce`) whose centre is
+ * outside every black hole's horizon.
+ */
+function flyableTiles(world: World, throughIce: boolean): (tx: number, ty: number) => boolean {
+  const open = openTiles(world.level, world.broken, throughIce);
+  return (tx, ty) => open(tx, ty) && holeAt(world.level, tileCentre({ x: tx, y: ty })) === null;
+}
+
+/**
+ * How far, in px, `body` can slide along the unit `dir` before its box touches a solid tile or a
+ * tile inside a horizon, up to `maxPx`. `maxPx` when `dir` is zero. With `throughIce`, unbroken
+ * ice counts as open, for a racer that will break what it flies into.
  */
 export function freeDistanceAlong(world: World, body: Box, dir: Vec, maxPx: number, throughIce = false): number {
   if (dir.x === 0 && dir.y === 0) return maxPx;
-  const open = openTiles(world.level, world.broken, throughIce);
+  const open = flyableTiles(world, throughIce);
   const halfW = body.w / 2 - EDGE_INSET_PX;
   const halfH = body.h / 2 - EDGE_INSET_PX;
   const from = centreOf(body);
@@ -44,14 +55,15 @@ export function freeDistanceAlong(world: World, body: Box, dir: Vec, maxPx: numb
 
 /**
  * True when the steer field runs `tiles` steps on from `body`'s tile, the body can slide straight
- * to the last of them, and that tile lies within about 18 degrees of the unit `dir`.
+ * to the last of them past no wall or horizon, and that tile lies within about 18 degrees of the
+ * unit `dir`.
  *
  * @throws {Error} When the world's nav was built by another medium.
  */
 export function wayRunsStraight(world: World, body: Box, dir: Vec, tiles: number): boolean {
   const nav = driftNav(world.nav);
   const centre = centreOf(body);
-  const path = downhillPath(nav.steer, nav, openTiles(world.level, world.broken, false), tileOf(centre), tiles);
+  const path = downhillPath(nav.steer, nav, flyableTiles(world, false), tileOf(centre), tiles);
   const last = path[tiles - 1];
   if (!last) return false;
   const end = tileCentre(last);
@@ -59,5 +71,6 @@ export function wayRunsStraight(world: World, body: Box, dir: Vec, tiles: number
   const dy = end.y - centre.y;
   const distance = length(dx, dy);
   if (distance === 0 || (dx * dir.x + dy * dir.y) / distance < STRAIGHT_ALIGNMENT) return false;
-  return hasClearSweep(world.level, world.broken, body, end);
+  const towardEnd = { x: dx / distance, y: dy / distance };
+  return freeDistanceAlong(world, body, towardEnd, distance) >= distance;
 }

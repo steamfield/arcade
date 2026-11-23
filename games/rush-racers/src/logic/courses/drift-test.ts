@@ -18,6 +18,10 @@ import type { ShippedCourse } from './types.ts';
  *   drops down cols 74-80 and runs along rows 15-21, with a solar wind lane at rows 17-18 pushing it on.
  * - Cols 93-118: the run home, past a dust field (cols 97-107, rows 9-16) with clean lanes above and
  *   below it, stardust and a supply pod; the finish is col 118.
+ *
+ * Two gravity wells: a planet (its body is the asteroid rock at the inside of the first bend, col 37
+ * row 11) whose pull swings a racer round the bend, and a black hole in the rock above the shortcut
+ * (col 89 row 2), its reach dipping into the tunnel's upper row and its horizon wholly inside rock.
  */
 const LEVEL: LevelDef = {
   name: 'Drift Test',
@@ -47,6 +51,10 @@ const LEVEL: LevelDef = {
     ########################################################################################################################
     ########################################################################################################################
   `,
+  wells: [
+    { col: 37, row: 11, reach: 6, pull: 160 },
+    { col: 89, row: 2, reach: 3.5, pull: 300, horizon: 1.5 },
+  ],
 };
 
 /**
