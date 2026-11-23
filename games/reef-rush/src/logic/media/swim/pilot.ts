@@ -10,13 +10,15 @@
  * than RESERVE_WAIVED_BEHIND places, or is latched (`hasDashToSpend`).
  *
  * In a dark zone (`inDark`) a rival that can't see (`racerSeesInDark`: not Selene, no Glow Lantern)
- * wobbles twice as far and re-reads its field half as often.
+ * wobbles twice as far and re-reads its field half as often; so does the player, unless its level
+ * lights its way (`playerHasLanternLight`, Easy).
  *
  * It reads only the draws it is handed, never the rng, so rng use per tick is the generic AI's.
  */
 import { breaksCoralOnContact, racerSeesInDark } from '../../abilities.ts';
 import { avoidHazards } from '../../ai/avoid.ts';
 import { steerDirection } from '../../ai/steer.ts';
+import { playerHasLanternLight } from '../../difficulty-level.ts';
 import { inDark } from '../../level/query.ts';
 import { cos, length, sin } from '../../num.ts';
 import { canDash, dashCharges } from '../../powerups/dash-meter.ts';
@@ -73,7 +75,7 @@ export function steerSwimmer(
   const ai = racer.ai;
   if (!ai) throw new Error(`swim.steer needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
   const memory = swimPilot(ai.pilot);
-  const blind = inDark(world.level, racer.body) && !racerSeesInDark(racer);
+  const blind = inDark(world.level, racer.body) && !racerSeesInDark(racer) && !playerHasLanternLight(world, racer);
   replanAim(world, racer, memory, blind ? DARK_STEERING.reactionMul : 1);
   stepWobble(memory, racer.profile.wobble * (blind ? DARK_STEERING.wobbleMul : 1), draws.wobble);
   const wobbled = wobbledAim(memory);

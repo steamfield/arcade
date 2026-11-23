@@ -81,6 +81,8 @@ export interface DifficultyTuning {
   guide: GuideTuning;
   /** How hard sharks hunt. */
   shark: SharkTuning;
+  /** The player carries a Glow Lantern's light in dark zones without holding one (`playerHasLanternLight`). */
+  playerLantern: boolean;
 }
 
 /** Easy's shark: short sight, a narrow lane, a long rest after a charge, and a charge that never turns. */
@@ -116,6 +118,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     playerClamWeightMul: {},
     guide: NO_GUIDE,
     shark: HUNTING_SHARK,
+    playerLantern: false,
   },
   normal: {
     rivalForceMul: 0.95,
@@ -130,6 +133,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     playerClamWeightMul: {},
     guide: NO_GUIDE,
     shark: HUNTING_SHARK,
+    playerLantern: false,
   },
   easy: {
     rivalForceMul: 0.85,
@@ -144,8 +148,17 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     playerClamWeightMul: { jetFin: 3, bubbleShield: 2 },
     guide: { enabled: true, assistGraceTicks: 30, assistHoldTicks: 90, assistBlend: 1, showTicks: 90 },
     shark: PATIENT_SHARK,
+    playerLantern: true,
   },
 };
+
+/**
+ * True when `racer` is the player on a level that lights its way in the dark (Easy): its light pool
+ * reaches as far as a Glow Lantern's and it steers there as if lit, though the zone stays dark.
+ */
+export function playerHasLanternLight(world: World, racer: Racer): boolean {
+  return racer.id === 'player' && tuningOf(world).playerLantern;
+}
 
 /** The tuning of the world's level. */
 export function tuningOf(world: World): DifficultyTuning {

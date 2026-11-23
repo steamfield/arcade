@@ -23,6 +23,7 @@
  */
 import Phaser from 'phaser';
 import { racerSeesInDark } from '../../logic/abilities.ts';
+import { playerHasLanternLight } from '../../logic/difficulty-level.ts';
 import { selectedItem } from '../../logic/powerups/inventory.ts';
 import { playerOf } from '../../logic/racers.ts';
 import { TILE, type Vec, type World } from '../../logic/types.ts';
@@ -106,7 +107,8 @@ export function createDarkView(scene: Phaser.Scene, world: World, tint: DarkTint
           const racer = current.racers[index];
           if (!racer) continue;
           const isPlayer = racer.id === 'player';
-          const reach = lightRadius(isPlayer, selectedItem(racer)?.kind === 'glowLantern');
+          const lantern = selectedItem(racer)?.kind === 'glowLantern' || playerHasLanternLight(current, racer);
+          const reach = lightRadius(isPlayer, lantern);
           const key = lightKeys.get(reach - flicker(current.tick, index, reducedMotion));
           if (!key) continue;
           const { x, y, w, h, vx, vy } = racer.body;

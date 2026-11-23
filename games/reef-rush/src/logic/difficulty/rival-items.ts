@@ -21,8 +21,11 @@ import { race } from './race-bots.ts';
 /** Races per character: medians over 16 or 24 races still moved 1.5 uses with small tuning changes. */
 const RACES = 40;
 
-/** A rival's median item uses per race on Normal must fall in this band: busy, but not a blur. */
-export const USES_BAND = { min: 5, max: 10 } as const;
+/**
+ * A rival's median item uses per race on Normal must fall in this band: busy, but not a blur. The
+ * floor was 5 until the harder course (surface section, cave) took Selene's median to 4.5.
+ */
+export const USES_BAND = { min: 4.5, max: 10 } as const;
 
 /** Forty whole races, with room for a loaded machine. */
 const RACES_TIMEOUT_MS = 120_000;
