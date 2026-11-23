@@ -8,10 +8,10 @@
  * pulse holds steady instead of blinking.
  */
 import type Phaser from 'phaser';
-import { playerOf } from '../../logic/racers.ts';
 import type { World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { DISPLAY_FACE, measureText } from '../art/ui/typeface.ts';
+import { localOf } from '../local-racer.ts';
 import { isTouchScreen } from '../touch.ts';
 import { type ActionName, actionGlyphWidth, createActionGlyph, GLYPH_SIZE } from './control-glyphs.ts';
 import type { HintState } from './hints.ts';
@@ -81,7 +81,8 @@ export function createHintView(
 
   return {
     sync(world, hints, view) {
-      const body = playerOf(world).body;
+      // The local racer is the one the player steers, so the hints sit beside it.
+      const body = localOf(world).body;
       const playerY = body.y + body.h / 2 - view.y;
       const centreY = clearOfSplash(anchorY(playerY, GLYPH_SIZE), playerY, layout);
       const lit = !reducedMotion && Math.floor(world.tick / PULSE_TICKS) % 2 === 1;

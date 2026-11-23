@@ -10,9 +10,9 @@ import { TICK_HZ } from '@arcade/core';
 import Phaser from 'phaser';
 import { courseOf } from '../../logic/courses/index.ts';
 import { selectedItem } from '../../logic/powerups/inventory.ts';
-import { playerOf } from '../../logic/racers.ts';
 import type { World } from '../../logic/types.ts';
 import { createFx } from '../fx/index.ts';
+import { localIdOf, localOf } from '../local-racer.ts';
 import type { Runtime } from '../runtime.ts';
 import { themeFor } from '../themes/index.ts';
 import { createAttackView } from '../view/attack-view.ts';
@@ -73,7 +73,7 @@ export class RaceScene extends Phaser.Scene {
     const attacks = createAttackView(this, reducedMotion);
     const racers = world.racers.map((racer) => ({
       racer,
-      view: createRacerView(this, racer, reducedMotion),
+      view: createRacerView(this, racer, reducedMotion, localIdOf(world)),
       effects: createPowerupView(this, racer.id, reducedMotion),
     }));
     const themeLayers = theme.extraLayers(this, world);
@@ -90,7 +90,7 @@ export class RaceScene extends Phaser.Scene {
     const guide = createGuideView(this, reducedMotion, layout);
     const fireIcon = createFireButtonIcon(this);
     const fx = createFx(this, world, theme, reducedMotion);
-    const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
+    const camera = followRacer(this.cameras.main, localOf(world).body, world.level);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
 
     const stopListening = this.rt.listen((events) => {
@@ -125,7 +125,7 @@ export class RaceScene extends Phaser.Scene {
       hud.sync(current);
       hints.sync(current, this.rt.hints, this.cameras.main.worldView);
       guide.sync(current, this.rt.hints.guide, this.cameras.main.worldView);
-      fireIcon.sync(selectedItem(playerOf(current))?.kind ?? null);
+      fireIcon.sync(selectedItem(localOf(current))?.kind ?? null);
       fx.sync(current);
       // After the camera moved, so the darkness lines up with this frame's scroll.
       dark.sync(current);

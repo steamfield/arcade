@@ -1,10 +1,12 @@
 /**
  * Where the lock-on warning goes. Pure geometry in screen px, kept out of the Phaser view so it
- * can be tested without a renderer: which squid is hunting the player, and where on the screen's
+ * can be tested without a renderer: which squid is hunting the local racer (the slot the screen
+ * follows), and where on the screen's
  * edge its arrow sits so it points at the squid without landing under the HUD or the touch controls.
  */
-import { playerOf } from '../../logic/racers.ts';
+
 import type { Squid, World } from '../../logic/types.ts';
+import { localOf } from '../local-racer.ts';
 import { BASE_LAYOUT, type Rect, type ScreenLayout } from './screen-layout.ts';
 
 export type { Rect } from './screen-layout.ts';
@@ -32,15 +34,15 @@ export const TOUCH_ZONES: readonly Rect[] = BASE_LAYOUT.touchZones;
 const STANDOFF = 14;
 const EIGHTH_TURN = Math.PI / 4;
 
-/** The squid closest to the player among those that have locked on to them, or null when none has. */
-export function squidHuntingPlayer(world: World): Squid | null {
-  const player = playerOf(world);
-  const px = player.body.x + player.body.w / 2;
-  const py = player.body.y + player.body.h / 2;
+/** The squid closest to the local racer among those that have locked on to it, or null when none has. */
+export function squidHuntingLocal(world: World): Squid | null {
+  const local = localOf(world);
+  const px = local.body.x + local.body.w / 2;
+  const py = local.body.y + local.body.h / 2;
   let nearest: Squid | null = null;
   let nearestDistance = Number.POSITIVE_INFINITY;
   for (const squid of world.squids) {
-    if (squid.target?.kind !== 'racer' || squid.target.id !== 'player') continue;
+    if (squid.target?.kind !== 'racer' || squid.target.id !== local.id) continue;
     const distance = Math.hypot(squid.x - px, squid.y - py);
     if (distance < nearestDistance) {
       nearest = squid;

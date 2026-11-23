@@ -1,6 +1,6 @@
 /**
  * The audio seam. The runtime hands every tick's drained events and the
- * player's race progress to an `AudioPort`; behind it, `createAudio` wires a
+ * local racer's race progress to an `AudioPort`; behind it, `createAudio` wires a
  * WebAudio chip synth, the song sequencer and the event adapter together.
  */
 
@@ -16,7 +16,7 @@ import { createSynth, type Synth } from './synth.ts';
 export interface AudioPort {
   /** Called once per tick with the events drained that tick, in order. */
   onEvents(events: readonly Stamped<RuntimeEvent>[]): void;
-  /** Called each racing tick with the player's progress, 0 at the start line to 1 at the finish. */
+  /** Called each racing tick with the local racer's progress, 0 at the start line to 1 at the finish. */
   onRaceProgress(fraction: number): void;
   setMuted(muted: boolean): void;
   dispose(): void;
@@ -39,8 +39,9 @@ const SILENT: AudioPort = {
 
 /**
  * Creates the game's audio on its own AudioContext, registered with the shell so it is
- * resumed after a gesture or an iOS interruption. `hearing.audibleFromPlayer` says which racers are near enough
- * for their attacks to be heard, and `hearing.enemyAudible` which enemies (by index in `world.enemies`). `events` is the runtime's log, where
+ * resumed after a gesture or an iOS interruption. `hearing.audibleFromLocal` says which racers are near enough
+ * for their attacks to be heard, `hearing.enemyAudible` which enemies (by index in `world.enemies`), and
+ * `hearing.localRacer` which slot the screen follows. `events` is the runtime's log, where
  * `audio.played` is emitted once a sound actually starts. `settings.muted` applies at once.
  * When WebAudio can't be set up the failure goes to `ctx.reportError` and the game runs silent.
  */
@@ -48,7 +49,7 @@ export function createAudio(
   ctx: GameContext,
   settings: Settings,
   events: EventSink<RuntimeEvent>,
-  hearing: Pick<AdapterOptions, 'audibleFromPlayer' | 'enemyAudible'>,
+  hearing: Pick<AdapterOptions, 'audibleFromLocal' | 'enemyAudible' | 'localRacer'>,
   raceSong: () => SongName,
 ): AudioPort {
   const reportError = (error: unknown) => ctx.reportError('audio', error);

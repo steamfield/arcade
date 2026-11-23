@@ -58,7 +58,7 @@ import { ramCoral } from './race/coral.ts';
 import { buildProgressField } from './race/flowfield.ts';
 import { rivalProfileOf, type Seat, seatsFor } from './race/seats.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
-import { activeHumans, activeRacers, centreOf, noItems, playerOf } from './racers.ts';
+import { activeHumans, activeRacers, centreOf, noItems } from './racers.ts';
 import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
 import {
   type CharacterId,
@@ -349,11 +349,15 @@ function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, m
 }
 
 /**
- * Small, stable view for the CLI summary and scenario assertions. `items` has one entry per slot,
- * `'kind:charges'` or null, and `selected` is the selected slot.
+ * Small, stable view for the CLI summary and scenario assertions, about the racer in slot `id`
+ * (slot 1 when omitted). `items` has one entry per slot, `'kind:charges'` or null, and `selected`
+ * is the selected slot.
+ *
+ * @throws {Error} When the world has no racer in slot `id`; createWorld always fills every slot.
  */
-export function summarize(world: World) {
-  const player = playerOf(world);
+export function summarize(world: World, id: RacerId = 'player') {
+  const player = world.racers.find((racer) => racer.id === id);
+  if (!player) throw new Error(`World has no racer in slot '${id}'; build worlds with createWorld`);
   return {
     tick: world.tick,
     phase: world.race.phase,
