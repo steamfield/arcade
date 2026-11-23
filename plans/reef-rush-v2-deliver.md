@@ -72,7 +72,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/reef-rush/src/, games/reef-rush/scenarios/, games/reef-rush/tests/, games/reef-rush/DESIGN.md, games/reef-rush/UI.md | plans/reef-rush-v2.md, this plan | | opus | running | v2-1a | check, smoke and the new tests pass |
+| a | L | games/reef-rush/src/, games/reef-rush/scenarios/, games/reef-rush/tests/, games/reef-rush/DESIGN.md, games/reef-rush/UI.md | plans/reef-rush-v2.md, this plan | | opus | merged | v2-1a | check, smoke and the new tests pass |
 
 #### Lane a brief
 
