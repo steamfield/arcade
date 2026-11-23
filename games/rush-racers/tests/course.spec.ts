@@ -1,10 +1,22 @@
+/**
+ * `?course=` and the course a session races: a listed or unknown id from the URL, and Bramble Run
+ * picked on course select becoming the save's last course, which the title's best line follows.
+ */
 import { expect, test } from '@arcade/testing/playwright';
-import { TITLE_TO_RACE } from '../scenarios/kit.ts';
+import { IDLE_TO_RESULTS, TITLE_TO_RACE, tap, wait } from '../scenarios/kit.ts';
 
 test('?course=sunlit-shallows races Sunlit Shallows', async ({ game }) => {
   await game.open({ query: { course: 'sunlit-shallows' } });
   await game.play(TITLE_TO_RACE);
   expect(await game.summary()).toMatchObject({ scene: 'race', course: 'sunlit-shallows', medium: 'swim' });
+  expect(game.console.filter((line) => line.includes('unknown course'))).toEqual([]);
+});
+
+test('?course=bramble-run races Bramble Run on foot', async ({ game }) => {
+  await game.open({ query: { course: 'bramble-run' } });
+  // Course select opens on the course in force, so the walk's fire on it keeps Bramble Run.
+  await game.play(TITLE_TO_RACE);
+  expect(await game.summary()).toMatchObject({ scene: 'race', course: 'bramble-run', medium: 'run' });
   expect(game.console.filter((line) => line.includes('unknown course'))).toEqual([]);
 });
 
@@ -16,4 +28,48 @@ test('an unknown ?course= warns once and races Sunlit Shallows', async ({ game }
   expect(game.console.filter((line) => line.includes('unknown course'))).toEqual([
     expect.stringMatching(/^\[warning\] \[rush-racers\] unknown course in \?course=, racing the default/),
   ]);
+});
+
+/** A v6 save on Hard with a best on each listed course and Sunlit Shallows as the last course raced. */
+const TWO_COURSE_SAVE = {
+  version: 6,
+  savedAt: '2026-11-23T00:00:00.000Z',
+  data: {
+    bests: {
+      'sunlit-shallows': { easy: null, normal: null, hard: { ticks: 5400, place: 1 } },
+      'bramble-run': { easy: null, normal: null, hard: { ticks: 6000, place: 2 } },
+    },
+    lastCourse: 'sunlit-shallows',
+    races: 0,
+    settings: { muted: false, reducedMotion: null, difficulty: 'hard' },
+    character: 'rudy',
+  },
+};
+
+/** The title's best line for each course in `TWO_COURSE_SAVE` on Hard. */
+const SUNLIT_BEST = 'Best 1:30.00 (1st)';
+const BRAMBLE_BEST = 'Best 1:40.00 (2nd)';
+
+test('a race on Bramble Run makes it the last course, and the title shows its best, after a reload too', async ({
+  game,
+}) => {
+  await game.open();
+  await game.loadState(TWO_COURSE_SAVE);
+  expect(await game.summary()).toMatchObject({ scene: 'title', course: 'sunlit-shallows', best: SUNLIT_BEST });
+
+  // Race, down to Bramble Run and pick it, then race as the saved pick and stand still to a DNF.
+  await game.play([wait(25), tap('fire'), wait(5), tap('down'), wait(20), tap('fire'), wait(25), tap('fire')]);
+  await game.play([wait(IDLE_TO_RESULTS)]);
+  expect(await game.summary()).toMatchObject({ scene: 'results', course: 'bramble-run', medium: 'run' });
+  // A DNF saves no best, so both bests stay the save's.
+  expect(await game.state()).toMatchObject({
+    save: { lastCourse: 'bramble-run', races: 1, bests: TWO_COURSE_SAVE.data.bests },
+  });
+
+  // Results' Title, two rows down, shows Bramble Run's best.
+  await game.play([tap('down'), wait(1), tap('down'), tap('fire'), wait(5)]);
+  expect(await game.summary()).toMatchObject({ scene: 'title', course: 'bramble-run', best: BRAMBLE_BEST });
+
+  await game.open();
+  expect(await game.summary()).toMatchObject({ scene: 'title', course: 'bramble-run', best: BRAMBLE_BEST });
 });

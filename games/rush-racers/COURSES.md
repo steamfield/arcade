@@ -1,8 +1,8 @@
-# Courses and media
+# Courses, media and worlds
 
-How to add a course (a new level with its own look and song) and how to add a medium (a new movement style: swim today, flight next). Both plug into registries; no generic race code changes. Paths below are under `games/rush-racers/src/`.
+How to add a course (a new level with its own look and song), a medium (a new movement style: swim and run today) and a world (a medium with its own cast, names, art, theme, song and courses: Reef and Thornwood today). All plug into registries; no generic race code changes. Paths below are under `games/rush-racers/src/`.
 
-A **course** is data: a level, the medium it races in, a theme and song id, a par time and optional tuning. A **medium** is code: physics, environment, navigation, rival steering and a few rules the generic systems read. A **theme** is engine art for a course. Logic never imports the engine; the engine maps a course's theme and song ids to art and music.
+A **course** is data: a level, the world it races in (which names its medium), a theme and song id, a par time and optional tuning. A **medium** is code: physics, environment, navigation, rival steering and a few rules the generic systems read. A **world** is the medium plus everything a player reads or sees per world: the cast's names and art, and the names and art of the shared items, pickups, enemies and hazards. A **theme** is engine art for a course. Logic never imports the engine; the engine maps a course's theme and song ids to art and music.
 
 ## Add a course
 
@@ -27,7 +27,7 @@ export const KELP_FOREST: Course = {
   id: 'kelp-forest',          // saves, ?course= and the registry key; never change it once shipped
   name: 'Moonlit Kelp Forest', // course select and results
   level: LEVEL,               // a LevelDef: ascii, optional dark zones, optional legend
-  medium: 'swim',             // a key of MEDIA
+  world: 'reef',              // a key of WORLDS; the world names the medium
   theme: 'kelp-forest',       // a key of THEMES
   song: 'kelp',               // a key of songs
   listed: true,               // false: only ?course= and tests reach it; it never gets a best
@@ -130,7 +130,7 @@ Everything the medium knows lives in its own folder, `logic/media/<medium-id>/`.
 
 Moving a body through the tiles (`logic/race/move.ts`) and separating racers (`logic/race/separate.ts`) is generic, so a medium only sets velocity.
 
-Outside the folder, the code needs two lines: the medium in `MEDIA` (`logic/media/index.ts`) and its id in `ShippedMediumId` (`logic/courses/types.ts`). `logic/media/types.ts` doesn't change. Then add a course that races in it (an unlisted test course is enough to start), and a How to Play move page: `engine/view/how-to-play/<medium-id>-page.ts` with its entry in `MOVE_PAGES` (`engine/view/how-to-play/index.ts`). `MOVE_PAGES` is keyed by `ShippedMediumId`, so a shipped medium without a page fails to compile; `move-page.ts` is swim's.
+Outside the folder, the code needs two lines: the medium in `MEDIA` (`logic/media/index.ts`) and its id in `ShippedMediumId` (`logic/courses/types.ts`). `logic/media/types.ts` doesn't change. Then add a course that races in it (an unlisted test course is enough to start), and How to Play pages: `engine/view/how-to-play/<medium-id>-page.ts` with its entry in `MEDIUM_PAGES` (`engine/view/how-to-play/index.ts`), plus crates and enemies pages where the medium plays them differently (run's are `run-crates-page.ts` and `run-enemies-page.ts`). `MEDIUM_PAGES` is keyed by `ShippedMediumId`, so a shipped medium without a move page fails to compile; `move-page.ts` is swim's, `run-page.ts` run's. A medium is raced through a world, so a new one also needs a world (below), or a test world from `courseFromLevel(level, medium)` in `logic/test-world.ts` while it is being built.
 
 ### Data shapes and accessors
 
@@ -172,7 +172,8 @@ The medium's own code reads its data only through these (`swimNav(world.nav)`, `
 | `distanceAt(world, tile)` | Distance to the finish from a tile; Infinity when unreachable. | Steer field value. |
 | `validateLevel(level, nav)` | Located problems that make the level unraceable in this medium; empty when fine. `createWorld` throws one `LevelError` listing them all, located at the first. | A start that can't reach the finish without breaking coral. |
 | `coralAhead(world, tile, steps)` | Whether unbroken coral lies within `steps` tiles along the medium's way from `tile`; the Puffer item choice asks it. Return false in a medium without breakable coral. | Walks the smash field. |
-| `racerCollision` | `'solid'` racers bump each other; `'ghost'` pass through. | `'solid'` |
+| `afterMove(world, racer, contacts, events)` | Runs once per unfinished racer per tick right after the generic move, with what it ran into (`MoveContacts`: floor, ceiling and the tiles bumped, walls). | Nothing. Run sets grounded, the last safe spot and falls here. |
+| `racerCollision` | `'solid'` racers bump each other; `'ghost'` pass through; `'horizontal'` push apart along x only, so one can land through another. | `'solid'` (run: `'horizontal'`) |
 | `effects` | Data the generic push rules read (below). | `dashAxes: 'both'`, bubbles and loose power-ups float up. |
 | `kickRules` | How generic counters read a kick (below). | Every counter on; Gil's spring kick applies when kicking upward. |
 
@@ -181,6 +182,10 @@ The medium's own code reads its data only through these (`swimNav(world.nav)`, `
 - `effects.dashAxes`: Jet Fin dashes, knockback from hits and the Mimic decoy hold velocity on both axes, or only horizontally when gravity should keep the vertical.
 - `effects.trappedDrift`: a racer trapped in a bubble drifts at this vertical speed (px/s, negative is up).
 - `effects.looseDrift`: a dropped, loose power-up drifts at this vertical speed.
+- `effects.stompBounce`: when set, a falling racer landing on an enemy stomps it (`enemy.bonked` with `how: 'stomp'`) and leaves at this upward speed; null keeps contact a hit or a dash bonk.
+- `effects.solidClams`: shut clams are solid and open only from below (a head bump).
+- `effects.pitBelow`: the bottom edge of the level is open, so a body can fall out; the medium decides what happens then (run respawns it in `afterMove`).
+- `effects.allowsLedges`: the level may use `=` ledges; `createWorld` rejects one otherwise.
 - `kickRules.dodgesSquid`: a kick just before contact makes a Homing Squid miss.
 - `kickRules.shakesLatch`: kicks while latched take ticks off the latch.
 - `kickRules.countersUndertow`: a kick against an Undertow cuts its pull that tick.
@@ -194,4 +199,56 @@ The progress for placing (`World.progress`) is generic and the same in every med
 
 ```
 pnpm arcade test rush-racers @media @seams @behavior
+```
+
+## Add a world
+
+A world is a medium, a cast of eight on the shared character slots, the names and art of the shared items, pickups, enemies and hazards, a theme and song, and its courses. Thornwood was built in this order, and each step leaves the game green, so the next world (air, space) follows the same recipe. Steps 1-2 are logic only; 3-5 are engine only; the course in step 6 is what puts it in front of players.
+
+### 1. The medium, if the world moves differently
+
+Follow "Add a medium" above: a folder `logic/media/<medium-id>/`, its entry in `MEDIA` and `ShippedMediumId`, and the medium's own How to Play pages. Start with a working baseline and an unlisted test course in a world (step 2), then grow physics, falls and navigation behind the same `Medium` members, the way run went from a simple way and pilot to the jump-link nav (`links.ts`, `nav.ts`, `pilot.ts`) without the members changing. If a generic seam is missing (run needed contacts from the move, ledges, open pits, `afterMove`, stomps, solid crates and sideways-only collision), add it as a `MediumEffects` field or `Medium` member that every existing medium answers so as to keep its behaviour, and prove the old courses unchanged (`top-route.test.ts`, the sfx pin). A world that reuses a medium skips this step.
+
+### 2. The logic world
+
+| File | What goes in it |
+| --- | --- |
+| `logic/worlds/<world-id>.ts` | One exported `WorldDef`, data only: `id`, `name`, `medium`, `cast` (a name per `CharacterId`), and the world's names for `items`, `pickups`, `enemies` and `hazards`. Copy `thornwood.ts`. |
+| `logic/worlds/index.ts` | Import it and add it to `WORLDS`; the only file that imports a world file. |
+| `logic/worlds/types.ts` | Add the id to `ShippedWorldId`. |
+
+Character ids are slots, not characters: the world's cast gives each slot a name, a look and the ability's wording, and keeps the slot's ability and rival profile. An ability that means nothing in the new medium gets a medium-neutral hook in `logic/abilities.ts` that the medium reads (Gil's slot jumps higher through `jumpMulFor`, which only run calls). Items, pickups and enemies keep their ids and balance.
+
+### 3. The engine skin
+
+Every view reads racer art, portraits, heads, ability wording, item icons and art, attack art, pickups, enemies, hazard glints and item and enemy words through `skinFor(course)` (`engine/worlds/index.ts`), so a new world adds files and changes no view.
+
+| File | What goes in it |
+| --- | --- |
+| `engine/worlds/<world-id>/keys.ts` | Every texture and frame name the world draws, prefixed with the world id so no key collides with another world's. |
+| `engine/worlds/<world-id>/cast.ts` | The `CastSkin` (racers, portraits, heads, ability name and blurb per slot) and `register<World>Cast(scene)`, drawing the cast's textures; pixel art in `sprites/racers.ts` and `sprites/portraits.ts`. |
+| `engine/worlds/<world-id>/objects.ts` | The `ObjectSkin` (item icons and art, attack art, pickups, enemies, glints with their own keys, and `text`: captions, `slowedBy`, the trapped word, the crates and pearls page headings) and `register<World>Objects(scene)`; pixel art in `sprites/`. |
+| `engine/worlds/<world-id>.ts` | The `WorldSkin`: wiring only. |
+| `engine/worlds/index.ts` | Its entry in `SKINS`, keyed by `ShippedWorldId`, so a world without a skin fails to compile. |
+
+`assertSkinAssets` (tests and boot) fails naming the world and key for a missing character, item, pickup, enemy or glint, and `assertSkinTextures` (boot) for a texture or frame the skin names but never drew. Each racer's main colour must hold 3:1 against every theme's contrast bands (`art/sprites/sprites.test.ts`). Thornwood first shipped a placeholder skin (Reef's art under Thornwood's words) so the medium could be raced before its art existed.
+
+### 4. The theme
+
+`engine/themes/<theme-id>.ts` built with `defineTheme`, its art under `engine/themes/<theme-id>/` (keys, sprites, palettes), its id in `ThemeId` and its entry in `THEMES`, as in "Add a course". A new medium may need tiles the old themes never drew (the forest's branch tile for `=`, earth with a grass top only where it meets open space). Fix the palette first: the backdrop bands are `contrastBands`, and every racer of every world and all global art must keep 3:1 against them. `forest.ts` is the land example.
+
+### 5. The song
+
+`engine/audio/songs/<song-id>.ts` in the game's notation, its id in `SongId` and its entry in `songs`. Its own key, tempo and hook, not a reharmonised race theme. The sfx pin over Sunlit Shallows must not change.
+
+### 6. The course
+
+Follow "Add a course": `logic/courses/<course-id>.ts` with `world: '<world-id>'` and the new theme and song, its id in `ShippedCourseId` and its entry in `COURSES`, par measured, and the difficulty bars. Ship it `listed: false` until it passes the bars, then list it, which shows it on course select (and turns course select on, if it is the second listed course: every hand-written menu walk then needs the course step, as `TITLE_TO_SELECT` in `scenarios/kit.ts` has). Thornwood's unlisted `run-test` came first, to build the medium on; Bramble Run followed once the nav and art were in.
+
+### 7. Docs and checks
+
+DESIGN.md gets the world's section (cast and names, how its medium plays) and the course's; UI.md anything that reads differently; this file anything the recipe got wrong. Mechanics scenarios run on the unlisted test course, so they don't move when the listed course is retuned.
+
+```
+pnpm arcade test rush-racers @worlds @media @courses @seams @platform @behavior
 ```
