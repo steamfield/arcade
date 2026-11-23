@@ -1,12 +1,12 @@
 import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from './events.ts';
-import { parseLevel } from './level/parse.ts';
 import { activeRacers, playerOf } from './racers.ts';
+import { courseFromLevel } from './test-world.ts';
 import { createWorld } from './world.ts';
 
 function setup() {
-  const level = parseLevel({
+  const course = courseFromLevel({
     name: 'straight',
     ascii: `
       ########
@@ -17,7 +17,7 @@ function setup() {
       ########
     `,
   });
-  return createWorld(level, new EventLog<GameEvent>(), { seed: 1 });
+  return createWorld(course, new EventLog<GameEvent>(), { seed: 1 });
 }
 
 describe('racer queries', () => {

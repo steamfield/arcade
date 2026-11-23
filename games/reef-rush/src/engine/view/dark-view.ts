@@ -1,6 +1,6 @@
 /**
  * Darkness over the course's dark zones (`level.dark`, inclusive tile-column
- * ranges, merged once): a near-black veil across each zone's columns on
+ * ranges, merged once): a veil in the course theme's dark tint across each zone's columns on
  * screen, faded in at its ends, with a pool of light cut around every racer.
  * The player's pool is the widest and leans ahead along their velocity, and a
  * Glow Lantern holder's is bigger still. Urchins and jellies inside a zone
@@ -27,6 +27,7 @@ import { racerSeesInDark } from '../../logic/abilities.ts';
 import { BUBBLE } from '../../logic/powerups/tuning.ts';
 import { playerOf } from '../../logic/racers.ts';
 import { TILE, type Vec, type World } from '../../logic/types.ts';
+import type { DarkTint } from '../themes/types.ts';
 import {
   FADE,
   fadeSteps,
@@ -46,10 +47,7 @@ export interface DarkView {
   sync(world: World): void;
 }
 
-/** The veil's colour: the deep water's own blue taken almost to black. */
-const DARK_COLOUR = 0x020616;
-/** Veil opacity in the dark, and for a player who sees through it (only a tint). */
-const DARK_ALPHA = 0.9;
+/** Veil opacity for a player who sees through the dark: only a tint. The full veil's colour and opacity come from the theme. */
 const SEE_THROUGH_ALPHA = 0.3;
 /** Over every world layer and effect, under the HUD so it never hides a readout. */
 const VEIL_DEPTH = Layer.hud - 1;
@@ -67,8 +65,8 @@ const BUBBLE_LIGHT_RADIUS = BUBBLE.lightTiles * TILE;
 /** Stamping a light pool erases it from the veil. */
 const ERASE_STAMP = { blendMode: Phaser.BlendModes.ERASE } as const;
 
-/** Adds the darkness for `world`'s course to `scene`. With no dark zones it draws nothing. */
-export function createDarkView(scene: Phaser.Scene, world: World, reducedMotion: boolean): DarkView {
+/** Adds the darkness for `world`'s course to `scene`, veiled in `tint` (the course theme's). With no dark zones it draws nothing. */
+export function createDarkView(scene: Phaser.Scene, world: World, tint: DarkTint, reducedMotion: boolean): DarkView {
   const zones = mergeZones(world.level.dark);
   if (zones.length === 0) return { sync() {} };
   // Every pool texture up front, so the first lantern pickup in the dark doesn't hitch.
@@ -85,7 +83,7 @@ export function createDarkView(scene: Phaser.Scene, world: World, reducedMotion:
     .setDepth(VEIL_DEPTH)
     .setVisible(false);
   const seesThrough = racerSeesInDark(playerOf(world));
-  const alpha = seesThrough ? SEE_THROUGH_ALPHA : DARK_ALPHA;
+  const veilTint: DarkTint = { colour: tint.colour, alpha: seesThrough ? SEE_THROUGH_ALPHA : tint.alpha };
   const spans: Span[] = [];
   const drawn = { tick: -1, left: Number.NaN, top: Number.NaN };
 
@@ -105,7 +103,7 @@ export function createDarkView(scene: Phaser.Scene, world: World, reducedMotion:
       veil.clear();
       for (let index = 0; index < count; index++) {
         const span = spans[index];
-        if (span) fillZone(veil, span, height, alpha);
+        if (span) fillZone(veil, span, height, veilTint);
       }
       if (!seesThrough) {
         for (let index = 0; index < current.racers.length; index++) {
@@ -145,14 +143,15 @@ export function createDarkView(scene: Phaser.Scene, world: World, reducedMotion:
 }
 
 /** Fills one zone's columns: full veil in the middle, stepping down to nothing at each end, fewer steps when narrow. */
-function fillZone(veil: Phaser.GameObjects.RenderTexture, span: Span, height: number, alpha: number): void {
+function fillZone(veil: Phaser.GameObjects.RenderTexture, span: Span, height: number, tint: DarkTint): void {
+  const { colour, alpha } = tint;
   const steps = fadeSteps(span.right - span.left);
   const fade = steps * FADE.px;
-  veil.fill(DARK_COLOUR, alpha, span.left + fade, 0, span.right - span.left - 2 * fade, height);
+  veil.fill(colour, alpha, span.left + fade, 0, span.right - span.left - 2 * fade, height);
   for (let step = 0; step < steps; step++) {
     const stepAlpha = (alpha * (step + 1)) / (steps + 1);
-    veil.fill(DARK_COLOUR, stepAlpha, span.left + step * FADE.px, 0, FADE.px, height);
-    veil.fill(DARK_COLOUR, stepAlpha, span.right - (step + 1) * FADE.px, 0, FADE.px, height);
+    veil.fill(colour, stepAlpha, span.left + step * FADE.px, 0, FADE.px, height);
+    veil.fill(colour, stepAlpha, span.right - (step + 1) * FADE.px, 0, FADE.px, height);
   }
 }
 

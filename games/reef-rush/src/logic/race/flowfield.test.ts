@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { steerDirection } from '../ai/steer.ts';
-import { OCEAN_LEVEL } from '../level/levels.ts';
+import { DEFAULT_COURSE, levelOf } from '../courses/index.ts';
 import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
-import { SWIM } from '../swim/physics.ts';
-import { type Body, type Level, TILE } from '../types.ts';
-import { buildFlowFields, progressAt, unreachableStarts } from './flowfield.ts';
+import { buildSwimNav, validateSwimLevel } from '../media/swim/nav.ts';
+import { type Body, type Level, RACER_SIZE, TILE } from '../types.ts';
+import { buildProgressField, progressAt } from './flowfield.ts';
 
 /** A four-lane straight with one column (x = 3) of `fill`. The finish is at x = 6. */
 const straight = (fill = '.'): Level =>
@@ -37,19 +37,25 @@ const hook = (): Level =>
 
 const at = (field: Float32Array, level: Level, x: number, y: number) => field[tileIndex(level, x, y)];
 
+/** The progress field beside swim's fields, as a race on `level` holds them. */
+const racedFields = (level: Level, broken: ReadonlySet<number>) => ({
+  progress: buildProgressField(level).distance,
+  ...buildSwimNav(level, broken),
+});
+
 const bodyCentredOn = (tx: number, ty: number): Body => ({
-  x: tx * TILE + (TILE - SWIM.width) / 2,
-  y: ty * TILE + (TILE - SWIM.height) / 2,
+  x: tx * TILE + (TILE - RACER_SIZE.width) / 2,
+  y: ty * TILE + (TILE - RACER_SIZE.height) / 2,
   vx: 0,
   vy: 0,
-  w: SWIM.width,
-  h: SWIM.height,
+  w: RACER_SIZE.width,
+  h: RACER_SIZE.height,
 });
 
 describe('the progress field', () => {
   it('is zero on finish tiles and grows by one tile per step away', () => {
     const level = straight();
-    const { progress } = buildFlowFields(level, new Set());
+    const { progress } = racedFields(level, new Set());
 
     for (const y of [1, 2, 3, 4]) expect(at(progress, level, 6, y)).toBe(0);
     expect(at(progress, level, 5, 2)).toBeCloseTo(1, 5);
@@ -59,14 +65,14 @@ describe('the progress field', () => {
 
   it('measures the route around walls, not the straight-line distance', () => {
     const level = hook();
-    const { progress } = buildFlowFields(level, new Set());
+    const { progress } = racedFields(level, new Set());
 
     expect(at(progress, level, 1, 4)).toBeCloseTo(9, 5);
   });
 
   it('marks rock unreachable in every field', () => {
     const level = straight();
-    const fields = buildFlowFields(level, new Set());
+    const fields = racedFields(level, new Set());
 
     for (const field of [fields.progress, fields.steer, fields.smash]) {
       expect(at(field, level, 0, 0)).toBe(Number.POSITIVE_INFINITY);
@@ -76,7 +82,7 @@ describe('the progress field', () => {
 
   it('places racers through coral even though swimmers cannot steer through it', () => {
     const level = straight('C');
-    const fields = buildFlowFields(level, new Set());
+    const fields = racedFields(level, new Set());
 
     expect(at(fields.progress, level, 1, 1)).toBeCloseTo(5, 5);
     expect(at(fields.steer, level, 1, 1)).toBe(Number.POSITIVE_INFINITY);
@@ -86,14 +92,14 @@ describe('the progress field', () => {
   it('opens the steer field through coral once it is broken', () => {
     const level = straight('C');
     const broken = new Set([1, 2, 3, 4].map((y) => tileIndex(level, 3, y)));
-    const fields = buildFlowFields(level, broken);
+    const fields = racedFields(level, broken);
 
     expect(at(fields.steer, level, 1, 1)).toBeCloseTo(5, 5);
   });
 
   it('lets the smash field cross unbroken coral at a higher cost', () => {
     const level = straight('C');
-    const fields = buildFlowFields(level, new Set());
+    const fields = racedFields(level, new Set());
     const smash = at(fields.smash, level, 1, 1) ?? Number.NaN;
 
     expect(Number.isFinite(smash)).toBe(true);
@@ -102,7 +108,7 @@ describe('the progress field', () => {
 
   it('lets the ram field cross unbroken coral too, but for less than the smash field', () => {
     const level = straight('C');
-    const fields = buildFlowFields(level, new Set());
+    const fields = racedFields(level, new Set());
     const ram = at(fields.ram, level, 1, 1) ?? Number.NaN;
 
     expect(ram).toBeGreaterThan(5);
@@ -111,14 +117,14 @@ describe('the progress field', () => {
 });
 
 describe('the coral gate on the ocean course', () => {
-  const level = parseLevel(OCEAN_LEVEL);
-  const fields = buildFlowFields(level, new Set());
+  const level = levelOf(DEFAULT_COURSE);
+  const fields = racedFields(level, new Set());
   /** A racer-sized body at the centre of tile (tx, ty). */
   const bodyAt = (tx: number, ty: number): Body => ({
-    x: (tx + 0.5) * TILE - SWIM.width / 2,
-    y: (ty + 0.5) * TILE - SWIM.height / 2,
-    w: SWIM.width,
-    h: SWIM.height,
+    x: (tx + 0.5) * TILE - RACER_SIZE.width / 2,
+    y: (ty + 0.5) * TILE - RACER_SIZE.height / 2,
+    w: RACER_SIZE.width,
+    h: RACER_SIZE.height,
     vx: 0,
     vy: 0,
   });
@@ -142,14 +148,14 @@ describe('the coral gate on the ocean course', () => {
 describe('the steer field', () => {
   it('matches progress in open water', () => {
     const level = straight();
-    const fields = buildFlowFields(level, new Set());
+    const fields = racedFields(level, new Set());
 
     expect(at(fields.steer, level, 1, 2)).toBeCloseTo(at(fields.progress, level, 1, 2) ?? Number.NaN, 5);
   });
 
   it('charges more to swim through kelp', () => {
     const level = straight('~');
-    const fields = buildFlowFields(level, new Set());
+    const fields = racedFields(level, new Set());
 
     expect(at(fields.steer, level, 1, 2)).toBeGreaterThan(5.5);
   });
@@ -158,15 +164,15 @@ describe('the steer field', () => {
     const against = straight('<');
     const riding = straight('>');
 
-    expect(at(buildFlowFields(against, new Set()).steer, against, 1, 2)).toBeGreaterThan(5.2);
-    expect(at(buildFlowFields(riding, new Set()).steer, riding, 1, 2)).toBeLessThan(4.9);
+    expect(at(racedFields(against, new Set()).steer, against, 1, 2)).toBeGreaterThan(5.2);
+    expect(at(racedFields(riding, new Set()).steer, riding, 1, 2)).toBeLessThan(4.9);
   });
 });
 
 describe('progress lookups', () => {
   it('reads lower for a body further along the same tile', () => {
     const level = straight();
-    const fields = buildFlowFields(level, new Set());
+    const fields = buildProgressField(level);
     const middle = bodyCentredOn(2, 2);
     const further = { ...middle, x: middle.x + 4 };
 
@@ -177,7 +183,7 @@ describe('progress lookups', () => {
 
   it('falls smoothly through an L-turn, never rising or jumping between pixels', () => {
     const level = hook();
-    const fields = buildFlowFields(level, new Set());
+    const fields = buildProgressField(level);
     const start = bodyCentredOn(1, 4);
     const climb = 3 * TILE;
     const route = [
@@ -207,13 +213,15 @@ describe('reachability', () => {
       `,
     });
 
-    expect(unreachableStarts(level, buildFlowFields(level, new Set()))).toEqual([2]);
+    expect(validateSwimLevel(level, buildSwimNav(level, new Set()))).toEqual([
+      { message: 'Start 3 cannot reach the finish without breaking coral', row: 4, col: 1 },
+    ]);
   });
 
   it('lists nothing when every start can reach the finish', () => {
     const level = straight();
 
-    expect(unreachableStarts(level, buildFlowFields(level, new Set()))).toEqual([]);
+    expect(validateSwimLevel(level, buildSwimNav(level, new Set()))).toEqual([]);
   });
 });
 
@@ -236,7 +244,7 @@ describe('progress beside a blocked diagonal', () => {
 
   it('does not read lower for a body pressed toward the rock that blocks the diagonal', () => {
     const level = notch();
-    const fields = buildFlowFields(level, new Set());
+    const fields = buildProgressField(level);
     const centred = bodyCentredOn(1, 1);
     const againstWall = { ...centred, x: centred.x + 2 };
 
@@ -245,7 +253,7 @@ describe('progress beside a blocked diagonal', () => {
 
   it('only decreases along the route down and then toward the finish', () => {
     const level = notch();
-    const fields = buildFlowFields(level, new Set());
+    const fields = buildProgressField(level);
     const start = bodyCentredOn(1, 1);
     const route = [
       ...Array.from({ length: 17 }, (_, i) => ({ ...start, y: start.y + i })),

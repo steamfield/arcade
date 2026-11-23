@@ -14,7 +14,7 @@ export interface Particle {
   vy: number;
   /** Added to vy every tick: negative floats up (bubbles), positive sinks (debris). */
   ay: number;
-  /** Velocity is multiplied by this every tick: water drag. 1 keeps it. */
+  /** Velocity is multiplied by this every tick: the drag of the theme's medium. 1 keeps it. */
   drag: number;
   age: number;
   /** Ticks the particle lives; it dies when `age` reaches it. */

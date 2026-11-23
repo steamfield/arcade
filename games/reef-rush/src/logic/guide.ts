@@ -1,7 +1,7 @@
 /**
  * The Easy way-finding guide. A young player who holds toward the finish and steers only after
  * hitting something can sit against a wall for many seconds when the way on is up or down. Two
- * helps, both read from the steer flow field the rivals follow and both off unless the level's
+ * helps, both asked of the world's medium (the way its rivals follow) and both off unless the level's
  * `guide` knob is on:
  * - `guideFor` says which way is on from the player's tile and for how long they have pushed without
  *   getting any closer; the engine shows an arrow from it.
@@ -11,14 +11,14 @@
  * Deterministic: no rng, every number comes from the world.
  */
 
-import { downhillPath, openTiles, steerDirection, tileOf } from './ai/steer.ts';
+import { tileOf } from './ai/steer.ts';
 import { tuningOf } from './difficulty-level.ts';
+import { mediumOf } from './media/index.ts';
 import { length } from './num.ts';
-import { fieldAt } from './race/flowfield.ts';
 import { centreOf, playerOf } from './racers.ts';
 import type { Intent, Racer, Vec, World } from './types.ts';
 
-/** Tiles down the field the aim looks ahead, as the rivals do. */
+/** Tiles along the medium's way the aim looks ahead, as the rivals do. */
 const LOOKAHEAD_TILES = 3;
 /** A stick pushed less than this far is not "pushing". */
 const PUSH_THRESHOLD = 0.3;
@@ -29,11 +29,11 @@ const WALL_SPEED = 30;
 
 /** Where the way on is and how long the racer has gone without progress. */
 export interface Guide {
-  /** The tile offset (each of x and y in -1, 0, 1) of the neighbour that lowers the steer field most; null on the finish tile or when boxed in. */
+  /** The tile offset (each of x and y in -1, 0, 1) of the neighbour nearer the finish (`Medium.nextTile`); null on the finish tile or when boxed in. */
   dir: Vec | null;
   /**
-   * The unit vector the rivals' own steering aims along from the body (a few tiles down the field, never
-   * cutting a corner the body would clip), which the assist slides toward; zero on the finish tile.
+   * The unit vector toward the finish along the medium's way from the body (`Medium.aimFrom`, a few
+   * tiles ahead), which the assist slides toward; zero on the finish tile.
    */
   aim: Vec;
   /** Ticks the player has pushed without reaching a tile closer to the finish; 0 for a rival. */
@@ -42,13 +42,21 @@ export interface Guide {
 
 /** The guide for `racer`: the way on from its tile, and the stuck time (the player's only). */
 export function guideFor(world: World, racer: Racer): Guide {
-  const start = tileOf(centreOf(racer));
-  const next = downhillPath(world.fields.steer, world.fields, openTiles(world.level, world.broken, false), start, 1)[0];
+  const medium = mediumOf(world);
   return {
-    dir: next ? { x: next.x - start.x, y: next.y - start.y } : null,
-    aim: steerDirection(world.fields.steer, world.fields, world.level, world.broken, racer.body, LOOKAHEAD_TILES),
+    dir: medium.nextTile(world, tileOf(centreOf(racer))),
+    aim: medium.aimFrom(world, racer.body, LOOKAHEAD_TILES),
     stuckTicks: racer.id === 'player' ? world.guide.stuckTicks : 0,
   };
+}
+
+/**
+ * How far the player at `tile` is from the finish, as the guide measures getting closer: the
+ * medium's distance (`Medium.distanceAt`; lower is closer, Infinity where the finish can't be
+ * reached). The engine's debug stage reads it too.
+ */
+export function guideDistanceAt(world: World, tile: Vec): number {
+  return mediumOf(world).distanceAt(world, tile);
 }
 
 /**
@@ -64,7 +72,7 @@ export function trackGuide(world: World, input: Intent): void {
   if (!tuning.enabled) return;
   const player = playerOf(world);
   if (player.finished || player.status.stunned > 0 || player.status.trapped > 0) return;
-  const here = fieldAt(world.fields.steer, world.fields, tileOf(centreOf(player)));
+  const here = guideDistanceAt(world, tileOf(centreOf(player)));
   const memory = world.guide;
   const pushing = length(input.move.x, input.move.y) >= PUSH_THRESHOLD;
   if (here < memory.bestSteer) {

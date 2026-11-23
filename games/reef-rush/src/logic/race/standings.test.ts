@@ -1,8 +1,8 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
-import { parseLevel } from '../level/parse.ts';
 import { playerOf } from '../racers.ts';
+import { courseFromLevel } from '../test-world.ts';
 import { type Racer, type RacerId, TILE, type TickInput, type World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 import {
@@ -17,7 +17,7 @@ import {
 
 /** Four open lanes; the finish line is at x = 8 * TILE. */
 function setup() {
-  const level = parseLevel({
+  const course = courseFromLevel({
     name: 'straight',
     ascii: `
       ##########
@@ -29,7 +29,7 @@ function setup() {
     `,
   });
   const log = new EventLog<GameEvent>(10_000);
-  return { world: createWorld(level, log, { seed: 1 }), log };
+  return { world: createWorld(course, log, { seed: 1 }), log };
 }
 
 /** Skips the countdown so referee calls act on a running race. */

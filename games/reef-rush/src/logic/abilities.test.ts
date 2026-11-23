@@ -12,14 +12,13 @@ import { CHARACTERS } from './characters.ts';
 import type { GameEvent } from './events.ts';
 import { applyHit } from './hazards/hits.ts';
 import { HIT } from './hazards/tuning.ts';
-import { parseLevel } from './level/parse.ts';
+import { SWIM_TUNING as SWIM } from './media/swim/tuning.ts';
 import { modifiersFor } from './modifiers.ts';
 import { length } from './num.ts';
 import { gainPowerUp } from './powerups/stack.ts';
 import { BUBBLE } from './powerups/tuning.ts';
 import { centreOf } from './racers.ts';
-import { SWIM } from './swim/physics.ts';
-import { eventsIn, hold, placeAt, placeOnTile, racerOf, step, tileCentre } from './test-world.ts';
+import { courseFromLevel, eventsIn, hold, placeAt, placeOnTile, racerOf, step, tileCentre } from './test-world.ts';
 import { type CharacterId, type PowerUpKind, type Racer, TILE, type World } from './types.ts';
 import { createWorld } from './world.ts';
 
@@ -54,7 +53,7 @@ const RIVALS: [CharacterId, CharacterId, CharacterId] = ['nib', 'gil', 'selene']
 /** A racing world on `ascii` with the player as `character` and the rivals as RIVALS. */
 function raceAs(character: CharacterId, ascii = ARENA) {
   const log = new EventLog<GameEvent>(100_000);
-  const world = createWorld(parseLevel({ name: 'test', ascii }), log, { seed: 1, character });
+  const world = createWorld(courseFromLevel(ascii), log, { seed: 1, character });
   world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
   world.racers.slice(1).forEach((rival, index) => {
     const rivalCharacter = RIVALS[index] ?? 'nib';

@@ -64,5 +64,7 @@ test('a finished race is saved and its best time shows on the title after a relo
     scene: 'title',
     best: expect.stringMatching(/^Best \d:\d\d\.\d\d \(\d(st|nd|rd|th)\)$/),
   });
-  expect(await game.state()).toMatchObject({ save: { best: { hard: { ticks, place } }, races: 1 } });
+  expect(await game.state()).toMatchObject({
+    save: { bests: { 'sunlit-shallows': { hard: { ticks, place } } }, lastCourse: 'sunlit-shallows', races: 1 },
+  });
 });

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { SWIM_TUNING } from '../media/swim/tuning.ts';
 import { modifiersFor } from '../modifiers.ts';
 import { collectPearls } from '../pickups/pearls.ts';
 import { activeRacers } from '../racers.ts';
-import { BASE_MODIFIERS } from '../swim/physics.ts';
 import { eventsIn, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
 import type { World } from '../types.ts';
 import { bumpMass } from './passives.ts';
@@ -37,7 +37,7 @@ describe('Jet Fins', () => {
     const { world, player } = playerIn();
     player.stack = ['jetFin'];
 
-    expect(modifiersFor(world, player)).toEqual({ ...BASE_MODIFIERS, forceMul: 1.15, kickCooldownTicks: 22 });
+    expect(modifiersFor(world, player)).toEqual({ ...SWIM_TUNING.base, forceMul: 1.15, kickCooldownTicks: 22 });
   });
 });
 

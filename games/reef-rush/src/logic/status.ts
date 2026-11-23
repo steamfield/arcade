@@ -1,11 +1,12 @@
 /**
  * What a racer's timed statuses do to its control and how they run out. Stunned
- * and trapped racers lose their input, trapped racers float straight up, and every
- * counter (plus the burst cooldown) loses one tick at the end of each tick.
+ * and trapped racers lose their input, trapped racers drift straight up or down as
+ * the medium says, and every counter (plus the burst cooldown) loses one tick at the
+ * end of each tick.
  */
-import { TRAPPED_RISE_SPEED } from './hazards/tuning.ts';
+import { mediumOf } from './media/index.ts';
 import { noItems } from './racers.ts';
-import type { Intent, Racer, RacerStatus } from './types.ts';
+import type { Intent, Racer, RacerStatus, World } from './types.ts';
 
 const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
@@ -16,11 +17,16 @@ export function controlledIntent(racer: Racer, intent: Intent): Intent {
   return racer.status.stunned > 0 || racer.status.trapped > 0 ? IDLE : intent;
 }
 
-/** Sets a trapped racer's velocity to a straight rise; call after swimming and before moving the body. */
-export function floatTrapped(racer: Racer): void {
+/**
+ * Sets a trapped racer's velocity to the medium's straight drift (`effects.trappedDrift`; water floats
+ * it up); call after the medium moves it and before moving the body.
+ *
+ * @throws {Error} When the world names a medium that is neither shipped nor registered.
+ */
+export function floatTrapped(world: World, racer: Racer): void {
   if (racer.status.trapped === 0) return;
   racer.body.vx = 0;
-  racer.body.vy = -TRAPPED_RISE_SPEED;
+  racer.body.vy = mediumOf(world).effects.trappedDrift;
 }
 
 /**

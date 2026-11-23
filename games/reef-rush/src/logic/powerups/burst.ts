@@ -4,7 +4,8 @@
  *
  * Per-kind effects of `fireBurst` (tuning in `powerups/tuning.ts`), applied in stack order:
  * - jetFin: `status.dashing = DASH.ticks`, `dashDir` = unit input (facing when none), velocity set to
- *   DASH.speed along it on the firing tick and held there by `driveDash` while dashing.
+ *   DASH.speed along it on the firing tick and held there by `driveDash` while dashing (on the axes
+ *   the medium holds, `effects.dashAxes`).
  * - bubbleShield: pushes a Bubble at the racer's centre moving BUBBLE.speed along the same aim, ttl
  *   BUBBLE.ttlTicks, `seeking` (it lights the dark and stuns jellies it passes) when the lanternBubble
  *   combo is held; emits `bubble.spawned`. With the bubbleDecoy combo it fires no bubble: the decoy wears it.
@@ -32,6 +33,7 @@
 import { flashAround } from '../hazards/contacts.ts';
 import { launchSquid } from '../hazards/squids.ts';
 import { bodyTiles } from '../level/query.ts';
+import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
 import { breakCoral } from '../race/coral.ts';
 import { centreOf, hitbox } from '../racers.ts';
@@ -72,7 +74,7 @@ export function fireBurst(world: World, racer: Racer, move: Vec): boolean {
   for (const kind of kinds) {
     switch (kind) {
       case 'jetFin':
-        startDash(racer, aim, combos);
+        startDash(world, racer, aim, combos);
         break;
       case 'bubbleShield':
         if (!combos.includes('bubbleDecoy')) fireBubble(world, racer, aim, combos.includes('lanternBubble'));
@@ -114,17 +116,20 @@ function useUp(world: World, racer: Racer, kind: PowerUpKind): void {
 }
 
 /**
- * Holds a dashing racer's velocity at DASH.speed along `dashDir`, overriding swimming and drag.
- * Called in `stepWorld` after swimming and before the body moves. When not dashing (the dash ran
- * out or a hit ended it) it leaves velocity alone and clears `dashCombos`.
+ * Holds a dashing racer's velocity at DASH.speed along `dashDir`, overriding swimming and drag, on
+ * both axes or, where the medium says so (`effects.dashAxes`), horizontally only so its gravity
+ * keeps working. Called in `stepWorld` after swimming and before the body moves. When not dashing
+ * (the dash ran out or a hit ended it) it leaves velocity alone and clears `dashCombos`.
+ *
+ * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
-export function driveDash(racer: Racer): void {
+export function driveDash(world: World, racer: Racer): void {
   if (racer.status.dashing === 0) {
     racer.dashCombos = [];
     return;
   }
   racer.body.vx = racer.dashDir.x * DASH.speed;
-  racer.body.vy = racer.dashDir.y * DASH.speed;
+  if (mediumOf(world).effects.dashAxes === 'both') racer.body.vy = racer.dashDir.y * DASH.speed;
 }
 
 /**
@@ -145,11 +150,11 @@ function aimOf(racer: Racer, move: Vec): Vec {
   return size === 0 ? { x: racer.facing, y: 0 } : { x: move.x / size, y: move.y / size };
 }
 
-function startDash(racer: Racer, aim: Vec, combos: readonly ComboName[]): void {
+function startDash(world: World, racer: Racer, aim: Vec, combos: readonly ComboName[]): void {
   racer.status.dashing = DASH.ticks;
   racer.dashDir = { ...aim };
   racer.dashCombos = [...combos];
-  driveDash(racer);
+  driveDash(world, racer);
 }
 
 function fireBubble(world: World, racer: Racer, aim: Vec, seeking: boolean): void {

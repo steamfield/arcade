@@ -1,17 +1,20 @@
 /**
- * The race screen. It assembles the views (backdrop, course, pickups, hazards,
+ * The race screen. It assembles the views, drawn in the course's theme (backdrop, course, pickups, hazards,
  * the attack power-ups in the water, racers and their power-up effects, the darkness
- * over dark zones, HUD, the hints for young players, camera, debug overlay) over the runtime's world and syncs them every rendered frame.
+ * over dark zones, HUD, the hints for young players, camera, debug overlay, and any layers the theme adds) over the
+ * runtime's world and syncs them every rendered frame.
  * Event-driven visuals arrive through the runtime's per-tick listener.
  * Ticking, input and the move to results all happen in the runtime.
  */
 import { TICK_HZ } from '@arcade/core';
 import Phaser from 'phaser';
 import { stackMaxFor } from '../../logic/abilities.ts';
+import { courseOf } from '../../logic/courses/index.ts';
 import { playerOf } from '../../logic/racers.ts';
 import type { World } from '../../logic/types.ts';
 import { createFx } from '../fx/index.ts';
 import type { Runtime } from '../runtime.ts';
+import { themeFor } from '../themes/index.ts';
 import { createAttackView } from '../view/attack-view.ts';
 import { createBackdrop } from '../view/backdrop.ts';
 import { createBurstButtonIcon } from '../view/burst-button.ts';
@@ -54,26 +57,29 @@ export class RaceScene extends Phaser.Scene {
   }
 
   private createViews(world: World): RaceViews {
-    const backdrop = createBackdrop(this, world.level, this.rt.settings);
-    const level = createLevelView(this, world.level);
+    const course = courseOf(world);
+    const theme = themeFor(course);
+    const backdrop = createBackdrop(this, world.level, theme, this.rt.settings);
+    const level = createLevelView(this, world.level, theme, course.level.legend);
     // The pickup and hazard views draw the course objects from world state, so the level's inert stand-ins go.
     for (const stand of Object.values(level.placeholders).flat()) stand.destroy();
     const { reducedMotion } = this.rt.settings;
     const pickups = createPickupView(this, world.level, reducedMotion);
-    const hazards = createHazardView(this, world.level, reducedMotion);
+    const hazards = createHazardView(this, world.level, theme.hazards, reducedMotion);
     const attacks = createAttackView(this, reducedMotion);
     const racers = world.racers.map((racer) => ({
       racer,
       view: createRacerView(this, racer, reducedMotion),
       effects: createPowerupView(this, racer.id, reducedMotion),
     }));
-    const dark = createDarkView(this, world, reducedMotion);
+    const themeLayers = theme.extraLayers(this, world);
+    const dark = createDarkView(this, world, theme.dark, reducedMotion);
     const hud = createHud(this, world, reducedMotion);
     const wellWidth = wellLayout(stackMaxFor(playerOf(world))).width;
     const hints = createHintView(this, reducedMotion, wellWidth, comboCentreY);
     const guide = createGuideView(this, reducedMotion);
     const burstIcon = createBurstButtonIcon(this);
-    const fx = createFx(this, world, reducedMotion);
+    const fx = createFx(this, world, theme, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
 
@@ -100,6 +106,7 @@ export class RaceScene extends Phaser.Scene {
       pickups.sync(current, current.tick);
       hazards.sync(current, current.tick);
       attacks.sync(current, current.tick);
+      for (const layer of themeLayers) layer.sync(current);
       for (const { racer, view, effects } of racers) {
         view.sync(racer, current.tick);
         effects.sync(racer, current.tick);

@@ -7,9 +7,8 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { TOP_ROUTE } from '../../scenarios/kit.ts';
+import { DEFAULT_COURSE } from './courses/index.ts';
 import type { GameEvent } from './events.ts';
-import { OCEAN_LEVEL } from './level/levels.ts';
-import { parseLevel } from './level/parse.ts';
 import { DNF_GRACE_TICKS } from './race/standings.ts';
 import { playerOf } from './racers.ts';
 import { createWorld, stepWorld } from './world.ts';
@@ -19,7 +18,7 @@ const TOP_ROUTE_MARGIN_TICKS = 300;
 
 describe('TOP_ROUTE on the default seed', () => {
   it('crosses the finish with at least 300 ticks to spare before the DNF cutoff', () => {
-    const world = createWorld(parseLevel(OCEAN_LEVEL), new EventLog<GameEvent>(), { seed: 1 });
+    const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1 });
     const player = playerOf(world);
     for (const step of TOP_ROUTE) {
       const move = {

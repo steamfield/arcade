@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CHARACTER_IDS, POWER_UP_KINDS } from '../../../logic/types.ts';
+import { THEMES } from '../../themes/index.ts';
 import { POWER_UP_TEX } from '../../view/powerup-view.ts';
-import { Frame, Tex, TileIndex } from '../keys.ts';
-import { BackdropPalette, HazardPalette, WATER_BANDS } from '../palettes.ts';
+import { Frame, Tex } from '../keys.ts';
 import { measureFrames, type NamedFrame } from '../pixel.ts';
 import { AttackPalette, RIPTIDE_TILE } from './attack.ts';
 import { GUIDE_SIZE } from './guide.ts';
@@ -27,10 +27,7 @@ describe('world art data', () => {
 
   it('gives animated and multi-state textures the frame names views and animations ask for', () => {
     const twoStroke = [Frame.a, Frame.b];
-    for (const key of [...RACER_KEYS, Tex.kelp, Tex.jelly]) {
-      expect(frameNames(key), key).toEqual(twoStroke);
-    }
-    for (const key of [Tex.currentRight, Tex.currentLeft, Tex.currentUp, Tex.currentDown]) {
+    for (const key of RACER_KEYS) {
       expect(frameNames(key), key).toEqual(twoStroke);
     }
     expect(frameNames(Tex.clam)).toEqual([Frame.clamClosed, Frame.clamOpen]);
@@ -45,13 +42,6 @@ describe('world art data', () => {
       Frame.markerTriangle,
       Frame.markerDiamond,
     ]);
-  });
-
-  it('lays the tileset out in TileIndex order on the 16 px grid', () => {
-    const tiles = sheetFor(Tex.tiles);
-    expect(tiles?.frames.map((frame) => frame.name)).toEqual(['rock', 'coral']);
-    expect(tiles?.frames.length).toBe(Object.keys(TileIndex).length);
-    expect(measureFrames(Tex.tiles, tiles?.frames ?? [])).toEqual({ width: 16, height: 16 });
   });
 
   it('draws every held power-up as a 12x12 icon, the attack kinds included', () => {
@@ -99,15 +89,15 @@ describe('world art palettes', () => {
     const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
     return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
   };
-  const behind = [...WATER_BANDS, ...BackdropPalette.far, ...BackdropPalette.near];
+  // Global art goes on every course, so it stands off every theme's contrast bands.
+  const behind = Object.values(THEMES).flatMap((theme) => theme.contrastBands.map((band) => band.colour));
   const readable = (colour: number) => Math.min(...behind.map((water) => contrast(colour, water))) >= 3;
   const mainColours = [
     ...CHARACTER_IDS.map((character) => [character, CharacterPalette[character][1]] as const),
-    ['urchin', HazardPalette.urchin[1]] as const,
     ['homing squid', AttackPalette.homingSquid[1]] as const,
   ];
 
-  it.each(mainColours)('%s main colour stands 3:1 off every water band and backdrop layer', (_, colour) => {
+  it.each(mainColours)("%s main colour stands 3:1 off every theme's contrast bands", (_, colour) => {
     const weakest = Math.min(...behind.map((water) => contrast(colour, water)));
     expect(weakest).toBeGreaterThanOrEqual(3);
   });

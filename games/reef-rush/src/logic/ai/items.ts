@@ -9,12 +9,12 @@
  */
 import { itemAggressionMul, mayAttack } from '../difficulty-level.ts';
 import { pickSquidTarget } from '../hazards/squid-target.ts';
-import { cellAt, isSolid } from '../level/query.ts';
+import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
 import { CLAM, FLASH } from '../powerups/tuning.ts';
 import { activeRacers, centreOf, playerOf } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
-import { downhillPath, hasClearSweep, openTiles, tileOf } from './steer.ts';
+import { hasClearSweep, tileOf } from './steer.ts';
 
 /** How near a use has to be before a rival spends its burst on it. */
 export const ITEM_USE = {
@@ -29,7 +29,7 @@ export const ITEM_USE = {
    * firing it whenever anyone is in range.
    */
   lanternTiles: FLASH.rangeTiles / 2,
-  /** Puffer: unbroken coral within this many steps down the smash field. */
+  /** Puffer: unbroken coral within this many steps ahead (`Medium.coralAhead`). */
   pufferCoralSteps: 3,
   /** Jet Fins: this many tiles of clear water straight along the aim. */
   jetClearTiles: 5,
@@ -55,17 +55,17 @@ export const ITEM_USE = {
  * and `roll` is under its chance: `profile.itemAggression`, times ITEM_USE.jetChanceMul while it
  * holds Jet Fins (unless a held Puffer has coral ahead). Uses: inkSac, a racer behind (higher progress) within 4
  * tiles; bubbleShield, a racer ahead within 6 tiles inside the aim cone; glowLantern, a racer ahead
- * within 2 tiles; puffer, unbroken coral on the smash-field path within 3 tiles; jetFin, a clear
+ * within 2 tiles; puffer, unbroken coral within 3 tiles ahead (`Medium.coralAhead`); jetFin, a clear
  * straight path of 5 tiles along the aim; homingSquid, a target in lock range (`pickSquidTarget`);
  * riptide, 6 clear tiles along the aim with a racer within 5 tiles behind to draft it; undertow, in 3rd or 4th with a racer 8 or more tiles ahead;
  * mimic, a squid locked on it within 8 tiles.
  *
- * @param aim The unit aim `rivalIntent` chose this tick.
+ * @param aim The unit aim the medium's steering chose this tick (`Steering.aim`).
  * @param roll The tick's item draw from the racer's rng, in [0, 1).
  */
 export function wantsBurst(world: World, racer: Racer, aim: Vec, roll: number): boolean {
   if (racer.stack.length === 0 || racer.burstCooldown > 0) return false;
-  const throughCoral = racer.stack.includes('puffer') && coralOnSmashPath(world, racer);
+  const throughCoral = racer.stack.includes('puffer') && pufferHasCoral(world, racer);
   const dashes = racer.stack.includes('jetFin') && !throughCoral;
   const aggression = racer.profile.itemAggression * itemAggressionMul(world, racer);
   if (roll >= aggression * (dashes ? ITEM_USE.jetChanceMul : 1)) return false;
@@ -83,7 +83,7 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
     case 'glowLantern':
       return othersNear(world, racer, ITEM_USE.lanternTiles).some((other) => other.progress < racer.progress);
     case 'puffer':
-      return coralOnSmashPath(world, racer);
+      return pufferHasCoral(world, racer);
     case 'jetFin':
       return clearAhead(world, racer, aim, ITEM_USE.jetClearTiles);
     case 'homingSquid':
@@ -140,11 +140,9 @@ function inAimCone(racer: Racer, aim: Vec, other: Racer): boolean {
   return ((to.x - from.x) * aim.x + (to.y - from.y) * aim.y) / lengths >= ITEM_USE.aimConeCos;
 }
 
-function coralOnSmashPath(world: World, racer: Racer): boolean {
-  const { fields, level, broken } = world;
-  const start = tileOf(centreOf(racer));
-  const path = downhillPath(fields.smash, fields, openTiles(level, broken, true), start, ITEM_USE.pufferCoralSteps);
-  return path.some((tile) => cellAt(level, tile.x, tile.y) === 'coral' && isSolid(level, broken, tile.x, tile.y));
+/** True when a Puffer burst would open coral just ahead of the racer, as the medium judges it. */
+function pufferHasCoral(world: World, racer: Racer): boolean {
+  return mediumOf(world).coralAhead(world, tileOf(centreOf(racer)), ITEM_USE.pufferCoralSteps);
 }
 
 function clearAhead(world: World, racer: Racer, aim: Vec, tiles: number): boolean {

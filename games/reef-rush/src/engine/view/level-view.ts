@@ -1,22 +1,26 @@
 /**
- * Draws the course: rock and coral through a Phaser Tilemap built from the
- * parsed level, kelp and currents as animated sprites, the finish gate, and
- * inert placeholders for pearls, clams, urchins and jellies. Phase 3's pickup
- * and hazard views take over those placeholders. Broken coral is removed when
- * its `coral.broken` event arrives.
+ * Draws the course in its theme's look: solid tiles through a Phaser Tilemap built from the parsed
+ * level (a legend glyph with its own art gets its own tile), flowing cells such as kelp and
+ * currents as animated sprites, the finish gate, and inert placeholders for pearls, clams, urchins
+ * and jellies. The pickup and hazard views take over those placeholders. Broken coral is removed
+ * when its `coral.broken` event arrives.
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
-import { type Cell, type Level, TILE, type Vec } from '../../logic/types.ts';
-import { Anim, type AnimKey, Frame, type FrameKey, Tex, type TexKey, TileIndex } from '../art/keys.ts';
+import type { Level } from '../../logic/types.ts';
+import { TILE, type Vec } from '../../logic/types.ts';
+import { Frame, type FrameKey, Tex, type TexKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import type { HazardSkin, TerrainArt, Theme } from '../themes/types.ts';
+import { addHazardSprite } from './hazard-view.ts';
 import { Layer } from './layers.ts';
+import { type Legend, tileAt } from './terrain-tile.ts';
 
-/** Course objects drawn as stand-ins until phase 3 gives them behaviour. Phase 3 may destroy and replace them. */
+/** Course objects drawn as stand-ins until the pickup and hazard views replace them. */
 export interface LevelPlaceholders {
   pearls: Phaser.GameObjects.Image[];
   clams: Phaser.GameObjects.Image[];
-  urchins: Phaser.GameObjects.Image[];
+  urchins: Phaser.GameObjects.Sprite[];
   jellies: Phaser.GameObjects.Sprite[];
 }
 
@@ -28,28 +32,18 @@ export interface LevelView {
 }
 
 const TILESET_NAME = 'reef';
-const EMPTY_TILE = -1;
-
-const TILE_FOR_CELL: Partial<Record<Cell, number>> = { rock: TileIndex.rock, coral: TileIndex.coral };
-
-const FLOWING: Partial<Record<Cell, { texture: TexKey; anim: AnimKey }>> = {
-  kelp: { texture: Tex.kelp, anim: Anim.kelpSway },
-  'current-right': { texture: Tex.currentRight, anim: Anim.currentRight },
-  'current-left': { texture: Tex.currentLeft, anim: Anim.currentLeft },
-  'current-up': { texture: Tex.currentUp, anim: Anim.currentUp },
-  'current-down': { texture: Tex.currentDown, anim: Anim.currentDown },
-};
 
 /**
- * Builds every course object for `level` in `scene`.
+ * Builds every course object for `level` in `scene`, drawn with `theme`. `legend` is the course's
+ * own glyph legend, so its glyphs can draw with their own art.
  *
- * @throws {Error} When Phaser rejects the generated tileset or layer, which means `buildTextures` has not run.
+ * @throws {Error} When Phaser rejects the generated tileset or layer, which means the theme's textures were not registered.
  */
-export function createLevelView(scene: Phaser.Scene, level: Level): LevelView {
-  const layer = createTileLayer(scene, level);
-  addFlowingWater(scene, level);
-  addFinishGate(scene, level);
-  const placeholders = addPlaceholders(scene, level);
+export function createLevelView(scene: Phaser.Scene, level: Level, theme: Theme, legend: Legend = {}): LevelView {
+  const layer = createTileLayer(scene, level, theme.terrain, legend);
+  addFlowingCells(scene, level, theme.terrain);
+  addFinishGate(scene, level, theme.terrain);
+  const placeholders = addPlaceholders(scene, level, theme.hazards);
   return {
     placeholders,
     onEvents(events) {
@@ -60,21 +54,29 @@ export function createLevelView(scene: Phaser.Scene, level: Level): LevelView {
   };
 }
 
-function createTileLayer(scene: Phaser.Scene, level: Level): Phaser.Tilemaps.TilemapLayerBase {
-  const data = level.cells.map((row) => row.map((cell) => TILE_FOR_CELL[cell] ?? EMPTY_TILE));
+function createTileLayer(
+  scene: Phaser.Scene,
+  level: Level,
+  terrain: TerrainArt,
+  legend: Legend,
+): Phaser.Tilemaps.TilemapLayerBase {
+  const data = level.cells.map((row, y) => row.map((_, x) => tileAt(level, terrain, legend, x, y)));
   const map = scene.make.tilemap({ data, tileWidth: TILE, tileHeight: TILE });
-  const tileset = map.addTilesetImage(TILESET_NAME, Tex.tiles, TILE, TILE, 0, 0);
-  if (!tileset)
-    throw new Error(`Tileset "${TILESET_NAME}" could not use texture "${Tex.tiles}"; run buildTextures first`);
+  const tileset = map.addTilesetImage(TILESET_NAME, terrain.tileset, TILE, TILE, 0, 0);
+  if (!tileset) {
+    throw new Error(
+      `Tileset "${TILESET_NAME}" could not use texture "${terrain.tileset}"; register the theme's textures first`,
+    );
+  }
   const layer = map.createLayer(0, tileset, 0, 0);
   if (!layer) throw new Error(`Tilemap layer for "${level.name}" could not be created`);
   return layer.setDepth(Layer.tiles);
 }
 
-function addFlowingWater(scene: Phaser.Scene, level: Level): void {
+function addFlowingCells(scene: Phaser.Scene, level: Level, terrain: TerrainArt): void {
   level.cells.forEach((row, y) => {
     row.forEach((cell, x) => {
-      const flow = FLOWING[cell];
+      const flow = terrain.flowing[cell];
       if (!flow) return;
       scene.add
         .sprite(x * TILE, y * TILE, flow.texture)
@@ -85,26 +87,26 @@ function addFlowingWater(scene: Phaser.Scene, level: Level): void {
   });
 }
 
-function addFinishGate(scene: Phaser.Scene, level: Level): void {
+function addFinishGate(scene: Phaser.Scene, level: Level, terrain: TerrainArt): void {
   level.cells.forEach((row, y) => {
     if (row[level.finishX] !== 'water') return;
     scene.add
-      .image(level.finishX * TILE, y * TILE, Tex.finishGate)
+      .image(level.finishX * TILE, y * TILE, terrain.finishGate)
       .setOrigin(0)
       .setDepth(Layer.water);
   });
 }
 
-function addPlaceholders(scene: Phaser.Scene, level: Level): LevelPlaceholders {
+function addPlaceholders(scene: Phaser.Scene, level: Level, hazards: Theme['hazards']): LevelPlaceholders {
   const imagesAt = (tiles: Vec[], texture: TexKey, frame?: FrameKey) =>
     tiles.map((tile) => scene.add.image(centre(tile.x), centre(tile.y), texture, frame).setDepth(Layer.objects));
+  const hazardsAt = (tiles: Vec[], skin: HazardSkin) =>
+    tiles.map((tile) => addHazardSprite(scene, centre(tile.x), centre(tile.y), skin));
   return {
     pearls: imagesAt(level.pearls, Tex.pearl),
     clams: imagesAt(level.clams, Tex.clam, Frame.clamClosed),
-    urchins: imagesAt(level.urchins, Tex.urchin),
-    jellies: level.jellies.map((tile) =>
-      scene.add.sprite(centre(tile.x), centre(tile.y), Tex.jelly).setDepth(Layer.objects).play(Anim.jellyPulse),
-    ),
+    urchins: hazardsAt(level.urchins, hazards.urchin),
+    jellies: hazardsAt(level.jellies, hazards.jelly),
   };
 }
 

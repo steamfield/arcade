@@ -1,8 +1,7 @@
 import { EventLog, type Stamped } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_COURSE } from '../../logic/courses/index.ts';
 import type { GameEvent } from '../../logic/events.ts';
-import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
-import { parseLevel } from '../../logic/level/parse.ts';
 import { createWorld } from '../../logic/world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { createBubbleTracker } from './bubble-tracker.ts';
@@ -24,7 +23,7 @@ const NO_BURSTS: Bursts = {
 
 /** Total shake trauma the effects ask for when one tick's `events` arrive. */
 function traumaFor(events: GameEvent[]): number {
-  const world = createWorld(parseLevel(OCEAN_LEVEL), new EventLog<GameEvent>(), { seed: 1 });
+  const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1 });
   let trauma = 0;
   const effects = createEventEffects(world, NO_BURSTS, createBubbleTracker(), (amount) => {
     trauma += amount;
@@ -57,7 +56,7 @@ describe('event effects shake', () => {
 describe('event effects for the attack power-ups', () => {
   /** Effects over a fresh world with every burst recorded as `name x,y`. */
   function setup() {
-    const world = createWorld(parseLevel(OCEAN_LEVEL), new EventLog<GameEvent>(), { seed: 1 });
+    const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1 });
     const seen: string[] = [];
     const record = (name: string) => (x: number, y: number) => seen.push(`${name} ${x},${y}`);
     const bursts: Bursts = {

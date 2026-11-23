@@ -1,0 +1,156 @@
+/**
+ * Swim's rival pilot (`Medium.steer`): the aim from the steer field (the smash field while it holds
+ * a Puffer it can use: inflated, or its burst ready; the ram field always for a rival that rams
+ * coral), a bounded wobble, a bend around any urchin or jelly in the way (`ai/avoid.ts`), the kick
+ * decision, and the speed-based stuck recovery.
+ *
+ * A stunned or trapped rival can't act, so its stuck counter resets and it starts no recovery swim.
+ * A rival swerving round a hazard holds its kick; a recovering one saves it.
+ *
+ * In a dark zone (`inDark`) a rival that can't see (`racerSeesInDark`: not Selene, no Glow Lantern)
+ * wobbles twice as far and re-reads its field half as often.
+ *
+ * It reads only the draws it is handed, never the rng, so rng use per tick is the generic AI's.
+ */
+import { breaksCoralOnContact, racerSeesInDark } from '../../abilities.ts';
+import { avoidHazards } from '../../ai/avoid.ts';
+import { steerDirection } from '../../ai/steer.ts';
+import { inDark } from '../../level/query.ts';
+import { cos, length, sin } from '../../num.ts';
+import type { MoveModifiers, Racer, Vec, World } from '../../types.ts';
+import type { AiDraws, Steering } from '../types.ts';
+import { type SwimPilot, swimNav, swimPilot } from './data.ts';
+
+/** How much looser a rival steers in a dark zone it can't see in: wobble bound and reaction time multipliers. */
+export const DARK_STEERING = { wobbleMul: 2, reactionMul: 2 } as const;
+
+/** Tiles down the steer field a rival aims at. */
+const LOOKAHEAD_TILES = 3;
+/** Largest change in wobble per tick, as a fraction of the profile's wobble bound. */
+const WOBBLE_STEP = 0.15;
+/** Kick only when the aim is within about 37 degrees of the way the racer is already moving. */
+const KICK_ALIGNMENT = 0.8;
+/** Below this speed in px/s a racing rival counts as stuck. */
+const STUCK_SPEED = 8;
+const STUCK_TICKS = 30;
+const RECOVER_TICKS = 20;
+
+/** A swim rival's pilot memory at the start line. */
+export function createSwimPilot(): SwimPilot {
+  return {
+    kind: 'swim',
+    wobble: 0,
+    stuckTicks: 0,
+    recoverTicks: 0,
+    recoverDir: { x: 0, y: 0 },
+    aim: { x: 0, y: 0 },
+    replanIn: 0,
+  };
+}
+
+/**
+ * A swim rival's steering this tick. Mutates only the rival's pilot memory. `forceRecover` starts a
+ * stuck recovery now unless one is already running.
+ *
+ * @throws {Error} When `racer.ai` is null (a human drives it), or its memory or the world's nav isn't swim's.
+ */
+export function steerSwimmer(
+  world: World,
+  racer: Racer,
+  _mods: MoveModifiers,
+  draws: AiDraws,
+  forceRecover: boolean,
+): Steering {
+  const ai = racer.ai;
+  if (!ai) throw new Error(`swim.steer needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
+  const memory = swimPilot(ai.pilot);
+  const blind = inDark(world.level, racer.body) && !racerSeesInDark(racer);
+  replanAim(world, racer, memory, blind ? DARK_STEERING.reactionMul : 1);
+  stepWobble(memory, racer.profile.wobble * (blind ? DARK_STEERING.wobbleMul : 1), draws.wobble);
+  const wobbled = wobbledAim(memory);
+  const aim = avoidHazards(world, racer, wobbled);
+  // avoidHazards hands back the same object when nothing is in the way.
+  const swerving = aim !== wobbled;
+  const recovery = canRecover(world, racer, memory) ? recoveryMove(racer, memory, draws.side, forceRecover) : null;
+  // A recovering rival is sliding off a wall, not racing, so it saves its kick for the aim.
+  // A swerving rival holds its kick, which would carry it on toward the hazard.
+  const kick = recovery === null && !swerving && wantsKick(racer, aim, draws.kick);
+  return { move: recovery ?? aim, kick, kickHeld: kick, aim, recovering: recovery !== null };
+}
+
+/**
+ * Stuck recovery runs only while racing and free to swim. A stunned or trapped rival sits still
+ * through no fault of its steering, so that time resets its stuck count instead.
+ */
+function canRecover(world: World, racer: Racer, memory: SwimPilot): boolean {
+  if (world.race.phase !== 'racing') return false;
+  if (racer.status.stunned > 0 || racer.status.trapped > 0) {
+    memory.stuckTicks = 0;
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Re-reads its field every `reactionTicks` (times `reactionMul`), so slower rivals react later to
+ * the course. A rival holding a Puffer that is inflated or ready to burst reads the smash field and
+ * aims through coral, which its inflate breaks; while the burst cools down it steers around like
+ * everyone else. A rival that rams coral reads the ram field always.
+ */
+function replanAim(world: World, racer: Racer, memory: SwimPilot, reactionMul: number): void {
+  if (memory.replanIn <= 0) {
+    const { level, broken } = world;
+    const nav = swimNav(world.nav);
+    const pufferReady = racer.stack.includes('puffer') && (racer.status.inflated > 0 || racer.burstCooldown === 0);
+    const rams = breaksCoralOnContact(racer);
+    const field = rams ? nav.ram : pufferReady ? nav.smash : nav.steer;
+    memory.aim = steerDirection(field, nav, level, broken, racer.body, LOOKAHEAD_TILES, rams || pufferReady);
+    memory.replanIn = racer.profile.reactionTicks * reactionMul;
+  }
+  memory.replanIn--;
+}
+
+/** One step of the bounded random walk on the steering angle. */
+function stepWobble(memory: SwimPilot, bound: number, draw: number): void {
+  const step = (draw * 2 - 1) * bound * WOBBLE_STEP;
+  memory.wobble = Math.max(-bound, Math.min(bound, memory.wobble + step));
+}
+
+function wobbledAim(memory: SwimPilot): Vec {
+  const c = cos(memory.wobble);
+  const s = sin(memory.wobble);
+  return { x: memory.aim.x * c - memory.aim.y * s, y: memory.aim.x * s + memory.aim.y * c };
+}
+
+/**
+ * The sideways swim of a racer that has sat nearly still too long (or that `forceRecover` sends),
+ * held for RECOVER_TICKS to slide off whatever it is pinned against; null while it isn't recovering.
+ */
+function recoveryMove(racer: Racer, memory: SwimPilot, sideDraw: number, forceRecover: boolean): Vec | null {
+  if (memory.recoverTicks === 0) {
+    const speed = length(racer.body.vx, racer.body.vy);
+    memory.stuckTicks = speed < STUCK_SPEED ? memory.stuckTicks + 1 : 0;
+    if (memory.stuckTicks < STUCK_TICKS && !forceRecover) return null;
+    memory.stuckTicks = 0;
+    memory.recoverTicks = RECOVER_TICKS;
+    memory.recoverDir = sidewaysFrom(memory.aim, racer.facing, sideDraw < 0.5 ? 1 : -1);
+  }
+  memory.recoverTicks--;
+  return { ...memory.recoverDir };
+}
+
+/** Perpendicular to the aim on the given side; to the facing when there is no aim yet. */
+function sidewaysFrom(aim: Vec, facing: 1 | -1, side: 1 | -1): Vec {
+  const forward = aim.x === 0 && aim.y === 0 ? { x: facing, y: 0 } : aim;
+  return { x: -forward.y * side, y: forward.x * side };
+}
+
+/** Kicks when ready, already moving roughly along its aim, and the skill roll passes. */
+function wantsKick(racer: Racer, aim: Vec, roll: number): boolean {
+  if (racer.kickCooldown > 0) return false;
+  const { vx, vy } = racer.body;
+  const speed = length(vx, vy);
+  if (speed === 0) return false;
+  const alignment = (aim.x * vx + aim.y * vy) / speed;
+  return alignment > KICK_ALIGNMENT && roll < racer.profile.kickSkill;
+}

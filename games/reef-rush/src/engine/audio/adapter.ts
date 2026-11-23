@@ -37,6 +37,8 @@ export interface AdapterOptions {
   onError(error: unknown): void;
   /** Whether racer `id` is near enough the player to hear what it does; every racer is when omitted. */
   audibleFromPlayer?(id: RacerId): boolean;
+  /** The song the current race plays: the course's own (`Course.song`). Read when each race starts. */
+  raceSong(): SongName;
 }
 
 /** Final-stretch tempo, as a multiple of the race theme's own. */
@@ -117,7 +119,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       case 'race.countdown':
         return sfx('countdown');
       case 'race.started':
-        wanted = 'race';
+        wanted = options.raceSong();
         return sfx('go');
       case 'racer.kicked':
         if (event.id === 'player') sfx('kick');
@@ -155,10 +157,10 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       followSequencer();
     },
     onRaceProgress(fraction: number) {
-      if (lifted || fraction < FINAL_STRETCH_AT || started !== 'race' || !running()) return;
+      if (lifted || fraction < FINAL_STRETCH_AT || started !== options.raceSong() || !running()) return;
       lifted = true;
       sequencer.setTempoScale(LIFT_TEMPO);
-      announce('race:lift', 'song');
+      announce(`${started}:lift`, 'song');
     },
   };
 }

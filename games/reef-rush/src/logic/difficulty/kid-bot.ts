@@ -1,22 +1,19 @@
 /**
  * The stuck-prone kid: a scripted player who holds toward the finish (right) and steers up or down
  * only after 1.5 s without getting any closer, alternating between the two, kicking rarely and
- * never bursting. Rival bots follow the steer field and never get stuck, so this is the player the
+ * never bursting. Rival bots follow the medium's way and never get stuck, so this is the player the
  * Easy guide is measured on. Races run on the real course; the result is the time spent stuck and
  * the finish place. Test and measurement only; nothing in the game imports it.
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { tileOf } from '../ai/steer.ts';
+import { DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
-import { OCEAN_LEVEL } from '../level/levels.ts';
-import { parseLevel } from '../level/parse.ts';
-import { fieldAt } from '../race/flowfield.ts';
+import { mediumOf } from '../media/index.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
 import { centreOf, playerOf } from '../racers.ts';
 import type { CharacterId, Difficulty, Intent, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
-
-const LEVEL = parseLevel(OCEAN_LEVEL);
 
 /** How the kid plays, in ticks (60 per second). */
 export const KID = {
@@ -66,9 +63,8 @@ export function gainedGround(kid: KidMemory, reading: number, minGain: number, t
 /** The player's distance to the finish by the uniform-cost progress field: what getting closer looks like to a child, coral gates included. */
 const nearness = (world: World): number => playerOf(world).progress;
 
-/** The player's steer-field distance to the finish at its tile: the true route, which only a real gain lowers. */
-const routeDistance = (world: World): number =>
-  fieldAt(world.fields.steer, world.fields, tileOf(centreOf(playerOf(world))));
+/** The medium's distance to the finish at the player's tile: the true route, which only a real gain lowers. */
+const routeDistance = (world: World): number => mediumOf(world).distanceAt(world, tileOf(centreOf(playerOf(world))));
 
 /**
  * The kid's input for this tick: right, plus up or down for a try that lasts while the kid keeps
@@ -102,7 +98,7 @@ export interface KidRun {
 
 /** Races the kid as `character` on `difficulty` until the player finishes. */
 export function kidRace(character: CharacterId, seed: number, difficulty: Difficulty): KidRun {
-  const world = createWorld(LEVEL, new EventLog<GameEvent>(100_000), { seed, difficulty, character });
+  const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(100_000), { seed, difficulty, character });
   const kid = newKid();
   const watch = newKid();
   let stuckTicks = 0;

@@ -7,14 +7,26 @@ import type { Migrations } from '@arcade/core';
 import { z } from 'zod';
 import { CHARACTER_IDS, type CharacterId, DIFFICULTIES, type Difficulty } from './types.ts';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 /** A fastest finish with the place it earned. */
 const BestSchema = z.object({ ticks: z.number().int().positive(), place: z.number().int().min(1).max(4) });
 
+/** Fastest finish on each level, with the place it earned there; null until the level has a finish. Only finished races count. */
+const LevelBestsSchema = z.object({
+  easy: BestSchema.nullable(),
+  normal: BestSchema.nullable(),
+  hard: BestSchema.nullable(),
+});
+
 export const SaveSchema = z.object({
-  /** Fastest finish on each level, with the place it earned there; null until the level has a finish. Only finished races count. */
-  best: z.object({ easy: BestSchema.nullable(), normal: BestSchema.nullable(), hard: BestSchema.nullable() }),
+  /**
+   * Bests per course id, then per level. Keys are plain strings so a save naming a course the game
+   * no longer has still loads; such keys are kept and never shown. Only listed courses get a best.
+   */
+  bests: z.record(z.string(), LevelBestsSchema),
+  /** The listed course raced last; null until one is. Choosing a course ignores it when it isn't listed. */
+  lastCourse: z.string().nullable(),
   /** Races run to the results screen. */
   races: z.number().int().nonnegative(),
   settings: z.object({
@@ -30,15 +42,21 @@ export const SaveSchema = z.object({
 
 export type SaveData = z.infer<typeof SaveSchema>;
 
+/** Bests on every level of one course before any finish. */
+export const NO_BESTS: SaveData['bests'][string] = { easy: null, normal: null, hard: null };
+
 export const NEW_GAME: SaveData = {
-  best: { easy: null, normal: null, hard: null },
+  bests: {},
+  lastCourse: null,
   races: 0,
   settings: { muted: false, reducedMotion: null, difficulty: 'easy' },
   character: 'rudy',
 };
 
+/** The v5 shape, before courses: bests per level for the one course there was. */
+type SaveDataV5 = Omit<SaveData, 'bests' | 'lastCourse'> & { best: SaveData['bests'][string] };
 /** The v4 shape, before a best time per level: one best, whatever the level. */
-type SaveDataV4 = Omit<SaveData, 'best'> & { best: SaveData['best'][Difficulty] };
+type SaveDataV4 = Omit<SaveDataV5, 'best'> & { best: SaveDataV5['best'][Difficulty] };
 /** The v3 shape, before difficulty levels: settings had only sound and motion. */
 type SaveDataV3 = Omit<SaveDataV4, 'settings'> & { settings: Omit<SaveData['settings'], 'difficulty'> };
 /** The v2 shape, before the roster: everything in v3 but the picked character. */
@@ -55,8 +73,13 @@ export const migrations: Migrations = {
     return { ...v3, settings: { ...v3.settings, difficulty: 'easy' } };
   },
   // v4 kept one best whatever the level. It stays, under the level the save was on, so the title shows it where it was set.
-  4: (old): SaveData => {
+  4: (old): SaveDataV5 => {
     const { best, ...rest } = old as SaveDataV4;
-    return { ...rest, best: { ...NEW_GAME.best, [rest.settings.difficulty]: best } };
+    return { ...rest, best: { ...NO_BESTS, [rest.settings.difficulty]: best } };
+  },
+  // v5 predates courses. Its bests were all set on the ocean course, Sunlit Shallows.
+  5: (old): SaveData => {
+    const { best, ...rest } = old as SaveDataV5;
+    return { ...rest, bests: { 'sunlit-shallows': best }, lastCourse: null };
   },
 };

@@ -22,6 +22,7 @@ export default scenario({
       { standings: [rival, rival, rival, 'player'], playerPlace: 4, playerTicks: null },
     ]);
     expect(events.filter((e) => e.type === 'save.written')).toHaveLength(1);
-    expect(state).toMatchObject({ save: { best: { easy: null, normal: null, hard: null }, races: 1 } });
+    expect(state).toMatchObject({ save: { lastCourse: 'sunlit-shallows', races: 1 } });
+    expect((state as { save: { bests: unknown } }).save.bests, 'a DNF saves no best').toEqual({});
   },
 });

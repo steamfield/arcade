@@ -5,18 +5,19 @@
  * drains the tick's events once and hands them to audio and any listening view.
  * Scenes render from it and never change gameplay themselves.
  *
- * Screens: title, then select (pick a character; kick races, burst goes back),
- * then race and results. Race again skips the select and races the same pick. The title also
- * opens How to Play, a few pages the player turns with the move and action buttons.
+ * Screens: title, then course select (pick a course; skipped while only one course is listed),
+ * then select (pick a character; kick races, burst goes back), then race and results. Race again
+ * skips both selects and races the same course and pick. The title also opens How to Play, a few
+ * pages the player turns with the move and action buttons.
  */
 import { createLogger, EventLog, FixedStep, type Stamped } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import type { GameContext } from '@arcade/shell';
+import { courseById, DEFAULT_COURSE, LISTED_COURSES } from '../logic/courses/index.ts';
+import type { Course } from '../logic/courses/types.ts';
 import type { GameEvent } from '../logic/events.ts';
-import { OCEAN_LEVEL } from '../logic/level/levels.ts';
-import { parseLevel } from '../logic/level/parse.ts';
 import { playerOf } from '../logic/racers.ts';
-import { isNewBest, recordResult } from '../logic/records.ts';
+import { isNewBest, recordRace } from '../logic/records.ts';
 import { NEW_GAME, type SaveData } from '../logic/save.ts';
 import {
   type CharacterId,
@@ -36,6 +37,7 @@ import { type PagePress, turnPage } from './how-to-play.ts';
 import { input } from './input.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 import { raceProgress } from './race-progress.ts';
+import { assertCourseAssets } from './themes/course-assets.ts';
 import {
   type HintConfig,
   type HintMemory,
@@ -47,7 +49,7 @@ import {
 } from './view/hints.ts';
 
 /** Phaser scene keys, one per screen. */
-export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'select' | 'race' | 'results';
+export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'course' | 'select' | 'race' | 'results';
 
 /** Events the engine adds on top of the world's. */
 export type EngineEvent =
@@ -94,6 +96,10 @@ export interface RuntimeOptions {
   prefersReducedMotion: boolean;
   /** Stops the running scenes and starts `scene`. Phaser does the switch; the runtime only asks for it. */
   startScene(scene: SceneKey): void;
+  /** The page's query string (`location.search`), read for `?course=` and `?stage=`. Empty when there is none. */
+  search?: string;
+  /** The courses course select offers, in menu order. Defaults to `LISTED_COURSES`; tests pass their own. */
+  listedCourses?: readonly Course[];
 }
 
 /** The one save slot Reef Rush uses. */
@@ -125,6 +131,14 @@ export class Runtime {
    * saved pick, and goes back to it each time the select screen opens.
    */
   selectedCharacter: CharacterId;
+  /** The course the next race runs on: `?course=`, else the save's last listed course, else the default. Race again keeps it. */
+  course: Course;
+  /** The courses course select offers, in menu order. */
+  readonly listedCourses: readonly Course[];
+  /** Course select only shows when there is a choice to make; while it is skipped, screens don't name the course either. */
+  readonly courseSelectShown: boolean;
+  /** The course select cursor, an index into `listedCourses`; put on the current course each time the screen opens. */
+  courseCursor = 0;
   readonly audio: AudioPort;
   /** True when the current race was staged for a capture (`?stage=`); its result is never saved. */
   staged = false;
@@ -156,6 +170,7 @@ export class Runtime {
   private readonly saves: SaveStore<SaveData>;
   private readonly prefersReducedMotion: boolean;
   private readonly startScene: (scene: SceneKey) => void;
+  private readonly search: string;
   private readonly listeners = new Set<EventListener>();
   private cursor = 0;
   /** Ticks left before the results screen, or null when no race has finished. */
@@ -169,8 +184,19 @@ export class Runtime {
     this.save = options.save;
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.startScene = options.startScene;
+    this.search = options.search ?? '';
+    this.listedCourses = options.listedCourses ?? LISTED_COURSES;
+    this.courseSelectShown = this.listedCourses.length > 1;
     this.selectedCharacter = this.savedCharacter;
-    this.audio = createAudio(options.ctx, this.settings, this.events, (id) => this.audibleFromPlayer(id));
+    this.course = startingCourse(this.search, options.save?.lastCourse ?? null);
+    assertCourseAssets(this.course);
+    this.audio = createAudio(
+      options.ctx,
+      this.settings,
+      this.events,
+      (id) => this.audibleFromPlayer(id),
+      () => this.course.song,
+    );
   }
 
   /** True while any save write is queued or running. The test harness waits on it through idle(). */
@@ -186,6 +212,11 @@ export class Runtime {
       reducedMotion: saved.reducedMotion ?? this.prefersReducedMotion,
       difficulty: saved.difficulty,
     };
+  }
+
+  /** The course the title and select screens draw behind them: the save's last course when it is listed, else the default. */
+  get menuCourse(): Course {
+    return listedLastCourse(this.save?.lastCourse ?? null);
   }
 
   /** The character picked last, from the save; Rudy when there is none. */
@@ -214,6 +245,7 @@ export class Runtime {
     this.loading = false;
     if (scene === 'title') this.world = null;
     if (scene === 'select') this.selectedCharacter = this.savedCharacter;
+    if (scene === 'course') this.courseCursor = Math.max(0, this.listedCourses.indexOf(this.course));
     if (scene === 'howToPlay') this.showHowToPlayPage(0);
     const options = MENUS[scene];
     this.menu = options ? createMenu(options) : null;
@@ -233,7 +265,7 @@ export class Runtime {
   startRace(): void {
     const seed = this.ctx.params.seed + (this.save?.races ?? 0);
     const { difficulty } = this.settings;
-    this.world = createWorld(parseLevel(OCEAN_LEVEL), this.events, {
+    this.world = createWorld(this.course, this.events, {
       seed,
       character: this.selectedCharacter,
       difficulty,
@@ -241,7 +273,7 @@ export class Runtime {
     this.hintMemory = newHintMemory();
     this.hintConfig = hintConfig(this.save?.races ?? 0, difficulty);
     this.hints = NO_HINTS;
-    const stage = stageFor(this.ctx.params);
+    const stage = stageFor(this.ctx.params, this.search);
     if (stage) applyStage(this.world, stage);
     this.staged = stage !== null;
     this.startProgress = playerOf(this.world).progress;
@@ -308,6 +340,7 @@ export class Runtime {
     this.events.tick = this.step.tick;
     input.update();
     if (this.menu) this.tickMenu(this.menu);
+    else if (this.scene === 'course') this.tickCourse();
     else if (this.scene === 'select') this.tickSelect();
     else if (this.scene === 'howToPlay') this.tickHowToPlay();
     else if (this.scene === 'race') this.tickRace(dt);
@@ -329,8 +362,24 @@ export class Runtime {
     else if (option === 'Difficulty') this.changeSettings({ difficulty: nextDifficulty(this.settings.difficulty) });
     else if (option === 'How to play') this.goTo('howToPlay');
     else if (option === 'Title') this.goTo('title');
-    else if (option === 'Race') this.goTo('select');
+    else if (option === 'Race') this.goTo(this.courseSelectShown ? 'course' : 'select');
     else this.startRace();
+  }
+
+  /** Moves the course cursor up and down, wrapping; after the arming ticks kick picks the course and burst goes back. */
+  private tickCourse(): void {
+    const count = this.listedCourses.length;
+    if (input.justPressed('down')) this.courseCursor = (this.courseCursor + 1) % count;
+    if (input.justPressed('up')) this.courseCursor = (this.courseCursor + count - 1) % count;
+    if (this.menuArmIn > 0) {
+      this.menuArmIn--;
+      return;
+    }
+    if (input.justPressed('burst')) this.goTo('title');
+    else if (input.justPressed('kick')) {
+      this.course = this.listedCourses[this.courseCursor] ?? this.course;
+      this.goTo('select');
+    }
   }
 
   /** Moves the select cursor on the d-pad; after the arming ticks kick races as the pick and burst goes back. */
@@ -343,7 +392,7 @@ export class Runtime {
       this.menuArmIn--;
       return;
     }
-    if (input.justPressed('burst')) this.goTo('title');
+    if (input.justPressed('burst')) this.goTo(this.courseSelectShown ? 'course' : 'title');
     else if (input.justPressed('kick')) this.pickCharacter();
   }
 
@@ -427,11 +476,33 @@ export class Runtime {
     const result: RaceResult = { standings, playerPlace, playerTicks };
     const before = this.save ?? NEW_GAME;
     const difficulty = this.world?.difficulty ?? this.settings.difficulty;
-    this.lastResult = { result, newBest: isNewBest(before, result, difficulty), saveFailed: false };
+    const courseId = this.world?.course ?? this.course.id;
+    this.lastResult = { result, newBest: isNewBest(before, courseId, difficulty, result), saveFailed: false };
     this.resultsIn = RESULTS_DELAY_TICKS;
     if (this.staged) return;
-    void this.persist(recordResult(before, result, difficulty), 'Race result');
+    void this.persist(recordRace(before, courseId, difficulty, result), 'Race result');
   }
+}
+
+/**
+ * The course a session starts on: the one `?course=` names (listed or not), else the save's last
+ * course when it is still listed, else the default. An unknown `?course=` is warned about once and
+ * ignored.
+ */
+function startingCourse(search: string, lastCourse: string | null): Course {
+  const asked = new URLSearchParams(search).get('course');
+  if (asked !== null) {
+    const course = courseById(asked);
+    if (course) return course;
+    log.warn('unknown course in ?course=, racing the default', { course: asked, default: DEFAULT_COURSE.id });
+  }
+  return listedLastCourse(lastCourse);
+}
+
+/** The save's last course when it names a listed course, else the default. */
+function listedLastCourse(lastCourse: string | null): Course {
+  const last = lastCourse === null ? null : courseById(lastCourse);
+  return last?.listed ? last : DEFAULT_COURSE;
 }
 
 /** The next difficulty in the cycle EASY, NORMAL, HARD, then back to EASY. */
@@ -451,5 +522,10 @@ function readPagePress(): PagePress | null {
 /** The player's input this tick as plain data for `stepWorld`. */
 function readPlayerInput(): TickInput {
   const move = input.vector('move');
-  return { move: { x: move.x, y: move.y }, kick: input.justPressed('kick'), burst: input.justPressed('burst') };
+  return {
+    move: { x: move.x, y: move.y },
+    kick: input.justPressed('kick'),
+    kickHeld: input.isDown('kick'),
+    burst: input.justPressed('burst'),
+  };
 }

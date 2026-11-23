@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_PROFILE } from './ai/profiles.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
 import type { GameEvent } from './events.ts';
-import { parseLevel } from './level/parse.ts';
+import { courseFromLevel } from './test-world.ts';
 import { CHARACTER_IDS, type CharacterId, RACER_IDS, RNG_SALTS } from './types.ts';
 import { createWorld } from './world.ts';
 
 const SEEDS = Array.from({ length: 50 }, (_, i) => i + 1);
 
-const LANES = parseLevel({
+const LANES = courseFromLevel({
   name: 'lanes',
   ascii: `
     1...F

@@ -1,18 +1,18 @@
 /**
- * The title screen, laid out to UI.md: the REEF RUSH logotype over the reef
- * backdrop, the four racers swimming past, the Race / How to play / Level / Sound / Motion
+ * The title screen, laid out to UI.md: the REEF RUSH logotype over the backdrop of the last
+ * listed course raced (Sunlit Shallows until then), the four racers swimming past, the Race / How to play / Level / Sound / Motion
  * buttons (Level, Sound and Motion show the setting in force and change the moment it does),
  * a blinking PRESS A on touch screens (on a keyboard A is a move key, so the
  * hint would mislead), and the best-time card, to the right of the buttons, when the save has a
- * best on the level now selected (it follows the Level button).
+ * best on the current course at the level now selected (it follows the Level button).
  *
  * The screen stays up while the player toggles Motion, so every motion here
  * reads `rt.settings.reducedMotion` live each frame. Motion is timed from the
  * runtime's tick so captures repeat.
  */
 import Phaser from 'phaser';
-import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
-import { parseLevel } from '../../logic/level/parse.ts';
+import { levelOf } from '../../logic/courses/index.ts';
+import { bestFor } from '../../logic/records.ts';
 import { NEW_GAME } from '../../logic/save.ts';
 import type { CharacterId, Difficulty } from '../../logic/types.ts';
 import { DIFFICULTIES } from '../../logic/types.ts';
@@ -24,6 +24,7 @@ import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { MENU_OPTIONS, type MenuOption } from '../menu.ts';
 import type { Runtime, Settings } from '../runtime.ts';
+import { themeFor } from '../themes/index.ts';
 import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { createMenuView, type MenuView, OPTION_LABELS } from '../view/menu-view.ts';
@@ -87,7 +88,8 @@ export class TitleScene extends Phaser.Scene {
   create(): void {
     const rt = this.rt;
     // The backdrop reads this every update, so a Motion toggle stills it at once.
-    this.backdrop = createBackdrop(this, parseLevel(OCEAN_LEVEL), {
+    const backdropCourse = rt.menuCourse;
+    this.backdrop = createBackdrop(this, levelOf(backdropCourse), themeFor(backdropCourse), {
       get reducedMotion() {
         return rt.settings.reducedMotion;
       },
@@ -103,10 +105,10 @@ export class TitleScene extends Phaser.Scene {
     this.pressA = isTouchScreen()
       ? createLabel(this, PRESS_A.x, PRESS_A.top + 3, 'PRESS A', { align: 'center', outline: true })
       : null;
-    const bests = rt.save?.best ?? NEW_GAME.best;
+    const save = rt.save ?? NEW_GAME;
     this.bestCards = {};
     for (const level of DIFFICULTIES) {
-      const best = bests[level];
+      const best = bestFor(save, rt.course.id, level);
       if (best) this.bestCards[level] = addBestCard(this, best, rt.save?.character ?? NEW_GAME.character);
     }
     this.rt.entered('title');

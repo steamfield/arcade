@@ -20,6 +20,7 @@
  * start or his last hit (no one else uses it). The numbers are in ABILITY; they stay small next to power-ups.
  */
 import type { GameEvent } from './events.ts';
+import type { KickRules } from './media/types.ts';
 import { length } from './num.ts';
 import { bumpMass } from './powerups/passives.ts';
 import { STACK_MAX } from './powerups/tuning.ts';
@@ -122,12 +123,12 @@ export function breaksCoralOnContact(racer: Racer): boolean {
 }
 
 /**
- * The kick's direction scaled per axis, as `applyIntent` fires it: the kick adds
- * `SWIM.kick * kickMul` times this vector. `dir` is the unit aim. Gil (Spring kick) scales the
- * upward part of a steep upward kick (see ABILITY.springKick).
+ * The kick's direction scaled per axis, as a medium's `applyIntent` fires it: the kick adds the
+ * medium's kick speed times `kickMul` times this vector. `dir` is the unit aim. Gil (Spring kick)
+ * scales the upward part of a kick the medium's `rules.springKick` accepts (see ABILITY.springKick).
  */
-export function kickImpulse(racer: Racer, dir: Vec): Vec {
-  if (racer.character !== 'gil' || dir.y > -ABILITY.springKick.minUp) return dir;
+export function kickImpulse(racer: Racer, dir: Vec, rules: KickRules): Vec {
+  if (racer.character !== 'gil' || !rules.springKick(dir)) return dir;
   return { x: dir.x, y: dir.y * ABILITY.springKick.upMul };
 }
 

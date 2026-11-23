@@ -4,10 +4,10 @@ import { PLAYER_PROFILE } from '../ai/profiles.ts';
 import type { GameEvent } from '../events.ts';
 import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
+import { SWIM_TUNING as SWIM } from '../media/swim/tuning.ts';
 import { noItems } from '../racers.ts';
-import { type Body, type Level, type Racer, type RacerId, TILE } from '../types.ts';
+import { type Body, type Level, RACER_SIZE, type Racer, type RacerId, TILE } from '../types.ts';
 import { moveBody, separateRacers } from './collide.ts';
-import { SWIM } from './physics.ts';
 
 /** A room with one solid tile at column 4, row 2 (pixels 64..80 by 32..48). */
 const room = (pillar: '#' | 'C' = '#'): Level =>
@@ -23,7 +23,14 @@ const room = (pillar: '#' | 'C' = '#'): Level =>
     `,
   });
 
-const body = (x: number, y: number, vx = 0, vy = 0): Body => ({ x, y, vx, vy, w: SWIM.width, h: SWIM.height });
+const body = (x: number, y: number, vx = 0, vy = 0): Body => ({
+  x,
+  y,
+  vx,
+  vy,
+  w: RACER_SIZE.width,
+  h: RACER_SIZE.height,
+});
 
 function move(target: Body, level: Level, ticks: number, broken: ReadonlySet<number> = new Set()) {
   for (let i = 0; i < ticks; i++) moveBody(target, level, broken, TICK_DT);
@@ -111,6 +118,7 @@ function racer(id: RacerId, x: number, mass = 1): Racer {
   return {
     id,
     character: 'rudy',
+    motion: { kind: 'swim' },
     body: body(x, 50),
     facing: 1,
     kickCooldown: 0,

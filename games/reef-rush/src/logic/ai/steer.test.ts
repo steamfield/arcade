@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../level/parse.ts';
-import { buildFlowFields } from '../race/flowfield.ts';
-import { SWIM } from '../swim/physics.ts';
-import { type Body, type Level, TILE, type Vec } from '../types.ts';
+import { buildSwimNav } from '../media/swim/nav.ts';
+import { type Body, type Level, RACER_SIZE, TILE, type Vec } from '../types.ts';
 import { steerDirection } from './steer.ts';
 
 /** Starts in a pocket at the bottom; the only way out is up the left column, then right along the top. */
@@ -20,12 +19,12 @@ const hook = (): Level =>
   });
 
 const bodyCentredOn = (tx: number, ty: number): Body => ({
-  x: tx * TILE + (TILE - SWIM.width) / 2,
-  y: ty * TILE + (TILE - SWIM.height) / 2,
+  x: tx * TILE + (TILE - RACER_SIZE.width) / 2,
+  y: ty * TILE + (TILE - RACER_SIZE.height) / 2,
   vx: 0,
   vy: 0,
-  w: SWIM.width,
-  h: SWIM.height,
+  w: RACER_SIZE.width,
+  h: RACER_SIZE.height,
 });
 
 /** True when walking `distance` px from the body centre along `dir` enters a rock tile. */
@@ -41,7 +40,7 @@ function rayHitsRock(level: Level, body: Body, dir: Vec, distance: number): bool
 describe('steering', () => {
   it('points along the only open route toward the finish', () => {
     const level = hook();
-    const fields = buildFlowFields(level, new Set());
+    const fields = buildSwimNav(level, new Set());
     const steer = (tx: number, ty: number) =>
       steerDirection(fields.steer, fields, level, new Set(), bodyCentredOn(tx, ty), 3);
 
@@ -55,7 +54,7 @@ describe('steering', () => {
 
   it('never aims across a solid corner', () => {
     const level = hook();
-    const fields = buildFlowFields(level, new Set());
+    const fields = buildSwimNav(level, new Set());
     const body = bodyCentredOn(1, 3);
     const dir = steerDirection(fields.steer, fields, level, new Set(), body, 3);
 
@@ -66,7 +65,7 @@ describe('steering', () => {
 
   it('stops steering on a finish tile', () => {
     const level = hook();
-    const fields = buildFlowFields(level, new Set());
+    const fields = buildSwimNav(level, new Set());
     const dir = steerDirection(fields.steer, fields, level, new Set(), bodyCentredOn(7, 1), 3);
 
     expect(Math.hypot(dir.x, dir.y)).toBe(0);
@@ -92,7 +91,7 @@ describe('steering a whole body', () => {
 
   it('stops short of a tile the body could only reach by clipping a rock corner', () => {
     const level = grazing();
-    const fields = buildFlowFields(level, new Set());
+    const fields = buildSwimNav(level, new Set());
     const dir = steerDirection(fields.steer, fields, level, new Set(), bodyCentredOn(1, 1), 3);
 
     expect(dir.x).toBeCloseTo(1, 5);

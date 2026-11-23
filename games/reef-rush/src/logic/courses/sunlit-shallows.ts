@@ -1,7 +1,9 @@
 /**
- * Course data. Data only: the format is documented in `level/parse.ts`.
+ * Sunlit Shallows, the ocean course. Data only: the level format is documented in `level/parse.ts`.
+ * Only `courses/index.ts` imports this file; everything else asks the registry.
  */
 import type { LevelDef } from '../types.ts';
+import type { Course } from './types.ts';
 
 /**
  * Sunlit Shallows, the ocean course: about 90 s for a good swimmer. Each section
@@ -36,7 +38,7 @@ import type { LevelDef } from '../types.ts';
  * you, so the ceiling urchins (6 columns apart) come out of the dark one at a time. Rivals that
  * can't see steer loosely there; Selene and anyone holding a Glow Lantern see as if lit.
  */
-export const OCEAN_LEVEL: LevelDef = {
+const LEVEL: LevelDef = {
   name: 'Sunlit Shallows',
   ascii: `
     ########################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
@@ -61,4 +63,18 @@ export const OCEAN_LEVEL: LevelDef = {
     ########################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################
   `,
   dark: [[530, 610]],
+};
+
+/** The mean Hard expert-bot finish over seeds 1-200 and all eight characters, measured at the phase-8 scaffold. */
+const PAR_TICKS = 5144;
+
+export const SUNLIT_SHALLOWS: Course = {
+  id: 'sunlit-shallows',
+  name: 'Sunlit Shallows',
+  level: LEVEL,
+  medium: 'swim',
+  theme: 'ocean',
+  song: 'race',
+  listed: true,
+  parTicks: PAR_TICKS,
 };

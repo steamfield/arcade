@@ -8,13 +8,13 @@
  * `rt.howToPage`, restarting the page's animation each time it changes.
  */
 import Phaser from 'phaser';
-import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
-import { parseLevel } from '../../logic/level/parse.ts';
+import { DEFAULT_COURSE, levelOf } from '../../logic/courses/index.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { measureText, TEXT_FACE } from '../art/ui/typeface.ts';
 import type { Runtime } from '../runtime.ts';
+import { themeFor } from '../themes/index.ts';
 import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { actionGlyphWidth, createActionGlyph } from '../view/control-glyphs.ts';
@@ -49,7 +49,8 @@ export class HowToPlayScene extends Phaser.Scene {
 
   create(): void {
     const rt = this.rt;
-    this.backdrop = createBackdrop(this, parseLevel(OCEAN_LEVEL), {
+    // How to Play shows swimming, so it stays on the ocean course whatever course is picked.
+    this.backdrop = createBackdrop(this, levelOf(DEFAULT_COURSE), themeFor(DEFAULT_COURSE), {
       get reducedMotion() {
         return rt.settings.reducedMotion;
       },
@@ -61,7 +62,7 @@ export class HowToPlayScene extends Phaser.Scene {
       outline: true,
       align: 'center',
     });
-    this.pages = createPages(this, touch, rt.savedCharacter);
+    this.pages = createPages(this, rt.course.medium, touch, rt.savedCharacter);
     this.dots = this.pages.map((_, index) => addDot(this, index, this.pages.length));
     addFooter(this, touch);
     this.shown = null;

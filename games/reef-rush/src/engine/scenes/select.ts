@@ -5,7 +5,8 @@
  * (its portrait at 2x, full name, ability and a one-line blurb), the picked
  * racer swimming in place under the card, and a footer showing kick races and
  * burst goes back (as the A and B buttons on touch screens). Everything sits
- * clear of the back link, d-pad and A/B zones.
+ * clear of the back link, d-pad and A/B zones. The backdrop is the last listed course raced
+ * (Sunlit Shallows until then), as on the title.
  *
  * The runtime moves the cursor and starts the race; this scene only draws
  * `rt.selectedCharacter`. Motion is timed from the runtime tick and reads
@@ -14,8 +15,7 @@
  * strokes, and under reduced motion both hold still.
  */
 import Phaser from 'phaser';
-import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
-import { parseLevel } from '../../logic/level/parse.ts';
+import { levelOf } from '../../logic/courses/index.ts';
 import { CHARACTER_IDS, type CharacterId } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { Frame, Tex } from '../art/keys.ts';
@@ -23,6 +23,7 @@ import { IconFrame, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
 import { abilityTextFor, SELECT_COLUMNS } from '../character-select.ts';
 import type { Runtime } from '../runtime.ts';
+import { themeFor } from '../themes/index.ts';
 import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { racerName, racerShortName, slideRemaining, TONE_CSS } from '../view/race-text.ts';
@@ -92,7 +93,8 @@ export class SelectScene extends Phaser.Scene {
 
   create(): void {
     const rt = this.rt;
-    this.backdrop = createBackdrop(this, parseLevel(OCEAN_LEVEL), {
+    const backdropCourse = rt.menuCourse;
+    this.backdrop = createBackdrop(this, levelOf(backdropCourse), themeFor(backdropCourse), {
       get reducedMotion() {
         return rt.settings.reducedMotion;
       },

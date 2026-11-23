@@ -46,7 +46,7 @@ export function advanceClock(world: World): boolean {
 /** Sets every unfinished racer's `progress` from the progress field. */
 export function updateProgress(world: World): void {
   for (const racer of world.racers) {
-    if (!racer.finished) racer.progress = progressAt(world.fields, racer.body);
+    if (!racer.finished) racer.progress = progressAt(world.progress, racer.body);
   }
 }
 

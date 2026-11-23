@@ -3,13 +3,14 @@
  * transparent water, stepped forward between the two frames so the flow
  * reads as moving and its direction reads by shape. Seamless in both axes.
  */
-import { Frame, Tex } from '../keys.ts';
+import { Frame } from '../../../art/keys.ts';
+import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
+import { OceanTex, type OceanTexKey } from '../keys.ts';
 import { TerrainPalette } from '../palettes.ts';
-import { type ArtSheet, sheet } from './sheet.ts';
 
 /** Current sheets, frames `a` and `b` of the flow loop. */
-export const CURRENT_SHEETS: readonly ArtSheet[] = [
-  sheet(Tex.currentRight, TerrainPalette.current, {
+export const CURRENT_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
+  sheet(OceanTex.currentRight, TerrainPalette.current, {
     [Frame.a]: [
       '................',
       '...1............',
@@ -47,7 +48,7 @@ export const CURRENT_SHEETS: readonly ArtSheet[] = [
       '................',
     ],
   }),
-  sheet(Tex.currentLeft, TerrainPalette.current, {
+  sheet(OceanTex.currentLeft, TerrainPalette.current, {
     [Frame.a]: [
       '................',
       '............1...',
@@ -85,7 +86,7 @@ export const CURRENT_SHEETS: readonly ArtSheet[] = [
       '................',
     ],
   }),
-  sheet(Tex.currentUp, TerrainPalette.current, {
+  sheet(OceanTex.currentUp, TerrainPalette.current, {
     [Frame.a]: [
       '................',
       '................',
@@ -123,7 +124,7 @@ export const CURRENT_SHEETS: readonly ArtSheet[] = [
       '..........101...',
     ],
   }),
-  sheet(Tex.currentDown, TerrainPalette.current, {
+  sheet(OceanTex.currentDown, TerrainPalette.current, {
     [Frame.a]: [
       '................',
       '...0............',

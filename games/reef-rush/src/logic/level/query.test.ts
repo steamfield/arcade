@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SWIM } from '../swim/physics.ts';
-import { type Body, type Level, TILE, type Vec } from '../types.ts';
+import { type Body, type Level, RACER_SIZE, TILE, type Vec } from '../types.ts';
 import { parseLevel } from './parse.ts';
 import { bodyTiles, cellAt, inDark, isSolid, overlapsTile, sampleEnvironment, tileIndex } from './query.ts';
 
@@ -16,12 +15,12 @@ const reef = (): Level =>
 
 /** A racer-sized body whose centre sits at the middle of tile (tx, ty). */
 const bodyCentredOn = (tx: number, ty: number): Body => ({
-  x: tx * TILE + (TILE - SWIM.width) / 2,
-  y: ty * TILE + (TILE - SWIM.height) / 2,
+  x: tx * TILE + (TILE - RACER_SIZE.width) / 2,
+  y: ty * TILE + (TILE - RACER_SIZE.height) / 2,
   vx: 0,
   vy: 0,
-  w: SWIM.width,
-  h: SWIM.height,
+  w: RACER_SIZE.width,
+  h: RACER_SIZE.height,
 });
 
 /** Drops negative zero so direction vectors compare by value. */
@@ -162,7 +161,7 @@ describe('dark zones', () => {
 
   it('goes by the centre, not the edges: a body reaching into a dark column is lit', () => {
     const level = twilight();
-    const leaning = { ...bodyCentredOn(2, 0), x: 3 * TILE - SWIM.width / 2 - 1 };
+    const leaning = { ...bodyCentredOn(2, 0), x: 3 * TILE - RACER_SIZE.width / 2 - 1 };
 
     expect(inDark(level, leaning)).toBe(false);
     expect(inDark(level, { ...leaning, x: leaning.x + 2 })).toBe(true);

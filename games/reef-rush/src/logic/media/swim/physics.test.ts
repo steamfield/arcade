@@ -1,12 +1,16 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { PLAYER_PROFILE } from '../ai/profiles.ts';
-import type { GameEvent } from '../events.ts';
-import { noItems } from '../racers.ts';
-import type { Environment, MoveModifiers, Racer, Vec } from '../types.ts';
-import { applyIntent, BASE_MODIFIERS, SWIM } from './physics.ts';
+import { PLAYER_PROFILE } from '../../ai/profiles.ts';
+import type { GameEvent } from '../../events.ts';
+import { noItems } from '../../racers.ts';
+import { type MoveModifiers, RACER_SIZE, type Racer, type Vec } from '../../types.ts';
+import type { SwimEnv } from './data.ts';
+import { applyIntent } from './physics.ts';
+import { SWIM_TUNING as SWIM } from './tuning.ts';
 
-const WATER: Environment = { current: null, inKelp: false };
+const BASE_MODIFIERS = SWIM.base;
+
+const WATER: SwimEnv = { kind: 'swim', current: null, inKelp: false };
 const CRUISE = SWIM.force / SWIM.drag;
 const STILL: Vec = { x: 0, y: 0 };
 const RIGHT: Vec = { x: 1, y: 0 };
@@ -17,7 +21,8 @@ function makeRacer(): Racer {
   return {
     id: 'player',
     character: 'rudy',
-    body: { x: 40, y: 40, vx: 0, vy: 0, w: SWIM.width, h: SWIM.height },
+    motion: { kind: 'swim' },
+    body: { x: 40, y: 40, vx: 0, vy: 0, w: RACER_SIZE.width, h: RACER_SIZE.height },
     facing: 1,
     kickCooldown: 0,
     progress: Number.POSITIVE_INFINITY,
@@ -32,7 +37,7 @@ function makeRacer(): Racer {
 interface Hold {
   move?: Vec;
   kick?: boolean;
-  env?: Environment;
+  env?: SwimEnv;
   mods?: MoveModifiers;
 }
 
@@ -46,7 +51,7 @@ function swim(
   let top = 0;
   for (let i = 0; i < ticks; i++) {
     log.tick = i;
-    applyIntent(racer, { move, kick, burst: false }, env, mods, log, TICK_DT);
+    applyIntent(racer, { move, kick, burst: false }, env, SWIM, mods, log, TICK_DT);
     top = Math.max(top, speed(racer));
   }
   return { top, log };
@@ -109,8 +114,8 @@ describe('swimming', () => {
     swim(racer, SETTLE);
 
     expect(racer.body.vx).toBe(0);
-    expect(racer.body.vy).toBeGreaterThan((SWIM.sink / SWIM.drag) * 0.9);
-    expect(racer.body.vy).toBeLessThanOrEqual(SWIM.sink / SWIM.drag + 1e-6);
+    expect(racer.body.vy).toBeGreaterThan((SWIM.extra.sink / SWIM.drag) * 0.9);
+    expect(racer.body.vy).toBeLessThanOrEqual(SWIM.extra.sink / SWIM.drag + 1e-6);
   });
 
   it('changes velocity only, never position', () => {
@@ -129,7 +134,7 @@ describe('swimming', () => {
   it('never exceeds the speed cap however hard it is pushed', () => {
     const racer = makeRacer();
     const mods: MoveModifiers = { forceMul: 4, kickMul: 3, kickCooldownTicks: 0, dragMul: 1 };
-    const { top } = swim(racer, 120, { move: RIGHT, kick: true, env: { current: RIGHT, inKelp: false }, mods });
+    const { top } = swim(racer, 120, { move: RIGHT, kick: true, env: { ...WATER, current: RIGHT }, mods });
 
     expect(top).toBeLessThanOrEqual(SWIM.maxSpeed + 1e-6);
     expect(speed(racer)).toBeCloseTo(SWIM.maxSpeed, 2);
@@ -151,7 +156,7 @@ describe('swimming', () => {
 
 describe('the water', () => {
   it('lowers cruise speed in kelp', () => {
-    const inKelp = settledSpeed({ move: RIGHT, env: { current: null, inKelp: true } });
+    const inKelp = settledSpeed({ move: RIGHT, env: { ...WATER, inKelp: true } });
 
     expect(inKelp).toBeGreaterThan(0);
     expect(inKelp).toBeLessThan(settledSpeed({ move: RIGHT }) / 2);
@@ -159,16 +164,16 @@ describe('the water', () => {
 
   it('carries a racer with no input along a current', () => {
     const racer = makeRacer();
-    swim(racer, SETTLE, { env: { current: RIGHT, inKelp: false } });
+    swim(racer, SETTLE, { env: { ...WATER, current: RIGHT } });
 
-    expect(racer.body.vx).toBeGreaterThan((SWIM.currentForce / SWIM.drag) * 0.9);
-    expect(racer.body.vx).toBeLessThanOrEqual(SWIM.currentForce / SWIM.drag + 1e-6);
+    expect(racer.body.vx).toBeGreaterThan((SWIM.extra.currentForce / SWIM.drag) * 0.9);
+    expect(racer.body.vx).toBeLessThanOrEqual(SWIM.extra.currentForce / SWIM.drag + 1e-6);
   });
 
   it('speeds a racer swimming with a current and slows one swimming against it', () => {
     const still = settledSpeed({ move: RIGHT });
-    const withIt = settledSpeed({ move: RIGHT, env: { current: RIGHT, inKelp: false } });
-    const against = settledSpeed({ move: RIGHT, env: { current: { x: -1, y: 0 }, inKelp: false } });
+    const withIt = settledSpeed({ move: RIGHT, env: { ...WATER, current: RIGHT } });
+    const against = settledSpeed({ move: RIGHT, env: { ...WATER, current: { x: -1, y: 0 } } });
 
     expect(withIt).toBeGreaterThan(still * 1.5);
     expect(against).toBeLessThan(still / 2);
@@ -225,10 +230,12 @@ describe('a very long tick', () => {
   it('slows a racer in kelp to a stop without reversing it', () => {
     const racer = makeRacer();
     racer.body.vx = 100;
+    const kelp: SwimEnv = { ...WATER, inKelp: true };
     applyIntent(
       racer,
       { move: STILL, kick: false, burst: false },
-      { current: null, inKelp: true },
+      kelp,
+      SWIM,
       BASE_MODIFIERS,
       new EventLog<GameEvent>(),
       0.5,

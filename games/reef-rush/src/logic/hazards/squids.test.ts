@@ -1,8 +1,8 @@
 import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { downhillPath, openTiles } from '../ai/steer.ts';
-import { OCEAN_LEVEL } from '../level/levels.ts';
-import { parseLevel } from '../level/parse.ts';
+import { DEFAULT_COURSE, levelOf } from '../courses/index.ts';
+import { swimNav } from '../media/swim/data.ts';
 import { fireBurst } from '../powerups/burst.ts';
 import { spawnDecoy } from '../powerups/decoys.ts';
 import { SQUID } from '../powerups/tuning.ts';
@@ -402,11 +402,12 @@ describe('dodging', () => {
  */
 describe('on the ocean course', () => {
   it('reaches a target from every stretch of the course', () => {
-    const level = parseLevel(OCEAN_LEVEL);
-    const { world, log } = raceOn(OCEAN_LEVEL.ascii);
+    const level = levelOf(DEFAULT_COURSE);
+    const { world, log } = raceOn(DEFAULT_COURSE.level.ascii);
     const [player, tess] = [racerOf(world, 'player'), racerOf(world, 'tess')];
     const start = level.starts[0] ?? fail('the ocean course has no first start');
-    const path = downhillPath(world.fields.steer, world.fields, openTiles(level, world.broken, false), start, 2000);
+    const nav = swimNav(world.nav);
+    const path = downhillPath(nav.steer, nav, openTiles(level, world.broken, false), start, 2000);
     const missed: string[] = [];
     let pairs = 0;
     for (let i = 20; i + 6 < path.length; i += 3) {

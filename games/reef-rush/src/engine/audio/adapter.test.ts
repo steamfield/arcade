@@ -41,6 +41,7 @@ function heard(events: RuntimeEvent[], near: boolean): string[] {
       throw error;
     },
     audibleFromPlayer: () => near,
+    raceSong: () => 'race',
   });
   const stamped: Stamped<RuntimeEvent>[] = events.map((event, seq) => ({ ...event, tick: 300, seq }));
   adapter.onEvents(stamped);
