@@ -113,6 +113,11 @@ describe('stepping a row value', () => {
     });
   });
 
+  it("gives nothing for left and right on a guest's Copy link and Leave, nor on a stale cursor clamped to Leave", () => {
+    const actions = [1, 2, 4].flatMap((row) => [press(onRow(row), 'left', GUEST), press(onRow(row), 'right', GUEST)]);
+    expect(actions).toEqual(Array(6).fill(null));
+  });
+
   it('gives nothing for left and right on Start, Copy link and Leave', () => {
     const actions = [3, 4, 5].flatMap((row) => [press(onRow(row), 'left'), press(onRow(row), 'right')]);
     expect(actions).toEqual(Array(6).fill(null));

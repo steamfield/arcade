@@ -72,9 +72,9 @@ function pickOption(screen: FriendsScreen): FriendsAction | null {
   const option = FRIENDS_OPTIONS[screen.selected];
   if (option === 'Create room') return { kind: 'create' };
   if (option === 'Back') return { kind: 'back' };
-  // Join reopens the cells keeping whatever was spelled before; the cursor is on the first cell,
-  // since the cells are only ever left from there.
+  // Join opens the cells on the first one, keeping whatever was spelled before.
   screen.mode = 'code';
+  screen.cell = 0;
   return null;
 }
 

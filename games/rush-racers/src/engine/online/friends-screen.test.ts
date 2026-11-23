@@ -87,6 +87,19 @@ describe('the code cells', () => {
     expect(pressFriends(screen, 'fire')).toEqual({ kind: 'join', code: `34${LAST}${FIRST}${FIRST}3` });
   });
 
+  it('joins on right from the last cell, as on fire', () => {
+    const screen = openCells();
+    pressAll(screen, ['right', 'right', 'right', 'right', 'right', 'up']);
+    expect(pressFriends(screen, 'right')).toEqual({ kind: 'join', code: `${FIRST.repeat(5)}3` });
+  });
+
+  it('returns to the menu on left from the first cell, keeping the cells', () => {
+    const screen = openCells();
+    pressAll(screen, ['up', 'right', 'up', 'left']);
+    expect(pressFriends(screen, 'left')).toBeNull();
+    expect(screen).toEqual({ mode: 'menu', selected: 1, cells: ['3', '3', FIRST, FIRST, FIRST, FIRST], cell: 0 });
+  });
+
   it('steps back a cell on left and on dash, and from the first cell returns to the menu keeping the cells', () => {
     const screen = openCells();
     pressAll(screen, ['up', 'right', 'right', 'up']);

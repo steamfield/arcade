@@ -40,6 +40,6 @@ export class FriendsScene extends Phaser.Scene {
   override update(): void {
     const rt = this.rt;
     this.backdrop?.update(rt.step.tick);
-    this.view?.sync(rt.online.friends, rt.step.tick, rt.settings.reducedMotion);
+    this.view?.sync(rt.online, rt.step.tick, rt.settings.reducedMotion);
   }
 }

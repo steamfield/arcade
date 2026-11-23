@@ -1,9 +1,9 @@
 /**
- * Draws the friends screen, laid out to UI.md "Friends": the FRIENDS heading, the Create room /
- * Join / Back buttons, and under Join the six code cells (the cursor's cell in a gold frame with
- * arrows above and below it, and the hint that up and down change a letter), with a footer showing
- * what fire and dash do (as the A and B buttons on touch screens). It only reads the screen state;
- * the online flow moves it.
+ * Draws the friends screen, laid out to UI.md "Friends": the FRIENDS heading, the online notice
+ * and the Create room / Join / Back buttons, and under Join the six code cells (the cursor's cell
+ * in a gold frame with the cursor fin turned up above it and down below it, and the hint that up
+ * and down change a letter), with a footer showing what fire and dash do (as the A and B buttons
+ * on touch screens). It only reads the online state; the online flow moves it.
  */
 import { ROOM_CODE_LENGTH } from '@arcade/api/protocol';
 import type Phaser from 'phaser';
@@ -12,23 +12,27 @@ import { type Button, createButton } from '../art/ui/button.ts';
 import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
 import { FRIENDS_OPTIONS, type FriendsScreen } from '../online/friends-screen.ts';
+import type { OnlineState } from '../online/state.ts';
 import { COURSE_FOOTER, courseFooterItems } from './course-view.ts';
 import { TONE_CSS } from './race-text.ts';
 
 /** Where the heading is centred, as on course select. */
 const HEADING = { x: 160, y: 12 } as const;
+/** The notice's centre in menu mode, between the heading and the buttons; 40 characters span x 41-279. */
+const NOTICE_AT = { x: 160, y: 40 } as const;
 /** The menu buttons: as on the title, 80 wide so the fin (x 109-117) clears the d-pad zone. */
 const MENU = { centreX: 160, top: 62, width: 80, pitch: 17 } as const;
 /** The hint line's centre, above the cells; it is wider than the safe column, so it stays above y 76. */
 const HINT = { x: 160, y: 28, text: 'UP AND DOWN CHANGE A LETTER' } as const;
 /**
  * Code cells: one display character in a 3 px frame with 1 px padding (20 tall), 18 wide, 2 px
- * apart, centred on x 160 (x 101-219), from y 44. The arrows sit 1 px clear above and below, so
- * the whole block ends at y 73, above the d-pad zone.
+ * apart, centred on x 160 (x 101-219), from y 44. The turned fins sit 1 px clear above and below,
+ * so the whole block ends at y 73, above the d-pad zone.
  */
 export const CODE_CELLS = { y: 44, w: 18, h: 20, gap: 2 } as const;
-const ARROW_SIZE = 9;
-const ARROW_GAP = 1;
+/** The cursor fin is 9x9 and sits 1 px clear of the cell. */
+const FIN_SIZE = 9;
+const FIN_GAP = 1;
 
 /** The footer's words for each place the cursor can be. */
 const FOOTER_WORDS = {
@@ -46,8 +50,8 @@ export function codeCellRect(index: number): { x: number; y: number; w: number; 
 
 /** A drawn friends screen that follows the screen state. */
 export interface FriendsView {
-  /** Shows `screen` for logic tick `tick` (the cursor fin's nudge). */
-  sync(screen: FriendsScreen, tick: number, reducedMotion: boolean): void;
+  /** Shows `online.friends` and `online.notice` for logic tick `tick` (the cursor fin's nudge). */
+  sync(online: OnlineState, tick: number, reducedMotion: boolean): void;
 }
 
 /** Adds the heading, the menu, the code cells and the footer to `scene`; `sync` shows the right ones. */
@@ -56,11 +60,14 @@ export function createFriendsView(scene: Phaser.Scene, touch: boolean): FriendsV
   const buttons = FRIENDS_OPTIONS.map((option, row) =>
     createButton(scene, MENU.centreX, MENU.top + row * MENU.pitch, option, { width: MENU.width }),
   );
+  const notice = createLabel(scene, NOTICE_AT.x, NOTICE_AT.y, '', { outline: true, align: 'center' });
   const code = createCodeEntry(scene);
   const footer = createFooter(scene, touch);
   return {
-    sync(screen, tick, reducedMotion) {
+    sync(online, tick, reducedMotion) {
+      const screen = online.friends;
       const inMenu = screen.mode === 'menu';
+      notice.setText(online.notice ?? '').setVisible(inMenu);
       buttons.forEach((button, row) => {
         button
           .setVisible(inMenu)
@@ -81,8 +88,9 @@ interface CodeEntry {
 function createCodeEntry(scene: Phaser.Scene): CodeEntry {
   const hint = createLabel(scene, HINT.x, HINT.y, HINT.text, { tone: 'foam', outline: true, align: 'center' });
   const cells = Array.from({ length: ROOM_CODE_LENGTH }, (_, index) => addCell(scene, index));
-  const up = scene.add.image(0, 0, UiTex.icons, IconFrame.arrowUp).setOrigin(0, 0);
-  const down = scene.add.image(0, 0, UiTex.icons, IconFrame.arrowDown).setOrigin(0, 0);
+  // The menu cursor fin points right; turned a quarter either way it marks up and down.
+  const up = scene.add.image(0, 0, UiTex.icons, IconFrame.cursorFin).setOrigin(0.5).setAngle(-90);
+  const down = scene.add.image(0, 0, UiTex.icons, IconFrame.cursorFin).setOrigin(0.5).setAngle(90);
   return {
     sync(screen, visible) {
       hint.setVisible(visible);
@@ -96,10 +104,11 @@ function createCodeEntry(scene: Phaser.Scene): CodeEntry {
           .setColor(TONE_CSS[selected ? 'sun' : 'foam']);
       });
       const cursor = codeCellRect(screen.cell);
-      const arrowX = cursor.x + Math.floor((cursor.w - ARROW_SIZE) / 2);
+      // Centres on half pixels, so the odd-sized fin's edges land on whole ones.
+      const centreX = cursor.x + Math.floor((cursor.w - FIN_SIZE) / 2) + FIN_SIZE / 2;
       const onCell = screen.cell >= 0 && screen.cell < ROOM_CODE_LENGTH;
-      up.setPosition(arrowX, cursor.y - ARROW_GAP - ARROW_SIZE).setVisible(visible && onCell);
-      down.setPosition(arrowX, cursor.y + cursor.h + ARROW_GAP).setVisible(visible && onCell);
+      up.setPosition(centreX, cursor.y - FIN_GAP - FIN_SIZE / 2).setVisible(visible && onCell);
+      down.setPosition(centreX, cursor.y + cursor.h + FIN_GAP + FIN_SIZE / 2).setVisible(visible && onCell);
     },
   };
 }

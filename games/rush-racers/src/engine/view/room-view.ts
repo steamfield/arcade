@@ -2,8 +2,9 @@
  * Draws the room screen, laid out to UI.md "Room": the room code large in the top-left with the
  * race's course and level beside it, the players in join order (label, character, ping, HOST, YOU
  * and AWAY), this peer's rows as buttons with their current values and the cursor fin, a panel of
- * button hints, and `online.notice` as a status line. Before the room has welcomed this peer, and
- * once the connection has closed, it shows only the notice. It only reads `OnlineState`; the online
+ * button hints, and `online.notice` wrapped into the strip right of the players (or RACE IN
+ * PROGRESS there for a peer without a Start row while a race runs). Before the room has welcomed
+ * this peer, and once the connection has closed, it shows only the notice, above the d-pad zone. It only reads `OnlineState`; the online
  * flow moves the cursor and acts.
  */
 import type Phaser from 'phaser';
@@ -17,16 +18,17 @@ import { createPanel } from '../art/ui/panel.ts';
 import { type RoomRow, roomRows } from '../online/room-screen.ts';
 import type { OnlineState } from '../online/state.ts';
 import { racerShortName, TONE_CSS } from './race-text.ts';
+import { wrapLines } from './wrap-lines.ts';
 
 /** The code, display at 2x (24 tall, at most 106 wide), top-left on the outer margin. */
 const CODE_AT = { x: 6, y: 6 } as const;
-/** The race card beside the code: the course's name over the level, clear of the back link (x 248). */
-const RACE_CARD = { x: 146, y: 6, w: 100, h: 24 } as const;
+/** The race card beside the code: the course's name over the level, ending at x 244 like the players panel. */
+const RACE_CARD = { x: 146, y: 6, w: 98, h: 24 } as const;
 const RACE_CARD_TEXT = { x: 150, courseY: 10, levelY: 19 } as const;
-/** The players panel: four text rows at a 9 px pitch, ending at y 74, above the d-pad zone. */
-const PLAYERS = { x: 6, y: 32, w: 240, h: 42, firstRowY: 36, pitch: 9 } as const;
+/** The players panel: four text rows at a 9 px pitch, ending at y 74, above the d-pad zone, and at x 244, left of the status strip. */
+const PLAYERS = { x: 6, y: 32, w: 238, h: 42, firstRowY: 36, pitch: 9 } as const;
 /** Player row columns: label, name, ping (right-aligned), then the HOST, YOU and AWAY marks. */
-const PLAYER_COLUMNS = { label: 10, name: 26, pingRight: 160, host: 168, you: 196, away: 218 } as const;
+const PLAYER_COLUMNS = { label: 10, name: 26, pingRight: 160, host: 168, you: 196, away: 216 } as const;
 /** Most players a room holds, so the panel has a row for each. */
 const MAX_PLAYER_ROWS = 4;
 /**
@@ -35,12 +37,17 @@ const MAX_PLAYER_ROWS = 4;
  * keeps them out of the A/B zone. RACE IN PROGRESS (95 px) is the widest text and fits inside.
  */
 const ROWS = { centreX: 173, top: 76, width: 106, pitch: 15 } as const;
-/** The hints panel right of the rows, above the A/B zone (y 118). */
-const HINTS = { x: 232, y: 76, w: 64, h: 38 } as const;
-const HINT_LINES = { iconX: 236, wordX: 247, firstY: 80, pitch: 11 } as const;
-/** The status line under the rows, centred on the safe column; the waiting notice in the middle of the screen. */
-const STATUS_AT = { x: 168, y: 170 } as const;
-const WAITING_AT = { x: 160, y: 90 } as const;
+/** The hints panel right of the rows, under the status strip and above the A/B zone (y 118). */
+const HINTS = { x: 232, y: 82, w: 64, h: 36 } as const;
+const HINT_LINES = { iconX: 236, wordX: 247, firstY: 86, pitch: 10 } as const;
+/**
+ * The status strip right of the players panel and under the back link: x 248-313, lines of at most
+ * 11 characters at the text face's 9 px line from y 28. A 40-character notice wraps to at most six
+ * lines, which end at y 80, above the hints panel.
+ */
+const STATUS = { x: 248, y: 28, maxChars: 11 } as const;
+/** The notice shown alone, centred above the d-pad zone; 40 characters span x 41-279. */
+const WAITING_AT = { x: 160, y: 60 } as const;
 
 /** What the Start row says while a race this peer is not in runs. */
 export const RACING_TEXT = 'RACE IN PROGRESS';
@@ -92,6 +99,15 @@ export function roomRowText(row: RoomRow, lobby: LobbyView): string {
   }
 }
 
+/**
+ * The status strip's text: the notice, or, while a race runs and this peer has no Start row to say
+ * so, RACE IN PROGRESS.
+ */
+export function statusText(notice: string | null, lobby: LobbyView | null, rows: readonly RoomRow[]): string {
+  if (notice !== null) return notice;
+  return lobby?.phase === 'racing' && !rows.includes('Start') ? RACING_TEXT : '';
+}
+
 /** True when the client has been welcomed and still has a connection, so the room is worth drawing. */
 function inRoom(online: OnlineState): boolean {
   return online.view !== null && online.view.status !== 'connecting' && online.view.status !== 'closed';
@@ -109,18 +125,19 @@ export function createRoomView(scene: Phaser.Scene, touch: boolean): RoomView {
   const players = createPlayers(scene);
   const rows = Array.from({ length: 6 }, (_, index) => createRowButton(scene, index));
   const hints = createHints(scene, touch);
-  const status = createLabel(scene, STATUS_AT.x, STATUS_AT.y, '', { outline: true, align: 'center' });
+  const status = createLabel(scene, STATUS.x, STATUS.y, '', { outline: true });
   const waiting = createLabel(scene, WAITING_AT.x, WAITING_AT.y, '', { outline: true, align: 'center' });
   return {
     sync(online, tick, reducedMotion) {
       const lobby = inRoom(online) ? (online.view?.lobby ?? null) : null;
       const notice = online.notice ?? '';
+      const shown = lobby ? roomRows(lobby) : [];
       waiting.setText(notice).setVisible(lobby === null);
-      status.setText(notice).setVisible(lobby !== null);
+      status.setText(wrapLines(statusText(online.notice, lobby, shown), STATUS.maxChars).join('\n'));
+      status.setVisible(lobby !== null);
       header.sync(online.code, lobby);
       players.sync(lobby);
       hints.setVisible(lobby !== null);
-      const shown = lobby ? roomRows(lobby) : [];
       const cursor = Math.min(online.room.row, shown.length - 1);
       rows.forEach((showRow, index) => {
         const row = shown[index];
