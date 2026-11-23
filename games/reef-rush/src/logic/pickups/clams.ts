@@ -1,8 +1,8 @@
 /**
  * Clams: power-up boxes on the course. A racer with an empty slot touching a ready
  * clam opens it, gets a place-weighted roll from the `pickups` stream with the
- * charges that kind comes with (`chargesFor`), a rival more rolls while it has
- * room (`CLAM.rivalRolls`), and the clam stays shut for a while.
+ * charges that kind comes with (`chargesFor`), a racer outside the human slots more
+ * rolls while it has room (`CLAM.rivalRolls`), and the clam stays shut for a while.
  * A roll walks POWER_UP_KINDS in order over the cumulative weights of the kinds the
  * racer doesn't hold, so one draw maps to one kind.
  */
@@ -12,7 +12,7 @@ import { overlapsTile } from '../level/query.ts';
 import { chargesFor } from '../powerups/charges.ts';
 import { gainItem, heldItems, inventoryFull } from '../powerups/inventory.ts';
 import { CLAM } from '../powerups/tuning.ts';
-import { hitbox } from '../racers.ts';
+import { hitbox, isHuman } from '../racers.ts';
 import { POWER_UP_KINDS, type PowerUpKind, RACER_IDS, type Racer, type World } from '../types.ts';
 
 const LAST_PLACE = RACER_IDS.length;
@@ -22,7 +22,7 @@ const LAST_PLACE = RACER_IDS.length;
  * of opening. A ready clam opens for the first racer in `racers` order whose hitbox overlaps its tile
  * and who has an empty slot: `rollClam(world.rngs.pickups, racer.place, held kinds, bias)`,
  * `clam.opened {id, index, kind}`, then `gainItem` with `chargesFor(kind, racer.place)`, and
- * `closedFor = CLAM.closedTicks`. A rival opener rolls again while it has an empty slot, up to
+ * `closedFor = CLAM.closedTicks`. An opener outside the human slots rolls again while it has an empty slot, up to
  * CLAM.rivalRolls rolls in all; a later roll draws from the same stream and shows only as its
  * `powerup.gained`, so `clam.opened` names the first. A clam that only full racers touch stays
  * ready. So a racer parked on a clam opens it on one call and again CLAM.closedTicks + 1 calls later.
@@ -40,7 +40,7 @@ export function openClams(world: World, racers: readonly Racer[]): void {
     const first = rollFor(world, opener);
     world.events.emit({ type: 'clam.opened', id: opener.id, index, kind: first });
     gainItem(world, opener, first, chargesFor(first, opener.place));
-    const rolls = opener.id === 'player' ? 1 : CLAM.rivalRolls;
+    const rolls = isHuman(world, opener.id) ? 1 : CLAM.rivalRolls;
     for (let roll = 1; roll < rolls && !inventoryFull(opener); roll++) {
       const kind = rollFor(world, opener);
       gainItem(world, opener, kind, chargesFor(kind, opener.place));
@@ -76,7 +76,7 @@ export function clamWeights(place: number): Record<PowerUpKind, number> {
 
 /**
  * Picks a power-up the racer doesn't hold, weighted by `clamWeights(place)` times `bias` per kind
- * (the difficulty level's `playerClamWeightMul` for the player; none by default), with one draw from `rng`.
+ * (the difficulty level's `playerClamWeightMul` for a human slot; none by default), with one draw from `rng`.
  * Kinds with weight 0 never roll. A racer holds at most 4 kinds and at least seven have weight, so there is always something to roll.
  *
  * @throws {Error} When `held` already covers every rollable kind, which a valid inventory never does.
