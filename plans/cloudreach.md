@@ -70,9 +70,12 @@ Flight medium (`logic/media/flight/`):
     nav.ts       buildFlightNav, flightCost, validateFlightLevel
     way.ts       flightAimFrom, flightNextTile, flightDistanceAt, flightCoralAhead
     pilot.ts     createFlightPilot, steerFlyer
+    stick.ts     the pilot's stick (verticalStick, climbPress, horizontalStick) and flightPilotNumbers, read through flightExtra and dashReachPx (phase 1 boundary fix)
     index.ts     FLIGHT_MEDIUM; wiring only, complete in the scaffold
 
-    logic/media/fall-out.ts      the shared fall, park and respawn timer: fallOut, holdParked, respawnAt (run and flight both use it)
+    logic/media/fall-out.ts      the shared fall, park and respawn timer: fallOut, holdParked, waitOut, isBelowLevel, respawnAt (run and flight both use it)
+    logic/race/flowfield.ts      EntryCost takes a required fourth argument, the tile entered, so a medium can price tiles by position (flight's low-sky band); costs that ignore it declare fewer parameters
+    logic/media/flight/physics.ts also exports flapReadyNextTick and dashReachPx, the facts the pilot reads
     logic/courses/sky-test.ts    the unlisted flight test course (scaffold: a placeholder open level)
 
 Engine (scaffold):
@@ -81,7 +84,7 @@ Engine (scaffold):
     engine/worlds/index.ts           SKINS gains cloudreach
     engine/view/how-to-play/index.ts MEDIUM_PAGES gains flight, pointing at swim's move page until lane c
 
-Later phases add their contracts in their own scaffold (phase 2: `bounce` cell and `B` glyph, `CELL_CHAR`, `Level.rings` and `@`, `LevelDef.lightning`, events, `status.ringBoost`, `HitCause 'lightning'`, `MediumEffects.bounceSpeed`, the `stepRace` calls and the race scene's view wiring; phase 3: `ThemeId 'sky'`, `SongId 'cloudreach'`, sky palette contract, `engine/worlds/cloudreach/keys.ts`).
+Later phases add their contracts in their own scaffold (phase 2: `bounce` cell and `B` glyph, `CELL_CHAR`, `Level.rings` and `@`, `LevelDef.lightning`, events, `status.ringBoost`, `HitCause 'lightning'`, `MediumEffects.bounceSpeed`, `Medium.enterCost` taking the tile like `EntryCost` (or documented as not the nav's cost), the `stepRace` calls and the race scene's view wiring; phase 3: `ThemeId 'sky'`, `SongId 'cloudreach'`, sky palette contract, `engine/worlds/cloudreach/keys.ts`).
 
 ## Phases
 
@@ -219,3 +222,4 @@ Depends on: phase 3, phase 4
 
 - 2026-11-23: user decisions from two grill rounds (controls flap and swoop, mixed clouds, fall-out respawn, full world, unlimited flaps with a short cooldown, rings + bounce clouds + lightning, Easy lighter gravity and guide). Land orchestrator's advice taken: lift run's fall/park/respawn timer into a shared helper; check expert beats novice (Thornwood's weak dash failed 27 of 65 bars); rivals must pass slower racers; profile wobble must reach the pilot; scenarios needing exact run-ups race on HARD_SAVE; namespace texture keys per world; clamOpen = ready, clamClosed = used.
 - 2026-11-23 plan critique (devils-advocate, opus), all applied: (1) `maxSpeed` is the conformance suite's hard cap, so flight copies run's split (cap 260, cruise in `extra`, `drag` as air friction) and gets a `CASES_BY_MEDIUM` entry (right, left, down; holding Up flaps once, so no upward case); (2) lanes a and b shared `data.ts` and `index.ts`, so nav and pilot shapes moved to `way-data.ts`, `index.ts` is complete in the scaffold, `FLIGHT_TUNING` keys are fixed there, par is measured at landing and the skill margin moved to phase 4; (3) `effectiveTuning` takes the difficulty and caches per course and difficulty, `createWorld` resolves difficulty first, multipliers apply after course tuning and are checked; (4) the last safe spot needs rock (not coral) under both corners with 2 tiles of clearance, with tests for an idle respawn and broken coral; (5) `ramsCoral` reads a dash window set inside `applyIntent`, tested on the first tick, the window's end, a dive carry and falling onto coral; (6) a horizontal `aimFrom` breaks the Homing Gull, Mirage and Headwind and the assist could still end a glide or fake a press, so `aimFrom` stays 2D and a new `MediumEffects.assistAxes` keeps the assist off `move.y` in flight; (7) the pilot reads wobble as altitude and aim jitter, reactionTicks and kickSkill, with tests that each changes a rival's path, and the 320-race margin goes to the difficulty project in phase 4; (8) `racer.flapped`, the shipped-id registries, `SKINS` and `MEDIUM_PAGES` are in the scaffold, lane c owns `racer-moments.ts`, How to Play gets one flight move page, and phase 2's scaffold owns `world.ts`, `parse.ts`, `CELL_CHAR` and the race scene wiring while its lane c owns the audio adapter and event effects. Not asked of the user: whether Easy's gravity applies to rivals; defaulted to the whole race (Assumptions), since it is physics and rivals' Easy pace is catch-up's job.
+- 2026-11-23 phase 1 landing: lanes a, b, c merged with lane review fixes; main (the land world) merged in, run's pit-edge run-up kept through the shared fall-out timer; sky-test par 1106 (expert mean 851 over 400 Hard races + 30 %); gate green in 184 s (check 19 s, difficulty 142 bars, smoke 72). Boundary review, all four applied in `phase 1: boundary fixes`: physics exports flapReadyNextTick and dashReachPx; one tuning reader (stick.ts); waitOut and isBelowLevel in fall-out.ts; EntryCost's tile required. Deferred to phase 2's scaffold: Medium.enterCost and the tile. Deferred to the final review: four copies of the How to Play dash lurch.
