@@ -41,6 +41,7 @@ export async function defineScenarioTests(dir: URL): Promise<void> {
     if (!scenario) throw new Error(`${file} must default-export a scenario(...)`);
     const register = scenario.todo ? test.fail : test;
     register(`scenarios/${file}: ${scenario.description}`, async ({ game }) => {
+      test.slow(scenario.slow === true, 'plays a long stretch of the game');
       await game.open({
         ...(scenario.start?.seed !== undefined && { seed: scenario.start.seed }),
         ...(scenario.start?.scene !== undefined && { scene: scenario.start.scene }),
