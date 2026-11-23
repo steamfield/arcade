@@ -10,7 +10,9 @@ paths:
 
 - Scenarios use the game's typed kit (`scenarios/kit.ts`: `scenario`, `hold`, `tap`, `wait`) from `@arcade/testing`. Durations are logic ticks (1/60 s), never milliseconds or rendered frames.
 - Assert on `summary`, `state` and `events`. Never on pixels, and never on exact floats from physics or trig: round in `debugSummary` or use `toBeCloseTo`. Local runs are arm64 macOS and CI is x86 Linux.
-- Start states come from `start.save` fixtures (validated and migrated by the save store), `start.scene` and `start.seed`. Not from poking state directly.
+- Start states come from `start.save` fixtures (validated and migrated by the save store), `start.scene`, `start.seed` and `start.query`, not from poking state from the test.
+- A scenario whose outcome depends on tuning or a default setting (difficulty, assists, a character) pins it with an explicit `start.save` instead of relying on what a fresh save defaults to. Otherwise changing the default breaks every such scenario at once.
+- A rare moment (an item a seed seldom rolls, the end of a long course, an attack on the player) is set up through the game's debug stage (`start: { query: { stage: '<name>' } }`, honoured only in test mode or with `?debug=1`), not by hunting for a seed. Seed-hunted scenarios break when tuning shifts.
 - No sleeps or timeouts. The driver waits on `ready`, `idle()`, ticks and events.
 - A known bug is a scenario with `todo: true` and the correct expectation. Remove `todo` when it's fixed. Don't skip, focus or loosen tests to get green.
 - Touch-only smoke tests carry `@touch` in the title so they run in the phone projects.

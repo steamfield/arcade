@@ -105,7 +105,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | Path | Exports |
 | --- | --- |
 | `packages/testing/src/index.ts` | Re-exports `scenario.ts` and `driver.ts`. Playwright pieces come from `@arcade/testing/playwright`. |
-| `packages/testing/src/scenario.ts` | `scenarioKit<Action>()` (`scenario`, `hold`, `tap`, `wait`), `parseInput("right*30 jump")`, `totalTicks`, `Scenario` and result types. |
+| `packages/testing/src/scenario.ts` | `scenarioKit<Action>()` (`scenario`, `hold`, `tap`, `wait`), `parseInput("right*30 jump")`, `totalTicks`, `Scenario` and result types; `start` takes `save`, `scene`, `seed` and `query`. |
 | `packages/testing/src/driver.ts` | `GameDriver`: `open`, `advance`, `play`, `loadState`, `summary`, `state`, `events`, `screenshot`, `runScenario`, `problems`. Shared by Playwright and `arcade see`. |
 | `packages/testing/src/playwright.ts` | The `test` fixture (`game`, fails on console errors, failed requests, game errors, dropped events), `defineScenarioTests(dir)`, `gamePlaywrightConfig(url)` (desktop, phone, WebKit projects). |
 
@@ -128,7 +128,8 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/games.ts` | `listGames`, `findGame`, `ROOT`, `UsageError`. Reads every `game.json`. |
 | `tools/arcade/src/run.ts` | `run(cmd)` subprocess helper with captured output, `elapsed`. |
 | `tools/arcade/src/check.ts` | `check`: turbo typecheck, lint, test for the slug plus changed packages; condenses output. |
-| `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/`. |
+| `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/` (or `--out`); `--query` launch params, `--compare` pixel diff against an earlier run. |
+| `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths or `-t`, one line when green. |
 | `tools/arcade/src/smoke.ts` | `smoke`: assemble, `wrangler dev`, Playwright per game against the production build. |
 | `tools/arcade/src/assemble.ts` | `assemble`, `selectGames`: builds site plus games into `dist/`, writes `_headers`, checks Cloudflare limits. |
 | `tools/arcade/src/new-game.ts` | `newGame`: copies a template, renames, registers it in `.claude/launch.json`, installs. |

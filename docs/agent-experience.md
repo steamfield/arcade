@@ -295,8 +295,8 @@ The scaffold implements this plan with these differences, found while building a
 - **One clock in Phaser games.** The 2D template keeps tile physics in `src/logic/` instead of using Phaser arcade physics. A game that wants arcade physics sets `arcade.customUpdate: true` and calls `physics.world.singleStep()` once per logic tick, never from Phaser's loop.
 - **`see` starts its own Vite server for each run,** from the current worktree, on a free port, and closes it afterwards (about 1-2 s overhead). This removes the cross-worktree reuse risk and the orphan-server problem. Server reuse is a possible later optimization.
 - **CLI surface:**
-  - Commands: `check`, `see`, `smoke`, `dev`, `new`, `assemble`, `list`.
-  - `see` options include `--events`, `--field`, `--ascii`, `--crop`, `--mobile` and `--at`.
+  - Commands: `check`, `test`, `see`, `smoke`, `dev`, `new`, `assemble`, `list`.
+  - `see` options include `--events`, `--field`, `--ascii`, `--crop`, `--mobile`, `--at` (ticks past the input wait idle), `--query`, `--out` and `--compare`.
   - `new` replaces the Turbo generator. It formats the copied files and registers the game in `.claude/launch.json`.
   - `pnpm arcade` is a bin, so pnpm adds no echo or ELIFECYCLE lines.
 - **Output budget:**

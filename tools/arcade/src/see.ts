@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { GameDriver, type InputStep, parseInput, type Scenario } from '@arcade/testing';
 import { chromium, devices } from '@playwright/test';
@@ -20,6 +20,10 @@ export interface SeeOptions {
   ascii: boolean;
   field?: string;
   crop?: string;
+  /** Write the run here instead of a dated folder under .arcade/runs (kept until you delete it). */
+  out?: string;
+  /** A folder of frame-<tick>.png from an earlier run to diff each captured frame against. */
+  compare?: string;
   /** Print events with ticks: 'all' or a type prefix like 'player'. */
   events?: string;
 }
@@ -34,14 +38,22 @@ export async function see(slug: string, opts: SeeOptions): Promise<number> {
   const game = findGame(slug);
   const scenario = opts.scenario ? await loadScenario(game.dir, opts.scenario) : undefined;
   const steps: InputStep[] = [...(scenario?.input ?? []), ...(opts.input ? parseInput(opts.input) : [])];
-  const total = steps.reduce((n, s) => n + s.ticks, 0);
-  const captureAt = opts.at ? opts.at.split(',').map((t) => (t.trim() === 'end' ? total : Number(t))) : [total];
-  if (captureAt.some((t) => !Number.isInteger(t) || t < 0 || t > total)) {
-    throw new UsageError(`--at ticks must be integers between 0 and ${total} (the input's length), or "end"`);
+  const inputTicks = steps.reduce((n, s) => n + s.ticks, 0);
+  const captureAt = opts.at
+    ? opts.at.split(',').map((t) => (t.trim() === 'end' ? inputTicks : Number(t)))
+    : [inputTicks];
+  if (captureAt.some((t) => !Number.isInteger(t) || t < 0)) {
+    throw new UsageError('--at ticks must be non-negative integers, or "end"');
   }
   const captures = [...new Set(captureAt)].sort((a, b) => a - b);
+  // A capture past the input waits for it with nothing pressed, so idle scenes need no `_*N` padding.
+  const padded = Math.max(0, (captures.at(-1) ?? 0) - inputTicks);
+  if (padded > 0) steps.push({ actions: [], ticks: padded });
+  const total = inputTicks + padded;
+  const compareDir = opts.compare ? resolve(opts.compare) : undefined;
+  if (compareDir && !existsSync(compareDir)) throw new UsageError(`--compare folder ${opts.compare} does not exist`);
 
-  const runDir = makeRunDir(slug);
+  const runDir = opts.out ? makeOutDir(opts.out) : makeRunDir(slug);
   process.env.ARCADE_TEST_SERVER = '1';
   const server = await createServer({
     configFile: join(game.dir, 'vite.config.ts'),
@@ -106,6 +118,7 @@ export async function see(slug: string, opts: SeeOptions): Promise<number> {
       captures.shift();
       await capture();
     }
+    const comparisons = compareDir ? await compareFrames(page, frames, compareDir, runDir) : [];
     if (frames.length > 1) await contactSheet(page, frames, join(runDir, 'frames.png'), opts.crop);
     else if (opts.crop && frames[0]) await contactSheet(page, frames, frames[0].file, opts.crop);
 
@@ -131,10 +144,22 @@ export async function see(slug: string, opts: SeeOptions): Promise<number> {
     }
 
     lines.push(`run: ${relative(ROOT, runDir)}  (${elapsed(start)})`);
-    lines.push(`renderer: ${renderer}   ticks: ${total}   seed: ${seed ?? 1}${opts.mobile ? '   device: mobile' : ''}`);
+    lines.push(
+      `renderer: ${renderer}   ticks: ${total}${padded ? ` (input ${inputTicks} + ${padded} idle to reach --at)` : ''}   seed: ${seed ?? 1}${opts.mobile ? '   device: mobile' : ''}`,
+    );
     if (scenario) lines.push(`scenario ${opts.scenario}: ${scenarioResult || 'ran (no expectations)'}`);
     for (const f of frames) lines.push(`tick ${f.tick}: ${JSON.stringify(f.summary)}`);
     lines.push(`events: ${summarizeEvents(events)}`);
+    if (compareDir) {
+      lines.push(`compare with ${relative(ROOT, compareDir)}:`);
+      for (const c of comparisons) lines.push(`  tick ${c.tick}: ${c.result}`);
+      const differing = comparisons.filter((c) => c.differs).length;
+      lines.push(
+        differing
+          ? `  ${differing} of ${comparisons.length} frame(s) differ: see diff-<tick>.png (changes in red)`
+          : '  all frames identical',
+      );
+    }
     if (opts.events) {
       const shown = events.filter((e) => opts.events === 'all' || e.type.startsWith(opts.events ?? ''));
       for (const e of shown.slice(0, 50)) {
@@ -200,6 +225,21 @@ async function loadScenario(gameDir: string, name: string): Promise<Scenario> {
   return mod.default;
 }
 
+/** `--out <dir>`: a run folder the caller names, emptied first. Refuses a folder that isn't a previous run. */
+function makeOutDir(out: string): string {
+  const dir = resolve(out);
+  if (existsSync(dir) && readdirSync(dir).length > 0 && !existsSync(join(dir, 'summary.txt'))) {
+    throw new UsageError(`--out ${out} has files that aren't an arcade see run; pick an empty or new folder`);
+  }
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  const latest = join(ROOT, '.arcade', 'runs', 'latest');
+  mkdirSync(dirname(latest), { recursive: true });
+  rmSync(latest, { force: true });
+  symlinkSync(dir, latest);
+  return dir;
+}
+
 function makeRunDir(slug: string): string {
   const runs = join(ROOT, '.arcade', 'runs');
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 23);
@@ -208,11 +248,11 @@ function makeRunDir(slug: string): string {
   const latest = join(runs, 'latest');
   rmSync(latest, { force: true });
   symlinkSync(dir, latest);
-  // Keep the 20 most recent runs.
+  // Keep the 50 most recent runs (a baseline sweep can be 30+); use --out for runs to keep.
   const all = readdirSync(runs)
     .filter((d) => d !== 'latest')
     .sort();
-  for (const old of all.slice(0, Math.max(0, all.length - 20)))
+  for (const old of all.slice(0, Math.max(0, all.length - 50)))
     rmSync(join(runs, old), { recursive: true, force: true });
   return dir;
 }
@@ -243,6 +283,101 @@ async function contactSheet(
   );
   await sheet.locator('#sheet').screenshot({ path: out });
   await sheet.close();
+}
+
+interface Comparison {
+  tick: number;
+  differs: boolean;
+  result: string;
+}
+
+/**
+ * Diff each captured frame against `<dir>/frame-<tick>.png` in the browser (no image libraries), writing
+ * `diff-<tick>.png` with changed pixels in red over a faded copy of the new frame. A channel must move by more
+ * than 8 to count, which ignores encoder noise but not a moved sprite or a recoloured tile.
+ */
+async function compareFrames(
+  page: import('@playwright/test').Page,
+  frames: { tick: number; file: string }[],
+  dir: string,
+  runDir: string,
+): Promise<Comparison[]> {
+  const { readFileSync } = await import('node:fs');
+  const out: Comparison[] = [];
+  const sheet = await page.context().newPage();
+  try {
+    for (const f of frames) {
+      const base = join(dir, `frame-${f.tick}.png`);
+      if (!existsSync(base)) {
+        out.push({ tick: f.tick, differs: true, result: `no baseline frame-${f.tick}.png` });
+        continue;
+      }
+      const toUrl = (file: string) => `data:image/png;base64,${readFileSync(file).toString('base64')}`;
+      const r = await sheet.evaluate(
+        async ([a, b]) => {
+          const load = (src: string) =>
+            new Promise<HTMLImageElement>((ok, fail) => {
+              const img = new Image();
+              img.onload = () => ok(img);
+              img.onerror = () => fail(new Error('could not decode a frame'));
+              img.src = src;
+            });
+          const [x, y] = await Promise.all([load(a as string), load(b as string)]);
+          if (x.width !== y.width || x.height !== y.height) {
+            return {
+              size: `${x.width}x${x.height} vs baseline ${y.width}x${y.height}`,
+              changed: -1,
+              total: 0,
+              png: '',
+            };
+          }
+          const read = (img: HTMLImageElement) => {
+            const c = document.createElement('canvas');
+            c.width = img.width;
+            c.height = img.height;
+            const g = c.getContext('2d') as CanvasRenderingContext2D;
+            g.drawImage(img, 0, 0);
+            return { c, g, d: g.getImageData(0, 0, img.width, img.height) };
+          };
+          const now = read(x);
+          const was = read(y).d.data;
+          const px = now.d.data;
+          let changed = 0;
+          for (let i = 0; i < px.length; i += 4) {
+            const moved =
+              Math.abs((px[i] ?? 0) - (was[i] ?? 0)) > 8 ||
+              Math.abs((px[i + 1] ?? 0) - (was[i + 1] ?? 0)) > 8 ||
+              Math.abs((px[i + 2] ?? 0) - (was[i + 2] ?? 0)) > 8;
+            if (moved) {
+              changed++;
+              px[i] = 255;
+              px[i + 1] = 0;
+              px[i + 2] = 0;
+            } else {
+              px[i] = ((px[i] ?? 0) + 510) / 3;
+              px[i + 1] = ((px[i + 1] ?? 0) + 510) / 3;
+              px[i + 2] = ((px[i + 2] ?? 0) + 510) / 3;
+            }
+          }
+          now.g.putImageData(now.d, 0, 0);
+          return { size: '', changed, total: px.length / 4, png: changed ? now.c.toDataURL('image/png') : '' };
+        },
+        [toUrl(f.file), toUrl(base)],
+      );
+      if (r.changed < 0) {
+        out.push({ tick: f.tick, differs: true, result: `size differs: ${r.size}` });
+      } else if (r.changed === 0) {
+        out.push({ tick: f.tick, differs: false, result: 'identical' });
+      } else {
+        writeFileSync(join(runDir, `diff-${f.tick}.png`), Buffer.from(r.png.split(',')[1] ?? '', 'base64'));
+        const pct = ((100 * r.changed) / r.total).toFixed(2);
+        out.push({ tick: f.tick, differs: true, result: `${r.changed} px differ (${pct}%), diff-${f.tick}.png` });
+      }
+    }
+  } finally {
+    await sheet.close();
+  }
+  return out;
 }
 
 function summarizeEvents(events: { type: string }[]): string {
