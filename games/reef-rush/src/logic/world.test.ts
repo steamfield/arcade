@@ -62,6 +62,22 @@ describe('determinism', () => {
   });
 });
 
+describe('enemies on the ocean course', () => {
+  it('places two sharks, three eels and four crabs, all past column 60, and draws each in toAscii', () => {
+    const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1 });
+    const placed = world.enemies.map(({ kind, home }) => ({ kind, x: home.x, y: home.y }));
+    const rows = toAscii(world).split('\n');
+
+    expect(placed.filter((e) => e.kind === 'shark')).toHaveLength(2);
+    expect(placed.filter((e) => e.kind === 'eel')).toHaveLength(3);
+    expect(placed.filter((e) => e.kind === 'crab')).toHaveLength(4);
+    expect(placed.every((e) => e.x > 60)).toBe(true);
+    expect(placed.map(({ kind, x, y }) => [kind, rows[y]?.[x]])).toEqual(
+      placed.map(({ kind }) => [kind, { shark: 'S', eel: 'E', crab: 'K' }[kind]]),
+    );
+  });
+});
+
 describe('level checks', () => {
   it('refuses a level whose player start is walled in by coral, naming the start tile', () => {
     const course = courseFromLevel({

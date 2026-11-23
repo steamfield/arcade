@@ -6,7 +6,8 @@
  * are used: wobble, kick roll, recovery side, item roll (`AiDraws`). So one racer's choices, what it
  * holds and which medium it races in never shift the rest of its stream.
  *
- * The medium owns aim, avoidance, kicks and its own stuck rule. The backstop here catches what that
+ * The medium owns aim, avoidance, kicks and its own stuck rule, except one kick added here: a rival with
+ * a dash charge about to touch a crab or an out eel dashes into it (`aboutToBonk`), since a bonk beats it. The backstop here catches what that
  * rule misses: a rival that keeps moving without getting any closer to the finish (`racer.progress`)
  * for PROGRESS_BACKSTOP_TICKS racing ticks is sent into the medium's recovery. It is for opponents
  * only: a bot driving the player's slot is a test harness and is left to flounder. Like the speed rule,
@@ -18,7 +19,9 @@ import type { CatchUpBounds } from '../difficulty-level.ts';
 import { mediumOf } from '../media/index.ts';
 import type { AiDraws, Medium } from '../media/types.ts';
 import { modifiersFor } from '../modifiers.ts';
+import { canDash } from '../powerups/dash-meter.ts';
 import type { AiMemory, Intent, Racer, World } from '../types.ts';
+import { aboutToBonk } from './avoid.ts';
 import { chooseItemSlot } from './items.ts';
 
 /**
@@ -47,12 +50,13 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
   const forceRecover = progressStalled(world, racer, memory);
   const steering = mediumOf(world).steer(world, racer, modifiersFor(world, racer), draws, forceRecover);
   const slot = steering.recovering ? null : chooseItemSlot(world, racer, steering.aim, draws.item);
+  const bonks = !steering.recovering && !steering.kick && canDash(racer) && aboutToBonk(world, racer, steering.move);
   const intent: Intent = {
     move: steering.move,
-    kick: steering.kick,
+    kick: steering.kick || bonks,
     use: false,
     cycle: 0,
-    kickHeld: steering.kickHeld,
+    kickHeld: steering.kickHeld || bonks,
   };
   if (slot !== null) intent.useSlot = slot;
   return intent;

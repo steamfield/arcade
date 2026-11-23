@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { eventsIn, raceOn, racerOf, step } from '../test-world.ts';
-import { type RacerId, TILE, type World } from '../types.ts';
+import { type HitCause, type RacerId, TILE, type World } from '../types.ts';
 
 /** Tess's 5-tall lane has an urchin dead ahead on her start row. */
 const URCHIN_AHEAD = `
@@ -57,13 +57,77 @@ const URCHIN_TUBE = `
   ########################
 `;
 
+/** A crab on a one-tile rock stump in the middle of Tess's 5-tall lane. */
+const CRAB_AHEAD = `
+  ########################
+  #1....................F#
+  ########################
+  #.....................F#
+  #.....................F#
+  #2.........K..........F#
+  #..........#..........F#
+  #.....................F#
+  ########################
+  #3....................F#
+  ########################
+  #4....................F#
+  ########################
+`;
+
+/** Eels in the ceiling and floor of Tess's 5-tall lane take turns lunging across her start row. */
+const EELS_AHEAD = `
+  ########################
+  #1....................F#
+  ########################
+  #.....E.......E.......F#
+  #.....................F#
+  #2....................F#
+  #.....................F#
+  #.........E.......E...F#
+  ########################
+  #3....................F#
+  ########################
+  #4....................F#
+  ########################
+`;
+
+/** A shark patrols the middle of Tess's 5-tall lane. */
+const SHARK_AHEAD = `
+  ##################################
+  #1..............................F#
+  ##################################
+  #...............................F#
+  #...............................F#
+  #2..............S...............F#
+  #...............................F#
+  #...............................F#
+  ##################################
+  #3..............................F#
+  ##################################
+  #4..............................F#
+  ##################################
+`;
+
+/** Tess's lane is one row tall with a crab on its floor: no way round, so she must deal with it. */
+const CRAB_IN_TUBE = `
+  ########################
+  #1....................F#
+  ########################
+  #2.........K..........F#
+  ########################
+  #3....................F#
+  ########################
+  #4....................F#
+  ########################
+`;
+
 /** Steps until `id` finishes or 1200 ticks pass; returns its hits by `cause` and whether it finished. */
 function raceRival(
   ascii: string,
   id: RacerId,
   seed: number,
   eachTick: (world: World) => void = () => {},
-  cause: 'urchin' | 'jelly' = 'urchin',
+  cause: HitCause = 'urchin',
 ) {
   const { world, log } = raceOn(ascii, { seed });
   const rival = racerOf(world, id);
@@ -103,5 +167,52 @@ describe('rivals and hazards', () => {
       }
     });
     expect({ hits, finished, crossedUrchinRow }).toEqual({ hits: 0, finished: true, crossedUrchinRow: true });
+  });
+});
+
+describe('rivals and enemies', () => {
+  it.each([1, 2, 3, 4, 5])('swims around a crab and finishes untouched (seed %i)', (seed) => {
+    expect(raceRival(CRAB_AHEAD, 'tess', seed, () => {}, 'crab')).toMatchObject({ hits: 0, finished: true });
+  });
+
+  it('keeps clear of eels lunging across its line: eight races, every one finished, at most one bite', () => {
+    // Without steering round them, every one of these races takes a bite.
+    const races = [1, 2, 3, 4, 5, 6, 7, 8].map((seed) => raceRival(EELS_AHEAD, 'tess', seed, () => {}, 'eel'));
+
+    expect(races.every((race) => race.finished)).toBe(true);
+    expect(races.reduce((sum, race) => sum + race.hits, 0)).toBeLessThanOrEqual(1);
+  });
+
+  it.each([1, 2, 3, 4, 5])('gets past a shark, hit no more often than it was charged (seed %i)', (seed) => {
+    const { world, log } = raceOn(SHARK_AHEAD, { seed });
+    const tess = racerOf(world, 'tess');
+    for (let tick = 0; tick < 1200 && tess.finished === null; tick++) step(world, log);
+    const charges = eventsIn(log, 'enemy.charged').filter((e) => e.type === 'enemy.charged' && e.target === 'tess');
+    const hits = eventsIn(log, 'racer.hit').filter((e) => e.type === 'racer.hit' && e.id === 'tess');
+
+    expect(tess.finished).not.toBeNull();
+    expect(hits.length).toBeLessThanOrEqual(charges.length);
+  });
+
+  it('dashes into a crab it cannot swim round, beating it instead of taking the hit', () => {
+    const { world, log } = raceOn(CRAB_IN_TUBE, { seed: 1 });
+    const tess = racerOf(world, 'tess');
+    for (let tick = 0; tick < 1200 && tess.finished === null; tick++) step(world, log);
+
+    expect(eventsIn(log, 'enemy.defeated', 'racer.hit')).toEqual([
+      { type: 'enemy.defeated', index: 0, kind: 'crab', by: 'tess' },
+    ]);
+    expect(tess.finished).not.toBeNull();
+  });
+
+  it('draws the same numbers from its rng with enemies on the course as without', () => {
+    const withCrab = raceOn(CRAB_IN_TUBE, { seed: 4 });
+    const without = raceOn(CRAB_IN_TUBE.replace('K', '.'), { seed: 4 });
+    step(withCrab.world, withCrab.log, 150);
+    step(without.world, without.log, 150);
+
+    expect(eventsIn(withCrab.log, 'enemy.defeated')).toHaveLength(1);
+    expect([withCrab, without].map(({ world }) => racerOf(world, 'tess').finished)).toEqual([null, null]);
+    expect(withCrab.world.rngs['ai.tess'].state()).toBe(without.world.rngs['ai.tess'].state());
   });
 });
