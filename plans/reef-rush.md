@@ -488,6 +488,7 @@ Test cases (scaffold writes the ones marked S; lanes write the rest in their own
 - 8/b: course select renders three test courses readably at desktop and phone; it is skipped with one listed course; title and results show the best for the current course and level; `?course=sunlit-shallows` races Sunlit and `?course=nope` warns and races Sunlit; an unlisted course's race shows no NEW BEST and writes no best; ocean theme registers the same texture keys as phase 7; engine conformance (every course's theme and song resolve).
 
 Scaffold: 6649bbe (on the landing branch). Par 5144 ticks. `arcade check` runs the unit project (978 tests, 4.4 s idle); `test:difficulty` runs the 22 bar files (46 tests, 25 s).
+Tag: phase-8
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
