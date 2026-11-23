@@ -1,12 +1,15 @@
 /**
- * The solid and decorative course tiles: the rock, coral and ledge tileset, coral
- * debris, swaying kelp and the finish banner. Tiles are 16x16 and seamless,
- * since the same tile repeats across whole walls and kelp beds.
+ * The solid and decorative course tiles: the tileset (rock, coral, the sky and
+ * cave tiles drawn in `surface.ts` and `cave.ts`, and the ledge), coral debris,
+ * swaying kelp and the finish banner. Tiles are 16x16 and seamless, since the same tile
+ * repeats across whole walls and kelp beds.
  */
 import { Frame } from '../../../art/keys.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { OceanTex, type OceanTexKey } from '../keys.ts';
 import { TerrainPalette } from '../palettes.ts';
+import { CAVE_TILES } from './cave.ts';
+import { SKY_TILE } from './surface.ts';
 
 /** Branch strip for ledges: dark underside, bark, lit top. Wood, so it reads apart from rock and coral. */
 const BRANCH_PALETTE = [0x3a2414, 0x6b4423, 0x9a6a38] as const;
@@ -20,7 +23,7 @@ const LEDGE_ROWS = [
   ...Array.from({ length: 12 }, () => '................'),
 ];
 
-/** Terrain sheets. The tileset frames sit in tile index order: rock, coral, then ledge. */
+/** Terrain sheets. The tileset frames sit in `OceanTile` order: rock, coral, sky, the cave tiles, then the ledge. */
 export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
   {
     key: OceanTex.tiles,
@@ -69,6 +72,8 @@ export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
           '1122110011221100',
         ],
       },
+      SKY_TILE,
+      ...CAVE_TILES,
       { name: 'ledge', palette: BRANCH_PALETTE, rows: LEDGE_ROWS },
     ],
   },

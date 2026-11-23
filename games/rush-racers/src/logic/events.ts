@@ -35,6 +35,10 @@ export type GameEvent =
   | { type: 'racer.fell'; id: RacerId }
   /** A racer that fell is back on the last safe ground it stood on. */
   | { type: 'racer.respawned'; id: RacerId; x: number; y: number }
+  /** A racer's centre left the water for the air above a surface. */
+  | { type: 'racer.breached'; id: RacerId }
+  /** A racer that breached came back down, its centre `SPLASH_DEPTH` px under the surface. */
+  | { type: 'racer.splashed'; id: RacerId }
   | { type: 'racer.bumped'; a: RacerId; b: RacerId }
   | { type: 'coral.broken'; tx: number; ty: number; by: RacerId }
   /** A human's place changed; `id` is that human's slot. */

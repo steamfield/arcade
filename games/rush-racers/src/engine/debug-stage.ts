@@ -56,6 +56,7 @@ export const STAGES = [
   'guide',
   'enemies',
   'enemy-modes',
+  'surface',
 ] as const;
 
 /** A name from `STAGES`. */
@@ -155,6 +156,9 @@ export function applyStage(world: World, stage: StageName): void {
       return;
     case 'enemy-modes':
       stageEnemyModes(world, player);
+      return;
+    case 'surface':
+      stageUnderSurface(world, player);
       return;
   }
 }
@@ -386,6 +390,27 @@ function stageInDarkZone(world: World, player: Racer, rival: Racer): void {
   place(rival, cx + 70, cy);
   world.squids.push(squid(cx + 36, cy - 14, -SQUID_SPEED, 0, rival.id, { kind: 'racer', id: player.id }));
   world.decoys.push({ x: cx + 70, y: cy + 22, vx: 66, vy: 0, ttl: STAGED_TICKS, owner: rival.id });
+}
+
+/**
+ * Puts the player at rest 3 tiles under the first surface, 5 columns into it, with open water and
+ * then sky straight above, so swimming up breaches.
+ */
+function stageUnderSurface(world: World, player: Racer): void {
+  const surface = world.level.surface[0];
+  if (!surface) throw new Error('The surface stage needs a surface, and this course has none');
+  const tx = surface.from + 5;
+  const ty = surface.row + 3;
+  for (let y = 0; y <= ty; y++) {
+    const cell = world.level.cells[y]?.[tx];
+    if (cell !== (y < surface.row ? 'air' : 'water')) {
+      throw new Error(`The surface stage needs a clear column at ${tx} down to row ${ty}, and row ${y} is ${cell}`);
+    }
+  }
+  player.body.x = tx * TILE + TILE / 2 - player.body.w / 2;
+  player.body.y = ty * TILE + TILE / 2 - player.body.h / 2;
+  player.body.vx = 0;
+  player.body.vy = 0;
 }
 
 /**

@@ -1,9 +1,9 @@
 import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { chooseItemSlot } from './ai/items.ts';
-import { registerCourse } from './courses/index.ts';
+import { DEFAULT_COURSE, registerCourse } from './courses/index.ts';
 import type { Course } from './courses/types.ts';
-import { DIFFICULTY, dodgeTicks, rivalCatchUpFor } from './difficulty-level.ts';
+import { DIFFICULTY, dodgeTicks, playerHasLanternLight, rivalCatchUpFor } from './difficulty-level.ts';
 import type { GameEvent } from './events.ts';
 import { applyHit } from './hazards/hits.ts';
 import { advanceProjectiles } from './hazards/projectiles.ts';
@@ -275,6 +275,14 @@ describe('invulnerability after a hit', () => {
   });
 });
 
+describe('the shark on each level', () => {
+  it('hunts harder on Normal and Hard, which share one tuning, and keeps the patient shark on Easy', () => {
+    expect(DIFFICULTY.normal.shark).toEqual(DIFFICULTY.hard.shark);
+    expect(DIFFICULTY.hard.shark).toEqual({ sightTiles: 8, patrolTiles: 4, recoverTicks: 24, chargeTurn: 0.05 });
+    expect(DIFFICULTY.easy.shark).toEqual({ sightTiles: 6, patrolTiles: 3, recoverTicks: 40, chargeTurn: 0 });
+  });
+});
+
 describe('the squid dodge window', () => {
   it('is 12 ticks on Hard, longer on Normal and longest on Easy, as `dodgeTicks` says', () => {
     expect(dodgeTicks(scene('hard').world)).toBe(SQUID.dodgeTicks);
@@ -321,5 +329,20 @@ describe('the start of an Easy race', () => {
       const { vx, vy } = racerOf(world, id).body;
       expect(length(vx, vy), id).toBeGreaterThanOrEqual(50);
     }
+  });
+});
+
+describe('light in the dark by level', () => {
+  it.each([
+    ['easy', true],
+    ['normal', false],
+    ['hard', false],
+  ] as const)('on %s lights the player like a Glow Lantern: %s, and never a rival', (difficulty, lit) => {
+    const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1, difficulty });
+
+    expect(playerHasLanternLight(world, racerOf(world, 'player'))).toBe(lit);
+    expect(
+      world.racers.filter((racer) => racer.id !== 'player').some((racer) => playerHasLanternLight(world, racer)),
+    ).toBe(false);
   });
 });

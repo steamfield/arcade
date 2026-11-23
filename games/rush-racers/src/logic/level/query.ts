@@ -79,11 +79,27 @@ export function overlapsTile(body: Box, tx: number, ty: number): boolean {
   );
 }
 
+/** True when the point (x, y) in world px lies in an air tile above a surface. */
+export function isAirAt(level: Level, x: number, y: number): boolean {
+  return cellAt(level, Math.floor(x / TILE), Math.floor(y / TILE)) === 'air';
+}
+
+/** True when the box overlaps any air tile by positive area (edge-only contact doesn't count). */
+export function boxTouchesAir(level: Level, box: Box): boolean {
+  const { left, right, top, bottom } = bodyTiles(box);
+  for (let ty = top; ty <= bottom; ty++) {
+    for (let tx = left; tx <= right; tx++) {
+      if (cellAt(level, tx, ty) === 'air') return true;
+    }
+  }
+  return false;
+}
+
 /** The current and kelp at the tile under the body's centre. */
 export function sampleEnvironment(level: Level, body: Body): Environment {
   const cell = cellAt(level, Math.floor((body.x + body.w / 2) / TILE), Math.floor((body.y + body.h / 2) / TILE));
   const current = CURRENT_DIRECTIONS.get(cell);
-  return { current: current ? { ...current } : null, inKelp: cell === 'kelp' };
+  return { current: current ? { ...current } : null, inKelp: cell === 'kelp', inAir: cell === 'air' };
 }
 
 /**

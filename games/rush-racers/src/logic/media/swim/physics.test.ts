@@ -4,13 +4,13 @@ import { PLAYER_PROFILE } from '../../ai/profiles.ts';
 import type { GameEvent } from '../../events.ts';
 import { noItems } from '../../racers.ts';
 import { type MoveModifiers, RACER_SIZE, type Racer, type Vec } from '../../types.ts';
-import type { SwimEnv } from './data.ts';
+import type { SwimEnv, SwimMotion } from './data.ts';
 import { applyIntent } from './physics.ts';
 import { SWIM_TUNING as SWIM } from './tuning.ts';
 
 const BASE_MODIFIERS = SWIM.base;
 
-const WATER: SwimEnv = { kind: 'swim', current: null, inKelp: false };
+const WATER: SwimEnv = { kind: 'swim', current: null, inKelp: false, inAir: false, nearSurface: false };
 const CRUISE = SWIM.force / SWIM.drag;
 const STILL: Vec = { x: 0, y: 0 };
 const RIGHT: Vec = { x: 1, y: 0 };
@@ -21,7 +21,7 @@ function makeRacer(): Racer {
   return {
     id: 'player',
     character: 'rudy',
-    motion: { kind: 'swim' },
+    motion: { kind: 'swim', airborne: false } as SwimMotion,
     body: { x: 40, y: 40, vx: 0, vy: 0, w: RACER_SIZE.width, h: RACER_SIZE.height },
     facing: 1,
     kickCooldown: 0,
@@ -158,7 +158,7 @@ describe('swimming', () => {
 
 describe('the water', () => {
   it('lowers cruise speed in kelp', () => {
-    const inKelp = settledSpeed({ move: RIGHT, env: { ...WATER, inKelp: true } });
+    const inKelp = settledSpeed({ move: RIGHT, env: { ...WATER, inKelp: true, inAir: false } });
 
     expect(inKelp).toBeGreaterThan(0);
     expect(inKelp).toBeLessThan(settledSpeed({ move: RIGHT }) / 2);
@@ -232,7 +232,7 @@ describe('a very long tick', () => {
   it('slows a racer in kelp to a stop without reversing it', () => {
     const racer = makeRacer();
     racer.body.vx = 100;
-    const kelp: SwimEnv = { ...WATER, inKelp: true };
+    const kelp: SwimEnv = { ...WATER, inKelp: true, inAir: false };
     applyIntent(
       racer,
       { move: STILL, kick: false, use: false, cycle: 0 },

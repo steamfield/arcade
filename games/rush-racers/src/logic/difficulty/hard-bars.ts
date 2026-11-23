@@ -26,13 +26,18 @@ import { meanPlayerFinish, RIVAL_IDS, type Run, race, seconds, table } from './r
 const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
 
 /**
- * Expert wins (any margin) every character needs of the 30 seeds: measured 21-27. Not a balance
- * check (see the header): it catches a character whose expert stops winning most races.
+ * Expert wins (any margin) every character needs of the 30 seeds: measured 21-27 at v2 phase 4.
+ * Not a balance check (see the header): it catches a character whose expert stops winning most
+ * races. Lowered from 18 when the course gained its surface section, cave and hunting sharks on
+ * purpose, which took Nib's expert to 17.
  */
-const EXPERT_WINS_MIN = 18;
+const EXPERT_WINS_MIN = 17;
 
-/** Close expert wins (the lead rival within 8 s) needed of the 30 seeds: measured 21-27. */
-const CLOSE_WINS_MIN = 18;
+/**
+ * Close expert wins (the lead rival within 8 s) needed of the 30 seeds: measured 21-27 at v2 phase
+ * 4; lowered from 18 with the harder course, which took Nib's expert to 16.
+ */
+const CLOSE_WINS_MIN = 16;
 
 /**
  * A good race's mean expert finish as fractions of the course's par. Per-character means measure

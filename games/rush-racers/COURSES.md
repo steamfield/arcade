@@ -26,7 +26,7 @@ That list is the whole change. A course lane (phase 9/a, Moonlit Kelp Forest) ow
 export const KELP_FOREST: Course = {
   id: 'kelp-forest',          // saves, ?course= and the registry key; never change it once shipped
   name: 'Moonlit Kelp Forest', // course select and results
-  level: LEVEL,               // a LevelDef: ascii, optional dark zones, optional legend
+  level: LEVEL,               // a LevelDef: ascii, optional dark zones, legend and surface
   world: 'reef',              // a key of WORLDS; the world names the medium
   theme: 'kelp-forest',       // a key of THEMES
   song: 'kelp',               // a key of songs
@@ -53,6 +53,8 @@ legend: {
 ```
 
 `parseLevel` rejects a legend glyph that reuses a built-in character, maps to a cell that doesn't exist, is longer than one character, or is whitespace (rows are trimmed, so it could vanish). `Level.glyphs` keeps the glyph at every tile, so the theme can tell a wreck from plain rock. The theme must have a tile in `terrain.glyphTiles` for every art key the legend names: `assertCourseAssets` (`engine/themes/course-assets.ts`) throws, naming the course, glyph and art key, for one it lacks, so `engine/themes/course-assets.test.ts` fails for a shipped course and boot fails for the course a session starts on.
+
+A swim course can open stretches of the sea to the sky with a **surface**: `surface: [{ from, to, row }]` turns every open (`.`) tile above `row` in columns `from..to` into the `air` cell (`level/surface.ts`). Racers breach into it and arc back under gravity (swim's `airGravity`, `airDrag`, `airSteer`); enemies and starts may not sit in it, and pickups placed there float in the air. `parseLevel` throws `LevelError` for a range that runs backwards, leaves the map, or puts `row` outside 1..height-1. The theme draws air with `terrain.tiles.air` and the waterline with `terrain.surface`. Run rejects a surface in `validateLevel` (on foot every open tile is already air), so it is a swim feature only.
 
 The medium checks the level too: `createWorld` throws `LevelError` (with row and column) for anything `medium.validateLevel` reports, such as a start that can't reach the finish in swim without breaking coral.
 

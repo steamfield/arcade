@@ -69,13 +69,29 @@ export function runAimFrom(world: World, body: Box, _lookaheadTiles: number): Ve
 }
 
 /**
- * Why `level` can't be raced on foot: one problem for each start whose distance to the finish is
- * Infinity, located at that start.
+ * Why `level` can't be raced on foot: a sea surface (`LevelDef.surface`), located at its first air
+ * tile, and one problem for each start whose distance to the finish is Infinity, located at that start.
  *
  * @throws {Error} When `nav` was built by another medium.
  */
 export function validateRunLevel(level: Level, nav: MediumNav): LevelProblem[] {
-  const runNavigation = runNav(nav);
+  return [...surfaceProblems(level), ...unreachableStarts(level, runNav(nav))];
+}
+
+/**
+ * The first air tile as a problem, or none. On foot every open tile is already air a runner falls
+ * through, so swim's sea surface (a breach and splash between water and sky) means nothing here.
+ */
+function surfaceProblems(level: Level): LevelProblem[] {
+  const row = level.cells.findIndex((cells) => cells.includes('air'));
+  if (row < 0) return [];
+  const col = level.cells[row]?.indexOf('air') ?? 0;
+  const message = `Surface air at row ${row}, col ${col}: the run medium has no sea surface; leave out LevelDef.surface`;
+  return [{ message, row, col }];
+}
+
+/** One problem for each start whose distance to the finish is Infinity, located at that start. */
+function unreachableStarts(level: Level, runNavigation: RunNav): LevelProblem[] {
   return level.starts.flatMap((start, index) =>
     Number.isFinite(fieldAt(runNavigation.distance, runNavigation, start))
       ? []

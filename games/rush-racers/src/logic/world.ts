@@ -426,6 +426,7 @@ const CELL_CHAR = {
   'current-up': '^',
   'current-down': 'v',
   ledge: '=',
+  air: ' ',
 } as const satisfies Record<Cell, string>;
 
 const RACER_CHAR: Record<RacerId, string> = { player: '@', tess: 'T', squib: 'S', bo: 'B' };
