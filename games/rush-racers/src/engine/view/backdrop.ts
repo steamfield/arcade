@@ -19,6 +19,7 @@ import { type Level, TILE, type Vec } from '../../logic/types.ts';
 import type { BackdropSpec, HazeSpec, PaintedLayer, Theme } from '../themes/types.ts';
 import { createHaze } from './backdrop-haze.ts';
 import { Layer } from './layers.ts';
+import { hash, wrap } from './scatter.ts';
 
 /** The backdrop behind the course, built once per screen. */
 export interface Backdrop {
@@ -341,14 +342,4 @@ function createMotes(scene: Phaser.Scene, viewport: Viewport, colour: number): A
       }
     },
   };
-}
-
-/** A fixed pseudo-random number in [0, 1) for a pair of integers, so layouts repeat without an rng. */
-function hash(a: number, b: number): number {
-  const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
-  return n - Math.floor(n);
-}
-
-function wrap(value: number, size: number): number {
-  return ((value % size) + size) % size;
 }

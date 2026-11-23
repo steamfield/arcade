@@ -11,6 +11,7 @@
  */
 import type Phaser from 'phaser';
 import type { HazeSpec } from '../themes/types.ts';
+import { hash, wrap } from './scatter.ts';
 
 /** Height in px of each streak's row slot, the shortest and longest streak, and the drift speed. */
 const HAZE = { slot: 12, minLength: 24, maxLength: 88, pxPerTick: 1 / 12 } as const;
@@ -36,17 +37,6 @@ export interface HazeRect {
   y: number;
   width: number;
   height: number;
-}
-
-/** A fixed pseudo-random number in [0, 1) for a pair of integers, so the layout repeats without an rng. */
-function hash(a: number, b: number): number {
-  const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
-  return n - Math.floor(n);
-}
-
-/** The remainder of `value` over `size`, never negative. */
-function wrap(value: number, size: number): number {
-  return ((value % size) + size) % size;
 }
 
 /** The haze for a level `levelHeight` px tall on a screen `screenWidth` px wide: one streak per row slot. */
