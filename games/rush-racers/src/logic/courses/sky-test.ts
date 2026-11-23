@@ -53,8 +53,11 @@ const LEVEL: LevelDef = {
   `,
 };
 
-/** A rough guess at a good flyer's Hard finish; the orchestrator measures it at phase 1's landing. */
-const PAR_TICKS = 1300;
+/**
+ * The expert bot's mean Hard finish (851 ticks over seeds 1-50 and all eight characters, measured at
+ * phase 1's landing) plus 30 %, the slack this test course keeps until phase 4's rivals fly it well.
+ */
+const PAR_TICKS = 1106;
 
 /** Sky Test: the flight medium's test course in Cloudreach, reachable only by `?course=sky-test` and tests. */
 export const SKY_TEST: Course = {
