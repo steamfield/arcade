@@ -39,12 +39,12 @@ export async function createRoom(): Promise<CreateRoomResult> {
   }
 }
 
-/** JSON text as a message, or undefined when it does not parse. */
+/** JSON text as a message; text that does not parse is passed on as the raw string, for the client to count as malformed. */
 function parseJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
-    return undefined;
+    return text;
   }
 }
 
@@ -70,6 +70,8 @@ export function connectToRoom(code: string, build: string): RoomConnection {
 
   // Each event is queued inside its own handler, so the queue keeps the socket's arrival order.
   socket.addEventListener('open', () => {
+    // After `close()` the queue already ends with `closed`, which must stay last.
+    if (closedByUs) return;
     opened = true;
     queue.push({ kind: 'open' });
   });
@@ -85,8 +87,7 @@ export function connectToRoom(code: string, build: string): RoomConnection {
       pingSentAt = null;
       return;
     }
-    const message = parseJson(text);
-    if (message !== undefined) queue.push({ kind: 'json', message });
+    queue.push({ kind: 'json', message: parseJson(text) });
   });
   socket.addEventListener('close', (event: CloseEvent) => {
     clearInterval(pinger);
@@ -106,7 +107,11 @@ export function connectToRoom(code: string, build: string): RoomConnection {
       if (closedByUs) return;
       closedByUs = true;
       clearInterval(pinger);
-      socket.close();
+      // Closing a socket still connecting logs a console error, so it is closed once it opens. If it
+      // fails or closes before then, `open` never fires and there is nothing left to close.
+      if (socket.readyState === WebSocket.CONNECTING)
+        socket.addEventListener('open', () => socket.close(), { once: true });
+      else socket.close();
       queue.push({ kind: 'closed', reason: 'left' });
     },
   };

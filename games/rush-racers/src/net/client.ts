@@ -14,8 +14,7 @@ import {
   RelayedGameMessageSchema,
   type StartMessage,
 } from './messages.ts';
-import { createOnlineRace, type OnlineRace } from './race.ts';
-import type { Desync } from './session.ts';
+import { createOnlineRace, type OnlineRace, type RaceView } from './race.ts';
 import type { CloseReason, ConnectionEvent, RoomConnection } from './transport/types.ts';
 
 /** Where a client is in its flow. */
@@ -30,24 +29,7 @@ export type ClientStatus =
   | 'closed';
 
 /** The race a client is in. */
-export interface RaceView {
-  /** The slot this peer races in. */
-  local: RacerId;
-  /** The slot each racing peer holds, by peer id. */
-  slots: Readonly<Record<number, RacerId>>;
-  /** The lobby label (P1 to P4, as at the start) of each human slot. */
-  labels: Readonly<Partial<Record<RacerId, string>>>;
-  inputDelay: number;
-  simTick: number;
-  targetTick: number;
-  stalledMs: number;
-  /** Labels of the peers this one is waiting on; empty while on time. */
-  waitingOn: readonly string[];
-  /** True once this peer's world has finished the race and its `end` has been sent. */
-  over: boolean;
-  /** Set when a hash differed: the race stopped here and `over` is true. */
-  desync: Desync | null;
-}
+export type { RaceView } from './race.ts';
 
 /** Everything the screens and `debugSummary` show about a client. */
 export interface ClientView {
@@ -96,13 +78,26 @@ export interface OnlineClient {
   /**
    * Starts a race among the ready peers, this one included, with `seed`.
    *
-   * @throws {Error} When `view.lobby.canStart` is false.
+   * @throws {Error} When `view.lobby.canStart` is false, or this peer is in a race that is not over.
    */
   start(seed: number): void;
   /** Leaves the finished (or out-of-sync) race for the lobby, dropping its world. Does nothing in the lobby. */
   returnToLobby(): void;
   /** Closes the connection; the view becomes `closed` with reason `left`. */
   leave(): void;
+}
+
+/** At most this much of a malformed message goes into its warning. */
+const PREVIEW_CHARS = 80;
+
+/** A short, printable form of whatever arrived, for a warning; never throws, whatever the value. */
+function preview(message: unknown): string {
+  try {
+    return (JSON.stringify(message) ?? String(message)).slice(0, PREVIEW_CHARS);
+  } catch {
+    // A cycle, a BigInt or a hostile toString: the type is all a warning needs.
+    return `a value of type ${typeof message}`;
+  }
 }
 
 /** A ping change, in milliseconds, too small to be worth re-sending this peer's lobby entry for. */
@@ -134,6 +129,8 @@ export function createClient(options: ClientOptions): OnlineClient {
   };
   const isOpen = () => state.status !== 'closed';
   const isWelcomed = () => state.status === 'lobby' || state.status === 'racing';
+  /** True while this peer is in a race it has not finished; a finished one (on results) gives way to the next start. */
+  const isMidRace = () => state.status === 'racing' && state.race?.view.over !== true;
 
   /** Counts a dropped message and warns about the first of its kind in this race. */
   function drop(kind: string, detail: string): void {
@@ -155,7 +152,7 @@ export function createClient(options: ClientOptions): OnlineClient {
       drop('start-not-host', `a start from peer ${from}, who is not host`);
       return;
     }
-    if (state.status === 'racing') {
+    if (isMidRace()) {
       drop('start-racing', `a start from peer ${from} during a race`);
       return;
     }
@@ -199,11 +196,13 @@ export function createClient(options: ClientOptions): OnlineClient {
     const game = room.success ? null : RelayedGameMessageSchema.safeParse(message);
     if (room.success) handleRoomMessage(room.data);
     else if (game?.success) handleGameMessage(game.data);
-    else drop('malformed', `a malformed message: ${JSON.stringify(message).slice(0, 80)}`);
+    else drop('malformed', `a malformed message: ${preview(message)}`);
   }
 
   function handleBinary(from: number, bytes: Uint8Array): void {
-    if (state.race?.receiveBinary(from, bytes)) return;
+    // The room relays binary only among racers, so binary reaching the lobby is the last race's traffic in flight.
+    if (state.race === null) return;
+    if (state.race.receiveBinary(from, bytes)) return;
     drop('binary', `${bytes.length} bytes of binary from peer ${from}`);
   }
 
@@ -269,6 +268,7 @@ export function createClient(options: ClientOptions): OnlineClient {
     setDifficulty: setter(lobby.setDifficulty, true),
     start(seed) {
       if (!isOpen()) return;
+      if (isMidRace()) throw new Error('start: this peer is in a race that is not over yet');
       const start = lobby.buildStart(seed);
       connection.send(start);
       handleStart(start, lobby.view.you ?? 0);

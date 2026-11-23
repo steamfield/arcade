@@ -6,10 +6,29 @@
  */
 import { hashWorld } from '../logic/hash.ts';
 import { RACER_IDS, type RacerId, type TickInput, type World } from '../logic/types.ts';
-import type { RaceView } from './client.ts';
 import type { LobbyPeer } from './lobby.ts';
 import type { EndMessage, StartMessage } from './messages.ts';
 import { createSession, type Desync } from './session.ts';
+
+/** The race a client is in. */
+export interface RaceView {
+  /** The slot this peer races in. */
+  local: RacerId;
+  /** The slot each racing peer holds, by peer id. */
+  slots: Readonly<Record<number, RacerId>>;
+  /** The lobby label (P1 to P4, as at the start) of each human slot. */
+  labels: Readonly<Partial<Record<RacerId, string>>>;
+  inputDelay: number;
+  simTick: number;
+  targetTick: number;
+  stalledMs: number;
+  /** Labels of the peers this one is waiting on; empty while on time. */
+  waitingOn: readonly string[];
+  /** True once this peer's world has finished the race and its `end` has been sent. */
+  over: boolean;
+  /** Set when a hash differed: the race stopped here and `over` is true. */
+  desync: Desync | null;
+}
 
 /** What a race is built from. */
 export interface OnlineRaceOptions {

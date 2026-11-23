@@ -274,6 +274,43 @@ describe('a race', () => {
     expect(outcomeOf(hostOf(table)).hash).toBe(first.hash);
   });
 
+  it.each([
+    { who: 'after returning to the lobby', hostReturns: true },
+    { who: 'still on the last race’s results', hostReturns: false },
+  ])('is started by a host $who for guests still on the last race’s results', ({ hostReturns }) => {
+    const table = seated(3);
+    raceToEnd(table);
+    const firstWorlds = table.peers.map((peer) => peer.client.world);
+    if (hostReturns) hostOf(table).client.returnToLobby();
+    hostOf(table).client.start(SEED + 1);
+    const inNextRace = ({ client }: Peer) => client.world !== null && !firstWorlds.includes(client.world);
+    table.until(
+      () =>
+        table.peers.every((peer) => inNextRace(peer) && isOver(peer)) &&
+        table.room.phase === 'lobby' &&
+        table.peers.every((peer) => peer.client.view.lobby.phase === 'lobby'),
+    );
+
+    expectSameFinish(table.peers);
+    expect(table.peers.map((peer) => peer.client.view.dropped)).toEqual([0, 0, 0]);
+  });
+
+  it('refuses a host’s start while its own race is not over, even if the room says the lobby', () => {
+    const table = seated(2);
+    const host = hostOf(table);
+    host.client.start(SEED);
+    table.until(() => (host.client.view.race?.simTick ?? 0) >= 30);
+    host.connection.forge({ kind: 'json', message: { type: 'phase', phase: 'lobby' } });
+    table.round();
+    const simTick = host.client.view.race?.simTick;
+
+    expect(host.client.view.lobby.canStart).toBe(true);
+    expect(() => host.client.start(SEED + 1)).toThrow('start: this peer is in a race that is not over yet');
+    table.settle();
+    expect(table.peers.map((peer) => peer.client.view.dropped)).toEqual([0, 0]);
+    expect(host.client.view.race?.simTick).toBeGreaterThan(simTick ?? 0);
+  });
+
   it('leaves a client that was away at the start in the lobby, watching the phase', () => {
     const table = seated(3);
     const away = table.peers[2] as Peer;
@@ -478,6 +515,29 @@ describe('bad traffic', () => {
     expectSameFinish([host, guest]);
   });
 
+  it('counts a message that is no JSON object, even one with no printable form, without throwing', () => {
+    const table = seated(2);
+    const host = hostOf(table);
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+    for (const message of [undefined, 'not json {', cycle, 10n]) host.connection.forge({ kind: 'json', message });
+    table.settle();
+
+    expect(host.client.view).toMatchObject({ status: 'lobby', dropped: 4 });
+    expect(host.warnings).toEqual(['online: dropped a malformed message: undefined']);
+  });
+
+  it('ignores binary that reaches a client in the lobby, as a finished race’s traffic in flight', () => {
+    const table = seated(2);
+    const host = hostOf(table);
+    host.connection.forge({ kind: 'binary', from: 2, bytes: encodeInputs(4, scriptedInput('tess', 0)) });
+    host.connection.forge({ kind: 'binary', from: 9, bytes: new Uint8Array([1, 2]) });
+    table.settle();
+
+    expect(host.client.view).toMatchObject({ status: 'lobby', dropped: 0 });
+    expect(host.warnings).toEqual([]);
+  });
+
   it('finds worlds that differ only after the last hash check when the racers’ ends are compared', () => {
     const baseline = seated(2);
     raceToEnd(baseline);
@@ -491,6 +551,11 @@ describe('bad traffic', () => {
     const rival = tampered.client.world?.racers.find((each) => each.id === 'squib');
     if (!rival) throw new Error('no squib rival in the tampered world');
     rival.body.x += 1;
+    // The host finishes and its `end` reaches the tampered peer before that peer steps its last tick.
+    const holdTampered = (peer: Peer) => peer === tampered;
+    table.until(() => isOver(host), holdTampered);
+    table.round(holdTampered);
+    expect(tampered.client.world?.tick).toBe(finishTick - 1);
     table.until(() => table.peers.every(isOver) && table.room.phase === 'lobby');
     table.settle();
 
