@@ -202,7 +202,8 @@ function withinTiles(a: Racer, b: Racer, tiles: number): boolean {
   const to = centreOf(b);
   const dx = to.x - from.x;
   const dy = to.y - from.y;
-  return dx * dx + dy * dy <= (tiles * TILE) ** 2;
+  const reachPx = tiles * TILE;
+  return dx * dx + dy * dy <= reachPx * reachPx;
 }
 
 /**

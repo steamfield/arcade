@@ -112,7 +112,11 @@ function lose(world: World, squid: Squid): true {
 }
 
 function insideInk(world: World, squid: Squid): boolean {
-  return world.inks.some((ink) => (squid.x - ink.x) ** 2 + (squid.y - ink.y) ** 2 <= ink.radius ** 2);
+  return world.inks.some((ink) => {
+    const dx = squid.x - ink.x;
+    const dy = squid.y - ink.y;
+    return dx * dx + dy * dy <= ink.radius * ink.radius;
+  });
 }
 
 /** Where a target is, in world px; null when it is gone (finished or fallen racer, popped or expired decoy). */
@@ -202,7 +206,9 @@ function dodgeIfKicked(world: World, racers: readonly Racer[], squid: Squid, dt:
   const kicked = world.recentEvents.some((event) => event.type === 'racer.kicked' && event.id === id);
   const near = dodgeTicks(world) * SQUID.speed * dt;
   const centre = centreOf(target);
-  if (!kicked || (centre.x - squid.x) ** 2 + (centre.y - squid.y) ** 2 > near * near) return;
+  const dx = centre.x - squid.x;
+  const dy = centre.y - squid.y;
+  if (!kicked || dx * dx + dy * dy > near * near) return;
   squid.target = null;
   squid.dodgedBy = id;
   world.events.emit({ type: 'squid.dodged', id });

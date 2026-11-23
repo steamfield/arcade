@@ -44,7 +44,7 @@ function heard(events: RuntimeEvent[], near: boolean, enemyAudible?: AdapterOpti
     onError(error) {
       throw error;
     },
-    audibleFromPlayer: () => near,
+    audibleFromLocal: () => near,
     ...(enemyAudible && { enemyAudible }),
     raceSong: () => 'race',
   });

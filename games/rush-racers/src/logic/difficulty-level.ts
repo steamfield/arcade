@@ -7,12 +7,14 @@
  */
 import { statusDurationMul } from './abilities.ts';
 import { courseOf } from './courses/index.ts';
+import { isHuman, isRival } from './racers.ts';
 import type { Difficulty, PowerUpKind, Racer, RacerId, World } from './types.ts';
 
 /**
- * Bounds of the rival catch-up multiplier on swim force, and its slope per tile of gap to the player.
- * `lagTiles` moves the point where a rival swims at its own pace: 0 is level with the player, a
- * positive value that many tiles behind it, so rivals hover behind a player who holds a pace.
+ * Bounds of the rival catch-up multiplier on swim force, and its slope per tile of gap to the human
+ * the rivals pace themselves to (`catchUpTarget`). `lagTiles` moves the point where a rival swims at
+ * its own pace: 0 is level with that human, a positive value that many tiles behind it, so rivals
+ * hover behind a human who holds a pace.
  */
 export interface CatchUpBounds {
   lagTiles: number;
@@ -48,22 +50,22 @@ export interface DifficultyTuning {
   /** Ticks after the GO before catch-up applies, so all four racers leave the line together. */
   rivalCatchUpDelayTicks: number;
   /**
-   * False keeps rivals' power-ups off the player. They pick no target for a squid, ink, bubble or
-   * flash among racers that includes the player, fire an Undertow only while the player is behind
-   * them (an Undertow pulls everyone ahead), and what they do land is ignored: `applyHit` refuses
-   * a hit caused by a rival's item, ink does not slow the player and a rival's riptide lane does
-   * not push it. The player's own attacks and hazards (urchins, jellies) are unaffected.
+   * False keeps rivals' power-ups off human slots (`mayAttack`). Rivals pick no human as the target
+   * of a squid, ink, bubble or flash, fire an Undertow only while no human is ahead of them (an
+   * Undertow pulls everyone ahead), and what they do land on a human is ignored: `applyHit` refuses
+   * a hit caused by a rival's item, ink does not slow the human and a rival's riptide lane does not
+   * push it. Humans' own attacks and hazards (urchins, jellies) are unaffected.
    */
   rivalsAttackPlayer: boolean;
-  /** Multiplies the player's stun, bubble trap and squid latch ticks, on top of the character's own multiplier. */
+  /** Multiplies a human's stun, bubble trap and squid latch ticks, on top of the character's own multiplier. */
   playerStatusMul: number;
-  /** Multiplies the player's invulnerability after any hit, so a child isn't stunned again at once. */
+  /** Multiplies a human's invulnerability after any hit, so a child isn't stunned again at once. */
   playerInvulnerableMul: number;
   /** Ticks before contact within which a kick makes a squid miss (SQUID.dodgeTicks on Hard). */
   squidDodgeTicks: number;
-  /** A swim-force boost for the player trailing the leader: `perTile` per tile beyond `startTiles`, at most `maxBoost`. */
+  /** A swim-force boost for a human trailing the leader: `perTile` per tile beyond `startTiles`, at most `maxBoost`. */
   playerCatchUp: { startTiles: number; perTile: number; maxBoost: number };
-  /** Multiplies the player's clam roll weight of these kinds (those not listed stay 1), so Easy hands over helpful power-ups. */
+  /** Multiplies a human's clam roll weight of these kinds (those not listed stay 1), so Easy hands over helpful power-ups. */
   playerClamWeightMul: Partial<Record<PowerUpKind, number>>;
   /** The Easy way-finding guide and steering assist. */
   guide: GuideTuning;
@@ -149,7 +151,8 @@ export function rivalCatchUpFor(world: World): CatchUpBounds {
 
 /**
  * A stun, trap or latch length for `racer`, in ticks: `baseTicks` times the character's own
- * multiplier, and for the player times the level's `playerStatusMul`, rounded to whole ticks.
+ * multiplier, and for a human slot (taken over or not) times the level's `playerStatusMul`, rounded
+ * to whole ticks.
  */
 export function statusTicks(
   world: World,
@@ -157,14 +160,14 @@ export function statusTicks(
   baseTicks: number,
   status: 'stunned' | 'trapped' | 'latched',
 ): number {
-  const level = racer.id === 'player' ? tuningOf(world).playerStatusMul : 1;
+  const level = isHuman(world, racer.id) ? tuningOf(world).playerStatusMul : 1;
   return Math.round(baseTicks * statusDurationMul(racer, status) * level);
 }
 
 /**
- * The swim-force multiplier a trailing player gets: 1 until it is more than `startTiles` behind the
- * leader (lowest progress among the other racers), then `perTile` per extra tile up to `maxBoost`.
- * Exactly 1 while any progress is still unknown.
+ * The swim-force multiplier a trailing human gets: 1 until it is more than `startTiles` behind the
+ * leader (lowest progress among the other racers, humans included), then `perTile` per extra tile up
+ * to `maxBoost`. Exactly 1 while any progress is still unknown.
  */
 export function playerCatchUpMul(player: Racer, others: readonly Racer[], tuning: DifficultyTuning): number {
   const { startTiles, perTile, maxBoost } = tuning.playerCatchUp;
@@ -174,24 +177,34 @@ export function playerCatchUpMul(player: Racer, others: readonly Racer[], tuning
   return 1 + Math.max(0, Math.min(maxBoost, behind * perTile));
 }
 
-/** Whether `attacker` may pick `target` for a hostile power-up: only a rival aiming at the player can be refused. */
+/**
+ * Whether `attacker` may pick `target` for a hostile power-up, or turn its own lane or cloud on it.
+ * A racer may always meet its own power-up (a taken-over human rides its own Riptide). Otherwise
+ * only a rival (`isRival`, which includes a human slot the AI took over) aiming at a human slot can be
+ * refused, and only on a level whose `rivalsAttackPlayer` is false. Humans may always attack each other.
+ */
 export function mayAttack(world: World, attacker: RacerId, target: RacerId): boolean {
-  return attacker === 'player' || target !== 'player' || tuningOf(world).rivalsAttackPlayer;
+  return (
+    attacker === target || !isRival(world, attacker) || !isHuman(world, target) || tuningOf(world).rivalsAttackPlayer
+  );
 }
 
-/** The factor on a rival's item aggression: the level's for a rival, 1 for the player's own bot. */
+/**
+ * The factor on a racer's item aggression: the level's for a rival (including a human slot the AI
+ * took over), 1 for a test bot driving a human slot.
+ */
 export function itemAggressionMul(world: World, racer: Racer): number {
-  return racer.id === 'player' ? 1 : tuningOf(world).rivalItemAggressionMul;
+  return isRival(world, racer.id) ? tuningOf(world).rivalItemAggressionMul : 1;
 }
 
-/** The clam roll weight multipliers for `racer`: the level's for the player, none for a rival. */
+/** The clam roll weight multipliers for `racer`: the level's for a human slot (taken over or not), none otherwise. */
 export function clamBias(world: World, racer: Racer): Partial<Record<PowerUpKind, number>> {
-  return racer.id === 'player' ? tuningOf(world).playerClamWeightMul : {};
+  return isHuman(world, racer.id) ? tuningOf(world).playerClamWeightMul : {};
 }
 
-/** Ticks of invulnerability after a hit on `racer`: `baseTicks`, times the level's multiplier for the player. */
+/** Ticks of invulnerability after a hit on `racer`: `baseTicks`, times the level's multiplier for a human slot. */
 export function invulnerableTicks(world: World, racer: Racer, baseTicks: number): number {
-  return Math.round(baseTicks * (racer.id === 'player' ? tuningOf(world).playerInvulnerableMul : 1));
+  return Math.round(baseTicks * (isHuman(world, racer.id) ? tuningOf(world).playerInvulnerableMul : 1));
 }
 
 /** Ticks before contact within which a kick dodges a squid on this world's level (the engine's KICK! prompt reads it too). */

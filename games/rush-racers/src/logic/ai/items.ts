@@ -4,7 +4,8 @@
  * only reads the world.
  *
  * Distances are between racer centres, in tiles. "Ahead" and "behind" compare
- * progress (lower is ahead). Rivals aim at any racer, so the field fights itself (except the player, where the difficulty level's `mayAttack` says no). The bubble's aim cone is ITEM_USE.aimConeCos either
+ * progress (lower is ahead). Rivals aim at any racer, so the field fights itself, except a human
+ * slot where the difficulty level's `mayAttack` says no. The bubble's aim cone is ITEM_USE.aimConeCos either
  * side of the aim. Jet Fins (and a Cannonball with no coral to break) need the whole body to slide
  * 5 tiles along the aim.
  */
@@ -15,7 +16,7 @@ import { length } from '../num.ts';
 import { firstSlotWhere, itemAt } from '../powerups/inventory.ts';
 import { CLAM, CORAL_BREAKERS, FLASH } from '../powerups/tuning.ts';
 import { canFire } from '../powerups/use.ts';
-import { activeRacers, centreOf, playerOf } from '../racers.ts';
+import { activeRacers, centreOf, isHuman } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
 import { hasClearSweep, tileOf } from './steer.ts';
 
@@ -132,7 +133,7 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
     case 'undertow':
       return (
         racer.place >= CLAM.undertowMinPlace &&
-        undertowSparesPlayer(world, racer) &&
+        undertowSparesHumans(world, racer) &&
         activeRacers(world).some((other) => other.progress <= racer.progress - ITEM_USE.undertowLeadTiles)
       );
     case 'mimic':
@@ -160,14 +161,20 @@ function chasedWhileLeading(world: World, racer: Racer): boolean {
 }
 
 /**
- * Whether an Undertow from `racer` would leave the player alone where the level forbids rivals to
- * attack it: it pulls everyone ahead of the user, so the player must not be ahead.
+ * Whether an Undertow from `racer` leaves alone every other human slot it may not attack: it pulls
+ * everyone ahead of the user, so each such human must not be ahead.
  */
-function undertowSparesPlayer(world: World, racer: Racer): boolean {
-  return mayAttack(world, racer.id, 'player') || playerOf(world).progress >= racer.progress;
+function undertowSparesHumans(world: World, racer: Racer): boolean {
+  return world.racers.every(
+    (other) =>
+      other.id === racer.id ||
+      !isHuman(world, other.id) ||
+      mayAttack(world, racer.id, other.id) ||
+      other.progress >= racer.progress,
+  );
 }
 
-/** Other racers in play (the player left out where rivals may not attack it) with centres within `tiles` of this one's centre. */
+/** Other racers in play (humans left out where this racer may not attack them) with centres within `tiles` of this one's centre. */
 function othersNear(world: World, racer: Racer, tiles: number): Racer[] {
   return activeRacers(world).filter(
     (other) =>
@@ -179,7 +186,9 @@ function othersNear(world: World, racer: Racer, tiles: number): Racer[] {
 
 function withinTiles(from: Vec, to: Vec, tiles: number): boolean {
   const reach = tiles * TILE;
-  return (to.x - from.x) ** 2 + (to.y - from.y) ** 2 <= reach * reach;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  return dx * dx + dy * dy <= reach * reach;
 }
 
 function inAimCone(racer: Racer, aim: Vec, other: Racer): boolean {

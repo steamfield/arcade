@@ -5,6 +5,8 @@
  * stage only writes plain world state (items, a status, a squid, a lane, a decoy) that the views
  * read. It is honoured only with `?debug=1` or in test mode, and `Runtime.startRace` marks the race
  * staged so its result is never saved. Applied by `Runtime.startRace`, right after the world is built.
+ * "The player" below is the local racer (the slot the screen follows, slot 1 without `?local=`), and
+ * "a rival" is slot 2, or slot 1 when the local racer is slot 2.
  *
  * The names: `icons-a`, `icons-b` and `icons-c` (a lone Undertow, gone once fired) fill the player's well; `cannonball`
  * holds a Cannonball three tiles before the first coral gate, facing it; `squid-flight` sends squids at rivals;
@@ -24,7 +26,6 @@ import { createEnemies } from '../logic/hazards/enemies/index.ts';
 import { cellAt } from '../logic/level/query.ts';
 import { CHARGES } from '../logic/powerups/charges.ts';
 import { setItems, slotItems } from '../logic/powerups/inventory.ts';
-import { playerOf } from '../logic/racers.ts';
 import {
   type Enemy,
   type EnemyKind,
@@ -36,6 +37,7 @@ import {
   type Vec,
   type World,
 } from '../logic/types.ts';
+import { localOf } from './local-racer.ts';
 
 /** Every stage name `applyStage` knows. */
 export const STAGES = [
@@ -95,8 +97,8 @@ export function stageFor(gate: StageGate, search: string = window.location.searc
 
 /** Writes the stage's state into `world`. Call it once, before the first frame. */
 export function applyStage(world: World, stage: StageName): void {
-  const player = playerOf(world);
-  const rival = racer(world, 'tess');
+  const player = localOf(world);
+  const rival = racer(world, player.id === 'tess' ? 'player' : 'tess');
   const at = centreOf(player);
   const kinds = STAGED_ITEMS[stage];
   if (kinds) {
@@ -116,15 +118,15 @@ export function applyStage(world: World, stage: StageName): void {
       return;
     case 'squid-flight':
       world.squids.push(
-        squid(at.x + 70, at.y - 24, SQUID_SPEED, 0, 'player', { kind: 'racer', id: 'tess' }),
+        squid(at.x + 70, at.y - 24, SQUID_SPEED, 0, player.id, { kind: 'racer', id: rival.id }),
         squid(at.x - 30, at.y + 30, -SQUID_SPEED * 0.8, SQUID_SPEED * 0.6, 'squib', { kind: 'racer', id: 'bo' }),
       );
       return;
     case 'squid-lockon':
-      world.squids.push(squid(at.x + 90, at.y - 20, -SQUID_SPEED, 12, 'tess', { kind: 'racer', id: 'player' }));
+      world.squids.push(squid(at.x + 90, at.y - 20, -SQUID_SPEED, 12, rival.id, { kind: 'racer', id: player.id }));
       return;
     case 'squid-lockon-far':
-      world.squids.push(squid(at.x - 300, at.y - 40, SQUID_SPEED, 6, 'tess', { kind: 'racer', id: 'player' }));
+      world.squids.push(squid(at.x - 300, at.y - 40, SQUID_SPEED, 6, rival.id, { kind: 'racer', id: player.id }));
       return;
     case 'squid-latched':
       player.status.latched = STAGED_TICKS;
@@ -135,7 +137,7 @@ export function applyStage(world: World, stage: StageName): void {
       return;
     case 'decoy': {
       const rivalAt = centreOf(rival);
-      world.decoys.push({ x: rivalAt.x + 22, y: rivalAt.y + 2, vx: 66, vy: 0, ttl: STAGED_TICKS, owner: 'tess' });
+      world.decoys.push({ x: rivalAt.x + 22, y: rivalAt.y + 2, vx: 66, vy: 0, ttl: STAGED_TICKS, owner: rival.id });
       return;
     }
     case 'dark':
@@ -221,11 +223,11 @@ function stageEnemyModes(world: World, player: Racer): void {
     { ...stagedEnemy(world.level, 'eel', onFloor(3)), mode: 'windup', modeTicks: 10 },
     { ...lunging, mode: 'lunge' },
     { ...stagedEnemy(world.level, 'shark', above(3, 5)), facing: 1, hp: 2 },
-    { ...stagedEnemy(world.level, 'shark', above(6, 5)), mode: 'windup', target: 'player', hp: 2 },
+    { ...stagedEnemy(world.level, 'shark', above(6, 5)), mode: 'windup', target: player.id, hp: 2 },
     {
       ...stagedEnemy(world.level, 'shark', above(3, 2)),
       mode: 'charge',
-      target: 'player',
+      target: player.id,
       facing: -1,
       vel: { x: -180, y: 0 },
     },
@@ -346,7 +348,7 @@ function layRiptideOverCurrent(world: World, player: Racer, rival: Racer): void 
     h: 2 * TILE,
     dir: { x: 1, y: 0 },
     ttl: STAGED_TICKS,
-    owner: 'player',
+    owner: player.id,
   });
 }
 
@@ -382,8 +384,8 @@ function stageInDarkZone(world: World, player: Racer, rival: Racer): void {
   const cy = ty * TILE + TILE / 2;
   place(player, cx, cy);
   place(rival, cx + 70, cy);
-  world.squids.push(squid(cx + 36, cy - 14, -SQUID_SPEED, 0, 'tess', { kind: 'racer', id: 'player' }));
-  world.decoys.push({ x: cx + 70, y: cy + 22, vx: 66, vy: 0, ttl: STAGED_TICKS, owner: 'tess' });
+  world.squids.push(squid(cx + 36, cy - 14, -SQUID_SPEED, 0, rival.id, { kind: 'racer', id: player.id }));
+  world.decoys.push({ x: cx + 70, y: cy + 22, vx: 66, vy: 0, ttl: STAGED_TICKS, owner: rival.id });
 }
 
 /**

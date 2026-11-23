@@ -122,6 +122,10 @@
           }
         }
       }
+    },
+    {
+      "includes": ["games/rush-racers/src/logic/**", "!**/*.test.ts"],
+      "plugins": ["./tools/biome/no-inexact-math.grit"]
     }
   ]
 }

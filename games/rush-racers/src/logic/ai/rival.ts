@@ -9,8 +9,9 @@
  * The medium owns aim, avoidance, kicks and its own stuck rule, except one kick added here: a rival with
  * a dash charge about to touch a crab or an out eel dashes into it (`aboutToBonk`), since a bonk beats it. The backstop here catches what that
  * rule misses: a rival that keeps moving without getting any closer to the finish (`racer.progress`)
- * for PROGRESS_BACKSTOP_TICKS racing ticks is sent into the medium's recovery. It is for opponents
- * only: a bot driving the player's slot is a test harness and is left to flounder. Like the speed rule,
+ * for PROGRESS_BACKSTOP_TICKS racing ticks is sent into the medium's recovery. It is for rivals only
+ * (`isRival`, which includes a human slot the AI took over): a bot driving a human slot is a test
+ * harness and is left to flounder. Like the speed rule,
  * its count resets while the rival is stunned or trapped; it pauses while an Undertow pulls the
  * rival back, since that loss isn't the rival's steering. A recovering rival never fires an item.
  */
@@ -20,6 +21,7 @@ import { mediumOf } from '../media/index.ts';
 import type { AiDraws, Medium } from '../media/types.ts';
 import { modifiersFor } from '../modifiers.ts';
 import { canDash } from '../powerups/dash-meter.ts';
+import { isRival } from '../racers.ts';
 import type { AiMemory, Intent, Racer, World } from '../types.ts';
 import { aboutToBonk } from './avoid.ts';
 import { chooseItemSlot } from './items.ts';
@@ -67,7 +69,7 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
  * PROGRESS_BACKSTOP_TICKS, which also starts it over.
  */
 function progressStalled(world: World, racer: Racer, memory: AiMemory): boolean {
-  if (world.race.phase !== 'racing' || racer.id === 'player') return false;
+  if (world.race.phase !== 'racing' || !isRival(world, racer.id)) return false;
   if (racer.status.stunned > 0 || racer.status.trapped > 0) {
     memory.sinceBest = 0;
     return false;
@@ -85,16 +87,16 @@ function progressStalled(world: World, racer: Racer, memory: AiMemory): boolean 
 }
 
 /**
- * Force multiplier that keeps races close: below 1 when the racer is ahead of the player,
- * above 1 when behind, clamped to `bounds`.
+ * Force multiplier that keeps races close: below 1 when the racer is ahead of `target` (the human it
+ * paces itself to, `catchUpTarget`), above 1 when behind, clamped to `bounds`.
  *
  * @param bounds The catch-up bounds for the race's course and difficulty level (`rivalCatchUpFor(world)`:
  *   the level's `DIFFICULTY` bounds with any course override merged on).
  * @returns Exactly 1 while either racer's progress is unknown (Infinity before the first read).
  */
-export function catchUpMul(racer: Racer, player: Racer, bounds: CatchUpBounds): number {
-  if (!Number.isFinite(racer.progress) || !Number.isFinite(player.progress)) return 1;
-  const gapTiles = racer.progress - player.progress;
+export function catchUpMul(racer: Racer, target: Racer, bounds: CatchUpBounds): number {
+  if (!Number.isFinite(racer.progress) || !Number.isFinite(target.progress)) return 1;
+  const gapTiles = racer.progress - target.progress;
   const boost = (gapTiles - bounds.lagTiles) * bounds.perTile;
   return 1 + Math.max(bounds.min - 1, Math.min(bounds.max - 1, boost));
 }

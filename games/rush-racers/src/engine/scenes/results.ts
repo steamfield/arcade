@@ -1,7 +1,7 @@
 /**
  * The results screen, laid out to UI.md: the RESULTS heading, a podium with
  * the top three's portraits and medals, the standings revealed one row every
- * 20 ticks (place, character name, time or TIME UP; the player's row in sun with
+ * 20 ticks (place, character name, time or TIME UP; the local racer's row in sun with
  * its character's head beside it), then the NEW BEST or BEST NOT SAVED ribbon, and the Race again / Character / Title
  * buttons, over the course's own backdrop. While course select is shown (more than one listed
  * course) the course's name sits top left. Motion is timed from the runtime's tick since this
@@ -45,7 +45,7 @@ const PORTRAIT_RISE = 17;
 const PORTRAIT_INSET_X = 12;
 const MEDAL_INSET = { x: 14, y: 3 } as const;
 const ROWS = { x: 120, y: 77, pitch: 9 } as const;
-/** The player's 7x7 head on its row, clear of the d-pad zone (x < 108). */
+/** The local racer's 7x7 head on its row, clear of the d-pad zone (x < 108). */
 const ROW_HEAD_X = 111;
 const RIBBON = { x: 114, y: 113, w: 92, h: 15 } as const;
 const MENU = { centreX: 160, top: 129, width: 76, pitch: 15 } as const;
@@ -96,7 +96,7 @@ export class ResultsScene extends Phaser.Scene {
       const id = standings[index];
       if (id) addPlinth(this, cast, racerIn(world, id).character, plinth);
     }
-    this.standings = createStandings(this, world, standings, course, cast);
+    this.standings = createStandings(this, world, standings, course, cast, this.rt.localRacer);
     this.rowsSettleAt = (standings.length - 1) * ROW_EVERY_TICKS + ROW_SLIDE.ticks;
     this.ribbon = createRibbon(this);
     this.menuView = createMenuView(this, MENU, MENU_OPTIONS.results);
@@ -140,7 +140,8 @@ interface StandingsView {
 }
 
 /**
- * One outlined label per row, in sun for the player and foam for rivals. The player's row also gets
+ * One outlined label per row, in sun for the local racer (`local`, the slot the screen follows) and
+ * foam for the others. The local racer's row also gets
  * its character's 7x7 head beside it once the row has settled. The head never moves, so the only cursor fin
  * on screen is the menu's.
  */
@@ -150,17 +151,18 @@ function createStandings(
   standings: readonly RacerId[],
   course: Course,
   cast: CastSkin,
+  local: RacerId,
 ): StandingsView {
   const { heads } = cast;
   const rows = standings.map((id, index) => {
     const racer = racerIn(world, id);
     const y = ROWS.y + index * ROWS.pitch;
     const label = createLabel(scene, ROWS.x, y, standingsRow(racer, index + 1, course), {
-      tone: id === 'player' ? 'sun' : 'foam',
+      tone: id === local ? 'sun' : 'foam',
       outline: true,
     }).setVisible(false);
     const head =
-      id === 'player'
+      id === local
         ? scene.add
             .image(ROW_HEAD_X, y, heads[racer.character].texture, heads[racer.character].frame)
             .setOrigin(0, 0)

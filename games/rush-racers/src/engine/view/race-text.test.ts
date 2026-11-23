@@ -14,15 +14,19 @@ const NONE: SplashMoments = { stretchAt: null, endedAt: null };
 const countdown = (raceTick: number): SplashClock => ({
   tick: raceTick,
   race: { phase: 'countdown', raceTick, result: null },
+  localFinished: false,
 });
 /** A race that started on world tick 180, `raceTick` ticks ago. */
 const racing = (raceTick: number): SplashClock => ({
   tick: 180 + raceTick,
   race: { phase: 'racing', raceTick, result: null },
+  localFinished: false,
 });
-const finished = (tick: number, playerTicks: number | null): SplashClock => ({
+/** A finished race in which slot 1 took `playerTicks` (null for no time) and the local racer did or did not cross. */
+const finished = (tick: number, playerTicks: number | null, localFinished = playerTicks !== null): SplashClock => ({
   tick,
   race: { phase: 'finished', raceTick: 900, result: { standings: [], playerPlace: 1, playerTicks } },
+  localFinished,
 });
 
 describe('the race splash', () => {
@@ -66,6 +70,16 @@ describe('the race splash', () => {
     noteSplashMoments(moments, 'finished', 2005, 0.2);
     expect(moments.endedAt).toBe(2000);
     expect(splashFrame(finished(2010, null), moments, false)).toEqual({ text: 'TIME UP', tone: 'foam', dx: 0, dy: 0 });
+  });
+
+  it('says TIME UP when slot 1 finished but the local racer did not', () => {
+    const moments: SplashMoments = { stretchAt: null, endedAt: 2000 };
+    expect(splashFrame(finished(2010, 700, false), moments, false)).toEqual({
+      text: 'TIME UP',
+      tone: 'foam',
+      dx: 0,
+      dy: 0,
+    });
   });
 
   it('puts every splash in place at once under reduced motion', () => {
