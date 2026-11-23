@@ -31,11 +31,9 @@ const UNHASHED_WORLD_KEYS: ReadonlySet<string> = new Set([
   'recentEvents', // a per-tick buffer of events already emitted
 ]);
 
-const doubleView = new Float64Array(1);
-const doubleBytes = new Uint8Array(doubleView.buffer);
-
-/** The one byte pattern every NaN is written as (a quiet NaN, little-endian), since engines may canonicalise payloads differently. */
-const CANONICAL_NAN_BYTES = new Uint8Array([0, 0, 0, 0, 0, 0, 0xf8, 0x7f]);
+const DOUBLE_BYTES = 8;
+/** Scratch space for one double. Written little-endian whatever the CPU's own byte order is. */
+const doubleView = new DataView(new ArrayBuffer(DOUBLE_BYTES));
 
 /** A running FNV-1a hash that bytes are fed into. */
 interface ByteSink {
@@ -93,9 +91,9 @@ function writeBoolean(sink: ByteSink, value: boolean): void {
 
 function writeNumber(sink: ByteSink, value: number): void {
   sink.byte(TAG.number);
-  doubleView[0] = value;
-  const bytes = Number.isNaN(value) ? CANONICAL_NAN_BYTES : doubleBytes;
-  for (const byte of bytes) sink.byte(byte);
+  // Every NaN is written as the one NaN constant, since engines may keep different NaN payloads.
+  doubleView.setFloat64(0, Number.isNaN(value) ? Number.NaN : value, true);
+  for (let index = 0; index < DOUBLE_BYTES; index++) sink.byte(doubleView.getUint8(index));
 }
 
 /** Writes the length then each UTF-16 code unit as two bytes, so neighbouring strings cannot run together. */
@@ -116,9 +114,8 @@ function writeCount(sink: ByteSink, count: number): void {
 function writeArray(sink: ByteSink, items: readonly unknown[], path: string): void {
   sink.byte(TAG.array);
   writeCount(sink, items.length);
-  items.forEach((item, index) => {
-    writeValue(sink, item, joinPath(path, String(index)));
-  });
+  // An indexed loop, so a hole in a sparse array is written as undefined and the count stays true.
+  for (let index = 0; index < items.length; index++) writeValue(sink, items[index], joinPath(path, String(index)));
 }
 
 function writeSet(sink: ByteSink, members: Set<unknown>, path: string): void {
@@ -129,9 +126,16 @@ function writeSet(sink: ByteSink, members: Set<unknown>, path: string): void {
 
 function sortedMembers(members: Set<unknown>, path: string): unknown[] {
   const items = [...members];
-  if (items.every((item) => typeof item === 'number')) return items.sort((a, b) => a - b);
+  if (items.every((item) => typeof item === 'number')) return items.sort(compareNumbers);
   if (items.every((item) => typeof item === 'string')) return items.sort();
   throw new TypeError(`hashWorld: the set at ${path} must hold only numbers or only strings`);
+}
+
+/** Ascending, with NaN after every number, so the order is total and no engine's sort can disagree. */
+function compareNumbers(a: number, b: number): number {
+  if (Number.isNaN(a)) return Number.isNaN(b) ? 0 : 1;
+  if (Number.isNaN(b)) return -1;
+  return a - b;
 }
 
 function writeObject(sink: ByteSink, fields: Record<string, unknown>, path: string): void {
