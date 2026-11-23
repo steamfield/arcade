@@ -66,7 +66,7 @@ export function hold(
  * A world on `ascii` already racing (countdown skipped, nothing stepped yet), with an empty event log.
  * `playerBot` lets an AI profile drive the player.
  */
-export function raceOn(ascii: string, options: { seed?: number; playerBot?: RivalProfile } = {}) {
+export function raceOn(ascii: LevelDef | string, options: { seed?: number; playerBot?: RivalProfile } = {}) {
   const log = new EventLog<GameEvent>(100_000);
   const world = createWorld(courseFromLevel(ascii), log, { seed: options.seed ?? 1, ...options });
   world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };

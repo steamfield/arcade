@@ -95,8 +95,10 @@ describe('a shark on each level', () => {
     const inLine = tileCentre(SHARK_COL - 5, SHARK_ROW);
     pinnedAt(world, log, 'tess', inLine, SHARK.windupTicks + 1);
     expect(shark.mode).toBe('charge');
-    // Invulnerable, so the charge runs straight through it and nothing is spotted afterwards.
+    // Invulnerable, so the charge runs straight through it and nothing is spotted afterwards; no
+    // dash charges, so the bot can't meet the charge with a bonk.
     tess.status.invulnerable = 1000;
+    tess.kickCharges = 0;
     ticksWhile(world, log, 'charge', inLine, SHARK.chargeTicks + 1);
 
     expect(shark.mode).toBe('recover');

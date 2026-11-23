@@ -427,7 +427,7 @@ describe('dodging', () => {
 describe('on the ocean course', () => {
   it('reaches a target from every stretch of the course', () => {
     const level = levelOf(DEFAULT_COURSE);
-    const { world, log } = raceOn(DEFAULT_COURSE.level.ascii);
+    const { world, log } = raceOn(DEFAULT_COURSE.level);
     const [player, tess] = [racerOf(world, 'player'), racerOf(world, 'tess')];
     // A shark in the way takes the squid; this is about finding a way round rock.
     world.enemies = [];
