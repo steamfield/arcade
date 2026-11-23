@@ -208,6 +208,7 @@ Test cases (the scaffold writes them; lanes treat them as read-only):
 - Done when: `pnpm arcade test rush-racers src/engine/view/well-view.test.ts src/engine/view/how-to-play` and `pnpm arcade check rush-racers --skip-tests` pass, and you have looked at a `pnpm arcade see rush-racers --query course=drift-test` frame showing a well.
 
 ### Phase 3: Slingshot Alley
+Scaffold: 549277b
 
 Demo: `/games/rush-racers/?course=slingshot-alley` (ocean art until phase 5): the full course against three rivals on each level; `pnpm arcade test rush-racers src/logic/difficulty/slingshot-alley-rudy.test.ts` green.
 Depends on: phase 2
@@ -251,6 +252,7 @@ Test cases (the scaffold writes them; lanes treat them as read-only):
 - Done when: `pnpm arcade see rush-racers --scenario <name>` shows each scenario's expectations met, the four pass under Playwright (`pnpm --filter game-rush-racers exec playwright test <file>` or the nearest command `pnpm arcade help` gives), each fails when its expectation is inverted, and `pnpm arcade check rush-racers --skip-tests` passes.
 
 ### Phase 4: Farside's look and sound
+Scaffold: 549277b
 
 Demo: `/games/rush-racers/?course=drift-test`: the Farside cast, pods, stardust, mines, orbs, rays, worms and mites in a starfield with asteroid terrain, planets and a black hole, to Farside's song.
 Depends on: phase 2
