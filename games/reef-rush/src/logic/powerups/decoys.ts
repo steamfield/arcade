@@ -11,8 +11,8 @@
 import { overlaps, squareAt } from '../hazards/boxes.ts';
 import { applyHit } from '../hazards/hits.ts';
 import { mediumOf } from '../media/index.ts';
+import { moveBody } from '../race/collide.ts';
 import { activeRacers, hitbox } from '../racers.ts';
-import { moveBody } from '../swim/collide.ts';
 import { type Body, type Decoy, RACER_SIZE, type Racer, type RacerId, TILE, type World } from '../types.ts';
 import { BUBBLE, MIMIC } from './tuning.ts';
 

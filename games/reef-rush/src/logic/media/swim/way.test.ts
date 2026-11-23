@@ -13,10 +13,12 @@ import { fieldAt } from '../../race/flowfield.ts';
 import { RACER_SIZE, TILE, type Vec } from '../../types.ts';
 import { createWorld } from '../../world.ts';
 import { MEDIA } from '../index.ts';
+import { swimNav } from './data.ts';
 
 const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1 });
 const swim = MEDIA.swim;
-const { nav, level } = world;
+const { level } = world;
+const nav = swimNav(world.nav);
 const start = level.starts[0] ?? { x: 0, y: 0 };
 /** Every tile of the steer route from the first start, then every tenth one for the slower checks. */
 const route = [start, ...downhillPath(nav.steer, nav, openTiles(level, world.broken, false), start, 2000)];

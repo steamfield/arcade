@@ -28,7 +28,7 @@ import { breaksCoralOnContact, bumpMassFor, onBump, onWorldEvents, tickAbilities
 import { PLAYER_PROFILE } from './ai/profiles.ts';
 import { createAiMemory, rivalIntent } from './ai/rival.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
-import { levelOf } from './courses/index.ts';
+import { courseById, levelOf } from './courses/index.ts';
 import type { Course } from './courses/types.ts';
 import type { GameEvent } from './events.ts';
 import { assistedIntent, trackGuide } from './guide.ts';
@@ -48,12 +48,12 @@ import { driveDash, fireBursts, sustainBursts } from './powerups/burst.ts';
 import { advanceDecoys } from './powerups/decoys.ts';
 import { advanceRiptides } from './powerups/riptides.ts';
 import { applyUndertow } from './powerups/undertow.ts';
+import { moveBody, separateRacers } from './race/collide.ts';
 import { ramCoral } from './race/coral.ts';
 import { buildProgressField } from './race/flowfield.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
 import { activeRacers, centreOf, noItems, playerOf } from './racers.ts';
 import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
-import { moveBody, separateRacers } from './swim/collide.ts';
 import {
   type CharacterId,
   type Difficulty,
@@ -97,9 +97,12 @@ const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
  * @param events Usually the engine's EventLog, so one stream holds race, menu and save events.
  * @throws {LevelError} When the medium can't race the level (`Medium.validateLevel`), located at the
  *   first problem, with any others appended to the message after `; `.
+ * @throws {Error} When `course` isn't the course its id is registered to (unregistered, or a copy
+ *   with changes), since the world keeps only the id and reads the rest back from the registry.
  * @throws {Error} When the course names a medium that is neither shipped nor registered.
  */
 export function createWorld(course: Course, events: EventSink<GameEvent>, options: WorldOptions): World {
+  requireRegistered(course);
   const medium = mediumById(course.medium);
   if (!medium) throw new Error(`Course '${course.id}' names unknown medium '${course.medium}'`);
   const level = levelOf(course);
@@ -141,6 +144,19 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
   // Catch-up reads progress on the first racing tick, before stepWorld updates it.
   updateProgress(world);
   return world;
+}
+
+/**
+ * Checks that `course` is the very course its id looks up, so the race can't silently run on the
+ * registered course's level or tuning instead.
+ *
+ * @throws {Error} When the id is unknown or registered to a different course object.
+ */
+function requireRegistered(course: Course): void {
+  if (courseById(course.id) === course) return;
+  throw new Error(
+    `Course '${course.id}' is not the registered course with that id; add it to COURSES or call registerCourse with it`,
+  );
 }
 
 /** Throws a LevelError at the first problem, naming the rest after it; does nothing for none. */

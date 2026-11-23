@@ -3,13 +3,13 @@
  * (`aimFrom`, `nextTile`, `distanceAt`, `steer`) instead of reading `world.nav`, so a medium with a
  * different kind of navigation plugs in without generic code changing. Swim's field walkers
  * (`ai/steer.ts`) take fields as arguments, so only media's own files (MEDIUM_HOMES) read nav.
- * Nor does generic code import a medium's own modules (`logic/media/swim/`); only swim's physics in
- * `logic/swim/`, which is swim's own code kept where it was, does.
+ * Nor does anything import a medium's own modules (`logic/media/<id>/`) from outside that medium's
+ * folder, except the registry (`media/index.ts`), which is the one line each medium is added by.
  * Reads the source tree, since the rule is about where code lives. Tests are left out: a medium's
- * own tests inspect its fields.
+ * own tests inspect its fields. So is the conformance suite, which hosts the test-only glide.
  */
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = new URL('../..', import.meta.url).pathname;
@@ -20,8 +20,14 @@ const NAV_READ = /(\??\.\s*(nav|fields)\b)|(\[\s*['"](nav|fields)['"]\s*\])|(\{[
 /** Where media live: the shipped ones, and the conformance suite's test-only glide. */
 const MEDIUM_HOMES = ['logic/media/', 'logic/conformance/glide'];
 
-/** An import from swim's own folder; generic code reaches a medium only through `MEDIA`/`mediumOf`. */
-const SWIM_IMPORT = /from\s+'[^']*\/media\/swim\//;
+/** Files allowed to import any medium's folder: the registry, and the conformance suite. */
+const MEDIUM_IMPORTERS = ['logic/media/index.ts', 'logic/conformance/'];
+
+/** The module path in each `from '...'` of a file. */
+const IMPORT_FROM = /from\s+'([^']+)'/g;
+
+/** A source-relative path inside a medium's own folder; the group is the medium's id. */
+const MEDIUM_FOLDER = /^logic\/media\/([^/]+)\//;
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -34,6 +40,20 @@ function sourceFiles(dir: string): string[] {
 /** Each line of `text` that reads nav, as "line: text". */
 function navReads(text: string): string[] {
   return text.split('\n').flatMap((line, index) => (NAV_READ.test(line) ? [`${index + 1}: ${line.trim()}`] : []));
+}
+
+/**
+ * Each relative import in the file at `path` (source-relative) that reaches into a medium's folder
+ * the file isn't in, as "path -> target".
+ */
+function foreignMediumImports(path: string, text: string): string[] {
+  return [...text.matchAll(IMPORT_FROM)].flatMap(([, specifier = '']) => {
+    if (!specifier.startsWith('.')) return [];
+    const target = relative(SRC, resolve(SRC, dirname(path), specifier));
+    const id = MEDIUM_FOLDER.exec(target)?.[1];
+    if (id === undefined || path.startsWith(`logic/media/${id}/`)) return [];
+    return [`${path} -> ${target}`];
+  });
 }
 
 const FILES = sourceFiles(SRC).map((path) => ({ path: relative(SRC, path), text: readFileSync(path, 'utf8') }));
@@ -60,10 +80,24 @@ describe('the navigation seam', () => {
     ).toEqual([]);
   });
 
-  it('lets nothing outside the media import a specific medium', () => {
-    const importers = FILES.filter(
-      ({ path, text }) => !path.startsWith('logic/media/') && !path.startsWith('logic/swim/') && SWIM_IMPORT.test(text),
-    ).map(({ path }) => path);
+  it("spots an import of a medium's folder from outside it", () => {
+    const flight = "import { lift } from '../flight/lift.ts';";
+    expect(foreignMediumImports('logic/media/swim/pilot.ts', flight)).toEqual([
+      'logic/media/swim/pilot.ts -> logic/media/flight/lift.ts',
+    ]);
+    expect(foreignMediumImports('logic/race/coral.ts', "import { swimNav } from '../media/swim/data.ts';")).toEqual([
+      'logic/race/coral.ts -> logic/media/swim/data.ts',
+    ]);
+    expect(foreignMediumImports('logic/media/swim/index.ts', "import { applyIntent } from './physics.ts';")).toEqual(
+      [],
+    );
+    expect(foreignMediumImports('logic/world.ts', "import { mediumOf } from './media/index.ts';")).toEqual([]);
+  });
+
+  it("lets nothing outside a medium's folder import from it, but the registry", () => {
+    const importers = FILES.filter(({ path }) => !MEDIUM_IMPORTERS.some((allowed) => path.startsWith(allowed))).flatMap(
+      ({ path, text }) => foreignMediumImports(path, text),
+    );
     expect(importers).toEqual([]);
   });
 

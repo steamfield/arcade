@@ -111,15 +111,46 @@ pnpm --filter game-reef-rush exec vitest run --project unit src/logic/conformanc
 
 ## Add a medium
 
-A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic code calls it through `mediumOf(world)` and never branches on its id (`logic/architecture.test.ts` fails on `=== 'swim'` outside `logic/media/`; `logic/media/boundary.test.ts` fails on a read of `world.nav` outside `logic/media/`, and on an import of a medium's own modules, such as `logic/media/swim/`, from generic code).
+A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic code calls it through `mediumOf(world)` and never branches on its id (`logic/architecture.test.ts` fails on `=== 'swim'` outside `logic/media/`; `logic/media/boundary.test.ts` fails on a read of `world.nav` outside `logic/media/`, and on an import from a medium's folder, such as `logic/media/swim/`, by any file outside that folder other than the registry `logic/media/index.ts`).
 
 ### Files
 
-- `logic/media/<medium-id>/index.ts` (and helpers beside it): the medium object. `logic/media/swim/` is the example.
-- `logic/media/index.ts`: add it to `MEDIA`.
-- `logic/courses/types.ts`: add the id to `ShippedMediumId`.
-- `logic/media/types.ts`: `MediumEnv`, `MediumNav` and `RacerMotion` are unions that grow one member per medium. `PilotMemory` is still a fixed interface holding swim's fields; when a second medium ships it must become a union too (swim's fields as one member, the new medium's as another).
-- A course that races in it (an unlisted test course is enough to start), and a How to Play move page for it: How to Play explains swimming only, so each medium needs its own page.
+Everything the medium knows lives in its own folder, `logic/media/<medium-id>/`. Swim's is the example:
+
+| File | What it holds |
+| --- | --- |
+| `index.ts` | The medium object, assembling the members from the files beside it. |
+| `data.ts` | The medium's data shapes and their accessors (below). |
+| `physics.ts` | `applyIntent`: velocity, facing and kick cooldown from intent, environment and tuning. |
+| `nav.ts`, `way.ts` | `buildNav`, `enterCost`, `validateLevel`; `aimFrom`, `nextTile`, `distanceAt`, `coralAhead`. |
+| `pilot.ts` | `createPilot` and `steer`. |
+| `tuning.ts` | `tuning`, `effects`, `kickRules`. |
+
+Moving a body through the tiles and separating racers is generic (`logic/race/collide.ts`), so a medium only sets velocity.
+
+Outside the folder, the code needs two lines: the medium in `MEDIA` (`logic/media/index.ts`) and its id in `ShippedMediumId` (`logic/courses/types.ts`). `logic/media/types.ts` doesn't change. Then add a course that races in it (an unlisted test course is enough to start), and a How to Play move page for it: How to Play explains swimming only, so each medium needs its own page.
+
+### Data shapes and accessors
+
+`MediumNav`, `MediumEnv`, `RacerMotion` and `PilotMemory` in `logic/media/types.ts` are opaque: each is only `{ readonly kind: string }`, and that is all generic code, `World` and `Racer` see. In `data.ts` the medium extends each one with its own `kind` and fields, for example:
+
+```ts
+export interface FlightNav extends MediumNav, GridSize {
+  readonly kind: 'flight';
+  distance: Float32Array;
+}
+```
+
+and writes one accessor per shape it reads back, which checks `kind` and throws on another medium's data:
+
+```ts
+export function flightNav(nav: MediumNav): FlightNav {
+  if (nav.kind !== 'flight') throw wrongKind('nav', nav.kind);
+  return nav as FlightNav;
+}
+```
+
+The medium's own code reads its data only through these (`swimNav(world.nav)`, `swimEnv(env)`, `swimPilot(racer.ai.pilot)`) and never casts its data anywhere else. Swim's are `SwimNav`, `SwimEnv`, `SwimPilot` and `SwimMotion`; glide's (`conformance/glide-data.ts`) share nothing with them.
 
 ### Every member
 
@@ -127,8 +158,8 @@ A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic c
 | --- | --- | --- |
 | `id` | Registry key, the course's `medium`. | `'swim'` |
 | `tuning` | `base` modifiers, `force`, `drag`, `maxSpeed`, `kick`, and medium-only numbers in `extra`. `effectiveTuning(world)` (in `logic/media/index.ts`) merges `course.tuning` over it once per course, `extra` key by key; `applyIntent` and `modifiersFor` both read that result, so every override applies. | Today's swim constants; `extra` holds `sink`, `currentForce`, `kelpDragMul`. |
-| `createMotion(body)` | Per-racer movement state the medium owns (`Racer.motion`). | `{}` |
-| `createPilot()` | Per-rival AI state for the medium's `steer`. Today `PilotMemory` is a fixed interface with swim's fields, so a second medium must first turn it into a union (see Files). | Wobble, speed-based stuck count, recovery, aim and replan timer. |
+| `createMotion(body)` | Per-racer movement state the medium owns (`Racer.motion`), a `RacerMotion` with the medium's `kind`. | `{ kind: 'swim' }` |
+| `createPilot()` | Per-rival AI state for the medium's `steer`, a `PilotMemory` with the medium's `kind`. | Wobble, speed-based stuck count, recovery, aim and replan timer. |
 | `sampleEnvironment(world, racer)` | What the surroundings do to this racer this tick. Takes the racer because a held power-up can change what its holder feels. | The current under the racer (including a Riptide's lane) and whether it's in kelp. |
 | `applyIntent(racer, intent, env, tuning, mods, events, dt)` | Velocity, facing and kick cooldown for one tick, reading every number from `tuning` (the effective tuning above), never from module constants. Every `MoveModifiers` field must have a visible effect. | Thrust toward the stick, drag, idle sink, current push, kelp drag, kick with cooldown, speed cap. |
 | `buildNav(level, broken)` | Navigation over the level with broken coral gone; rebuilt when coral breaks. | Flow fields toward the finish: steer, smash, ram. |
@@ -157,7 +188,7 @@ The progress for placing (`World.progress`) is generic and the same in every med
 
 ### Conformance
 
-`logic/conformance/medium.test.ts` runs over every entry in `MEDIA` plus a test-only glide medium with its own navigation and pilot (`conformance/glide.ts`, `glide-nav.ts`, `glide-pilot.ts`; a working example of a second medium): deterministic for the same seed and inputs, caps speed, honours kick cooldown, every `MoveModifiers` field changes motion, progress in open space in each direction the medium says it can move, and a rival gets through an overhang, a 1-tile gap, a shaft with a lip and a drop without stalling. Then race a course in the medium through course conformance and its own difficulty bars.
+`logic/conformance/medium.test.ts` runs over every entry in `MEDIA` plus a test-only glide medium with its own navigation and pilot (`conformance/glide.ts`, `glide-data.ts`, `glide-nav.ts`, `glide-pilot.ts`; a working example of a second medium): deterministic for the same seed and inputs, caps speed, honours kick cooldown, every `MoveModifiers` field changes motion, progress in open space in each direction the medium says it can move, and a rival gets through an overhang, a 1-tile gap, a shaft with a lip and a drop without stalling. Then race a course in the medium through course conformance and its own difficulty bars.
 
 ```
 pnpm --filter game-reef-rush exec vitest run --project unit src/logic/conformance

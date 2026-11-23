@@ -12,6 +12,7 @@ import type { GameEvent } from '../events.ts';
 import type { KickRules, Medium, MediumEffects, MediumEnv, MediumTuning } from '../media/types.ts';
 import { length } from '../num.ts';
 import type { Body, Intent, MoveModifiers, Racer, Vec } from '../types.ts';
+import type { GlideEnv, GlideMotion } from './glide-data.ts';
 import {
   buildGlideNav,
   glideAimFrom,
@@ -44,7 +45,7 @@ export const GLIDE_KICK_RULES: KickRules = {
 };
 
 /** Air has no currents or kelp. */
-const STILL_AIR: MediumEnv = { current: null, inKelp: false };
+const STILL_AIR: GlideEnv = { kind: 'glide' };
 
 /**
  * Velocity, facing and kick cooldown for one tick: thrust along the stick, gravity, drag, then a
@@ -112,7 +113,7 @@ function capSpeed(body: Body, maxSpeed: number): void {
 export const GLIDE_MEDIUM: Medium = {
   id: 'glide',
   tuning: GLIDE_TUNING,
-  createMotion: () => ({}),
+  createMotion: (): GlideMotion => ({ kind: 'glide' }),
   createPilot: createGlidePilot,
   sampleEnvironment: () => STILL_AIR,
   applyIntent: applyGlide,

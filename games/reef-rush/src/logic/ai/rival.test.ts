@@ -2,6 +2,7 @@ import { createRng, EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTY } from '../difficulty-level.ts';
 import type { GameEvent } from '../events.ts';
+import { swimPilot } from '../media/swim/data.ts';
 import { DARK_STEERING } from '../media/swim/pilot.ts';
 import { updateProgress } from '../race/standings.ts';
 import { noItems } from '../racers.ts';
@@ -310,7 +311,7 @@ describe('catch-up', () => {
       place: 1,
       finished: null,
       ai: null,
-      motion: {},
+      motion: { kind: 'swim' },
       ...noItems(),
     };
     const body = { x: 0, y: 0, vx: 0, vy: 0, w: 12, h: 10 };
@@ -623,7 +624,7 @@ describe('steering in the dark', () => {
       let count = 0;
       for (let i = 0; i < 120; i++) {
         placeOnTile(tess, 10, 4);
-        if (tess.ai?.pilot.replanIn === 0) count++;
+        if (tess.ai && swimPilot(tess.ai.pilot).replanIn === 0) count++;
         rivalIntent(world, tess, world.rngs['ai.tess']);
       }
       return count;

@@ -4,8 +4,9 @@
  * fields lives in `way.ts` and `ai/steer.ts`.
  */
 import { distancesToFinish, type EntryCost, fieldAt } from '../../race/flowfield.ts';
-import type { Cell, FlowFields, Level, Vec } from '../../types.ts';
-import type { LevelProblem } from '../types.ts';
+import type { Cell, Level, Vec } from '../../types.ts';
+import type { LevelProblem, MediumNav } from '../types.ts';
+import { type SwimNav, swimNav } from './data.ts';
 
 const KELP_COST = 2.5;
 const WITH_CURRENT_COST = 0.4;
@@ -49,8 +50,9 @@ const ramCost: EntryCost = (cell, isBroken, move) =>
   cell === 'coral' && !isBroken ? RAM_CORAL_COST : steerCost(cell, isBroken, move);
 
 /** Builds the steer, smash and ram fields by Dijkstra from the finish column, with `broken` coral open. */
-export function buildSwimNav(level: Level, broken: ReadonlySet<number>): FlowFields {
+export function buildSwimNav(level: Level, broken: ReadonlySet<number>): SwimNav {
   return {
+    kind: 'swim',
     width: level.width,
     height: level.height,
     steer: distancesToFinish(level, broken, steerCost),
@@ -59,10 +61,15 @@ export function buildSwimNav(level: Level, broken: ReadonlySet<number>): FlowFie
   };
 }
 
-/** One problem for each start tile that can't reach the finish on the steer field, located at that tile. */
-export function validateSwimLevel(level: Level, nav: FlowFields): LevelProblem[] {
+/**
+ * One problem for each start tile that can't reach the finish on the steer field, located at that tile.
+ *
+ * @throws {Error} When `nav` was built by another medium.
+ */
+export function validateSwimLevel(level: Level, nav: MediumNav): LevelProblem[] {
+  const fields = swimNav(nav);
   return level.starts.flatMap((start, index) =>
-    Number.isFinite(fieldAt(nav.steer, nav, start))
+    Number.isFinite(fieldAt(fields.steer, fields, start))
       ? []
       : [{ message: `Start ${index + 1} cannot reach the finish without breaking coral`, row: start.y, col: start.x }],
   );
