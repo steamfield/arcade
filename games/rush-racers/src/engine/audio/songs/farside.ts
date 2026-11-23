@@ -15,7 +15,7 @@
  * The lead is held whole and dotted-half notes with vibrato, high in A and lower in B. Pulse 2 is
  * the steady pulse: a quiet eighth-note arpeggio on the chord tones under the lead. The triangle
  * holds root and fifth in half notes (whole notes in B), and the drums keep a soft kick on 1 and
- * snare on 3 (half-time in B) with a fill at the end of every section.
+ * snare on 3 (B drops the hats to a bare kick and snare) with a fill at the end of every section.
  */
 import { parseSong, type Song } from '../notation.ts';
 

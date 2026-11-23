@@ -38,7 +38,7 @@ export type GameEvent =
    * went in (px/s) and `axis` the axis the tile stopped it on (the harder one in a corner).
    */
   | { type: 'racer.bounced'; id: RacerId; speed: number; axis: 'x' | 'y' }
-  /** A racer fell out of the level through a pit. */
+  /** A racer fell out of play: through a pit, or into a black hole. */
   | { type: 'racer.fell'; id: RacerId }
   /** A racer that fell is back on the last safe ground it stood on. */
   | { type: 'racer.respawned'; id: RacerId; x: number; y: number }
