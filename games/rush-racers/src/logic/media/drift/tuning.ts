@@ -22,7 +22,7 @@ import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
  */
 export const DRIFT_TUNING = {
   base: { forceMul: 1, kickMul: 1, kickCooldownTicks: 36, dragMul: 1 },
-  force: 260,
+  force: 215,
   drag: 16,
   maxSpeed: 210,
   kick: 90,
