@@ -65,6 +65,8 @@ export const MEDIUM_PAGES: Readonly<Record<ShippedMediumId, MediumPages>> = {
       build: buildRunShieldPage,
     },
   },
+  // Scaffold placeholder: swim's move page until phase 1 lane c draws flight's.
+  flight: { move: { heading: 'SWIM AND DASH', build: buildMovePage } },
 };
 
 /** The medium whose pages stand in for one How to Play has none for. */

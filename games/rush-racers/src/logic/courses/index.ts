@@ -7,6 +7,7 @@ import { parseLevel } from '../level/parse.ts';
 import type { Level, World } from '../types.ts';
 import { BRAMBLE_RUN } from './bramble-run.ts';
 import { RUN_TEST } from './run-test.ts';
+import { SKY_TEST } from './sky-test.ts';
 import { SUNLIT_SHALLOWS } from './sunlit-shallows.ts';
 import type { Course, ShippedCourseId } from './types.ts';
 
@@ -15,6 +16,7 @@ export const COURSES: Readonly<Record<ShippedCourseId, Course>> = {
   'sunlit-shallows': SUNLIT_SHALLOWS,
   'bramble-run': BRAMBLE_RUN,
   'run-test': RUN_TEST,
+  'sky-test': SKY_TEST,
 };
 
 /**

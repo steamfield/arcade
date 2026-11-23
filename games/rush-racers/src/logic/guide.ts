@@ -7,7 +7,8 @@
  *   getting any closer; the engine shows an arrow from it.
  * - `assistedIntent` slides a player who is pushing into a wall along it toward the way on, by
  *   blending the guide direction into the stick. It never adds speed (swimming normalises the stick),
- *   never works against a stick held the other way, and never touches rivals or Normal and Hard.
+ *   never works against a stick held the other way, never touches rivals or Normal and Hard, and
+ *   leaves `move.y` alone in a medium whose `effects.assistAxes` is 'horizontal'.
  * Deterministic: no rng, every number comes from the world.
  */
 
@@ -90,6 +91,8 @@ export function trackGuide(world: World, input: Intent): void {
  * The intent the player's racer acts on: `intent`, plus on a guided level a slide toward the way on
  * while the assist is on. The slide is the part of the guide direction that is sideways to the
  * stick, scaled by `assistBlend`; a stick held away from the way on (against it) gets nothing.
+ * Where the medium's `effects.assistAxes` is 'horizontal' only `move.x` slides, so the assist never
+ * presses or lets go of Up or Down for the player.
  */
 export function assistedIntent(world: World, racer: Racer, intent: Intent): Intent {
   const tuning = tuningOf(world).guide;
@@ -101,11 +104,12 @@ export function assistedIntent(world: World, racer: Racer, intent: Intent): Inte
   const along = way.x * stick.x + way.y * stick.y;
   if (along < OPPOSED) return intent;
   const sideways = { x: way.x - stick.x * along, y: way.y - stick.y * along };
+  const horizontalOnly = mediumOf(world).effects.assistAxes === 'horizontal';
   return {
     ...intent,
     move: {
       x: clampStick(intent.move.x + sideways.x * tuning.assistBlend),
-      y: clampStick(intent.move.y + sideways.y * tuning.assistBlend),
+      y: horizontalOnly ? intent.move.y : clampStick(intent.move.y + sideways.y * tuning.assistBlend),
     },
   };
 }

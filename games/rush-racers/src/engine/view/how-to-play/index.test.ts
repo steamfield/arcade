@@ -37,6 +37,16 @@ describe("How to Play's pages per medium", () => {
     expect(headings).not.toContain('DASH TO DODGE');
   });
 
+  it('teaches flapping, gliding and diving on a flight course with its own move page, in Cloudreach words, on the same page count', () => {
+    const headings = headingsFor('flight', 'cloudreach');
+    expect(mediumPagesFor('flight')).toBe(MEDIUM_PAGES.flight);
+    expect(MEDIUM_PAGES.flight.move.build).not.toBe(MEDIUM_PAGES.swim.move.build);
+    expect(headings[0]).toMatch(/FLAP/);
+    expect(headings[1]).toBe('POP BALLOONS');
+    expect(headings[3]).toBe('GRAB FEATHERS');
+    expect(headings).toHaveLength(HOW_TO_PLAY_PAGES);
+  });
+
   it("falls back to swim's pages for a medium that hasn't shipped, warning once per medium", () => {
     const warnings: string[] = [];
     configureLogging((entry: LogEntry) => {

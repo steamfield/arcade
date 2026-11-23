@@ -6,6 +6,7 @@
  */
 import type { Course } from '../courses/types.ts';
 import type { CharacterId } from '../types.ts';
+import { CLOUDREACH } from './cloudreach.ts';
 import { REEF } from './reef.ts';
 import { THORNWOOD } from './thornwood.ts';
 import type { ShippedWorldId, WorldDef } from './types.ts';
@@ -14,6 +15,7 @@ import type { ShippedWorldId, WorldDef } from './types.ts';
 export const WORLDS: Readonly<Record<ShippedWorldId, WorldDef>> = {
   reef: REEF,
   thornwood: THORNWOOD,
+  cloudreach: CLOUDREACH,
 };
 
 const registered = new Map<string, WorldDef<string>>();

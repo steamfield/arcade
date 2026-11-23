@@ -43,6 +43,7 @@
       "seams": [
         "src/logic/architecture.test.ts",
         "src/logic/media/boundary.test.ts",
+        "src/logic/guide.test.ts",
         "src/engine/themes"
       ],
       "courses": [
@@ -79,6 +80,17 @@
       "worlds": [
         "src/engine/worlds",
         "src/logic/worlds"
+      ],
+      "flight": [
+        "src/logic/media/flight",
+        "src/logic/media/fall-out.test.ts",
+        "src/logic/media/tuning.test.ts",
+        "src/logic/conformance/medium.test.ts",
+        "src/logic/conformance/course.test.ts",
+        "src/logic/guide.test.ts",
+        "src/engine/view/how-to-play/index.test.ts",
+        "src/engine/view/racer-moments.test.ts",
+        "src/engine/worlds/skins.test.ts"
       ]
     }
   }

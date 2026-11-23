@@ -42,6 +42,7 @@ export const GLIDE_EFFECTS: MediumEffects = {
   solidClams: false,
   pitBelow: false,
   allowsLedges: false,
+  assistAxes: 'both',
 };
 
 /** No kick counter works in the air; Gil's spring kick needs a kick aimed straight up. */
@@ -132,6 +133,7 @@ export const GLIDE_MEDIUM: Medium = {
   nextTile: glideNextTile,
   distanceAt: glideDistanceAt,
   coralAhead: () => false,
+  ramsCoral: () => false,
   validateLevel: validateGlideLevel,
   afterMove: () => {},
   racerCollision: 'ghost',

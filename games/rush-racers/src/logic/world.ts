@@ -123,7 +123,8 @@ const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 }
  * @throws {Error} When `course` isn't the course its id is registered to (unregistered, or a copy
  *   with changes), since the world keeps only the id and reads the rest back from the registry.
  * @throws {Error} When the course names an unknown world, or its world a medium that is neither shipped nor registered.
- * @throws {Error} When the course's `tuning.extra` names a key its medium doesn't have (`effectiveTuning`).
+ * @throws {Error} When the course's `tuning.extra` names a key its medium doesn't have, or the medium's
+ *   `byDifficulty` multipliers for the race's difficulty do (`effectiveTuning`).
  * @throws {Error} When `humans` is empty, repeats a slot, names an unknown slot, or is not
  *   `['player']` on Easy; when `characters` or `character` names an unknown slot or character, or
  *   `characters` gives one character twice; when `character` and `characters.player` differ; or when
@@ -136,9 +137,10 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
   if (!medium) throw new Error(`Course '${course.id}' names unknown medium '${mediumId}'`);
   const level = levelOf(course);
   const broken = new Set<number>();
-  const nav = medium.buildNav(level, broken, effectiveTuning({ course: course.id, medium: medium.id }));
-  throwOnProblems([...ledgeProblems(level, medium), ...medium.validateLevel(level, nav)]);
+  // The difficulty comes first: it can scale the medium's numbers, which the first nav is built with.
   const difficulty = options.difficulty ?? 'hard';
+  const nav = medium.buildNav(level, broken, effectiveTuning({ course: course.id, medium: medium.id, difficulty }));
+  throwOnProblems([...ledgeProblems(level, medium), ...medium.validateLevel(level, nav)]);
   const rngs = createRngs(options.seed);
   const { humans, seats } = seatsFor(options, rngs.roster, difficulty);
   const recentEvents: GameEvent[] = [];
@@ -369,8 +371,8 @@ function spendKickedDashes(world: World): void {
 
 /**
  * One racer's velocity for the tick (the medium's response to its intent, then a dash or a trapped
- * drift overriding it), then its move, breaking the coral ahead first when its ability rams through
- * coral; then the medium's `afterMove` and any crates its head hit.
+ * drift overriding it), then its move, breaking the coral ahead first when its ability or its medium
+ * (`Medium.ramsCoral`) rams through coral; then the medium's `afterMove` and any crates its head hit.
  */
 function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
   const env = medium.sampleEnvironment(world, racer);
@@ -379,7 +381,7 @@ function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, m
   applyUndertow(world, racer, dt);
   driveDash(world, racer);
   floatTrapped(world, racer);
-  if (breaksCoralOnContact(racer)) ramCoral(world, racer, dt);
+  if (breaksCoralOnContact(racer) || medium.ramsCoral(racer)) ramCoral(world, racer, dt);
   const contacts = moveBody(racer.body, world.level, world.broken, dt, moveRulesFor(world));
   medium.afterMove(world, racer, contacts, world.events);
   openClamsFromBelow(world, racer, contacts);

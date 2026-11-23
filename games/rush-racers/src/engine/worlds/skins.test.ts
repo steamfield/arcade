@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { COURSES } from '../../logic/courses/index.ts';
 import { CHARACTER_IDS } from '../../logic/types.ts';
+import { CLOUDREACH_SKIN } from './cloudreach.ts';
 import { assertSkinAssets, assertSkinTextures, SKINS, skinFor, type TextureLookup } from './index.ts';
 import { REEF_SKIN } from './reef.ts';
 import type { WorldSkin } from './types.ts';
@@ -77,5 +78,64 @@ describe('the boot texture check', () => {
     expect(() => assertSkinTextures(texturesWithout({ frame: 'open' }), REEF_SKIN)).toThrow(
       `World 'reef' skin names frame 'open' of '${clam}', which was never built`,
     );
+  });
+});
+
+describe('the Cloudreach skin', () => {
+  const { text } = CLOUDREACH_SKIN.objects;
+
+  it("words gil's ability, the items, enemies and pickups the Cloudreach way", () => {
+    expect(CLOUDREACH_SKIN.cast.abilities.gil.name).toBe('SPRING FLAP');
+    expect(text.attackCaptions).toEqual({
+      homingSquid: 'HOMING GULL',
+      riptide: 'JET STREAM',
+      undertow: 'HEADWIND',
+      mimic: 'MIRAGE',
+    });
+    expect(text.enemyCaptions).toEqual({
+      crab: expect.stringContaining('CLOUD CRAB'),
+      shark: 'CROW DIVES',
+      eel: 'EEL LUNGES',
+    });
+    expect([text.cratesHeading, text.pearlsHeading, text.slowedBy, text.trapped]).toEqual([
+      'POP BALLOONS',
+      'GRAB FEATHERS',
+      'SLOWED BY FOG',
+      'CLOUD',
+    ]);
+  });
+
+  it("uses none of the Reef's words in its abilities or object text", () => {
+    const abilities = CHARACTER_IDS.flatMap((id) => [
+      CLOUDREACH_SKIN.cast.abilities[id].name,
+      CLOUDREACH_SKIN.cast.abilities[id].blurb,
+    ]);
+    const words = [
+      ...abilities,
+      text.slowedBy,
+      text.trapped,
+      text.cratesHeading,
+      text.pearlsHeading,
+      ...Object.values(text.attackCaptions),
+      ...Object.values(text.enemyCaptions),
+    ];
+
+    expect(words.filter((line) => /\b(CORAL|SQUID|CLAMS?|PEARLS?|INK|SHARK|KICKS?|BUBBLE|SWIM)\b/.test(line))).toEqual(
+      [],
+    );
+  });
+
+  it("keeps every ability line and the HUD and How to Play words within the longest of Reef's, so they fit", () => {
+    const longest = (strings: readonly string[]) => Math.max(...strings.map((line) => line.length));
+    const groups: ((skin: WorldSkin) => string[])[] = [
+      (skin) => CHARACTER_IDS.map((id) => skin.cast.abilities[id].name),
+      (skin) => CHARACTER_IDS.map((id) => skin.cast.abilities[id].blurb),
+      (skin) => [skin.objects.text.slowedBy, skin.objects.text.trapped],
+      (skin) => Object.values(skin.objects.text.enemyCaptions),
+      (skin) => [skin.objects.text.cratesHeading, skin.objects.text.pearlsHeading],
+    ];
+    for (const group of groups) {
+      expect(longest(group(CLOUDREACH_SKIN))).toBeLessThanOrEqual(longest(group(REEF_SKIN)));
+    }
   });
 });

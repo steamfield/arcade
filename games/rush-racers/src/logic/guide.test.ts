@@ -1,7 +1,10 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import type { GameEvent } from './events.ts';
 import { assistedIntent, guideFor } from './guide.ts';
-import { hold, IDLE, placeOnTile, raceOn, racerOf, step } from './test-world.ts';
+import { courseFromLevel, hold, IDLE, placeOnTile, raceOn, racerOf, step } from './test-world.ts';
 import type { Difficulty, TickInput } from './types.ts';
+import { createWorld } from './world.ts';
 
 /** A wall across the player's lane with the only gap in the bottom row, so from the wall the way on is down. */
 const PILLAR = `
@@ -109,5 +112,49 @@ describe('the steering assist', () => {
     const { move } = assistedIntent(world, player, RIGHT);
     expect(Math.abs(move.x)).toBeLessThanOrEqual(1);
     expect(Math.abs(move.y)).toBeLessThanOrEqual(1);
+  });
+});
+
+/** A wall across the player's lane with the only gap in the top row, so from the wall the way on is up. */
+const LOW_WALL = `
+  ####################
+  #.................F#
+  #1....#...........F#
+  #2....#...........F#
+  #3....#...........F#
+  #4....#...........F#
+  ####################
+`;
+
+/** An Easy race in `medium` on LOW_WALL, the player against the wall's left face with the assist helping. */
+function helpedAtLowWall(medium: string) {
+  const world = createWorld(courseFromLevel(LOW_WALL, medium), new EventLog<GameEvent>(1000), {
+    seed: 1,
+    difficulty: 'easy',
+  });
+  const player = racerOf(world, 'player');
+  placeOnTile(player, 5, 3);
+  world.guide.helpTicks = 30;
+  return { world, player };
+}
+
+describe('the steering assist by medium', () => {
+  const upAndRight = hold({ x: 0.6, y: -0.3 });
+
+  it('slides only the horizontal stick in flight, leaving Up exactly as held', () => {
+    const { world, player } = helpedAtLowWall('flight');
+    const { move } = assistedIntent(world, player, upAndRight);
+
+    expect(guideFor(world, player).dir).toEqual({ x: 0, y: -1 });
+    expect(move.y).toBe(-0.3);
+    expect(move.x).not.toBe(0.6);
+  });
+
+  it('slides both axes in swim', () => {
+    const { world, player } = helpedAtLowWall('swim');
+    const { move } = assistedIntent(world, player, upAndRight);
+
+    expect(guideFor(world, player).dir).toEqual({ x: 0, y: -1 });
+    expect(move.y).toBeLessThan(-0.3);
   });
 });

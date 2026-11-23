@@ -31,6 +31,8 @@ export type GameEvent =
   | { type: 'racer.kicked'; id: RacerId }
   /** A racer left the ground on a jump (a jumping medium only; never spends a dash charge). */
   | { type: 'racer.jumped'; id: RacerId }
+  /** A racer flapped on a fresh Up press (a flying medium only; never spends a dash charge). */
+  | { type: 'racer.flapped'; id: RacerId }
   /** A racer fell out of the level through a pit. */
   | { type: 'racer.fell'; id: RacerId }
   /** A racer that fell is back on the last safe ground it stood on. */

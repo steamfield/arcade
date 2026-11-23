@@ -8,10 +8,10 @@ import type { MediumTuning } from '../media/types.ts';
 import type { Difficulty, LevelDef } from '../types.ts';
 import type { ShippedWorldId } from '../worlds/types.ts';
 
-/** Shipped courses. Grows with each course: 'kelp-forest', 'sky-test', ... */
-export type ShippedCourseId = 'sunlit-shallows' | 'bramble-run' | 'run-test';
-/** Shipped movement styles. Grows: 'run', later 'flight' or 'space'. */
-export type ShippedMediumId = 'swim' | 'run';
+/** Shipped courses. Grows with each course: 'kelp-forest', 'thunderhead-pass', ... */
+export type ShippedCourseId = 'sunlit-shallows' | 'bramble-run' | 'run-test' | 'sky-test';
+/** Shipped movement styles. Grows: later 'space'. */
+export type ShippedMediumId = 'swim' | 'run' | 'flight';
 /** Looks the engine draws a course with. */
 export type ThemeId = 'ocean' | 'forest';
 /** Songs the engine can play for a race, by the soundtrack's names. */
@@ -36,13 +36,19 @@ export interface Course<World extends string = string> {
   /** A good swimmer's finish on Hard, in ticks. Difficulty bars derive from it. */
   parTicks: number;
   /** Course overrides of the medium's numbers. */
-  tuning?: Partial<MediumTuning>;
+  tuning?: CourseTuning;
   /**
    * Per-level overrides of the rivals' catch-up bounds, merged field by field onto that level's own
    * bounds (`rivalCatchUpFor`). A level the course doesn't name keeps the table's bounds.
    */
   catchUp?: Partial<Record<Difficulty, Partial<CatchUpBounds>>>;
 }
+
+/**
+ * A course's overrides of its medium's numbers. Difficulty multipliers (`MediumTuning.byDifficulty`)
+ * belong to the medium alone, so a course can't carry them.
+ */
+export type CourseTuning = Partial<Omit<MediumTuning, 'byDifficulty'>>;
 
 /** A shipped course: it must be raced in a shipped world, so naming one that doesn't exist fails to compile. */
 export type ShippedCourse = Course<ShippedWorldId>;
