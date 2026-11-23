@@ -20,7 +20,9 @@ export function createDriftMotion(body: Body): DriftMotion {
 /**
  * Updates a racer's velocity, facing and kick cooldown for one tick, in this order: facing from the
  * stick, thrust (never adding speed past the larger of the speed before it and the racer's cruise),
- * solar wind, drag, the dash, and the cap at `maxSpeed`. Emits `racer.kicked` on the tick a dash fires.
+ * solar wind and the gravity wells' pull, drag, the dash, and the cap at `maxSpeed`. A racer that
+ * is out of play feels neither wind nor pull, and a trapped one feels no pull. Emits `racer.kicked`
+ * on the tick a dash fires.
  *
  * @param tuning Drift's tuning with the course's overrides (`effectiveTuning`).
  * @param dt Tick length in seconds.
@@ -42,7 +44,8 @@ export function applyDriftIntent(
   const cruise = driftCruise(extras, mods.forceMul, surroundings.inDust);
   if (intent.move.x !== 0) racer.facing = intent.move.x > 0 ? 1 : -1;
   thrust(body, stick, tuning.force * mods.forceMul * dt, cruise);
-  blow(body, surroundings, extras.windForce * dt);
+  if (racer.status.fallen === 0) blow(body, surroundings, extras.windForce * dt);
+  if (feelsPull(racer)) fall(body, surroundings.pull, dt);
   slow(body, dragLoss(body, { extras, tuning, mods, env: surroundings, stick, cruise }, dt));
   dashOrCool(racer, intent.kick, stick, tuning.kick * mods.kickMul, mods, events);
   capSpeed(body, tuning.maxSpeed);
@@ -74,6 +77,17 @@ function blow(body: Body, env: DriftEnv, amount: number): void {
   if (!env.wind) return;
   body.vx += env.wind.x * amount;
   body.vy += env.wind.y * amount;
+}
+
+/** True when the wells pull on the racer: it is in play and not held in a bubble. */
+function feelsPull(racer: Racer): boolean {
+  return racer.status.fallen === 0 && racer.status.trapped === 0;
+}
+
+/** Accelerates the body by `pull`, px/s², for `dt` seconds; nothing but `maxSpeed` limits what it adds. */
+function fall(body: Body, pull: Vec, dt: number): void {
+  body.vx += pull.x * dt;
+  body.vy += pull.y * dt;
 }
 
 /** What drag reads besides the body: the numbers, the racer's modifiers and where it is. */
