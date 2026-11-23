@@ -1,6 +1,6 @@
 /**
  * The two painted parallax layers behind the course, each tiling horizontally: a far line of low
- * cloud banks with sunset-lit crowns along the horizon, and a near line of taller billows. Two dark
+ * cloud banks with sunset-lit crowns along the horizon, and two near towering cumulus. Two dark
  * colours each, a step off the sky bands, so they recede and racers still read in front of them.
  */
 import { Frame } from '../../../art/keys.ts';
@@ -31,17 +31,25 @@ const FAR_BANKS: CloudBankShape = {
   litRows: 2,
 };
 
-/** Near banks: a few big billows standing tall from the bottom of the layer. */
+/**
+ * Near banks: two towering cumulus, each a heap of small billows rising to a rounded top, on a low
+ * flat base, with open sky between them.
+ */
 const NEAR_BANKS: CloudBankShape = {
   billows: [
-    { x: 10, y: 52, radius: 16 },
-    { x: 34, y: 62, radius: 14 },
-    { x: 58, y: 44, radius: 20 },
-    { x: 86, y: 60, radius: 15 },
-    { x: 110, y: 50, radius: 18 },
+    { x: 14, y: 66, radius: 7 },
+    { x: 22, y: 58, radius: 9 },
+    { x: 32, y: 50, radius: 11 },
+    { x: 42, y: 57, radius: 9 },
+    { x: 50, y: 65, radius: 7 },
+    { x: 78, y: 66, radius: 6 },
+    { x: 86, y: 58, radius: 8 },
+    { x: 96, y: 49, radius: 10 },
+    { x: 106, y: 55, radius: 9 },
+    { x: 115, y: 63, radius: 7 },
   ],
-  baseRows: 14,
-  litRows: 1,
+  baseRows: 10,
+  litRows: 2,
 };
 
 /** Backdrop layer sheets. */

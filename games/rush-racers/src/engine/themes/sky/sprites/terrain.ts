@@ -11,34 +11,34 @@ import { SkyThemeTex, type SkyThemeTexKey } from '../keys.ts';
 import { SkyTerrainPalette } from '../palettes.ts';
 
 /**
- * Thunderhead inside the storm cloud: stacked billows, each a lit crown over a dark underside, the
- * second row of billows set half a billow over so the tile repeats as a cloud mass, not a grid.
+ * Thunderhead inside the storm cloud: a flat, solid body with one faint billow crown per tile and a
+ * few shadow flecks, so a wall reads as one heavy cloud mass rather than bricks or scales.
  */
 const BURIED_THUNDERHEAD_ROWS = [
   '1111111111111111',
-  '1112211111122111',
-  '1121121111211211',
+  '1111111111111111',
+  '1111112222111111',
+  '1111221111221111',
+  '1112111111112111',
   '1111111111111111',
   '1111111111111111',
-  '0111111001111110',
-  '1011110110111101',
-  '1100001111000011',
-  '1111111111111111',
-  '2111111221111112',
-  '1211112112111121',
+  '1111111111111011',
   '1111111111111111',
   '1111111111111111',
-  '1110011111100111',
-  '1101101111011011',
-  '0011110000111100',
+  '1111111111111111',
+  '1101111111111111',
+  '1111111111111111',
+  '1111111111111111',
+  '1111111110111111',
+  '1111111111111111',
 ];
 
 /** Thunderhead open above: a bright billowed top edge, then the buried body below it. */
 const THUNDERHEAD_ROWS = [
-  '2223322222233222',
-  '2233332222333322',
-  '1233332112333321',
-  '1122221111222211',
+  '2222333333332222',
+  '1222233333322221',
+  '1112222222222111',
+  '1111111111111111',
   ...BURIED_THUNDERHEAD_ROWS.slice(4),
 ];
 

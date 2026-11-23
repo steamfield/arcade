@@ -43,8 +43,8 @@ export const SkyHazardPalette = {
 export const SkyBackdropPalette = {
   /** Far cloud banks: silhouette and its crown, lit dusky rose by the low sun. */
   far: [0x2a426e, 0x5c3e54],
-  /** Near cloud banks: shadowed underside, lit edge. */
-  near: [0x203a66, 0x263f6a],
+  /** Near cloud banks: shadowed underside, and the edge the low sun lights rose. */
+  near: [0x203a66, 0x503652],
 } as const satisfies Record<string, Palette>;
 
 /**
@@ -56,7 +56,7 @@ export const SKY_BANDS: readonly number[] = [0x0e2c64, 0x143670, 0x1a3e78, 0x224
 /** Low golden sunlight: the shafts from the top of the level and the specks drifting across it. */
 export const SunLight = {
   ray: 0xffd890,
-  mote: 0xffecc8,
+  mote: 0xffc870,
 } as const;
 
 /** The veil over a lightning zone's storm cell: a dark slate-violet, drawn translucent. */

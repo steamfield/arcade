@@ -33,8 +33,8 @@ const SKY_CONTRAST_BANDS: readonly ContrastBand[] = [
   ...SkyBackdropPalette.near.map((colour, index) => ({ name: `near clouds ${index}`, colour })),
 ];
 
-/** A contrail: small white puffs, half see-through, left behind every moving racer. */
-const CONTRAIL = { frame: FxFrame.chip, tint: 0xf4f8ff, alpha: 0.5 } as const;
+/** A contrail: small round white puffs, half see-through, left behind every moving racer. */
+const CONTRAIL = { frame: FxFrame.bubbleSmall, tint: 0xffffff, alpha: 0.5 } as const;
 
 /** Opacity of the storm cell's veil over a dark zone. */
 const STORM_VEIL_ALPHA = 0.85;
