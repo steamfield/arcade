@@ -5,7 +5,7 @@ import { IDLE_TO_RESULTS, scenario, tap, wait } from './kit.ts';
 export default scenario({
   description: 'choosing Race again on the results screen starts a fresh countdown from the start line',
   start: { scene: 'race' },
-  input: [wait(IDLE_TO_RESULTS), tap('kick'), wait(10)],
+  input: [wait(IDLE_TO_RESULTS), tap('fire'), wait(10)],
   expect({ summary, events }) {
     expect(summary).toMatchObject({
       scene: 'race',

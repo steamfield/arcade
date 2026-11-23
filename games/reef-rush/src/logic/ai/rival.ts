@@ -47,7 +47,13 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
   const forceRecover = progressStalled(world, racer, memory);
   const steering = mediumOf(world).steer(world, racer, modifiersFor(world, racer), draws, forceRecover);
   const slot = steering.recovering ? null : chooseItemSlot(world, racer, steering.aim, draws.item);
-  const intent: Intent = { move: steering.move, kick: steering.kick, use: false, cycle: 0, kickHeld: steering.kickHeld };
+  const intent: Intent = {
+    move: steering.move,
+    kick: steering.kick,
+    use: false,
+    cycle: 0,
+    kickHeld: steering.kickHeld,
+  };
   if (slot !== null) intent.useSlot = slot;
   return intent;
 }

@@ -71,10 +71,7 @@ export function createHazardView(
       hideFrom(inks, world.inks.length);
       world.bubbles.forEach((bubble, index) => {
         bubbles[index] ??= scene.add.image(0, 0, Tex.bubble, Frame.a).setDepth(Layer.player + 0.5);
-        bubbles[index]
-          .setPosition(Math.round(bubble.x), Math.round(bubble.y))
-          .setScale(bubble.seeking ? 1.5 : 1.2)
-          .setVisible(true);
+        bubbles[index].setPosition(Math.round(bubble.x), Math.round(bubble.y)).setScale(1.2).setVisible(true);
       });
       hideFrom(bubbles, world.bubbles.length);
       world.racers.forEach((racer, index) => {

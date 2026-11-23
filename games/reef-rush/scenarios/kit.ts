@@ -21,14 +21,14 @@ export const HARD_SAVE = {
   },
 };
 
-/** Title Race, then race as the saved pick once the select screen has armed: lands on the countdown's first tick. */
-export const TITLE_TO_RACE = [wait(25), tap('kick'), wait(25), tap('kick')];
+/** Title Race, then race as the saved pick once the select screen has armed (fire on both): lands on the countdown's first tick. */
+export const TITLE_TO_RACE = [wait(25), tap('fire'), wait(25), tap('fire')];
 
 /**
  * Ticks from the start of a race to a results screen that has been up long enough to take input,
  * for a player who never swims. The race limit ends any race, so this holds whatever the rivals'
  * tuning: the countdown, the limit, the 90 ticks before results show, then 30 more, past the
- * menu's 20 ticks of ignoring kicks. An idle race usually ends sooner, when the rivals finish.
+ * menu's 20 ticks of ignoring fire presses. An idle race usually ends sooner, when the rivals finish.
  */
 export const IDLE_TO_RESULTS = COUNTDOWN_TICKS + RACE_LIMIT_TICKS + 90 + 30;
 

@@ -1,6 +1,6 @@
 /**
  * The How to Play screen, laid out to UI.md "How to Play": a heading, one of four picture pages
- * (swim and kick, open clams, B uses all, the attack power-ups), a row of page dots and a footer
+ * (swim and dash, open clams, fire the item you pick, the attack power-ups), a row of page dots and a footer
  * naming the two controls that turn pages. Words are few and short; the pages are the game's own
  * sprites and control glyphs, animated from the runtime's tick (still under reduced motion).
  *
@@ -101,12 +101,12 @@ function addDot(scene: Phaser.Scene, index: number, count: number): Phaser.GameO
   return scene.add.rectangle(first + index * DOTS.pitch, DOTS.y, DOTS.size, DOTS.size, UiRamp.dim);
 }
 
-/** The footer: the kick control and NEXT, the burst control and BACK, laid out as one centred row. */
+/** The footer: the fire control and NEXT, the dash control and BACK, laid out as one centred row. */
 function addFooter(scene: Phaser.Scene, touch: boolean): void {
   createPanel(scene, FOOTER.x, FOOTER.y, FOOTER.w, FOOTER.h, 'inset');
   const pairs = [
-    { action: 'kick', word: 'NEXT' },
-    { action: 'burst', word: 'BACK' },
+    { action: 'fire', word: 'NEXT' },
+    { action: 'dash', word: 'BACK' },
   ] as const;
   const widthOf = (pair: (typeof pairs)[number]) =>
     actionGlyphWidth(pair.action, touch) + FOOTER_GAP + measureText(TEXT_FACE, pair.word).width;

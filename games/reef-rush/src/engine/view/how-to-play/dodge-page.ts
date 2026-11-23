@@ -1,5 +1,5 @@
 /**
- * Page 5, KICK TO DODGE, alone at 2x. A squid swims at the racer; the kick control above lights at
+ * Page 5, DASH TO DODGE, alone at 2x. A squid swims at the racer; the dash control above lights at
  * the last moment, the racer hops up and the squid sails underneath. Everything sits in the safe
  * column (x 108-228), clear of the d-pad and A/B zones.
  */
@@ -16,7 +16,7 @@ const PRESS_TICKS = 12;
 const HOP_TICKS = 10;
 
 export const buildDodgePage: PageBuilder = (kit) => {
-  const kick = kit.action('kick', 2);
+  const kick = kit.action('dash', 2);
   kick.setPosition(GLYPH_AT.centreX - kick.width / 2, GLYPH_AT.centreY - kick.height / 2);
   const hopper = kit.sprite(RACER.x, RACER.y, kit.racer, Frame.a, 2);
   const incoming = kit.sprite(SQUID.startX, SQUID.y, Tex.squid, Frame.a, 2);

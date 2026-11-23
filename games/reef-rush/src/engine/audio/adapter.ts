@@ -124,6 +124,9 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       case 'racer.kicked':
         if (event.id === 'player') sfx('kick');
         return;
+      case 'item.used':
+        if (event.id === 'player') sfx('item.use');
+        return;
       case 'racer.bumped':
         if (event.a === 'player' || event.b === 'player') sfx('bump');
         return;

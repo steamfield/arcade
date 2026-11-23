@@ -6,14 +6,16 @@ import type { GameContext } from '@arcade/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
+import { COUNTDOWN_TICKS } from '../logic/race/standings.ts';
+import { playerOf } from '../logic/racers.ts';
 import { migrations, NEW_GAME, SAVE_VERSION, type SaveData, SaveSchema } from '../logic/save.ts';
-import { courseFromLevel } from '../logic/test-world.ts';
+import { courseFromLevel, giveItems } from '../logic/test-world.ts';
 import { type Action, input } from './input.ts';
 import { Runtime } from './runtime.ts';
 
 /** Title rows: Race, How to play, Level, Sound, Motion. Sound is three down. */
 const SOUND_ROW = 3;
-/** The title ignores kick for its first 20 ticks. */
+/** The title ignores fire for its first 20 ticks. */
 const ARMED = 21;
 
 let storeCount = 0;
@@ -72,7 +74,7 @@ function press(rt: Runtime, action: Action): void {
 
 function toggleSound({ rt }: Harness): void {
   for (let row = 0; row < SOUND_ROW; row++) press(rt, 'down');
-  press(rt, 'kick');
+  press(rt, 'fire');
 }
 
 /** Lets every queued save write run to its end. */
@@ -140,7 +142,7 @@ describe('overlapping save writes', () => {
     const { rt, gameErrors } = titleRuntime(slow);
 
     toggleSound({ rt, gameErrors }); // sound off
-    press(rt, 'kick'); // sound back on, while the first write is still out
+    press(rt, 'fire'); // sound back on, while the first write is still out
     expect(rt.settings.muted).toBe(false);
     expect(rt.saving).toBe(true);
     await vi.waitFor(() => expect(written).toHaveLength(1));
@@ -224,14 +226,14 @@ describe('course select', () => {
   /** On course select, opened from the title's Race button, its arming ticks not yet spent. */
   async function onCourseSelect(listedCourses: readonly Course[]) {
     const { rt } = titleRuntime(await realStore(), { listedCourses });
-    press(rt, 'kick');
+    press(rt, 'fire');
     return rt;
   }
 
-  it('opens from Race on the first row and ignores a kick during its arming ticks', async () => {
+  it('opens from Race on the first row and ignores fire during its arming ticks', async () => {
     const rt = await onCourseSelect(threeCourses());
     expect([rt.scene, rt.courseCursor]).toEqual(['course', 0]);
-    press(rt, 'kick');
+    press(rt, 'fire');
     expect(rt.scene).toBe('course');
   });
 
@@ -244,7 +246,7 @@ describe('course select', () => {
   it('goes back to the title on B', async () => {
     const rt = await onCourseSelect(threeCourses());
     rt.step.advance(ARMED);
-    press(rt, 'burst');
+    press(rt, 'dash');
     expect(rt.scene).toBe('title');
   });
 
@@ -253,10 +255,10 @@ describe('course select', () => {
     const rt = await onCourseSelect(courses);
     rt.step.advance(ARMED);
     press(rt, 'down');
-    press(rt, 'kick');
+    press(rt, 'fire');
     expect([rt.scene, rt.course]).toEqual(['select', courses[1]]);
     rt.step.advance(ARMED);
-    press(rt, 'burst');
+    press(rt, 'dash');
     expect([rt.scene, rt.courseCursor]).toEqual(['course', 1]);
   });
 
@@ -264,7 +266,52 @@ describe('course select', () => {
     const rt = await onCourseSelect([DEFAULT_COURSE]);
     expect(rt.scene).toBe('select');
     rt.step.advance(ARMED);
-    press(rt, 'burst');
+    press(rt, 'dash');
     expect(rt.scene).toBe('title');
+  });
+});
+
+describe('race controls', () => {
+  /** A runtime racing on the default course, past the countdown, the player holding three items. */
+  async function racing() {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'fire');
+    rt.step.advance(COUNTDOWN_TICKS);
+    const world = rt.world;
+    if (!world) throw new Error('the race never started');
+    giveItems(playerOf(world), ['inkSac', 'puffer', 'mimic']);
+    return rt;
+  }
+  const itemEvents = (rt: Runtime) =>
+    rt.events
+      .all()
+      .filter((event) => event.type === 'item.selected' || event.type === 'item.used')
+      .map(({ tick: _tick, seq: _seq, ...event }) => event);
+
+  it('cycles the selection with next and prev, and fires the selected item with fire', async () => {
+    const rt = await racing();
+
+    press(rt, 'next');
+    press(rt, 'next');
+    press(rt, 'prev');
+    press(rt, 'fire');
+
+    expect(itemEvents(rt)).toEqual([
+      { type: 'item.selected', id: 'player', slot: 1, kind: 'puffer' },
+      { type: 'item.selected', id: 'player', slot: 2, kind: 'mimic' },
+      { type: 'item.selected', id: 'player', slot: 1, kind: 'puffer' },
+      { type: 'item.used', id: 'player', kind: 'puffer', slot: 1, chargesLeft: 1 },
+    ]);
+  });
+
+  it('kicks on dash without firing an item', async () => {
+    const rt = await racing();
+
+    press(rt, 'dash');
+
+    expect(rt.events.all().filter((event) => event.type === 'racer.kicked')).toHaveLength(1);
+    expect(itemEvents(rt)).toEqual([]);
   });
 });

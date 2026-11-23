@@ -1,6 +1,6 @@
 /**
- * Page 1, SWIM AND KICK. The top row shows the arrows (or the d-pad) with the one being pressed lit
- * while the player's racer swims round a loop the way it points; the lower row shows the kick
+ * Page 1, SWIM AND DASH. The top row shows the arrows (or the d-pad) with the one being pressed lit
+ * while the player's racer swims round a loop the way it points; the lower row shows the dash
  * control lighting up and the racer lurching forward with speed lines behind it.
  */
 import { Frame } from '../../art/keys.ts';
@@ -43,7 +43,7 @@ export const buildMovePage: PageBuilder = (kit) => {
   arrows.setPosition(ARROWS_AT.x, ARROWS_AT.centreY - arrows.height / 2);
   const swimmer = kit.sprite(LOOP.left, LOOP.top, kit.racer, Frame.a, 2);
 
-  const kick = kit.action('kick', 2);
+  const kick = kit.action('dash', 2);
   kick.setPosition(KICK_ROW.glyphX, KICK_ROW.centreY - kick.height / 2);
   const kicker = kit.sprite(KICK_ROW.racerX, KICK_ROW.centreY, kit.racer, Frame.a, 2);
   const streaks = [-6, 0, 6].map((dy) => kit.bar(0, KICK_ROW.centreY + dy, 10, 1, 0xf6f0dc));

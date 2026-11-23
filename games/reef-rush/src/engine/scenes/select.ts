@@ -3,8 +3,8 @@
  * 4x2 grid of framed cells (portrait and short name; the cell under the
  * cursor in a gold frame with its name in sun), a card for that character
  * (its portrait at 2x, full name, ability and a one-line blurb), the picked
- * racer swimming in place under the card, and a footer showing kick races and
- * burst goes back (as the A and B buttons on touch screens). Everything sits
+ * racer swimming in place under the card, and a footer showing fire races and
+ * dash goes back (as the A and B buttons on touch screens). Everything sits
  * clear of the back link, d-pad and A/B zones. The backdrop is the last listed course raced
  * (Sunlit Shallows until then), as on the title.
  *
@@ -45,7 +45,7 @@ const CARD_ABILITY_Y = 98;
 const CARD_BLURB_Y = 107;
 /** The picked racer at 2x (32x24), centred in the safe column between the card and the footer. */
 const PREVIEW = { x: 160, y: 140, scale: 2 } as const;
-/** An inset readout at the bottom of the safe column: kick icon RACE, burst icon BACK; A RACE, B BACK on touch. */
+/** An inset readout at the bottom of the safe column: fire icon RACE, dash icon BACK; A RACE, B BACK on touch. */
 const FOOTER = { x: 114, y: 159, w: 92, h: 15 } as const;
 const FOOTER_ICON_Y = 162;
 const FOOTER_TEXT_Y = 163;
@@ -174,15 +174,15 @@ function addCard(scene: Phaser.Scene): Card {
 }
 
 /**
- * The footer readout: the kick icon and RACE, the burst icon and BACK. On a touch screen it names
+ * The footer readout: the fire icon and RACE, the dash icon and BACK. On a touch screen it names
  * the on-screen buttons instead, A RACE and B BACK, with the letters in sun.
  */
 function addFooter(scene: Phaser.Scene): void {
   createPanel(scene, FOOTER.x, FOOTER.y, FOOTER.w, FOOTER.h, 'inset');
   const touch = isTouchScreen();
   for (const [x, icon, letter, word] of [
-    [FOOTER_KICK_X, IconFrame.kick, 'A', 'RACE'],
-    [FOOTER_BURST_X, IconFrame.burst, 'B', 'BACK'],
+    [FOOTER_KICK_X, IconFrame.fire, 'A', 'RACE'],
+    [FOOTER_BURST_X, IconFrame.dash, 'B', 'BACK'],
   ] as const) {
     if (touch) createLabel(scene, x + FOOTER_LETTER_DX, FOOTER_TEXT_Y, letter, { tone: 'sun' });
     else scene.add.image(x, FOOTER_ICON_Y, UiTex.icons, icon).setOrigin(0, 0);

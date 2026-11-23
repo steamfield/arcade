@@ -8,21 +8,21 @@ const LEAVE = { kind: 'leave' };
 
 describe('turning How to Play pages', () => {
   it('moves forward with A or right and back with B or left from a middle page', () => {
-    expect(turnPage(2, 'kick')).toEqual(page(3));
+    expect(turnPage(2, 'fire')).toEqual(page(3));
     expect(turnPage(2, 'right')).toEqual(page(3));
-    expect(turnPage(2, 'burst')).toEqual(page(1));
+    expect(turnPage(2, 'dash')).toEqual(page(1));
     expect(turnPage(2, 'left')).toEqual(page(1));
   });
 
   it('leaves only with B on the first page', () => {
-    expect(turnPage(FIRST, 'burst')).toEqual(LEAVE);
+    expect(turnPage(FIRST, 'dash')).toEqual(LEAVE);
     expect(turnPage(FIRST, 'left')).toEqual(page(FIRST));
-    expect(turnPage(FIRST, 'kick')).toEqual(page(1));
+    expect(turnPage(FIRST, 'fire')).toEqual(page(1));
   });
 
   it('leaves only with A on the last page', () => {
-    expect(turnPage(LAST, 'kick')).toEqual(LEAVE);
+    expect(turnPage(LAST, 'fire')).toEqual(LEAVE);
     expect(turnPage(LAST, 'right')).toEqual(page(LAST));
-    expect(turnPage(LAST, 'burst')).toEqual(page(LAST - 1));
+    expect(turnPage(LAST, 'dash')).toEqual(page(LAST - 1));
   });
 });

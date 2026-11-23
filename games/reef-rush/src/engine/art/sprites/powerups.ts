@@ -1,7 +1,7 @@
 /**
- * The nine power-up icons (12x12, each its own shape: fin, bubble, puffer,
- * ink drop, lantern, squid, wave, pull arrow, octopus) and the effects their bursts leave in the water: the ink
- * cloud and the trapping bubble.
+ * The ten power-up icons (12x12, each its own shape: fin, bubble, puffer,
+ * ink drop, lantern, squid, wave, pull arrow, octopus, cannonball) and the effects their uses leave in the
+ * water: the ink cloud and the trapping bubble.
  */
 import { Frame, Tex } from '../keys.ts';
 import { ItemPalette } from '../palettes.ts';
@@ -87,6 +87,22 @@ export const POWERUP_SHEETS: readonly ArtSheet[] = [
       '..01111110..',
       '...011110...',
       '....0000....',
+      '............',
+    ],
+  }),
+  sheet(Tex.cannonball, ItemPalette.cannonball, {
+    [Frame.a]: [
+      '.........3..',
+      '........3.3.',
+      '.......0.3..',
+      '...00000....',
+      '..0111110...',
+      '.012211110..',
+      '.012111110..',
+      '.011111110..',
+      '.011111110..',
+      '..0111110...',
+      '...00000....',
       '............',
     ],
   }),

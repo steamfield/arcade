@@ -2,11 +2,12 @@
  * Capture stages for `arcade see`-style review: `?stage=<name>` on the race URL puts the attack
  * power-ups into the world before the first frame, so their views can be reviewed without waiting
  * for a race to roll one (a seed rarely draws the squid, and the dark zone is the course's last stretch). A
- * stage only writes plain world state (a stack, a status, a squid, a lane, a decoy) that the views
+ * stage only writes plain world state (items, a status, a squid, a lane, a decoy) that the views
  * read. It is honoured only with `?debug=1` or in test mode, and `Runtime.startRace` marks the race
  * staged so its result is never saved. Applied by `Runtime.startRace`, right after the world is built.
  *
- * The names: `icons-a`, `icons-b` and `icons-c` (a lone Undertow, gone once fired) fill the player's well; `squid-flight` sends squids at rivals;
+ * The names: `icons-a`, `icons-b` and `icons-c` (a lone Undertow, gone once fired) fill the player's well; `cannonball`
+ * holds a Cannonball three tiles before the first coral gate, facing it; `squid-flight` sends squids at rivals;
  * `squid-lockon` locks one on the player from in view and `squid-lockon-far` from off-screen;
  * `squid-latched` latches squids on the player and a rival; `riptide` lays a lane over a current
  * with a rival riding it; `decoy` leaves a rival's decoy beside it; `undertow` pulls two racers back;
@@ -16,14 +17,16 @@
  */
 import { guideDistanceAt, guideFor } from '../logic/guide.ts';
 import { cellAt } from '../logic/level/query.ts';
+import { CHARGES } from '../logic/powerups/charges.ts';
 import { playerOf } from '../logic/racers.ts';
-import { type Level, type Racer, type RacerId, TILE, type Vec, type World } from '../logic/types.ts';
+import { type Level, type PowerUpKind, type Racer, type RacerId, TILE, type Vec, type World } from '../logic/types.ts';
 
 /** Every stage name `applyStage` knows. */
 export const STAGES = [
   'icons-a',
   'icons-b',
   'icons-c',
+  'cannonball',
   'squid-flight',
   'squid-lockon',
   'squid-lockon-far',
@@ -67,14 +70,18 @@ export function applyStage(world: World, stage: StageName): void {
   const at = centreOf(player);
   switch (stage) {
     case 'icons-a':
-      player.stack = ['homingSquid', 'riptide', 'undertow'];
+      holdItems(player, ['homingSquid', 'riptide', 'undertow']);
       return;
     case 'icons-b':
-      player.stack = ['mimic'];
+      holdItems(player, ['mimic', 'cannonball']);
       return;
     case 'icons-c':
-      // Undertow is spent when fired, so a burst empties this stack.
-      player.stack = ['undertow'];
+      // Undertow has one charge, so firing it empties the inventory.
+      holdItems(player, ['undertow']);
+      return;
+    case 'cannonball':
+      holdItems(player, ['cannonball']);
+      faceFirstCoral(world, player);
       return;
     case 'squid-flight':
       world.squids.push(
@@ -111,6 +118,41 @@ export function applyStage(world: World, stage: StageName): void {
       racer(world, 'squib').status.undertow = STAGED_TICKS;
       return;
   }
+}
+
+/** Fills the player's slots from the left with `kinds`, each with the charges a clam gives, and selects the first. */
+function holdItems(player: Racer, kinds: readonly PowerUpKind[]): void {
+  player.items = player.items.map((_, slot) => {
+    const kind = kinds[slot];
+    return kind === undefined ? null : { kind, charges: CHARGES[kind] };
+  });
+  player.selected = 0;
+}
+
+/**
+ * Puts the player at rest three tiles left of the course's first coral (scanning columns left to
+ * right, each top down), level with the middle of a two-tile gate or the centre of a one-tile one.
+ *
+ * @throws {Error} When the course has no coral to face.
+ */
+function faceFirstCoral(world: World, player: Racer): void {
+  const coral = firstCoral(world.level);
+  const centreY = cellAt(world.level, coral.x, coral.y + 1) === 'coral' ? (coral.y + 1) * TILE : (coral.y + 0.5) * TILE;
+  player.body.x = (coral.x - 3 + 0.5) * TILE - player.body.w / 2;
+  player.body.y = centreY - player.body.h / 2;
+  player.body.vx = 0;
+  player.body.vy = 0;
+  player.facing = 1;
+}
+
+/** The course's first coral tile, scanning columns left to right and each top down. */
+function firstCoral(level: Level): Vec {
+  for (let x = 0; x < level.width; x++) {
+    for (let y = 0; y < level.height; y++) {
+      if (cellAt(level, x, y) === 'coral') return { x, y };
+    }
+  }
+  throw new Error('The cannonball stage needs coral to break, and this course has none');
 }
 
 function racer(world: World, id: RacerId): Racer {

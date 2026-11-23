@@ -31,8 +31,10 @@ export interface UiSheet {
 
 /** Frames in `UiTex.icons`, all 9x9. */
 export const IconFrame = {
-  kick: 'kick',
-  burst: 'burst',
+  /** Two chevrons: the dash control (the logic's kick). */
+  dash: 'dash',
+  /** A starburst: the fire control, which uses the selected item. */
+  fire: 'fire',
   jetFin: 'jet-fin',
   bubbleShield: 'bubble-shield',
   puffer: 'puffer',
@@ -42,6 +44,7 @@ export const IconFrame = {
   riptide: 'riptide',
   undertow: 'undertow',
   mimic: 'mimic',
+  cannonball: 'cannonball',
   /** The lock-on warning's wedge, pointing right; the HUD turns it toward the squid. */
   warnArrow: 'warn-arrow',
   finishFlag: 'finish-flag',

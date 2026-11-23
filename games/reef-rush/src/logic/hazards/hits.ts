@@ -54,7 +54,9 @@ type Blow = { cause: 'bubble'; by: RacerId } | { cause: Exclude<HitCause, 'bubbl
 function blowOf(racer: Racer, cause: HitCause, by: RacerId | null): Blow {
   if (cause !== 'bubble') return { cause, by };
   if (by === null) {
-    throw new Error(`Bubble hit on '${racer.id}' has no owner; pass the racer whose Bubble Shield fired the bubble as 'by'`);
+    throw new Error(
+      `Bubble hit on '${racer.id}' has no owner; pass the racer whose Bubble Shield fired the bubble as 'by'`,
+    );
   }
   return { cause, by };
 }

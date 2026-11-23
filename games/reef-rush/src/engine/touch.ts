@@ -7,7 +7,7 @@ export function isTouchScreen(): boolean {
   return forced || window.matchMedia('(pointer: coarse)').matches;
 }
 
-/** The on-screen B (burst) button the touch controls mount, or null when they aren't up. */
-export function burstButton(): HTMLButtonElement | null {
-  return document.querySelector<HTMLButtonElement>('[data-testid="touch-overlay"] button[data-action="burst"]');
+/** The on-screen A (fire) button the touch controls mount, or null when they aren't up. */
+export function fireButton(): HTMLButtonElement | null {
+  return document.querySelector<HTMLButtonElement>('[data-testid="touch-overlay"] button[data-action="fire"]');
 }

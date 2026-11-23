@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import { scenario, tap, wait } from './kit.ts';
 
 /** A tap followed by a short wait, so the same button pressed twice registers twice. */
-const press = (action: 'kick' | 'burst' | 'left' | 'right' | 'down') => [tap(action), wait(3)];
+const press = (action: 'fire' | 'dash' | 'left' | 'right' | 'down') => [tap(action), wait(3)];
 
 /**
  * From the title, How to Play is one row below Race. After the screen's 20 arming ticks:
@@ -15,23 +15,23 @@ export default scenario({
   input: [
     wait(25),
     ...press('down'),
-    tap('kick'),
+    tap('fire'),
     wait(25),
-    ...press('kick'),
-    ...press('kick'),
-    ...press('burst'),
-    ...press('burst'),
+    ...press('fire'),
+    ...press('fire'),
+    ...press('dash'),
+    ...press('dash'),
     ...press('left'),
-    ...press('burst'),
+    ...press('dash'),
     wait(25),
-    tap('kick'),
+    tap('fire'),
     wait(25),
-    ...press('kick'),
-    ...press('kick'),
-    ...press('kick'),
-    ...press('kick'),
+    ...press('fire'),
+    ...press('fire'),
+    ...press('fire'),
+    ...press('fire'),
     ...press('right'),
-    ...press('kick'),
+    ...press('fire'),
     wait(5),
   ],
   expect({ summary, events }) {

@@ -27,6 +27,7 @@ export const Tex = {
   riptide: 'powerup-riptide',
   undertow: 'powerup-undertow',
   mimic: 'powerup-mimic',
+  cannonball: 'powerup-cannonball',
   /** The Homing Squid in the water (16x12, swim and latched frames), not its held icon. */
   squid: 'squid',
   /** One 16x16 tile of a Riptide lane, streaks pointing right; the view rotates it to the lane. */

@@ -1,7 +1,8 @@
 /**
- * Held-stack effects drawn on a racer, read from `racer.stack` and `racer.status`:
- * a shield ring while Bubble Shield is held, the Puffer itself blown up to twice its
- * size around the racer during a Puffer burst, a dash streak behind a Jet Fins dash,
+ * Item effects drawn on a racer, read from its inventory and `racer.status`:
+ * a shield ring while a Bubble Shield is held in any slot, the Puffer itself blown up to twice its
+ * size around the racer while inflated (the Cannonball instead during a Cannonball dash), a dash
+ * streak behind a dash,
  * a ring that expands from a Glow Lantern flash, a Homing Squid wrapped round a racer it
  * has latched on to and speed lines behind a racer Undertow is pulling back. Everything is an overlay: the
  * racer's own sprite (including its invulnerability flicker) belongs to
@@ -9,7 +10,8 @@
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
-import { FLASH } from '../../logic/powerups/tuning.ts';
+import { holds } from '../../logic/powerups/inventory.ts';
+import { CANNONBALL, FLASH } from '../../logic/powerups/tuning.ts';
 import { type PowerUpKind, type Racer, type RacerId, TILE } from '../../logic/types.ts';
 import { Frame, Tex, type TexKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
@@ -26,9 +28,10 @@ export const POWER_UP_TEX: Record<PowerUpKind, TexKey> = {
   riptide: Tex.riptide,
   undertow: Tex.undertow,
   mimic: Tex.mimic,
+  cannonball: Tex.cannonball,
 };
 
-/** One racer's held-stack overlays. */
+/** One racer's item overlays. */
 export interface PowerupView {
   /** Starts the flash ring when `flash.fired` names this racer. `tick` is the world tick the events were drained at. */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
@@ -74,8 +77,9 @@ export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reduced
       const y = Math.round(racer.body.y + racer.body.h / 2);
       const { status } = racer;
 
-      shield.setVisible(racer.stack.includes('bubbleShield')).setPosition(x, y);
+      shield.setVisible(holds(racer, 'bubbleShield')).setPosition(x, y);
       inflated
+        .setTexture(isCannonball(racer) ? Tex.cannonball : Tex.puffer, Frame.a)
         .setVisible(status.inflated > 0)
         .setPosition(x, y)
         .setFlipX(racer.facing < 0);
@@ -85,6 +89,11 @@ export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reduced
       showPullLines(pullLines, racer, tick, x, y, reducedMotion);
     },
   };
+}
+
+/** True while the racer's running dash is a Cannonball's, told apart from a Jet Fins boost by its speed. */
+function isCannonball(racer: Racer): boolean {
+  return racer.status.dashing > 0 && racer.dashSpeed === CANNONBALL.speed;
 }
 
 /** A stretched glow trailing the dash, rotated to the dash direction. */

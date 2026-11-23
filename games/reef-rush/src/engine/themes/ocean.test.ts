@@ -6,7 +6,10 @@ import { HazardPalette } from './ocean/palettes.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import { OCEAN_THEME } from './ocean.ts';
 
-/** Every texture key the game built at the end of phase 7, before the ocean art moved into its theme. */
+/**
+ * Every texture key the game built at the end of phase 7, before the ocean art moved into its theme,
+ * plus the Cannonball item's icon (v2 phase 1).
+ */
 const PHASE_7_KEYS = [
   'tiles',
   'coral-debris',
@@ -37,6 +40,7 @@ const PHASE_7_KEYS = [
   'powerup-riptide',
   'powerup-undertow',
   'powerup-mimic',
+  'powerup-cannonball',
   'squid',
   'riptide-streak',
   'undertow-streak',
@@ -67,7 +71,7 @@ const sheetFor = (key: string) => OCEAN_SHEETS.find((sheet) => sheet.key === key
 const frameNames = (key: string) => sheetFor(key)?.frames.map((frame) => frame.name);
 
 describe('the ocean theme', () => {
-  it('registers, with the global art, exactly the texture keys phase 7 built', () => {
+  it('registers, with the global art, exactly the texture keys phase 7 built, plus the Cannonball', () => {
     const keys = [...Object.values(Tex), ...OCEAN_SHEETS.map((sheet) => sheet.key)];
     expect(keys.sort()).toEqual([...PHASE_7_KEYS].sort());
   });

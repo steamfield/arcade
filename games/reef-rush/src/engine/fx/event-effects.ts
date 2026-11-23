@@ -6,6 +6,7 @@
  * under reduced motion.
  */
 import type { Stamped } from '@arcade/core';
+import { CANNONBALL } from '../../logic/powerups/tuning.ts';
 import { playerOf } from '../../logic/racers.ts';
 import { type Decoy, type RacerId, type Squid, TILE, type Vec, type World } from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
@@ -25,8 +26,6 @@ const SHIELD_POP_TRAUMA = 0.4;
 const CANNONBALL_TRAUMA = 0.6;
 /** Bubbles shed along a new Riptide lane, one per this many px of its length. */
 const LANE_BUBBLE_SPACING = 12;
-/** A bubbleDecoy's trap is drawn as a string of bubbles from the popped decoy to whoever it trapped, at most this many. */
-const TRAP_LINK_BUBBLES = 14;
 /** Bubbles shed from each racer an Undertow pulls. */
 const PULL_BUBBLES = 3;
 
@@ -53,7 +52,7 @@ export function createEventEffects(
   const tileCentre = (tile: number) => tile * TILE + TILE / 2;
   const playerCannonballing = () => {
     const player = playerOf(world);
-    return player.status.dashing > 0 && player.dashCombos.includes('cannonball');
+    return player.status.dashing > 0 && player.dashSpeed === CANNONBALL.speed;
   };
 
   return {
@@ -135,8 +134,6 @@ export function createEventEffects(
           case 'decoy.popped': {
             const at = goneOwnedBy(lastDecoyAt, world.decoys, event.owner);
             if (at) bursts.bubblePop(at.x, at.y);
-            // The trapped racer may be far from the decoy (a squid's owner), so show where the trap went.
-            if (at && event.trapped) racerAt(event.trapped, (x, y) => trapLink(at, x, y, bursts));
             break;
           }
         }
@@ -152,14 +149,6 @@ export function createEventEffects(
       track(lastDecoyAt, world.decoys);
     },
   };
-}
-
-/** Bubbles strung from `from` to (x, y), so a trap sprung far away still reads as coming from the decoy. */
-function trapLink(from: Vec, x: number, y: number, bursts: Bursts): void {
-  for (let step = 1; step <= TRAP_LINK_BUBBLES; step++) {
-    const along = step / TRAP_LINK_BUBBLES;
-    bursts.trailBubble(from.x + (x - from.x) * along, from.y + (y - from.y) * along);
-  }
 }
 
 /** Bubbles strung along the newest lane `owner` laid, so a new Riptide announces its length. */

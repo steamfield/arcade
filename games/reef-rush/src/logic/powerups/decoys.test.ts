@@ -137,9 +137,7 @@ describe('popping a decoy', () => {
     ticks(world, 1);
 
     expect(world.decoys).toEqual([]);
-    expect(eventsIn(log, 'decoy.popped')).toEqual([
-      { type: 'decoy.popped', owner: 'player', by: 'tess' },
-    ]);
+    expect(eventsIn(log, 'decoy.popped')).toEqual([{ type: 'decoy.popped', owner: 'player', by: 'tess' }]);
     expect(racerOf(world, 'tess').status.trapped).toBe(0);
   });
 
@@ -177,9 +175,7 @@ describe('popping a decoy', () => {
     placeOnTile(racerOf(other.world, 'tess'), 13, 2);
     flashAround(other.world, racerOf(other.world, 'tess'));
     expect(other.world.decoys).toEqual([]);
-    expect(eventsIn(other.log, 'decoy.popped')).toEqual([
-      { type: 'decoy.popped', owner: 'player', by: 'tess' },
-    ]);
+    expect(eventsIn(other.log, 'decoy.popped')).toEqual([{ type: 'decoy.popped', owner: 'player', by: 'tess' }]);
 
     const far = decoyAt();
     placeOnTile(racerOf(far.world, 'tess'), 20, 2);

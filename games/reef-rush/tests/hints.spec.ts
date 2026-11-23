@@ -9,12 +9,12 @@ const easySave = {
   data: { ...normalSave.data, settings: { ...normalSave.data.settings, difficulty: 'easy' } },
 };
 
-/** Opens the title with `save` loaded, picks the saved racer and starts a race staged with a held power-up. */
+/** Opens the title with `save` loaded, picks the saved racer and starts a race staged with held items. */
 async function startStagedRace(game: GameDriver, save: unknown, stage = 'icons-b') {
   await game.open({ debug: true, query: { stage } });
   await game.loadState(save);
-  await game.play(parseInput('_*20 kick _*2'));
-  await game.play(parseInput('_*20 kick _*2'));
+  await game.play(parseInput('_*20 fire _*2'));
+  await game.play(parseInput('_*20 fire _*2'));
   await game.advance(COUNTDOWN_TICKS + 5);
 }
 
@@ -23,27 +23,29 @@ test('a later Normal race shows no hints', async ({ game }) => {
   expect(await game.summary()).toMatchObject({
     scene: 'race',
     difficulty: 'normal',
-    stack: ['mimic'],
-    hints: { pressB: false, kick: false, pulseStack: false },
+    items: ['mimic:1', 'cannonball:1', null],
+    hints: { pressFire: false, kick: false, pulseItems: false },
   });
 });
 
-test('a later Easy race still shows PRESS B for a held power-up', async ({ game }) => {
+test('a later Easy race still shows PRESS FIRE for a held item', async ({ game }) => {
   await startStagedRace(game, easySave);
-  expect(await game.summary()).toMatchObject({ difficulty: 'easy', hints: { pressB: true } });
+  expect(await game.summary()).toMatchObject({ difficulty: 'easy', hints: { pressFire: true } });
 });
 
-test('PRESS B goes away once the player fires the stack, even though power-ups are still held', async ({ game }) => {
-  // icons-a holds three; firing spends only the Undertow, so two stay in the stack and prove the hint retired for the burst, not the empty stack.
+test('PRESS FIRE goes away once the player fires an item, even though items are still held', async ({ game }) => {
+  // icons-a holds three; firing spends the selected Homing Squid, so two stay held and prove the hint retired for the use, not an empty inventory.
   await startStagedRace(game, easySave, 'icons-a');
-  expect(await game.summary()).toMatchObject({ hints: { pressB: true } });
-  await game.play(parseInput('burst'));
-  const summary = await game.summary();
-  expect(summary).toMatchObject({ hints: { pressB: false } });
-  expect((summary.stack as string[]).length).toBeGreaterThan(0);
+  expect(await game.summary()).toMatchObject({ hints: { pressFire: true } });
+  await game.play(parseInput('fire'));
+  expect(await game.summary()).toMatchObject({
+    hints: { pressFire: false },
+    items: [null, 'riptide:2', 'undertow:1'],
+    selected: 1,
+  });
 });
 
-test('a squid locked on the player calls for a KICK only once it is close enough to dodge', async ({ game }) => {
+test('a squid locked on the player calls for a DASH only once it is close enough to dodge', async ({ game }) => {
   await game.open({ scene: 'race', debug: true, query: { stage: 'squid-lockon' } });
   await game.advance(COUNTDOWN_TICKS + 1);
   const far = await game.summary();
@@ -57,11 +59,11 @@ test('a squid locked on the player calls for a KICK only once it is close enough
     called = (summary.hints as { kick: boolean }).kick;
     if (latched) break;
   }
-  expect(called, 'KICK! should show before the squid latches').toBe(true);
+  expect(called, 'DASH! should show before the squid latches').toBe(true);
 });
 
-test('the on-screen B button shows the newest held power-up while the stack holds one', async ({ game, page }) => {
-  const icon = page.locator('[data-testid="touch-overlay"] button[data-action="burst"] img');
+test('the on-screen A button shows the selected item while one is held', async ({ game, page }) => {
+  const icon = page.locator('[data-testid="touch-overlay"] button[data-action="fire"] img');
   await game.open({ scene: 'race', touch: true });
   await game.advance(5);
   await expect(icon).toHaveCount(0);
@@ -71,13 +73,13 @@ test('the on-screen B button shows the newest held power-up while the stack hold
   await expect(icon).toHaveCount(1);
 });
 
-test('the on-screen B button goes back to a plain B once firing spends the stack', async ({ game, page }) => {
-  const icon = page.locator('[data-testid="touch-overlay"] button[data-action="burst"] img');
-  // icons-c holds a lone Undertow, which is gone once fired.
+test('the on-screen A button goes back to a plain A once firing uses up the last item', async ({ game, page }) => {
+  const icon = page.locator('[data-testid="touch-overlay"] button[data-action="fire"] img');
+  // icons-c holds a lone one-charge Undertow, which is gone once fired.
   await game.open({ scene: 'race', touch: true, debug: true, query: { stage: 'icons-c' } });
   await game.advance(COUNTDOWN_TICKS + 5);
   await expect(icon).toHaveCount(1);
-  await game.play(parseInput('burst'));
-  expect(await game.summary()).toMatchObject({ stack: [] });
+  await game.play(parseInput('fire'));
+  expect(await game.summary()).toMatchObject({ items: [null, null, null] });
   await expect(icon).toHaveCount(0);
 });

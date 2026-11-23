@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../../logic/ai/profiles.ts';
 import { COURSES, DEFAULT_COURSE } from '../../logic/courses/index.ts';
 import type { GameEvent } from '../../logic/events.ts';
+import type { TickInput } from '../../logic/types.ts';
 import { createWorld, stepWorld } from '../../logic/world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { createAdapter } from './adapter.ts';
@@ -37,7 +38,7 @@ const SILENT_SEQUENCER: Sequencer = {
   dispose() {},
 };
 
-const IDLE = { move: { x: 0, y: 0 }, kick: false, burst: false };
+const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
 
 /** The races the pin listens to: an expert, a coral-ramming Baron, and a novice who gets hit on Easy. */
 const RACES = [
@@ -86,23 +87,21 @@ describe('the sound of a race on Sunlit Shallows', () => {
     expect(COURSES['sunlit-shallows'].song).toBe('race');
   });
 
-  it('plays the same sound effects and songs as at phase 7, counted over three whole races', () => {
+  it('plays the same sound effects and songs as when items fired one at a time (v2 phase 1), over three whole races', () => {
     const counts: Record<string, number> = {};
     for (const race of RACES) listen(race, counts);
     expect(counts).toEqual({
-      'sfx:bump': 172,
-      'sfx:combo.bubbleDecoy': 4,
+      'sfx:bump': 110,
       'sfx:coral': 2,
       'sfx:countdown': 9,
-      'sfx:decoy.pop': 12,
-      'sfx:decoy.spawn': 12,
       'sfx:finish': 3,
       'sfx:go': 3,
-      'sfx:kick': 292,
-      'sfx:place.down': 33,
-      'sfx:place.up': 41,
-      'sfx:riptide': 32,
-      'sfx:squid.fire': 7,
+      'sfx:item.use': 4,
+      'sfx:kick': 310,
+      'sfx:place.down': 24,
+      'sfx:place.up': 32,
+      'sfx:riptide': 6,
+      'sfx:undertow': 2,
       'song:race': 3,
       'song:win': 3,
     });

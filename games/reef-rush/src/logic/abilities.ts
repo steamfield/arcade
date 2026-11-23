@@ -22,8 +22,8 @@
 import type { GameEvent } from './events.ts';
 import type { KickRules } from './media/types.ts';
 import { length } from './num.ts';
-import { bumpMass } from './powerups/passives.ts';
 import { selectedItem } from './powerups/inventory.ts';
+import { bumpMass } from './powerups/passives.ts';
 import { STACK_MAX } from './powerups/tuning.ts';
 import { activeRacers, centreOf } from './racers.ts';
 import { type HitCause, type MoveModifiers, type Racer, TILE, type Vec, type World } from './types.ts';

@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { gainPowerUp } from '../../logic/powerups/stack.ts';
+import { gainItem } from '../../logic/powerups/inventory.ts';
 import { SQUID } from '../../logic/powerups/tuning.ts';
-import { IDLE, placeOnTile, raceOn, racerOf, step } from '../../logic/test-world.ts';
+import { giveItems, IDLE, placeOnTile, raceOn, racerOf, step } from '../../logic/test-world.ts';
 import type { TickInput, World } from '../../logic/types.ts';
 import {
-  GUIDE_OVER_PRESS_B_TICKS,
+  GUIDE_OVER_PRESS_FIRE_TICKS,
   type HintConfig,
   type HintMemory,
   hintConfig,
   KICK_LEAD_TICKS,
   NO_HINTS,
   newHintMemory,
-  PRESS_B_TICKS,
+  PRESS_FIRE_TICKS,
   UNUSED_PULSE_TICKS,
   updateHints,
 } from './hints.ts';
@@ -25,7 +25,7 @@ const OPEN = `
   ##################
 `;
 
-const BURST: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: true };
+const FIRE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: true, cycle: 0 };
 
 const EASY: HintConfig = hintConfig(0, 'easy');
 const NORMAL_FIRST_RACE: HintConfig = hintConfig(0, 'normal');
@@ -72,89 +72,89 @@ describe('which races show hints', () => {
   });
 });
 
-describe('PRESS B', () => {
-  it('shows from the moment a power-up lands, and not before', () => {
+describe('PRESS FIRE', () => {
+  it('shows from the moment an item lands, and not before', () => {
     const { world, player, run } = race();
-    expect(run(30).pressB).toBe(false);
-    gainPowerUp(world, player, 'jetFin');
-    expect(run(1).pressB).toBe(true);
+    expect(run(30).pressFire).toBe(false);
+    gainItem(world, player, 'jetFin', 2);
+    expect(run(1).pressFire).toBe(true);
   });
 
-  it('goes away once the player fires the stack, and stays away for the rest of the race', () => {
+  it('goes away once the player fires an item, and stays away for the rest of the race', () => {
     const { world, player, run } = race();
     run(5);
-    gainPowerUp(world, player, 'jetFin');
-    expect(run(10).pressB).toBe(true);
-    expect(run(1, BURST).pressB).toBe(false);
-    gainPowerUp(world, player, 'puffer');
-    expect(run(200).pressB).toBe(false);
+    gainItem(world, player, 'jetFin', 2);
+    expect(run(10).pressFire).toBe(true);
+    expect(run(1, FIRE).pressFire).toBe(false);
+    gainItem(world, player, 'puffer', 2);
+    expect(run(200).pressFire).toBe(false);
   });
 
   it('times out when the player ignores it on a first race that is not Easy', () => {
     const { world, player, run } = race(NORMAL_FIRST_RACE);
-    gainPowerUp(world, player, 'jetFin');
-    expect(run(PRESS_B_TICKS - 2).pressB).toBe(true);
-    expect(run(3).pressB).toBe(false);
+    gainItem(world, player, 'jetFin', 2);
+    expect(run(PRESS_FIRE_TICKS - 2).pressFire).toBe(true);
+    expect(run(3).pressFire).toBe(false);
   });
 
-  it('stays up on Easy until the first burst, however long the player waits', () => {
+  it('stays up on Easy until the first use, however long the player waits', () => {
     const { world, player, run } = race();
-    gainPowerUp(world, player, 'jetFin');
-    expect(run(PRESS_B_TICKS * 3).pressB).toBe(true);
+    gainItem(world, player, 'jetFin', 2);
+    expect(run(PRESS_FIRE_TICKS * 3).pressFire).toBe(true);
   });
 
-  it('hides when the stack empties under it', () => {
+  it('hides when the inventory empties under it', () => {
     const { world, player, run } = race();
-    gainPowerUp(world, player, 'jetFin');
-    expect(run(10).pressB).toBe(true);
-    player.stack = [];
-    expect(run(1).pressB).toBe(false);
+    gainItem(world, player, 'jetFin', 2);
+    expect(run(10).pressFire).toBe(true);
+    giveItems(player, []);
+    expect(run(1).pressFire).toBe(false);
   });
 
   it('is silent when hints are off', () => {
     const { world, player, run } = race();
-    gainPowerUp(world, player, 'jetFin');
+    gainItem(world, player, 'jetFin', 2);
     expect(run(10, IDLE, { enabled: false, easy: true })).toEqual(NO_HINTS);
   });
 
   it('is silent during the countdown', () => {
     const { world, player, run } = race();
     world.race.phase = 'countdown';
-    gainPowerUp(world, player, 'jetFin');
+    gainItem(world, player, 'jetFin', 2);
     expect(run(10)).toEqual(NO_HINTS);
   });
 });
 
-describe('the pulsing B on the stack', () => {
+describe('the pulsing fire glyph by the item well', () => {
   it('starts after 5 seconds of holding something unused', () => {
     const { world, player, run } = race();
-    gainPowerUp(world, player, 'jetFin');
-    expect(run(UNUSED_PULSE_TICKS - 2).pulseStack).toBe(false);
-    expect(run(3).pulseStack).toBe(true);
+    gainItem(world, player, 'jetFin', 2);
+    expect(run(UNUSED_PULSE_TICKS - 2).pulseItems).toBe(false);
+    expect(run(3).pulseItems).toBe(true);
   });
 
-  it('stops when the stack is fired, and starts counting again after the cooldown', () => {
+  it('stops when an item is fired, and starts counting again after the cooldown', () => {
     const { world, player, run } = race();
-    gainPowerUp(world, player, 'puffer');
-    expect(run(UNUSED_PULSE_TICKS + 1).pulseStack).toBe(true);
-    expect(run(1, BURST).pulseStack).toBe(false);
+    gainItem(world, player, 'puffer', 2);
+    expect(run(UNUSED_PULSE_TICKS + 1).pulseItems).toBe(true);
+    expect(run(1, FIRE).pulseItems).toBe(false);
     // The puffer is still held, but nothing counts as unused until the cooldown ends and 5 s pass.
-    expect(run(UNUSED_PULSE_TICKS - 1).pulseStack).toBe(false);
-    expect(run(200).pulseStack).toBe(true);
+    expect(run(UNUSED_PULSE_TICKS - 1).pulseItems).toBe(false);
+    expect(run(200).pulseItems).toBe(true);
   });
 
-  it('takes over the moment PRESS B gives up on a first race that is not Easy', () => {
+  it('takes over the moment PRESS FIRE gives up on a first race that is not Easy', () => {
     const { world, player, run } = race(NORMAL_FIRST_RACE);
-    gainPowerUp(world, player, 'jetFin');
-    const before = run(PRESS_B_TICKS - 1);
-    expect([before.pressB, before.pulseStack]).toEqual([true, false]);
+    gainItem(world, player, 'jetFin', 2);
+    const before = run(PRESS_FIRE_TICKS - 1);
+    expect([before.pressFire, before.pulseItems]).toEqual([true, false]);
     const after = run(1);
-    expect([after.pressB, after.pulseStack]).toEqual([false, true]);
+    expect([after.pressFire, after.pulseItems]).toEqual([false, true]);
   });
 
-  it('never shows with an empty stack', () => {
+  it('never shows with nothing held', () => {
     const { run } = race();
-    expect(run(UNUSED_PULSE_TICKS * 2).pulseStack).toBe(false);
+    expect(run(UNUSED_PULSE_TICKS * 2).pulseItems).toBe(false);
   });
 });
 
@@ -222,8 +222,8 @@ describe('the guide arrow', () => {
   #4................F#
   ####################
 `;
-  const UP: TickInput = { move: { x: 0, y: -1 }, kick: false, burst: false };
-  const DOWN: TickInput = { move: { x: 0, y: 1 }, kick: false, burst: false };
+  const UP: TickInput = { move: { x: 0, y: -1 }, kick: false, use: false, cycle: 0 };
+  const DOWN: TickInput = { move: { x: 0, y: 1 }, kick: false, use: false, cycle: 0 };
   const WAY_ON = { x: 0, y: 1 };
 
   /** A race with the player beside the wall; pushing up is the wrong way, so the steering assist stays out of it. */
@@ -261,12 +261,12 @@ describe('the guide arrow', () => {
     expect([hints.kick, hints.guide]).toEqual([true, null]);
   });
 
-  it('waits behind PRESS B! at first, then takes over so a child who never fires still finds the way', () => {
+  it('waits behind PRESS FIRE at first, then takes over so a child who never fires still finds the way', () => {
     const { world, player, run } = stuckRace();
-    gainPowerUp(world, player, 'jetFin');
+    gainItem(world, player, 'jetFin', 2);
     const early = run(150, UP);
-    expect([early.pressB, early.guide]).toEqual([true, null]);
-    const late = run(GUIDE_OVER_PRESS_B_TICKS, UP);
-    expect([late.pressB, late.guide]).toEqual([false, WAY_ON]);
+    expect([early.pressFire, early.guide]).toEqual([true, null]);
+    const late = run(GUIDE_OVER_PRESS_FIRE_TICKS, UP);
+    expect([late.pressFire, late.guide]).toEqual([false, WAY_ON]);
   });
 });

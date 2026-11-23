@@ -7,22 +7,22 @@
 export const HOW_TO_PLAY_PAGES = 5;
 
 /** The buttons that move through the pages. */
-export type PagePress = 'kick' | 'burst' | 'right' | 'left';
+export type PagePress = 'fire' | 'dash' | 'right' | 'left';
 
 /** Where a press leads: another page (or the same one), or out of How to Play to the title. */
 export type PageOutcome = { kind: 'page'; page: number } | { kind: 'leave' };
 
 /**
- * The outcome of `press` on page `page` (0-based). Kick (A) and right go forward, burst (B) and
+ * The outcome of `press` on page `page` (0-based). Fire (A) and right go forward, dash (B) and
  * left go back. Left and right stop at the first and last page; only B on the first page and A on
  * the last page leave, so a stray d-pad press never throws a child out of the screen.
  */
 export function turnPage(page: number, press: PagePress): PageOutcome {
   const last = HOW_TO_PLAY_PAGES - 1;
   switch (press) {
-    case 'kick':
+    case 'fire':
       return page >= last ? { kind: 'leave' } : { kind: 'page', page: page + 1 };
-    case 'burst':
+    case 'dash':
       return page <= 0 ? { kind: 'leave' } : { kind: 'page', page: page - 1 };
     case 'right':
       return { kind: 'page', page: Math.min(last, page + 1) };

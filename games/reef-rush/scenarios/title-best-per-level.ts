@@ -9,7 +9,7 @@ import { scenario, tap, wait } from './kit.ts';
 export default scenario({
   description: 'the title shows the best for the selected level and changes it when Level cycles',
   start: { save },
-  input: [wait(25), tap('down'), wait(2), tap('down'), wait(2), tap('kick'), wait(5)],
+  input: [wait(25), tap('down'), wait(2), tap('down'), wait(2), tap('fire'), wait(5)],
   expect({ summary }) {
     expect(summary).toMatchObject({ scene: 'title', difficulty: 'easy', best: 'Best 0:51.66 (3rd)' });
   },

@@ -46,8 +46,8 @@ export interface MoveGlyph {
 /** The four directions of the arrows. */
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
-/** The two actions: kick (A) and burst (B). */
-export type ActionName = 'kick' | 'burst';
+/** The two action buttons: fire (A, uses the selected item) and dash (B). */
+export type ActionName = 'fire' | 'dash';
 
 /** Height of a key cap and the diameter of a round button, so the two line up in a row. */
 export const GLYPH_SIZE = 15;
@@ -59,8 +59,8 @@ const ARROW_GAP = 1;
 const CAP_PADDING = 4;
 /** What each action is called on each kind of screen. */
 const KEY_NAMES: Record<ActionName, { keyboard: string; touch: string }> = {
-  kick: { keyboard: 'SPACE', touch: 'A' },
-  burst: { keyboard: 'X', touch: 'B' },
+  fire: { keyboard: 'SPACE', touch: 'A' },
+  dash: { keyboard: 'X', touch: 'B' },
 };
 
 /** The text on `action`'s control: the key on a keyboard, the button's letter on touch. */
