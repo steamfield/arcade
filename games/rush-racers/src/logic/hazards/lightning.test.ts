@@ -17,7 +17,7 @@ import {
 import { type LevelDef, type LightningZone, RACER_SIZE, type RacerId, TILE } from '../types.ts';
 import { createWorld } from '../world.ts';
 import { lightningPhase } from './lightning.ts';
-import { LIGHTNING } from './tuning.ts';
+import { HIT, LIGHTNING } from './tuning.ts';
 
 /** A cycle long enough to have calm in it: calm 0-42, warning 43-87, strike 88-99. */
 const PERIOD = 100;
@@ -43,6 +43,16 @@ function stormyPool(...lightning: LightningZone[]): LevelDef {
   `;
   return { name: 'storm', ascii, lightning };
 }
+
+/** A world on `level` at the start of its countdown, as a race begins. */
+function beforeCountdown(level: LevelDef, medium = 'swim') {
+  const log = new EventLog<GameEvent>(10_000);
+  const world = createWorld(courseFromLevel(level, medium), log, { seed: 1 });
+  return { world, log };
+}
+
+/** The world tick on which the race starts after a full countdown. */
+const START_TICK = COUNTDOWN_TICKS + 1;
 
 /**
  * A racing world under STORM stepped to the tick before its first strike with every racer put back
@@ -133,6 +143,22 @@ describe('storm events', () => {
   });
 });
 
+describe('a race starting mid-storm', () => {
+  it('announces a zone already striking or warning on the start tick', () => {
+    const striking: LightningZone = { cols: [1, 3], periodTicks: PERIOD, offsetTicks: PERIOD - 5 };
+    const warning: LightningZone = { cols: [8, 9], periodTicks: PERIOD, offsetTicks: 50 };
+    const { world, log } = beforeCountdown(stormyPool(striking, warning));
+
+    step(world, log, START_TICK);
+
+    expect(ticksOf(log, 'lightning.struck')).toEqual([START_TICK]);
+    expect(eventsIn(log, 'lightning.struck', 'lightning.warned')).toEqual([
+      { type: 'lightning.struck', zone: 0 },
+      { type: 'lightning.warned', zone: 1 },
+    ]);
+  });
+});
+
 describe('a strike', () => {
   it('stuns every racer in the columns at any height and leaves the rest alone', () => {
     const { world, log, racer, strikeEvents } = justBeforeStrike();
@@ -195,6 +221,24 @@ describe('a strike', () => {
     expect(racer('player').status.stunned).toBe(0);
   });
 
+  it('knocks a flyer back against its travel', () => {
+    const { world, log } = beforeCountdown(stormyPool(STORM), 'flight');
+    world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+    step(world, log, FIRST_STRIKE - 1);
+    const knockedBack = (facing: 1 | -1) => {
+      const player = racerOf(world, 'player');
+      placeOnTile(player, 6, 2);
+      player.facing = facing;
+      player.status.invulnerable = 0;
+      player.status.stunned = 0;
+      step(world, log);
+      return { vx: player.body.vx, stunned: player.status.stunned > 0 };
+    };
+
+    expect(knockedBack(1)).toEqual({ vx: -HIT.knockbackSpeed, stunned: true });
+    expect(knockedBack(-1)).toEqual({ vx: HIT.knockbackSpeed, stunned: true });
+  });
+
   it('does nothing during the warning', () => {
     const { world, log } = raceOn(stormyPool(STORM));
     step(world, log, FIRST_WARNING - 1);
@@ -209,14 +253,12 @@ describe('a strike', () => {
 
 describe('outside the race', () => {
   it('keeps the sky calm through the countdown, counting the cycle from the start', () => {
-    const log = new EventLog<GameEvent>(10_000);
-    const world = createWorld(courseFromLevel(stormyPool(STORM)), log, { seed: 1 });
-    const startTick = COUNTDOWN_TICKS + 1;
+    const { world, log } = beforeCountdown(stormyPool(STORM));
 
-    step(world, log, startTick + FIRST_WARNING);
+    step(world, log, START_TICK + FIRST_WARNING);
 
-    expect(ticksOf(log, 'race.started')).toEqual([startTick]);
-    expect(ticksOf(log, 'lightning.warned')).toEqual([startTick + FIRST_WARNING]);
+    expect(ticksOf(log, 'race.started')).toEqual([START_TICK]);
+    expect(ticksOf(log, 'lightning.warned')).toEqual([START_TICK + FIRST_WARNING]);
   });
 
   it('stops once the race is over', () => {

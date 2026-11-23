@@ -32,7 +32,7 @@ export function lightningPhase(zone: LightningZone, raceTick: number): Lightning
 /** How far into its current cycle `zone` is on `raceTick`, from 0 to `periodTicks - 1`. */
 function cycleTick(zone: LightningZone, raceTick: number): number {
   const shifted = (raceTick + zone.offsetTicks) % zone.periodTicks;
-  // `%` keeps the dividend's sign; the tick before the start (-1) belongs to the cycle before.
+  // `%` keeps the dividend's sign, so a negative tick needs a period added to land in the cycle.
   return shifted < 0 ? shifted + zone.periodTicks : shifted;
 }
 
@@ -41,16 +41,21 @@ function cycleTick(zone: LightningZone, raceTick: number): number {
  * Emits `lightning.warned {zone}` on a zone's first warning tick and `lightning.struck {zone}` on its
  * first strike tick, once per cycle, and during a strike hits every racer in `racers` whose box
  * overlaps the zone's columns through `applyHit` with cause 'lightning', so invulnerability, shields
- * and the fallen rule apply as for any hit.
+ * and the fallen rule apply as for any hit. The sky counts as calm before the start, so a zone
+ * already warning or striking on race tick 0 announces it then.
  */
 export function strikeLightning(world: World, racers: readonly Racer[]): void {
-  if (world.race.phase !== 'racing') return;
   const raceTick = world.race.raceTick;
   world.level.lightning.forEach((zone, index) => {
     const phase = lightningPhase(zone, raceTick);
-    if (phase !== lightningPhase(zone, raceTick - 1)) announcePhase(world, index, phase);
+    if (phase !== phaseBefore(zone, raceTick)) announcePhase(world, index, phase);
     if (phase === 'strike') strikeZone(world, zone, racers);
   });
+}
+
+/** The zone's phase on the tick before `raceTick`, calm before the race started. */
+function phaseBefore(zone: LightningZone, raceTick: number): LightningPhase {
+  return raceTick === 0 ? 'calm' : lightningPhase(zone, raceTick - 1);
 }
 
 /** Emits the event for zone `zone` entering `phase`; a zone turning calm has none. */
@@ -63,7 +68,7 @@ function announcePhase(world: World, zone: number, phase: LightningPhase): void 
 function strikeZone(world: World, zone: LightningZone, racers: readonly Racer[]): void {
   const column = zoneBox(world, zone);
   for (const racer of racers) {
-    if (overlaps(hitbox(racer), column)) applyHit(world, racer, 'lightning', null, boltOrigin(racer, column));
+    if (overlaps(hitbox(racer), column)) applyHit(world, racer, 'lightning', null, boltOrigin(racer));
   }
 }
 
@@ -73,7 +78,12 @@ function zoneBox(world: World, zone: LightningZone): Box {
   return { x: from * TILE, y: 0, w: (to - from + 1) * TILE, h: world.level.height * TILE };
 }
 
-/** The bolt comes straight down from the top of the zone, so its knockback pushes the racer down. */
-function boltOrigin(racer: Racer, column: Box): Vec {
-  return { x: centreOf(racer).x, y: column.y };
+/**
+ * Where a strike knocks the racer back from: level with its centre, one tile ahead along its facing,
+ * as a flash from ahead would. The knockback then pushes it back against its travel in every medium,
+ * including those that only knock back horizontally.
+ */
+function boltOrigin(racer: Racer): Vec {
+  const centre = centreOf(racer);
+  return { x: centre.x + racer.facing * TILE, y: centre.y };
 }
