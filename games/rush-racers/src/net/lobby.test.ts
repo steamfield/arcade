@@ -109,6 +109,15 @@ describe('lobby race settings', () => {
     guest.setCourse('ignored');
     guest.setDifficulty('hard');
     expect(guest.mine()).toEqual({ type: 'lobby', character: 'selene', ping: 42, ready: false });
+    expect(guest.view.peers[1]).toEqual({
+      id: 2,
+      label: 'P2',
+      character: 'selene',
+      ping: 42,
+      ready: false,
+      host: false,
+      you: true,
+    });
     expect([guest.view.course, guest.view.difficulty]).toEqual(['reef', 'normal']);
 
     const host = welcomed(1, [1, 2], 1);
@@ -184,14 +193,14 @@ describe('lobby buildStart', () => {
     expect(StartSchema.safeParse(start).success).toBe(true);
   });
 
-  it('keeps the earliest pick and gives later duplicates the first free character', () => {
+  it('keeps every first pick and moves later duplicates to the first character nobody picked', () => {
     const lobby = welcomed(1, [1, 2, 3, 4], 1);
     lobby.apply(entry(2, 'rudy'));
-    lobby.apply(entry(3, 'streak'));
-    lobby.apply(entry(4, 'streak'));
+    lobby.apply(entry(3, 'gil'));
+    lobby.apply(entry(4, 'gil'));
 
     const start = lobby.buildStart(1);
-    expect(start.characters).toEqual({ player: 'rudy', tess: 'gil', squib: 'streak', bo: 'onyx' });
+    expect(start.characters).toEqual({ player: 'rudy', tess: 'streak', squib: 'gil', bo: 'onyx' });
     expect(StartSchema.safeParse(start).success).toBe(true);
   });
 
@@ -221,6 +230,21 @@ describe('lobby buildStart', () => {
     const lobby = welcomed(2, [1, 2], 1);
     lobby.apply(entry(1, 'gil'));
     expect(() => lobby.buildStart(1)).toThrow('buildStart: peer 2 is not host (host is 1)');
+  });
+
+  it('throws during a race', () => {
+    const lobby = welcomed(1, [1, 2], 1);
+    lobby.apply(entry(2, 'gil'));
+    lobby.apply({ type: 'phase', phase: 'racing' });
+    expect(() => lobby.buildStart(1)).toThrow('buildStart: the room is racing');
+  });
+
+  it('throws while the host itself is away', () => {
+    const lobby = welcomed(1, [1, 2, 3], 1);
+    lobby.apply(entry(2, 'gil'));
+    lobby.apply(entry(3, 'onyx'));
+    lobby.setReady(false);
+    expect(() => lobby.buildStart(1)).toThrow('buildStart: the host is not ready');
   });
 
   it('throws when fewer than two peers are ready', () => {

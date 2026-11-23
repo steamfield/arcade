@@ -70,7 +70,7 @@ export interface Lobby {
   /**
    * The start message for a race among the ready peers.
    *
-   * @throws {Error} When this peer is not host, or fewer than two peers are ready.
+   * @throws {Error} Whenever `view.canStart` is false, naming the condition that failed.
    */
   buildStart(seed: number): StartMessage;
 }
@@ -99,22 +99,23 @@ function onlineDifficulty(difficulty: Difficulty): OnlineDifficulty {
 }
 
 /** A ping in the whole milliseconds and range a lobby message carries. */
-function wirePing(ms: number | null): number {
-  if (ms === null) return 0;
+function wirePing(ms: number): number {
   return Math.min(MAX_PING_MS, Math.max(0, Math.round(ms)));
 }
 
 /**
- * One character per racer, in the racers' order: each keeps its pick unless an earlier racer has it,
- * and otherwise gets the first character in `CHARACTER_IDS` nobody has taken.
+ * One character per racer, in the racers' order. A racer keeps its pick unless an earlier racer
+ * picked the same; a displaced racer, or one without a pick, gets the first character in
+ * `CHARACTER_IDS` that no racer picked and nobody was already given.
  */
 function resolveCharacters(picks: readonly (CharacterId | null)[]): CharacterId[] {
-  const taken = new Set<CharacterId>();
-  return picks.map((pick) => {
-    const character = pick !== null && !taken.has(pick) ? pick : CHARACTER_IDS.find((id) => !taken.has(id));
+  const claimed = new Set(picks.filter((pick) => pick !== null));
+  return picks.map((pick, index) => {
+    if (pick !== null && picks.indexOf(pick) === index) return pick;
+    const character = CHARACTER_IDS.find((id) => !claimed.has(id));
     // At most four racers pick from eight characters, so a free one always exists.
     if (character === undefined) throw new Error(`no free character for ${picks.length} racers`);
-    taken.add(character);
+    claimed.add(character);
     return character;
   });
 }
@@ -129,6 +130,34 @@ function inputDelay(pings: readonly number[]): number {
   // Multiplying before dividing keeps whole-tick latencies exact, so ceil does not round them up.
   const ticks = Math.ceil((worstOneWayMs * TICKS_PER_SECOND) / 1000) + DELAY_MARGIN_TICKS;
   return Math.min(MAX_INPUT_DELAY, Math.max(MIN_INPUT_DELAY, ticks));
+}
+
+/** A peer in the race about to start, as the host knows it. */
+interface Racer {
+  id: number;
+  character: CharacterId | null;
+  ping: number | null;
+}
+
+/** The race settings a start carries besides its racers. */
+interface RaceSettings {
+  seed: number;
+  course: string;
+  difficulty: OnlineDifficulty;
+}
+
+/** The start message for these racers, in join order: slots in `RACER_IDS` order, picks resolved, delay from pings. */
+function startMessage(racers: readonly Racer[], settings: RaceSettings): StartMessage {
+  const characters = resolveCharacters(racers.map((racer) => racer.character));
+  const slots: Record<string, RacerId> = {};
+  const slotCharacters: Partial<Record<RacerId, CharacterId>> = {};
+  racers.forEach((racer, index) => {
+    const slot = RACER_IDS[index] as RacerId;
+    slots[String(racer.id)] = slot;
+    slotCharacters[slot] = characters[index];
+  });
+  const delay = inputDelay(racers.map((racer) => racer.ping ?? 0));
+  return { type: 'start', ...settings, slots, characters: slotCharacters, delay };
 }
 
 /** A lobby for a peer that has just connected and not yet been welcomed. */
@@ -189,22 +218,23 @@ export function createLobby(options: LobbyOptions): Lobby {
     return { id, label: `P${index + 1}`, ...entry, host: id === host, you: id === you };
   }
 
+  /** Why this peer cannot start a race now, or null when it can. */
+  function startBlocker(): string | null {
+    if (!isHost()) return `peer ${you} is not host (host is ${host})`;
+    if (phase !== 'lobby') return 'the room is racing';
+    if (!own.ready) return 'the host is not ready';
+    const ready = readyPeers().length;
+    if (ready < MIN_RACERS) return `a race needs ${MIN_RACERS} ready peers, ${ready} ready`;
+    return null;
+  }
+
   function buildStart(seed: number): StartMessage {
-    if (!isHost()) throw new Error(`buildStart: peer ${you} is not host (host is ${host})`);
-    const racers = readyPeers().slice(0, RACER_IDS.length);
-    if (racers.length < MIN_RACERS) {
-      throw new Error(`buildStart: a race needs ${MIN_RACERS} ready peers, ${racers.length} ready`);
-    }
-    const characters = resolveCharacters(racers.map((id) => entryOf(id).character));
-    const slots: Record<string, RacerId> = {};
-    const slotCharacters: Partial<Record<RacerId, CharacterId>> = {};
-    racers.forEach((id, index) => {
-      const slot = RACER_IDS[index] as RacerId;
-      slots[String(id)] = slot;
-      slotCharacters[slot] = characters[index];
-    });
-    const delay = inputDelay(racers.map((id) => wirePing(entryOf(id).ping)));
-    return { type: 'start', seed, course, difficulty, slots, characters: slotCharacters, delay };
+    const blocker = startBlocker();
+    if (blocker !== null) throw new Error(`buildStart: ${blocker}`);
+    const racers = readyPeers()
+      .slice(0, RACER_IDS.length)
+      .map((id) => ({ id, ...entryOf(id) }));
+    return startMessage(racers, { seed, course, difficulty });
   }
 
   return {
@@ -216,7 +246,7 @@ export function createLobby(options: LobbyOptions): Lobby {
         peers: joinOrder.map(peerView),
         course,
         difficulty,
-        canStart: isHost() && phase === 'lobby' && own.ready && readyPeers().length >= MIN_RACERS,
+        canStart: startBlocker() === null,
       };
     },
     apply: applyMessage,
@@ -224,7 +254,7 @@ export function createLobby(options: LobbyOptions): Lobby {
       own.character = character;
     },
     setPing(ms) {
-      own.ping = ms;
+      own.ping = wirePing(ms);
     },
     setReady(ready) {
       own.ready = ready;
@@ -239,7 +269,7 @@ export function createLobby(options: LobbyOptions): Lobby {
       const message: LobbyMessage = {
         type: 'lobby',
         character: own.character,
-        ping: wirePing(own.ping),
+        ping: own.ping ?? 0,
         ready: own.ready,
       };
       return isHost() ? { ...message, course, difficulty } : message;
