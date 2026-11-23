@@ -5,7 +5,7 @@
 
 import type { EventSink, Rng } from '@arcade/core';
 import type { GameEvent } from './events.ts';
-import type { RacerMotion } from './media/types.ts';
+import type { MediumNav, PilotMemory, RacerMotion } from './media/types.ts';
 
 /** Tile size in world pixels. Levels are grids of TILE x TILE cells. */
 export const TILE = 16;
@@ -164,20 +164,24 @@ export interface RivalProfile {
   mass: number;
   /** How readily it bursts power-ups, 0..1. Read from phase 3. */
   itemAggression: number;
+  /**
+   * How well it pilots in media that reward skill beyond wobble and kicks, 0..1. Absent means 1.
+   * Each medium reads it in its own `steer`; swim ignores it.
+   */
+  pilotSkill?: number;
 }
 
-/** Per-racer state the AI keeps between ticks. */
+/**
+ * Per-racer state the AI keeps between ticks: the medium's pilot memory, plus the generic progress
+ * backstop (`ai/rival.ts`), which starts the medium's stuck recovery when progress stalls.
+ */
 export interface AiMemory {
-  /** Current wobble angle offset in radians. */
-  wobble: number;
-  stuckTicks: number;
-  /** Ticks left in a stuck-recovery swim; 0 when not recovering. */
-  recoverTicks: number;
-  recoverDir: Vec;
-  /** Last unit aim read from the flow field. */
-  aim: Vec;
-  /** Ticks until the flow field is read again. */
-  replanIn: number;
+  /** What the world's medium remembers about steering this rival (`Medium.createPilot`). */
+  pilot: PilotMemory;
+  /** The lowest `racer.progress` seen while racing; Infinity before the first reading. */
+  bestProgress: number;
+  /** Racing ticks since `bestProgress` last fell. */
+  sinceBest: number;
 }
 
 export interface Finish {
@@ -248,7 +252,7 @@ export interface RacerStatus {
   boost: number;
   /** Held by a Homing Squid: swims at reduced force with a sideways drift; kicks shorten it. */
   latched: number;
-  /** Undertow: pulled back along the steer field. */
+  /** Undertow: pulled back along the medium's way to the finish. */
   undertow: number;
 }
 
@@ -314,18 +318,30 @@ export interface RaceState {
   result: RaceResult | null;
 }
 
-/**
- * Distance-to-finish fields over the tile grid, indexed `y * width + x`, in tile units.
- * `progress` ranks racers (uniform cost, coral passable). `steer` guides swimmers (kelp and
- * currents weighted, coral blocked unless broken). `smash` is `steer` with coral passable at a
- * high cost, for racers that can break it with a Puffer burst. `ram` is `steer` with coral passable
- * at a low cost, for a racer that breaks coral just by swimming into it (Baron's bulldozer): no burst
- * to wait for, so coral is cheaper for him than for a Puffer holder.
- */
-export interface FlowFields {
+/** The size of a field laid over the tile grid. */
+export interface GridSize {
   width: number;
   height: number;
-  progress: Float32Array;
+}
+
+/**
+ * Uniform-cost distance to the finish over the tile grid, indexed `y * width + x`, in tiles: only
+ * rock is closed, coral counts as open whether broken or not. It ranks racers, so places never
+ * depend on terrain, on broken coral or on how the medium moves. Built by `buildProgressField`.
+ */
+export interface ProgressField extends GridSize {
+  distance: Float32Array;
+}
+
+/**
+ * Swim's navigation: distance-to-finish fields over the tile grid, indexed `y * width + x`, in tile
+ * units. `steer` guides swimmers (kelp and currents weighted, coral blocked unless broken). `smash`
+ * is `steer` with coral passable at a high cost, for racers that can break it with a Puffer burst.
+ * `ram` is `steer` with coral passable at a low cost, for a racer that breaks coral just by swimming
+ * into it (Baron's bulldozer): no burst to wait for, so coral is cheaper for him than for a Puffer
+ * holder. Only the swim medium reads these (`logic/media/swim/`).
+ */
+export interface FlowFields extends GridSize {
   steer: Float32Array;
   smash: Float32Array;
   ram: Float32Array;
@@ -456,9 +472,9 @@ export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard'];
  * Only tracked on levels where the guide is on; zeros elsewhere.
  */
 export interface GuideMemory {
-  /** The lowest steer-field value the player's tile has had this race (Infinity before the first tick). */
+  /** The lowest medium distance to the finish the player's tile has had this race (`Medium.distanceAt`; Infinity before the first tick). */
   bestSteer: number;
-  /** Ticks the player has pushed without reaching a tile closer to the finish by the steer field. */
+  /** Ticks the player has pushed without reaching a tile closer to the finish by the medium's distance. */
   stuckTicks: number;
   /** Ticks of pushing the steering assist stays on for after it engaged against a wall. */
   helpTicks: number;
@@ -472,7 +488,13 @@ export interface World {
   level: Level;
   /** Fixed for the race. */
   difficulty: Difficulty;
-  fields: FlowFields;
+  /** The uniform-cost field that ranks racers. Generic; it never changes during a race. */
+  progress: ProgressField;
+  /**
+   * The medium's navigation, read only by the medium (`logic/media/`). Rebuilt through the medium
+   * when coral breaks (`rebuildNav`).
+   */
+  nav: MediumNav;
   /** Tile indices of coral broken this race. Only `breakCoral` (race/coral.ts) changes it. */
   broken: ReadonlySet<number>;
   racers: Racer[];

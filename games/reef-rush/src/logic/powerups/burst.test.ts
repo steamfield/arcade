@@ -256,13 +256,13 @@ describe('a dash after it fires', () => {
   });
 
   it('leaves velocity alone and forgets its combos once dashing is over', () => {
-    const { player } = holding(['jetFin', 'glowLantern']);
+    const { world, player } = holding(['jetFin', 'glowLantern']);
     player.dashDir = { x: 1, y: 0 };
     player.dashCombos = ['comet'];
     player.body.vx = 30;
     player.body.vy = -40;
 
-    driveDash(player);
+    driveDash(world, player);
 
     expect({ vx: player.body.vx, vy: player.body.vy }).toEqual({ vx: 30, vy: -40 });
     expect(player.dashCombos).toEqual([]);

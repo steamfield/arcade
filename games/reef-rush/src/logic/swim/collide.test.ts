@@ -4,10 +4,10 @@ import { PLAYER_PROFILE } from '../ai/profiles.ts';
 import type { GameEvent } from '../events.ts';
 import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
+import { SWIM_TUNING as SWIM } from '../media/swim/tuning.ts';
 import { noItems } from '../racers.ts';
 import { type Body, type Level, RACER_SIZE, type Racer, type RacerId, TILE } from '../types.ts';
 import { moveBody, separateRacers } from './collide.ts';
-import { SWIM } from './physics.ts';
 
 /** A room with one solid tile at column 4, row 2 (pixels 64..80 by 32..48). */
 const room = (pillar: '#' | 'C' = '#'): Level =>

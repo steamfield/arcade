@@ -7,10 +7,10 @@
  * 2. it settles on a target (`settleTarget`): a vanished or finished target is replaced by the nearest
  *    valid one, a squid with none looks for one, and a decoy that is as near as its racer target takes over;
  * 3. it turns toward the target by at most SQUID.turnPerTick, aiming straight at it when the line is
- *    clear and down the steer field when rock is in the way, then flies SQUID.speed px/s;
+ *    clear and along the medium's way (`Medium.aimFrom`) when rock is in the way, then flies SQUID.speed px/s;
  * 4. a wall under its centre ends it (`squid.lost`);
- * 5. when its racer target kicked this tick from within `dodgeTicks(world)` of contact (SQUID.dodgeTicks on Hard; distance at squid
- *    speed), it misses: `squid.dodged`, no lock, flying on straight, never locking that racer again;
+ * 5. when the medium lets a kick dodge (`kickRules.dodgesSquid`) and its racer target kicked this tick from
+ *    within `dodgeTicks(world)` of contact (SQUID.dodgeTicks on Hard; distance at squid speed), it misses: `squid.dodged`, no lock, flying on straight, never locking that racer again;
  * 6. a decoy it touches pops (`popDecoy`) and the squid is spent; the first racer it touches (not its
  *    owner or the one that dodged) is hit with cause 'squid': a held Bubble Shield absorbs it
  *    (`squid.lost`), a landed hit latches the racer (`squid.latched`, `status.latched`, shortened by
@@ -20,15 +20,16 @@
  * Turning is vector math only (no trig at run time, see num.ts): the velocity rotates by the fixed
  * per-tick angle toward the target's side, or snaps onto it once it is within that angle.
  */
-import { hasClearSweep, steerDirection } from '../ai/steer.ts';
+import { hasClearSweep } from '../ai/steer.ts';
 import { dodgeTicks, statusTicks } from '../difficulty-level.ts';
 import { isSolid } from '../level/query.ts';
+import { mediumOf } from '../media/index.ts';
 import { cos, length, sin } from '../num.ts';
 import { popDecoy } from '../powerups/decoys.ts';
 import { INK, SQUID } from '../powerups/tuning.ts';
 import { centreOf, hitbox } from '../racers.ts';
 import {
-  type Body,
+  type Box,
   type Racer,
   type RacerId,
   type Squid,
@@ -45,7 +46,7 @@ import { pickSquidTarget } from './squid-target.ts';
 /** Cosine and sine of the largest per-tick turn, computed once with engine-exact math. */
 const TURN_COS = cos(SQUID.turnPerTick);
 const TURN_SIN = sin(SQUID.turnPerTick);
-/** Tiles down the steer field a squid aims at when rock is in the way. */
+/** Tiles along the medium's way a squid aims at when rock is in the way. */
 const LOOKAHEAD_TILES = 3;
 
 /**
@@ -151,14 +152,14 @@ function steer(world: World, squid: Squid): void {
 
 /**
  * The unit direction a squid at `from` should fly to reach `point`: straight at it when the way is
- * clear, else down the steer field, which leads round the rock. Null when it has no direction (on
- * top of the point, or on the finish).
+ * clear, else along the medium's way to the finish, which leads round the rock. Null when it has no
+ * direction (on top of the point, or on the finish).
  */
 function directionTo(world: World, from: Vec, point: Vec): Vec | null {
   const half = SQUID.size / 2;
-  const body: Body = { x: from.x - half, y: from.y - half, w: SQUID.size, h: SQUID.size, vx: 0, vy: 0 };
+  const body: Box = { x: from.x - half, y: from.y - half, w: SQUID.size, h: SQUID.size };
   if (hasClearSweep(world.level, world.broken, body, point)) return unitFrom(from, point);
-  const aim = steerDirection(world.fields.steer, world.fields, world.level, world.broken, body, LOOKAHEAD_TILES);
+  const aim = mediumOf(world).aimFrom(world, body, LOOKAHEAD_TILES);
   return aim.x === 0 && aim.y === 0 ? null : aim;
 }
 
@@ -188,9 +189,12 @@ function rotateToward(squid: Squid, want: Vec): void {
   squid.vy = (headX * TURN_SIN * side + headY * TURN_COS) * speed;
 }
 
-/** The dodge: the racer the squid is chasing kicked this tick, within the last `dodgeTicks(world)` of contact. */
+/**
+ * The dodge, where the medium allows one: the racer the squid is chasing kicked this tick, within
+ * the last `dodgeTicks(world)` of contact.
+ */
 function dodgeIfKicked(world: World, racers: readonly Racer[], squid: Squid, dt: number): void {
-  if (squid.target?.kind !== 'racer') return;
+  if (squid.target?.kind !== 'racer' || !mediumOf(world).kickRules.dodgesSquid) return;
   const { id } = squid.target;
   const target = racers.find((racer) => racer.id === id);
   if (!target) return;

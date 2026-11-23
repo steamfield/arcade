@@ -6,9 +6,9 @@
  * intents for every unfinished racer from the start-of-tick
  * state (in RACER_IDS order), the human player's passed through the Easy steering assist,
  * idle while stunned or trapped; each unfinished
- * racer's swimming (riptide lanes feed it their current; a squid's latch and an undertow pull it
- * after), dash, trapped float and movement (RACER_IDS order); one pass
- * of separation over unfinished racers; then the phase 3 systems for unfinished
+ * racer's movement in the medium (`Medium.sampleEnvironment` then `applyIntent`; a squid's latch and
+ * an undertow pull it after), dash, trapped drift and movement through the tiles (RACER_IDS order);
+ * one pass of separation over unfinished racers when the medium's racers collide; then the phase 3 systems for unfinished
  * racers only: bursts (from intents), projectiles and inks, squids, riptides, decoys, jellies, contacts
  * (hits), pickups (clams, pearls, loose), status counters; then abilities
  * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
@@ -19,6 +19,9 @@
  * Slots are fixed (RACER_IDS); characters are data placed in them. The player's
  * slot gets the chosen character and the rival slots get `pickRivals` from the
  * `roster` stream, so a new pick never shifts another random stream.
+ *
+ * Everything that depends on how racers move goes through the world's medium (`mediumOf`); this
+ * module never asks which medium it is.
  */
 import { createRng, type EventSink } from '@arcade/core';
 import { breaksCoralOnContact, bumpMassFor, onBump, onWorldEvents, tickAbilities } from './abilities.ts';
@@ -35,24 +38,22 @@ import { driftLatched } from './hazards/latch.ts';
 import { advanceProjectiles } from './hazards/projectiles.ts';
 import { advanceSquids } from './hazards/squids.ts';
 import { LevelError } from './level/parse.ts';
-import { sampleEnvironment } from './level/query.ts';
-import { mediumById } from './media/index.ts';
-import type { Medium } from './media/types.ts';
+import { effectiveTuning, mediumById, mediumOf } from './media/index.ts';
+import type { LevelProblem, Medium } from './media/types.ts';
 import { modifiersFor } from './modifiers.ts';
 import { openClams } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
 import { collectPearls } from './pickups/pearls.ts';
 import { driveDash, fireBursts, sustainBursts } from './powerups/burst.ts';
 import { advanceDecoys } from './powerups/decoys.ts';
-import { advanceRiptides, feltCurrent } from './powerups/riptides.ts';
+import { advanceRiptides } from './powerups/riptides.ts';
 import { applyUndertow } from './powerups/undertow.ts';
 import { ramCoral } from './race/coral.ts';
-import { buildFlowFields, unreachableStarts } from './race/flowfield.ts';
+import { buildProgressField } from './race/flowfield.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
 import { activeRacers, centreOf, noItems, playerOf } from './racers.ts';
 import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
 import { moveBody, separateRacers } from './swim/collide.ts';
-import { applyIntent } from './swim/physics.ts';
 import {
   type CharacterId,
   type Difficulty,
@@ -94,7 +95,8 @@ const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, burst: false };
  *
  * @param course A shipped course, or one registered for a test (`courseFromLevel`).
  * @param events Usually the engine's EventLog, so one stream holds race, menu and save events.
- * @throws {LevelError} When a start tile cannot reach the finish without breaking coral.
+ * @throws {LevelError} When the medium can't race the level (`Medium.validateLevel`), located at the
+ *   first problem, with any others appended to the message after `; `.
  * @throws {Error} When the course names a medium that is neither shipped nor registered.
  */
 export function createWorld(course: Course, events: EventSink<GameEvent>, options: WorldOptions): World {
@@ -102,17 +104,8 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
   if (!medium) throw new Error(`Course '${course.id}' names unknown medium '${course.medium}'`);
   const level = levelOf(course);
   const broken = new Set<number>();
-  const fields = buildFlowFields(level, broken);
-  const sealed = unreachableStarts(level, fields);
-  const firstSealed = sealed[0];
-  if (firstSealed !== undefined) {
-    const start = level.starts[firstSealed];
-    throw new LevelError(
-      `Start ${firstSealed + 1} cannot reach the finish without breaking coral`,
-      start?.y ?? null,
-      start?.x ?? null,
-    );
-  }
+  const nav = medium.buildNav(level, broken);
+  throwOnProblems(medium.validateLevel(level, nav));
   const rngs = createRngs(options.seed);
   const player = options.character ?? 'rudy';
   const characters: CharacterId[] = [player, ...pickRivals(rngs.roster, player)];
@@ -122,7 +115,8 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     medium: medium.id,
     level,
     difficulty: options.difficulty ?? 'hard',
-    fields,
+    progress: buildProgressField(level),
+    nav,
     broken,
     racers: RACER_IDS.map((id, index) =>
       createRacer(level, medium, id, index, characters[index] ?? player, options.playerBot),
@@ -147,6 +141,14 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
   // Catch-up reads progress on the first racing tick, before stepWorld updates it.
   updateProgress(world);
   return world;
+}
+
+/** Throws a LevelError at the first problem, naming the rest after it; does nothing for none. */
+function throwOnProblems(problems: readonly LevelProblem[]): void {
+  const [first, ...rest] = problems;
+  if (!first) return;
+  const message = [first, ...rest].map((problem) => problem.message).join('; ');
+  throw new LevelError(message, first.row, first.col);
 }
 
 function createRacer(
@@ -179,7 +181,7 @@ function createRacer(
     progress: Number.POSITIVE_INFINITY,
     place: index + 1,
     finished: null,
-    ai: isHuman ? null : createAiMemory(),
+    ai: isHuman ? null : createAiMemory(medium),
     profile,
     ...noItems(),
   };
@@ -210,13 +212,16 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   if (advanceClock(world)) return;
 
   const racing = activeRacers(world);
+  const medium = mediumOf(world);
   trackGuide(world, input);
   // Every racer's intent is asked for even while it can't act, so AI rng draws per tick never vary.
   const intents = racing.map((racer) => controlledIntent(racer, intentFor(world, racer, input)));
   racing.forEach((racer, index) => {
-    swim(world, racer, intents[index] ?? IDLE, modifiersFor(world, racer), dt);
+    moveRacer(world, medium, racer, intents[index] ?? IDLE, modifiersFor(world, racer), dt);
   });
-  separateRacers(racing, world.contacts, world.events, bumpMassFor, (a, b) => onBump(world, a, b));
+  if (medium.racerCollision === 'solid') {
+    separateRacers(racing, world.contacts, world.events, bumpMassFor, (a, b) => onBump(world, a, b));
+  }
 
   fireBursts(world, racing, intents);
   sustainBursts(world, racing);
@@ -246,17 +251,16 @@ function intentFor(world: World, racer: Racer, input: TickInput): Intent {
 }
 
 /**
- * One racer's velocity for the tick (swimming, then a dash or a trapped float overriding it), then
- * its move, breaking the coral ahead first when its ability rams through coral.
+ * One racer's velocity for the tick (the medium's response to its intent, then a dash or a trapped
+ * drift overriding it), then its move, breaking the coral ahead first when its ability rams through coral.
  */
-function swim(world: World, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
-  const water = sampleEnvironment(world.level, racer.body);
-  const environment = { ...water, current: feltCurrent(world, racer, water.current) };
-  applyIntent(racer, intent, environment, mods, world.events, dt);
+function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
+  const env = medium.sampleEnvironment(world, racer);
+  medium.applyIntent(racer, intent, env, effectiveTuning(world), mods, world.events, dt);
   driftLatched(racer, dt);
   applyUndertow(world, racer, dt);
-  driveDash(racer);
-  floatTrapped(racer);
+  driveDash(world, racer);
+  floatTrapped(world, racer);
   if (breaksCoralOnContact(racer)) ramCoral(world, racer, dt);
   moveBody(racer.body, world.level, world.broken, dt);
 }
