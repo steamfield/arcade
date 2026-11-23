@@ -2,14 +2,14 @@
  * One racer's sprite, synced from logic state: whole-pixel position, a flip for
  * facing, a two-frame swim stroke that quickens with speed, a squash-then-stretch
  * when a kick fires, a flicker while invulnerable (3 Hz, the WCAG ceiling) and,
- * for the player, a one-off white flash on gaining a place. All timing is counted
+ * for the local racer (the slot the screen follows), a one-off white flash on gaining a place. All timing is counted
  * in logic ticks so captures repeat. Under reduced motion the sprite holds its
  * shape, shows invulnerability as a steady see-through look and skips the flash;
  * the kick puff and place-up sparkles in `fx/` still carry those moments.
  */
 import type { Stamped } from '@arcade/core';
 import Phaser from 'phaser';
-import type { Racer } from '../../logic/types.ts';
+import type { Racer, RacerId } from '../../logic/types.ts';
 import { Frame, Tex } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { Layer } from './layers.ts';
@@ -18,7 +18,7 @@ import { createRacerMoments } from './racer-moments.ts';
 /** One racer's sprite, kept in step with its logic state. */
 export interface RacerView {
   /**
-   * Starts the kick squash on this racer's `racer.kicked` and, for the player, the flash on a
+   * Starts the kick squash on this racer's `racer.kicked` and, for the local racer, the flash on its
    * `player.place` that gains a place, from world tick `tick` (the drain's world tick).
    */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
@@ -44,16 +44,17 @@ const STEADY_INVULNERABLE_ALPHA = 0.55;
 const FLASH_COLOUR = 0xffffff;
 
 /**
- * Adds `racer`'s sprite to `scene`, drawn as its character. The player draws above the rivals.
+ * Adds `racer`'s sprite to `scene`, drawn as its character. The local racer draws above the others.
  *
  * @param reducedMotion Drops the squash and stretch and the place-up flash, and holds the
- *   invulnerability look steady instead of flickering. Defaults to full motion.
+ *   invulnerability look steady instead of flickering.
+ * @param local The slot the screen follows.
  */
-export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion: boolean): RacerView {
+export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion: boolean, local: RacerId): RacerView {
   const sprite = scene.add
     .sprite(0, 0, Tex[racer.character], Frame.a)
-    .setDepth(racer.id === 'player' ? Layer.player : Layer.racers);
-  const moments = createRacerMoments(racer.id, racer.place);
+    .setDepth(racer.id === local ? Layer.player : Layer.racers);
+  const moments = createRacerMoments(racer.id, racer.place, local);
   let kickedAt = Number.NEGATIVE_INFINITY;
   // Kicks fire along the input, so the squash follows whichever axis the racer is moving on.
   let kickVertical = false;

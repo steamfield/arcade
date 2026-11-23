@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { placeAt, raceOn, racerOf } from '../../logic/test-world.ts';
 import type { Squid, SquidTarget } from '../../logic/types.ts';
-import { MARKER_BOUNDS, markerFor, squidHuntingPlayer, TOUCH_ZONES } from './threat-math.ts';
+import { MARKER_BOUNDS, markerFor, squidHuntingLocal, TOUCH_ZONES } from './threat-math.ts';
 
 const ARENA = `
   ####################
@@ -25,7 +25,7 @@ const squidAt = (x: number, y: number, target: SquidTarget | null): Squid => ({
 describe('which squid is hunting the player', () => {
   it('is none when no squid is in the water', () => {
     const { world } = raceOn(ARENA);
-    expect(squidHuntingPlayer(world)).toBeNull();
+    expect(squidHuntingLocal(world)).toBeNull();
   });
 
   it('ignores squids chasing a rival, a decoy, or nothing', () => {
@@ -35,7 +35,7 @@ describe('which squid is hunting the player', () => {
       squidAt(60, 60, { kind: 'decoy', owner: 'player' }),
       squidAt(70, 70, null),
     );
-    expect(squidHuntingPlayer(world)).toBeNull();
+    expect(squidHuntingLocal(world)).toBeNull();
   });
 
   it('picks the nearest of the squids locked on the player', () => {
@@ -44,7 +44,7 @@ describe('which squid is hunting the player', () => {
     const far = squidAt(250, 40, { kind: 'racer', id: 'player' });
     const near = squidAt(130, 40, { kind: 'racer', id: 'player' });
     world.squids.push(far, near);
-    expect(squidHuntingPlayer(world)).toBe(near);
+    expect(squidHuntingLocal(world)).toBe(near);
   });
 });
 

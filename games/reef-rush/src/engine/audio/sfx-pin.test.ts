@@ -63,7 +63,7 @@ function listen(options: (typeof RACES)[number], counts: Record<string, number>)
     onError(error) {
       throw error;
     },
-    audibleFromPlayer: () => true,
+    audibleFromLocal: () => true,
     raceSong: () => COURSES['sunlit-shallows'].song,
   });
   // Three drains, as the runtime would: the race scene, the race, then results. One drain would

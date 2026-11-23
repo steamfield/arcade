@@ -1,6 +1,6 @@
 /**
  * The one-off moments a racer's sprite plays from events: the kick squash-and-stretch and, for
- * the player, the white flash on gaining a place. Timed in world ticks, the same clock `sync`
+ * the local racer (the slot the screen follows), the white flash on gaining a place. Timed in world ticks, the same clock `sync`
  * is given, never the tick stamped on the event: that stamp is the runtime's step count, which
  * keeps running through menus, so mixing the two left the flash on for the whole race.
  */
@@ -27,14 +27,18 @@ export interface RacerLook {
 
 /** Tracks one racer's kick and place-up moments. */
 export interface RacerMoments {
-  /** Records a `racer.kicked` for this racer and a `player.place` that gains a place, at world tick `tick`. */
+  /** Records a `racer.kicked` for this racer and its own `player.place` that gains a place, at world tick `tick`. */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
   /** The look at world tick `tick`. Reduced motion drops the stretch and the flash. */
   look(tick: number, reducedMotion: boolean): RacerLook;
 }
 
-/** Moments for racer `id`, starting in `place`. Only the player flashes. */
-export function createRacerMoments(id: RacerId, place: number): RacerMoments {
+/**
+ * Moments for racer `id`, starting in `place`. Only the local racer flashes.
+ *
+ * @param local The slot the screen follows; 'player' when omitted.
+ */
+export function createRacerMoments(id: RacerId, place: number, local: RacerId = 'player'): RacerMoments {
   let kickedAt = Number.NEGATIVE_INFINITY;
   let placeGainedAt = Number.NEGATIVE_INFINITY;
   let current = place;
@@ -42,7 +46,7 @@ export function createRacerMoments(id: RacerId, place: number): RacerMoments {
     onEvents(events, tick) {
       for (const event of events) {
         if (event.type === 'racer.kicked' && event.id === id) kickedAt = tick;
-        if (event.type === 'player.place' && id === 'player') {
+        if (event.type === 'player.place' && event.id === id && id === local) {
           if (event.place < current) placeGainedAt = tick;
           current = event.place;
         }

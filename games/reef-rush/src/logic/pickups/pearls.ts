@@ -42,7 +42,8 @@ function reaches(racer: Racer, tile: Vec): boolean {
   const dx = (tile.x + 0.5) * TILE - centre.x;
   const dy = (tile.y + 0.5) * TILE - centre.y;
   // Squared, because logic avoids Math.hypot (engines may round it differently).
-  return dx * dx + dy * dy <= (PASSIVE.lanternPearlTiles * TILE) ** 2;
+  const reachPx = PASSIVE.lanternPearlTiles * TILE;
+  return dx * dx + dy * dy <= reachPx * reachPx;
 }
 
 /** The swim-force multiplier `racer`'s pearl count gives it: 1 + PEARL.speedPerPearl per pearl, up to PEARL.cap pearls. */

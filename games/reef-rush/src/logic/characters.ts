@@ -1,10 +1,17 @@
 /**
  * The playable cast: each character's name, signature ability and the profile
- * it races with as a rival, plus how a race fills the three rival slots from
- * the characters the player didn't pick. Data and one seeded draw; no rules.
+ * it races with as a rival, plus how a race fills the slots nobody chose a
+ * character for from the characters left. Data and one seeded draw; no rules.
  */
 import type { Rng } from '@arcade/core';
-import { type AbilityId, CHARACTER_IDS, type CharacterId, type RivalProfile } from './types.ts';
+import {
+  type AbilityId,
+  CHARACTER_IDS,
+  type CharacterId,
+  RACER_IDS,
+  type RacerId,
+  type RivalProfile,
+} from './types.ts';
 
 /** A character as data. The slot it races in supplies the profile's `id`. */
 export interface Character {
@@ -94,10 +101,61 @@ export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
  */
 export function pickRivals(rng: Rng, player: CharacterId): [CharacterId, CharacterId, CharacterId] {
   const pool = CHARACTER_IDS.filter((id) => id !== player);
-  const draw = (): CharacterId => {
-    const picked = rng.pick(pool);
-    pool.splice(pool.indexOf(picked), 1);
-    return picked;
-  };
-  return [draw(), draw(), draw()];
+  return [drawFrom(rng, pool), drawFrom(rng, pool), drawFrom(rng, pool)];
+}
+
+/** Who the player races as when nobody chose: Rudy, unless another slot was given him. */
+const DEFAULT_PLAYER_CHARACTER: CharacterId = 'rudy';
+
+/**
+ * The character in each slot. Slots in `fixed` keep their character; every
+ * other slot, in slot order, draws one by `rng` (the world's `roster` stream) from the characters
+ * nobody was given. The player slot, when not fixed, is Rudy if he is free. With only the player's
+ * character fixed this is `[player, ...pickRivals(rng, player)]`, the same draws in the same order.
+ *
+ * @throws {Error} When `fixed` names a slot that is not in RACER_IDS or a character that is not in
+ *   CHARACTER_IDS, or gives two slots one character.
+ */
+export function assignCharacters(rng: Rng, fixed: Partial<Record<RacerId, CharacterId>>): Record<RacerId, CharacterId> {
+  const given = requireValidChoices(fixed);
+  const player = fixed.player ?? (given.includes(DEFAULT_PLAYER_CHARACTER) ? undefined : DEFAULT_PLAYER_CHARACTER);
+  const chosen = { ...fixed, player };
+  const pool = CHARACTER_IDS.filter((id) => id !== player && !given.includes(id));
+  // Slot order fixes the order of draws on the stream, so the same seed always fields the same cast.
+  const entries = RACER_IDS.map((slot) => [slot, chosen[slot] ?? drawFrom(rng, pool)] as const);
+  return Object.fromEntries(entries) as Record<RacerId, CharacterId>;
+}
+
+/** Removes and returns one character picked by `rng` from `pool`. */
+function drawFrom(rng: Rng, pool: CharacterId[]): CharacterId {
+  const picked = rng.pick(pool);
+  pool.splice(pool.indexOf(picked), 1);
+  return picked;
+}
+
+/**
+ * The characters `fixed` gives out, after checking every slot and character is real and no
+ * character is given twice.
+ *
+ * @throws {Error} When a slot is not in RACER_IDS, a character is not in CHARACTER_IDS, or a
+ *   character is given to two slots.
+ */
+function requireValidChoices(fixed: Partial<Record<RacerId, CharacterId>>): CharacterId[] {
+  const given: CharacterId[] = [];
+  for (const [slot, character] of Object.entries(fixed)) {
+    if (!RACER_IDS.includes(slot as RacerId)) {
+      throw new Error(`characters names unknown slot '${slot}'; slots are ${RACER_IDS.join(', ')}`);
+    }
+    if (character === undefined) continue;
+    if (!CHARACTER_IDS.includes(character)) {
+      throw new Error(
+        `characters gives slot '${slot}' unknown character '${character}'; characters are ${CHARACTER_IDS.join(', ')}`,
+      );
+    }
+    if (given.includes(character)) {
+      throw new Error(`characters gives '${character}' to two slots; each character races once`);
+    }
+    given.push(character);
+  }
+  return given;
 }

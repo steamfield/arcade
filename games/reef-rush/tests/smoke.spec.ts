@@ -50,11 +50,23 @@ test('on-screen controls pick a racer, start the race and swim the player @touch
   expect((summary.player as { tile: number[] }).tile[0]).toBeGreaterThan(4);
 });
 
+/**
+ * `debugState().worldHash` at the end of `TOP_ROUTE` on Hard, 30 ticks after the finish and before
+ * the results screen. Online races run the
+ * same simulation on each player's browser and compare this hash, so the engines must agree on it.
+ * It differs from the pin in `src/logic/top-route.test.ts`, whose replay stops on the finish tick.
+ */
+const TOP_ROUTE_BROWSER_HASH = 2046237260;
+
 test('a finished race is saved and its best time shows on the title after a reload', async ({ game }) => {
   // TOP_ROUTE was recorded on Hard; a fresh save races on Easy.
   await game.open();
   await game.loadState(HARD_SAVE);
-  await game.play([...TITLE_TO_RACE, ...TOP_ROUTE, wait(90)]);
+  await game.play([...TITLE_TO_RACE, ...TOP_ROUTE]);
+  // Read before the results delay runs, so the number depends on the inputs alone. One number for
+  // every browser project: Chromium, the phone and WebKit computed the same race.
+  expect(await game.state()).toMatchObject({ worldHash: TOP_ROUTE_BROWSER_HASH });
+  await game.play([wait(90)]);
   const results = await game.summary();
   expect(results).toMatchObject({ scene: 'results', result: { newBest: true, saveFailed: false } });
   const { ticks, place } = results.result as { ticks: number; place: number };

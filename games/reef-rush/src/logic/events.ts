@@ -31,7 +31,10 @@ export type GameEvent =
   | { type: 'racer.kicked'; id: RacerId }
   | { type: 'racer.bumped'; a: RacerId; b: RacerId }
   | { type: 'coral.broken'; tx: number; ty: number; by: RacerId }
-  | { type: 'player.place'; place: number }
+  /** A human's place changed; `id` is that human's slot. */
+  | { type: 'player.place'; id: RacerId; place: number }
+  /** The AI took over a human slot whose input stopped arriving. */
+  | { type: 'racer.takeover'; id: RacerId }
   | { type: 'racer.finished'; id: RacerId; place: number; ticks: number }
   | { type: 'race.finished'; standings: RacerId[]; playerPlace: number; playerTicks: number | null }
   | { type: 'clam.opened'; id: RacerId; index: number; kind: PowerUpKind }
