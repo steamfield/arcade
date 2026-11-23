@@ -245,10 +245,11 @@ Test cases, `src/logic/human-rules.test.ts` (lane b writes it), each on a world 
 
 Demo: `pnpm arcade see reef-rush --query "debug=1&local=tess" --input "_*200 right*120"`: the camera, HUD and sounds follow slot 2, which the keyboard drives, while the AI swims slot 1.
 Depends on: phase 2
+Scaffold: f5be7c7
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/engine/, games/reef-rush/tests/local-racer.spec.ts, games/reef-rush/DESIGN.md | contracts, games/reef-rush/src/logic/racers.ts | | opus | pending | | local racer tests pass |
+| a | M | games/reef-rush/src/engine/, games/reef-rush/tests/local-racer.spec.ts, games/reef-rush/DESIGN.md | contracts, games/reef-rush/src/logic/racers.ts | | opus | running | deliver/reef-online-3a | local racer tests pass |
 
 Test cases, `tests/local-racer.spec.ts` (Playwright through the `game` fixture, which the lane writes; assert on `debugSummary()`, `debugState()` and events, never pixels):
 
