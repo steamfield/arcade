@@ -17,9 +17,9 @@ import { NEW_GAME } from '../../logic/save.ts';
 import type { CharacterId, Difficulty } from '../../logic/types.ts';
 import { DIFFICULTIES } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
-import { Frame, Tex } from '../art/keys.ts';
+import { Frame } from '../art/keys.ts';
 import { BUTTON_HEIGHT } from '../art/ui/button.ts';
-import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
+import { MedalFrame, type MedalFrameKey, UiTex } from '../art/ui/keys.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { centreOnStage } from '../centre-on-stage.ts';
@@ -31,6 +31,8 @@ import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { createMenuView, type MenuView, OPTION_LABELS } from '../view/menu-view.ts';
 import { formatRaceTime, ordinal } from '../view/race-text.ts';
+import type { ArtRef } from '../worlds/art-ref.ts';
+import { skinFor } from '../worlds/index.ts';
 
 /** UI.md "Title" rects, in game px. */
 const LOGO_AT = { x: 64, y: 28, scale: 2 } as const;
@@ -104,11 +106,12 @@ export class TitleScene extends Phaser.Scene {
     // Drawn by the full-view camera (depth below 0), so they swim from edge to edge of the window.
     const at = baseOffset(this.scale);
     this.laneWidth = this.scale.width;
+    const { cast } = skinFor(backdropCourse);
     this.swimmers = SWIMMERS.map(({ character, speed, offset }) => ({
       speed,
       offset: offset + at.x,
       image: this.add
-        .image(0, RACER_LANE.y + at.y, Tex[character], Frame.a)
+        .image(0, RACER_LANE.y + at.y, cast.racers[character], Frame.a)
         .setOrigin(0, 0)
         .setDepth(RACER_LANE.depth),
     }));
@@ -121,7 +124,8 @@ export class TitleScene extends Phaser.Scene {
     this.bestCards = {};
     for (const level of DIFFICULTIES) {
       const best = bestFor(save, rt.course.id, level);
-      if (best) this.bestCards[level] = addBestCard(this, best, rt.save?.character ?? NEW_GAME.character);
+      if (best)
+        this.bestCards[level] = addBestCard(this, best, cast.portraits[rt.save?.character ?? NEW_GAME.character]);
     }
     this.rt.entered('title');
     this.update();
@@ -190,7 +194,7 @@ interface BestCard {
  * The raised best-time card, built hidden: a medal for a podium best (else the saved character's
  * portrait), the place, and the time.
  */
-function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }, character: CharacterId): BestCard {
+function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }, portrait: ArtRef): BestCard {
   const parts: { setVisible(visible: boolean): unknown }[] = [
     createPanel(scene, BEST_CARD.x, BEST_CARD.y, BEST_CARD.w, BEST_CARD.h, 'raised'),
   ];
@@ -198,9 +202,7 @@ function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }
   parts.push(
     medal
       ? scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y, UiTex.medals, medal).setOrigin(0, 0)
-      : scene.add
-          .image(BEST_BADGE_AT.x, BEST_BADGE_AT.y - 1, UiTex.portraits, PortraitFrame[character])
-          .setOrigin(0, 0),
+      : scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y - 1, portrait.texture, portrait.frame).setOrigin(0, 0),
     createLabel(scene, BEST_PLACE_AT.x, BEST_PLACE_AT.y, `BEST ${ordinal(best.place)}`, { tone: 'dim' }),
     createLabel(scene, BEST_TIME_AT.x, BEST_TIME_AT.y, formatRaceTime(best.ticks), { tone: 'foam' }),
   );

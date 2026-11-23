@@ -9,9 +9,10 @@
  */
 import Phaser from 'phaser';
 import { courseOf } from '../../logic/courses/index.ts';
+import type { Course } from '../../logic/courses/types.ts';
 import type { CharacterId, Racer, RacerId, World } from '../../logic/types.ts';
 import { createLabel } from '../art/font.ts';
-import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
+import { MedalFrame, type MedalFrameKey, UiTex } from '../art/ui/keys.ts';
 import type { PanelStyle, UiToneName } from '../art/ui/palette.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
 import { centreOnStage } from '../centre-on-stage.ts';
@@ -21,6 +22,8 @@ import { themeFor } from '../themes/index.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { createMenuView, type MenuView } from '../view/menu-view.ts';
 import { slideRemaining, standingsRow, TONE_CSS } from '../view/race-text.ts';
+import type { CastSkin } from '../worlds/cast-skin.ts';
+import { skinFor } from '../worlds/index.ts';
 import { RESULTS_COURSE_NAME_AT, RESULTS_HEADING } from './results-layout.ts';
 
 /** UI.md "Results" rects, in game px. */
@@ -87,12 +90,13 @@ export class ResultsScene extends Phaser.Scene {
       createLabel(this, RESULTS_COURSE_NAME_AT.x, RESULTS_COURSE_NAME_AT.y, course.name.toUpperCase(), {
         outline: true,
       });
+    const { cast } = skinFor(course);
     const { standings } = lastResult.result;
     for (const [index, plinth] of PLINTHS.entries()) {
       const id = standings[index];
-      if (id) addPlinth(this, racerIn(world, id).character, plinth);
+      if (id) addPlinth(this, cast, racerIn(world, id).character, plinth);
     }
-    this.standings = createStandings(this, world, standings);
+    this.standings = createStandings(this, world, standings, course);
     this.rowsSettleAt = (standings.length - 1) * ROW_EVERY_TICKS + ROW_SLIDE.ticks;
     this.ribbon = createRibbon(this);
     this.menuView = createMenuView(this, MENU, MENU_OPTIONS.results);
@@ -122,11 +126,10 @@ function racerIn(world: World, id: RacerId): Racer {
 }
 
 /** A podium place: its plinth, the character's portrait standing on it, and the medal on its face. */
-function addPlinth(scene: Phaser.Scene, character: CharacterId, plinth: Plinth): void {
+function addPlinth(scene: Phaser.Scene, cast: CastSkin, character: CharacterId, plinth: Plinth): void {
+  const { texture, frame } = cast.portraits[character];
   createPanel(scene, plinth.x, plinth.y, plinth.w, plinth.h, plinth.style);
-  scene.add
-    .image(plinth.x + PORTRAIT_INSET_X, plinth.y - PORTRAIT_RISE, UiTex.portraits, PortraitFrame[character])
-    .setOrigin(0, 0);
+  scene.add.image(plinth.x + PORTRAIT_INSET_X, plinth.y - PORTRAIT_RISE, texture, frame).setOrigin(0, 0);
   scene.add.image(plinth.x + MEDAL_INSET.x, plinth.y + MEDAL_INSET.y, UiTex.medals, plinth.medal).setOrigin(0, 0);
 }
 
@@ -141,17 +144,26 @@ interface StandingsView {
  * its character's 7x7 head beside it once the row has settled. The head never moves, so the only cursor fin
  * on screen is the menu's.
  */
-function createStandings(scene: Phaser.Scene, world: World, standings: readonly RacerId[]): StandingsView {
+function createStandings(
+  scene: Phaser.Scene,
+  world: World,
+  standings: readonly RacerId[],
+  course: Course,
+): StandingsView {
+  const { heads } = skinFor(course).cast;
   const rows = standings.map((id, index) => {
     const racer = racerIn(world, id);
     const y = ROWS.y + index * ROWS.pitch;
-    const label = createLabel(scene, ROWS.x, y, standingsRow(racer, index + 1), {
+    const label = createLabel(scene, ROWS.x, y, standingsRow(racer, index + 1, course), {
       tone: id === 'player' ? 'sun' : 'foam',
       outline: true,
     }).setVisible(false);
     const head =
       id === 'player'
-        ? scene.add.image(ROW_HEAD_X, y, UiTex.heads, PortraitFrame[racer.character]).setOrigin(0, 0).setVisible(false)
+        ? scene.add
+            .image(ROW_HEAD_X, y, heads[racer.character].texture, heads[racer.character].frame)
+            .setOrigin(0, 0)
+            .setVisible(false)
         : null;
     return { label, head };
   });

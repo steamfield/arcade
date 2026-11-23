@@ -10,8 +10,9 @@
 import type { Stamped } from '@arcade/core';
 import Phaser from 'phaser';
 import type { Racer } from '../../logic/types.ts';
-import { Frame, Tex } from '../art/keys.ts';
+import { Frame } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import type { CastSkin } from '../worlds/cast-skin.ts';
 import { Layer } from './layers.ts';
 import { createRacerMoments } from './racer-moments.ts';
 
@@ -44,14 +45,14 @@ const STEADY_INVULNERABLE_ALPHA = 0.55;
 const FLASH_COLOUR = 0xffffff;
 
 /**
- * Adds `racer`'s sprite to `scene`, drawn as its character. The player draws above the rivals.
+ * Adds `racer`'s sprite to `scene`, drawn as its character in `cast`, the world's cast skin. The player draws above the rivals.
  *
  * @param reducedMotion Drops the squash and stretch and the place-up flash, and holds the
  *   invulnerability look steady instead of flickering. Defaults to full motion.
  */
-export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion: boolean): RacerView {
+export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion: boolean, cast: CastSkin): RacerView {
   const sprite = scene.add
-    .sprite(0, 0, Tex[racer.character], Frame.a)
+    .sprite(0, 0, cast.racers[racer.character], Frame.a)
     .setDepth(racer.id === 'player' ? Layer.player : Layer.racers);
   const moments = createRacerMoments(racer.id, racer.place);
   let kickedAt = Number.NEGATIVE_INFINITY;
