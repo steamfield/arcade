@@ -4,14 +4,16 @@
  * the light rays, slow-swaying rays, painted layers in front of them, and drifting motes. For the
  * ocean that is water darkening toward the floor, a far reef ridge, god rays and a mid kelp forest.
  * A theme leaves out caustics, rays or motes by giving no colour for them. Far layers follow less
- * of the camera's scroll than near ones.
+ * of the camera's scroll than near ones. In front of all of that and still behind the terrain, a
+ * theme with a cave wall tiles it down every dark column range, so a dark stretch reads as a cave
+ * under the dark veil.
  *
  * Every moving part is a pure function of the world tick and the camera
  * scroll, so captures repeat. With reduced motion the time-driven parts hold
  * still (static rays, no drift or shimmer); scroll parallax stays because it
  * only follows the camera.
  */
-import Phaser from 'phaser';
+import type Phaser from 'phaser';
 import { type Level, TILE, type Vec } from '../../logic/types.ts';
 import type { BackdropSpec, PaintedLayer, Theme } from '../themes/types.ts';
 import { Layer } from './layers.ts';
@@ -51,7 +53,11 @@ const Depth = {
   rays: Layer.parallax + 1,
   aboveRays: Layer.parallax + 2,
   motes: Layer.parallax + 3,
+  cave: Layer.parallax + 4,
 } as const;
+
+/** Phaser's additive blend mode by name, which keeps this module free of a runtime Phaser import. */
+const ADDITIVE = 'ADD';
 
 /** The level's top tile row is solid; the surface the light comes through is just under it. */
 const SURFACE_Y = TILE;
@@ -75,6 +81,7 @@ export function createBackdrop(
   const { backdrop } = theme;
   addDepthBands(scene, level, viewport, backdrop.bands);
   addPaintedLayers(scene, level, viewport, backdrop.layers);
+  if (backdrop.cave) addCaveWalls(scene, level, backdrop.cave.texture);
   const parts: AnimatedPart[] = [];
   if (backdrop.caustics !== null) parts.push(createCaustics(scene, backdrop.caustics));
   if (backdrop.rays !== null) parts.push(createLightRays(scene, viewport, backdrop.rays));
@@ -159,15 +166,35 @@ function floorTop(level: Level): number {
   return row * TILE;
 }
 
+/** A world-space rectangle in px. */
+export interface CaveSpan {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Where the cave wall goes: one span per dark column range, the full height of the level. */
+export function caveSpans(level: Pick<Level, 'dark' | 'height'>): CaveSpan[] {
+  return level.dark.map(([from, to]) => ({
+    x: from * TILE,
+    y: 0,
+    width: (to - from + 1) * TILE,
+    height: level.height * TILE,
+  }));
+}
+
+function addCaveWalls(scene: Phaser.Scene, level: Level, texture: string): void {
+  for (const span of caveSpans(level)) {
+    scene.add.tileSprite(span.x, span.y, span.width, span.height, texture).setOrigin(0).setDepth(Depth.cave);
+  }
+}
+
 /** Caustic net: one dash per cell, wobbling within its cell, fading with depth below the surface. */
 const CAUSTICS = { cell: { w: 12, h: 5 }, rows: 5, factor: 0.5, stepTicks: 6, alpha: 0.22 } as const;
 
 function createCaustics(scene: Phaser.Scene, colour: number): AnimatedPart {
-  const graphics = scene.add
-    .graphics()
-    .setScrollFactor(0, 1)
-    .setDepth(Depth.caustics)
-    .setBlendMode(Phaser.BlendModes.ADD);
+  const graphics = scene.add.graphics().setScrollFactor(0, 1).setDepth(Depth.caustics).setBlendMode(ADDITIVE);
   const width = scene.cameras.main.width;
   const { cell } = CAUSTICS;
   let drawn = '';
@@ -211,11 +238,7 @@ const RAYS = {
 } as const;
 
 function createLightRays(scene: Phaser.Scene, viewport: Viewport, colour: number): AnimatedPart {
-  const graphics = scene.add
-    .graphics()
-    .setScrollFactor(RAYS.factor, 1)
-    .setDepth(Depth.rays)
-    .setBlendMode(Phaser.BlendModes.ADD);
+  const graphics = scene.add.graphics().setScrollFactor(RAYS.factor, 1).setDepth(Depth.rays).setBlendMode(ADDITIVE);
   const span = viewport.screen.width + viewport.maxScroll.x * RAYS.factor + RAYS.spacing;
   const count = Math.ceil(span / RAYS.spacing);
   const shafts = Array.from({ length: count }, (_, ray) => ({

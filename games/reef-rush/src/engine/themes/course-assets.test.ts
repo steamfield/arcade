@@ -31,6 +31,19 @@ describe('engine conformance', () => {
     );
   });
 
+  it('draws cave rock, stalactites and stalagmites in the ocean theme', () => {
+    const course = courseFromLevel({
+      name: 'cave',
+      ascii: '#1RTLF#',
+      legend: {
+        R: { cell: 'rock', art: 'caveRock' },
+        T: { cell: 'rock', art: 'stalactite' },
+        L: { cell: 'rock', art: 'stalagmite' },
+      },
+    });
+    expect(() => assertCourseAssets(course)).not.toThrow();
+  });
+
   it('names the course and the missing song', () => {
     const course = { ...courseFromLevel('#1F#'), song: 'nope' } as unknown as Course;
     expect(() => assertCourseAssets(course)).toThrow(`Course '${course.id}' names song 'nope'`);

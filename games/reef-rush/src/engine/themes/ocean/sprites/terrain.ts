@@ -1,14 +1,17 @@
 /**
- * The solid and decorative course tiles: the rock and coral tileset, coral
- * debris, swaying kelp and the finish banner. Tiles are 16x16 and seamless,
- * since the same tile repeats across whole walls and kelp beds.
+ * The solid and decorative course tiles: the tileset (rock, coral, and the sky
+ * and cave tiles drawn in `surface.ts` and `cave.ts`), coral debris, swaying
+ * kelp and the finish banner. Tiles are 16x16 and seamless, since the same tile
+ * repeats across whole walls and kelp beds.
  */
 import { Frame } from '../../../art/keys.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { OceanTex, type OceanTexKey } from '../keys.ts';
 import { TerrainPalette } from '../palettes.ts';
+import { CAVE_TILES } from './cave.ts';
+import { SKY_TILE } from './surface.ts';
 
-/** Terrain sheets. The tileset frames sit in `OceanTile` order: rock first, then coral. */
+/** Terrain sheets. The tileset frames sit in `OceanTile` order: rock, coral, sky, then the cave tiles. */
 export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
   {
     key: OceanTex.tiles,
@@ -57,6 +60,8 @@ export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
           '1122110011221100',
         ],
       },
+      SKY_TILE,
+      ...CAVE_TILES,
     ],
   },
   sheet(OceanTex.coralDebris, TerrainPalette.coral, {
