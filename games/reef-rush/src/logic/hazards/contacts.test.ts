@@ -158,4 +158,19 @@ describe('inflated puffers', () => {
       { type: 'racer.stunned', id: 'tess' },
     ]);
   });
+
+  it.each([
+    ['the racer touched is latched', 'tess'],
+    ['the puffer itself is latched', 'player'],
+  ] as const)('pass through without a hit when %s', (_case, downed) => {
+    const { world, log, player, tess, contacts } = setup();
+    placeOnTile(player, 6, 1);
+    placeAt(tess, { x: centreOf(player).x + 15, y: centreOf(player).y });
+    player.status.inflated = 30;
+    racerOf(world, downed).status.latched = 30;
+
+    contacts();
+
+    expect(eventsIn(log)).toEqual([]);
+  });
 });

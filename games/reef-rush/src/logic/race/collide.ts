@@ -5,6 +5,7 @@
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
 import { bodyTiles, isSolid, overlapsTile } from '../level/query.ts';
+import { isDowned } from '../status.ts';
 import { type Body, type Level, RACER_IDS, type Racer, TILE } from '../types.ts';
 
 /**
@@ -97,6 +98,10 @@ function resolveY(body: Body, level: Level, broken: ReadonlySet<number>): void {
  * Pushes overlapping racers apart in one pass over pairs (i < j) in array order,
  * splitting the push by mass and exchanging half the relative velocity on that axis.
  * `contacts` holds "a|b" keys of touching pairs; `racer.bumped` fires only when a contact starts.
+ * A pair with a downed racer (`isDowned`: stunned, trapped or latched) passes through: no push, no
+ * bump, and its key is cleared, so touching again after recovery is a new bump. While such a pair
+ * overlaps, `contacts` holds its ghost key ("~a|b"), and the pair keeps passing through after the
+ * racer recovers until the two separate, which drops the ghost key.
  *
  * @param massOf The mass each racer bumps with; its profile's unless held power-ups change it.
  * @param onBump Called with the pair in RACER_IDS order when a contact starts, after `racer.bumped`
@@ -133,10 +138,24 @@ interface Separation {
 /** Separates one pair and keeps its contact bookkeeping current. */
 function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump }: Separation): void {
   const key = contactKey(a, b);
+  const ghost = ghostKey(key);
   const penetration = {
     x: overlapLength(a.body.x, a.body.w, b.body.x, b.body.w),
     y: overlapLength(a.body.y, a.body.h, b.body.y, b.body.h),
   };
+  const overlapping = penetration.x > 0 && penetration.y > 0;
+  if (isDowned(a) || isDowned(b)) {
+    contacts.delete(key);
+    if (overlapping) contacts.add(ghost);
+    else contacts.delete(ghost);
+    return;
+  }
+  // A pair that overlapped while one was down keeps passing through after it recovers, until the two
+  // come apart; shoving them out at once would jump a racer (maybe into rock) and bump for nothing.
+  if (contacts.has(ghost)) {
+    if (overlapping) return;
+    contacts.delete(ghost);
+  }
   if (penetration.x < 0 || penetration.y < 0) {
     contacts.delete(key);
     return;
@@ -209,4 +228,9 @@ function inRacerOrder(a: Racer, b: Racer): [Racer, Racer] {
 function contactKey(a: Racer, b: Racer): string {
   const [first, second] = inRacerOrder(a, b);
   return `${first.id}|${second.id}`;
+}
+
+/** The key marking a pair that overlapped while one of them was down and hasn't come apart since. */
+function ghostKey(key: string): string {
+  return `~${key}`;
 }

@@ -212,6 +212,70 @@ describe('racer separation', () => {
   });
 });
 
+describe('downed racers', () => {
+  it.each(['stunned', 'trapped', 'latched'] as const)('pass through a %s racer: no push, no bump', (status) => {
+    for (const downed of ['first', 'second'] as const) {
+      const a = racer('player', 100);
+      const b = racer('tess', 106);
+      a.body.vx = 40;
+      (downed === 'first' ? a : b).status[status] = 30;
+      const log = new EventLog<GameEvent>();
+      const bumped: string[] = [];
+
+      separateRacers([a, b], new Set(), log, undefined, (first, second) => bumped.push(`${first.id}|${second.id}`));
+
+      expect([a.body.x, b.body.x, a.body.vx, b.body.vx], `${downed} downed`).toEqual([100, 106, 40, 0]);
+      expect(log.all()).toEqual([]);
+      expect(bumped).toEqual([]);
+    }
+  });
+
+  it('forget the contact they were in, so touching again after recovery and parting is a new bump', () => {
+    const a = racer('player', 100);
+    const b = racer('tess', 106);
+    const contacts = new Set<string>();
+    const log = new EventLog<GameEvent>();
+    const touch = () => {
+      a.body.x = 100;
+      b.body.x = 106;
+      separateRacers([a, b], contacts, log);
+    };
+
+    touch();
+    b.status.stunned = 30;
+    touch();
+    expect(contacts.has('player|tess')).toBe(false);
+
+    b.status.stunned = 0;
+    b.body.x = 200;
+    separateRacers([a, b], contacts, log);
+    touch();
+    expect(log.all().map((event) => event.type)).toEqual(['racer.bumped', 'racer.bumped']);
+  });
+
+  it('keep passing through a racer that recovers while they overlap, until the two come apart', () => {
+    const a = racer('player', 100);
+    const b = racer('tess', 106);
+    const contacts = new Set<string>();
+    const log = new EventLog<GameEvent>();
+    b.status.stunned = 30;
+    separateRacers([a, b], contacts, log);
+
+    b.status.stunned = 0;
+    separateRacers([a, b], contacts, log);
+    separateRacers([a, b], contacts, log);
+    expect([a.body.x, b.body.x]).toEqual([100, 106]);
+    expect(log.all()).toEqual([]);
+
+    b.body.x = 200;
+    separateRacers([a, b], contacts, log);
+    expect(contacts.size).toBe(0);
+    b.body.x = 106;
+    separateRacers([a, b], contacts, log);
+    expect(log.all()).toMatchObject([{ type: 'racer.bumped', a: 'player', b: 'tess' }]);
+  });
+});
+
 describe('recovering from a push into a wall', () => {
   /** A racer that a bump has shoved 3.5 px into the left wall (column 0). */
   function shovedIntoWall(): Racer {

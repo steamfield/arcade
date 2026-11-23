@@ -243,6 +243,67 @@ const LANES = `
   ####################
 `;
 
+describe('downed racers in the step', () => {
+  /** A one-tile lane for the player, too narrow to swim round anyone in it; the rest wait in their own lanes. */
+  const NARROW = `
+    ##############################
+    #1..........................F#
+    ##############################
+    #2..........................F#
+    #3..........................F#
+    #4..........................F#
+    ##############################
+  `;
+
+  /** A race in NARROW with Tess stunned in the player's lane at tile 8 and everyone else stunned for good. */
+  function stunnedTessAhead() {
+    const { world, log } = raceOn(NARROW);
+    for (const id of ['squib', 'bo'] as const) racerOf(world, id).status.stunned = 100_000;
+    const tess = racerOf(world, 'tess');
+    placeOnTile(tess, 8, 1);
+    tess.status.stunned = 400;
+    return { world, log, player: racerOf(world, 'player'), tess };
+  }
+
+  it('keeps a rival whose stun ends inside the player from being shoved out or bumping', () => {
+    const { world, log, player, tess } = stunnedTessAhead();
+    placeOnTile(player, 8, 1);
+    placeAt(tess, { x: tileCentre(8, 1).x + 6, y: tileCentre(8, 1).y });
+    tess.status.stunned = 5;
+    // Without her AI Tess idles on the test's input like the player, so only a push could move her sideways.
+    tess.ai = null;
+    const xs = () => [player.body.x, tess.body.x];
+    const placed = xs();
+
+    for (let i = 0; i < 20; i++) {
+      step(world, log, 1, IDLE);
+      expect(xs(), `tick ${world.tick}, stunned ${tess.status.stunned}`).toEqual(placed);
+    }
+
+    expect(tess.status.stunned).toBe(0);
+    expect(eventsIn(log, 'racer.bumped')).toEqual([]);
+  });
+
+  it('lets the player swim through a stunned rival ahead and take its place, never moving it', () => {
+    const swimmer = stunnedTessAhead();
+    // The same race with the player idle at the start shows where Tess drifts on her own.
+    const alone = stunnedTessAhead();
+    let passedOn: number | null = null;
+
+    for (let i = 0; i < 300 && passedOn === null; i++) {
+      step(swimmer.world, swimmer.log, 1, hold({ x: 1, y: 0 }));
+      step(alone.world, alone.log, 1, IDLE);
+      expect(swimmer.tess.body, `tick ${swimmer.world.tick}`).toEqual(alone.tess.body);
+      if (swimmer.player.body.x > swimmer.tess.body.x + swimmer.tess.body.w) passedOn = swimmer.world.tick;
+    }
+
+    expect(passedOn).not.toBeNull();
+    expect(swimmer.tess.status.stunned).toBeGreaterThan(0);
+    expect([swimmer.player.place, swimmer.tess.place]).toEqual([1, 2]);
+    expect(eventsIn(swimmer.log, 'racer.bumped', 'racer.hit')).toEqual([]);
+  });
+});
+
 describe('finished racers and items', () => {
   it('never gain or lose power-ups, even parked on a clam and an urchin', () => {
     const { world, log } = raceOn(LANES);

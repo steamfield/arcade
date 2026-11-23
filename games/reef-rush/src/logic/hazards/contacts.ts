@@ -8,7 +8,7 @@
 import { popDecoy } from '../powerups/decoys.ts';
 import { BUBBLE, FLASH } from '../powerups/tuning.ts';
 import { activeRacers, centreOf, hitbox } from '../racers.ts';
-import { isInvulnerable } from '../status.ts';
+import { isDowned, isInvulnerable } from '../status.ts';
 import { type Box, type Racer, TILE, type Vec, type World } from '../types.ts';
 import { overlaps, squareAt } from './boxes.ts';
 import { applyHit } from './hits.ts';
@@ -21,7 +21,9 @@ import { JELLY } from './tuning.ts';
  * - a jelly that isn't stunned whose JELLY.size box overlaps its hitbox hits it (cause 'jelly');
  * - a bubble owned by another racer whose BUBBLE.size box overlaps its hitbox, unless it's
  *   invulnerable, pops (`bubble.popped {by: id}`, removed) and hits it (cause 'bubble', by the owner);
- * - an inflated other racer whose hitbox overlaps its hitbox hits it (cause 'puffer', by that racer).
+ * - an inflated other racer (a Puffer or a Cannonball) whose hitbox overlaps its hitbox hits it
+ *   (cause 'puffer', by that racer), unless either of the two is downed (`isDowned`), since downed
+ *   racers pass through each other.
  * Then stunned jellies' stuns wear off by one tick (`wearOffStuns`), so a jelly flashed for
  * FLASH.stunTicks stings nobody for that many contact passes.
  */
@@ -90,8 +92,9 @@ function touchBubbles(world: World, racer: Racer, box: Box): void {
 }
 
 function touchPuffers(world: World, racer: Racer, box: Box, racers: readonly Racer[]): void {
+  if (isDowned(racer)) return;
   for (const puffer of racers) {
-    if (puffer.id === racer.id || puffer.status.inflated === 0) continue;
+    if (puffer.id === racer.id || puffer.status.inflated === 0 || isDowned(puffer)) continue;
     if (overlaps(box, hitbox(puffer))) applyHit(world, racer, 'puffer', puffer.id, centreOf(puffer));
   }
 }

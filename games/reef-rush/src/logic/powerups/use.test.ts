@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyHit } from '../hazards/hits.ts';
 import { centreOf, hitbox } from '../racers.ts';
 import { eventsIn, giveItems, hold, IDLE, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
-import type { HeldItem, PowerUpKind, Vec } from '../types.ts';
+import type { HeldItem, PowerUpKind, TickInput, Vec } from '../types.ts';
 import { driveDash, fireItem } from './use.ts';
 
 /** The player's lane is two rows tall with coral right in front of the start and a way round below. */
@@ -274,12 +274,17 @@ describe('Cannonball', () => {
 
   it('breaks the coral gate and hits the racer behind it, and no hit ends it early', () => {
     const { world, log, player } = holding(['cannonball'], GATE);
-    // Stunned so Tess sits behind the gate instead of racing off.
-    racerOf(world, 'tess').status.stunned = 60;
+    // Put back on her start tile every tick so Tess sits behind the gate instead of racing off. A stun
+    // would hold her too, but stunned racers are passed through, so the Cannonball would never hit her.
+    const tess = racerOf(world, 'tess');
+    const pinnedStep = (input: TickInput) => {
+      if (tess.status.stunned === 0) placeOnTile(tess, 7, 1);
+      step(world, log, 1, input);
+    };
 
-    step(world, log, 1, hold(RIGHT, { use: true }));
+    pinnedStep(hold(RIGHT, { use: true }));
     applyHit(world, player, 'urchin', null, centreOf(player));
-    step(world, log, 20, hold(RIGHT));
+    for (let i = 0; i < 20; i++) pinnedStep(hold(RIGHT));
 
     expect(eventsIn(log, 'coral.broken')).toEqual([{ type: 'coral.broken', tx: 5, ty: 1, by: 'player' }]);
     expect(eventsIn(log, 'racer.hit')).toEqual([{ type: 'racer.hit', id: 'tess', cause: 'puffer', by: 'player' }]);

@@ -5,12 +5,13 @@
  * Tick order: clock; the Easy guide's record of the player (`trackGuide`, nothing on other levels);
  * intents for every unfinished racer from the start-of-tick
  * state (in RACER_IDS order), the human player's passed through the Easy steering assist,
- * cut to item cycling while stunned or trapped; each unfinished
+ * cut to item cycling while stunned or trapped, and with no kick while the dash meter is empty
+ * (`canDash`); each unfinished
  * racer's movement in the medium (`Medium.sampleEnvironment` then `applyIntent`; a squid's latch and
  * an undertow pull it after), dash, trapped drift and movement through the tiles (RACER_IDS order);
- * one pass of separation over unfinished racers when the medium's racers collide; then the phase 3 systems for unfinished
+ * a dash charge spent for each `racer.kicked` that movement emitted; one pass of separation over unfinished racers when the medium's racers collide; then the phase 3 systems for unfinished
  * racers only: items (cycle, then use, from intents), projectiles and inks, squids, riptides, decoys, jellies, contacts
- * (hits), pickups (clams, pearls, loose), status counters; then abilities
+ * (hits), pickups (clams, pearls, loose), status counters and dash recharge; then abilities
  * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
  * then progress, finishes, places, race end. Finished racers are out of play:
  * they stay where they crossed the line, nobody bumps them, and they never
@@ -44,7 +45,7 @@ import { modifiersFor } from './modifiers.ts';
 import { openClams } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
 import { collectLoosePearls, collectPearls } from './pickups/pearls.ts';
-import { DASH_METER, rechargeDash } from './powerups/dash-meter.ts';
+import { canDash, DASH_METER, rechargeDash, spendDash } from './powerups/dash-meter.ts';
 import { advanceDecoys } from './powerups/decoys.ts';
 import { selectedSlot, slotItems } from './powerups/inventory.ts';
 import { advanceRiptides } from './powerups/riptides.ts';
@@ -238,8 +239,9 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
   // Every racer's intent is asked for even while it can't act, so AI rng draws per tick never vary.
   const intents = racing.map((racer) => controlledIntent(racer, intentFor(world, racer, input)));
   racing.forEach((racer, index) => {
-    moveRacer(world, medium, racer, intents[index] ?? IDLE, modifiersFor(world, racer), dt);
+    moveRacer(world, medium, racer, dashGated(racer, intents[index] ?? IDLE), modifiersFor(world, racer), dt);
   });
+  spendKickedDashes(world);
   if (medium.racerCollision === 'solid') {
     separateRacers(racing, world.contacts, world.events, bumpMassFor, (a, b) => onBump(world, a, b));
   }
@@ -273,6 +275,20 @@ export function stepWorld(world: World, input: TickInput, dt: number): void {
 function intentFor(world: World, racer: Racer, input: TickInput): Intent {
   if (!racer.ai) return assistedIntent(world, racer, input);
   return rivalIntent(world, racer, world.rngs[`ai.${racer.id}`]);
+}
+
+/** The intent with its kick dropped when the racer's dash meter is empty, so no medium can kick it. */
+function dashGated(racer: Racer, intent: Intent): Intent {
+  return intent.kick && !canDash(racer) ? { ...intent, kick: false } : intent;
+}
+
+/** Spends a dash charge for every `racer.kicked` emitted this tick (the movement loop's kicks). */
+function spendKickedDashes(world: World): void {
+  for (const event of world.recentEvents) {
+    if (event.type !== 'racer.kicked') continue;
+    const racer = world.racers.find((candidate) => candidate.id === event.id);
+    if (racer) spendDash(world, racer);
+  }
 }
 
 /**
