@@ -178,12 +178,15 @@ export function playerCatchUpMul(player: Racer, others: readonly Racer[], tuning
 }
 
 /**
- * Whether `attacker` may pick `target` for a hostile power-up. Only a rival (`isRival`, which
- * includes a human slot the AI took over) aiming at a human slot can be refused, and only on a level
- * whose `rivalsAttackPlayer` is false. Humans may always attack each other.
+ * Whether `attacker` may pick `target` for a hostile power-up, or turn its own lane or cloud on it.
+ * A racer may always meet its own power-up (a taken-over human rides its own Riptide). Otherwise
+ * only a rival (`isRival`, which includes a human slot the AI took over) aiming at a human slot can be
+ * refused, and only on a level whose `rivalsAttackPlayer` is false. Humans may always attack each other.
  */
 export function mayAttack(world: World, attacker: RacerId, target: RacerId): boolean {
-  return !isRival(world, attacker) || !isHuman(world, target) || tuningOf(world).rivalsAttackPlayer;
+  return (
+    attacker === target || !isRival(world, attacker) || !isHuman(world, target) || tuningOf(world).rivalsAttackPlayer
+  );
 }
 
 /**

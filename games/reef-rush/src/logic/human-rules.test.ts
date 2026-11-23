@@ -10,13 +10,14 @@ import { mediumOf } from './media/index.ts';
 import { modifiersFor } from './modifiers.ts';
 import { openClams } from './pickups/clams.ts';
 import { heldItems } from './powerups/inventory.ts';
+import { riptideCurrentAt } from './powerups/riptides.ts';
 import { CLAM } from './powerups/tuning.ts';
 import { fireItem } from './powerups/use.ts';
 import { catchUpTarget } from './race/catch-up.ts';
 import { recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
 import { activeRacers, centreOf } from './racers.ts';
 import { giveItems, placeOnTile, raceOn, racerOf } from './test-world.ts';
-import type { Difficulty, Intent, RacerId, RivalProfile, World } from './types.ts';
+import { type Difficulty, type Intent, RACER_IDS, type RacerId, type RivalProfile, type World } from './types.ts';
 
 /** Open water with a clam on tile (8, 3), all four racers on the left edge and the finish on the right. */
 const ARENA = `
@@ -138,9 +139,9 @@ function jetFinOpens(world: World, id: RacerId): number {
   return jets;
 }
 
-/** Moves `id` onto the finish line and records its finish. */
-function finish(world: World, id: RacerId, row: number): void {
-  placeOnTile(racerOf(world, id), ARENA_FINISH_COLUMN, row);
+/** Moves `id` onto the finish line in its own start row and records it as the next racer home. */
+function finishNext(world: World, id: RacerId): void {
+  placeOnTile(racerOf(world, id), ARENA_FINISH_COLUMN, RACER_IDS.indexOf(id) + 1);
   updateProgress(world);
   recordFinishes(world);
 }
@@ -179,6 +180,19 @@ describe('a human in the tess slot', () => {
 
     expect(itemsFromClam('tess')).toBe(1);
     expect(itemsFromClam('squib')).toBe(CLAM.rivalRolls);
+  });
+
+  it('gets the Easy invulnerability and clam bias while squib does not', () => {
+    // createWorld refuses two humans on Easy; the rules themselves must still read the human slots.
+    const easy = () => scene('easy');
+    const hard = () => scene('hard');
+
+    expect(afterUrchin(easy(), 'tess').invulnerable).toBe(
+      DIFFICULTY.easy.playerInvulnerableMul * HIT.invulnerableTicks,
+    );
+    expect(afterUrchin(easy(), 'squib').invulnerable).toBe(HIT.invulnerableTicks);
+    expect(jetFinOpens(easy(), 'tess')).toBeGreaterThan(jetFinOpens(hard(), 'tess') * 1.5);
+    expect(jetFinOpens(easy(), 'squib')).toBe(jetFinOpens(hard(), 'squib'));
   });
 });
 
@@ -237,6 +251,24 @@ describe('a human slot the AI took over', () => {
       jetFinOpens(scene('hard', {}, { twoHumans: false }), 'player') * 1.5,
     );
   });
+
+  it('still feels the current of its own Riptide lane on Easy', () => {
+    const world = scene('easy', { player: [8, 1] }, { twoHumans: false });
+    takeOver(world, 'player');
+    const player = racerOf(world, 'player');
+    const centre = centreOf(player);
+    world.riptides.push({
+      x: centre.x - 20,
+      y: centre.y - 20,
+      w: 40,
+      h: 40,
+      dir: { x: 1, y: 0 },
+      ttl: 100,
+      owner: 'player',
+    });
+
+    expect(riptideCurrentAt(world, player.body, 'player')).not.toBeNull();
+  });
 });
 
 describe('item aggression', () => {
@@ -281,7 +313,7 @@ describe('the racer rivals pace themselves to', () => {
     const world = scene('hard', { player: [4, 1], tess: [20, 2], squib: [20, 3], bo: [20, 4] }, { twoHumans: false });
     expect(catchUpTarget(world).id).toBe('player');
 
-    finish(world, 'player', 1);
+    finishNext(world, 'player');
     expect(catchUpTarget(world).id).toBe('player');
   });
 
@@ -295,15 +327,15 @@ describe('the racer rivals pace themselves to', () => {
 
   it('is the unfinished human once the other has finished', () => {
     const world = scene('hard', { player: [6, 1], tess: [16, 2] });
-    finish(world, 'tess', 2);
+    finishNext(world, 'tess');
 
     expect(catchUpTarget(world).id).toBe('player');
   });
 
   it('is the human with the better finish place once both have finished', () => {
     const world = scene('hard', { player: [6, 1], tess: [16, 2] });
-    finish(world, 'tess', 2);
-    finish(world, 'player', 1);
+    finishNext(world, 'tess');
+    finishNext(world, 'player');
 
     expect(catchUpTarget(world).id).toBe('tess');
   });

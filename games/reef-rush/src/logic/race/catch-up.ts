@@ -2,7 +2,10 @@
  * Which racer the AI rivals measure their catch-up against.
  */
 import { isHuman } from '../racers.ts';
-import { RACER_IDS, type Racer, type World } from '../types.ts';
+import { type Finish, RACER_IDS, type Racer, type World } from '../types.ts';
+
+/** A racer that has crossed the line. */
+type FinishedRacer = Racer & { finished: Finish };
 
 /**
  * The human the rivals pace themselves to: among human slots (taken over or not), the unfinished one
@@ -19,7 +22,7 @@ export function catchUpTarget(world: World): Racer {
   }
   const unfinished = humans.filter((racer) => !racer.finished);
   if (unfinished.length > 0) return leastProgressLeft(unfinished);
-  return bestFinisher(humans);
+  return bestFinisher(humans.filter(hasFinished));
 }
 
 /** Racers in human slots, in RACER_IDS order. */
@@ -34,11 +37,12 @@ function leastProgressLeft(racers: readonly Racer[]): Racer {
   return racers.reduce((best, racer) => (racer.progress < best.progress ? racer : best));
 }
 
-/** The racer with the best finish place. Every racer in `racers` has finished, and it is not empty. */
-function bestFinisher(racers: readonly Racer[]): Racer {
-  return racers.reduce((best, racer) =>
-    (racer.finished?.place ?? Number.POSITIVE_INFINITY) < (best.finished?.place ?? Number.POSITIVE_INFINITY)
-      ? racer
-      : best,
-  );
+/** Whether `racer` has crossed the line. */
+function hasFinished(racer: Racer): racer is FinishedRacer {
+  return racer.finished !== null;
+}
+
+/** The racer with the best finish place. `racers` is not empty. */
+function bestFinisher(racers: readonly FinishedRacer[]): Racer {
+  return racers.reduce((best, racer) => (racer.finished.place < best.finished.place ? racer : best));
 }
