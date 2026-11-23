@@ -50,10 +50,10 @@ const LEVEL: LevelDef = {
 };
 
 /**
- * A rough guess: the expert bot's Hard finish as Rudy over seeds 1-8 on the scaffold's stand-in
- * physics (about 1020 ticks) plus 30 %, until the orchestrator measures it at phase 1's landing.
+ * The expert bot's mean Hard finish (835 ticks over seeds 1-25 and all eight characters, measured on
+ * lane a's physics before phase 1 landed) plus 30 %, the slack the test courses keep.
  */
-const PAR_TICKS = 1300;
+const PAR_TICKS = 1086;
 
 /** Drift Test: the drift medium's test course in Farside, reachable only by `?course=drift-test` and tests. */
 export const DRIFT_TEST: ShippedCourse = {

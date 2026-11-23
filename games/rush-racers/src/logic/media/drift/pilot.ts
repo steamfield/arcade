@@ -91,7 +91,8 @@ export function steerDrifter(
   if (!ai) throw new Error(`drift.steer needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
   const memory = driftPilot(ai.pilot);
   const blind = inDark(world.level, racer.body) && !racerSeesInDark(racer) && !playerHasLanternLight(world, racer);
-  replanAim(world, racer, memory, blind ? DARK_STEERING.reactionMul : 1);
+  const route = routeFor(racer);
+  replanAim(world, racer, memory, route, blind ? DARK_STEERING.reactionMul : 1);
   stepWobble(memory, racer.profile.wobble * (blind ? DARK_STEERING.wobbleMul : 1), draws.wobble);
   const wobbled = wobbledAim(memory);
   const aim = avoidHazards(world, racer, wobbled);
@@ -99,26 +100,27 @@ export function steerDrifter(
   const swerving = aim !== wobbled;
   const recovery = canRecover(world, racer, memory) ? recoveryMove(racer, memory, draws.side, forceRecover) : null;
   if (recovery) return { move: recovery, kick: false, kickHeld: false, aim, recovering: true };
-  const move = stickToward(racer, wantedVelocity(world, racer, aim, mods), aim);
+  const wanted = wantedVelocity(world, racer, aim, mods, route);
   // A swerving rival holds its dash, which would carry it on toward the hazard.
   const kick = !swerving && wantsDash(world, racer, aim, draws.kick);
+  // A dash fires along the stick, so on its tick the stick points where it wants to go.
+  const move = kick ? unitOr(wanted, aim) : stickToward(racer, wanted, aim);
   return { move, kick, kickHeld: kick, aim, recovering: false };
 }
 
-/**
- * Re-reads the way every `reactionTicks` (times `reactionMul`). A rival that rams ice reads the ram
- * field; one that is inflated, or holds an ice breaker with its item use ready, the smash field;
- * every other the steer field.
- */
-function replanAim(world: World, racer: Racer, memory: DriftPilot, reactionMul: number): void {
+/** Re-reads the way along `route`'s field every `reactionTicks` (times `reactionMul`). */
+function replanAim(world: World, racer: Racer, memory: DriftPilot, route: DriftRoute, reactionMul: number): void {
   if (memory.replanIn <= 0) {
-    memory.aim = driftRouteAim(world, racer.body, LOOKAHEAD_TILES, routeFor(racer));
+    memory.aim = driftRouteAim(world, racer.body, LOOKAHEAD_TILES, route);
     memory.replanIn = racer.profile.reactionTicks * reactionMul;
   }
   memory.replanIn--;
 }
 
-/** The field `racer` follows now. */
+/**
+ * The field `racer` follows now: the ram field for a rival that rams ice; the smash field for one
+ * that is inflated, or holds an ice breaker with its item use ready; the steer field for every other.
+ */
 function routeFor(racer: Racer): DriftRoute {
   if (breaksCoralOnContact(racer)) return 'ram';
   const holdsBreaker = CORAL_BREAKERS.some((kind) => holds(racer, kind));
@@ -143,7 +145,7 @@ function wobbledAim(memory: DriftPilot): Vec {
  * BRAKE_LOOKAHEAD_PX that way. The part across its heading is kept, so it turns away from a wall
  * it is braking for instead of stopping short of it.
  */
-function wantedVelocity(world: World, racer: Racer, aim: Vec, mods: MoveModifiers): Vec {
+function wantedVelocity(world: World, racer: Racer, aim: Vec, mods: MoveModifiers, route: DriftRoute): Vec {
   const tuning = effectiveTuning(world);
   const cruise = driftExtras(tuning).cruise * (1 + (mods.forceMul - 1) * 0.5);
   const { vx, vy } = racer.body;
@@ -151,12 +153,19 @@ function wantedVelocity(world: World, racer: Racer, aim: Vec, mods: MoveModifier
   const target = Math.max(cruise, vx * aim.x + vy * aim.y);
   const wanted = { x: aim.x * target, y: aim.y * target };
   const heading = speed > SETTLED_PX_S ? { x: vx / speed, y: vy / speed } : aim;
-  const free = freeDistanceAlong(world, racer.body, heading, BRAKE_LOOKAHEAD_PX);
+  // A rival on the smash or ram field means to break the ice ahead, so ice is no wall to brake for.
+  const free = freeDistanceAlong(world, racer.body, heading, BRAKE_LOOKAHEAD_PX, route !== 'steer');
   if (free >= BRAKE_LOOKAHEAD_PX) return wanted;
   const along = wanted.x * heading.x + wanted.y * heading.y;
   const canShed = Math.sqrt(2 * tuning.force * mods.forceMul * BRAKE_SHARE * free);
   if (along <= canShed) return wanted;
   return { x: wanted.x - heading.x * (along - canShed), y: wanted.y - heading.y * (along - canShed) };
+}
+
+/** `vector` as a unit vector; `fallback` when it is zero. */
+function unitOr(vector: Vec, fallback: Vec): Vec {
+  const size = length(vector.x, vector.y);
+  return size === 0 ? { ...fallback } : { x: vector.x / size, y: vector.y / size };
 }
 
 /** The unit stick from the racer's velocity toward `wanted`; along `aim` once it is there. */

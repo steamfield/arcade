@@ -82,22 +82,25 @@ export function driftIceAhead(world: World, tile: Vec, steps: number): boolean {
 
 /**
  * How far, in px, `body` can slide along the unit `dir` before its box touches a solid tile, up to
- * `maxPx`. `maxPx` when `dir` is zero.
+ * `maxPx`. `maxPx` when `dir` is zero. With `throughIce`, unbroken ice counts as open, for a racer
+ * that will break what it flies into.
  */
-export function freeDistanceAlong(world: World, body: Box, dir: Vec, maxPx: number): number {
+export function freeDistanceAlong(world: World, body: Box, dir: Vec, maxPx: number, throughIce = false): number {
   if (dir.x === 0 && dir.y === 0) return maxPx;
+  const open = openTiles(world.level, world.broken, throughIce);
   const halfW = body.w / 2 - EDGE_INSET_PX;
   const halfH = body.h / 2 - EDGE_INSET_PX;
   const from = centreOf(body);
   for (let travelled = SWEEP_STEP_PX; travelled <= maxPx; travelled += SWEEP_STEP_PX) {
     const x = from.x + dir.x * travelled;
     const y = from.y + dir.y * travelled;
-    const blocked =
-      isSolid(world.level, world.broken, Math.floor((x - halfW) / TILE), Math.floor((y - halfH) / TILE)) ||
-      isSolid(world.level, world.broken, Math.floor((x + halfW) / TILE), Math.floor((y - halfH) / TILE)) ||
-      isSolid(world.level, world.broken, Math.floor((x - halfW) / TILE), Math.floor((y + halfH) / TILE)) ||
-      isSolid(world.level, world.broken, Math.floor((x + halfW) / TILE), Math.floor((y + halfH) / TILE));
-    if (blocked) return travelled - SWEEP_STEP_PX;
+    const left = Math.floor((x - halfW) / TILE);
+    const right = Math.floor((x + halfW) / TILE);
+    const top = Math.floor((y - halfH) / TILE);
+    const bottom = Math.floor((y + halfH) / TILE);
+    if (!(open(left, top) && open(right, top) && open(left, bottom) && open(right, bottom))) {
+      return travelled - SWEEP_STEP_PX;
+    }
   }
   return maxPx;
 }
