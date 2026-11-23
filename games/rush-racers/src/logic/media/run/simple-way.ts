@@ -4,23 +4,21 @@
  * long to hold Up for each jump height, and the level checks. The distance ignores gravity, so it is
  * a stand-in until the jump-link nav (phase 4); the pilot reads the ground itself to jump.
  */
+import { TICK_DT } from '@arcade/core';
+import { FINISH } from '../../level/parse.ts';
 import { isLedge, isSolid } from '../../level/query.ts';
 import { cornerIsClear, distancesToFinish, type EntryCost, fieldAt, NEIGHBOURS } from '../../race/flowfield.ts';
 import { type Box, type Level, TILE, type Vec, type World } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
-import { runExtra } from './physics.ts';
+import { jumpPeak, runExtra } from './physics.ts';
 import { type RunNav, runNav } from './way-data.ts';
 
 /** How far below a start or a finish tile, in rows, a runner must find ground to stand on. */
 export const GROUND_REACH_ROWS = 4;
 /** Feet clear the top of what a jump lands on by this much, px, so they don't catch its corner. */
-const JUMP_CLEARANCE_PX = 2;
-/** The glyph that marks the finish line in a level's ASCII. */
-const FINISH_GLYPH = 'F';
+export const JUMP_CLEARANCE_PX = 2;
 /** Level checks judge the level as written, before any coral is broken. */
 const NOTHING_BROKEN: ReadonlySet<number> = new Set();
-/** Ticks per second the physics steps at. */
-const TICKS_PER_SECOND = 60;
 
 /** Every open tile costs the same; rock and unbroken coral are closed. */
 export const runCost: EntryCost = (cell, isBroken) => {
@@ -42,33 +40,23 @@ export function buildRunNav(level: Level, broken: ReadonlySet<number>, tuning: M
 
 /**
  * The ticks of Up a jump needs to land on ground 0, 1, 2... tiles higher, up to the highest a full
- * jump reaches. Worked out by stepping the jump the way the physics does: a jump speed, gravity, and
- * the heavier gravity while rising with Up let go.
+ * jump reaches, from the physics' own `jumpPeak`. Each entry is the shortest hold that gets there,
+ * except the last: a full jump, held to its top, so the highest jump also carries furthest.
  *
  * @throws {Error} When `tuning` lacks run's extras (see `runExtra`).
  */
 function jumpHoldTable(tuning: MediumTuning): number[] {
   const extra = runExtra(tuning);
-  const fullHold = Math.ceil((extra.jumpSpeed / extra.gravity) * TICKS_PER_SECOND);
+  const fullHold = Math.ceil(extra.jumpSpeed / extra.gravity / TICK_DT);
+  const reaches = (rise: number, hold: number) => rise * TILE + JUMP_CLEARANCE_PX <= jumpPeak(tuning, hold, TICK_DT);
   const table = [0];
-  for (let hold = 1; hold <= fullHold; hold++) {
-    const peak = jumpPeak(extra, hold);
-    while (table.length * TILE + JUMP_CLEARANCE_PX <= peak) table.push(hold);
+  for (let rise = 1; reaches(rise, fullHold); rise++) {
+    let hold = 1;
+    while (!reaches(rise, hold)) hold++;
+    table.push(hold);
   }
+  if (table.length > 1) table[table.length - 1] = fullHold;
   return table;
-}
-
-/** How high, px, a jump with Up held for `holdTicks` lifts the feet. */
-function jumpPeak(extra: ReturnType<typeof runExtra>, holdTicks: number): number {
-  const dt = 1 / TICKS_PER_SECOND;
-  let vy = -extra.jumpSpeed;
-  let rise = 0;
-  for (let tick = 0; vy < 0; tick++) {
-    const cut = tick < holdTicks ? 1 : extra.cutGravityMul;
-    vy += extra.gravity * cut * dt;
-    rise -= Math.min(vy, 0) * dt;
-  }
-  return rise;
 }
 
 /**
@@ -157,7 +145,7 @@ function startProblems(level: Level, nav: RunNav): LevelProblem[] {
 function finishProblems(level: Level): LevelProblem[] {
   const column = level.finishX;
   for (let row = 0; row < level.height; row++) {
-    if (level.glyphs[row]?.[column] === FINISH_GLYPH && hasGroundBelow(level, { x: column, y: row })) return [];
+    if (level.glyphs[row]?.[column] === FINISH && hasGroundBelow(level, { x: column, y: row })) return [];
   }
   return [
     {

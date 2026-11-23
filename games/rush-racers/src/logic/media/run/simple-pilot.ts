@@ -18,11 +18,6 @@ const RECOVER_TICKS = 30;
 const RECOVER_JUMP_TICKS = 18;
 /** How far past its front edge, px, a runner looks for the edge of a pit: late, so the jump carries furthest. */
 const PIT_LOOKAHEAD_PX = 4;
-/**
- * Ticks of Up for a full jump: past the top of any jump the tuning allows, since holding on after the
- * top changes nothing. Pits and blind climbs get it, because they need distance more than height.
- */
-const FULL_JUMP_HOLD_TICKS = 30;
 /** Tiles of flat, open ground ahead a rival wants before it dashes. */
 const DASH_CLEAR_TILES = 3;
 
@@ -64,10 +59,11 @@ export function steerRunner(
     memory.recoverDir = dir;
     memory.holdUpTicks = 0;
   }
-  if (memory.recoverTicks > 0)
-    return { move: recoveryMove(memory), kick: false, kickHeld: false, aim, recovering: true };
-
   const grounded = runMotion(racer.motion).grounded;
+  if (memory.recoverTicks > 0) {
+    return { move: recoveryMove(memory, grounded), kick: false, kickHeld: false, aim, recovering: true };
+  }
+
   if (grounded && memory.holdUpTicks === 0 && !memory.upHeld) {
     const rise = jumpRise(world, racer, dir);
     if (rise !== null) memory.holdUpTicks = holdTicksFor(runNav(world.nav), rise);
@@ -79,18 +75,24 @@ export function steerRunner(
   return { move: { x: dir, y: up ? -1 : 0 }, kick, kickHeld: kick, aim, recovering: false };
 }
 
-/** One tick of a forced recovery: away from the finish first, then toward it with Up held. */
-function recoveryMove(memory: RunPilot): Vec {
+/**
+ * One tick of a forced recovery: away from the finish first, then toward it with Up held. The jump
+ * waits for the runner to stand, so a recovery that starts in the air doesn't spend its press where
+ * no jump can fire.
+ */
+function recoveryMove(memory: RunPilot, grounded: boolean): Vec {
+  const jumpPhase = memory.recoverTicks <= RECOVER_JUMP_TICKS;
+  if (jumpPhase && !memory.upHeld && !grounded) return { x: memory.recoverDir, y: 0 };
   memory.recoverTicks--;
-  const jumping = memory.recoverTicks < RECOVER_JUMP_TICKS;
-  memory.upHeld = jumping;
-  return jumping ? { x: memory.recoverDir, y: -1 } : { x: -memory.recoverDir, y: 0 };
+  memory.upHeld = jumpPhase;
+  return jumpPhase ? { x: memory.recoverDir, y: -1 } : { x: -memory.recoverDir, y: 0 };
 }
 
 /** Ticks of Up for a jump onto ground `rise` tiles higher; a full jump for `FULL_JUMP` or out of reach. */
 function holdTicksFor(nav: RunNav, rise: JumpRise): number {
-  if (rise === FULL_JUMP) return FULL_JUMP_HOLD_TICKS;
-  return nav.jumpHoldTicks[rise] ?? FULL_JUMP_HOLD_TICKS;
+  const fullJump = nav.jumpHoldTicks.at(-1) ?? 0;
+  if (rise === FULL_JUMP) return fullJump;
+  return nav.jumpHoldTicks[rise] ?? fullJump;
 }
 
 /**

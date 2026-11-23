@@ -1,8 +1,8 @@
 /**
  * Medium conformance: what every medium must do for the race to work, checked on every shipped
  * medium and on the test-only glide medium. Each is raced through `createWorld` and `stepWorld` on
- * the small inline courses `geometries.ts` lists for it: it is deterministic, caps speed (horizontal
- * speed for media whose dash keeps gravity), honours its kick cooldown, shows every MoveModifiers
+ * the small inline courses `geometries.ts` lists for it: it is deterministic, caps speed (only
+ * horizontal speed for media whose cases say so), honours its kick cooldown, shows every MoveModifiers
  * field, makes progress through its arena in each direction its own spec allows, sends a rival the
  * progress backstop catches into its own recovery, and gets every rival through each of its
  * geometries without stalling. A new medium joins by being in `MEDIA` (or registered here) and
@@ -68,12 +68,12 @@ function botRace(medium: Medium, ticks: number) {
 }
 
 /**
- * The player's speed after each of `ticks` steps holding `input`: horizontal speed in a medium whose
- * dash keeps gravity (falling speed isn't capped by `maxSpeed` there), else the full speed.
+ * The player's speed after each of `ticks` steps holding `input`, on the axes the medium's
+ * `speedCapAxes` says `maxSpeed` caps: only |vx| for media that fall under gravity, else the full speed.
  */
 function speedsHolding(medium: Medium, world: World, input: Intent, ticks: number): number[] {
   const player = playerOf(world);
-  const horizontalOnly = medium.effects.dashAxes === 'horizontal';
+  const horizontalOnly = casesFor(medium).speedCapAxes === 'horizontal';
   return Array.from({ length: ticks }, () => {
     stepWorld(world, input, TICK_DT);
     return horizontalOnly ? Math.abs(player.body.vx) : length(player.body.vx, player.body.vy);
@@ -140,8 +140,7 @@ const MODIFIER_CASES: readonly ModifierCase[] = [
     field: 'dragMul',
     changed: (base) => base.dragMul * 2,
     measure: (medium, mods) => {
-      // A few ticks only: ground friction stops a runner within ten, and then every dragMul reads 0.
-      const { body } = moveInOpen(medium, mods, 4, hold({ x: 0, y: 0 }), (world) => {
+      const { body } = moveInOpen(medium, mods, casesFor(medium).arena.coastTicks, hold({ x: 0, y: 0 }), (world) => {
         playerOf(world).body.vx = 100;
       }).player;
       return body.vx;

@@ -3,19 +3,21 @@
  * `distanceAt`, `nextTile`, `validateLevel`, `steer`) on small inline levels, and whole races on the
  * `run-test` course.
  */
-import { EventLog } from '@arcade/core';
+import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../../ai/profiles.ts';
 import { courseById, levelOf } from '../../courses/index.ts';
 import { race } from '../../difficulty/race-bots.ts';
 import type { GameEvent } from '../../events.ts';
 import { parseLevel } from '../../level/parse.ts';
-import { courseFromLevel, placeOnTile, racerOf } from '../../test-world.ts';
+import { courseFromLevel, hold, IDLE, placeOnTile, racerOf } from '../../test-world.ts';
 import { CHARACTER_IDS, type Racer, TILE, type World } from '../../types.ts';
-import { createWorld } from '../../world.ts';
+import { createWorld, stepWorld } from '../../world.ts';
 import { MEDIA } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { runMotion } from './data.ts';
+import { JUMP_CLEARANCE_PX } from './simple-way.ts';
+import { runNav } from './way-data.ts';
 
 const run = MEDIA.run;
 
@@ -115,6 +117,41 @@ describe('the run way', () => {
   it('steps to the neighbour nearer the finish, and stops at the finish', () => {
     expect(run.nextTile(world, { x: 3, y: 6 })).toEqual({ x: 1, y: 0 });
     expect(run.nextTile(world, { x: 18, y: 6 })).toBeNull();
+  });
+});
+
+/** How high, px, the player's feet rise on a real jump with Up held for `holdTicks`, from standing on a flat floor. */
+function measuredJump(holdTicks: number): number {
+  const world = runWorld(PIT_LEVEL);
+  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+  const player = racerOf(world, 'player');
+  for (let tick = 0; tick < 10; tick++) stepWorld(world, IDLE, TICK_DT);
+  const floorY = player.body.y;
+  let topY = floorY;
+  for (let tick = 0; tick < 90; tick++) {
+    stepWorld(world, tick < holdTicks ? hold({ x: 0, y: -1 }) : IDLE, TICK_DT);
+    topY = Math.min(topY, player.body.y);
+  }
+  return floorY - topY;
+}
+
+describe('the run jump table', () => {
+  const table = runNav(runWorld(PIT_LEVEL).nav).jumpHoldTicks;
+
+  it('lists holds that lift real jumps onto each height, the shorter ones only just, the last one held to the top', () => {
+    const heights = table.slice(1).map((_, index) => index + 1);
+    const short = heights.filter((rise) => measuredJump(table[rise] ?? 0) < rise * TILE + JUMP_CLEARANCE_PX);
+    const overlong = heights
+      .slice(0, -1)
+      .filter(
+        (rise) => (table[rise] ?? 0) > 1 && measuredJump((table[rise] ?? 0) - 1) >= rise * TILE + JUMP_CLEARANCE_PX,
+      );
+    const fullJump = table.at(-1) ?? 0;
+
+    expect(heights.length).toBeGreaterThanOrEqual(3);
+    expect(short).toEqual([]);
+    expect(overlong).toEqual([]);
+    expect(measuredJump(fullJump + 10)).toBeCloseTo(measuredJump(fullJump), 6);
   });
 });
 
@@ -232,6 +269,17 @@ describe('the run rival pilot', () => {
     const standingStill = standingRival(world, 2, 6);
     standingStill.kickCooldown = 0;
     expect(steer(world, standingStill, DASH_ROLL).kick).toBe(false);
+  });
+
+  it('starts a recovery jump only once a runner caught in the air stands again', () => {
+    const world = runWorld(PIT_LEVEL);
+    const tess = standingRival(world, 4, 6);
+    runMotion(tess.motion).grounded = false;
+    const inTheAir = Array.from({ length: 20 }, (_, tick) => steer(world, tess, NO_DASH, tick === 0));
+    runMotion(tess.motion).grounded = true;
+
+    expect(inTheAir.filter((steering) => steering.move.y !== 0 || !steering.recovering)).toEqual([]);
+    expect(steer(world, tess)).toMatchObject({ move: { x: 1, y: -1 }, recovering: true });
   });
 
   it('on a forced recovery backs off from the finish, then jumps toward it', () => {

@@ -25,6 +25,8 @@ export interface Arena {
   runway: Vec;
   /** Idle ticks a racer placed in the arena needs to settle (land on its floor) before it is measured. */
   settleTicks: number;
+  /** Ticks a racer coasts from 100 px/s before dragMul is read off it: long enough to slow, too short to stop. */
+  coastTicks: number;
 }
 
 /** What the conformance suite races a medium on. */
@@ -34,6 +36,11 @@ export interface MediumCases {
   /** The directions the medium's own spec says a racer moves freely in through the arena. */
   directions: readonly Vec[];
   arena: Arena;
+  /**
+   * The speed `maxSpeed` caps: 'both' the full speed, 'horizontal' only |vx|, for media where gravity
+   * sets falling speed (capped by its own `maxFall`) and the cap is on running and dashing.
+   */
+  speedCapAxes: 'both' | 'horizontal';
 }
 
 // A shelf hangs over the starts from the right wall: out from under it on the left, then over the top.
@@ -176,6 +183,7 @@ const OPEN_ARENA: Arena = {
   centre: { x: 15, y: 11 },
   runway: { x: 2, y: 6 },
   settleTicks: 0,
+  coastTicks: 30,
 };
 
 /** A long flat floor with the starts at the left and the finish far right; its centre stands on the floor. */
@@ -190,6 +198,8 @@ const OPEN_GROUND: Arena = {
   centre: { x: 30, y: 3 },
   runway: { x: 9, y: 3 },
   settleTicks: 10,
+  // Ground friction stops a runner from 100 px/s in about 7 ticks.
+  coastTicks: 4,
 };
 
 const EIGHT_WAYS: readonly Vec[] = [
@@ -208,6 +218,7 @@ const FREE_MOVEMENT: MediumCases = {
   geometries: [OVERHANG, ONE_TILE_GAP, SHAFT_WITH_LIP, DROP],
   directions: EIGHT_WAYS,
   arena: OPEN_ARENA,
+  speedCapAxes: 'both',
 };
 
 /** Media that run on the ground under gravity and jump. */
@@ -218,6 +229,7 @@ const ON_FOOT: MediumCases = {
     { x: -1, y: 0 },
   ],
   arena: OPEN_GROUND,
+  speedCapAxes: 'horizontal',
 };
 
 /** The cases each medium is raced on, by medium id. A new medium adds its own entry. */

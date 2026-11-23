@@ -63,7 +63,8 @@ const ENEMY_GLYPHS: ReadonlyMap<string, EnemyKind> = new Map([
 ]);
 
 const START_DIGITS = '1234';
-const FINISH = 'F';
+/** The glyph that marks the finish line. */
+export const FINISH = 'F';
 const VALID_CHARACTERS = [...TERRAIN.keys(), ...START_DIGITS, FINISH, ...OBJECTS.keys(), ...ENEMY_GLYPHS.keys()].join(
   '',
 );
