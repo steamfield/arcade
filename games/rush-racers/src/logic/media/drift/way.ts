@@ -1,21 +1,16 @@
 /**
  * The way to the finish as drift answers it, from its fields: an aim from a body on any of the three
- * routes, the next tile from a tile, the distance left, whether ice lies just ahead, and the two
- * questions a drifter with momentum asks of the space in front of it: how far it can fly straight
- * before a wall, and whether the way runs straight ahead.
+ * routes, the next tile from a tile, the distance left, and whether ice lies just ahead.
  */
-import { downhillPath, hasClearSweep, openTiles, steerDirection, tileOf } from '../../ai/steer.ts';
+import { downhillPath, openTiles, steerDirection } from '../../ai/steer.ts';
 import { cellAt, isSolid } from '../../level/query.ts';
-import { length } from '../../num.ts';
 import { fieldAt } from '../../race/flowfield.ts';
-import { type Box, TILE, type Vec, type World } from '../../types.ts';
+import type { Box, Vec, World } from '../../types.ts';
 import { type DriftNav, driftNav } from './way-data.ts';
 
 /** Which field a drifter follows: round ice, through it at a price, or ramming through it. */
 export type DriftRoute = 'steer' | 'smash' | 'ram';
 
-const centreOf = (body: Box): Vec => ({ x: body.x + body.w / 2, y: body.y + body.h / 2 });
-const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE });
 const fieldOf = (nav: DriftNav, route: DriftRoute): Float32Array => nav[route];
 
 /**
