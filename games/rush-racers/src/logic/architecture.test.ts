@@ -26,7 +26,8 @@ const COURSE_FILES = readdirSync(join(SRC, 'logic/courses'))
 
 /**
  * A pattern for code that branches on one of `ids`: compares with it (`=== 'swim'`, `'run' !==`) or
- * switches on it (`case 'reef':`).
+ * switches on it (`case 'reef':`). It reads literals only, so a comparison against a constant holding
+ * an id, or an object keyed by ids and indexed by one, gets past it; review catches those.
  */
 function branchOn(ids: readonly string[]): RegExp {
   const id = `'(?:${ids.join('|')})'`;
@@ -39,15 +40,26 @@ const WORLD_IDS = Object.keys(WORLDS);
 const BRANCH_ON_MEDIUM = branchOn(MEDIUM_IDS);
 const BRANCH_ON_WORLD = branchOn(WORLD_IDS);
 
-/** This file, whose examples of branching are the patterns' own test cases. */
-const SELF = 'logic/architecture.test.ts';
+/** A line that is only a comment: `//`, or a `/**` block's opening, middle or closing line. */
+const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 
-/** Each file outside `home` (and other than this one) that branches by `pattern`, with its first offending line. */
+/** The 1-based number of the first code line in `text` that branches by `pattern`, or null. Comment lines don't count. */
+function firstBranch(text: string, pattern: RegExp): number | null {
+  const line = text.split('\n').findIndex((row) => !COMMENT_LINE.test(row) && pattern.test(row));
+  return line < 0 ? null : line + 1;
+}
+
+/**
+ * Each source file outside `home` that branches by `pattern`, with its first offending line. Tests
+ * are left out: they may pick a medium or world by id to set up a race.
+ */
 function branchingOutside(home: readonly string[], pattern: RegExp): string[] {
-  const outside = FILES.filter(({ path }) => path !== SELF && !home.some((prefix) => path.startsWith(prefix)));
+  const outside = FILES.filter(
+    ({ path }) => !path.endsWith('.test.ts') && !home.some((prefix) => path.startsWith(prefix)),
+  );
   return outside.flatMap(({ path, text }) => {
-    const line = text.split('\n').findIndex((row) => pattern.test(row));
-    return line < 0 ? [] : [`${path}:${line + 1}`];
+    const line = firstBranch(text, pattern);
+    return line === null ? [] : [`${path}:${line}`];
   });
 }
 
@@ -72,6 +84,13 @@ describe('the course and medium seams', () => {
     expect(branches.filter((line) => !BRANCH_ON_MEDIUM.test(line) && !BRANCH_ON_WORLD.test(line))).toEqual([]);
     const fine = ["medium: 'run',", "const run = 'swim';", "id === 'running'", "case 'reefs':"];
     expect(fine.filter((line) => BRANCH_ON_MEDIUM.test(line) || BRANCH_ON_WORLD.test(line))).toEqual([]);
+    const comments = ["// only when medium === 'run'", " * the `world.id === 'thornwood'` case", "/** case 'reef': */"];
+    expect(comments.map((line) => firstBranch(line, BRANCH_ON_MEDIUM) ?? firstBranch(line, BRANCH_ON_WORLD))).toEqual([
+      null,
+      null,
+      null,
+    ]);
+    expect(firstBranch("// a note\nif (medium === 'run') {", BRANCH_ON_MEDIUM)).toBe(2);
   });
 
   it('never branches on a medium id outside logic/media/', () => {

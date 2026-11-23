@@ -5,10 +5,11 @@
  * at a solid tile, as a loose pearl's does: one knocked off a runner settles on the ground under it
  * rather than sinking into the earth out of reach.
  */
-import { isSolid } from '../level/query.ts';
+import { isLedge, isSolid, tileIndex } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { gainItem, holds, inventoryFull } from '../powerups/inventory.ts';
 import { LOOSE } from '../powerups/tuning.ts';
+import { moveRulesFor } from '../race/move.ts';
 import { hitbox } from '../racers.ts';
 import { type Box, type LoosePowerUp, type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
 
@@ -44,11 +45,11 @@ export function updateLoose(world: World, racers: readonly Racer[], dt: number):
 
 /**
  * One loose pickup's tick, moving `driftPx` down (negative is up) unless its centre would end in a
- * solid tile. Returns true when it is gone: expired or grabbed.
+ * tile that stops it (`stopsDrift`). Returns true when it is gone: expired or grabbed.
  */
 function driftAndGrab(world: World, loose: LoosePowerUp, racers: readonly Racer[], driftPx: number): boolean {
   const nextY = loose.y + driftPx;
-  if (!isSolid(world.level, world.broken, Math.floor(loose.x / TILE), Math.floor(nextY / TILE))) loose.y = nextY;
+  if (!stopsDrift(world, loose, nextY)) loose.y = nextY;
   loose.ttl -= 1;
   if (loose.ttl <= 0) return true;
   if (loose.grabDelay > 0) {
@@ -63,6 +64,19 @@ function driftAndGrab(world: World, loose: LoosePowerUp, racers: readonly Racer[
   world.events.emit({ type: 'loose.grabbed', id: grabber.id, kind: loose.kind, charges: loose.charges });
   gainItem(world, grabber, loose.kind, loose.charges);
   return true;
+}
+
+/**
+ * True when a pickup moving its centre to `nextY` would end in a tile that stops it: a solid tile
+ * (`isSolid`), a tile solid only to bodies in this medium (a crate, `moveRulesFor`), or a ledge it
+ * reaches from above, as a body lands on one.
+ */
+function stopsDrift(world: World, loose: LoosePowerUp, nextY: number): boolean {
+  const tx = Math.floor(loose.x / TILE);
+  const ty = Math.floor(nextY / TILE);
+  if (isSolid(world.level, world.broken, tx, ty)) return true;
+  if (moveRulesFor(world).solidTiles.has(tileIndex(world.level, tx, ty))) return true;
+  return nextY > loose.y && ty > Math.floor(loose.y / TILE) && isLedge(world.level, tx, ty);
 }
 
 /** True when two boxes share some positive area; edge-only contact doesn't count. */

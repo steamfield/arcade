@@ -183,6 +183,28 @@ describe('on land', () => {
     racer.body.y = 5 * TILE - racer.body.h;
   }
 
+  it.each([
+    ['a ledge', '='],
+    ['a crate', '?'],
+  ])('rests on %s rather than falling through it', (_what, cell) => {
+    // Row 2 holds the platform over columns 6-8; the item drops onto it from row 1.
+    const level = `
+    ####################
+    #..................#
+    #.....${cell.repeat(3)}..........#
+    #..................#
+    #....1.2.3.4.....F.#
+    ####################
+  `;
+    const log = new EventLog<GameEvent>(100_000);
+    const world = createWorld(courseFromLevel(level, 'run'), log, { seed: 1 });
+    world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+    spawnLoose(world, 'puffer', 1, { x: 7 * TILE + TILE / 2, y: TILE + TILE / 2 });
+    step(world, log, LOOSE.grabDelayTicks);
+
+    expect(world.loose.map((item) => Math.floor(item.y / TILE))).toEqual([1]);
+  });
+
   it('settles on the ground under a runner it was knocked off, where another runner beside it grabs it after the delay', () => {
     const log = new EventLog<GameEvent>(100_000);
     const world = createWorld(courseFromLevel(FIELD, 'run'), log, { seed: 1 });
