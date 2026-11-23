@@ -18,6 +18,7 @@ import { type ActionName, actionGlyphWidth, createActionGlyph, GLYPH_SIZE } from
 import type { HintState } from './hints.ts';
 import { Layer } from './layers.ts';
 import { SPLASH_RECT } from './threat-hud.ts';
+import { TOUCH_ZONES } from './threat-math.ts';
 
 /** The hint line centres on x 168, the middle of the safe column. */
 const LINE_X = BESIDE_PLAYER_X;
@@ -31,10 +32,17 @@ const PULSE_GAP = 3;
 const WELL_TOP = 23;
 const WELL_HEIGHT = 17;
 /**
- * The back link's corner (UI.md "Safe zones": x 248 and right, y 0-26). A glyph that would reach
+ * The back link's corner (UI.md "Safe zones", the first of `TOUCH_ZONES`). A glyph that would reach
  * into it, Nib's SPACE cap beside a four-slot well, drops to just under it instead.
  */
-const BACK_LINK = { left: 248, bottom: 26 } as const;
+const BACK_LINK = backLinkCorner();
+
+/** The back link's left edge and bottom, from the first touch zone. */
+function backLinkCorner(): { left: number; bottom: number } {
+  const zone = TOUCH_ZONES[0];
+  if (!zone) throw new Error('threat-math TOUCH_ZONES is empty; the hint view needs the back link zone first');
+  return { left: zone.x, bottom: zone.y + zone.h };
+}
 /** The glyph on the HUD blinks every this many ticks, 2 blinks a second. */
 const PULSE_TICKS = 15;
 

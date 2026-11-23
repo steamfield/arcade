@@ -12,7 +12,7 @@
  *   player sees it as DASH! with the dash control.
  * - SWAP: the first time the player holds two items while no other hint wants the screen, the next
  *   item control (E on a keyboard, the swap button on touch) and SWAP!, once a race: it goes when
- *   the player swaps or after `SWAP_TICKS`.
+ *   the player swaps or once it has been on screen `SWAP_TICKS`. A hint that takes its spot pauses it.
  * - PULSE: items have sat unused for a while, so the fire glyph pulses on the HUD. It starts where
  *   PRESS FIRE gives up, so there is no silent gap.
  * - GUIDE: the player has pushed a while without getting closer to the finish (a wall in the way),
@@ -44,7 +44,7 @@ export const KICK_LEAD_TICKS = 8;
 /** Ticks stuck after which the guide arrow takes the screen from PRESS FIRE (4.5 s; before that it waits its turn). */
 export const GUIDE_OVER_PRESS_FIRE_TICKS = 270;
 
-/** Ticks the SWAP prompt stays up at most, from the tick it first shows (4 s). */
+/** Ticks the SWAP prompt is shown at most, counting only ticks it is on screen (4 s). */
 export const SWAP_TICKS = 240;
 
 /** The selected item as last seen, so a move of the selection can be told from a swap. */
@@ -61,8 +61,8 @@ export interface HintMemory {
   useLearned: boolean;
   /** The tick the inventory last became "held and unused": it holds something and nothing was used since. Null when it doesn't. */
   unusedSince: number | null;
-  /** The tick SWAP first showed this race, or null while it never has. It shows once. */
-  swapShownAt: number | null;
+  /** Ticks SWAP has been on screen this race; it retires at `SWAP_TICKS`. */
+  swapShownTicks: number;
   /** True once the player has swapped items: SWAP is retired for the race. */
   swapLearned: boolean;
   /** The selected item last tick, or null when nothing was selected. */
@@ -92,7 +92,7 @@ export function newHintMemory(): HintMemory {
     firstHeldAt: null,
     useLearned: false,
     unusedSince: null,
-    swapShownAt: null,
+    swapShownTicks: 0,
     swapLearned: false,
     lastSelected: null,
   };
@@ -136,9 +136,11 @@ export function updateHints(memory: HintMemory, world: World, config: HintConfig
   const pressFire = holding && !memory.useLearned && firstHeldAt !== null && pressFireOpen;
   const kick = kickIsUseful(world);
   const guide = guideArrow(world, kick, pressFire);
-  const showPressFire = pressFire && guide === null && !kick;
-  const spotTaken = kick || showPressFire || guide !== null;
-  const swap = !spotTaken && swapIsDue(memory, held, tick);
+  // A latched squid puts the threat HUD's own DASH! prompt in the hint spot.
+  const latched = player.status.latched > 0;
+  const showPressFire = pressFire && guide === null && !kick && !latched;
+  const spotTaken = latched || kick || showPressFire || guide !== null;
+  const swap = !spotTaken && swapIsDue(memory, held);
   const pulse = memory.unusedSince !== null && tick - memory.unusedSince >= pulseAfter;
   return {
     pressFire: showPressFire,
@@ -151,16 +153,13 @@ export function updateHints(memory: HintMemory, world: World, config: HintConfig
 
 /**
  * True when SWAP should show this tick, given no other hint wants the screen: two or more items are
- * held, the player hasn't swapped yet, and it either has never shown or is still inside the
- * `SWAP_TICKS` it got when it first did. Marks the first showing in `memory`.
+ * held, the player hasn't swapped yet, and it has been shown fewer than `SWAP_TICKS`. Counts this
+ * tick as shown in `memory` when it is.
  */
-function swapIsDue(memory: HintMemory, held: number, tick: number): boolean {
-  if (memory.swapLearned || held < 2) return false;
-  if (memory.swapShownAt === null) {
-    memory.swapShownAt = tick;
-    return true;
-  }
-  return tick - memory.swapShownAt < SWAP_TICKS;
+function swapIsDue(memory: HintMemory, held: number): boolean {
+  if (memory.swapLearned || held < 2 || memory.swapShownTicks >= SWAP_TICKS) return false;
+  memory.swapShownTicks += 1;
+  return true;
 }
 
 /** The racer's selected slot and its kind, or null with nothing selected. */

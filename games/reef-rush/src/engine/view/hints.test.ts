@@ -233,6 +233,26 @@ describe('SWAP', () => {
     expect([after.pressFire, after.swap]).toEqual([false, true]);
   });
 
+  it('stays hidden while a squid is latched on the player, whose DASH! prompt holds the spot', () => {
+    const { world, player, run } = firedOnce();
+    player.status.latched = 60;
+    gainItem(world, player, 'inkSac', 3);
+    expect(run(1)).toEqual(NO_HINTS);
+  });
+
+  it('pauses while a squid takes the spot, then comes back for the rest of its time', () => {
+    const { world, player, run } = firedOnce();
+    gainItem(world, player, 'inkSac', 3);
+    expect(run(SWAP_TICKS / 2).swap).toBe(true);
+    lockSquidOnPlayer(world, 40);
+    const interrupted = run(1);
+    expect([interrupted.kick, interrupted.swap]).toEqual([true, false]);
+    world.squids.length = 0;
+    // Half its time was used before the squid; it gets the other half back once the squid is gone.
+    expect(run(SWAP_TICKS / 2 - 2).swap).toBe(true);
+    expect(run(2).swap).toBe(false);
+  });
+
   it('is silent on a later Normal race', () => {
     const { world, player, run } = firedOnce(hintConfig(3, 'normal'));
     gainItem(world, player, 'inkSac', 3);
@@ -241,19 +261,27 @@ describe('SWAP', () => {
 });
 
 describe('one hint at a time', () => {
-  it('shows at most one hint on every tick while items, a squid and a wall all call for one', () => {
+  it('shows at most one hint on every tick while items, a squid and its latch all call for one', () => {
     const { world, player, run } = race();
     gainItem(world, player, 'puffer', 2);
     gainItem(world, player, 'inkSac', 3);
-    const shown: number[] = [];
-    const count = (hints: ReturnType<typeof run>) =>
-      [hints.pressFire, hints.kick, hints.swap, hints.pulseItems, hints.guide !== null].filter(Boolean).length;
+    const seen = { pressFire: 0, kick: 0, swap: 0, pulseItems: 0 };
+    let most = 0;
     for (let tick = 0; tick < UNUSED_PULSE_TICKS + SWAP_TICKS + 60; tick++) {
       if (tick === 20) run(1, FIRE);
       if (tick === 100) lockSquidOnPlayer(world, 40);
-      shown.push(count(run(1)));
+      // A latch partway through: the threat HUD's DASH! holds the spot, so no hint may show.
+      if (tick === 200) player.status.latched = 60;
+      const hints = run(1);
+      const on = [hints.pressFire, hints.kick, hints.swap, hints.pulseItems, hints.guide !== null];
+      most = Math.max(most, on.filter(Boolean).length);
+      if (player.status.latched > 0) expect(on.some(Boolean), `tick ${tick}`).toBe(false);
+      for (const key of Object.keys(seen) as (keyof typeof seen)[]) if (hints[key]) seen[key] += 1;
     }
-    expect(Math.max(...shown)).toBe(1);
+    expect(most).toBe(1);
+    expect(seen.pressFire, 'PRESS FIRE showed').toBeGreaterThan(0);
+    expect(seen.kick, 'DASH showed').toBeGreaterThan(0);
+    expect(seen.swap, 'SWAP showed').toBeGreaterThan(0);
   });
 });
 
