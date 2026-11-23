@@ -32,6 +32,8 @@ interface Peer {
   session: Session;
   desyncs: Desync[];
   kicks: RacerId[];
+  /** Every binary message that arrived for this peer, with the sender's peer id. */
+  binaryArrived: { from: number; bytes: Uint8Array }[];
 }
 
 interface RaceOptions {
@@ -79,7 +81,10 @@ function isLeft(message: unknown): message is { type: 'left'; peer: number } {
 /** Hands everything that arrived for `peer` to its session, in arrival order, as the client will. */
 function handleArrivals(peer: Peer): void {
   for (const event of peer.connection.poll()) {
-    if (event.kind === 'binary') peer.session.receive(slotOfPeer(event.from), event.bytes);
+    if (event.kind === 'binary') {
+      peer.binaryArrived.push({ from: event.from, bytes: event.bytes });
+      peer.session.receive(slotOfPeer(event.from), event.bytes);
+    }
     if (event.kind === 'json' && isLeft(event.message)) peer.session.peerLeft(slotOfPeer(event.message.peer));
   }
 }
@@ -103,13 +108,16 @@ function createPeer(room: MemoryRoom, slot: RacerId, humans: readonly RacerId[],
     kickAfterMs: options.kickAfterMs ?? null,
     requestKick: (kicked) => kicks.push(kicked),
   });
-  return { slot, connection, world, session, desyncs, kicks };
+  return { slot, connection, world, session, desyncs, kicks, binaryArrived: [] };
 }
 
 function createRace(options: RaceOptions): Race {
   const room = createMemoryRoom(options.latency);
   const humans = RACER_IDS.slice(0, options.peers);
   const peers = humans.map((slot) => createPeer(room, slot, humans, options));
+  // The room relays inputs only between racers, so the host starts a race for everyone, as the client will.
+  const slots = Object.fromEntries(humans.map((slot, index) => [String(index + 1), slot]));
+  peers[0]?.connection.send({ type: 'start', slots });
   const left = new Set<Peer>();
   let roundsRun = 0;
   const round = (skip: Skip = () => false) => {
@@ -226,7 +234,6 @@ describe('a stall', () => {
     const delay = 4;
     const race = createRace({ peers: 2, delay });
     const [host, guest] = race.peers as [Peer, Peer];
-    const listener = race.room.connect();
     roundsUntil(race, () => host.session.simTick >= 120);
     roundsUntil(
       race,
@@ -239,9 +246,8 @@ describe('a stall', () => {
     host.session.pump(scriptedInput('player', 1), STEP_MS);
     for (let round = 0; round < 30; round++) race.round();
 
-    const useTicks = listener
-      .poll()
-      .flatMap((event) => (event.kind === 'binary' && event.from === 1 ? [decode(event.bytes)] : []))
+    const useTicks = guest.binaryArrived
+      .flatMap((arrived) => (arrived.from === 1 ? [decode(arrived.bytes)] : []))
       .flatMap((message) => (message?.kind === 'inputs' && message.input.use ? [message.tick] : []));
     expect(useTicks).toEqual([scheduledNext]);
   });

@@ -9,7 +9,7 @@ import { hashWorld } from '../logic/hash.ts';
 import type { RacerId, TickInput, World } from '../logic/types.ts';
 import { stepRace } from '../logic/world.ts';
 import { decode, encodeHash, encodeInputs, IDLE_INPUT } from './codec.ts';
-import { createHashLedger, type HashLedger } from './hash-ledger.ts';
+import { createHashLedger, HASH_INTERVAL_TICKS, type HashLedger } from './hash-ledger.ts';
 
 /** A world hash that differed between two peers. */
 export interface Desync {
@@ -67,8 +67,6 @@ export interface Session {
 
 const MIN_DELAY = 1;
 const MAX_DELAY = 12;
-/** Stepped ticks between hash checks. */
-const HASH_EVERY = 60;
 
 /** Everything a session tracks between pumps, RFC 5.3's state. `simTick` is `world.tick`. */
 interface Lockstep {
@@ -213,7 +211,7 @@ function tryStep(lockstep: Lockstep): boolean {
   for (const slotInputs of lockstep.buffer.values()) slotInputs.delete(tick);
   lockstep.stalledMs = 0;
   lockstep.kickedAt.clear();
-  if (tick % HASH_EVERY === 0) sendHash(lockstep, tick);
+  if (tick % HASH_INTERVAL_TICKS === 0) sendHash(lockstep, tick);
   return true;
 }
 
