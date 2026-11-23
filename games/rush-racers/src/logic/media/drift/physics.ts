@@ -84,7 +84,7 @@ function feelsPull(racer: Racer): boolean {
   return racer.status.fallen === 0 && racer.status.trapped === 0;
 }
 
-/** Accelerates the body by `pull`, px/s², for `dt` seconds; nothing but `maxSpeed` limits what it adds. */
+/** Accelerates the body by `pull`, px/s², for `dt` seconds; unlike thrust it can carry the racer past cruise (drag and `maxSpeed` still apply). */
 function fall(body: Body, pull: Vec, dt: number): void {
   body.vx += pull.x * dt;
   body.vy += pull.y * dt;
