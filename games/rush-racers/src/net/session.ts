@@ -250,10 +250,14 @@ function receive(lockstep: Lockstep, slot: RacerId, bytes: Uint8Array): boolean 
   return receiveInput(lockstep, slot, message.tick, message.input);
 }
 
-/** Holds a remote input, unless its slot is gone or it is not newer than the last one held. */
+/**
+ * Holds a remote input when it is for the slot's next expected tick. The relay is ordered, so any
+ * other tick is a peer's bug, and holding it would leave a gap the session would wait on forever.
+ */
 function receiveInput(lockstep: Lockstep, slot: RacerId, tick: number, input: TickInput): boolean {
   const { goneFrom, lastInput, buffer } = lockstep;
-  if (goneFrom.has(slot) || tick <= (lastInput.get(slot) ?? lockstep.options.delay)) return false;
+  const expected = (lastInput.get(slot) ?? lockstep.options.delay) + 1;
+  if (goneFrom.has(slot) || tick !== expected) return false;
   buffer.get(slot)?.set(tick, input);
   lastInput.set(slot, tick);
   return true;

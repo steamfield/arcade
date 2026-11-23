@@ -58,4 +58,18 @@ describe('decode', () => {
   ])('returns null for %s bytes', (_name, bytes) => {
     expect(decode(bytes)).toBeNull();
   });
+
+  /** The inputs message for tick 7 with its move byte and button byte replaced. */
+  const inputWith = (moveByte: number, buttonByte: number) =>
+    Uint8Array.from([...inputs.slice(0, 5), moveByte, buttonByte]);
+
+  it.each([
+    ['the horizontal move field', inputWith(0b0011, 0)],
+    ['the vertical move field', inputWith(0b1100, 0)],
+    ['the cycle field', inputWith(0, 0b11000)],
+    ['an unused bit of the move byte', inputWith(0b10000, 0)],
+    ['an unused bit of the button byte', inputWith(0, 0b100000)],
+  ])('returns null for an input with the reserved pattern in %s', (_name, bytes) => {
+    expect(decode(bytes)).toBeNull();
+  });
 });

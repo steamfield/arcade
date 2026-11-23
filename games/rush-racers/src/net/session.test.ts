@@ -52,6 +52,8 @@ interface Race {
   runToEnd(skip?: Skip): void;
   /** Drops `peer`'s connection as a lost network would; it takes no further part. */
   leave(peer: Peer): void;
+  /** Rounds run so far, which is also the room's clock: a message sent in round n with latency l arrives at the end of round n + l. */
+  readonly roundsRun: number;
 }
 
 /**
@@ -121,7 +123,16 @@ function createRace(options: RaceOptions): Race {
     left.add(peer);
     room.drop(peers.indexOf(peer) + 1, 'lost');
   };
-  return { room, peers, round, runToEnd, leave };
+  return {
+    room,
+    peers,
+    round,
+    runToEnd,
+    leave,
+    get roundsRun() {
+      return roundsRun;
+    },
+  };
 }
 
 /** Runs rounds until `done` holds, failing after a bound so a broken session cannot hang the test. */
@@ -175,24 +186,33 @@ describe('sessions that keep exchanging inputs', () => {
 });
 
 describe('a stall', () => {
-  it('stops the clock of the peer waiting on a late input, which then resumes one tick per pump', () => {
-    const race = createRace({ peers: 2, delay: 4 });
-    const [host, guest] = race.peers as [Peer, Peer];
+  it('stops the clock of the peer waiting on late inputs, which then steps one tick per pump through the backlog', () => {
+    const lateRounds = { from: Number.POSITIVE_INFINITY, until: 0, arriveAt: 0 };
+    let roundNow = () => 0;
+    // Everything sent during the late rounds arrives together, so a backlog of inputs lands at once.
+    const latency = () => {
+      const round = roundNow();
+      return round >= lateRounds.from && round < lateRounds.until ? lateRounds.arriveAt - round : 0;
+    };
+    const race = createRace({ peers: 2, delay: 4, latency });
+    roundNow = () => race.roundsRun;
+    const [host] = race.peers as [Peer, Peer];
     roundsUntil(race, () => host.session.simTick >= 300);
-    const hostOnly = (peer: Peer) => peer === guest;
+    lateRounds.from = race.roundsRun;
+    lateRounds.until = race.roundsRun + 10;
+    lateRounds.arriveAt = race.roundsRun + 30;
 
-    roundsUntil(race, () => host.session.waitingOn.length > 0, hostOnly);
+    roundsUntil(race, () => host.session.waitingOn.length > 0);
     const stalledAt = { sim: host.session.simTick, target: host.session.targetTick };
-    for (let round = 0; round < 10; round++) race.round(hostOnly);
+    roundsUntil(race, () => race.roundsRun >= lateRounds.arriveAt);
     expect(host.session).toMatchObject({ simTick: stalledAt.sim, targetTick: stalledAt.target, waitingOn: ['tess'] });
-    expect(host.session.stalledMs).toBe(11 * STEP_MS);
 
     const progress: number[] = [];
-    for (let round = 0; round < 30; round++) {
+    for (let round = 0; round < 10; round++) {
       race.round();
       progress.push(host.session.simTick - stalledAt.sim);
     }
-    expect(progress).toEqual(progress.map((_, index) => index));
+    expect(progress).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(host.session.stalledMs).toBe(0);
   });
 
@@ -348,7 +368,7 @@ function nudge(peer: Peer): void {
 }
 
 describe('dropped messages', () => {
-  it('leave input for a gone slot and malformed bytes without effect', () => {
+  it('leave input for a gone slot, input that skips ticks and malformed bytes without effect', () => {
     const race = createRace({ peers: 3, delay: 3 });
     const [host, leaver, witness] = race.peers as [Peer, Peer, Peer];
     roundsUntil(race, () => host.session.simTick >= 100);
@@ -356,14 +376,16 @@ describe('dropped messages', () => {
     roundsUntil(race, () => host.session.simTick >= 120);
 
     const goneInput = encodeInputs(host.session.simTick + 4, { ...scriptedInput('tess', 0), use: true });
+    const gappedInput = encodeInputs(host.session.simTick + 50, scriptedInput('squib', 0));
     const accepted = [
       host.session.receive('tess', goneInput),
+      host.session.receive('squib', gappedInput),
       host.session.receive('squib', new Uint8Array([9, 9, 9])),
       host.session.receive('squib', new Uint8Array(0)),
     ];
     race.runToEnd();
 
-    expect(accepted).toEqual([false, false, false]);
+    expect(accepted).toEqual([false, false, false, false]);
     expectSameFinishedRace([host, witness], ['tess']);
   });
 });

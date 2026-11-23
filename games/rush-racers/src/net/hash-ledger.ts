@@ -4,20 +4,10 @@
  * arrive first. Hashes older than the keep window are forgotten.
  */
 import type { RacerId } from '../logic/types.ts';
+import type { Desync } from './session.ts';
 
 /** Ticks a hash is kept waiting for the other side of its tick: ten seconds. */
 export const HASH_KEEP_TICKS = 600;
-
-/** Two hashes for one tick that differed. */
-export interface HashMismatch {
-  tick: number;
-  /** This peer's hash at `tick`. */
-  local: number;
-  /** The other peer's. */
-  remote: number;
-  /** The slot whose peer sent `remote`. */
-  slot: RacerId;
-}
 
 /** The hashes kept for comparison between this peer and the others. */
 export interface HashLedger {
@@ -31,7 +21,7 @@ export interface HashLedger {
 }
 
 /** A ledger that calls `onMismatch` for the first pair of hashes that differ, and never again after. */
-export function createHashLedger(onMismatch: (mismatch: HashMismatch) => void): HashLedger {
+export function createHashLedger(onMismatch: (mismatch: Desync) => void): HashLedger {
   const localHashes = new Map<number, number>();
   const remoteHashes = new Map<number, { slot: RacerId; hash: number }[]>();
   let mismatched = false;
