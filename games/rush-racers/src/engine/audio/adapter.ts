@@ -5,12 +5,13 @@
  * loop). Enemies are heard when they are within about a screen of the local racer: a shark's
  * wind-up and an eel's warning, a bonk and a defeat; an enemy getting the local racer always is.
  * The sky set pieces sound too: the local racer's flaps, bounces and rings, a storm zone's warning
- * when the zone is near the camera, and every strike. Every sound that actually starts is announced once as `audio.played`,
+ * when the zone is near the camera, and its strike from a little farther (one strike per drain, so
+ * zones striking together don't stack). Every sound that actually starts is announced once as `audio.played`,
  * on the game's tick, so tests can hear the game. Nothing plays or is announced
  * while the AudioContext is not running (before the first gesture).
  */
 import type { EventSink, Rng, Stamped } from '@arcade/core';
-import { ENEMY_KINDS, type EnemyKind, type HitCause, type RacerId, TILE, type World } from '../../logic/types.ts';
+import { ENEMY_KINDS, type EnemyKind, type HitCause, type RacerId, type World } from '../../logic/types.ts';
 import { localOf } from '../local-racer.ts';
 import { FINAL_STRETCH_AT } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
@@ -44,8 +45,8 @@ export interface AdapterOptions {
   audibleFromLocal?(id: RacerId): boolean;
   /** Whether enemy `index` (in `world.enemies`) is near enough the local racer to hear; every enemy is when omitted. */
   enemyAudible?(index: number): boolean;
-  /** Whether storm zone `zone` (in `level.lightning`) is near enough the camera to hear its warning; every zone is when omitted. */
-  stormAudible?(zone: number): boolean;
+  /** Whether storm zone `zone` (in `level.lightning`) is within `reachPx` across of the local racer; every zone is when omitted. */
+  stormAudible?(zone: number, reachPx: number): boolean;
   /** The slot the screen follows, whose own moments sound; 'player' when omitted. */
   localRacer?(): RacerId;
   /** The song the current race plays: the course's own (`Course.song`). Read when each race starts. */
@@ -59,6 +60,14 @@ const PITCH_SPREAD = 0.05;
 /** Musical cues that must stay in tune with each other, so they skip the random pitch. */
 const STEADY: ReadonlySet<SfxKey> = new Set(['countdown', 'go']);
 
+/** A storm zone's warning is heard within about a screen, like a rival's attack. */
+export const STORM_WARN_REACH_PX = HEARING_PX;
+/** A strike's thunder carries twice as far as its warning. */
+export const STORM_STRIKE_REACH_PX = 2 * HEARING_PX;
+
+/** The sound each of the local racer's own sky moments makes. */
+const OWN_SKY_SFX = { 'racer.flapped': 'flap', 'racer.bounced': 'bounce', 'ring.passed': 'ring' } as const;
+
 /** The warning each enemy kind sounds when it telegraphs; a crab gives none. */
 const TELL_SFX: Record<EnemyKind, SfxKey | null> = { shark: 'shark.windup', eel: 'eel.warn', crab: null };
 
@@ -70,20 +79,6 @@ export function enemyWithinHearing(world: World, index: number): boolean {
   const dx = enemy.at.x - (local.body.x + local.body.w / 2);
   const dy = enemy.at.y - (local.body.y + local.body.h / 2);
   return Math.hypot(dx, dy) <= HEARING_PX;
-}
-
-/**
- * Whether storm zone `zone` in `world` is within `HEARING_PX` of the local racer, whom the camera
- * follows, measured across: a zone spans the level's full height.
- */
-export function stormWithinHearing(world: World, zone: number): boolean {
-  const storm = world.level.lightning[zone];
-  if (!storm) return false;
-  const local = localOf(world);
-  const centre = local.body.x + local.body.w / 2;
-  const left = storm.cols[0] * TILE;
-  const right = (storm.cols[1] + 1) * TILE;
-  return Math.max(left - centre, centre - right, 0) <= HEARING_PX;
 }
 
 function isEnemy(cause: HitCause): cause is EnemyKind {
@@ -112,6 +107,8 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
   let won: boolean | null = null;
   /** Whether the local racer crossed the line this race; `race.finished` only says whether slot 1 did. */
   let localFinished = false;
+  /** Whether a strike has sounded in the drain being heard, so zones striking together sound once. */
+  let strikeHeard = false;
 
   const local = options.localRacer ?? (() => 'player');
   const attacks = createAttackSfx(options.audibleFromLocal, local);
@@ -176,18 +173,16 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
         if (event.id === local()) sfx('kick');
         return;
       case 'racer.flapped':
-        if (event.id === local()) sfx('flap');
-        return;
       case 'racer.bounced':
-        if (event.id === local()) sfx('bounce');
-        return;
       case 'ring.passed':
-        if (event.id === local()) sfx('ring');
+        if (event.id === local()) sfx(OWN_SKY_SFX[event.type]);
         return;
       case 'lightning.warned':
-        if (stormAudible(event.zone)) sfx('lightning.warn');
+        if (stormAudible(event.zone, STORM_WARN_REACH_PX)) sfx('lightning.warn');
         return;
       case 'lightning.struck':
+        if (strikeHeard || !stormAudible(event.zone, STORM_STRIKE_REACH_PX)) return;
+        strikeHeard = true;
         return sfx('lightning.strike');
       case 'pearl.collected':
       case 'loosePearl.collected':
@@ -244,6 +239,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
 
   return {
     onEvents(drained: readonly Stamped<RuntimeEvent>[]) {
+      strikeHeard = false;
       for (const event of drained) onEvent(event, event.tick);
       syncMusic();
       followSequencer();

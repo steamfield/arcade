@@ -1,8 +1,8 @@
 /**
  * The course's storm zones (`level.lightning`) on the race screen: a darkening cloud band and a
  * column shimmer during a zone's warning and a bolt during its strike, read from each zone's phase
- * (`lightningPhase`) on the race tick, plus a screen flash on `lightning.struck` that reduced motion
- * skips. A zone just off screen shows its shimmer at that screen edge, so a warning reads before the
+ * (`lightningPhase`) and how far into it the race tick is, plus a screen flash on `lightning.struck`
+ * for a zone on screen that reduced motion skips. A zone just off screen shows its shimmer at that screen edge, so a warning reads before the
  * zone scrolls into view. Code-drawn global art until a sky theme restyles it.
  */
 import type { Stamped } from '@arcade/core';
@@ -13,6 +13,7 @@ import { type LightningZone, TILE, type World } from '../../logic/types.ts';
 import { drawFrames, type NamedFrame } from '../art/pixel.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { Layer } from './layers.ts';
+import { type CameraSpan, cameraSpan, zoneSide } from './storm-reach.ts';
 
 /** The storm zones; `sync` redraws them from the world, `onEvents` hears warnings and strikes drained on world tick `tick`. */
 export interface LightningView {
@@ -29,9 +30,6 @@ export interface StormLook {
   /** The bolt is mirrored on alternate beats of a strike, so it crackles. */
   boltFlipped: boolean;
 }
-
-/** Where a zone sits across from the camera's view: on it, within a screen width of one edge, or farther. */
-export type ZoneSide = 'on screen' | 'left' | 'right' | 'far';
 
 /** Texture key for the storm sheet, drawn once per game. */
 export const STORM_TEXTURE = 'sky-storm';
@@ -71,7 +69,7 @@ const FRAMES: readonly NamedFrame[] = [
   },
 ];
 
-/** One zone's sprites and the phase it was last drawn in. */
+/** One zone's sprites. */
 interface ZoneSprites {
   zone: LightningZone;
   shade: Phaser.GameObjects.Rectangle;
@@ -80,9 +78,6 @@ interface ZoneSprites {
   bolt: Phaser.GameObjects.TileSprite;
   edgeShade: Phaser.GameObjects.Rectangle;
   edgeShimmer: Phaser.GameObjects.TileSprite;
-  phase: LightningPhase;
-  /** The race tick `phase` began on. */
-  since: number;
 }
 
 /**
@@ -107,14 +102,11 @@ export function createLightningView(scene: Phaser.Scene, world: World, reducedMo
     sync(current, tick) {
       const racing = current.race.phase === 'racing';
       const raceTick = current.race.raceTick;
+      const view = cameraSpan(camera);
       for (const sprites of zones) {
         const phase = racing ? lightningPhase(sprites.zone, raceTick) : 'calm';
-        if (phase !== sprites.phase) {
-          sprites.phase = phase;
-          sprites.since = raceTick;
-        }
-        const look = stormLook(phase, raceTick - sprites.since, reducedMotion);
-        showZone(sprites, look, camera.worldView, reducedMotion ? 0 : raceTick);
+        const look = stormLook(phase, ticksIntoPhase(sprites.zone, raceTick, phase), reducedMotion);
+        showZone(sprites, look, view, reducedMotion ? 0 : raceTick);
       }
       const sinceFlash = tick - flashedOn;
       flash.setVisible(sinceFlash < FLASH_TICKS).setAlpha(FLASH_ALPHA * (1 - sinceFlash / FLASH_TICKS));
@@ -124,7 +116,7 @@ export function createLightningView(scene: Phaser.Scene, world: World, reducedMo
       for (const event of events) {
         if (event.type !== 'lightning.struck') continue;
         const zone = world.level.lightning[event.zone];
-        if (zone && zoneSide(zone, camera.worldView) !== 'far') flashedOn = tick;
+        if (zone && zoneSide(zone, cameraSpan(camera)) === 'on screen') flashedOn = tick;
       }
     },
   };
@@ -162,8 +154,6 @@ function addZone(scene: Phaser.Scene, zone: LightningZone, heightPx: number): Zo
     edgeShimmer: tiled(0, EDGE_STRIP_PX, screenHeight, StormFrame.shimmer, Layer.player + 0.7)
       .setTileScale(1)
       .setScrollFactor(0),
-    phase: 'calm',
-    since: 0,
   };
 }
 
@@ -172,7 +162,7 @@ function addZone(scene: Phaser.Scene, zone: LightningZone, heightPx: number): Zo
  * top, and the edge strip shows at the side of the screen the zone is just past. `driftTick` moves
  * the shimmer down; pass 0 to hold it still.
  */
-function showZone(sprites: ZoneSprites, look: StormLook, view: Phaser.Geom.Rectangle, driftTick: number): void {
+function showZone(sprites: ZoneSprites, look: StormLook, view: CameraSpan, driftTick: number): void {
   const { shade, shimmer, cloud, bolt } = sprites;
   shade.setVisible(look.shadeAlpha > 0).setAlpha(look.shadeAlpha);
   shimmer.setVisible(look.shimmerAlpha > 0).setAlpha(look.shimmerAlpha);
@@ -186,7 +176,7 @@ function showZone(sprites: ZoneSprites, look: StormLook, view: Phaser.Geom.Recta
 }
 
 /** Shows `sprites`' edge strip at the side of `view` its zone is just past, or hides it when the zone is on screen or far. */
-function showEdge(sprites: ZoneSprites, look: StormLook, view: Phaser.Geom.Rectangle, driftY: number): void {
+function showEdge(sprites: ZoneSprites, look: StormLook, view: CameraSpan, driftY: number): void {
   const side = zoneSide(sprites.zone, view);
   const shown = (side === 'left' || side === 'right') && look.shimmerAlpha > 0;
   const x = side === 'right' ? view.width - EDGE_STRIP_PX : 0;
@@ -221,12 +211,15 @@ export function stormLook(phase: LightningPhase, ticksInPhase: number, reducedMo
   };
 }
 
-/** Where `zone`'s columns sit across from `view` (world px): on it, within one view width of an edge, or farther. */
-export function zoneSide(zone: LightningZone, view: { x: number; width: number }): ZoneSide {
-  const left = zone.cols[0] * TILE;
-  const right = (zone.cols[1] + 1) * TILE;
-  const viewRight = view.x + view.width;
-  if (right > view.x && left < viewRight) return 'on screen';
-  if (right <= view.x) return view.x - right <= view.width ? 'left' : 'far';
-  return left - viewRight <= view.width ? 'right' : 'far';
+/**
+ * How many race ticks `zone` has been in `phase` on `raceTick`, worked out from its cycle (the race
+ * starts `offsetTicks` into the first one, as `lightningPhase` has it), so a view built mid-warning
+ * picks up the ramp where the race is. 0 while calm.
+ */
+export function ticksIntoPhase(zone: LightningZone, raceTick: number, phase: LightningPhase): number {
+  if (phase === 'calm') return 0;
+  const shifted = (raceTick + zone.offsetTicks) % zone.periodTicks;
+  const cycleTick = shifted < 0 ? shifted + zone.periodTicks : shifted;
+  const phaseTicks = phase === 'strike' ? LIGHTNING.strikeTicks : LIGHTNING.warnTicks + LIGHTNING.strikeTicks;
+  return cycleTick - (zone.periodTicks - phaseTicks);
 }

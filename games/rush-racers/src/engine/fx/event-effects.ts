@@ -3,7 +3,8 @@
  * power-ups' fire, lane, pull, shake-off and pop, and the splash of a racer breaching the surface
  * or falling back in, a puff under a racer springing off a bounce cloud, and sparkles where the local
  * racer passes a boost ring), and how much screen shake the local racer's own
- * knocks and a lightning strike on screen add (the slot the screen follows; see `local-racer.ts`). Positions come from the event and the world as it stands
+ * knocks and a lightning strike on screen add (the slot the screen follows; see `local-racer.ts`). A
+ * strike is on screen by the same measure the lightning view uses for its flash (`view/storm-reach.ts`). Positions come from the event and the world as it stands
  * after the tick. Shake is only ever asked for through `shake`, which the caller leaves out
  * under reduced motion.
  */
@@ -12,6 +13,7 @@ import { CANNONBALL } from '../../logic/powerups/tuning.ts';
 import { type Decoy, RACER_SIZE, type RacerId, type Squid, TILE, type Vec, type World } from '../../logic/types.ts';
 import { localIdOf, localOf } from '../local-racer.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import { type CameraSpan, zoneSide } from '../view/storm-reach.ts';
 import type { BubbleTracker } from './bubble-tracker.ts';
 import type { Bursts } from './bursts.ts';
 
@@ -26,10 +28,10 @@ const LOCAL_HIT_TRAUMA = 0.7;
 const SHIELD_POP_TRAUMA = 0.4;
 /** Added once per tick on which the local racer's cannonball smashes coral or a racer; a gate stacks up to a big jolt. */
 const CANNONBALL_TRAUMA = 0.6;
-/** A lightning strike within about half a screen of the local racer, so on screen: a jolt lighter than a hit. */
+/** A view of nothing, for effects built without a camera. */
+const NO_SCREEN: CameraSpan = { x: 0, y: 0, width: 0 };
+/** A lightning strike on screen: a jolt lighter than a hit. */
 const STRIKE_TRAUMA = 0.35;
-/** How far across from the local racer a strike still shakes the screen, px: half the 320 px screen. */
-const STRIKE_SHAKE_REACH_PX = 160;
 /** Bubbles shed along a new Riptide lane, one per this many px of its length. */
 const LANE_BUBBLE_SPACING = 12;
 /** Bubbles shed from each racer an Undertow pulls. */
@@ -39,12 +41,15 @@ const PULL_BUBBLES = 3;
  * Builds the event-to-effect mapping for `world`.
  *
  * @param shake Adds screen-shake trauma; a no-op under reduced motion.
+ * @param screen What the race camera shows when the tick's events arrive (see `cameraSpan`); with
+ *   none, as for effects built without a camera, no strike is on screen.
  */
 export function createEventEffects(
   world: World,
   bursts: Bursts,
   bubbles: BubbleTracker,
   shake: (trauma: number) => void,
+  screen: () => CameraSpan = () => NO_SCREEN,
 ): EventEffects {
   const local = localIdOf(world);
   let localPlace = localOf(world).place;
@@ -98,9 +103,11 @@ export function createEventEffects(
             if (event.id === local && ring) bursts.pearlSparkle(tileCentre(ring.x), tileCentre(ring.y));
             break;
           }
-          case 'lightning.struck':
-            if (stormAcrossFrom(world, event.zone) <= STRIKE_SHAKE_REACH_PX) strikeOnScreen = true;
+          case 'lightning.struck': {
+            const zone = world.level.lightning[event.zone];
+            if (zone && zoneSide(zone, screen()) === 'on screen') strikeOnScreen = true;
             break;
+          }
           case 'pearl.collected': {
             const pearl = world.level.pearls[event.index];
             if (pearl) bursts.pearlSparkle(tileCentre(pearl.x), tileCentre(pearl.y));
@@ -175,15 +182,6 @@ export function createEventEffects(
       track(lastDecoyAt, world.decoys);
     },
   };
-}
-
-/** How far across storm zone `zone` is from the local racer's centre, px; 0 inside it, infinite when there's no such zone. */
-function stormAcrossFrom(world: World, zone: number): number {
-  const storm = world.level.lightning[zone];
-  if (!storm) return Number.POSITIVE_INFINITY;
-  const local = localOf(world);
-  const centre = local.body.x + local.body.w / 2;
-  return Math.max(storm.cols[0] * TILE - centre, centre - (storm.cols[1] + 1) * TILE, 0);
 }
 
 /** Bubbles strung along the newest lane `owner` laid, so a new Riptide announces its length. */

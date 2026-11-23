@@ -2,7 +2,8 @@ import { EventLog, type Stamped } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { raceOn } from '../../logic/test-world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import { type AdapterOptions, createAdapter, enemyWithinHearing, stormWithinHearing } from './adapter.ts';
+import { stormWithinReach } from '../view/storm-reach.ts';
+import { type AdapterOptions, createAdapter, enemyWithinHearing } from './adapter.ts';
 import type { Sequencer } from './sequencer.ts';
 import type { Synth } from './synth.ts';
 
@@ -39,6 +40,16 @@ function heard(
   enemyAudible?: AdapterOptions['enemyAudible'],
   stormAudible?: AdapterOptions['stormAudible'],
 ): string[] {
+  return heardPerDrain([events], near, enemyAudible, stormAudible);
+}
+
+/** As `heard`, with each list in `drains` drained on its own, one tick apart. */
+function heardPerDrain(
+  drains: RuntimeEvent[][],
+  near: boolean,
+  enemyAudible?: AdapterOptions['enemyAudible'],
+  stormAudible?: AdapterOptions['stormAudible'],
+): string[] {
   const log = new EventLog<RuntimeEvent>();
   const adapter = createAdapter({
     synth: runningSynth(),
@@ -54,8 +65,10 @@ function heard(
     ...(stormAudible && { stormAudible }),
     raceSong: () => 'race',
   });
-  const stamped: Stamped<RuntimeEvent>[] = events.map((event, seq) => ({ ...event, tick: 300, seq }));
-  adapter.onEvents(stamped);
+  drains.forEach((events, drain) => {
+    const stamped: Stamped<RuntimeEvent>[] = events.map((event, seq) => ({ ...event, tick: 300 + drain, seq }));
+    adapter.onEvents(stamped);
+  });
   return log
     .all()
     .filter((e) => e.type === 'audio.played' && e.kind === 'sfx')
@@ -149,36 +162,85 @@ describe('the adapter and the sky set pieces', () => {
     expect(heard(rivals, true)).toEqual([]);
   });
 
-  // The player starts at column 1: the zone over columns 6-8 is in earshot, the one over 34-36 (over 500 px off) is not.
+  // The player starts at column 1 (centre about 22 px): the zone over columns 6-8 is within a
+  // warning's reach, the one over 34-36 (about 520 px off) only within a strike's, and the one over
+  // 50-52 (about 780 px off) within neither.
   const { world } = raceOn({
     name: 'storms',
     ascii: `
-      ########################################
-      #1....................................F#
-      #2....................................F#
-      #3....................................F#
-      #4....................................F#
-      ########################################
+      ############################################################
+      #1........................................................F#
+      #2........................................................F#
+      #3........................................................F#
+      #4........................................................F#
+      ############################################################
     `,
     lightning: [
       { cols: [6, 8], periodTicks: 150, offsetTicks: 0 },
       { cols: [34, 36], periodTicks: 150, offsetTicks: 0 },
+      { cols: [50, 52], periodTicks: 150, offsetTicks: 0 },
     ],
   });
-  const inEarshot = (zone: number) => stormWithinHearing(world, zone);
-  const [NEAR_ZONE, FAR_ZONE] = [0, 1];
+  const inReach = (zone: number, reachPx: number) => stormWithinReach(world, zone, reachPx);
+  const [NEAR_ZONE, MIDDLE_ZONE, FAR_ZONE] = [0, 1, 2];
+  const warned = (zone: number): RuntimeEvent => ({ type: 'lightning.warned', zone });
+  const struck = (zone: number): RuntimeEvent => ({ type: 'lightning.struck', zone });
 
-  it('warns of a storm zone near the camera and not of one far off', () => {
-    const warned = (zone: number): RuntimeEvent[] => [{ type: 'lightning.warned', zone }];
-    expect(heard(warned(NEAR_ZONE), true, undefined, inEarshot)).toEqual(['lightning.warn']);
-    expect(heard(warned(FAR_ZONE), true, undefined, inEarshot)).toEqual([]);
+  it('warns of a storm zone near the camera and not of one farther off', () => {
+    expect(heard([warned(NEAR_ZONE)], true, undefined, inReach)).toEqual(['lightning.warn']);
+    expect(heard([warned(MIDDLE_ZONE)], true, undefined, inReach)).toEqual([]);
+    expect(heard([warned(FAR_ZONE)], true, undefined, inReach)).toEqual([]);
   });
 
-  it('sounds every strike', () => {
-    const strikes: RuntimeEvent[] = [
-      { type: 'lightning.struck', zone: NEAR_ZONE },
-      { type: 'lightning.struck', zone: FAR_ZONE },
-    ];
-    expect(heard(strikes, false, undefined, inEarshot)).toEqual(['lightning.strike', 'lightning.strike']);
+  it('hears a strike from twice as far as a warning, and not from beyond', () => {
+    expect(heard([struck(NEAR_ZONE)], true, undefined, inReach)).toEqual(['lightning.strike']);
+    expect(heard([struck(MIDDLE_ZONE)], true, undefined, inReach)).toEqual(['lightning.strike']);
+    expect(heard([struck(FAR_ZONE)], true, undefined, inReach)).toEqual([]);
+  });
+
+  it('sounds zones striking on the same tick once, and the next strike again', () => {
+    const together = [struck(NEAR_ZONE), struck(MIDDLE_ZONE)];
+    expect(heardPerDrain([together, [struck(NEAR_ZONE)]], true, undefined, inReach)).toEqual([
+      'lightning.strike',
+      'lightning.strike',
+    ]);
+  });
+});
+
+describe('the adapter schedules each effect through the synth', () => {
+  /** The synth calls draining `events` makes, as `tone` or `noise` with the scheduled frequency in whole Hz. */
+  function scheduled(events: RuntimeEvent[]): string[] {
+    const calls: string[] = [];
+    const synth: Synth = {
+      ...runningSynth(),
+      tone(_out, spec) {
+        calls.push(`tone ${Math.round(spec.frequency)}`);
+      },
+      noise(_out, spec) {
+        calls.push(`noise ${Math.round(spec.frequency)}`);
+      },
+    };
+    const adapter = createAdapter({
+      synth,
+      sequencer: SILENT_SEQUENCER,
+      sfxBus: {} as AudioNode,
+      events: new EventLog<RuntimeEvent>(),
+      // 0.5 is the middle of the pitch spread, so every effect plays at its written pitch.
+      rng: { next: () => 0.5 } as never,
+      onError(error) {
+        throw error;
+      },
+      raceSong: () => 'race',
+    });
+    adapter.onEvents(events.map((event, seq) => ({ ...event, tick: 300, seq })));
+    return calls;
+  }
+
+  it("plays a strike's crack, boom and rumble", () => {
+    expect(scheduled([{ type: 'lightning.struck', zone: 0 }])).toEqual(['noise 3000', 'noise 900', 'tone 55']);
+  });
+
+  it("plays the player's kick as its rising hiss", () => {
+    expect(scheduled([{ type: 'racer.kicked', id: 'player' }])).toEqual(['noise 600']);
   });
 });
