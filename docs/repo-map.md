@@ -153,7 +153,12 @@ The relay for online races, a separate Worker (`arcade-api`) the site forwards `
 | `apps/api/src/index.ts` | The Worker's fetch: origin check, `POST /api/rooms`, WebSocket upgrade routing to a `Room`. |
 | `apps/api/src/origin.ts` | `allowedOrigin`: which pages may use the service. |
 | `apps/api/src/codes.ts` | `randomRoomCode`. |
+| `apps/api/src/routes.ts` | The Worker's routes: `createRoom` (claims a code), `joinRoom` (hands the upgrade to the `Room`), 404 JSON. |
 | `apps/api/src/room.ts` | The `Room` Durable Object: claim, join, relay, race phase, kick, limits, idle alarm. |
+| `apps/api/src/peers.ts` | The room's peers read from socket attachments: host, phase, join order, and `joinRefusal`. |
+| `apps/api/src/traffic.ts` | The room's only in-memory state: per-peer heard times and message rates; `kickSilenceMs`. |
+| `apps/api/src/incoming.ts` | Reading a peer's message: its byte size and whether it is relayable JSON. |
+| `apps/api/src/sockets.ts` | WebSocket helpers: upgrade response, refusing a socket, replying to a close, sending without throwing. |
 | `apps/api/src/forward.ts` | The site Worker's script: forwards `/api/*` to the API Worker through the service binding. |
 
 ## Landing page (`apps/site/`)
