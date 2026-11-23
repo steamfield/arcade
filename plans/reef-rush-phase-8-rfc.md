@@ -227,7 +227,7 @@ lastCourse: string | null;
 The user's requirement is that the ocean game loses nothing. Capture before the scaffold, on main at the phase 7 merge:
 
 1. Logic fingerprints: for every character on seeds 1, 7 and 42, on Hard, Normal and Easy, with the expert bot, the novice bot and the stuck-prone bot, hash the full event log plus every racer's body, status and stack every 60 ticks. Commit the hashes as `logic/fingerprint.test.ts` with a header saying it is deleted after phase 9 (it would block every later tuning change). Every lane's done-when includes it passing unchanged.
-2. `arcade see` captures: title, How to Play page 1, select, a race at four fixed ticks (reef, current highway, jelly field, dark drop; pick ticks on seed 1 with `HARD_SAVE` + `TITLE_TO_RACE` + `TOP_ROUTE`), the Easy guide at the first pillar, and results, at desktop and `--mobile`. Store them under `.arcade/baseline-phase7/` (`.arcade/` is gitignored, so they stay local to the run's worktree) and compare side by side after each lane; any visible difference is a bug unless planned.
+2. `arcade see` captures: title, How to Play page 1, select, a race at four fixed ticks (reef, current highway, jelly field, dark drop; pick ticks on seed 1 with `HARD_SAVE` + `TITLE_TO_RACE` + `TOP_ROUTE`), the Easy guide at the first pillar (`--query stage=guide`), and results, at desktop and `--mobile`. Capture each from the phase 7 code with `--out .arcade/baseline-phase7/<capture>` (`.arcade/` is gitignored, so they stay local to the run's worktree; write the commands into the plan so every lane reruns them), and after each lane rerun the same commands with `--compare .arcade/baseline-phase7/<capture>`, which prints changed pixels per frame and writes `diff-<tick>.png`. Any changed pixel is a bug unless planned.
 3. A test pinning the event-to-sfx table and Sunlit's race song id.
 4. Difficulty numbers on seeds 1-200 per character per level, recorded in the lane report before and after; they must match exactly.
 5. Existing scenarios, specs and smoke pass unmodified except where the flow change (course select, `createWorld` signature) forces an edit, and each such edit is listed in the lane report.
@@ -257,9 +257,9 @@ Done when: fingerprints unchanged; every existing test passes; conformance suite
 
 Owns `engine/themes/`, `engine/art/` (moving ocean art behind the theme), `engine/view/level-view.ts`, `engine/view/backdrop.ts`, `engine/view/hazard-view.ts`, `engine/view/dark-view.ts` (tint from theme), `engine/fx/`, `engine/audio/adapter.ts`, `engine/scenes/` (course scene, title and results best per course), `engine/runtime.ts` (course state, song), `engine/debug.ts`, sprite contrast tests, scenarios and specs the flow change breaks (pick-character, dnf-results, title-best, results-after-finish, difficulty-setting, and any using `TITLE_TO_RACE`), `tests/course.spec.ts`, `UI.md`, `DESIGN.md`.
 
-Builds: ocean theme behind `defineTheme` with self-registered textures (keys unchanged); fx particle physics from the theme; song from the course; course-select scene skipped while one course is listed, view-tested with three test courses at desktop and phone; per-course, per-level best on title and results; `?course=` spec using `GameDriver.open({ query })` (scenarios can't pass query).
+Builds: ocean theme behind `defineTheme` with self-registered textures (keys unchanged); fx particle physics from the theme; song from the course; course-select scene skipped while one course is listed, view-tested with three test courses at desktop and phone; per-course, per-level best on title and results; `?course=` scenarios using `start: { query: { course: '<id>' } }`.
 
-Done when: captures identical to the baseline (side by side, reviewed); smoke passes; the course-select view test renders three courses readably at desktop and phone; `?course=sunlit-shallows` and an unknown id behave as specified; DESIGN.md and UI.md updated.
+Done when: every baseline capture reports `identical` under `see --compare`; smoke passes; the course-select view test renders three courses readably at desktop and phone; `?course=sunlit-shallows` and an unknown id behave as specified; DESIGN.md and UI.md updated.
 
 Lanes 8/a and 8/b run in parallel after the scaffold. Each gets a lane review (ce:code-reviewer for 8/a, game-reviewer for 8/b), fixes go back to the lane builder, then merge. Phase 8 ends with a phase-boundary review because phase 9 builds on these contracts.
 
@@ -278,7 +278,7 @@ Later phases (not planned): ground (respawn with a `racer.fell` event, jump-link
 - Swim refactor drifts behaviour: fingerprints across three difficulties and three bots catch it on every lane.
 - AI rng draw order changes when `steer` moves: `AiDraws` makes the per-tick draws generic and fixed; fingerprints catch any drift.
 - Check time grows past 30 s with conformance and memoisation: memoise first; if a listed course still pushes it over, the full 30-seed bars move to a `difficulty` Vitest project run by the deliver gate and CI, with a 5-seed sanity version in check. Decide that with the user, not inside a lane.
-- Engine captures drift when art moves behind the theme: keep texture keys identical; compare baseline captures after every lane.
+- Engine captures drift when art moves behind the theme: keep texture keys identical; rerun the baseline captures with `--compare` after every lane.
 - Easy guide and assist break when `fields.steer` moves: they go through `medium.wayOn`; 7/e's stuck-prone bot numbers must be unchanged.
 - Scenario flow changes (course select) break many scenarios: the course scene is skipped while one course is listed, so play flow is unchanged in phase 8; only view tests see it.
 
@@ -288,7 +288,7 @@ None block phase 8. Two will come up in phase 9: whether course select shows loc
 
 ## 10. Repo rules that apply throughout
 
-- `pnpm arcade check reef-rush` after every change, `pnpm arcade smoke reef-rush` before handing work back, `pnpm arcade see` to look at what changed. Watch every new test fail once.
+- `pnpm arcade test reef-rush <paths>` while iterating, `pnpm arcade check reef-rush` after every change, `pnpm arcade smoke reef-rush` before handing work back, `pnpm arcade see` to look at what changed. Watch every new test fail once.
 - Logic is deterministic and engine-free: no `Math.random`, `Date`, or `Math.sin/cos/hypot/exp/pow/atan2`; use `createRng` and `logic/num.ts`.
 - Storage only through `@arcade/save`, input only through `@arcade/input` actions, boot only through `@arcade/shell`.
 - Save shape changes bump `SAVE_VERSION`, add a migration, and commit the old version's fixture.
