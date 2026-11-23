@@ -405,7 +405,7 @@ describe('on the ocean course', () => {
     const { world, log } = raceOn(DEFAULT_COURSE.level.ascii);
     const [player, tess] = [racerOf(world, 'player'), racerOf(world, 'tess')];
     const start = level.starts[0] ?? fail('the ocean course has no first start');
-    const path = downhillPath(world.fields.steer, world.fields, openTiles(level, world.broken, false), start, 2000);
+    const path = downhillPath(world.nav.steer, world.nav, openTiles(level, world.broken, false), start, 2000);
     const missed: string[] = [];
     let pairs = 0;
     for (let i = 20; i + 6 < path.length; i += 3) {

@@ -3,18 +3,21 @@
  * off. The slow (`SQUID.latchedForceMul`) is a passive in `powerups/passives.ts`; the status ticks
  * down with every other in `status.ts`.
  */
+import { mediumOf } from '../media/index.ts';
 import { sin } from '../num.ts';
 import { SQUID } from '../powerups/tuning.ts';
 import type { Racer, World } from '../types.ts';
 
 /**
- * Takes SQUID.ticksPerKick off each latched racer's `status.latched` for every `racer.kicked` event
- * emitted this tick. A latch that kicks bring to 0 ends early: emits `racer.shaken {id}`. A latch
- * that simply runs out emits nothing.
+ * Where the medium lets kicks shake a latch (`kickRules.shakesLatch`), takes SQUID.ticksPerKick off
+ * each latched racer's `status.latched` for every `racer.kicked` event emitted this tick. A latch
+ * that kicks bring to 0 ends early: emits `racer.shaken {id}`. A latch that simply runs out emits
+ * nothing.
  *
  * @param racers The active racers.
  */
 export function shakeOffLatches(world: World, racers: readonly Racer[]): void {
+  if (!mediumOf(world).kickRules.shakesLatch) return;
   for (const racer of racers) {
     if (racer.status.latched === 0) continue;
     const kicks = world.recentEvents.filter((event) => event.type === 'racer.kicked' && event.id === racer.id).length;

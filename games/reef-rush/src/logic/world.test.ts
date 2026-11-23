@@ -78,6 +78,33 @@ describe('level checks', () => {
     expect(create).toThrow(LevelError);
     expect(create).toThrow(expect.objectContaining({ row: 2, col: 1 }));
   });
+
+  it('names every problem the medium finds, located at the first', () => {
+    const course = courseFromLevel({
+      name: 'two sealed',
+      ascii: `
+        #########
+        #CC....F#
+        #1C....F#
+        #CC....F#
+        #3C....F#
+        #CC....F#
+        #2..4..F#
+        #########
+      `,
+    });
+    const create = () => createWorld(course, new EventLog<GameEvent>(), { seed: 1 });
+
+    expect(create).toThrow(
+      expect.objectContaining({
+        name: 'LevelError',
+        message:
+          'Start 1 cannot reach the finish without breaking coral; Start 3 cannot reach the finish without breaking coral',
+        row: 2,
+        col: 1,
+      }),
+    );
+  });
 });
 
 describe('finished racers', () => {

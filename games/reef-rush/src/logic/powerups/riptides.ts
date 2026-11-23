@@ -81,7 +81,7 @@ function contains(lane: Riptide, point: Vec): boolean {
 /**
  * The current of the first riptide lane a body's centre is inside, or null outside every lane: the
  * lane's unit direction scaled by its strength (in plain-current pushes), so a lane's pull is
- * `SWIM.currentForce` times the vector's length. A lane's strength is `lane.strength`, or
+ * swim's `currentForce` (`SWIM_TUNING.extra`) times the vector's length. A lane's strength is `lane.strength`, or
  * `RIPTIDE.currentForceMul` when it has none. With `felt` (the racer riding it), a lane the level doesn't
  * let its owner turn on that racer (`mayAttack`) is skipped.
  */

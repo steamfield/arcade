@@ -1,6 +1,7 @@
 /**
- * The medium registry: every shipped movement style by id, and the lookup the world goes through.
- * Tests add media (the conformance suite's glide) with `registerMedium`; game code never does.
+ * The medium registry: every shipped movement style by id, the lookup the world goes through, and
+ * the one place generic code asks for navigation to be rebuilt. Tests add media (the conformance
+ * suite's glide) with `registerMedium`; game code never does.
  */
 
 import type { ShippedMediumId } from '../courses/types.ts';
@@ -46,4 +47,9 @@ export function mediumOf(world: Pick<World, 'medium'>): Medium {
   const medium = mediumById(world.medium);
   if (!medium) throw new Error(`Unknown medium '${world.medium}'`);
   return medium;
+}
+
+/** Rebuilds the world's navigation through its medium, for the level with `world.broken` coral gone. */
+export function rebuildNav(world: World): void {
+  world.nav = mediumOf(world).buildNav(world.level, world.broken);
 }

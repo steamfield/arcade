@@ -2,6 +2,7 @@ import { createRng, EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTY } from '../difficulty-level.ts';
 import type { GameEvent } from '../events.ts';
+import { DARK_STEERING } from '../media/swim/pilot.ts';
 import { updateProgress } from '../race/standings.ts';
 import { noItems } from '../racers.ts';
 import { courseFromLevel, placeOnTile, raceOn, tileCentre } from '../test-world.ts';
@@ -9,10 +10,16 @@ import type { Intent, PowerUpKind, Racer, RacerId, TickInput, World } from '../t
 import { createWorld, stepWorld } from '../world.ts';
 import { ITEM_USE } from './items.ts';
 import { PLAYER_PROFILE } from './profiles.ts';
-import { catchUpMul, DARK_STEERING, rivalIntent } from './rival.ts';
+import { catchUpMul, PROGRESS_BACKSTOP_TICKS, rivalIntent } from './rival.ts';
 
 /** Hard's catch-up bounds, the ones the tests below were written against. */
 const BOUNDS = DIFFICULTY.hard.rivalCatchUp;
+
+/**
+ * The longest a test may hold a rival on one spot: one tick more and the progress backstop, seeing
+ * no progress, sends it into its stuck recovery.
+ */
+const HELD_TICKS = PROGRESS_BACKSTOP_TICKS - 1;
 
 const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, burst: false };
 
@@ -176,6 +183,66 @@ describe('getting unstuck', () => {
 
     expect(moving.some(sideways)).toBe(false);
     expect(afterFirstRead.every((i) => i.move.x > 0.9)).toBe(true);
+  });
+});
+
+describe('the progress backstop', () => {
+  /** Tess held on one tile but moving, so the speed rule never sees her stuck and only the backstop can. */
+  const heldMoving = (r: Racer) => {
+    placeOnTile(r, 5, 3);
+    r.body.vx = 60;
+    r.body.vy = 0;
+  };
+
+  /** Index of the first sideways intent in `ticks` of Tess held moving on one tile, with `each` applied per tick first. */
+  function firstRecovery(ticks: number, each: (r: Racer, tick: number) => void = () => {}) {
+    const { world } = lanes();
+    racing(world);
+    let tick = 0;
+    const moves = intents(world, 'tess', ticks, (r) => {
+      heldMoving(r);
+      each(r, tick++);
+    });
+    return moves.findIndex(sideways);
+  }
+
+  it('sends a rival that gets no closer for 240 ticks into recovery, and not a tick before', () => {
+    // The first tick sets her best; 240 more without beating it start the recovery.
+    expect(firstRecovery(400)).toBe(PROGRESS_BACKSTOP_TICKS);
+  });
+
+  it.each(['stunned', 'trapped'] as const)('starts the count over while the rival is %s', (status) => {
+    const recovery = firstRecovery(600, (r, tick) => {
+      r.status[status] = tick === 200 ? 1 : 0;
+    });
+
+    expect(recovery).toBe(200 + PROGRESS_BACKSTOP_TICKS);
+  });
+
+  it('pauses the count while an Undertow pulls the rival back', () => {
+    const recovery = firstRecovery(600, (r, tick) => {
+      r.status.undertow = tick >= 200 && tick < 250 ? 1 : 0;
+    });
+
+    expect(recovery).toBe(PROGRESS_BACKSTOP_TICKS + 50);
+  });
+
+  it('starts the count over whenever the rival gets closer than ever', () => {
+    const recovery = firstRecovery(600, (r, tick) => {
+      if (tick === 200) r.progress -= 0.01;
+    });
+
+    expect(recovery).toBe(200 + PROGRESS_BACKSTOP_TICKS);
+  });
+
+  it('never counts for a racer that has finished', () => {
+    const { world } = lanes();
+    racing(world);
+    const tess = racer(world, 'tess');
+    tess.finished = { tick: 0, place: 1, overshoot: 0 };
+    for (let i = 0; i < 300; i++) stepWorld(world, IDLE, TICK_DT);
+
+    expect(tess.ai?.sinceBest).toBe(0);
   });
 });
 
@@ -423,15 +490,15 @@ describe('using items', () => {
     const flashes = (kinds: PowerUpKind[]) => {
       const { tess, decide } = itemScene(kinds, { player: [12, 5] });
       return bursts(
-        Array.from({ length: 1000 }, () => {
+        Array.from({ length: HELD_TICKS }, () => {
           tess.body.vx = 60;
           return decide()[0] as Intent;
         }),
       );
     };
 
-    expect(flashes(['glowLantern'])).toBe(1000);
-    expect(flashes(['jetFin', 'glowLantern'])).toBeLessThan(150);
+    expect(flashes(['glowLantern'])).toBe(HELD_TICKS);
+    expect(flashes(['jetFin', 'glowLantern'])).toBeLessThan(HELD_TICKS * 0.15);
   });
 
   it('holds its dash with a wall 3 tiles ahead', () => {
@@ -512,8 +579,8 @@ const widestSwerve = (moves: Intent[]) => Math.max(...moves.map((intent) => Math
 
 describe('steering in the dark', () => {
   it('wobbles twice as far off its line in a dark zone', () => {
-    const lit = widestSwerve(steering(false, 600));
-    const dark = widestSwerve(steering(true, 600));
+    const lit = widestSwerve(steering(false, HELD_TICKS));
+    const dark = widestSwerve(steering(true, HELD_TICKS));
 
     expect(lit).toBeGreaterThan(0);
     // The same draws walk an angle exactly twice as wide; the sine of a small angle nearly doubles.
@@ -528,7 +595,7 @@ describe('steering in the dark', () => {
       let count = 0;
       for (let i = 0; i < 120; i++) {
         placeOnTile(tess, 10, 4);
-        if (tess.ai?.replanIn === 0) count++;
+        if (tess.ai?.pilot.replanIn === 0) count++;
         rivalIntent(world, tess, world.rngs['ai.tess']);
       }
       return count;

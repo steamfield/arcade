@@ -6,6 +6,7 @@
 
 import { ignoresHazard } from '../abilities.ts';
 import { invulnerableTicks, mayAttack, statusTicks } from '../difficulty-level.ts';
+import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
 import { spawnLoose } from '../pickups/loose.ts';
 import { popForHit } from '../powerups/stack.ts';
@@ -25,7 +26,8 @@ import { HIT } from './tuning.ts';
  * Stun and trap lengths are scaled by `statusTicks` (the racer's `statusDurationMul`, and the difficulty level's for the player), rounded to whole ticks.
  * Every landed hit ends any dash (`status.dashing = 0`, inflated cannonball dashes included), sets
  * `status.invulnerable = HIT.invulnerableTicks` and sets the racer's velocity to HIT.knockbackSpeed
- * directly away from `from` (along facing when `from` is its centre). A trapped racer's float
+ * directly away from `from` (along facing when `from` is its centre), on the axes the medium holds
+ * (`effects.dashAxes`: horizontal only keeps the vertical speed gravity gave it). A trapped racer's float
  * replaces that velocity on its next move, so a bubble hit doesn't knock it back.
  *
  * @param by The racer whose burst caused it, or null for urchins and jellies.
@@ -42,7 +44,7 @@ export function applyHit(world: World, racer: Racer, cause: HitCause, by: RacerI
   sufferHit(world, racer, blow);
   racer.status.dashing = 0;
   racer.status.invulnerable = invulnerableTicks(world, racer, HIT.invulnerableTicks);
-  knockBack(racer, from);
+  knockBack(world, racer, from);
   return true;
 }
 
@@ -79,13 +81,16 @@ function stun(world: World, racer: Racer, ticks: number): void {
   world.events.emit({ type: 'racer.stunned', id: racer.id });
 }
 
-/** Sets the racer moving at HIT.knockbackSpeed straight away from `from`, or along its facing from its own centre. */
-function knockBack(racer: Racer, from: Vec): void {
+/**
+ * Sets the racer moving at HIT.knockbackSpeed straight away from `from`, or along its facing from its
+ * own centre; only horizontally where the medium holds one axis.
+ */
+function knockBack(world: World, racer: Racer, from: Vec): void {
   const centre = centreOf(racer);
   const dx = centre.x - from.x;
   const dy = centre.y - from.y;
   const distance = length(dx, dy);
   const away = distance === 0 ? { x: racer.facing, y: 0 } : { x: dx / distance, y: dy / distance };
   racer.body.vx = away.x * HIT.knockbackSpeed;
-  racer.body.vy = away.y * HIT.knockbackSpeed;
+  if (mediumOf(world).effects.dashAxes === 'both') racer.body.vy = away.y * HIT.knockbackSpeed;
 }

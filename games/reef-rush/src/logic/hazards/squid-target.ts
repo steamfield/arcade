@@ -60,7 +60,7 @@ function nearestDecoyAhead(world: World, owner: Racer, from: Vec): { owner: Race
   for (const decoy of world.decoys) {
     if (decoy.owner === owner.id) continue;
     const squared = squaredDistance(decoy, from);
-    const ahead = progressAt(world.fields, { x: decoy.x, y: decoy.y, w: 0, h: 0, vx: 0, vy: 0 }) < owner.progress;
+    const ahead = progressAt(world.progress, { x: decoy.x, y: decoy.y, w: 0, h: 0 }) < owner.progress;
     if (!ahead || squared > reach || (best && squared >= best.squared)) continue;
     best = { owner: decoy.owner, squared };
   }

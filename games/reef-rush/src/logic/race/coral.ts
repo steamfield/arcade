@@ -1,11 +1,11 @@
 /**
  * Breaking coral, the only way `World.broken` grows. A broken tile opens to
- * swimmers, so the steer and smash fields are rebuilt on the spot; the progress
+ * racers, so the medium rebuilds its navigation on the spot; the progress
  * field already treats coral as passable and never changes.
  */
 import { bodyTiles, cellAt, tileIndex } from '../level/query.ts';
+import { rebuildNav } from '../media/index.ts';
 import type { Racer, RacerId, World } from '../types.ts';
-import { rebuildForBrokenCoral } from './flowfield.ts';
 
 /**
  * Breaks the coral at tile (tx, ty) on behalf of racer `by` and emits `coral.broken`.
@@ -18,7 +18,7 @@ export function breakCoral(world: World, tx: number, ty: number, by: RacerId): b
   if (world.broken.has(index)) return false;
   // A new set rather than a mutation, so the set stays read-only to everyone else.
   world.broken = new Set(world.broken).add(index);
-  world.fields = rebuildForBrokenCoral(world.fields, world.level, world.broken);
+  rebuildNav(world);
   world.events.emit({ type: 'coral.broken', tx, ty, by });
   return true;
 }
