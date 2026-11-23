@@ -114,7 +114,7 @@ const ICON_RISE_FROM = 12;
  * Builds the recipes for a race drawn in `theme`. `back` draws behind the racers (trails, kick
  * puffs and coral debris, which would otherwise bury a racer smashing a gate), `front` above them
  * (everything else that marks an event). A popped power-up icon is `itemTextures`' sprite for its
- * kind, from the world skin (Reef's unless a caller says otherwise).
+ * kind, from the world skin.
  */
 export function createBursts(
   back: ParticleField,

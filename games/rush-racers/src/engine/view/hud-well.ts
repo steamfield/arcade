@@ -7,7 +7,6 @@
  * pips, one per dash charge, that is not a slot (no icon, no frame, no digit).
  */
 import type Phaser from 'phaser';
-import { courseOf } from '../../logic/courses/index.ts';
 import { DASH_METER, dashCharges } from '../../logic/powerups/dash-meter.ts';
 import { selectedItem, selectedSlot, slotItems } from '../../logic/powerups/inventory.ts';
 import { playerOf } from '../../logic/racers.ts';
@@ -17,7 +16,6 @@ import { Frame, Tex } from '../art/keys.ts';
 import { IconFrame, type IconFrameKey, UiTex } from '../art/ui/keys.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
-import { skinFor } from '../worlds/index.ts';
 import type { ObjectSkin } from '../worlds/object-skin.ts';
 import { Layer } from './layers.ts';
 
@@ -78,11 +76,12 @@ interface SlotView {
   charges: Label;
 }
 
-/**
- * The well, sized for the race from `slots`; `sync` redraws it from the player each frame, with the
- * item icons of the world skin the world's course belongs to.
- */
-export function createWell(scene: Phaser.Scene, slots: number): { sync(world: World): void } {
+/** The well, sized for the race from `slots`, showing `itemIcons`; `sync` redraws it from the player each frame. */
+export function createWell(
+  scene: Phaser.Scene,
+  slots: number,
+  itemIcons: ObjectSkin['itemIcons'],
+): { sync(world: World): void } {
   const layout = wellLayout(slots);
   createPanel(scene, WELL.x, WELL.y, layout.width, WELL.h, 'inset', { fixed: true, depth: Layer.hud });
   const dash = addHudIcon(scene, DASH_X, WELL_ICON_Y, IconFrame.dash);
@@ -95,7 +94,6 @@ export function createWell(scene: Phaser.Scene, slots: number): { sync(world: Wo
       const player = playerOf(world);
       dash.setAlpha(player.kickCooldown === 0 ? 1 : NOT_READY_ALPHA);
       const items = slotItems(player);
-      const { itemIcons } = skinFor(courseOf(world)).objects;
       for (const [slot, view] of views.entries()) syncSlot(view, items[slot] ?? null, itemIcons);
       const selected = selectedItem(player) ? selectedSlot(player) : -1;
       if (selected !== framedSlot) drawSelectedFrame(frame, layout.slotX[selected]);

@@ -19,7 +19,7 @@ import { courseOf } from '../../logic/courses/index.ts';
 import { playerOf } from '../../logic/racers.ts';
 import { type RacePhase, TILE, type World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
-import { Frame, Tex } from '../art/keys.ts';
+import { Frame } from '../art/keys.ts';
 import { IconFrame } from '../art/ui/keys.ts';
 import type { UiToneName } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
@@ -70,14 +70,14 @@ const THREAT_RANGE_TILES = 10;
  * head drawn from the cast of the course's world.
  */
 export function createHud(scene: Phaser.Scene, world: World, reducedMotion: boolean, layout: ScreenLayout): Hud {
-  const { cast } = skinFor(courseOf(world));
+  const { cast, objects } = skinFor(courseOf(world));
   const place = createPlacePanel(scene, cast.portraits[playerOf(world).character], reducedMotion);
   const timer = createTimer(scene);
   let shownTime = -1;
   const slots = stackMaxFor(playerOf(world));
-  const well = createWell(scene, slots);
+  const well = createWell(scene, slots, objects.itemIcons);
   const meter = createDashMeter(scene, slots, reducedMotion);
-  const pearls = createPearlCounter(scene, meter.right + HUD_GAP);
+  const pearls = createPearlCounter(scene, meter.right + HUD_GAP, objects.pickups.pearl);
   const strip = createProgressStrip(scene, world, cast.heads);
   const splash = createRaceSplash(scene, reducedMotion, layout.centreX);
   const threat = createThreatHud(scene, reducedMotion, (y, height) => besidePlayerY(y, height, layout), layout);
@@ -115,10 +115,10 @@ export function pearlText(pearls: number): string {
 }
 
 /** The pearl counter: the pearl sprite and the player's count, under the progress strip and clear of the back link. */
-function createPearlCounter(scene: Phaser.Scene, x: number): WorldView & { right: number } {
+function createPearlCounter(scene: Phaser.Scene, x: number, pearlTexture: string): WorldView & { right: number } {
   createPanel(scene, x, PEARLS.y, PEARLS_WIDTH, PEARLS.h, 'inset', { fixed: true, depth: Layer.hud });
   scene.add
-    .image(x + PEARLS.pad, PEARLS.iconY, Tex.pearl, Frame.a)
+    .image(x + PEARLS.pad, PEARLS.iconY, pearlTexture, Frame.a)
     .setOrigin(0, 0)
     .setScrollFactor(0)
     .setDepth(Layer.hud);
@@ -268,12 +268,15 @@ function createProgressStrip(scene: Phaser.Scene, world: World, headArt: CastSki
   };
 }
 
-/**
- * The caption line: the player's status (trapped, stunned, or a squid locked on) first, else a
- * rival bubble nearby but out of view, else nothing. */
 /** The parts of the camera's view the caption reads. */
 export type CaptionView = Pick<Phaser.Geom.Rectangle, 'contains' | 'centerX' | 'centerY'>;
 
+/**
+ * The caption line: the player's status (trapped, stunned, or a squid locked on) first, else a
+ * rival bubble nearby but out of view, else nothing, in the words of the course's world skin.
+ *
+ * @throws {Error} When the world's course is unknown or its world has no skin.
+ */
 export function captionText(world: World, view: CaptionView): string {
   const player = playerOf(world);
   const { status } = player;

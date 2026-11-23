@@ -106,7 +106,7 @@ const STILL_BUBBLES_PX = [5, 12] as const;
 
 /**
  * What to draw for `enemy` on world tick `tick`; `moments` are its last bonk and defeat. `bodies` is
- * the world skin's body texture per enemy kind; it is Reef's unless a caller says otherwise.
+ * the world skin's body texture per enemy kind.
  */
 export function enemyLook(
   enemy: Enemy,
