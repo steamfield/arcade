@@ -1,4 +1,4 @@
-# Reef Rush UI spec
+# Rush Racers UI spec
 
 The kit lives in `src/engine/art/ui/` and `src/engine/art/font.ts`. Screens are built from it; nothing else draws text, frames or icons. Rects are `(x, y, w, h)` in game px from the top-left corner.
 
@@ -111,7 +111,7 @@ Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.t
 
 | Element | Rect | Notes |
 | --- | --- | --- |
-| Logo | 67, 28, 186, 30 | `ui-logo` at 2x |
+| Logo | 64, 28, 192, 30 | `ui-logo` at 2x |
 | Racer lane | 0, 62, view width, 12 | racers swim past left to right across the whole view, not just the base (sprites, not text); still under reduced motion |
 | Race button | 120, 78, 80, 15 | cursor fin at x 109-117 |
 | How to play button | 120, 95, 80, 15 | HOW TO PLAY opens the How to Play screen |

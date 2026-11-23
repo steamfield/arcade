@@ -38,8 +38,8 @@ jobs:
 
       # Same commands agents run locally, so "passes locally" means the same thing here.
       - run: pnpm arcade check --all
-      # Reef Rush's 30-seed difficulty bars: too slow for check, so they run here and at each lane landing.
-      - run: pnpm --filter game-reef-rush test:difficulty
+      # Rush Racers' 30-seed difficulty bars: too slow for check, so they run here and at each lane landing.
+      - run: pnpm --filter game-rush-racers test:difficulty
       - run: pnpm arcade smoke
 
       - if: failure()

@@ -1,5 +1,5 @@
 /**
- * Shared shapes for Reef Rush's rules. Every logic module and the engine agree
+ * Shared shapes for Rush Racers' rules. Every logic module and the engine agree
  * on these, so they hold data only: no functions live here.
  */
 

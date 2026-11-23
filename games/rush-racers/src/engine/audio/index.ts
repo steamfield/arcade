@@ -27,7 +27,7 @@ const SFX_LEVEL = 0.8;
 /** Salt for the cosmetic pitch rng, so it never replays a gameplay stream at the same seed. */
 const COSMETIC_SALT = 0x5f3759df;
 
-const log = createLogger('reef-rush:audio');
+const log = createLogger('rush-racers:audio');
 
 /** A port that plays nothing, for browsers where audio could not be set up. */
 const SILENT: AudioPort = {

@@ -105,7 +105,7 @@ export interface RuntimeOptions {
   listedCourses?: readonly Course[];
 }
 
-/** The one save slot Reef Rush uses. */
+/** The one save slot Rush Racers uses. */
 export const SAVE_SLOT = 'main';
 
 /** Ticks between `race.finished` and the results screen, so the finish can be seen. */
@@ -115,7 +115,7 @@ const MENU_ARM_TICKS = 20;
 
 const MENUS: Partial<Record<SceneKey, readonly MenuOption[]>> = MENU_OPTIONS;
 
-const log = createLogger('reef-rush');
+const log = createLogger('rush-racers');
 
 /** Shared engine state. Logic changes only inside the FixedStep callback. */
 export class Runtime {

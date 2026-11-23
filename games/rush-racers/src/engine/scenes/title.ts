@@ -1,5 +1,5 @@
 /**
- * The title screen, laid out to UI.md: the REEF RUSH logotype over the backdrop of the last
+ * The title screen, laid out to UI.md: the RUSH RACERS logotype over the backdrop of the last
  * listed course raced (Sunlit Shallows until then), the four racers swimming past, the Race / How to play / Level / Sound / Motion
  * buttons (Level, Sound and Motion show the setting in force and change the moment it does),
  * a blinking PRESS A on touch screens (on a keyboard A is a move key, so the
@@ -33,7 +33,7 @@ import { createMenuView, type MenuView, OPTION_LABELS } from '../view/menu-view.
 import { formatRaceTime, ordinal } from '../view/race-text.ts';
 
 /** UI.md "Title" rects, in game px. */
-const LOGO_AT = { x: 67, y: 28, scale: 2 } as const;
+const LOGO_AT = { x: 64, y: 28, scale: 2 } as const;
 /** The lane the racers swim along: base y 62, across the whole view, behind the menu. */
 const RACER_LANE = { y: 62, depth: -1 } as const;
 /**

@@ -20,7 +20,7 @@ import { TitleScene } from './scenes/title.ts';
 import { type Stage, stageFor } from './stage.ts';
 
 /**
- * Starts Reef Rush inside `ctx.container`.
+ * Starts Rush Racers inside `ctx.container`.
  *
  * @throws {LevelError} When the course data is invalid; the shell reports it as a start error.
  */

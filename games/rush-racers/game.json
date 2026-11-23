@@ -1,8 +1,8 @@
 {
-  "id": "reef-rush",
-  "slug": "reef-rush",
-  "title": "Reef Rush",
-  "pitch": "Race three rivals through a reef, stacking power-ups that combine.",
+  "id": "rush-racers",
+  "slug": "rush-racers",
+  "title": "Rush Racers",
+  "pitch": "Race three rivals through reefs and forests, firing the power-up you pick.",
   "genre": "racing platformer",
   "engine": "phaser",
   "inputs": ["keyboard", "touch"],

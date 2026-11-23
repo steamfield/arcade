@@ -14,6 +14,6 @@ test('an unknown ?course= warns once and races Sunlit Shallows', async ({ game }
   expect(await game.summary()).toMatchObject({ scene: 'race', course: 'sunlit-shallows' });
   // The runtime unit test checks the warning names the id; console text renders the data object differently per browser.
   expect(game.console.filter((line) => line.includes('unknown course'))).toEqual([
-    expect.stringMatching(/^\[warning\] \[reef-rush\] unknown course in \?course=, racing the default/),
+    expect.stringMatching(/^\[warning\] \[rush-racers\] unknown course in \?course=, racing the default/),
   ]);
 });

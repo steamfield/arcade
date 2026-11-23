@@ -71,7 +71,7 @@ test('a finished race is saved and its best time shows on the title after a relo
 
 test('a player arriving from the arcade lands in the game with no start button to press', async ({ page }) => {
   // No test flag: this is what a player gets from a link on the landing page.
-  await page.goto('/games/reef-rush/');
+  await page.goto('/games/rush-racers/');
   await page.waitForFunction(() => window.__arcade?.ready === true || (window.__arcade?.errors.length ?? 0) > 0);
   expect(await page.evaluate(() => window.__arcade?.errors)).toEqual([]);
   await expect(page.locator('[data-arcade-start]')).toHaveCount(0);

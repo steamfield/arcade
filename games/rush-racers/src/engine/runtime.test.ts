@@ -122,7 +122,7 @@ describe('a save that cannot be written', () => {
     await settled(rt);
 
     expect(logged).toEqual([
-      { level: 'warn', namespace: 'reef-rush', message: 'Settings not saved: IndexedDB is gone' },
+      { level: 'warn', namespace: 'rush-racers', message: 'Settings not saved: IndexedDB is gone' },
     ]);
   });
 });
@@ -186,7 +186,7 @@ describe('the course a session races', () => {
     expect(logged).toEqual([
       {
         level: 'warn',
-        namespace: 'reef-rush',
+        namespace: 'rush-racers',
         message: 'unknown course in ?course=, racing the default',
         data: { course: 'nope', default: DEFAULT_COURSE.id },
       },

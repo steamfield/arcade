@@ -1,5 +1,5 @@
 /**
- * Every action Reef Rush understands, with its keys and touch controls.
+ * Every action Rush Racers understands, with its keys and touch controls.
  * Scenarios are typed against `Action`. `fire` uses the selected item and confirms in menus; `dash`
  * kicks and goes back; `prev` and `next` move the item selection.
  */
