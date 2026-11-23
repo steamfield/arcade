@@ -10,8 +10,12 @@ import { length } from '../num.ts';
 import { type Box, type Cell, type GridSize, type Level, type ProgressField, TILE, type Vec } from '../types.ts';
 import { PriorityQueue } from './priority-queue.ts';
 
-/** Cost multiplier for moving into a tile along `move` (-1, 0 or 1 per axis); Infinity means closed. */
-export type EntryCost = (cell: Cell, isBroken: boolean, move: Vec) => number;
+/**
+ * Cost multiplier for moving into a tile along `move` (-1, 0 or 1 per axis); Infinity means closed.
+ * `tile` is where the tile is, for a medium whose price depends on it (flight keeps flyers off the
+ * bottom rows over open sky); `distancesToFinish` always passes it, and most costs ignore it.
+ */
+export type EntryCost = (cell: Cell, isBroken: boolean, move: Vec, tile?: Vec) => number;
 
 /** A tile waiting in the Dijkstra frontier with the cost it was reached at. */
 type QueuedTile = { cost: number; tx: number; ty: number };
@@ -61,7 +65,7 @@ export function buildProgressField(level: Level): ProgressField {
 /** Cheapest cost from every tile to any finish tile, in tiles; Infinity where the finish is out of reach. */
 export function distancesToFinish(level: Level, broken: ReadonlySet<number>, cost: EntryCost): Float32Array {
   const entry = (tx: number, ty: number, move: Vec) =>
-    cost(cellAt(level, tx, ty), broken.has(tileIndex(level, tx, ty)), move);
+    cost(cellAt(level, tx, ty), broken.has(tileIndex(level, tx, ty)), move, { x: tx, y: ty });
   const isOpen = (tx: number, ty: number) => Number.isFinite(entry(tx, ty, STILL));
   // Searched in float64 so sums don't drift; stored as float32 like every field.
   const distance = new Float64Array(level.width * level.height).fill(Number.POSITIVE_INFINITY);

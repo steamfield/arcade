@@ -47,6 +47,8 @@ export interface FlightPilot extends PilotMemory {
   route: FlightRoute;
   /** Ticks before it may choose the ram field again, so a dash that didn't pop a cloud isn't retried at once. */
   ramRestTicks: number;
+  /** The puff cloud it dashed at and the ticks left of that dash's window; null when not dashing at one. */
+  puffDash: { tile: Vec; ticksLeft: number } | null;
 }
 
 /**
@@ -75,6 +77,8 @@ export interface FlightPilotNumbers {
   flapLift: number;
   /** Top horizontal speed it steers toward, px/s. */
   cruise: number;
+  /** Ticks after a dash in which it still pops puff clouds. */
+  dashTicks: number;
   /** Tiles a dash carries it while the dash still pops puff clouds; at least 1. */
   dashReachTiles: number;
 }
@@ -86,10 +90,12 @@ export interface FlightPilotNumbers {
  * @throws {Error} When `tuning.extra` lacks `flapLift`, `cruise` or `dashTicks`, which means the tuning isn't flight's.
  */
 export function flightPilotNumbers(tuning: MediumTuning, mods: MoveModifiers): FlightPilotNumbers {
-  const dashReachPx = tuning.kick * mods.kickMul * extraOf(tuning, 'dashTicks') * TICK_DT;
+  const dashTicks = extraOf(tuning, 'dashTicks');
+  const dashReachPx = tuning.kick * mods.kickMul * dashTicks * TICK_DT;
   return {
     flapLift: extraOf(tuning, 'flapLift'),
     cruise: extraOf(tuning, 'cruise'),
+    dashTicks,
     dashReachTiles: Math.max(1, Math.floor(dashReachPx / TILE)),
   };
 }

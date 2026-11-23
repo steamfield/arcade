@@ -94,6 +94,17 @@ export function flightPuffAhead(world: World, tile: Vec, steps: number): Vec | n
 }
 
 /**
+ * The first unbroken puff cloud within `reach` tiles of `tile` down the ram field that a dash
+ * facing `facing` can pop: on the tile's own row, on the side it faces. Null when there is none.
+ *
+ * @throws {Error} When the world's nav was built by another medium.
+ */
+export function flightPuffInDashLine(world: World, tile: Vec, facing: -1 | 1, reach: number): Vec | null {
+  const puff = flightPuffAhead(world, tile, reach);
+  return puff && puff.y === tile.y && Math.sign(puff.x - tile.x) === facing ? puff : null;
+}
+
+/**
  * Whether an unbroken puff cloud lies within `steps` tiles of `tile` down the ram field, so a dash,
  * Puffball or Meteor would open the way.
  *

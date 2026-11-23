@@ -9,9 +9,11 @@ import { describe, expect, it } from 'vitest';
 import { levelOf } from '../../courses/index.ts';
 import type { GameEvent } from '../../events.ts';
 import { courseFromLevel, placeOnTile, racerOf } from '../../test-world.ts';
+import type { Vec, World } from '../../types.ts';
 import { createWorld } from '../../world.ts';
 import { effectiveTuning, MEDIA } from '../index.ts';
 import { FLIGHT_MEDIUM } from './index.ts';
+import { flightRouteDistanceAt } from './way.ts';
 
 /** A world on `ascii` in flight, with the player put on tile `at`. */
 function worldWithPlayerAt(ascii: string, at: { x: number; y: number }) {
@@ -53,6 +55,62 @@ const CORNER = `
   ##########
 `;
 
+/** A floor gap at cols 8-10 (the bottom row open) under open sky; the starts sit on the floor beside it. */
+const OPEN_GAP = `
+  ##################
+  #...............F#
+  #...............F#
+  #...............F#
+  #...............F#
+  #...............F#
+  #...............F#
+  #1.2.3.4........F#
+  ########...#######
+`;
+
+/** An overhang from the ceiling down to row 6 over cols 8-12 above a floor gap at cols 9-11: the only way on is low over the gap. */
+const GAP_UNDER_OVERHANG = `
+  ##################
+  #...........#...F#
+  #.......#####...F#
+  #.......#####...F#
+  #.......#####...F#
+  #.......#####...F#
+  #.......#####...F#
+  #...............F#
+  #1.2.3.4........F#
+  #########...######
+`;
+
+/** A one-wide shaft at col 12 plugged by a puff cloud at row 4, beside a long way round to the left and over the top. */
+const PLUGGED_SHAFT = `
+  ################
+  #.............F#
+  #.##########.###
+  #.##########.###
+  #.##########C###
+  #.##########.###
+  #.##########.###
+  #.##########.###
+  #1.2.3.4.....###
+  ################
+`;
+
+/** The tiles from `tile` along the way, one `nextTile` at a time, until it ends (at most 100). */
+function wayFrom(world: World, tile: Vec): Vec[] {
+  const way: Vec[] = [];
+  let at = tile;
+  for (
+    let next = FLIGHT_MEDIUM.nextTile(world, at);
+    next && way.length < 100;
+    next = FLIGHT_MEDIUM.nextTile(world, at)
+  ) {
+    at = { x: at.x + next.x, y: at.y + next.y };
+    way.push(at);
+  }
+  return way;
+}
+
 describe('the flight medium', () => {
   it('is shipped in MEDIA', () => {
     expect(MEDIA.flight).toBe(FLIGHT_MEDIUM);
@@ -84,6 +142,27 @@ describe('the flight medium', () => {
       { x: 0, y: 1 },
       { x: 1, y: -1 },
     ]);
+  });
+
+  it('keeps the way off the bottom rows over a floor gap when there is room above', () => {
+    const { world } = worldWithPlayerAt(OPEN_GAP, { x: 2, y: 7 });
+
+    const overGap = wayFrom(world, { x: 2, y: 7 }).filter((tile) => tile.x >= 8 && tile.x <= 10);
+
+    expect(overGap.length).toBeGreaterThan(0);
+    expect(overGap.filter((tile) => tile.y >= 5)).toEqual([]);
+  });
+
+  it('leads through the bottom rows over a floor gap when an overhang leaves no other way', () => {
+    const { world } = worldWithPlayerAt(GAP_UNDER_OVERHANG, { x: 4, y: 8 });
+
+    expect(wayFrom(world, { x: 4, y: 8 }).at(-1)?.x).toBe(16);
+  });
+
+  it('never opens a puff cloud entered straight up or down for a dash, which only goes sideways', () => {
+    const { world } = worldWithPlayerAt(PLUGGED_SHAFT, { x: 12, y: 7 });
+
+    expect(FLIGHT_MEDIUM.distanceAt(world, { x: 12, y: 7 })).toBe(flightRouteDistanceAt(world, { x: 12, y: 7 }, 'ram'));
   });
 
   it('reports a start that can reach the finish only by popping a puff cloud, at that start', () => {

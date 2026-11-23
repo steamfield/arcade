@@ -1,6 +1,8 @@
 /**
  * Flight's rival pilot: the profile's `wobble` changes the path it flies, `reactionTicks` changes
- * how late it turns, and every flap is a real press (Up let go between flaps). Raced through
+ * how late it turns, every flap is a real press (Up let go between flaps), it glides down to a
+ * target a little below after a flap, and it dashes through a puff cloud only sideways and keeps at
+ * it until the cloud pops. Raced through
  * `createWorld` on sky-test and small inline courses, or steered one call at a time through
  * `FLIGHT_MEDIUM.steer` where the test needs to count ticks of its reaction.
  */
@@ -75,6 +77,51 @@ function callsUntilTurnUp(reaction: number): number {
   throw new Error(`Tess never aimed up the shaft in 120 calls with reactionTicks ${reaction}`);
 }
 
+/** A tunnel along row 4 plugged by a puff cloud at col 10, beside a long way back, up and over. */
+const PLUGGED_TUNNEL = `
+  ####################
+  #..................#
+  #.################.#
+  #.################.#
+  #1234.....C.......F#
+  ####################
+`;
+
+/** A one-wide shaft at col 12 plugged by a puff cloud at row 4, beside a long way round to the left and over the top. */
+const PLUGGED_SHAFT = `
+  ################
+  #.............F#
+  #.##########.###
+  #.##########.###
+  #.##########C###
+  #.##########.###
+  #.##########.###
+  #.##########.###
+  #1.2.3.4.....###
+  ################
+`;
+
+/** Open sky whose only finish tile is at row 2, so the way from below or above levels out along row 2. */
+const LEVEL_OFF = `
+  ############
+  #.........##
+  #.........F#
+  #.........##
+  #1234.....##
+  ############
+`;
+
+/** A racing world on an inline flight level with tess, who always dashes and never wobbles, put on tile `at`. */
+function tessOn(ascii: string, at: { x: number; y: number }) {
+  const log = new EventLog<GameEvent>(100_000);
+  const world = createWorld(courseFromLevel(ascii, 'flight'), log, { seed: 1, endsWhen: 'everyone' });
+  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'everyone' };
+  const tess = racerOf(world, 'tess');
+  tess.profile = { ...tess.profile, kickSkill: 1, wobble: 0, reactionTicks: 1 };
+  placeOnTile(tess, at.x, at.y);
+  return { world, log, tess };
+}
+
 /** Whether `racer` emitted `racer.flapped` among `events`. */
 const flappedIn = (events: readonly GameEvent[], racer: Racer) =>
   events.some((event) => event.type === 'racer.flapped' && event.id === racer.id);
@@ -113,5 +160,51 @@ describe('the flight pilot', () => {
 
     expect(heldFlaps).toEqual([]);
     expect(flaps).toBeGreaterThanOrEqual(3 * rivals.length);
+  });
+
+  it('dashes at a puff cloud plugging a shorter tunnel and keeps facing ahead until it is through', () => {
+    const { world, log, tess } = tessOn(PLUGGED_TUNNEL, { x: 6, y: 4 });
+    const facingSinceDash: number[] = [];
+    let dashed = false;
+    let poppedBy: string | null = null;
+    const throughAt = 13 * TILE;
+    for (let tick = 0; tick < 240 && tess.body.x < throughAt; tick++) {
+      const seen = log.all().length;
+      step(world, log, 1, IDLE);
+      for (const event of log.all().slice(seen)) {
+        if (event.type === 'racer.kicked' && event.id === 'tess') dashed = true;
+        if (event.type === 'coral.broken') poppedBy ??= event.by;
+      }
+      if (dashed) facingSinceDash.push(tess.facing);
+    }
+
+    expect(poppedBy).toBe('tess');
+    expect(tess.body.x).toBeGreaterThanOrEqual(throughAt);
+    expect(facingSinceDash.filter((facing) => facing !== 1)).toEqual([]);
+  });
+
+  it('never flies up a shaft to dash at a puff cloud plugging it, since a dash only goes sideways', () => {
+    const { world, log, tess } = tessOn(PLUGGED_SHAFT, { x: 10, y: 8 });
+    const inShaft: string[] = [];
+    for (let tick = 0; tick < 300; tick++) {
+      step(world, log, 1, IDLE);
+      const tile = {
+        x: Math.floor((tess.body.x + tess.body.w / 2) / TILE),
+        y: Math.floor((tess.body.y + tess.body.h / 2) / TILE),
+      };
+      if (tile.x === 12 && tile.y < 8) inShaft.push(`${tile.x},${tile.y} at tick ${world.tick}`);
+    }
+
+    expect(inShaft).toEqual([]);
+  });
+
+  it('keeps holding Up after a flap to glide down to a target a tile below', () => {
+    const { world, tess } = tessOn(LEVEL_OFF, { x: 6, y: 3 });
+    const mods = effectiveTuning(world).base;
+    const flap = FLIGHT_MEDIUM.steer(world, tess, mods, STEADY, false);
+    placeOnTile(tess, 6, 1);
+    const glide = FLIGHT_MEDIUM.steer(world, tess, mods, STEADY, false);
+
+    expect([flap.move.y, glide.move.y]).toEqual([-1, -1]);
   });
 });
