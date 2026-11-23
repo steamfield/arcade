@@ -1,5 +1,5 @@
 /**
- * Thornwood's faces in each slot's own palette (`ThornwoodPalette` in `racers.ts`): 16x16
+ * Thornwood's faces in each slot's own palette (`ThornwoodPalette` in `palette.ts`): 16x16
  * portraits for the place panel, the select grid and the podium, and 7x7 heads for the progress
  * strip and the standings (pixel art never scales by fractions, so the small size is drawn on its
  * own). Portraits look straight out; light comes from the top left in the shading.
@@ -13,7 +13,7 @@ import { CHARACTER_IDS } from '../../../../logic/types.ts';
 import type { NamedFrame, PixelRows } from '../../../art/pixel.ts';
 import type { ArtSheet } from '../../../art/sprites/sheet.ts';
 import { ThornCastFrame, ThornTex } from '../keys.ts';
-import { ThornwoodPalette } from './racers.ts';
+import { ThornwoodPalette } from './palette.ts';
 
 /** One slot's face at both sizes. */
 interface Face {
@@ -128,24 +128,24 @@ const FACES: Record<CharacterId, Face> = {
     ],
   },
   baron: {
-    head: ['.3.3.3.', '.33333.', '0222220', '0220220', '0222220', '1111111', '.00000.'],
+    head: ['..3.3..', '.03130.', '0111110', '0121112', '0111122', '0000020', '.2.2.2.'],
     portrait: [
-      '..3.3.3..3.3.3..',
-      '..333333333333..',
-      '..313131131313..',
-      '..000000000000..',
-      '.02222222222220.',
-      '.02002222220020.',
-      '.02222222222220.',
-      '.02222222222220.',
-      '..022222222220..',
-      '..000000000000..',
-      '.01111111111110.',
-      '0112112112112110',
-      '0111111111111110',
-      '0121121111211210',
-      '.01111111111110.',
-      '.00000000000000.',
+      '................',
+      '....3.3.3.3.....',
+      '....3131313.....',
+      '...00000000.....',
+      '..0011111100....',
+      '.011121121110...',
+      '.0112111211110..',
+      '01112111211110..',
+      '0111211121100220',
+      '0111111111102020',
+      '0112111211102220',
+      '.011111111100220',
+      '..0000000000.020',
+      '..22..22....2.2.',
+      '..22..22........',
+      '................',
     ],
   },
   selene: {
@@ -155,11 +155,11 @@ const FACES: Record<CharacterId, Face> = {
       '.0110......0110.',
       '.01111111111110.',
       '.01111111111110.',
-      '.02222211222220.',
-      '.02220211202220.',
-      '.02222211222220.',
+      '.01222211222210.',
+      '.02200211200220.',
+      '.02200211200220.',
+      '.01222211222210.',
       '.01111000011110.',
-      '.01111111111110.',
       '.33333333333333.',
       '.33333333333333.',
       '.01222222222210.',

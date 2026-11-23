@@ -6,41 +6,15 @@
  * unoutlined lines in a body colour, so they stay thin. In frame `a` the legs stretch fore and
  * aft; in frame `b` they gather under the body, which reads as a two-step run.
  *
- * `ThornwoodPalette` holds each slot's four colours; the portraits and heads in `portraits.ts`
- * draw in the same palettes, so a critter looks the same on the course, on the strip and on the
- * select screen.
+ * Colours come from `palette.ts`, shared with the portraits and heads.
  */
 import type { CharacterId } from '../../../../logic/types.ts';
 import { CHARACTER_IDS } from '../../../../logic/types.ts';
 import { Frame } from '../../../art/keys.ts';
-import type { Palette, PixelRows } from '../../../art/pixel.ts';
+import type { PixelRows } from '../../../art/pixel.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { ThornRacerTex } from '../keys.ts';
-
-/**
- * Each slot's palette: outline, main, second, accent. The main colour holds 3:1 against every
- * theme's contrast bands so the critter reads in any light (`sprites.test.ts`). The second is the
- * other body tone: a pale face, belly or glint for most, but Shade's charcoal coat, the one second
- * colour darker than its main.
- */
-export const ThornwoodPalette = {
-  /** Badger: grey coat, pale face stripe and lamp glass, an orange miner's helmet. */
-  rudy: [0x1a1420, 0xb8bcc8, 0xfff4c8, 0xff9a28],
-  /** Hare: sandy coat, cream belly and tail, pink inner ears. */
-  gil: [0x2c1a0c, 0xe0b880, 0xfff2dc, 0xff8a9c],
-  /** Fox: bright orange coat, cream chest and tail tip, dark socks and ear tips. */
-  streak: [0x2e0e06, 0xff7a30, 0xfff0d4, 0x5a2410],
-  /** Panther cub: a charcoal coat with a lilac sheen on its lit edges and belly, green-gold eyes. */
-  onyx: [0x07060e, 0xb4a4ec, 0x3c3858, 0xd8ff3c],
-  /** Chipmunk: tawny coat, cream stripes and belly, cyan goggle lenses. */
-  nib: [0x34180a, 0xf0b468, 0xfff0d8, 0x5ae2ff],
-  /** Tortoise: moss-green shell, tan skin, a gold crown. */
-  baron: [0x10260c, 0x92d058, 0xe8d49a, 0xffd23c],
-  /** Owl: tawny feathers, a cream face and belly, a rose scarf. */
-  selene: [0x28160c, 0xd8aa66, 0xfff0d2, 0xe8446e],
-  /** Wolf: grey fur, pale muzzle and belly, yellow hunter's eyes. */
-  rook: [0x10141e, 0x9aa8bc, 0xeaf0f8, 0xffd23a],
-} as const satisfies Record<CharacterId, Palette>;
+import { ThornwoodPalette } from './palette.ts';
 
 /** One slot's two run-stride frames. */
 type Strides = Readonly<Record<typeof Frame.a | typeof Frame.b, PixelRows>>;
@@ -203,6 +177,7 @@ const NIB: Strides = {
 const BARON: Strides = {
   [Frame.a]: [
     '................',
+    '................',
     '............3.3.',
     '..000000...33333',
     '.0111111100.0220',
@@ -213,9 +188,9 @@ const BARON: Strides = {
     '..2..2....2..2..',
     '..2.2......2.2..',
     '................',
-    '................',
   ],
   [Frame.b]: [
+    '................',
     '................',
     '............3.3.',
     '..000000...33333',
@@ -226,7 +201,6 @@ const BARON: Strides = {
     '..00000000000...',
     '...22..22.22....',
     '...22..22.22....',
-    '................',
     '................',
   ],
 };

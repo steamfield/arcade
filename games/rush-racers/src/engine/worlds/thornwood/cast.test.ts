@@ -8,14 +8,21 @@ import { CHARACTER_IDS } from '../../../logic/types.ts';
 import { Frame } from '../../art/keys.ts';
 import { registerThornwoodCast, THORNWOOD_CAST } from './cast.ts';
 import { ThornCastFrame, ThornRacerTex, ThornTex } from './keys.ts';
-import { ThornwoodPalette } from './sprites/racers.ts';
+import { ThornwoodPalette } from './sprites/palette.ts';
+
+/** One filled run of pixels, as the pixel builder draws them: a rect in one colour. */
+interface Rect {
+  x: number;
+  y: number;
+  colour: number;
+}
 
 interface BuiltTexture {
   /** Size of one frame: the texture is the frames side by side. */
   frameWidth: number;
   height: number;
   frames: string[];
-  colours: Set<number>;
+  rects: Rect[];
 }
 
 /**
@@ -24,16 +31,20 @@ interface BuiltTexture {
  */
 function recordingScene() {
   const built = new Map<string, BuiltTexture>();
-  let colours = new Set<number>();
+  let colour = 0;
+  let rects: Rect[] = [];
   const graphics = {
-    fillStyle: (colour: number) => {
-      colours.add(colour);
+    fillStyle: (next: number) => {
+      colour = next;
       return graphics;
     },
-    fillRect: () => graphics,
+    fillRect: (x: number, y: number) => {
+      rects.push({ x, y, colour });
+      return graphics;
+    },
     generateTexture: (key: string, width: number, height: number) => {
-      built.set(key, { frameWidth: width, height, frames: [], colours });
-      colours = new Set();
+      built.set(key, { frameWidth: width, height, frames: [], rects });
+      rects = [];
     },
     destroy: () => {},
   };
@@ -51,6 +62,13 @@ function recordingScene() {
     make: { graphics: () => graphics },
   } as unknown as Phaser.Scene;
   return { scene, built };
+}
+
+/** The drawn pixels of one named frame of a built texture. */
+function framePixels(texture: BuiltTexture | undefined, frame: string): Rect[] {
+  const index = texture?.frames.indexOf(frame) ?? -1;
+  if (!texture || index < 0) throw new Error(`Texture has no frame '${frame}'`);
+  return texture.rects.filter((rect) => Math.floor(rect.x / texture.frameWidth) === index);
 }
 
 /** Registers the cast on a fresh scene and returns what was built. */
@@ -117,18 +135,29 @@ describe('Thornwood cast skin', () => {
     const { built } = builtCast();
     for (const slot of CHARACTER_IDS) {
       const palette = new Set<number>(ThornwoodPalette[slot]);
-      const racerColours = built.get(ThornRacerTex[slot])?.colours ?? new Set<number>();
-      expect(
-        [...racerColours].every((colour) => palette.has(colour)),
-        slot,
-      ).toBe(true);
+      const drawn = [
+        framePixels(built.get(ThornRacerTex[slot]), Frame.a),
+        framePixels(built.get(ThornRacerTex[slot]), Frame.b),
+        framePixels(built.get(ThornTex.portraits), ThornCastFrame[slot]),
+        framePixels(built.get(ThornTex.heads), ThornCastFrame[slot]),
+      ];
+      for (const pixels of drawn) {
+        expect(pixels.length, slot).toBeGreaterThan(0);
+        expect(
+          pixels.every((pixel) => palette.has(pixel.colour)),
+          slot,
+        ).toBe(true);
+      }
     }
-    for (const key of [ThornTex.portraits, ThornTex.heads]) {
-      const all = new Set<number>(CHARACTER_IDS.flatMap((slot) => ThornwoodPalette[slot]));
-      expect(
-        [...(built.get(key)?.colours ?? [])].every((colour) => all.has(colour)),
-        key,
-      ).toBe(true);
+  });
+
+  it('plants every racer frame on the ground: its lowest drawn row is row 10 of 12', () => {
+    const { built } = builtCast();
+    for (const slot of CHARACTER_IDS) {
+      for (const frame of [Frame.a, Frame.b]) {
+        const rows = framePixels(built.get(ThornRacerTex[slot]), frame).map((pixel) => pixel.y);
+        expect(Math.max(...rows), `${slot} frame ${frame}`).toBe(10);
+      }
     }
   });
 
