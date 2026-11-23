@@ -9,7 +9,7 @@
 import type { EventSink } from '@arcade/core';
 import { kickImpulse } from '../abilities.ts';
 import type { GameEvent } from '../events.ts';
-import { SWIM_MEDIUM } from '../media/swim/index.ts';
+import { MEDIA } from '../media/index.ts';
 import type { KickRules, Medium, MediumEffects, MediumEnv, MediumTuning } from '../media/types.ts';
 import { length } from '../num.ts';
 import type { Body, Intent, MoveModifiers, Racer, Vec } from '../types.ts';
@@ -87,6 +87,8 @@ function capSpeed(body: Body): void {
   body.vy *= GLIDE_TUNING.maxSpeed / speed;
 }
 
+const SWIM_MEDIUM = MEDIA.swim;
+
 /** The glide medium. */
 export const GLIDE_MEDIUM: Medium = {
   id: 'glide',
@@ -101,6 +103,7 @@ export const GLIDE_MEDIUM: Medium = {
   aimFrom: SWIM_MEDIUM.aimFrom,
   nextTile: SWIM_MEDIUM.nextTile,
   distanceAt: SWIM_MEDIUM.distanceAt,
+  coralAhead: SWIM_MEDIUM.coralAhead,
   validateLevel: SWIM_MEDIUM.validateLevel,
   racerCollision: 'ghost',
   effects: GLIDE_EFFECTS,

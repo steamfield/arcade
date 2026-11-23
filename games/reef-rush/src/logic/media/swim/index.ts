@@ -11,7 +11,7 @@ import type { Medium } from '../types.ts';
 import { buildSwimNav, steerCost, validateSwimLevel } from './nav.ts';
 import { createSwimPilot, steerSwimmer } from './pilot.ts';
 import { SWIM_EFFECTS, SWIM_KICK_RULES, SWIM_TUNING } from './tuning.ts';
-import { swimAimFrom, swimDistanceAt, swimNextTile } from './way.ts';
+import { coralOnSmashPath, swimAimFrom, swimDistanceAt, swimNextTile } from './way.ts';
 
 /** The swim medium. */
 export const SWIM_MEDIUM: Medium = {
@@ -31,6 +31,7 @@ export const SWIM_MEDIUM: Medium = {
   aimFrom: swimAimFrom,
   nextTile: swimNextTile,
   distanceAt: swimDistanceAt,
+  coralAhead: coralOnSmashPath,
   validateLevel: validateSwimLevel,
   racerCollision: 'solid',
   effects: SWIM_EFFECTS,

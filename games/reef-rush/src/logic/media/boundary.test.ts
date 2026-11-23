@@ -3,6 +3,8 @@
  * (`aimFrom`, `nextTile`, `distanceAt`, `steer`) instead of reading `world.nav`, so a medium with a
  * different kind of navigation plugs in without generic code changing. Swim's field walkers
  * (`ai/steer.ts`) take fields as arguments, so no file outside `logic/media/` needs to read nav.
+ * Nor does generic code import a medium's own modules (`logic/media/swim/`); only swim's physics in
+ * `logic/swim/`, which is swim's own code kept where it was, does.
  * Reads the source tree, since the rule is about where code lives. Tests are left out: a medium's
  * own tests inspect its fields.
  */
@@ -14,6 +16,9 @@ const SRC = new URL('../..', import.meta.url).pathname;
 
 /** `.nav`, `?.nav`, `['nav']`, a destructured `{ nav }` (or `fields`, the old name). */
 const NAV_READ = /(\??\.\s*(nav|fields)\b)|(\[\s*['"](nav|fields)['"]\s*\])|(\{[^{}]*\b(nav|fields)\b[^{}]*\}\s*[=:])/;
+
+/** An import from swim's own folder; generic code reaches a medium only through `MEDIA`/`mediumOf`. */
+const SWIM_IMPORT = /from\s+'[^']*\/media\/swim\//;
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -50,6 +55,13 @@ describe('the navigation seam', () => {
         NAV_READ.test(line),
       ),
     ).toEqual([]);
+  });
+
+  it('lets nothing outside the media import a specific medium', () => {
+    const importers = FILES.filter(
+      ({ path, text }) => !path.startsWith('logic/media/') && !path.startsWith('logic/swim/') && SWIM_IMPORT.test(text),
+    ).map(({ path }) => path);
+    expect(importers).toEqual([]);
   });
 
   it('lets only media read nav', () => {

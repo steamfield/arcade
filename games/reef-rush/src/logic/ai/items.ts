@@ -9,7 +9,7 @@
  */
 import { itemAggressionMul, mayAttack } from '../difficulty-level.ts';
 import { pickSquidTarget } from '../hazards/squid-target.ts';
-import { coralOnSmashPath } from '../media/swim/way.ts';
+import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
 import { CLAM, FLASH } from '../powerups/tuning.ts';
 import { activeRacers, centreOf, playerOf } from '../racers.ts';
@@ -29,7 +29,7 @@ export const ITEM_USE = {
    * firing it whenever anyone is in range.
    */
   lanternTiles: FLASH.rangeTiles / 2,
-  /** Puffer: unbroken coral within this many steps down the smash field. */
+  /** Puffer: unbroken coral within this many steps ahead (`Medium.coralAhead`). */
   pufferCoralSteps: 3,
   /** Jet Fins: this many tiles of clear water straight along the aim. */
   jetClearTiles: 5,
@@ -55,7 +55,7 @@ export const ITEM_USE = {
  * and `roll` is under its chance: `profile.itemAggression`, times ITEM_USE.jetChanceMul while it
  * holds Jet Fins (unless a held Puffer has coral ahead). Uses: inkSac, a racer behind (higher progress) within 4
  * tiles; bubbleShield, a racer ahead within 6 tiles inside the aim cone; glowLantern, a racer ahead
- * within 2 tiles; puffer, unbroken coral on the smash-field path within 3 tiles; jetFin, a clear
+ * within 2 tiles; puffer, unbroken coral within 3 tiles ahead (`Medium.coralAhead`); jetFin, a clear
  * straight path of 5 tiles along the aim; homingSquid, a target in lock range (`pickSquidTarget`);
  * riptide, 6 clear tiles along the aim with a racer within 5 tiles behind to draft it; undertow, in 3rd or 4th with a racer 8 or more tiles ahead;
  * mimic, a squid locked on it within 8 tiles.
@@ -140,9 +140,9 @@ function inAimCone(racer: Racer, aim: Vec, other: Racer): boolean {
   return ((to.x - from.x) * aim.x + (to.y - from.y) * aim.y) / lengths >= ITEM_USE.aimConeCos;
 }
 
-/** True when a Puffer burst would open coral just ahead of the racer (swim's smash-field question). */
+/** True when a Puffer burst would open coral just ahead of the racer, as the medium judges it. */
 function pufferHasCoral(world: World, racer: Racer): boolean {
-  return coralOnSmashPath(world, tileOf(centreOf(racer)), ITEM_USE.pufferCoralSteps);
+  return mediumOf(world).coralAhead(world, tileOf(centreOf(racer)), ITEM_USE.pufferCoralSteps);
 }
 
 function clearAhead(world: World, racer: Racer, aim: Vec, tiles: number): boolean {
