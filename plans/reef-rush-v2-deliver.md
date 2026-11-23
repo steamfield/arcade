@@ -184,6 +184,7 @@ Shared for every phase 3 lane: read the Spec, the scaffold contents and the Phas
 Demo: `pnpm --filter game-reef-rush test:difficulty` passes the new bars; How to Play shows fire and swap, charges, the dash meter, pearls and enemies.
 Depends on: phase 3
 Scaffold: none (no shared types; the lanes' files don't overlap). After landing, the gate adds `pnpm --filter game-reef-rush test:difficulty` (about 42 s).
+Tag: reef-rush-v2-phase-4
 Test cases:
 - The `difficulty` project measures v2 (spec success criteria): on Normal over a fixed seed set, a bot that swims well and never dashes or fires places top 3 in at least 60% of seeds; an expert bot that dashes and fires wins clearly more often than that no-dash bot (state the margin in the bar); each rival's median item uses per race on Normal is at least 5 and every item kind fires in at least one race across the set; the existing per-character Hard expert/novice bars and the Easy toddler bar are kept, re-banded to v2 (the expert-wins band, the novice bands and the par band), with each band's numbers measured and written in the test's doc comment.
 - Par: Sunlit Shallows' `parTicks` is re-measured (a good expert race now runs about 105 s on Hard) and the sanity bar (`difficulty/sanity/bars.test.ts`, in the unit gate) gets its par-band check back.
