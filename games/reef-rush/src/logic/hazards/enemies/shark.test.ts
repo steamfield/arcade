@@ -3,6 +3,7 @@
  * at where that racer was, and two dash bonks (or one Homing Squid) to beat it.
  */
 import { describe, expect, it } from 'vitest';
+import { DIFFICULTY } from '../../difficulty-level.ts';
 import { eventsIn, giveItems, hold, placeOnTile, racerOf, step, ticksOf, tileCentre } from '../../test-world.ts';
 import { TILE, type Vec } from '../../types.ts';
 import { ARENA_TOP, arena, enemyAt, swimUntilNear, towardEnemy } from './test-arena.ts';
@@ -21,6 +22,8 @@ const SEA = [
 ];
 
 const SHARK_ROW = ARENA_TOP + 3;
+/** The shark tuning of a world built without a level (Hard), which these tests race on. */
+const HARD_SHARK = DIFFICULTY.hard.shark;
 
 /** A race on SEA with the player held on tile (`col`, `row` of the level) by `pin` before each step. */
 function sea(difficulty?: 'easy') {
@@ -54,15 +57,15 @@ describe('a shark on patrol', () => {
     }
     const home = 12.5 * TILE;
 
-    expect(Math.min(...xs)).toBeGreaterThanOrEqual(home - SHARK.patrolTiles * TILE - 1);
-    expect(Math.max(...xs)).toBeLessThanOrEqual(home + SHARK.patrolTiles * TILE + 1);
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(home - HARD_SHARK.patrolTiles * TILE - 1);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(home + HARD_SHARK.patrolTiles * TILE + 1);
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(5 * TILE);
     expect(shark.at.y).toBe((SHARK_ROW + 0.5) * TILE);
   });
 
   it.each([
     ['behind it', 15],
-    ['beyond its sight', 4],
+    ['beyond its sight', 3],
   ])('ignores a racer %s', (_name, col) => {
     const { world, log } = sea();
     pinned(world, log, col, 20);
@@ -95,12 +98,12 @@ describe('a shark on patrol', () => {
 
   it('swims back to its lane before it hunts again, ignoring a racer it sees on the way', () => {
     const { world, log, shark } = sea();
-    shark.at = tileCentre(16, SHARK_ROW);
+    shark.at = tileCentre(17, SHARK_ROW);
     shark.facing = -1;
     pinned(world, log, 12, 10);
 
     expect(eventsIn(log, 'enemy.telegraphed')).toEqual([]);
-    expect(shark.at.x).toBeLessThan(16.5 * TILE);
+    expect(shark.at.x).toBeLessThan(17.5 * TILE);
   });
 
   it('never winds up on the player on Easy', () => {
@@ -148,7 +151,7 @@ describe('a shark that sees a racer', () => {
     expect(charging).toBeLessThan(SHARK.chargeTicks);
     expect(shark.at.x).toBeGreaterThanOrEqual(TILE + SHARK.size / 2);
     expect(shark).toMatchObject({ mode: 'recover', vel: { x: 0, y: 0 } });
-    pinned(world, log, 18, SHARK.recoverTicks - 1);
+    pinned(world, log, 18, HARD_SHARK.recoverTicks - 1);
     expect(shark.mode).toBe('recover');
     pinned(world, log, 18, 1);
     expect(shark).toMatchObject({ mode: 'patrol', target: null });

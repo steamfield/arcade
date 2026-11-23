@@ -3,7 +3,9 @@
  *
  * Modes: 'hidden' → 'windup' (the warning, EEL.telegraphTicks, `enemy.telegraphed`) → 'lunge'
  * (EEL.lungeTicks: out EEL.lungeTiles and back) → 'hidden', one round every EEL.cycleTicks. Only while
- * lunging can it hit or be bonked. Its centre sits on its home tile centre except mid-lunge. Deterministic.
+ * lunging can it hit or be bonked. Its centre sits on its home tile centre except mid-lunge. Each eel
+ * starts partway through its cycle by an offset worked out from its home tile (`startEel`), so eels
+ * near each other lunge out of step. Deterministic: no randomness.
  */
 import { LevelError } from '../../level/parse.ts';
 import { cellAt } from '../../level/query.ts';
@@ -19,6 +21,13 @@ const HOLES: readonly { wall: Vec; out: Vec }[] = [
 ];
 
 const HIDDEN_TICKS = EEL.cycleTicks - EEL.telegraphTicks - EEL.lungeTicks;
+
+/**
+ * Ticks of start offset per column and per row of an eel's home tile. Neither shares a factor with
+ * EEL.cycleTicks, so eels a tile or two apart start far apart in their cycle.
+ */
+const START_TICKS_PER_COL = 37;
+const START_TICKS_PER_ROW = 11;
 
 /**
  * The unit direction an eel at `home` lunges: away from the first rock beside it, trying left, right,
@@ -45,6 +54,26 @@ export function eelOutward(level: Level, home: Vec): Vec {
     );
   }
   return hole.out;
+}
+
+/**
+ * Sets a newly made eel to where its start offset, `(home.x * 37 + home.y * 11) % EEL.cycleTicks`
+ * ticks, falls in its hidden → windup → lunge cycle, and places it there (out of its hole when that is
+ * mid-lunge). Emits nothing: an eel that starts in its warning telegraphs at its next one.
+ */
+export function startEel(eel: Enemy): void {
+  const offset = (eel.home.x * START_TICKS_PER_COL + eel.home.y * START_TICKS_PER_ROW) % EEL.cycleTicks;
+  if (offset < HIDDEN_TICKS) {
+    eel.mode = 'hidden';
+    eel.modeTicks = offset;
+  } else if (offset < HIDDEN_TICKS + EEL.telegraphTicks) {
+    eel.mode = 'windup';
+    eel.modeTicks = offset - HIDDEN_TICKS;
+  } else {
+    eel.mode = 'lunge';
+    eel.modeTicks = offset - HIDDEN_TICKS - EEL.telegraphTicks;
+  }
+  placeEel(eel);
 }
 
 /**

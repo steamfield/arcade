@@ -6,11 +6,11 @@
 import { type Enemy, type EnemyKind, type Level, type Racer, TILE, type World } from '../../types.ts';
 import { touchEnemies } from './contact.ts';
 import { requireCrabFloor, stepCrab } from './crab.ts';
-import { eelOutward, stepEel } from './eel.ts';
+import { eelOutward, startEel, stepEel } from './eel.ts';
 import { staggerShark, stepShark } from './shark.ts';
 import { CRAB, EEL, SHARK } from './tuning.ts';
 
-/** How each kind starts: its hp and first mode. */
+/** How each kind starts: its hp and first mode (an eel's is then moved along its cycle by `startEel`). */
 const START: Record<EnemyKind, Pick<Enemy, 'hp' | 'mode'>> = {
   shark: { hp: SHARK.hp, mode: 'patrol' },
   eel: { hp: EEL.hp, mode: 'hidden' },
@@ -18,8 +18,8 @@ const START: Record<EnemyKind, Pick<Enemy, 'hp' | 'mode'>> = {
 };
 
 /**
- * One enemy per `level.enemies` entry, in order, at its tile centre, unhurt, facing left: sharks and
- * crabs patrolling, eels hidden.
+ * One enemy per `level.enemies` entry, in order, unhurt: sharks and crabs at their tile centre facing
+ * left and patrolling, eels partway through their cycle by an offset from their home tile (`startEel`).
  *
  * Each eel's lunge direction (`out`) is worked out here, once; sharks and crabs get a zero `out`.
  *
@@ -30,7 +30,7 @@ export function createEnemies(level: Level): Enemy[] {
   return level.enemies.map(({ kind, tile }) => {
     const out = kind === 'eel' ? eelOutward(level, tile) : { x: 0, y: 0 };
     if (kind === 'crab') requireCrabFloor(level, tile);
-    return {
+    const enemy: Enemy = {
       kind,
       home: { ...tile },
       at: { x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE },
@@ -42,6 +42,8 @@ export function createEnemies(level: Level): Enemy[] {
       target: null,
       bonkedBy: [],
     };
+    if (kind === 'eel') startEel(enemy);
+    return enemy;
   });
 }
 

@@ -275,6 +275,14 @@ describe('invulnerability after a hit', () => {
   });
 });
 
+describe('the shark on each level', () => {
+  it('hunts harder on Normal and Hard, which share one tuning, and keeps the patient shark on Easy', () => {
+    expect(DIFFICULTY.normal.shark).toEqual(DIFFICULTY.hard.shark);
+    expect(DIFFICULTY.hard.shark).toEqual({ sightTiles: 8, patrolTiles: 4, recoverTicks: 24, chargeTurn: 0.05 });
+    expect(DIFFICULTY.easy.shark).toEqual({ sightTiles: 6, patrolTiles: 3, recoverTicks: 40, chargeTurn: 0 });
+  });
+});
+
 describe('the squid dodge window', () => {
   it('is 12 ticks on Hard, longer on Normal and longest on Easy, as `dodgeTicks` says', () => {
     expect(dodgeTicks(scene('hard').world)).toBe(SQUID.dodgeTicks);
