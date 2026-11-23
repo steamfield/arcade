@@ -243,13 +243,14 @@ Test cases, `src/logic/human-rules.test.ts` (lane b writes it), each on a world 
 
 ### Phase 3: the screen follows any slot
 
-Demo: `pnpm arcade see reef-rush --query "debug=1&local=tess" --input "_*200 right*120"`: the camera, HUD and sounds follow slot 2, which the keyboard drives, while the AI swims slot 1.
+Demo: `pnpm arcade see reef-rush --debug --scene race --query local=tess --input "_*200 right*120"`: the camera, HUD and sounds follow slot 2, which the keyboard drives, while the AI swims slot 1.
 Depends on: phase 2
 Scaffold: f5be7c7
+Tag: reef-online/phase-3
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/engine/, games/reef-rush/tests/local-racer.spec.ts, games/reef-rush/DESIGN.md, games/reef-rush/src/logic/world.ts | contracts, games/reef-rush/src/logic/racers.ts | | opus | running | deliver/reef-online-3a | local racer tests pass |
+| a | M | games/reef-rush/src/engine/, games/reef-rush/tests/local-racer.spec.ts, games/reef-rush/DESIGN.md, games/reef-rush/src/logic/world.ts | contracts, games/reef-rush/src/logic/racers.ts | | opus | merged | deliver/reef-online-3a | local racer tests pass |
 
 Test cases, `tests/local-racer.spec.ts` (Playwright through the `game` fixture, which the lane writes; assert on `debugSummary()`, `debugState()` and events, never pixels):
 
@@ -278,7 +279,7 @@ Test cases, `tests/local-racer.spec.ts` (Playwright through the `game` fixture, 
   - `DESIGN.md`: add `?local=` to the launch parameters, and a short entry under "Rules worth knowing" on human slots, `stepRace` and AI takeover (read the plan's assumptions for the rules; keep it to a few sentences).
 - Decisions already made: no new scenes, no lobby, no second input source. The Easy guide and its views stay tied to slot 1.
 - Out of scope: anything under `src/logic/`, `packages/`, networking, more than one human on one screen, save shape.
-- Done when: `pnpm arcade test reef-rush src/engine` passes, the new spec passes through the command the repo's `verify-game` skill gives for running one Playwright spec, `pnpm arcade check reef-rush --skip-tests` passes, and you have looked at a capture from `pnpm arcade see reef-rush --query "debug=1&local=tess" --input "_*200 right*120"` (read `.arcade/runs/latest/frames.png`): the camera and HUD follow the second racer. Say in the report what the capture showed.
+- Done when: `pnpm arcade test reef-rush src/engine` passes, the new spec passes through the command the repo's `verify-game` skill gives for running one Playwright spec, `pnpm arcade check reef-rush --skip-tests` passes, and you have looked at a capture from `pnpm arcade see reef-rush --debug --scene race --query local=tess --input "_*200 right*120"` (read `.arcade/runs/latest/frames.png`): the camera and HUD follow the second racer. Say in the report what the capture showed.
 
 ## Log
 
@@ -286,3 +287,4 @@ Test cases, `tests/local-racer.spec.ts` (Playwright through the `game` fixture, 
 - 2026-11-23: phase 1 lanes landed. Top-route hash 3381158881 recorded on lane a alone and unchanged after lane b's `**` rewrites merged. Browser hash 2809193514 on desktop Chromium, the phone project and WebKit. Lane a review: three findings, all fixed (byte order through a DataView, NaN order in sets, holes in sparse arrays). Lane b review: two findings fixed (function references, destructuring and bracket access now caught); rejected one, a `**=` nested inside another assignment is reported twice, because GritQL in Biome 2.6 cannot bind the operator token and the real site is always reported.
 - 2026-11-23: phase 1 boundary review (opus): four findings, all applied. A second pinned Node race with dashes and items run until everyone finishes (440851348), since the top route never dashes or fires; the browser hash is now read before the results delay (2046237260 on all three projects); `hashWorld` reports a cycle with its path instead of overflowing the stack; the skip list's doc says what it leaves out and the RFC notes that the race-start message must carry `humans`.
 - 2026-11-23: phase 2 landed. Lane b review: four findings, all fixed (a racer may always target itself, so a taken-over racer rides its own Riptide; a misleading test helper; an Easy case for invulnerability and clam bias on a second human; a type in place of a dead fallback). Lane a review: three findings, all fixed (takeover no longer reads `racer.ai`, which the no-dash test bot nulls, and skips `Racer.testBot`; race setup moved to `race/seats.ts`; two doc blocks). After the merge the rule tests were switched from stand-in helpers to `createWorld({ humans })` and `stepRace`. Full gate green; both pinned hashes unmoved.
+- 2026-11-23: phase 3 landed. Lane a review (opus) confirmed nothing changes without `?local` and found five things, all fixed: `summarize` takes a slot in place of an id-swapping world copy; `debugSummary().local` is present whenever a `?local=` was accepted, so the unsaved race is visible; names that said player now say local; `SplashClock.localFinished` is required, with a TIME UP case; `?stage=` stages around the local racer. The demo command was corrected to enter the race scene. Full gate green (smoke 58, difficulty 77); pinned hashes unmoved.
