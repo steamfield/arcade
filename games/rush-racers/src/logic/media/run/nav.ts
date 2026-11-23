@@ -9,7 +9,8 @@ import type { EntryCost } from '../../race/flowfield.ts';
 import { PriorityQueue } from '../../race/priority-queue.ts';
 import { type Level, TILE } from '../../types.ts';
 import type { MediumTuning } from '../types.ts';
-import { buildLinks, isSolidTile, plannedSpeed, type Terrain, terrainOf } from './links.ts';
+import { buildLinks, plannedSpeed } from './links.ts';
+import { isSolidTile, type Terrain, terrainOf } from './terrain.ts';
 import type { RunLink, RunNav } from './way-data.ts';
 
 /** Ticks added to a tile over a pit for being in the air with nothing to land on: about a second. */

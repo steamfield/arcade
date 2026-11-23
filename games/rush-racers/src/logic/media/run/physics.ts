@@ -209,9 +209,26 @@ function jump(racer: Racer, motion: RunMotion, speed: number, events: EventSink<
  * downdraft. Only falling speed is capped, so a jump or a stomp bounce keeps its full rise.
  */
 function fall(body: Body, cutShort: boolean, env: RunEnv, extra: RunExtra, dt: number): void {
-  const cut = cutShort && body.vy < 0 ? extra.cutGravityMul : 1;
   const draft = (env.wind?.y ?? 0) * extra.draftForce;
-  body.vy = Math.min(extra.maxFall, body.vy + (extra.gravity * cut + draft) * dt);
+  body.vy = stepFallSpeed(body.vy, cutShort, draft, extra, dt);
+}
+
+/**
+ * Vertical speed, px/s with down positive, after one tick of gravity: stronger while rising when
+ * `cutShort` (Up released), plus `draft` (px/s², an updraft or downdraft), and capped at `maxFall`
+ * only on the way down. The step `applyRunIntent` takes each tick, shared with the nav's jump arcs.
+ *
+ * @param dt Tick length in seconds.
+ */
+export function stepFallSpeed(
+  speed: number,
+  cutShort: boolean,
+  draft: number,
+  extra: { gravity: number; cutGravityMul: number; maxFall: number },
+  dt: number,
+): number {
+  const cut = cutShort && speed < 0 ? extra.cutGravityMul : 1;
+  return Math.min(extra.maxFall, speed + (extra.gravity * cut + draft) * dt);
 }
 
 function clamp(value: number, low: number, high: number): number {

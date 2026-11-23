@@ -17,8 +17,9 @@ import { type Level, TILE, type Vec, type World } from '../../types.ts';
 import { createWorld, stepWorld } from '../../world.ts';
 import { MEDIA } from '../index.ts';
 import { runMotion } from './data.ts';
-import { buildLinks, standTiles } from './links.ts';
+import { buildLinks } from './links.ts';
 import { buildRunNav } from './nav.ts';
+import { standTiles } from './terrain.ts';
 import { RUN_TUNING } from './tuning.ts';
 import type { RunLink } from './way-data.ts';
 

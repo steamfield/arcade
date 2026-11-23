@@ -1,8 +1,8 @@
 /**
  * Running as a medium: run and jump on land with gravity, a horizontal dash, stomps, crates hit from
  * below, ledges and pits. This file only assembles the members: physics in `physics.ts`, surroundings
- * in `env.ts`, falls and respawns in `respawn.ts`, navigation in `links.ts` (stand tiles and links),
- * `nav.ts` (their solution) and `way.ts` (reading it), the rival pilot in `pilot.ts`, numbers and rules in `tuning.ts`, and data shapes in `data.ts` and `way-data.ts`.
+ * in `env.ts`, falls and respawns in `respawn.ts`, navigation in `terrain.ts` (stand tiles), `arc.ts` (jump arcs),
+ * `links.ts` (links between stand tiles), `nav.ts` (their solution) and `way.ts` (reading it), the rival pilot in `pilot.ts`, numbers and rules in `tuning.ts`, and data shapes in `data.ts` and `way-data.ts`.
  */
 import type { Medium } from '../types.ts';
 import { sampleRunEnvironment } from './env.ts';

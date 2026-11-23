@@ -35,10 +35,12 @@ function runWorld(playerRows: readonly string[]) {
   return { world, log, player: racerOf(world, 'player') };
 }
 
-/** A lane with a pit 5 tiles wide from PIT_COLUMN; `beforePit` is the floor tile just left of it. */
+/** A lane with a pit 2 tiles wide (a jump crosses it under the low ceiling, holding right alone falls in) from PIT_COLUMN; `beforePit` is the floor tile just left of it. */
 function pitLane(beforePit: '#' | '?') {
-  return ['...............F', '...............F', '.1.............F', `####${beforePit}.....######`];
+  return ['...............F', '...............F', '.1.............F', `####${beforePit}..#########`];
 }
+/** Open rows a lane adds above its start, so a jump has room under the rivals' floor. */
+const HEADROOM = ['...............F', '...............F', '...............F'];
 /** Tile column where the pit starts. */
 const PIT_COLUMN = 5;
 
@@ -126,26 +128,26 @@ describe('falling into a pit', () => {
 
   it('comes back on a ledge it last stood on', () => {
     const race = runWorld([
-      '...............F',
+      ...HEADROOM,
       '.1.............F',
-      '.===...........F',
+      '.===..====.....F',
       '...............F',
-      '#...........####',
+      '#.........######',
     ]);
     step(race.world, race.log, SETTLE);
     runIntoPit(race);
     step(race.world, race.log, respawnTicks);
 
-    // Under the rivals' 3 rows, the ledge is row 5.
-    expect(race.player.body.y + race.player.body.h).toBe(5 * TILE);
+    // Under the rivals' 3 rows and the headroom, the ledge is the row after the start's.
+    expect(race.player.body.y + race.player.body.h).toBe((HEADROOM.length + 4) * TILE);
   });
 
   it('never counts cracked stone as safe ground, since it can break for good', () => {
-    const race = runWorld(['...............F', '.1.............F', '###CCC.....#####']);
+    const race = runWorld([...HEADROOM, '.1.............F', '###CCC..########']);
     const { world, log, player } = race;
     step(world, log, SETTLE);
     for (let tick = 0; tick < 120 && player.body.x < 4 * TILE; tick++) step(world, log, 1, hold(RIGHT));
-    for (const column of [3, 4, 5]) breakCoral(world, column, 5, 'tess');
+    for (const column of [3, 4, 5]) breakCoral(world, column, HEADROOM.length + 4, 'tess');
     runIntoPit(race);
     step(world, log, respawnTicks + 30);
 
@@ -171,7 +173,7 @@ describe('falling into a pit', () => {
     const { world, log } = runWorld(pitLane('#'));
     const tess = racerOf(world, 'tess');
     const start = { ...runMotion(tess.motion).lastSafe };
-    placeOnTile(tess, PIT_COLUMN + 1, 4);
+    placeOnTile(tess, PIT_COLUMN, 6);
     for (let tick = 0; tick < 120 && eventsIn(log, 'racer.respawned').length === 0; tick++) step(world, log, 1, IDLE);
 
     expect(eventsIn(log, 'racer.fell', 'racer.respawned')).toEqual([
