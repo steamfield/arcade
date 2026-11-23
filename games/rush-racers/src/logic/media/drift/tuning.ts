@@ -16,7 +16,9 @@ import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
  * lasts a second or two and no longer; `idleBrake` (px/s²), added to drag while the stick is idle; `bounce`, the share of the
  * speed into a wall that comes back; `bounceMinSpeed` (px/s), the slowest impact that emits
  * `racer.bounced`; `dustCruiseMul`, cruise's multiplier in nebula dust, and `dustDrag` (px/s²),
- * added to drag there; `windForce` (px/s²), a solar wind cell's push.
+ * added to drag there; `windForce` (px/s²), a solar wind cell's push; `wellPull`, the multiplier on
+ * every gravity well's pull; `respawnTicks`, how long a racer a black hole swallowed is out, and
+ * `respawnInvulnTicks`, how long it can't be hit once it is back.
  */
 export const DRIFT_TUNING = {
   base: { forceMul: 1, kickMul: 1, kickCooldownTicks: 36, dragMul: 1 },
@@ -33,9 +35,12 @@ export const DRIFT_TUNING = {
     dustCruiseMul: 0.6,
     dustDrag: 150,
     windForce: 200,
+    wellPull: 1,
+    respawnTicks: 60,
+    respawnInvulnTicks: 60,
   },
-  /** Easy's stabilisers brake a racer whose stick is idle. */
-  byDifficulty: { easy: { idleBrake: 10 } },
+  /** Easy's stabilisers brake a racer whose stick is idle, and gravity wells pull less. */
+  byDifficulty: { easy: { idleBrake: 10, wellPull: 0.6 } },
 } as const satisfies MediumTuning;
 
 /** The extras drift reads from `tuning.extra`. */
@@ -73,7 +78,7 @@ export function driftCruise(extras: DriftExtras, forceMul: number, inDust: boole
 /**
  * A dash, knockback or decoy holds velocity on both axes; a trapped racer floats still and a loose
  * power-up stays where it dropped; enemies can't be stomped; pods open on touch; the level is walled
- * all round; no ledges. The Easy assist slides both stick axes.
+ * all round; no ledges; levels may have gravity wells. The Easy assist slides both stick axes.
  */
 export const DRIFT_EFFECTS: MediumEffects = {
   dashAxes: 'both',
@@ -84,6 +89,7 @@ export const DRIFT_EFFECTS: MediumEffects = {
   pitBelow: false,
   allowsLedges: false,
   assistAxes: 'both',
+  gravityWells: true,
 };
 
 /**

@@ -4,11 +4,14 @@
  * An accessor throws on another medium's data. Navigation and pilot shapes live in `way-data.ts`.
  */
 import type { Vec } from '../../types.ts';
+import type { ParkingMotion } from '../fall-out.ts';
 import type { MediumEnv, RacerMotion } from '../types.ts';
 
 /** A drifter's movement state. */
-export interface DriftMotion extends RacerMotion {
+export interface DriftMotion extends ParkingMotion {
   readonly kind: 'drift';
+  /** Top-left of the last spot where the drifter's centre was outside every black hole's reach: where it comes back after one swallows it. */
+  lastFree: Vec;
 }
 
 /** What the surroundings do to a drifter this tick. */
@@ -21,6 +24,8 @@ export interface DriftEnv extends MediumEnv {
   wind: Vec | null;
   /** The drifter's centre is in nebula dust (a kelp cell), which lowers its cruise and drags on it. */
   inDust: boolean;
+  /** The pull of the gravity wells on the drifter's centre, px/s², already times the tuning's `wellPull`; zero outside every reach. */
+  pull: Vec;
 }
 
 /**

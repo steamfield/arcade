@@ -24,6 +24,7 @@
 import { type Cell, type EnemyKind, type Level, type LevelDef, RACER_IDS, type Vec } from '../types.ts';
 import { errorAt, LevelError } from './level-error.ts';
 import { openToAir, requireSurfacesOnMap, requireUnderwater } from './surface.ts';
+import { parseWells } from './wells.ts';
 
 export { LevelError } from './level-error.ts';
 
@@ -84,8 +85,8 @@ interface Markers {
  * @throws {LevelError} For a legend glyph that isn't one UTF-16 character, is whitespace, reuses a built-in character or
  *   names an unknown cell; ragged rows, unknown characters, missing or duplicate start digits,
  *   no finish tile, finish tiles in more than one column, a dark zone outside the map or reversed, a
- *   surface range reversed, off the map or with its row outside 1..height-1, or an enemy or start tile
- *   in the air above a surface.
+ *   surface range reversed, off the map or with its row outside 1..height-1, an enemy or start tile
+ *   in the air above a surface, or a bad gravity well (`parseWells`).
  */
 export function parseLevel(def: LevelDef): Level {
   const legend = readLegend(def.legend ?? {});
@@ -113,6 +114,7 @@ export function parseLevel(def: LevelDef): Level {
     enemies: markers.enemies,
     dark: requireDarkZonesOnMap(def.dark ?? [], width),
     surface,
+    wells: parseWells(def.wells ?? [], width, rows.length),
   };
 }
 

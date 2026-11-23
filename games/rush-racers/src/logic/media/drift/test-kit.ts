@@ -19,6 +19,7 @@ import {
   RACER_SIZE,
   type Racer,
   type RacerId,
+  type WellDef,
 } from '../../types.ts';
 import { createWorld } from '../../world.ts';
 import type { MediumTuning } from '../types.ts';
@@ -27,7 +28,7 @@ import { applyDriftIntent, createDriftMotion } from './physics.ts';
 import { DRIFT_TUNING } from './tuning.ts';
 
 /** Open space with no solar wind and no dust. */
-export const VACUUM: DriftEnv = { kind: 'drift', wind: null, inDust: false };
+export const VACUUM: DriftEnv = { kind: 'drift', wind: null, inDust: false, pull: { x: 0, y: 0 } };
 
 /** Ticks in a number of seconds. */
 export const ticksIn = (seconds: number) => Math.round(seconds / TICK_DT);
@@ -94,12 +95,21 @@ export const RIVAL_LANE_ROWS = 3;
  */
 export function driftWorld(
   playerRows: readonly string[],
-  options: { character?: CharacterId; difficulty?: Difficulty; tuning?: CourseTuning; seed?: number } = {},
+  options: {
+    character?: CharacterId;
+    difficulty?: Difficulty;
+    tuning?: CourseTuning;
+    seed?: number;
+    /** Gravity wells, their rows counted in the player's area like `playerRows`. */
+    wells?: readonly WellDef[];
+  } = {},
 ) {
   const width = playerRows[0]?.length ?? 0;
   const rivalLane = [`${'.'.repeat(width - 1)}F`, `.234${'.'.repeat(width - 5)}F`, '#'.repeat(width)];
   const overrides = options.tuning ? { tuning: options.tuning } : {};
-  const course = courseFromLevel([...rivalLane, ...playerRows].join('\n'), 'drift', overrides);
+  const wells = (options.wells ?? []).map((well) => ({ ...well, row: well.row + RIVAL_LANE_ROWS }));
+  const level = { name: 'test', ascii: [...rivalLane, ...playerRows].join('\n'), wells };
+  const course = courseFromLevel(level, 'drift', overrides);
   const log = new EventLog<GameEvent>(100_000);
   const world = createWorld(course, log, {
     seed: options.seed ?? 1,

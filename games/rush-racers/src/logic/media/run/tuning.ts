@@ -64,6 +64,7 @@ export const RUN_EFFECTS: MediumEffects = {
   pitBelow: true,
   allowsLedges: true,
   assistAxes: 'horizontal',
+  gravityWells: false,
 };
 
 /** No kick counter works on land, and Gil's ability is a higher jump (`jumpMulFor`), not a spring kick. */

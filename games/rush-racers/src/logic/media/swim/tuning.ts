@@ -41,6 +41,7 @@ export const SWIM_EFFECTS: MediumEffects = {
   pitBelow: false,
   allowsLedges: false,
   assistAxes: 'both',
+  gravityWells: false,
 };
 
 /**

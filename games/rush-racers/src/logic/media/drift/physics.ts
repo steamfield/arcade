@@ -12,9 +12,9 @@ import type { MediumEnv, MediumTuning } from '../types.ts';
 import { type DriftEnv, type DriftMotion, driftEnv } from './data.ts';
 import { DRIFT_KICK_RULES, type DriftExtras, driftCruise, driftExtras } from './tuning.ts';
 
-/** A drifter's movement state at the start line. */
-export function createDriftMotion(_body: Body): DriftMotion {
-  return { kind: 'drift' };
+/** A drifter's movement state at the start line: its start is its first free spot. */
+export function createDriftMotion(body: Body): DriftMotion {
+  return { kind: 'drift', parkedAt: { x: body.x, y: body.y }, lastFree: { x: body.x, y: body.y } };
 }
 
 /**

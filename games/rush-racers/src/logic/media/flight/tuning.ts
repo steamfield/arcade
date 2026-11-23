@@ -66,6 +66,7 @@ export const FLIGHT_EFFECTS: MediumEffects = {
   pitBelow: true,
   allowsLedges: false,
   assistAxes: 'horizontal',
+  gravityWells: false,
 };
 
 /** A dash dodges a Homing Gull, shakes a latch and counters a Headwind; Gil's slot flaps harder (`jumpMulFor`) instead of a spring kick. */

@@ -266,8 +266,8 @@ describe('solar wind', () => {
     placeOnTile(player, 8, RIVAL_LANE_ROWS);
     const inDust = sampleDriftEnvironment(world, player);
 
-    expect(inWind).toEqual({ kind: 'drift', wind: RIGHT, inDust: false });
-    expect(inDust).toEqual({ kind: 'drift', wind: null, inDust: true });
+    expect(inWind).toEqual({ ...VACUUM, wind: RIGHT });
+    expect(inDust).toEqual({ ...VACUUM, inDust: true });
   });
 });
 
@@ -342,6 +342,7 @@ describe('the drift medium', () => {
       pitBelow: false,
       allowsLedges: false,
       assistAxes: 'both',
+      gravityWells: true,
     });
     expect(medium.kickRules).toMatchObject({ dodgesSquid: true, shakesLatch: true, countersUndertow: true });
   });

@@ -126,6 +126,8 @@ export interface MediumEffects {
    * where Up and Down are moves of their own (a flap or a dive), so the assist never changes `move.y`.
    */
   assistAxes: 'both' | 'horizontal';
+  /** True: the medium's levels may have gravity wells (`LevelDef.wells`), and it says what they do to a racer. */
+  gravityWells: boolean;
 }
 
 /** How the generic counters read a kick in this medium. */
