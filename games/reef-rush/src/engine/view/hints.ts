@@ -14,6 +14,7 @@
  * Hints run on the first race of a save and on every Easy race; otherwise they stay silent.
  */
 import { TICK_DT } from '@arcade/core';
+import { dodgeTicks } from '../../logic/difficulty-level.ts';
 import { SQUID } from '../../logic/powerups/tuning.ts';
 import { centreOf, playerOf } from '../../logic/racers.ts';
 import type { Difficulty, World } from '../../logic/types.ts';
@@ -25,7 +26,7 @@ export const PRESS_B_TICKS = 240;
 export const UNUSED_PULSE_TICKS = 300;
 /**
  * Ticks before the dodge window that KICK! appears, so there is time to read it and press. The
- * window itself is `SQUID.dodgeTicks`, read from logic.
+ * window itself is `dodgeTicks(world)` from logic (wider on easier levels).
  */
 export const KICK_LEAD_TICKS = 8;
 
@@ -96,22 +97,13 @@ export function updateHints(memory: HintMemory, world: World, config: HintConfig
   };
 }
 
-/**
- * Ticks before contact in which a kick still dodges a squid. This is the one place the hints read
- * it: once lane 7/c merges it becomes `dodgeTicks(world)` from `logic/difficulty-level.ts` (12 hard,
- * 18 normal, 24 easy) and this function goes away.
- */
-function dodgeTicksFor(_world: World): number {
-  return SQUID.dodgeTicks;
-}
-
 /** A squid locked on the player is inside the dodge window plus the lead, and the player can kick now. */
 function kickIsUseful(world: World): boolean {
   const player = playerOf(world);
   if (player.status.latched > 0 || player.kickCooldown > 0) return false;
   const squid = squidHuntingPlayer(world);
   if (squid === null) return false;
-  const reach = (dodgeTicksFor(world) + KICK_LEAD_TICKS) * SQUID.speed * TICK_DT;
+  const reach = (dodgeTicks(world) + KICK_LEAD_TICKS) * SQUID.speed * TICK_DT;
   const at = centreOf(player);
   return (squid.x - at.x) ** 2 + (squid.y - at.y) ** 2 <= reach * reach;
 }

@@ -3,13 +3,14 @@ import { hold, scenario, wait } from './kit.ts';
 
 /**
  * Opens the clam at (22, 6), which rolls Jet Fins on seed 1, climbs to row 4 and swims into the
- * urchin at (32, 4) at tick 588. Input stops two ticks later, so the knockback carries the player
- * away from the dropped pickup and nobody grabs it before the scenario ends.
+ * urchin at (32, 4) at tick 562. A fresh save races on Easy, whose catch-up push carries the player
+ * farther, so the run-up is shorter than it was on Hard. The knockback carries the player away from
+ * the dropped pickup and nobody grabs it before the scenario ends.
  */
 export default scenario({
   description: 'an urchin hit knocks the newest power-up off the player and leaves it as a loose pickup',
   start: { scene: 'race', seed: 1 },
-  input: [wait(180), hold('right', 300), hold(['right', 'up'], 50), hold('right', 60), wait(40)],
+  input: [wait(180), hold('right', 250), hold(['right', 'up'], 50), hold('right', 80), wait(40)],
   expect({ summary, events }) {
     const hits = events.filter((e) => e.type === 'racer.hit' && e.id === 'player');
     expect(hits[0]).toMatchObject({ cause: 'urchin', by: null });

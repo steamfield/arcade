@@ -5,6 +5,26 @@ import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../src/logic/race/standings.t
 export const { scenario, hold, tap, wait } = scenarioKit<Action>();
 
 /**
+ * A save on Hard, the tuning the routes below were recorded on. A fresh save races on Easy, so a
+ * scenario whose route depends on Hard's clam rolls or speeds starts from this save (on the title,
+ * where loadState lands) and swims `TITLE_TO_RACE` first. `races: 0` keeps the race seed equal to
+ * the scenario's `seed`.
+ */
+export const HARD_SAVE = {
+  version: 4,
+  savedAt: '2026-11-22T00:00:00.000Z',
+  data: {
+    best: null,
+    races: 0,
+    settings: { muted: false, reducedMotion: null, difficulty: 'hard' },
+    character: 'rudy',
+  },
+};
+
+/** Title Race, then race as the saved pick once the select screen has armed: lands on the countdown's first tick. */
+export const TITLE_TO_RACE = [wait(25), tap('kick'), wait(25), tap('kick')];
+
+/**
  * Ticks from the start of a race to a results screen that has been up long enough to take input,
  * for a player who never swims. The race limit ends any race, so this holds whatever the rivals'
  * tuning: the countdown, the limit, the 90 ticks before results show, then 30 more, past the

@@ -1,4 +1,5 @@
 import { expect, test } from '@arcade/testing/playwright';
+import { HARD_SAVE, TITLE_TO_RACE } from '../scenarios/kit.ts';
 import { COUNTDOWN_TICKS } from '../src/logic/race/standings.ts';
 
 test('a staged lock-on reaches the HUD state, and a staged latch calls for kicks', async ({ game }) => {
@@ -20,8 +21,11 @@ test('without a stage the HUD reports no threat', async ({ game }) => {
 });
 
 test('a squid locked on the player is announced before it latches, and the latch ends', async ({ game }) => {
-  // The staged squid is real: once the race starts the logic flies it at the player.
-  await game.open({ scene: 'race', debug: true, query: { stage: 'squid-lockon' } });
+  // The staged squid is real: once the race starts the logic flies it at the player. Its owner is a
+  // rival, and on Easy (a fresh save) no rival power-up lands on the player, so race from a Hard save.
+  await game.open({ debug: true, query: { stage: 'squid-lockon' } });
+  await game.loadState(HARD_SAVE);
+  await game.play(TITLE_TO_RACE);
   await game.advance(COUNTDOWN_TICKS + 1);
   expect(await game.summary()).toMatchObject({ threat: { lockedOn: true, latched: false } });
   await game.advance(120);

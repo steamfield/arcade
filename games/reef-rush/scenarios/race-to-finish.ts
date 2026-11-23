@@ -1,10 +1,10 @@
 import { expect } from '@playwright/test';
-import { scenario, TOP_ROUTE } from './kit.ts';
+import { HARD_SAVE, scenario, TITLE_TO_RACE, TOP_ROUTE } from './kit.ts';
 
 export default scenario({
   description: 'swimming the top route over the pillar crosses the finish, ends the race and saves',
-  start: { scene: 'race' },
-  input: TOP_ROUTE,
+  start: { save: HARD_SAVE },
+  input: [...TITLE_TO_RACE, ...TOP_ROUTE],
   expect({ summary, events }) {
     expect(summary).toMatchObject({ scene: 'race', phase: 'finished', finished: true });
     expect(events.filter((e) => e.type === 'racer.finished').map((e) => e.id)).toContain('player');

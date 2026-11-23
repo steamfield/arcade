@@ -177,6 +177,17 @@ describe('KICK', () => {
     expect(next.run(1).kick).toBe(true);
   });
 
+  it('shows farther out on Easy, where the logic gives a wider dodge window', () => {
+    const between = Math.round(leadPx + 4 * SQUID.speed * (1 / 60));
+    const hard = race();
+    lockSquidOnPlayer(hard.world, between);
+    expect(hard.run(1).kick).toBe(false);
+    const easy = race();
+    easy.world.difficulty = 'easy';
+    lockSquidOnPlayer(easy.world, between);
+    expect(easy.run(1).kick).toBe(true);
+  });
+
   it('stays quiet while the player kick is cooling down', () => {
     const { world, player, run } = race();
     lockSquidOnPlayer(world, Math.round(windowPx));

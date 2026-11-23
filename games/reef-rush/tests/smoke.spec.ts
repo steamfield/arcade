@@ -1,6 +1,6 @@
 import { parseInput } from '@arcade/testing';
 import { expect, test } from '@arcade/testing/playwright';
-import { TOP_ROUTE, wait } from '../scenarios/kit.ts';
+import { HARD_SAVE, TITLE_TO_RACE, TOP_ROUTE, wait } from '../scenarios/kit.ts';
 
 test('starts on WebGL, races from the title through the select screen, and swims after the countdown', async ({
   game,
@@ -51,8 +51,10 @@ test('on-screen controls pick a racer, start the race and swim the player @touch
 });
 
 test('a finished race is saved and its best time shows on the title after a reload', async ({ game }) => {
-  await game.open({ scene: 'race' });
-  await game.play([...TOP_ROUTE, wait(90)]);
+  // TOP_ROUTE was recorded on Hard; a fresh save races on Easy.
+  await game.open();
+  await game.loadState(HARD_SAVE);
+  await game.play([...TITLE_TO_RACE, ...TOP_ROUTE, wait(90)]);
   const results = await game.summary();
   expect(results).toMatchObject({ scene: 'results', result: { newBest: true, saveFailed: false } });
   const { ticks, place } = results.result as { ticks: number; place: number };
