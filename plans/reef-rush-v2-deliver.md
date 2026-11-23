@@ -145,15 +145,38 @@ Shared for every phase 2 lane: read the Phase 2 test cases above and the Spec. W
 
 ### Phase 3: enemies you beat
 
-Demo: `pnpm arcade see reef-rush --query stage=enemies --query debug=1`: a shark charges, two dash bonks knock it away, and pearls burst out.
+Demo: `pnpm arcade see reef-rush --query scene=race --query stage=enemies`: a shark winds up and charges, a dash bonk staggers it and a second knocks it away in a burst of pearls; a crab is beaten with one bonk. `pnpm arcade see reef-rush --scenario enemy-bonk`.
 Depends on: phase 2
+Scaffold: 6c597c8
+Scaffold contents (me): `EnemyKind` ('shark' | 'eel' | 'crab', `ENEMY_KINDS`), `EnemyMode`, `Enemy` (kind, home tile, `at` px centre, `vel`, facing, mode, modeTicks, hp, target), `Level.enemies` from glyphs `S` `E` `K` (water underneath), `World.enemies` built by `createEnemies` (`hazards/enemies/index.ts`, hp 1, patrolling), `HitCause` gains the enemy kinds, `RacerStatus.bonking` (set to `ENEMY.bonkTicks` = 12 on every kick, where the dash charge is spent), `LoosePearl.droppedBy` may be null (an enemy's burst), events `enemy.telegraphed {index, kind}`, `enemy.charged {index, kind, target}`, `enemy.bonked {index, kind, by, hpLeft}`, `enemy.defeated {index, kind, by}`, `pearls.burst {index, count}`; `stepEnemies(world, racers)` is a no-op stub in the stepWorld slot after the jellies; `toAscii` draws live enemies as `S` `E` `K`. `TOP_ROUTE` is re-recorded by me at landing.
+Test cases:
+- Bonk: a racer touching a live enemy while `status.bonking > 0`, `status.dashing > 0` (Jet Fins, Cannonball) or `status.inflated > 0` (Puffer) bonks it and takes no hit; otherwise a touching racer that is not invulnerable or downed takes `applyHit` with the enemy's kind as cause. One bonk per racer per contact (a long dash through a shark bonks it once). Hidden eels and defeated enemies touch nothing.
+- Shark (hp 2): patrols left and right within `patrolTiles` of home. A racer (not downed, not invulnerable) within `sightTiles` ahead of it in its facing, with a clear sweep, starts a `windupTicks` wind-up (`enemy.telegraphed`), then it charges straight at that racer's position at wind-up end at `chargeSpeed` for `chargeTicks` (`enemy.charged`), stopped by rock, then patrols again after `recoverTicks`. A bonk staggers it (`stagger` for `staggerTicks`, knocked back along the bonk, can't hurt anyone) and costs 1 hp (`enemy.bonked`); at 0 hp it is defeated (`enemy.defeated`) and bursts `sharkPearls` (5) loose pearls (`pearls.burst`). A Homing Squid that touches a live shark defeats it outright (and is spent). On Easy a shark never winds up on the player.
+- Eel (hp 1): placed on a water tile with rock on at least one orthogonal side (else `LevelError` with row and col from `createEnemies`); hides in that wall and every `cycleTicks` shows `telegraphTicks` of warning (`enemy.telegraphed`) and then lunges `lungeTiles` straight out of the wall and back. Only while it is out can it hit or be bonked. Defeated by one bonk: bursts 2 pearls.
+- Crab (hp 1): placed with rock directly below (else `LevelError`); walks the floor back and forth at `walkSpeed`, turning at rock or a drop. Touching it hits (cause 'crab'). One bonk defeats it: bursts 1 pearl.
+- Defeated enemies stay defeated for the race. All enemy motion is deterministic (no rng), and per-tick AI rng draws don't change.
+- Rivals steer around live sharks, out eels and crabs as they do around jellies (`ai/avoid.ts`), and a rival with a dash charge about to touch a crab or an out eel dashes into it.
+- Course: Sunlit Shallows gets 2 sharks, 3 eels and 4 crabs placed in its sections after column 60 (so start-area scenarios are unchanged), each where it fits the section; `toAscii` shows them.
+- Engine: each enemy is drawn by kind and mode: the shark's wind-up has a clear tell (a flash and a `!` above it, 0.5 s), the eel's warning shows eyes and bubbles in the wall hole, the crab walks; a bonk squashes the enemy and plays a bonk sound; a defeat pops it with the pearls flying out (reduced motion: no squash or flight, just the pop). Enemy sounds through the audio adapter; sfx pin re-counted at landing by me. A debug stage `enemies` puts a shark and a crab just ahead of the player for the demo, and a scenario `enemy-bonk` beats the crab with a dash and asserts `enemy.defeated` and `pearls.burst`.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/hazards/enemies/, games/reef-rush/src/logic/courses/sunlit-shallows.ts | | | opus | pending | | |
-| b | M | games/reef-rush/src/engine/view/enemy-view.ts, games/reef-rush/src/engine/art/sprites/enemies.ts, games/reef-rush/src/engine/audio/enemy-sfx.ts | | | sonnet | pending | | |
+| a | L | games/reef-rush/src/logic/hazards/enemies/, games/reef-rush/src/logic/hazards/squids.ts, games/reef-rush/src/logic/hazards/squids.test.ts, games/reef-rush/src/logic/ai/avoid.ts, games/reef-rush/src/logic/ai/avoid.test.ts, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/courses/sunlit-shallows.ts, games/reef-rush/src/logic/world.test.ts | | | opus | running | v2-3a | every logic test case above passes, check passes |
+| b | M | games/reef-rush/src/engine/view/enemy-view.ts, games/reef-rush/src/engine/view/enemy-view.test.ts, games/reef-rush/src/engine/art/sprites/enemies.ts, games/reef-rush/src/engine/art/sprites/index.ts, games/reef-rush/src/engine/art/sprites/sprites.test.ts, games/reef-rush/src/engine/art/keys.ts, games/reef-rush/src/engine/art/index.test.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/audio/adapter.ts, games/reef-rush/src/engine/scenes/race.ts, games/reef-rush/src/engine/debug-stage.ts, games/reef-rush/src/engine/debug-stage.test.ts, games/reef-rush/scenarios/enemy-bonk.ts | | | opus | running | v2-3b | captures show each enemy and mode, check passes |
 
-(Briefs written while phase 2 runs.)
+Shared for every phase 3 lane: read the Spec, the scaffold contents and the Phase 3 test cases above. Touch only the files you own; if you need a change elsewhere, stop and report it. Lane a may also change the `Enemy`/`EnemyMode` declarations in `types.ts` if a kind needs a field (no other `types.ts` change); say so in the report. Logic stays deterministic. Don't tune to the `difficulty` project. If `TOP_ROUTE` breaks, report it. Run `pnpm arcade test reef-rush <your paths>` and `pnpm arcade check reef-rush --skip-tests`, then `pnpm fix`, and commit on your branch.
+
+#### Lane a brief
+
+- Goal: sharks, eels and crabs that a racer beats with a dash bonk, placed on the course.
+- Behavior: the logic test cases above. One file per kind in `hazards/enemies/` (`shark.ts`, `eel.ts`, `crab.ts`), plus `contact.ts` for the shared touch/bonk/hit rule and `tuning.ts` for every number; `index.ts` dispatches by kind and keeps `createEnemies`' signature (it may now throw `LevelError` for a misplaced eel or crab). Pearl bursts use `scatterPearls` from `pickups/pearl-drift.ts` with `droppedBy: null` (read-only use; that file isn't yours). Squid contact with a shark in `squids.ts`. Rival avoidance and bonk-dash in `ai/avoid.ts` / `ai/rival.ts`, keeping the per-tick rng draw count. Place the course's enemies in `sunlit-shallows.ts`.
+- Out of scope: drawing, sound, the debug stage.
+
+#### Lane b brief
+
+- Goal: enemies look and sound like Mario-style foes, and a demo stage shows them.
+- Behavior: the Engine test case above. Draw from `world.enemies` and the enemy events; pool sprites (no per-frame create/destroy). Art in `art/sprites/enemies.ts` in the existing sprite style (read how `art/sprites/` builds the jelly and urchin). Sounds for `enemy.telegraphed` (shark and eel), `enemy.bonked`, `enemy.defeated` and an enemy hit on the player, through `adapter.ts`. `debug-stage.ts`: an `enemies` stage placing a shark about 6 tiles ahead of the player facing it and a crab on the floor 3 tiles ahead (build them with `createEnemies` on a level copy or push `Enemy` objects; the logic for their behavior lands with lane a in parallel, so verify the view with hand-set modes in `enemy-view.test.ts` and captures). `scenarios/enemy-bonk.ts` from the `enemies` stage: swim to the crab, dash into it, assert `enemy.defeated` and `pearls.burst` (it will pass only once lane a lands; I run it at landing).
+- Out of scope: enemy behavior, course placement.
 
 ### Phase 4: balance and teach
 
