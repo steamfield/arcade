@@ -12,24 +12,11 @@ import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
 import { holds } from '../../logic/powerups/inventory.ts';
 import { CANNONBALL, FLASH } from '../../logic/powerups/tuning.ts';
-import { type PowerUpKind, type Racer, type RacerId, TILE } from '../../logic/types.ts';
-import { Frame, Tex, type TexKey } from '../art/keys.ts';
+import { type Racer, type RacerId, TILE } from '../../logic/types.ts';
+import { Frame } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import type { WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
-
-/** Icon texture for each power-up. Shared by the HUD and loose pickups. */
-export const POWER_UP_TEX: Record<PowerUpKind, TexKey> = {
-  jetFin: Tex.jetFin,
-  bubbleShield: Tex.bubbleShield,
-  puffer: Tex.puffer,
-  inkSac: Tex.inkSac,
-  glowLantern: Tex.glowLantern,
-  homingSquid: Tex.homingSquid,
-  riptide: Tex.riptide,
-  undertow: Tex.undertow,
-  mimic: Tex.mimic,
-  cannonball: Tex.cannonball,
-};
 
 /** One racer's item overlays. */
 export interface PowerupView {
@@ -54,18 +41,24 @@ const PULL_LINE_TICKS = 4;
 const PULL_LINE_BEHIND = 10;
 const PULL_LINE_ALPHA = 0.85;
 
-/** Creates the overlays for one racer. `reducedMotion` shows the flash ring at its full reach, fading, instead of growing. */
-export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reducedMotion: boolean): PowerupView {
-  const overlay = (texture: TexKey, depth: number) =>
+/** Creates the overlays for one racer, drawn with `skin`'s item and attack art. `reducedMotion` shows the flash ring at its full reach, fading, instead of growing. */
+export function createPowerupView(
+  scene: Phaser.Scene,
+  racerId: RacerId,
+  skin: WorldSkin,
+  reducedMotion: boolean,
+): PowerupView {
+  const { attack, itemTextures } = skin.objects;
+  const overlay = (texture: string, depth: number) =>
     scene.add.image(0, 0, texture, Frame.a).setDepth(depth).setVisible(false);
-  const shield = overlay(Tex.bubble, Layer.player + 0.5)
+  const shield = overlay(attack.bubble, Layer.player + 0.5)
     .setScale(SHIELD_SCALE)
     .setAlpha(0.6);
-  const inflated = overlay(Tex.puffer, Layer.racers - 0.5).setScale(INFLATED_SCALE);
-  const streak = overlay(Tex.looseGlow, Layer.racers - 0.5).setTint(STREAK_TINT);
-  const flashRing = overlay(Tex.looseGlow, Layer.player + 0.25).setTint(FLASH_TINT);
-  const latch = overlay(Tex.squid, Layer.player + 0.6).setAlpha(0.95);
-  const pullLines = overlay(Tex.undertowStreak, Layer.racers - 0.25).setAlpha(PULL_LINE_ALPHA);
+  const inflated = overlay(itemTextures.puffer, Layer.racers - 0.5).setScale(INFLATED_SCALE);
+  const streak = overlay(attack.looseGlow, Layer.racers - 0.5).setTint(STREAK_TINT);
+  const flashRing = overlay(attack.looseGlow, Layer.player + 0.25).setTint(FLASH_TINT);
+  const latch = overlay(attack.homer, Layer.player + 0.6).setAlpha(0.95);
+  const pullLines = overlay(attack.undertowStreak, Layer.racers - 0.25).setAlpha(PULL_LINE_ALPHA);
   let flashedAt = Number.NEGATIVE_INFINITY;
 
   return {
@@ -79,7 +72,7 @@ export function createPowerupView(scene: Phaser.Scene, racerId: RacerId, reduced
 
       shield.setVisible(holds(racer, 'bubbleShield')).setPosition(x, y);
       inflated
-        .setTexture(isCannonball(racer) ? Tex.cannonball : Tex.puffer, Frame.a)
+        .setTexture(isCannonball(racer) ? itemTextures.cannonball : itemTextures.puffer, Frame.a)
         .setVisible(status.inflated > 0)
         .setPosition(x, y)
         .setFlipX(racer.facing < 0);

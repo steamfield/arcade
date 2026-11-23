@@ -23,10 +23,13 @@
  */
 import Phaser from 'phaser';
 import { racerSeesInDark } from '../../logic/abilities.ts';
+import { courseOf } from '../../logic/courses/index.ts';
 import { selectedItem } from '../../logic/powerups/inventory.ts';
 import { playerOf } from '../../logic/racers.ts';
 import { TILE, type Vec, type World } from '../../logic/types.ts';
 import type { DarkTint } from '../themes/types.ts';
+import { skinFor } from '../worlds/index.ts';
+import type { Glint } from '../worlds/object-skin.ts';
 import {
   FADE,
   fadeSteps,
@@ -52,11 +55,6 @@ const SEE_THROUGH_ALPHA = 0.3;
 const VEIL_DEPTH = Layer.hud - 1;
 /** Hazard glints sit between the veil and the HUD. */
 const GLINT_DEPTH = Layer.hud - 0.5;
-/** Each glint: a 5x5 plus with a bright centre, in the hazard's warning colour, faint. */
-const GLINTS = {
-  urchin: { key: 'dark-glint-urchin', colour: 0xff8a7a, alpha: 0.55 },
-  jelly: { key: 'dark-glint-jelly', colour: 0xe0b8ff, alpha: 0.6 },
-} as const;
 /** A squid's pool: enough to see its shape, far less than a racer's. */
 const SQUID_LIGHT_RADIUS = 14;
 /** Stamping a light pool erases it from the veil. */
@@ -69,7 +67,7 @@ export function createDarkView(scene: Phaser.Scene, world: World, tint: DarkTint
   // Every pool texture up front, so the first lantern pickup in the dark doesn't hitch.
   const lightKeys = new Map(reachableRadii().map((radius) => [radius, ensureLightTexture(scene, radius)]));
   const squidKey = ensureLightTexture(scene, SQUID_LIGHT_RADIUS);
-  addGlints(scene, world, zones);
+  addGlints(scene, world, zones, skinFor(courseOf(world)).objects.glints);
   const camera = scene.cameras.main;
   const { width, height } = camera;
   const veil = scene.add
@@ -148,12 +146,18 @@ function fillZone(veil: Phaser.GameObjects.RenderTexture, span: Span, height: nu
 }
 
 /**
- * A faint glint over every urchin and jelly home inside a dark zone, above the veil. They're placed
+ * A faint glint (a 5x5 plus with a bright centre, in the world skin's colour) over every urchin and
+ * jelly home inside a dark zone, above the veil. They're placed
  * once: urchins never move, and a jelly bobs only a few px around its home.
  */
-function addGlints(scene: Phaser.Scene, world: World, zones: readonly (readonly [number, number])[]): void {
+function addGlints(
+  scene: Phaser.Scene,
+  world: World,
+  zones: readonly (readonly [number, number])[],
+  glints: Readonly<{ urchin: Glint; jelly: Glint }>,
+): void {
   const inZone = (tile: Vec) => zones.some(([from, to]) => tile.x >= from && tile.x <= to);
-  const place = (tiles: readonly Vec[], glint: (typeof GLINTS)[keyof typeof GLINTS]) => {
+  const place = (tiles: readonly Vec[], glint: Glint) => {
     const key = ensureGlintTexture(scene, glint.key, glint.colour);
     for (const tile of tiles.filter(inZone)) {
       scene.add
@@ -162,8 +166,8 @@ function addGlints(scene: Phaser.Scene, world: World, zones: readonly (readonly 
         .setDepth(GLINT_DEPTH);
     }
   };
-  place(world.level.urchins, GLINTS.urchin);
-  place(world.level.jellies, GLINTS.jelly);
+  place(world.level.urchins, glints.urchin);
+  place(world.level.jellies, glints.jelly);
 }
 
 /** The 5x5 glint texture in `colour`, built once per game. */

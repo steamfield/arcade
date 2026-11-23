@@ -7,15 +7,18 @@
  * pips, one per dash charge, that is not a slot (no icon, no frame, no digit).
  */
 import type Phaser from 'phaser';
+import { courseOf } from '../../logic/courses/index.ts';
 import { DASH_METER, dashCharges } from '../../logic/powerups/dash-meter.ts';
 import { selectedItem, selectedSlot, slotItems } from '../../logic/powerups/inventory.ts';
 import { playerOf } from '../../logic/racers.ts';
-import type { HeldItem, PowerUpKind, World } from '../../logic/types.ts';
+import type { HeldItem, World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { Frame, Tex } from '../art/keys.ts';
 import { IconFrame, type IconFrameKey, UiTex } from '../art/ui/keys.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
+import { skinFor } from '../worlds/index.ts';
+import type { ObjectSkin } from '../worlds/object-skin.ts';
 import { Layer } from './layers.ts';
 
 /** HUD icons are 9x9. */
@@ -38,20 +41,6 @@ const SOCKET = { size: 3, inset: 3 } as const;
 
 /** An icon that is not ready shows at this opacity; `hud.test.ts` holds it to 3:1 on the well. */
 export const NOT_READY_ALPHA = 0.5;
-
-/** The 9x9 icon each held power-up shows in the well. */
-export const POWER_UP_ICON: Record<PowerUpKind, IconFrameKey> = {
-  jetFin: IconFrame.jetFin,
-  bubbleShield: IconFrame.bubbleShield,
-  puffer: IconFrame.puffer,
-  inkSac: IconFrame.inkSac,
-  glowLantern: IconFrame.glowLantern,
-  homingSquid: IconFrame.homingSquid,
-  riptide: IconFrame.riptide,
-  undertow: IconFrame.undertow,
-  mimic: IconFrame.mimic,
-  cannonball: IconFrame.cannonball,
-};
 
 /** Where the well's item slots go and how wide the well is, for a racer with `slots` inventory slots. */
 export interface WellLayout {
@@ -89,7 +78,10 @@ interface SlotView {
   charges: Label;
 }
 
-/** The well, sized for the race from `slots`; `sync` redraws it from the player each frame. */
+/**
+ * The well, sized for the race from `slots`; `sync` redraws it from the player each frame, with the
+ * item icons of the world skin the world's course belongs to.
+ */
 export function createWell(scene: Phaser.Scene, slots: number): { sync(world: World): void } {
   const layout = wellLayout(slots);
   createPanel(scene, WELL.x, WELL.y, layout.width, WELL.h, 'inset', { fixed: true, depth: Layer.hud });
@@ -103,7 +95,8 @@ export function createWell(scene: Phaser.Scene, slots: number): { sync(world: Wo
       const player = playerOf(world);
       dash.setAlpha(player.kickCooldown === 0 ? 1 : NOT_READY_ALPHA);
       const items = slotItems(player);
-      for (const [slot, view] of views.entries()) syncSlot(view, items[slot] ?? null);
+      const { itemIcons } = skinFor(courseOf(world)).objects;
+      for (const [slot, view] of views.entries()) syncSlot(view, items[slot] ?? null, itemIcons);
       const selected = selectedItem(player) ? selectedSlot(player) : -1;
       if (selected !== framedSlot) drawSelectedFrame(frame, layout.slotX[selected]);
       framedSlot = selected;
@@ -128,10 +121,10 @@ function createSlot(scene: Phaser.Scene, slotX: number): SlotView {
   };
 }
 
-function syncSlot(view: SlotView, item: HeldItem | null): void {
+function syncSlot(view: SlotView, item: HeldItem | null, itemIcons: ObjectSkin['itemIcons']): void {
   view.socket.setVisible(item === null);
   view.icon.setVisible(item !== null);
-  if (item) view.icon.setFrame(POWER_UP_ICON[item.kind]);
+  if (item) view.icon.setTexture(itemIcons[item.kind].texture, itemIcons[item.kind].frame);
   view.charges.setText(chargeText(item));
 }
 

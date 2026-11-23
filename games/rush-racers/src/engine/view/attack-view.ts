@@ -9,7 +9,8 @@
  */
 import type Phaser from 'phaser';
 import type { Decoy, Riptide, Squid, World } from '../../logic/types.ts';
-import { Frame, Tex } from '../art/keys.ts';
+import { Frame } from '../art/keys.ts';
+import type { WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
 
 /** Draws every squid, lane and decoy in `world`. */
@@ -45,8 +46,8 @@ interface LaneSprites {
   flow: Phaser.GameObjects.TileSprite;
 }
 
-/** Adds the views for the world's squids, riptides and decoys to `scene`. */
-export function createAttackView(scene: Phaser.Scene, reducedMotion: boolean): AttackView {
+/** Adds the views for the world's squids, riptides and decoys to `scene`, drawn with `skin`'s attack art and racers. */
+export function createAttackView(scene: Phaser.Scene, skin: WorldSkin, reducedMotion: boolean): AttackView {
   const squids: Phaser.GameObjects.Image[] = [];
   const lanes: LaneSprites[] = [];
   const decoys: Phaser.GameObjects.Image[] = [];
@@ -54,22 +55,22 @@ export function createAttackView(scene: Phaser.Scene, reducedMotion: boolean): A
   return {
     sync(world, tick) {
       syncPool(squids, world.squids.length, () =>
-        scene.add.image(0, 0, Tex.squid, Frame.a).setDepth(Layer.racers + 0.4),
+        scene.add.image(0, 0, skin.objects.attack.homer, Frame.a).setDepth(Layer.racers + 0.4),
       );
       world.squids.forEach((squid, index) => {
         showSquid(squids[index], squid, tick, reducedMotion);
       });
 
-      syncLanes(scene, lanes, world.riptides.length);
+      syncLanes(scene, skin.objects.attack.riptideStreak, lanes, world.riptides.length);
       world.riptides.forEach((riptide, index) => {
         showLane(lanes[index], riptide, tick, reducedMotion);
       });
 
       syncPool(decoys, world.decoys.length, () =>
-        scene.add.image(0, 0, Tex.rudy, Frame.a).setDepth(Layer.racers - 0.1),
+        scene.add.image(0, 0, skin.cast.racers.rudy, Frame.a).setDepth(Layer.racers - 0.1),
       );
       world.decoys.forEach((decoy, index) => {
-        showDecoy(decoys[index], decoy, world, tick, reducedMotion);
+        showDecoy(decoys[index], decoy, world, skin, tick, reducedMotion);
       });
     },
   };
@@ -108,7 +109,7 @@ export function squidRotation(vx: number, vy: number): number {
 }
 
 /** Makes sure there is one set of lane sprites per riptide in play. */
-function syncLanes(scene: Phaser.Scene, lanes: LaneSprites[], count: number): void {
+function syncLanes(scene: Phaser.Scene, streakTexture: string, lanes: LaneSprites[], count: number): void {
   while (lanes.length < count) {
     const rect = (alpha: number, colour: number) =>
       scene.add
@@ -118,7 +119,7 @@ function syncLanes(scene: Phaser.Scene, lanes: LaneSprites[], count: number): vo
     lanes.push({
       wash: rect(LANE_WASH_ALPHA, LANE_WASH),
       edges: [rect(LANE_EDGE_ALPHA, LANE_EDGE), rect(LANE_EDGE_ALPHA, LANE_EDGE)],
-      flow: scene.add.tileSprite(0, 0, 1, 1, Tex.riptideStreak, Frame.a).setDepth(Layer.objects + 0.2),
+      flow: scene.add.tileSprite(0, 0, 1, 1, streakTexture, Frame.a).setDepth(Layer.objects + 0.2),
     });
   }
   for (let index = count; index < lanes.length; index++) hideLane(lanes[index]);
@@ -180,6 +181,7 @@ function showDecoy(
   sprite: Phaser.GameObjects.Image | undefined,
   decoy: Decoy,
   world: World,
+  skin: WorldSkin,
   tick: number,
   reducedMotion: boolean,
 ): void {
@@ -188,7 +190,7 @@ function showDecoy(
   if (!owner) return;
   sprite
     .setVisible(true)
-    .setTexture(Tex[owner.character], Math.floor(tick / DECOY_STROKE_TICKS) % 2 === 0 ? Frame.a : Frame.b)
+    .setTexture(skin.cast.racers[owner.character], Math.floor(tick / DECOY_STROKE_TICKS) % 2 === 0 ? Frame.a : Frame.b)
     .setPosition(Math.round(decoy.x), Math.round(decoy.y))
     .setFlipX(decoy.vx === 0 ? sprite.flipX : decoy.vx < 0)
     .setTint(DECOY_TINT)

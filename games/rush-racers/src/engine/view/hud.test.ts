@@ -5,6 +5,7 @@ import { Frame } from '../art/keys.ts';
 import { ICON_SHEETS } from '../art/ui/icons.ts';
 import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { PanelPalette } from '../art/ui/palette.ts';
+import { REEF_SKIN } from '../worlds/reef.ts';
 import { besidePlayerY } from './beside-player.ts';
 import { captionText, isPlacePopping, type PlaceTrack, pearlText, trackPlace } from './hud.ts';
 import {
@@ -12,7 +13,6 @@ import {
   chargeText,
   dashPipFrames,
   NOT_READY_ALPHA,
-  POWER_UP_ICON,
   pipScale,
   trackDashCharges,
   wellLayout,
@@ -178,8 +178,12 @@ describe('the well\u2019s power-up icons', () => {
 
   it('draws an icon for every kind, and no two kinds share one', () => {
     const drawn = new Set(frames.map((frame) => frame.name));
-    for (const kind of POWER_UP_KINDS) expect(drawn.has(POWER_UP_ICON[kind]), kind).toBe(true);
-    expect(new Set(POWER_UP_KINDS.map((kind) => POWER_UP_ICON[kind])).size).toBe(POWER_UP_KINDS.length);
+    const { itemIcons } = REEF_SKIN.objects;
+    for (const kind of POWER_UP_KINDS) {
+      expect(itemIcons[kind].texture, kind).toBe(UiTex.icons);
+      expect(drawn.has(itemIcons[kind].frame), kind).toBe(true);
+    }
+    expect(new Set(POWER_UP_KINDS.map((kind) => itemIcons[kind].frame)).size).toBe(POWER_UP_KINDS.length);
   });
 });
 

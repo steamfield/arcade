@@ -4,7 +4,7 @@
  * pearls, more speed. Then a hit flashes on the racer, three pearls scatter out behind it and the
  * counter drops by three.
  */
-import { Frame, Tex } from '../../art/keys.ts';
+import { Frame } from '../../art/keys.ts';
 import { IconFrame } from '../../art/ui/keys.ts';
 import { UiColour } from '../../art/ui/palette.ts';
 import { easeOut, type PageBuilder, stroke } from './kit.ts';
@@ -35,16 +35,19 @@ function pearlX(index: number): number {
 }
 
 export const buildPearlsPage: PageBuilder = (kit) => {
-  const row = Array.from({ length: ROW.count }, (_, index) => kit.sprite(pearlX(index), ROW.y, Tex.pearl, Frame.a, 2));
+  const { pearl: pearlTexture } = kit.skin.objects.pickups;
+  const row = Array.from({ length: ROW.count }, (_, index) =>
+    kit.sprite(pearlX(index), ROW.y, pearlTexture, Frame.a, 2),
+  );
   const lines = Array.from({ length: LINES.max }, (_, index) =>
     kit.bar(0, ROW.y + (index - 1) * LINES.spacing, LINES.length, 1, UiColour.foam),
   );
   const flash = kit.icon(SWIM.toX, ROW.y, IconFrame.fire, 3);
   const racer = kit.sprite(SWIM.fromX, ROW.y, kit.racer, Frame.a, 2);
-  const scattered = Array.from({ length: DROPPED }, () => kit.sprite(0, 0, Tex.pearl, Frame.a, 2));
+  const scattered = Array.from({ length: DROPPED }, () => kit.sprite(0, 0, pearlTexture, Frame.a, 2));
 
   kit.well(COUNTER.x, COUNTER.y, COUNTER.w, COUNTER.h);
-  kit.sprite(COUNTER_PEARL_X, COUNTER.y + COUNTER.h / 2, Tex.pearl, Frame.a, 2);
+  kit.sprite(COUNTER_PEARL_X, COUNTER.y + COUNTER.h / 2, pearlTexture, Frame.a, 2);
   const count = kit.words(COUNTER_TEXT_X, COUNTER.y + 6, '0', { align: 'left', scale: 2, outline: false });
   kit.words(160, MORE_TOP, 'MORE = FASTER');
   const hitCaption = kit.words(160, HIT_TOP, 'A HIT DROPS 3', { tone: 'sun' });

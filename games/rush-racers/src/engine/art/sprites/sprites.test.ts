@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CHARACTER_IDS, POWER_UP_KINDS } from '../../../logic/types.ts';
 import { THEMES } from '../../themes/index.ts';
-import { POWER_UP_TEX } from '../../view/powerup-view.ts';
+import { REEF_SKIN } from '../../worlds/reef.ts';
 import { Frame, Tex } from '../keys.ts';
 import { measureFrames, type NamedFrame } from '../pixel.ts';
 import { AttackPalette, RIPTIDE_TILE } from './attack.ts';
@@ -46,13 +46,14 @@ describe('world art data', () => {
   });
 
   it('draws every held power-up as a 12x12 icon, the attack kinds included', () => {
+    const { itemTextures } = REEF_SKIN.objects;
     for (const kind of POWER_UP_KINDS) {
-      const key = POWER_UP_TEX[kind];
+      const key = itemTextures[kind];
       expect(frameNames(key), kind).toEqual([Frame.a]);
       expect(measureFrames(key, sheetFor(key)?.frames ?? []), kind).toEqual({ width: 12, height: 12 });
     }
     // No two kinds share art, so a loose pickup says which power-up it is.
-    expect(new Set(POWER_UP_KINDS.map((kind) => POWER_UP_TEX[kind])).size).toBe(POWER_UP_KINDS.length);
+    expect(new Set(POWER_UP_KINDS.map((kind) => itemTextures[kind])).size).toBe(POWER_UP_KINDS.length);
   });
 
   it('sizes the squid and its latched pose like a racer, and the lane tile to the grid', () => {

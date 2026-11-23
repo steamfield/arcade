@@ -6,7 +6,8 @@
  * its hole, it lunges out, and a dash while it is out pops it. Nothing enters the d-pad zone
  * (x < 108, y 76+) or the A/B zone (x 228+, y 118+).
  */
-import { Frame, Tex } from '../../art/keys.ts';
+import { Frame } from '../../art/keys.ts';
+import type { ObjectSkin } from '../../worlds/object-skin.ts';
 import type { Glyph } from '../control-glyphs.ts';
 import { easeOut, type PageBuilder, type PageKit, stroke } from './kit.ts';
 
@@ -77,9 +78,9 @@ function addCaption(kit: PageKit, x: number, sceneY: number, does: string, bonks
 }
 
 /** A pop ring and the pearl it frees, `since` ticks after the defeat (hidden before it). */
-function addDefeat(kit: PageKit, x: number, y: number) {
-  const ring = kit.sprite(x, y, Tex.enemyMark, Frame.markPop, 2);
-  const pearl = kit.sprite(x, y, Tex.pearl, Frame.a, 2);
+function addDefeat(kit: PageKit, objects: ObjectSkin, x: number, y: number) {
+  const ring = kit.sprite(x, y, objects.enemies.marks, Frame.markPop, 2);
+  const pearl = kit.sprite(x, y, objects.pickups.pearl, Frame.a, 2);
   return (since: number) => {
     ring.setVisible(since >= 0 && since < POP_TICKS);
     pearl
@@ -89,28 +90,31 @@ function addDefeat(kit: PageKit, x: number, y: number) {
 }
 
 export const buildEnemiesPage: PageBuilder = (kit) => {
+  const { objects } = kit.skin;
+  const { enemies } = objects;
+  const { enemyCaptions } = objects.text;
   const crabX = (CRAB.racerX + CRAB.enemyX) / 2 + 4;
-  addCaption(kit, crabX, CRAB.y, 'CRAB WALKS', '1 BONK');
-  addCaption(kit, (SHARK.glyphX + SHARK.enemyX + 12) / 2, SHARK.y, 'SHARK CHARGES', '2 BONKS');
-  addCaption(kit, (EEL.glyphX + EEL.holeX + 12) / 2, EEL.y, 'EEL LUNGES', 'BONK IT OUT');
+  addCaption(kit, crabX, CRAB.y, enemyCaptions.crab, '1 BONK');
+  addCaption(kit, (SHARK.glyphX + SHARK.enemyX + 12) / 2, SHARK.y, enemyCaptions.shark, '2 BONKS');
+  addCaption(kit, (EEL.glyphX + EEL.holeX + 12) / 2, EEL.y, enemyCaptions.eel, 'BONK IT OUT');
 
   const crabDasher = addDasher(kit, CRAB);
-  const crab = kit.sprite(CRAB.enemyX, CRAB.y, Tex.crab, Frame.a, 2);
-  const crabPop = addDefeat(kit, CRAB.enemyX - CRAB_TIMES.walkPx / 2, CRAB.y);
+  const crab = kit.sprite(CRAB.enemyX, CRAB.y, enemies.bodies.crab, Frame.a, 2);
+  const crabPop = addDefeat(kit, objects, CRAB.enemyX - CRAB_TIMES.walkPx / 2, CRAB.y);
 
   const sharkDasher = addDasher(kit, SHARK);
-  const shark = kit.sprite(SHARK.enemyX, SHARK.y, Tex.shark, Frame.a, 2).setFlipX(true);
-  const alert = kit.sprite(SHARK.enemyX, SHARK.y - 20, Tex.enemyMark, Frame.markAlert, 2);
-  const dizzy = kit.sprite(SHARK.enemyX, SHARK.y - 16, Tex.enemyMark, Frame.markStar, 2);
-  const sharkPop = addDefeat(kit, SHARK.enemyX - SHARK_TIMES.chargePx, SHARK.y);
+  const shark = kit.sprite(SHARK.enemyX, SHARK.y, enemies.bodies.shark, Frame.a, 2).setFlipX(true);
+  const alert = kit.sprite(SHARK.enemyX, SHARK.y - 20, enemies.marks, Frame.markAlert, 2);
+  const dizzy = kit.sprite(SHARK.enemyX, SHARK.y - 16, enemies.marks, Frame.markStar, 2);
+  const sharkPop = addDefeat(kit, objects, SHARK.enemyX - SHARK_TIMES.chargePx, SHARK.y);
 
   const eelDasher = addDasher(kit, EEL);
-  const hole = kit.sprite(EEL.holeX, EEL.y, Tex.enemyMark, Frame.markHole, 2);
+  const hole = kit.sprite(EEL.holeX, EEL.y, enemies.marks, Frame.markHole, 2);
   const segments = Array.from({ length: EEL_SEGMENTS }, () =>
-    kit.sprite(EEL.holeX, EEL.y, Tex.eelBody, Frame.a, 2).setFlipX(true),
+    kit.sprite(EEL.holeX, EEL.y, enemies.eelBody, Frame.a, 2).setFlipX(true),
   );
-  const eelHead = kit.sprite(EEL.holeX, EEL.y, Tex.eelHead, Frame.a, 2).setFlipX(true);
-  const eelPop = addDefeat(kit, EEL.holeX - EEL_TIMES.reachPx, EEL.y);
+  const eelHead = kit.sprite(EEL.holeX, EEL.y, enemies.bodies.eel, Frame.a, 2).setFlipX(true);
+  const eelPop = addDefeat(kit, objects, EEL.holeX - EEL_TIMES.reachPx, EEL.y);
 
   return (tick, reducedMotion) => {
     // Reduced motion holds each scene's teaching moment: the crab popping, the shark dizzy, the eel out.
