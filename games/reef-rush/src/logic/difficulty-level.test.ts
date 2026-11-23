@@ -105,7 +105,14 @@ describe('who a rival may aim at', () => {
       updateProgress(world);
       const tess = racerOf(world, 'tess');
       giveItems(tess, ['glowLantern']);
-      return chooseItemSlot(world, tess, { x: 1, y: 0 }, roll * tess.profile.itemAggression) !== null;
+      return (
+        chooseItemSlot(
+          world,
+          tess,
+          { x: 1, y: 0 },
+          (roll * tess.profile.itemAggression) / tess.profile.reactionTicks,
+        ) !== null
+      );
     };
 
     // The same draw, as a share of the rival's own aggression.

@@ -101,7 +101,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     guide: NO_GUIDE,
   },
   easy: {
-    rivalForceMul: 0.65,
+    rivalForceMul: 0.85,
     rivalCatchUp: { lagTiles: 44, perTile: 0.12, min: 0.6, max: 1.6 },
     rivalCatchUpDelayTicks: 240,
     rivalItemAggressionMul: 0.4,

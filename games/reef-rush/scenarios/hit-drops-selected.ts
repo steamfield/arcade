@@ -11,7 +11,7 @@ import { hold, scenario, wait } from './kit.ts';
 export default scenario({
   description: 'an urchin hit knocks the selected item loose with its charges and selects the next one',
   start: { scene: 'race', seed: 1, query: { stage: 'icons-a' } },
-  input: [wait(180), hold('right', 250), hold(['right', 'up'], 50), hold('right', 80), wait(40)],
+  input: [wait(180), hold('right', 250), hold(['right', 'up'], 50), hold('right', 95), wait(40)],
   expect({ summary, events }) {
     const hits = events.filter((e) => e.type === 'racer.hit' && e.id === 'player');
     expect(hits[0]).toMatchObject({ cause: 'urchin', by: null });

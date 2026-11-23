@@ -33,18 +33,15 @@ export const TITLE_TO_RACE = [wait(25), tap('fire'), wait(25), tap('fire')];
 export const IDLE_TO_RESULTS = COUNTDOWN_TICKS + RACE_LIMIT_TICKS + 90 + 30;
 
 /** Ticks of TOP_ROUTE's last step, a hold right that crosses the finish and runs on 30 ticks past it. */
-export const TOP_ROUTE_LAST_HOLD = 275;
+export const TOP_ROUTE_LAST_HOLD = 283;
 
 /**
- * Swims the whole course without kicks or items on the default seed (1), from the start of the
- * countdown. Through the reef: up to row 4, a short climb past the urchin at (32,4), along the top,
- * down past the pillar, along the dive floor, through the arch and up the rising current. Then up
- * into the current highway, out and down into the jelly corridor, straight across the jelly field
- * (the jellies and the urchin tube cost it several hits), through the urchin tube, up the chimney
- * before the coral gate and along the top over it, down the far side onto the ledge row just under
- * its pearls (below the ceiling urchins), and into the drop to the finish at column 611 (race tick
- * 9006). The race ends on its own 10 s after the last rival finishes, which is race tick 9376 here,
- * so the route has 370 ticks in hand; `top-route.test.ts` fails if that margin drops below 300.
+ * Swims the whole course without dashes or items on the default seed (1), from the start of the
+ * countdown, going over the coral gate rather than through it. Recorded in v2 phase 2 by steering
+ * along the medium's aim (`Medium.aimFrom`, 3 tiles ahead) snapped to the eight key directions, so it
+ * takes whatever hits that line runs into. It crosses the finish at race tick 8567; the race ends on
+ * its own 10 s after the last rival finishes, at race tick 9146 here, so the route has 579 ticks in
+ * hand; `top-route.test.ts` fails if that margin drops below 300.
  *
  * Results come up about 60 ticks after it ends. The route is tied to OCEAN_LEVEL and to the rivals'
  * tuning (they bump and hit the player, and the pace they hold decides when the race would end on
@@ -52,36 +49,70 @@ export const TOP_ROUTE_LAST_HOLD = 275;
  */
 export const TOP_ROUTE = [
   wait(180),
-  hold(['right', 'up'], 10),
-  hold('right', 330),
-  hold(['right', 'up'], 30),
-  hold('right', 158),
-  hold(['right', 'down'], 30),
-  hold('down', 90),
-  hold('right', 375),
-  hold(['right', 'up'], 48),
-  hold('right', 600),
-  hold(['right', 'up'], 70),
-  hold('right', 967),
-  hold(['right', 'down'], 62),
-  hold('right', 3812),
-  hold(['right', 'up'], 52),
-  hold('up', 43),
-  hold('right', 6),
-  hold(['right', 'down'], 31),
-  hold('right', 239),
-  hold(['right', 'up'], 68),
-  hold('up', 30),
-  hold('right', 523),
-  hold(['right', 'down'], 68),
-  hold('down', 63),
-  hold('right', 5),
-  hold(['right', 'up'], 32),
-  hold('right', 843),
-  hold(['right', 'down'], 76),
-  hold('right', 3),
-  hold(['right', 'up'], 64),
-  hold('right', 26),
+  hold(['right', 'down'], 51),
+  hold('right', 139),
+  hold(['right', 'down'], 29),
+  hold('right', 164),
+  hold(['right', 'up'], 14),
+  hold('up', 73),
+  hold(['right', 'up'], 2),
+  hold('right', 75),
+  hold(['right', 'down'], 51),
+  hold('down', 51),
   hold(['right', 'down'], 8),
+  hold('right', 38),
+  hold(['right', 'up'], 1),
+  hold('right', 470),
+  hold(['right', 'up'], 27),
+  hold('right', 12),
+  hold(['right', 'up'], 40),
+  hold('right', 62),
+  hold(['right', 'down'], 3),
+  hold('right', 10),
+  hold(['right', 'down'], 5),
+  hold('right', 536),
+  hold(['right', 'up'], 53),
+  hold('right', 127),
+  hold(['right', 'up'], 9),
+  hold('right', 617),
+  hold(['right', 'down'], 156),
+  hold('right', 242),
+  hold(['right', 'up'], 88),
+  hold('right', 444),
+  hold(['right', 'up'], 3),
+  hold('right', 14),
+  hold(['right', 'up'], 3),
+  hold('right', 7),
+  hold(['right', 'up'], 12),
+  hold('right', 2),
+  hold(['right', 'up'], 17),
+  hold('right', 545),
+  hold(['right', 'up'], 1),
+  hold('right', 9),
+  hold(['right', 'up'], 5),
+  hold('right', 10),
+  hold(['right', 'up'], 6),
+  hold('right', 698),
+  hold(['right', 'down'], 41),
+  hold('right', 464),
+  hold(['right', 'down'], 1),
+  hold('right', 11),
+  hold(['right', 'down'], 1),
+  hold('right', 915),
+  hold(['right', 'up'], 70),
+  hold('right', 226),
+  hold(['right', 'up'], 69),
+  hold('up', 2),
+  hold(['right', 'up'], 1),
+  hold('right', 504),
+  hold(['right', 'down'], 127),
+  hold('right', 807),
+  hold(['right', 'down'], 56),
+  hold('right', 58),
+  hold(['right', 'up'], 4),
+  hold('right', 8),
+  hold(['right', 'up'], 7),
+  hold('right', 13),
+  hold(['right', 'up'], 1),
   hold('right', TOP_ROUTE_LAST_HOLD),
 ];

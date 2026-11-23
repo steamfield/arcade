@@ -24,7 +24,7 @@ export const HAZARD_AVOID = {
   stepPx: 4,
   marginPx: 2,
   wallCheckPx: 12,
-  jellyReachPx: 16,
+  jellyReachPx: 24,
   turnsDeg: [15, 30, 45, 60, 75, 90],
 } as const;
 

@@ -84,9 +84,12 @@ describe('rivals and hazards', () => {
     expect(raceRival(URCHIN_TUBE, 'squib', seed)).toMatchObject({ hits: 0, finished: true });
   });
 
-  it.each([1, 2, 3, 4, 5])('swims around a bobbing jelly and finishes untouched (seed %i)', (seed) => {
-    expect(raceRival(JELLY_AHEAD, 'tess', seed, () => {}, 'jelly')).toMatchObject({ hits: 0, finished: true });
-  });
+  it.each([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])(
+    'swims around a bobbing jelly and finishes untouched (seed %i)',
+    (seed) => {
+      expect(raceRival(JELLY_AHEAD, 'tess', seed, () => {}, 'jelly')).toMatchObject({ hits: 0, finished: true });
+    },
+  );
 
   it('keeps its line through an urchin while inflated, since urchins cannot hurt it then', () => {
     const urchinRowTop = 5 * TILE;

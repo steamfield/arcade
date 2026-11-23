@@ -462,7 +462,7 @@ describe('attack power-ups in the step', () => {
     for (const id of ['tess', 'squib'] as const) {
       const rival = racerOf(world, id);
       giveItems(rival, ['homingSquid']);
-      rival.profile = { ...rival.profile, itemAggression: 1 };
+      rival.profile = { ...rival.profile, itemAggression: 1, reactionTicks: 1 };
     }
 
     step(world, log, 3, IDLE);
