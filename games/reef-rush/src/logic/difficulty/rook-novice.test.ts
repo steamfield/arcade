@@ -1,3 +1,3 @@
-import { describeNovice } from './race-bots.ts';
+import { describeNovice } from './hard-bars.ts';
 
 describeNovice('rook');

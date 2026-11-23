@@ -178,6 +178,43 @@ describe('who opens a clam', () => {
     expect(player.items.map((item) => item?.kind)).toEqual(['jetFin', 'puffer', 'inkSac']);
   });
 
+  it('fills a rival with up to three different rolls from one clam, announcing the first', () => {
+    const { world, log, racers } = parkedOnClam();
+    const tess = racerOf(world, 'tess');
+    placeOnTile(racerOf(world, 'player'), 8, 1);
+    placeOnTile(tess, 5, 2);
+
+    openClams(world, racers);
+
+    const kinds = tess.items.map((item) => item?.kind);
+    expect(new Set(kinds).size).toBe(3);
+    expect(kinds).not.toContain(undefined);
+    expect(eventsIn(log, 'clam.opened')).toEqual([{ type: 'clam.opened', id: 'tess', index: 0, kind: kinds[0] }]);
+    expect(eventsIn(log, 'powerup.gained').map((event) => 'kind' in event && event.kind)).toEqual(kinds);
+    expect(world.clams[0]?.closedFor).toBe(CLAM.closedTicks);
+  });
+
+  it('rolls a rival only as many items as it has empty slots', () => {
+    const { world, log, racers } = parkedOnClam();
+    const tess = racerOf(world, 'tess');
+    giveItems(tess, ['jetFin', null, null]);
+    placeOnTile(racerOf(world, 'player'), 8, 1);
+    placeOnTile(tess, 5, 2);
+
+    openClams(world, racers);
+
+    expect(tess.items.filter((item) => item !== null)).toHaveLength(3);
+    expect(eventsIn(log, 'powerup.gained')).toHaveLength(2);
+  });
+
+  it('gives the player one roll from a clam, leaving its other slots empty', () => {
+    const { world, player, racers } = parkedOnClam();
+
+    openClams(world, racers);
+
+    expect(player.items.filter((item) => item !== null)).toHaveLength(1);
+  });
+
   it('stays ready, drawing nothing, when only a full racer touches it', () => {
     const { world, log, player, racers } = parkedOnClam();
     giveItems(player, ['jetFin', 'puffer', 'inkSac']);

@@ -1,7 +1,8 @@
 /**
  * Clams: power-up boxes on the course. A racer with an empty slot touching a ready
  * clam opens it, gets a place-weighted roll from the `pickups` stream with the
- * charges that kind comes with (`chargesFor`), and the clam stays shut for a while.
+ * charges that kind comes with (`chargesFor`), a rival more rolls while it has
+ * room (`CLAM.rivalRolls`), and the clam stays shut for a while.
  * A roll walks POWER_UP_KINDS in order over the cumulative weights of the kinds the
  * racer doesn't hold, so one draw maps to one kind.
  */
@@ -21,8 +22,10 @@ const LAST_PLACE = RACER_IDS.length;
  * of opening. A ready clam opens for the first racer in `racers` order whose hitbox overlaps its tile
  * and who has an empty slot: `rollClam(world.rngs.pickups, racer.place, held kinds, bias)`,
  * `clam.opened {id, index, kind}`, then `gainItem` with `chargesFor(kind, racer.place)`, and
- * `closedFor = CLAM.closedTicks`. A clam that only full racers touch stays ready. So a racer parked
- * on a clam opens it on one call and again CLAM.closedTicks + 1 calls later.
+ * `closedFor = CLAM.closedTicks`. A rival opener rolls again while it has an empty slot, up to
+ * CLAM.rivalRolls rolls in all; a later roll draws from the same stream and shows only as its
+ * `powerup.gained`, so `clam.opened` names the first. A clam that only full racers touch stays
+ * ready. So a racer parked on a clam opens it on one call and again CLAM.closedTicks + 1 calls later.
  */
 export function openClams(world: World, racers: readonly Racer[]): void {
   world.clams.forEach((clam, index) => {
@@ -34,12 +37,22 @@ export function openClams(world: World, racers: readonly Racer[]): void {
       (racer) => !inventoryFull(racer) && overlapsTile(hitbox(racer), clam.tile.x, clam.tile.y),
     );
     if (!opener) return;
-    const held = heldItems(opener).map((item) => item.kind);
-    const kind = rollClam(world.rngs.pickups, opener.place, held, clamBias(world, opener));
-    world.events.emit({ type: 'clam.opened', id: opener.id, index, kind });
-    gainItem(world, opener, kind, chargesFor(kind, opener.place));
+    const first = rollFor(world, opener);
+    world.events.emit({ type: 'clam.opened', id: opener.id, index, kind: first });
+    gainItem(world, opener, first, chargesFor(first, opener.place));
+    const rolls = opener.id === 'player' ? 1 : CLAM.rivalRolls;
+    for (let roll = 1; roll < rolls && !inventoryFull(opener); roll++) {
+      const kind = rollFor(world, opener);
+      gainItem(world, opener, kind, chargesFor(kind, opener.place));
+    }
     clam.closedFor = CLAM.closedTicks;
   });
+}
+
+/** One clam roll for `racer` from the pickups stream, leaving out the kinds it holds. */
+function rollFor(world: World, racer: Racer): PowerUpKind {
+  const held = heldItems(racer).map((item) => item.kind);
+  return rollClam(world.rngs.pickups, racer.place, held, clamBias(world, racer));
 }
 
 /**

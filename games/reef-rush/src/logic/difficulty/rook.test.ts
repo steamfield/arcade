@@ -1,3 +1,3 @@
-import { describeDifficulty } from './race-bots.ts';
+import { describeDifficulty } from './hard-bars.ts';
 
 describeDifficulty('rook');

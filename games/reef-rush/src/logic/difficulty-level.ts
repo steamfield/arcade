@@ -89,7 +89,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
   },
   normal: {
     rivalForceMul: 0.95,
-    rivalCatchUp: { lagTiles: 10, perTile: 0.05, min: 0.6, max: 1.25 },
+    rivalCatchUp: { lagTiles: 2, perTile: 0.05, min: 0.6, max: 1.25 },
     rivalCatchUpDelayTicks: 0,
     rivalItemAggressionMul: 0.7,
     rivalsAttackPlayer: true,

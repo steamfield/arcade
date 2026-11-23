@@ -38,9 +38,10 @@ export interface Character {
  * - Rook, the hunter: the quickest to react, heavy for his size, kicks readily, moderate items.
  *
  * `itemAggression` is how eagerly it fires an item that has a use: with one in reach it fires after
- * `reactionTicks / itemAggression` ticks on average (`ai/items.ts`). On Normal the median rival
- * uses 4 items a race (Sunlit Shallows, seeds 1-20, novice player bot), short of the 6-10 target:
- * rivals use most of what they get, so clam supply (`CLAM.closedTicks`), not eagerness, limits it.
+ * `reactionTicks / itemAggression` ticks on average (`ai/items.ts`). Rivals use most of what they
+ * get, so clam supply, not eagerness, limits how often they fire: a rival rolls up to three items
+ * from a clam (`CLAM.rivalRolls`), and on Normal each rival slot's median is 7-11.5 uses a race
+ * (`difficulty/rival-items.test.ts`). Streak's and Onyx's stay lowest, as their habits say.
  */
 export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
   rudy: {

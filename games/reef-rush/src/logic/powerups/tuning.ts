@@ -132,6 +132,14 @@ export const PASSIVE = {
  */
 export const CLAM = {
   closedTicks: 90,
+  /**
+   * Rolls a rival gets from one clam while it has an empty slot (the player gets one). Rivals follow
+   * the racing line, open about two clams a race and fire nearly all they get, so supply limits
+   * their item use; three rolls lift a Normal rival's median from 4 to 7-11 uses a race
+   * (`difficulty/rival-items.test.ts`) without clams reopening sooner, which would let a racer camp
+   * one, or moving clams.
+   */
+  rivalRolls: 3,
   /** Undertow only rolls for racers in this place or worse (3rd or 4th). */
   undertowMinPlace: 3,
   firstWeights: {
@@ -160,6 +168,7 @@ export const CLAM = {
   },
 } as const satisfies {
   closedTicks: number;
+  rivalRolls: number;
   undertowMinPlace: number;
   firstWeights: Record<PowerUpKind, number>;
   lastWeights: Record<PowerUpKind, number>;
