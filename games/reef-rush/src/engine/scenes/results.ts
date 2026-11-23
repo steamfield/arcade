@@ -2,7 +2,7 @@
  * The results screen, laid out to UI.md: the RESULTS heading, a podium with
  * the top three's portraits and medals, the standings revealed one row every
  * 20 ticks (place, character name, time or TIME UP; the player's row in sun with
- * its character's head beside it), then the NEW BEST or BEST NOT SAVED ribbon, and the Race again / Title
+ * its character's head beside it), then the NEW BEST or BEST NOT SAVED ribbon, and the Race again / Character / Title
  * buttons, over the course's own backdrop. While course select is shown (more than one listed
  * course) the course's name sits top left. Motion is timed from the runtime's tick since this
  * screen came up, and holds still under reduced motion (rows still arrive in sequence).
@@ -40,15 +40,15 @@ const PLINTHS: readonly Plinth[] = [
 const PORTRAIT_RISE = 17;
 const PORTRAIT_INSET_X = 12;
 const MEDAL_INSET = { x: 14, y: 3 } as const;
-const ROWS = { x: 120, y: 80, pitch: 10 } as const;
+const ROWS = { x: 120, y: 78, pitch: 9 } as const;
 /** The player's 7x7 head on its row, clear of the d-pad zone (x < 108). */
 const ROW_HEAD_X = 111;
-const RIBBON = { x: 114, y: 120, w: 92, h: 15 } as const;
-const MENU = { centreX: 160, top: 139, width: 76, pitch: 19 } as const;
+const RIBBON = { x: 114, y: 115, w: 92, h: 15 } as const;
+const MENU = { centreX: 160, top: 132, width: 76, pitch: 15 } as const;
 
 /**
  * UI.md "Motion": a row every 20 ticks, sliding 8 px in from the left over 6; then the ribbon drops 2 px over
- * 10, from y 118 so it never covers the last row's outline (which ends at y 117).
+ * 10, from y 113 so it never covers the last row's outline (which ends at y 112).
  */
 const ROW_EVERY_TICKS = 20;
 const ROW_SLIDE = { px: 8, ticks: 6 } as const;

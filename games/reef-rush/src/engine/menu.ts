@@ -5,12 +5,20 @@
  */
 
 /** Every option a menu in this game can offer. */
-export type MenuOption = 'Race' | 'How to play' | 'Difficulty' | 'Sound' | 'Motion' | 'Race again' | 'Title';
+export type MenuOption =
+  | 'Race'
+  | 'How to play'
+  | 'Difficulty'
+  | 'Sound'
+  | 'Motion'
+  | 'Race again'
+  | 'Character'
+  | 'Title';
 
 /** The options each menu screen offers, top to bottom. */
 export const MENU_OPTIONS = {
   title: ['Race', 'How to play', 'Difficulty', 'Sound', 'Motion'],
-  results: ['Race again', 'Title'],
+  results: ['Race again', 'Character', 'Title'],
 } as const satisfies Record<string, readonly MenuOption[]>;
 
 /** A menu's options and which one is selected. */

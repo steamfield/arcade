@@ -7,7 +7,8 @@
  *
  * Screens: title, then course select (pick a course; skipped while only one course is listed),
  * then select (pick a character; fire races, dash goes back), then race and results. Race again
- * skips both selects and races the same course and pick. The title also opens How to Play, a few
+ * skips both selects and races the same course and pick; Character on the results screen opens them again
+ * (select only while one course is listed), with the cursor on the current pick. The title also opens How to Play, a few
  * pages the player turns with the move and action buttons.
  */
 import { createLogger, EventLog, FixedStep, type Stamped } from '@arcade/core';
@@ -362,7 +363,7 @@ export class Runtime {
     else if (option === 'Difficulty') this.changeSettings({ difficulty: nextDifficulty(this.settings.difficulty) });
     else if (option === 'How to play') this.goTo('howToPlay');
     else if (option === 'Title') this.goTo('title');
-    else if (option === 'Race') this.goTo(this.courseSelectShown ? 'course' : 'select');
+    else if (option === 'Race' || option === 'Character') this.goTo(this.courseSelectShown ? 'course' : 'select');
     else this.startRace();
   }
 

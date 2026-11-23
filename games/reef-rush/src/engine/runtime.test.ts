@@ -6,7 +6,7 @@ import type { GameContext } from '@arcade/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
-import { COUNTDOWN_TICKS } from '../logic/race/standings.ts';
+import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../logic/race/standings.ts';
 import { playerOf } from '../logic/racers.ts';
 import { migrations, NEW_GAME, SAVE_VERSION, type SaveData, SaveSchema } from '../logic/save.ts';
 import { courseFromLevel, giveItems } from '../logic/test-world.ts';
@@ -268,6 +268,53 @@ describe('course select', () => {
     rt.step.advance(ARMED);
     press(rt, 'dash');
     expect(rt.scene).toBe('title');
+  });
+});
+
+describe('changing character from the results screen', () => {
+  /** Races an idle player to a DNF and waits out the results menu's arming ticks. */
+  function onResults(rt: Runtime): void {
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'fire');
+    rt.step.advance(COUNTDOWN_TICKS + RACE_LIMIT_TICKS + 90 + ARMED);
+  }
+  const playerCharacter = (rt: Runtime) => rt.world && playerOf(rt.world).character;
+
+  it('offers Race again, Character and Title', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    onResults(rt);
+    expect([rt.scene, rt.menu?.options]).toEqual(['results', ['Race again', 'Character', 'Title']]);
+  });
+
+  it('opens select on the current pick, and the next race runs as the new pick', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    onResults(rt);
+    press(rt, 'down');
+    press(rt, 'fire');
+    expect([rt.scene, rt.selectedCharacter]).toEqual(['select', 'rudy']);
+    rt.step.advance(ARMED);
+    press(rt, 'right');
+    press(rt, 'fire');
+    expect([rt.scene, playerCharacter(rt)]).toEqual(['race', 'gil']);
+  });
+
+  it('opens course select first while it is shown, then select', async () => {
+    const courses = ['Reef', 'Sunlit'].map((name) => courseFromLevel({ name, ascii: '#1234F#' }));
+    const { rt } = titleRuntime(await realStore(), { listedCourses: courses });
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'fire');
+    rt.step.advance(COUNTDOWN_TICKS + RACE_LIMIT_TICKS + 90 + ARMED);
+    expect(rt.scene).toBe('results');
+    press(rt, 'down');
+    press(rt, 'fire');
+    expect(rt.scene).toBe('course');
+    rt.step.advance(ARMED);
+    press(rt, 'fire');
+    expect(rt.scene).toBe('select');
   });
 });
 
