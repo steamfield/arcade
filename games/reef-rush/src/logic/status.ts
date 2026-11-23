@@ -1,8 +1,8 @@
 /**
  * What a racer's timed statuses do to its control and how they run out. Stunned
  * and trapped racers lose their input, trapped racers drift straight up or down as
- * the medium says, and every counter (plus the item use cooldown) loses one tick at
- * the end of each tick.
+ * the medium says, downed racers (`isDowned`) pass through other racers, and every
+ * counter (plus the item use cooldown) loses one tick at the end of each tick.
  */
 import { mediumOf } from './media/index.ts';
 import { noItems } from './racers.ts';
@@ -25,6 +25,14 @@ export function controlledIntent(racer: Racer, intent: Intent): Intent {
  */
 export function isInvulnerable(racer: Racer): boolean {
   return racer.status.invulnerable > 0 || racer.status.cannonball > 0;
+}
+
+/**
+ * True while the racer is down: stunned, trapped or latched. Downed racers don't collide with other
+ * racers, so the field swims through them instead of piling up behind.
+ */
+export function isDowned(racer: Racer): boolean {
+  return racer.status.stunned > 0 || racer.status.trapped > 0 || racer.status.latched > 0;
 }
 
 /**

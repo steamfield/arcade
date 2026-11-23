@@ -212,6 +212,46 @@ describe('racer separation', () => {
   });
 });
 
+describe('downed racers', () => {
+  it.each(['stunned', 'trapped', 'latched'] as const)('pass through a %s racer: no push, no bump', (status) => {
+    for (const downed of ['first', 'second'] as const) {
+      const a = racer('player', 100);
+      const b = racer('tess', 106);
+      a.body.vx = 40;
+      (downed === 'first' ? a : b).status[status] = 30;
+      const log = new EventLog<GameEvent>();
+      const bumped: string[] = [];
+
+      separateRacers([a, b], new Set(), log, undefined, (first, second) => bumped.push(`${first.id}|${second.id}`));
+
+      expect([a.body.x, b.body.x, a.body.vx, b.body.vx], `${downed} downed`).toEqual([100, 106, 40, 0]);
+      expect(log.all()).toEqual([]);
+      expect(bumped).toEqual([]);
+    }
+  });
+
+  it('forget the contact they were in, so touching again after recovery is a new bump', () => {
+    const a = racer('player', 100);
+    const b = racer('tess', 106);
+    const contacts = new Set<string>();
+    const log = new EventLog<GameEvent>();
+    const touch = () => {
+      a.body.x = 100;
+      b.body.x = 106;
+      separateRacers([a, b], contacts, log);
+    };
+
+    touch();
+    b.status.stunned = 30;
+    touch();
+    expect(contacts.size).toBe(0);
+
+    b.status.stunned = 0;
+    touch();
+    expect(log.all().map((event) => event.type)).toEqual(['racer.bumped', 'racer.bumped']);
+  });
+});
+
 describe('recovering from a push into a wall', () => {
   /** A racer that a bump has shoved 3.5 px into the left wall (column 0). */
   function shovedIntoWall(): Racer {

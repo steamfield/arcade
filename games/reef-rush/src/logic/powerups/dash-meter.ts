@@ -2,7 +2,9 @@
  * The dash meter: a kick (shown to players as a dash) spends a charge, and charges come back one
  * at a time. Every racer has one, rivals included, so a dash is something saved for the right moment.
  *
- * Phase 2 scaffold: the signatures are final; lane a fills in the rules.
+ * `racer.kickCharges` is the charges held (0..DASH_METER.charges) and `racer.kickRecharge` the ticks
+ * counted toward the next one. The count keeps running across a spend, so a charge returns
+ * DASH_METER.rechargeTicks after the meter first dropped below full, then every rechargeTicks after.
  */
 import type { Racer, World } from '../types.ts';
 
@@ -10,12 +12,24 @@ import type { Racer, World } from '../types.ts';
 export const DASH_METER = { charges: 2, rechargeTicks: 90 } as const;
 
 /** Whether `racer` has a dash charge to spend on a kick this tick. */
-export function canDash(_racer: Racer): boolean {
-  return true;
+export function canDash(racer: Racer): boolean {
+  return racer.kickCharges > 0;
 }
 
-/** Spends one charge for a kick `racer` just made (`racer.kicked`). */
-export function spendDash(_world: World, _racer: Racer): void {}
+/** Spends one charge for a kick `racer` just made (`racer.kicked`). Never goes below 0. */
+export function spendDash(_world: World, racer: Racer): void {
+  racer.kickCharges = Math.max(0, racer.kickCharges - 1);
+}
 
 /** Counts `racer` toward its next charge, once per tick in play, emitting `racer.dashRecharged` when one returns. */
-export function rechargeDash(_world: World, _racer: Racer): void {}
+export function rechargeDash(world: World, racer: Racer): void {
+  if (racer.kickCharges >= DASH_METER.charges) {
+    racer.kickRecharge = 0;
+    return;
+  }
+  racer.kickRecharge += 1;
+  if (racer.kickRecharge < DASH_METER.rechargeTicks) return;
+  racer.kickRecharge = 0;
+  racer.kickCharges += 1;
+  world.events.emit({ type: 'racer.dashRecharged', id: racer.id, charges: racer.kickCharges });
+}

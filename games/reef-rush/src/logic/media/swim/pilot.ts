@@ -5,7 +5,9 @@
  * decision, and the speed-based stuck recovery.
  *
  * A stunned or trapped rival can't act, so its stuck counter resets and it starts no recovery swim.
- * A rival swerving round a hazard holds its kick; a recovering one saves it.
+ * A rival swerving round a hazard holds its kick; a recovering one saves it. It spends dash charges
+ * only while it has them, keeping one back for a latch shake-off unless it is running last
+ * (`hasDashToSpend`).
  *
  * In a dark zone (`inDark`) a rival that can't see (`racerSeesInDark`: not Selene, no Glow Lantern)
  * wobbles twice as far and re-reads its field half as often.
@@ -32,6 +34,10 @@ const LOOKAHEAD_TILES = 3;
 const WOBBLE_STEP = 0.15;
 /** Kick only when the aim is within about 37 degrees of the way the racer is already moving. */
 const KICK_ALIGNMENT = 0.8;
+/** Dash charges a rival keeps back for shaking off a squid latch. */
+const DASH_RESERVE = 1;
+/** Places behind the leader past which a rival stops keeping a reserve and dashes everything. */
+const RESERVE_WAIVED_BEHIND = 2;
 /** Below this speed in px/s a racing rival counts as stuck. */
 const STUCK_SPEED = 8;
 const STUCK_TICKS = 30;
@@ -148,9 +154,20 @@ function sidewaysFrom(aim: Vec, facing: 1 | -1, side: 1 | -1): Vec {
   return { x: -forward.y * side, y: forward.x * side };
 }
 
-/** Kicks when ready, already moving roughly along its aim, and the skill roll passes. */
+/**
+ * Whether the rival will spend a dash charge now. It never kicks on an empty meter, and keeps
+ * DASH_RESERVE charges back for shaking off a squid unless it is latched already or trails the
+ * leader by more than RESERVE_WAIVED_BEHIND places.
+ */
+function hasDashToSpend(racer: Racer): boolean {
+  if (racer.kickCharges === 0) return false;
+  if (racer.status.latched > 0 || racer.place - 1 > RESERVE_WAIVED_BEHIND) return true;
+  return racer.kickCharges > DASH_RESERVE;
+}
+
+/** Kicks when ready, has a dash to spend, is already moving roughly along its aim, and the skill roll passes. */
 function wantsKick(racer: Racer, aim: Vec, roll: number): boolean {
-  if (racer.kickCooldown > 0) return false;
+  if (racer.kickCooldown > 0 || !hasDashToSpend(racer)) return false;
   const { vx, vy } = racer.body;
   const speed = length(vx, vy);
   if (speed === 0) return false;

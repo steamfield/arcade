@@ -5,6 +5,7 @@
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
 import { bodyTiles, isSolid, overlapsTile } from '../level/query.ts';
+import { isDowned } from '../status.ts';
 import { type Body, type Level, RACER_IDS, type Racer, TILE } from '../types.ts';
 
 /**
@@ -97,6 +98,8 @@ function resolveY(body: Body, level: Level, broken: ReadonlySet<number>): void {
  * Pushes overlapping racers apart in one pass over pairs (i < j) in array order,
  * splitting the push by mass and exchanging half the relative velocity on that axis.
  * `contacts` holds "a|b" keys of touching pairs; `racer.bumped` fires only when a contact starts.
+ * A pair with a downed racer (`isDowned`: stunned, trapped or latched) passes through: no push, no
+ * bump, and its key is cleared, so touching again after recovery is a new bump.
  *
  * @param massOf The mass each racer bumps with; its profile's unless held power-ups change it.
  * @param onBump Called with the pair in RACER_IDS order when a contact starts, after `racer.bumped`
@@ -133,6 +136,10 @@ interface Separation {
 /** Separates one pair and keeps its contact bookkeeping current. */
 function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump }: Separation): void {
   const key = contactKey(a, b);
+  if (isDowned(a) || isDowned(b)) {
+    contacts.delete(key);
+    return;
+  }
   const penetration = {
     x: overlapLength(a.body.x, a.body.w, b.body.x, b.body.w),
     y: overlapLength(a.body.y, a.body.h, b.body.y, b.body.h),
