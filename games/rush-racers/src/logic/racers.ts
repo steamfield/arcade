@@ -68,6 +68,7 @@ export function noItems(
       latched: 0,
       undertow: 0,
       bonking: 0,
+      fallen: 0,
     },
     dashDir: { x: 0, y: 0 },
     dashSpeed: 0,

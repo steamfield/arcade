@@ -108,11 +108,13 @@ const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 }
  *
  * @param course A shipped course, or one registered for a test (`courseFromLevel`).
  * @param events Usually the engine's EventLog, so one stream holds race, menu and save events.
- * @throws {LevelError} When the medium can't race the level (`Medium.validateLevel`), located at the
- *   first problem, with any others appended to the message after `; `.
+ * @throws {LevelError} When the medium can't race the level (a ledge in a medium without ledges, or
+ *   a problem from `Medium.validateLevel`), located at the first problem, with any others appended
+ *   to the message after `; `.
  * @throws {Error} When `course` isn't the course its id is registered to (unregistered, or a copy
  *   with changes), since the world keeps only the id and reads the rest back from the registry.
  * @throws {Error} When the course names an unknown world, or its world a medium that is neither shipped nor registered.
+ * @throws {Error} When the course's `tuning.extra` names a key its medium doesn't have (`effectiveTuning`).
  */
 export function createWorld(course: Course, events: EventSink<GameEvent>, options: WorldOptions): World {
   requireRegistered(course);
@@ -121,8 +123,8 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
   if (!medium) throw new Error(`Course '${course.id}' names unknown medium '${mediumId}'`);
   const level = levelOf(course);
   const broken = new Set<number>();
-  const nav = medium.buildNav(level, broken);
-  throwOnProblems(medium.validateLevel(level, nav));
+  const nav = medium.buildNav(level, broken, effectiveTuning({ course: course.id, medium: medium.id }));
+  throwOnProblems([...ledgeProblems(level, medium), ...medium.validateLevel(level, nav)]);
   const rngs = createRngs(options.seed);
   const player = options.character ?? 'rudy';
   const characters: CharacterId[] = [player, ...pickRivals(rngs.roster, player)];
@@ -176,6 +178,18 @@ function requireRegistered(course: Course): void {
 }
 
 /** Throws a LevelError at the first problem, naming the rest after it; does nothing for none. */
+/** One problem per ledge tile (`=`) when `medium` has no ledges (`effects.allowsLedges`), located at its tile. */
+function ledgeProblems(level: Level, medium: Medium): LevelProblem[] {
+  if (medium.effects.allowsLedges) return [];
+  return level.cells.flatMap((row, y) =>
+    row.flatMap((cell, x) =>
+      cell === 'ledge'
+        ? [{ message: `Ledge "=" at row ${y}, col ${x}: medium '${medium.id}' has no ledges`, row: y, col: x }]
+        : [],
+    ),
+  );
+}
+
 function throwOnProblems(problems: readonly LevelProblem[]): void {
   const [first, ...rest] = problems;
   if (!first) return;

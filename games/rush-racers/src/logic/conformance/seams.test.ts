@@ -7,12 +7,16 @@
 import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
-import { mediumById } from '../media/index.ts';
+import { LevelError } from '../level/parse.ts';
+import { mediumById, registerMedium } from '../media/index.ts';
 import { spawnDecoy } from '../powerups/decoys.ts';
 import { courseFromLevel, placeAt, racerOf, step } from '../test-world.ts';
 import { RACER_IDS, TILE } from '../types.ts';
 import { createWorld } from '../world.ts';
+import { GLIDE_MEDIUM } from './glide.ts';
 import { afterMoveCalls, PLATFORM_ARENA_TOP, platformArena, platformRace } from './platform-medium.ts';
+
+registerMedium(GLIDE_MEDIUM);
 
 const OPEN = ['##########', '#1.......F', '#........F', '##########'].map((row) => `${row}#`);
 
@@ -70,6 +74,32 @@ describe('swim answers no to every platformer seam', () => {
       'swim',
     );
     expect(() => createWorld(course, new EventLog<GameEvent>(100), { seed: 1 })).toThrow(/ledge/i);
+  });
+});
+
+describe('a medium without ledges', () => {
+  it('rejects a glide course with a ledge, naming and locating each ledge tile', () => {
+    expect(GLIDE_MEDIUM.effects.allowsLedges).toBe(false);
+    const course = courseFromLevel(
+      ['#########', '#1...==.F', '#2......F', '#3......F', '#4......F', '#########'].join('\n'),
+      'glide',
+    );
+
+    let thrown: unknown;
+    try {
+      createWorld(course, new EventLog<GameEvent>(100), { seed: 1 });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(LevelError);
+    expect(thrown).toMatchObject({
+      message:
+        `Ledge "=" at row 1, col 5: medium 'glide' has no ledges; ` +
+        `Ledge "=" at row 1, col 6: medium 'glide' has no ledges`,
+      row: 1,
+      col: 5,
+    });
   });
 });
 

@@ -10,7 +10,7 @@ import { BOT_PROFILES } from '../ai/profiles.ts';
 import { COURSES, levelOf, registerCourse } from '../courses/index.ts';
 import type { Course } from '../courses/types.ts';
 import { race, table } from '../difficulty/race-bots.ts';
-import { mediumById } from '../media/index.ts';
+import { effectiveTuning, mediumById } from '../media/index.ts';
 import type { Level } from '../types.ts';
 import { mediumIdOf } from '../worlds/index.ts';
 
@@ -77,7 +77,9 @@ describe.each(CONFORMING)('course conformance for $name ($id)', (course) => {
     const level = levelOf(course);
 
     expect(medium, `course races in unknown medium '${mediumIdOf(course)}'`).not.toBeNull();
-    expect(medium?.validateLevel(level, medium.buildNav(level, new Set()))).toEqual([]);
+    if (!medium) return;
+    const tuning = effectiveTuning({ course: course.id, medium: medium.id });
+    expect(medium.validateLevel(level, medium.buildNav(level, new Set(), tuning))).toEqual([]);
   });
 
   it(

@@ -90,6 +90,18 @@ describe('launching a squid', () => {
     ]);
   });
 
+  it('passes over a fallen racer for the next nearest one ahead', () => {
+    const { world, log, fire } = scene({ player: [3, 2], tess: [10, 2], squib: [8, 3], bo: [2, 2] });
+    racerOf(world, 'squib').status.fallen = 30;
+
+    fire('player');
+
+    expect(events(log, 'squid.spawned', 'squid.locked')).toEqual([
+      { type: 'squid.spawned', owner: 'player', target: 'tess' },
+      { type: 'squid.locked', owner: 'player', target: 'tess' },
+    ]);
+  });
+
   it('ignores racers behind its owner, finished racers and racers beyond 10 tiles', () => {
     const { world, log, fire } = scene({ player: [10, 2], tess: [5, 2], squib: [14, 3], bo: [25, 2] });
     racerOf(world, 'squib').finished = { tick: 1, place: 1, overshoot: 0 };

@@ -39,11 +39,11 @@ describe('course tuning', () => {
     });
   });
 
-  it('rejects an extra the medium does not have, naming the course, the key and the valid extras', () => {
-    const world = swimWith({ extra: { kelpDrag: 0.5 } });
+  it('rejects an extra the medium does not have when the race is set up, naming the course, the key and the valid extras', () => {
+    const course = courseFromLevel(POOL, 'swim', { tuning: { extra: { kelpDrag: 0.5 } } });
 
-    expect(() => effectiveTuning(world)).toThrow(
-      `Course '${world.course}' tunes unknown extra 'kelpDrag' for medium 'swim' (valid extras: ${Object.keys(MEDIA.swim.tuning.extra).join(', ')})`,
+    expect(() => createWorld(course, new EventLog<GameEvent>(100), { seed: 1 })).toThrow(
+      `Course '${course.id}' tunes unknown extra 'kelpDrag' for medium 'swim' (valid extras: ${Object.keys(MEDIA.swim.tuning.extra).join(', ')})`,
     );
   });
 

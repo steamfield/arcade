@@ -1,6 +1,6 @@
 /**
- * Solid crates: in a medium whose clams are solid, a ready clam blocks like rock and opens only when
- * a racer's head hits it from below. In swim, clams open on touch as they always have.
+ * Solid crates: in a medium whose clams are solid, a clam blocks like rock, ready or shut, and a
+ * ready one opens only when a racer's head hits it from below. In swim, clams open on touch as they always have.
  */
 import type { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
@@ -79,7 +79,7 @@ describe('a solid crate', () => {
     expect(world.clams[0]?.closedFor).toBe(0);
   });
 
-  it('lets a racer through while it is shut after opening', () => {
+  it('stays solid while shut: a racer rising into it again is stopped and nothing opens', () => {
     const { world, log, player } = underCrate(2, -150);
     step(world, log, 4);
     expect(world.clams[0]?.closedFor).toBeGreaterThan(0);
@@ -88,7 +88,9 @@ describe('a solid crate', () => {
     player.body.vy = -150;
     step(world, log, 6);
 
-    expect(player.body.y).toBeLessThan((CRATE.ty + 1) * TILE);
+    expect(world.clams[0]?.closedFor).toBeGreaterThan(0);
+    expect(player.body.y).toBeGreaterThanOrEqual((CRATE.ty + 1) * TILE);
+    expect(eventsIn(log, 'clam.opened')).toHaveLength(1);
   });
 
   it('is ready again on the same tick after opening as a clam opened by touch', () => {

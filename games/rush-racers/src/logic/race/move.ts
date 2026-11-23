@@ -157,8 +157,8 @@ function bumpCeiling(body: Body, move: TileMove): void {
 
 /**
  * What `moveBody` treats as solid beyond the level's tiles for `world`'s medium right now: whether
- * the bottom edge is open (`pitBelow`), and the tiles of ready clams when the medium's clams are
- * solid crates. A medium with neither gets NO_MOVE_RULES.
+ * the bottom edge is open (`pitBelow`), and every clam's tile, ready or shut, when the medium's
+ * clams are solid crates. A medium with neither gets NO_MOVE_RULES.
  *
  * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
@@ -167,9 +167,7 @@ export function moveRulesFor(world: World): MoveRules {
   if (!pitBelow && !solidClams) return NO_MOVE_RULES;
   const solidTiles = new Set<number>();
   if (solidClams) {
-    for (const clam of world.clams) {
-      if (clam.closedFor === 0) solidTiles.add(tileIndex(world.level, clam.tile.x, clam.tile.y));
-    }
+    for (const clam of world.clams) solidTiles.add(tileIndex(world.level, clam.tile.x, clam.tile.y));
   }
   return { pitBelow, solidTiles };
 }

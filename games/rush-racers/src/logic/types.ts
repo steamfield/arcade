@@ -114,7 +114,7 @@ export interface MoveContacts {
 export interface MoveRules {
   /** True: there is no floor below the last row, so a body can fall out of the level (a pit). */
   pitBelow: boolean;
-  /** Extra tile indices that block like rock this tick (ready crates in a solid-crate medium). */
+  /** Extra tile indices that block like rock this tick (every crate, ready or shut, in a solid-crate medium). */
   solidTiles: ReadonlySet<number>;
 }
 
@@ -268,7 +268,8 @@ export const ENEMY_KINDS: readonly EnemyKind[] = ['shark', 'eel', 'crab'];
 
 /**
  * Timed conditions on a racer, each a count of ticks left (0 = off). `tickStatuses` (status.ts)
- * takes one off every counter at the end of each tick the racer is in play.
+ * takes one off every counter at the end of each tick the racer is in play, except `fallen`, which
+ * the medium counts down itself.
  */
 export interface RacerStatus {
   /** Input ignored (intent idle). */
@@ -293,6 +294,11 @@ export interface RacerStatus {
   undertow: number;
   /** Just dashed (kicked): a dash bonk lands on an enemy touched while this is above 0. */
   bonking: number;
+  /**
+   * Fell out of the course and is being put back: input ignored, downed, never a homing target. The
+   * medium sets it and counts it down in `afterMove`; `tickStatuses` leaves it alone.
+   */
+  fallen: number;
 }
 
 export interface Racer {

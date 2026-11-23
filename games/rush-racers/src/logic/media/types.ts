@@ -97,7 +97,7 @@ export interface MediumEffects {
    * Null: enemies can't be stomped, only bonked by a dash.
    */
   stompBounce: number | null;
-  /** True: a ready clam (crate) is a solid tile that opens only when a racer's head hits it from below. */
+  /** True: a clam (crate) is a solid tile, ready or shut, and a ready one opens only when a racer's head hits it from below. */
   solidClams: boolean;
   /** True: no floor below the last row, so racers fall out through pits and `afterMove` brings them back. */
   pitBelow: boolean;
@@ -140,8 +140,12 @@ export interface Medium {
     events: EventSink<GameEvent>,
     dt: number,
   ): void;
-  /** Navigation for the level with `broken` coral gone; rebuilt when coral breaks. */
-  buildNav(level: Level, broken: ReadonlySet<number>): MediumNav;
+  /**
+   * Navigation for the level with `broken` coral gone; rebuilt when coral breaks. `tuning` is the
+   * world's effective tuning (`effectiveTuning`), for media whose routes depend on it (how far a
+   * racer can jump, say); media that don't need it ignore it.
+   */
+  buildNav(level: Level, broken: ReadonlySet<number>, tuning: MediumTuning): MediumNav;
   /**
    * A rival's steering this tick. Reads `world.nav` and `racer.profile.pilotSkill`, mutates only the
    * rival's pilot memory. `forceRecover` starts a stuck recovery now (the generic progress backstop).

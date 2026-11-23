@@ -233,4 +233,12 @@ describe('the squid warnings on the HUD', () => {
     racerOf(world, 'player').status.trapped = 30;
     expect(captionText(world, view)).toBe('TRAPPED!');
   });
+
+  it('shows no caption while the player has fallen, even when stunned and locked on', () => {
+    const world = lockedOnPlayer();
+    const player = racerOf(world, 'player');
+    player.status.stunned = 30;
+    player.status.fallen = 20;
+    expect(captionText(world, view)).toBe('');
+  });
 });

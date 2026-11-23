@@ -272,7 +272,7 @@ function createProgressStrip(scene: Phaser.Scene, world: World, headArt: CastSki
 export type CaptionView = Pick<Phaser.Geom.Rectangle, 'contains' | 'centerX' | 'centerY'>;
 
 /**
- * The caption line: the player's status (trapped, stunned, or a squid locked on) first, else a
+ * The caption line: nothing while the player has fallen, else the player's status (trapped, stunned, or a squid locked on) first, else a
  * rival bubble nearby but out of view, else nothing, in the words of the course's world skin.
  *
  * @throws {Error} When the world's course is unknown or its world has no skin.
@@ -280,6 +280,8 @@ export type CaptionView = Pick<Phaser.Geom.Rectangle, 'contains' | 'centerX' | '
 export function captionText(world: World, view: CaptionView): string {
   const player = playerOf(world);
   const { status } = player;
+  // A fallen racer is being put back and needs no warning.
+  if (status.fallen > 0) return '';
   // A latched squid's KICK! prompt takes the caption's place.
   if (status.latched > 0) return '';
   if (status.trapped > 0) return 'TRAPPED!';

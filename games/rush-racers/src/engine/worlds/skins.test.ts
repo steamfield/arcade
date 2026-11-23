@@ -24,6 +24,16 @@ describe('world skins', () => {
     expect(() => assertSkinAssets(broken)).toThrow("World 'broken' skin has no racer for 'gil'");
   });
 
+  it('names the world and the hazard when a skin has a glint without a key', () => {
+    const { glints } = REEF_SKIN.objects;
+    const broken = {
+      ...REEF_SKIN,
+      id: 'broken',
+      objects: { ...REEF_SKIN.objects, glints: { ...glints, jelly: { ...glints.jelly, key: '' } } },
+    } as WorldSkin;
+    expect(() => assertSkinAssets(broken)).toThrow("World 'broken' skin has no glint for 'jelly'");
+  });
+
   it('gives each slot its own racer texture', () => {
     for (const skin of Object.values(SKINS)) {
       const textures = CHARACTER_IDS.map((id) => skin.cast.racers[id]);

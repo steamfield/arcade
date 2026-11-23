@@ -74,7 +74,7 @@ describe('the navigation seam', () => {
     ];
     expect(reads.filter((line) => !NAV_READ.test(line))).toEqual([]);
     expect(
-      ['nav: medium.buildNav(level, broken),', 'const navy = 1;', 'navigate(world)'].filter((line) =>
+      ['nav: medium.buildNav(level, broken, tuning),', 'const navy = 1;', 'navigate(world)'].filter((line) =>
         NAV_READ.test(line),
       ),
     ).toEqual([]);

@@ -90,10 +90,11 @@ function assertKnownExtras(
 }
 
 /**
- * Rebuilds the world's navigation through its medium, for the level with `world.broken` coral gone.
+ * Rebuilds the world's navigation through its medium, for the level with `world.broken` coral gone
+ * and the world's effective tuning.
  *
- * @throws {Error} When the world names a medium that is neither shipped nor registered.
+ * @throws {Error} When the world names a course or medium that is neither shipped nor registered.
  */
 export function rebuildNav(world: World): void {
-  world.nav = mediumOf(world).buildNav(world.level, world.broken);
+  world.nav = mediumOf(world).buildNav(world.level, world.broken, effectiveTuning(world));
 }

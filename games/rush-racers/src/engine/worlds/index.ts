@@ -32,7 +32,7 @@ export function registerSkinTextures(scene: Phaser.Scene): void {
 }
 
 /**
- * Throws unless `skin` names art for every character slot, item, enemy and pickup, and words for
+ * Throws unless `skin` names art for every character slot, item, enemy, pickup and hazard glint, and words for
  * every item caption and enemy caption. Skins are compiled in, so a miss is a programming error.
  *
  * @throws {Error} Naming the world and the first missing key, e.g. "World 'thornwood' skin has no racer for 'gil'".
@@ -57,4 +57,5 @@ export function assertSkinAssets(skin: WorldSkin): void {
   }
   for (const [what, key] of Object.entries(skin.objects.pickups)) if (!key) missing('pickup', what);
   for (const [what, key] of Object.entries(skin.objects.attack)) if (!key) missing('attack art', what);
+  for (const hazard of ['urchin', 'jelly'] as const) if (!skin.objects.glints[hazard]?.key) missing('glint', hazard);
 }
