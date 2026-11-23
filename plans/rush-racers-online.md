@@ -95,6 +95,7 @@ Signatures the lanes implement are in the scaffold's stubs; the briefs name them
 
 Demo: `pnpm arcade test rush-racers src/net && pnpm --filter @arcade/api test` (four sessions on the in-memory room finish one race hash-equal; the real Room relays between real sockets)
 Test cases: in each lane brief.
+Scaffold: 8944bb6
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
