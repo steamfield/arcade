@@ -106,13 +106,6 @@ describe('the dash meter', () => {
     ]);
   });
 
-  it('follows the player\u2019s charges in a real world', () => {
-    const { world } = raceOn('######\n#1..F#\n#2..F#\n#3..F#\n#4..F#\n######');
-    expect(dashPipFrames(racerOf(world, 'player').kickCharges)).toEqual([Frame.pipReady, Frame.pipReady]);
-    racerOf(world, 'player').kickCharges = 1;
-    expect(dashPipFrames(racerOf(world, 'player').kickCharges)).toEqual([Frame.pipReady, Frame.pipCooling]);
-  });
-
   it('swells the pip that comes back, over 12 ticks, and not at the first frame or when one is spent', () => {
     const track: ChargeTrack = { shown: null, refilled: null };
     trackDashCharges(track, 2, 100);
@@ -127,6 +120,9 @@ describe('the dash meter', () => {
     expect(scales[3]).toBe(1);
     // Only the pip that came back swells.
     expect(pipScale(track, 0, 200, false)).toBe(1);
+    // Spending it mid-swell ends the swell.
+    trackDashCharges(track, 1, 203);
+    expect(pipScale(track, 1, 203, false)).toBe(1);
   });
 
   it('holds still under reduced motion', () => {

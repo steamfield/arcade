@@ -25,9 +25,8 @@ const PART_GAP = 3;
 /** A hint dropped below the player keeps this far clear of them, and stays above the bottom margin. */
 const BELOW_PLAYER = 16;
 const LOWEST = 174;
-/** The glyph on the HUD sits this far right of the well, and level with it. */
+/** The glyph on the HUD sits this far right of the HUD's last piece (the pearl counter), and level with the well. */
 const PULSE_GAP = 3;
-const WELL_LEFT = 66;
 const WELL_TOP = 23;
 const WELL_HEIGHT = 17;
 /** The glyph on the HUD blinks every this many ticks, 2 blinks a second. */
@@ -48,21 +47,21 @@ interface HintLine {
 }
 
 /**
- * Adds the hint lines and the HUD glyph to `scene`. `wellWidth` is the width of the HUD's
- * item well, so the glyph can sit just right of it; `anchorY(playerY, height)` is the rule for
+ * Adds the hint lines and the HUD glyph to `scene`. `hudRight` is the right edge of the HUD's
+ * last HUD piece (the pearl counter), so the glyph can sit just right of it; `anchorY(playerY, height)` is the rule for
  * where text of that height centres beside a player at screen y `playerY` (`besidePlayerY`).
  */
 export function createHintView(
   scene: Phaser.Scene,
   reducedMotion: boolean,
-  wellWidth: number,
+  hudRight: number,
   anchorY: (playerY: number, height: number) => number,
 ): HintView {
   const touch = isTouchScreen();
   const pressFire = createLine(scene, touch, 'PRESS', 'fire', '!');
   const kick = createLine(scene, touch, '', 'dash', 'DASH!');
   const pulse = createActionGlyph(scene, 'fire', touch, { fixed: true, depth: Layer.hud });
-  pulse.setPosition(WELL_LEFT + wellWidth + PULSE_GAP, WELL_TOP + Math.floor((WELL_HEIGHT - GLYPH_SIZE) / 2));
+  pulse.setPosition(hudRight + PULSE_GAP, WELL_TOP + Math.floor((WELL_HEIGHT - GLYPH_SIZE) / 2));
   pulse.setVisible(false);
 
   return {

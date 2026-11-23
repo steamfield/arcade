@@ -168,6 +168,8 @@ export interface ChargeTrack {
 /** Updates `track` for this frame: a rise in charges marks the newest pip as refilled on `tick`. */
 export function trackDashCharges(track: ChargeTrack, charges: number, tick: number): void {
   if (track.shown !== null && charges > track.shown) track.refilled = { pip: charges - 1, at: tick };
+  // A pip spent mid-swell stops swelling.
+  if (track.shown !== null && charges < track.shown) track.refilled = null;
   track.shown = charges;
 }
 

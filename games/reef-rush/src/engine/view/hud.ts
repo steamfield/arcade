@@ -32,6 +32,8 @@ import { squidHuntingPlayer } from './threat-math.ts';
 
 /** The race HUD; `sync` redraws it from the world. */
 export interface Hud {
+  /** The right edge in px of the HUD's last top-left piece, the pearl counter. */
+  readonly right: number;
   sync(world: World): void;
 }
 
@@ -62,8 +64,8 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
   const place = createPlacePanel(scene, playerOf(world).character, reducedMotion);
   const timer = createTimer(scene);
   let shownTime = -1;
-  const well = createWell(scene, stackMaxFor(playerOf(world)));
   const slots = stackMaxFor(playerOf(world));
+  const well = createWell(scene, slots);
   const meter = createDashMeter(scene, slots, reducedMotion);
   const pearls = createPearlCounter(scene, meter.right + HUD_GAP);
   const strip = createProgressStrip(scene, world);
@@ -78,6 +80,7 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
   });
 
   return {
+    right: pearls.right,
     sync(world) {
       place.sync(world);
       const time = raceTime(world);
@@ -102,7 +105,7 @@ export function pearlText(pearls: number): string {
 }
 
 /** The pearl counter: the pearl sprite and the player's count, under the progress strip and clear of the back link. */
-function createPearlCounter(scene: Phaser.Scene, x: number): WorldView {
+function createPearlCounter(scene: Phaser.Scene, x: number): WorldView & { right: number } {
   createPanel(scene, x, PEARLS.y, PEARLS_WIDTH, PEARLS.h, 'inset', { fixed: true, depth: Layer.hud });
   scene.add
     .image(x + PEARLS.pad, PEARLS.iconY, Tex.pearl, Frame.a)
@@ -115,6 +118,7 @@ function createPearlCounter(scene: Phaser.Scene, x: number): WorldView {
   });
   let shown = 0;
   return {
+    right: x + PEARLS_WIDTH,
     sync(world) {
       const pearls = playerOf(world).pearls;
       if (pearls === shown) return;
