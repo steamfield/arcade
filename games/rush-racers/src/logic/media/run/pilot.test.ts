@@ -271,6 +271,23 @@ const CRATE_HOP_LEVEL = `
   ##################...#########
 `;
 
+/** A Tailwind lane blowing right over cols `fromCol` up to `toCol` (exclusive), from row 1 to the floor, lasting the whole test. */
+function layTailwind(world: World, fromCol: number, toCol: number): void {
+  const lane = { x: fromCol * TILE, y: TILE, w: (toCol - fromCol) * TILE, h: 7 * TILE, dir: { x: 1, y: 0 } };
+  world.riptides.push({ ...lane, ttl: 100_000, owner: 'player' });
+}
+
+/** Each tick's facing while `racer` is in the air, over `ticks` steps of `world` with the player idle. */
+function airFacings(world: World, racer: Racer, ticks: number): number[] {
+  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+  const facings: number[] = [];
+  for (let tick = 0; tick < ticks; tick++) {
+    stepWorld(world, hold({ x: 0, y: 0 }), TICK_DT);
+    if (!runMotion(racer.motion).grounded && racer.status.fallen === 0) facings.push(racer.facing);
+  }
+  return facings;
+}
+
 /** Steps `world` with the player idle until Tess finishes or `limit` ticks pass; returns the events about her. */
 function raceTess(world: World, log: EventLog<GameEvent>, limit: number) {
   world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
@@ -310,6 +327,28 @@ describe('a rival on a course', () => {
       { finished: true, falls: 0 },
       { finished: true, falls: 0 },
     ]);
+  });
+
+  it('comes down on the lip of a pit after a tailwind lane over the run-up carries it faster than planned', () => {
+    const log = new EventLog<GameEvent>(100_000);
+    const world = createWorld(courseFromLevel(CRATE_HOP_LEVEL, 'run'), log, { seed: 1 });
+    standingRival(world, 11, 7);
+    layTailwind(world, 13, 18);
+
+    expect(raceTess(world, log, 1200)).toEqual({ finished: true, falls: 0 });
+  });
+
+  it('keeps its stick one way from one tick to the next in the air above a pit, in a tailwind', () => {
+    const world = createWorld(courseFromLevel(CRATE_HOP_LEVEL, 'run'), new EventLog<GameEvent>(100_000), { seed: 1 });
+    const tess = standingRival(world, 13, 4);
+    layTailwind(world, 8, 16);
+    const facings = airFacings(world, tess, 120);
+    const blips = facings.filter(
+      (facing, tick) => tick > 0 && facing !== facings[tick - 1] && facings[tick + 1] === facings[tick - 1],
+    );
+
+    expect(facings.length).toBeGreaterThan(0);
+    expect(blips).toEqual([]);
   });
 
   it('climbs a ledge to get past a wall too high to jump', () => {

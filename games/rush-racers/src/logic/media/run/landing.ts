@@ -1,50 +1,60 @@
 /**
  * Where a runner in the air comes down if it flies on as it is going: the pilot's check that a jump
  * still lands somewhere it can stand. Links are planned at `plannedSpeed`, so a runner that took off
- * faster (out of a dash, or at a quicker pace) flies further than its link says.
+ * faster (out of a dash, at a quicker pace, out of a tailwind) flies further than its link says. The
+ * flight is stepped with the physics' own horizontal and vertical steps (`stepRunSpeed`,
+ * `stepFall`) and the surroundings sampled where the body is each tick, so the prediction is what
+ * the physics will do while the stick stays held that way, short of what it runs into on the way.
  */
 import { TICK_DT } from '@arcade/core';
-import { type Body, TILE } from '../../types.ts';
-import { stepFallSpeed } from './physics.ts';
+import { type Body, type MoveModifiers, TILE } from '../../types.ts';
+import type { MediumTuning } from '../types.ts';
+import type { RunEnv } from './data.ts';
+import { type RunExtra, stepFall, stepRunSpeed } from './physics.ts';
 
 /** The most ticks ahead a landing is looked for: longer than any jump's fall. */
 const LOOKAHEAD_TICKS = 120;
 
-/** The parts of run's extras a flight reads: gravity and how air slows a runner over its pace. */
-export interface AirRules {
-  gravity: number;
-  cutGravityMul: number;
-  maxFall: number;
-  airFriction: number;
-}
-
 /** A runner in the air, and how it is flying. */
 export interface Flying {
   body: Body;
-  /** Ticks, from this one, that Up stays held: gravity is stronger while rising once it is let go. */
+  /** The speed its dash still glides down from (`RunMotion.dashGlide`). */
+  dashGlide: number;
+  /** True in a jump (`RunMotion.jumping`): only a jump's rise is cut short when Up is let go. */
+  jumping: boolean;
+  /** Ticks, from this one, that Up stays held. */
   holdTicks: number;
-  /** Horizontal speed, px/s, the runner keeps up in the air; faster than this it slows at `airFriction`. */
-  cruise: number;
+  /** The runner's move modifiers this tick: forceMul sets its pace, dragMul its air friction. */
+  mods: MoveModifiers;
+}
+
+/** The rules a flight follows: run's tuning and its extras, and the surroundings a body at a spot feels. */
+export interface AirRules {
+  tuning: MediumTuning;
+  extra: RunExtra;
+  /** What the surroundings do to a body where it is (wind, drafts, mud), sampled as the medium samples a racer. */
+  envAt: (body: Body) => RunEnv;
 }
 
 /**
  * The x of the runner's middle when its feet next come down through `feetY` (px), flying on with
- * the stick held the way it is going.
+ * the stick held at `stick` (-1, 0 or 1) the whole way. Walls, crates and racers on the way aren't
+ * traced: the pilot only asks what lies under the spot it comes down.
  *
  * @returns null when the flight doesn't come down to `feetY` within LOOKAHEAD_TICKS (it never rises that high).
  */
-export function landingX({ body, holdTicks, cruise }: Flying, feetY: number, rules: AirRules): number | null {
-  const dir = Math.sign(body.vx);
-  let speed = Math.abs(body.vx);
-  let x = body.x + body.w / 2;
-  let feet = body.y + body.h;
-  let vy = body.vy;
+export function landingX(flying: Flying, stick: number, feetY: number, rules: AirRules): number | null {
+  const { tuning, extra, envAt } = rules;
+  const body = { ...flying.body };
+  const motion = { dashGlide: flying.dashGlide };
   for (let tick = 1; tick <= LOOKAHEAD_TICKS; tick++) {
-    if (speed > cruise) speed = Math.max(cruise, speed - rules.airFriction * TICK_DT);
-    x += dir * speed * TICK_DT;
-    vy = stepFallSpeed(vy, tick > holdTicks, 0, rules, TICK_DT);
-    feet += vy * TICK_DT;
-    if (vy > 0 && feet >= feetY) return x;
+    const env = { ...envAt(body), grounded: false };
+    stepRunSpeed(body, motion, stick, env, tuning, extra, flying.mods, TICK_DT);
+    body.vx = Math.min(tuning.maxSpeed, Math.max(-tuning.maxSpeed, body.vx));
+    stepFall(body, flying.jumping && tick > flying.holdTicks, env, extra, TICK_DT);
+    body.x += body.vx * TICK_DT;
+    body.y += body.vy * TICK_DT;
+    if (body.vy > 0 && body.y + body.h >= feetY) return body.x + body.w / 2;
   }
   return null;
 }

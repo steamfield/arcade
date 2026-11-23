@@ -15,9 +15,10 @@ import { type MoveModifiers, type Racer, TILE, type Vec, type World } from '../.
 import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { runMotion } from './data.ts';
-import { feetOnRow, landingX } from './landing.ts';
+import { sampleRunEnvironment } from './env.ts';
+import { type AirRules, type Flying, feetOnRow, landingX } from './landing.ts';
 import { HOP_HOLD_TICKS } from './nav.ts';
-import { runExtra, runPace } from './physics.ts';
+import { runExtra } from './physics.ts';
 import { runAimFrom } from './way.ts';
 import { type RunLink, type RunNav, type RunPilot, runNav, runPilot } from './way-data.ts';
 
@@ -173,13 +174,20 @@ function atTakeOff(nav: RunNav, racer: Racer, stand: number, link: RunLink): boo
 }
 
 /**
- * Horizontal stick in the air. With no landing planned, toward the finish. Otherwise it looks at
- * where it comes down on the landing's row if it flies on as it is going (`landingX`): links are
- * planned at `plannedSpeed`, so a runner that took off faster, out of a dash or at a quicker pace,
- * flies past the tile it meant to land on. Where that is a pit's mouth or a wall, it steers back
- * toward the landing tile at once, while there is still air to shed the speed; where it is ground
- * past the landing tile, it flies on and lands there. Short of the landing tile, it steers toward
- * the tile's middle and stops steering over it.
+ * Horizontal stick in the air. With no landing planned, toward the finish. Otherwise it judges each
+ * stick by where holding it the rest of the flight brings it down on the landing's row (`landingX`:
+ * the physics' own steps, with the wind and drafts along the way). Links are planned at
+ * `plannedSpeed`, so a runner that took off faster, out of a dash, a tailwind or at a quicker pace,
+ * flies past the tile it meant to land on. In order, it:
+ *
+ * - flies on when that comes down on ground past the tile;
+ * - else steers toward the tile's middle (stopping over it) when that comes down on ground, or
+ *   short of the tile, where no other stick reaches further;
+ * - else, carried past the tile toward a pit or a wall, lets go or steers back, whichever comes
+ *   down on ground, or failing both whichever comes down nearest the tile.
+ *
+ * A stick judged this way still comes down where it was judged to a tick later, since holding it
+ * is what the physics then does, so the choice doesn't flip back and forth.
  */
 function airSteer(
   world: World,
@@ -196,13 +204,52 @@ function airSteer(
   const offset = landingCentre - (body.x + body.w / 2);
   const towardMiddle = Math.abs(offset) <= LANDING_DEADBAND_PX ? 0 : Math.sign(offset);
   const row = Math.floor(landingTile / nav.width);
-  const extra = runExtra(effectiveTuning(world));
-  const flying = { body, holdTicks: memory.upHeld ? memory.holdUpTicks + 1 : 0, cruise: runPace(extra, mods) };
-  const comesDownAt = landingX(flying, feetOnRow(row), extra);
-  if (comesDownAt === null) return towardMiddle;
-  if (!standsOver(nav, comesDownAt, body.w, row)) return Math.sign(landingCentre - comesDownAt);
-  const overshoots = body.vx !== 0 && Math.sign(comesDownAt - landingCentre) === Math.sign(body.vx);
-  return overshoots ? Math.sign(body.vx) : towardMiddle;
+  const flying = flyingOf(racer, memory, mods);
+  const rules = airRulesFor(world, racer);
+  const comesDownAt = (stick: number) => landingX(flying, stick, feetOnRow(row), rules);
+  const onGround = (x: number | null) => x !== null && standsOver(nav, x, body.w, row);
+  const flyOn = Math.sign(body.vx);
+  const flownOn = flyOn === 0 ? null : comesDownAt(flyOn);
+  if (flownOn !== null && onGround(flownOn) && Math.sign(flownOn - landingCentre) === flyOn) return flyOn;
+  const preferred = towardMiddle === flyOn ? flownOn : comesDownAt(towardMiddle);
+  if (preferred === null || onGround(preferred)) return towardMiddle;
+  const past = Math.sign(preferred - landingCentre);
+  if (past === 0 || past !== flyOn) return towardMiddle;
+  let nearest = towardMiddle;
+  let nearestMiss = Math.abs(preferred - landingCentre);
+  for (const stick of [0, -past]) {
+    if (stick === towardMiddle) continue;
+    const at = comesDownAt(stick);
+    if (at === null) continue;
+    if (onGround(at)) return stick;
+    const miss = Math.abs(at - landingCentre);
+    if (miss < nearestMiss) [nearest, nearestMiss] = [stick, miss];
+  }
+  return nearest;
+}
+
+/** How `racer` is flying this tick, for `landingX`. */
+function flyingOf(racer: Racer, memory: RunPilot, mods: MoveModifiers): Flying {
+  const motion = runMotion(racer.motion);
+  const holdTicks = memory.upHeld ? memory.holdUpTicks + 1 : 0;
+  return { body: racer.body, dashGlide: motion.dashGlide, jumping: motion.jumping, holdTicks, mods };
+}
+
+/**
+ * The rules `racer`'s flight follows in `world`: the course's run tuning, and the surroundings
+ * sampled as the medium samples the racer (wind cells, a Tailwind lane, mud) at each predicted spot.
+ */
+function airRulesFor(world: World, racer: Racer): AirRules {
+  const tuning = effectiveTuning(world);
+  const ghost: Racer = { ...racer };
+  return {
+    tuning,
+    extra: runExtra(tuning),
+    envAt: (body) => {
+      ghost.body = body;
+      return sampleRunEnvironment(world, ghost);
+    },
+  };
 }
 
 /** True when a box `width` px wide with its middle at x `middle` has stand tiles of row `row` under both edges. */
