@@ -1,77 +1,115 @@
 /**
  * Reading flight's nav: the distance at a tile, the next tile on the way (8-way, so the Easy guide
- * points up and down), a full 2D aim along it, and whether a puff cloud lies ahead.
- *
- * Scaffold baseline, ported from the conformance suite's glide. Phase 1 lane b replaces it.
+ * points up and down), a full 2D aim along it, the tiles ahead on either field for the pilot (all
+ * of them, or up to the next turn), and the puff cloud ahead for a flyer that would dash through it.
  */
-import { isSolid } from '../../level/query.ts';
-import { length } from '../../num.ts';
-import { cornerIsClear, fieldAt, NEIGHBOURS } from '../../race/flowfield.ts';
-import { type Box, TILE, type Vec, type World } from '../../types.ts';
-import { flightNav } from './way-data.ts';
+import { downhillPath, openTiles, steerDirection } from '../../ai/steer.ts';
+import { cellAt, isSolid } from '../../level/query.ts';
+import { fieldAt } from '../../race/flowfield.ts';
+import type { Box, Vec, World } from '../../types.ts';
+import { type FlightRoute, flightNav } from './way-data.ts';
 
 /**
- * The distance to the finish from `tile`; Infinity off the grid or where it can't be reached.
+ * The steer field at `tile`; Infinity off the grid or where the finish can't be reached.
  *
  * @throws {Error} When the world's nav was built by another medium.
  */
 export function flightDistanceAt(world: World, tile: Vec): number {
   const nav = flightNav(world.nav);
-  return fieldAt(nav.distance, nav, tile);
+  return fieldAt(nav.steer, nav, tile);
 }
 
 /**
- * Offset of the open neighbour of `tile` nearest the finish, never across a closed corner; null at
- * the finish or boxed in.
+ * The `route` field at `tile`; Infinity off the grid or where the finish can't be reached.
+ *
+ * @throws {Error} When the world's nav was built by another medium.
+ */
+export function flightRouteDistanceAt(world: World, tile: Vec, route: FlightRoute): number {
+  const nav = flightNav(world.nav);
+  return fieldAt(nav[route], nav, tile);
+}
+
+/**
+ * Up to `steps` tiles from `tile` down the `route` field, never across a closed corner. The ram
+ * field's walk may enter unbroken puff clouds.
+ *
+ * @throws {Error} When the world's nav was built by another medium.
+ */
+export function flightWayAhead(world: World, tile: Vec, steps: number, route: FlightRoute): Vec[] {
+  const nav = flightNav(world.nav);
+  const open = openTiles(world.level, world.broken, route === 'ram');
+  return downhillPath(nav[route], nav, open, tile, steps);
+}
+
+/**
+ * Offset of the steer field's lowest open neighbour of `tile`; null at the finish or boxed in.
  *
  * @throws {Error} When the world's nav was built by another medium.
  */
 export function flightNextTile(world: World, tile: Vec): Vec | null {
-  const open = (tx: number, ty: number) => !isSolid(world.level, world.broken, tx, ty);
-  let best: Vec | null = null;
-  let bestDistance = flightDistanceAt(world, tile);
-  for (const offset of NEIGHBOURS) {
-    const next = { x: tile.x + offset.x, y: tile.y + offset.y };
-    const distance = flightDistanceAt(world, next);
-    if (distance >= bestDistance || !open(next.x, next.y) || !cornerIsClear(tile, offset, open)) continue;
-    best = offset;
-    bestDistance = distance;
-  }
-  return best ? { ...best } : null;
+  const next = flightWayAhead(world, tile, 1, 'steer')[0];
+  return next ? { x: next.x - tile.x, y: next.y - tile.y } : null;
 }
 
 /**
- * The tile `steps` tiles along the way from `tile` (fewer when the way ends first).
+ * Unit aim from `body` toward the tile `lookaheadTiles` steps down the steer field, up and down as
+ * well as across; zero at the finish.
  *
  * @throws {Error} When the world's nav was built by another medium.
  */
-export function flightTileAhead(world: World, tile: Vec, steps: number): Vec {
+export function flightAimFrom(world: World, body: Box, lookaheadTiles: number): Vec {
+  const nav = flightNav(world.nav);
+  return steerDirection(nav.steer, nav, world.level, world.broken, body, lookaheadTiles);
+}
+
+/**
+ * The tile up to `steps` along the `route` field from `tile`, stopping at the first turn, so a
+ * flyer lines up with a shaft or a gap before it heads in rather than cutting the corner into the wall.
+ *
+ * @throws {Error} When the world's nav was built by another medium.
+ */
+export function flightCornerAhead(world: World, tile: Vec, steps: number, route: FlightRoute): Vec {
   let at = tile;
-  for (let i = 0; i < steps; i++) {
-    const step = flightNextTile(world, at);
-    if (!step) break;
-    at = { x: at.x + step.x, y: at.y + step.y };
+  let heading: Vec | null = null;
+  for (const next of flightWayAhead(world, tile, steps, route)) {
+    const step = { x: next.x - at.x, y: next.y - at.y };
+    if (heading && (step.x !== heading.x || step.y !== heading.y)) break;
+    heading = step;
+    at = next;
   }
   return at;
 }
 
 /**
- * Unit aim from the body's centre to the centre of the tile `lookaheadTiles` (at least 1) along the
- * way; zero at the finish.
+ * The first unbroken puff cloud within `steps` tiles of `tile` down the ram field; null when none.
  *
  * @throws {Error} When the world's nav was built by another medium.
  */
-export function flightAimFrom(world: World, body: Box, lookaheadTiles: number): Vec {
-  const centre = { x: body.x + body.w / 2, y: body.y + body.h / 2 };
-  const tile = { x: Math.floor(centre.x / TILE), y: Math.floor(centre.y / TILE) };
-  const ahead = flightTileAhead(world, tile, Math.max(1, lookaheadTiles));
-  if (ahead.x === tile.x && ahead.y === tile.y) return { x: 0, y: 0 };
-  const target = { x: (ahead.x + 0.5) * TILE, y: (ahead.y + 0.5) * TILE };
-  const distance = length(target.x - centre.x, target.y - centre.y);
-  return distance === 0 ? { x: 0, y: 0 } : { x: (target.x - centre.x) / distance, y: (target.y - centre.y) / distance };
+export function flightPuffAhead(world: World, tile: Vec, steps: number): Vec | null {
+  const { level, broken } = world;
+  const way = flightWayAhead(world, tile, steps, 'ram');
+  return (
+    way.find((step) => cellAt(level, step.x, step.y) === 'coral' && isSolid(level, broken, step.x, step.y)) ?? null
+  );
 }
 
-/** Whether unbroken puff clouds lie within `steps` tiles along the way. Baseline: the way never crosses one. */
-export function flightCoralAhead(_world: World, _tile: Vec, _steps: number): boolean {
-  return false;
+/**
+ * The first unbroken puff cloud within `reach` tiles of `tile` down the ram field that a dash
+ * facing `facing` can pop: on the tile's own row, on the side it faces. Null when there is none.
+ *
+ * @throws {Error} When the world's nav was built by another medium.
+ */
+export function flightPuffInDashLine(world: World, tile: Vec, facing: -1 | 1, reach: number): Vec | null {
+  const puff = flightPuffAhead(world, tile, reach);
+  return puff && puff.y === tile.y && Math.sign(puff.x - tile.x) === facing ? puff : null;
+}
+
+/**
+ * Whether an unbroken puff cloud lies within `steps` tiles of `tile` down the ram field, so a dash,
+ * Puffball or Meteor would open the way.
+ *
+ * @throws {Error} When the world's nav was built by another medium.
+ */
+export function flightCoralAhead(world: World, tile: Vec, steps: number): boolean {
+  return flightPuffAhead(world, tile, steps) !== null;
 }
