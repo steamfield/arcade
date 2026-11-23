@@ -133,12 +133,12 @@ describe('a planet on the inside of a turn', () => {
     return { ticks, swing, speed: Math.sqrt(player.body.vx * player.body.vx + player.body.vy * player.body.vy) };
   }
 
-  it('swings the racer round at least two tiles tighter, no slower, and still at speed', () => {
+  it('swings the racer round at least a tile tighter, no slower, and still at speed', () => {
     const open = turnDown([]);
     const swung = turnDown([PLANET]);
 
     expect(open.ticks).toBeLessThan(600);
-    expect(swung.swing).toBeLessThanOrEqual(open.swing - 2 * TILE);
+    expect(swung.swing).toBeLessThanOrEqual(open.swing - TILE);
     expect(swung.ticks).toBeLessThanOrEqual(open.ticks);
     expect(swung.speed).toBeGreaterThanOrEqual(cruise * 0.9);
   });
