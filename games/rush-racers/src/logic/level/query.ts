@@ -1,8 +1,18 @@
 /**
- * Read-only questions about a Level's tiles: what is at a tile, what is solid,
- * which tiles a body covers, and what the water does at a body's centre.
+ * Read-only questions about a Level's tiles: what is at a tile, what is solid (to the level alone,
+ * and to a moving body under a medium's rules), which tiles a body covers, and what the water does
+ * at a body's centre.
  */
-import { type Body, type Box, type Cell, type Environment, type Level, TILE, type Vec } from '../types.ts';
+import {
+  type Body,
+  type Box,
+  type Cell,
+  type Environment,
+  type Level,
+  type MoveRules,
+  TILE,
+  type Vec,
+} from '../types.ts';
 
 const CURRENT_DIRECTIONS: ReadonlyMap<Cell, Vec> = new Map([
   ['current-right', { x: 1, y: 0 }],
@@ -26,6 +36,27 @@ export function isSolid(level: Level, broken: ReadonlySet<number>, tx: number, t
   const cell = cellAt(level, tx, ty);
   if (cell === 'rock') return true;
   return cell === 'coral' && !broken.has(tileIndex(level, tx, ty));
+}
+
+/**
+ * True for a tile that stops a moving body from every side under `rules`: solid in the level
+ * (`isSolid`) or one of the rules' extra solid tiles. With `rules.pitBelow`, everything below the
+ * last row is open, so a body can fall out of the level. Ledges never count; see `isLedge`.
+ */
+export function blocksBody(
+  level: Level,
+  broken: ReadonlySet<number>,
+  rules: MoveRules,
+  tx: number,
+  ty: number,
+): boolean {
+  if (rules.pitBelow && ty >= level.height) return false;
+  return isSolid(level, broken, tx, ty) || rules.solidTiles.has(tileIndex(level, tx, ty));
+}
+
+/** True for a ledge (`=`): a one-way platform that holds only a body coming down onto it from above. */
+export function isLedge(level: Level, tx: number, ty: number): boolean {
+  return cellAt(level, tx, ty) === 'ledge';
 }
 
 /**

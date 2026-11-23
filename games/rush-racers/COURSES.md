@@ -128,7 +128,7 @@ Everything the medium knows lives in its own folder, `logic/media/<medium-id>/`.
 | `pilot.ts` | `createPilot` and `steer`. |
 | `tuning.ts` | `tuning`, `effects`, `kickRules`. |
 
-Moving a body through the tiles and separating racers is generic (`logic/race/collide.ts`), so a medium only sets velocity.
+Moving a body through the tiles (`logic/race/move.ts`) and separating racers (`logic/race/separate.ts`) is generic, so a medium only sets velocity.
 
 Outside the folder, the code needs two lines: the medium in `MEDIA` (`logic/media/index.ts`) and its id in `ShippedMediumId` (`logic/courses/types.ts`). `logic/media/types.ts` doesn't change. Then add a course that races in it (an unlisted test course is enough to start), and a How to Play move page: `engine/view/how-to-play/<medium-id>-page.ts` with its entry in `MOVE_PAGES` (`engine/view/how-to-play/index.ts`). `MOVE_PAGES` is keyed by `ShippedMediumId`, so a shipped medium without a page fails to compile; `move-page.ts` is swim's.
 

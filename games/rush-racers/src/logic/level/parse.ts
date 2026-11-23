@@ -2,6 +2,7 @@
  * Turns a course's ASCII rows into a Level. The only place level text is read.
  *
  *   #  rock          C  coral (breakable)   ~  kelp            .  open water
+ *   =  ledge (one-way platform: holds a body landing on it from above, open from below and the sides)
  *   >  <  ^  v       currents pushing in that direction
  *   1  2  3  4       start tiles in RACER_IDS order (player first)
  *   F  finish line (every F sits in one column)
@@ -10,8 +11,8 @@
  * Start, finish and object tiles are open water. Every row must be the same width.
  *
  * Cell names are materials, but what they mean is a behaviour the world's medium interprets:
- * rock is solid, coral is solid until broken, kelp slows a racer, a current pushes it along its
- * arrow, and water is open. Swimming makes kelp drag and currents flow; another medium may make
+ * rock is solid, coral is solid until broken, a ledge holds only what lands on it, kelp slows a
+ * racer, a current pushes it along its arrow, and water is open. Swimming makes kelp drag and currents flow; another medium may make
  * slow and flow mean something else (thick cloud, a tailwind).
  *
  * A level may add glyphs of its own in `LevelDef.legend`: each extra character behaves as one base
@@ -42,6 +43,7 @@ const TERRAIN: ReadonlyMap<string, Cell> = new Map([
   ['^', 'current-up'],
   ['v', 'current-down'],
   ['.', 'water'],
+  ['=', 'ledge'],
 ]);
 
 type ObjectList = 'pearls' | 'clams' | 'urchins' | 'jellies';

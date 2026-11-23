@@ -1,122 +1,11 @@
 /**
- * Moving bodies through the tile grid without entering solid tiles, and
- * pushing apart racers that overlap.
+ * Pushing apart racers that overlap, with the contact bookkeeping that announces a bump once and
+ * lets downed racers pass through each other.
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
-import { bodyTiles, isSolid, overlapsTile } from '../level/query.ts';
 import { isDowned } from '../status.ts';
-import {
-  type Body,
-  type Level,
-  type MoveContacts,
-  type MoveRules,
-  RACER_IDS,
-  type Racer,
-  TILE,
-  type World,
-} from '../types.ts';
-
-/**
- * Longest distance a body moves between collision checks. It is under one tile, so a body's
- * leading edge can't skip past a solid tile within one sub-step.
- */
-const MAX_STEP = TILE / 2;
-
-/** Most sub-steps in one call, which bounds the work an absurdly long `dt` can cause. */
-const MAX_SUBSTEPS = 64;
-
-/**
- * Integrates a body's position by its velocity for one tick, resolving X then Y
- * against solid tiles and zeroing the blocked velocity component. Sub-steps fast
- * movement so a body never tunnels through a tile. A body that starts inside a solid
- * (a bump can push one into a wall) is first moved out along its shallower overlap.
- *
- * @param dt Tick length in seconds. A tick needing more than MAX_SUBSTEPS sub-steps moves the
- *   body at most MAX_SUBSTEPS * MAX_STEP pixels, less than its velocity asks for.
- */
-export function moveBody(
-  body: Body,
-  level: Level,
-  broken: ReadonlySet<number>,
-  dt: number,
-  _rules: MoveRules = NO_MOVE_RULES,
-): MoveContacts {
-  // Scaffold: lane 1/c applies the rules and reports real contacts.
-  pushOutOfSolids(body, level, broken);
-  const speed = Math.sqrt(body.vx * body.vx + body.vy * body.vy);
-  if (speed === 0) return noContacts();
-
-  const steps = Math.min(MAX_SUBSTEPS, Math.max(1, Math.ceil((speed * dt) / MAX_STEP)));
-  const stepDt = Math.min(dt / steps, MAX_STEP / speed);
-  for (let step = 0; step < steps; step++) {
-    body.x += body.vx * stepDt;
-    resolveX(body, level, broken);
-    body.y += body.vy * stepDt;
-    resolveY(body, level, broken);
-  }
-  return noContacts();
-}
-
-/** The rules of a medium with no platformer seams: open floor nowhere, no extra solid tiles. */
-export const NO_MOVE_RULES: MoveRules = { pitBelow: false, solidTiles: new Set() };
-
-function noContacts(): MoveContacts {
-  return { floor: false, ceiling: false, wallLeft: false, wallRight: false, ceilingTiles: [] };
-}
-
-/**
- * Moves a body out of each solid tile it overlaps, along the axis it overlaps that tile least.
- * The X and Y resolvers assume the body starts the tick outside every solid; without this, a
- * body pushed into a wall would snap to a row boundary on its next vertical move and stick.
- */
-function pushOutOfSolids(body: Body, level: Level, broken: ReadonlySet<number>): void {
-  const tiles = bodyTiles(body);
-  for (let ty = tiles.top; ty <= tiles.bottom; ty++) {
-    for (let tx = tiles.left; tx <= tiles.right; tx++) {
-      if (isSolid(level, broken, tx, ty) && overlapsTile(body, tx, ty)) pushOutOfTile(body, tx, ty);
-    }
-  }
-}
-
-/** Moves a body out of one tile toward whichever side its centre is on. */
-function pushOutOfTile(body: Body, tx: number, ty: number): void {
-  const overlapX = overlapLength(body.x, body.w, tx * TILE, TILE);
-  const overlapY = overlapLength(body.y, body.h, ty * TILE, TILE);
-  if (overlapX <= overlapY) {
-    body.x += body.x + body.w / 2 < (tx + 0.5) * TILE ? -overlapX : overlapX;
-  } else {
-    body.y += body.y + body.h / 2 < (ty + 0.5) * TILE ? -overlapY : overlapY;
-  }
-}
-
-/** Puts a body that moved into a solid column back flush against it. */
-function resolveX(body: Body, level: Level, broken: ReadonlySet<number>): void {
-  const tiles = bodyTiles(body);
-  for (let ty = tiles.top; ty <= tiles.bottom; ty++) {
-    if (body.vx > 0 && isSolid(level, broken, tiles.right, ty)) {
-      body.x = tiles.right * TILE - body.w;
-      body.vx = 0;
-    } else if (body.vx < 0 && isSolid(level, broken, tiles.left, ty)) {
-      body.x = (tiles.left + 1) * TILE;
-      body.vx = 0;
-    }
-  }
-}
-
-/** Puts a body that moved into a solid row back flush against it. */
-function resolveY(body: Body, level: Level, broken: ReadonlySet<number>): void {
-  const tiles = bodyTiles(body);
-  for (let tx = tiles.left; tx <= tiles.right; tx++) {
-    if (body.vy > 0 && isSolid(level, broken, tx, tiles.bottom)) {
-      body.y = tiles.bottom * TILE - body.h;
-      body.vy = 0;
-    } else if (body.vy < 0 && isSolid(level, broken, tx, tiles.top)) {
-      body.y = (tiles.top + 1) * TILE;
-      body.vy = 0;
-    }
-  }
-}
+import { type Body, RACER_IDS, type Racer } from '../types.ts';
 
 /**
  * Pushes overlapping racers apart in one pass over pairs (i < j) in array order,
@@ -131,6 +20,8 @@ function resolveY(body: Body, level: Level, broken: ReadonlySet<number>): void {
  * @param onBump Called with the pair in RACER_IDS order when a contact starts, after `racer.bumped`
  *   and after the pair has been pushed apart, but with the velocities they bumped with: the closing
  *   speed they share is worked out before the call and added after it.
+ * @param pushAxis 'shallowest' pushes each pair apart along the axis they overlap least; 'x' always
+ *   pushes sideways, so a racer dropping onto another keeps falling (a medium's 'horizontal' collision).
  */
 export function separateRacers(
   racers: Racer[],
@@ -138,12 +29,13 @@ export function separateRacers(
   events: EventSink<GameEvent>,
   massOf: MassOf = (racer) => racer.profile.mass,
   onBump: OnBump = () => {},
+  pushAxis: PushAxis = 'shallowest',
 ): void {
   for (let i = 0; i < racers.length; i++) {
     for (let j = i + 1; j < racers.length; j++) {
       const first = racers[i];
       const second = racers[j];
-      if (first && second) separatePair(first, second, { contacts, events, massOf, onBump });
+      if (first && second) separatePair(first, second, { contacts, events, massOf, onBump, pushAxis });
     }
   }
 }
@@ -160,16 +52,20 @@ export function passesThrough(contacts: ReadonlySet<string>, a: Racer, b: Racer)
 type MassOf = (racer: Racer) => number;
 type OnBump = (a: Racer, b: Racer) => void;
 
+/** Which way overlapping racers are pushed apart: along their shallower overlap, or only sideways. */
+export type PushAxis = 'shallowest' | 'x';
+
 /** What separating a pair reads and reports to, shared by every pair in one pass. */
 interface Separation {
   contacts: Set<string>;
   events: EventSink<GameEvent>;
   massOf: MassOf;
   onBump: OnBump;
+  pushAxis: PushAxis;
 }
 
 /** Separates one pair and keeps its contact bookkeeping current. */
-function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump }: Separation): void {
+function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump, pushAxis }: Separation): void {
   const key = contactKey(a, b);
   const ghost = ghostKey(key);
   const penetration = {
@@ -193,7 +89,7 @@ function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump }: 
   // pressing into another racer doesn't re-announce a bump every other tick.
   if (penetration.x === 0 || penetration.y === 0) return;
 
-  const axis = penetration.x <= penetration.y ? 'x' : 'y';
+  const axis = pushAxis === 'x' || penetration.x <= penetration.y ? 'x' : 'y';
   const masses = { a: massOf(a), b: massOf(b) };
   pushApart(a, b, masses, axis, penetration[axis]);
   const shared = closingSpeedShares(a, b, masses, axis);
@@ -262,14 +158,4 @@ function contactKey(a: Racer, b: Racer): string {
 /** The key marking a pair that overlapped while one of them was down and hasn't come apart since. */
 function ghostKey(key: string): string {
   return `~${key}`;
-}
-
-/**
- * What `moveBody` treats as solid beyond the level's tiles for `world`'s medium: whether there is a
- * floor below the last row, and the ready crate tiles when crates are solid.
- *
- * @throws {Error} Always, until lane 1/c implements it.
- */
-export function moveRulesFor(_world: World): MoveRules {
-  throw new Error('moveRulesFor: not implemented');
 }

@@ -1,7 +1,7 @@
 /**
  * Swim's navigation: what a swimmer pays to enter each tile, the three flow fields built from those
  * prices (see FlowFields), and the level check that every start can reach the finish. Walking the
- * fields lives in `way.ts` and `ai/steer.ts`.
+ * fields lives in `way.ts` and `ai/steer.ts`. Swimming has no ledges, so the check rejects them too.
  */
 import { distancesToFinish, type EntryCost, fieldAt } from '../../race/flowfield.ts';
 import type { Cell, Level, Vec } from '../../types.ts';
@@ -62,12 +62,26 @@ export function buildSwimNav(level: Level, broken: ReadonlySet<number>): SwimNav
 }
 
 /**
- * One problem for each start tile that can't reach the finish on the steer field, located at that tile.
+ * Why `level` can't be swum: one problem for each ledge tile, then one for each start tile that can't
+ * reach the finish on the steer field, each located at its tile.
  *
  * @throws {Error} When `nav` was built by another medium.
  */
 export function validateSwimLevel(level: Level, nav: MediumNav): LevelProblem[] {
-  const fields = swimNav(nav);
+  return [...ledgeProblems(level), ...unreachableStarts(level, swimNav(nav))];
+}
+
+/** One problem per ledge tile (`=`), which only a medium with ledges (`allowsLedges`) can race. */
+function ledgeProblems(level: Level): LevelProblem[] {
+  return level.cells.flatMap((row, y) =>
+    row.flatMap((cell, x) =>
+      cell === 'ledge' ? [{ message: `Ledge "=" at row ${y}, col ${x}: swimming has no ledges`, row: y, col: x }] : [],
+    ),
+  );
+}
+
+/** One problem for each start tile that can't reach the finish on the steer field, located at that tile. */
+function unreachableStarts(level: Level, fields: SwimNav): LevelProblem[] {
   return level.starts.flatMap((start, index) =>
     Number.isFinite(fieldAt(fields.steer, fields, start))
       ? []

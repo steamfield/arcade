@@ -1,6 +1,6 @@
 /**
  * Swimming: how one racer's velocity responds to its intent and the water, the swim medium's
- * `applyIntent`. Velocity, facing and kick cooldown only; position is moved by `race/collide.ts`. Every
+ * `applyIntent`. Velocity, facing and kick cooldown only; position is moved by `race/move.ts`. Every
  * number comes from the tuning it is handed: swim's (`SWIM_TUNING`) with the course's overrides.
  */
 import type { EventSink } from '@arcade/core';

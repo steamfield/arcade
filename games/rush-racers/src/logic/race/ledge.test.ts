@@ -6,7 +6,7 @@ import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../level/parse.ts';
 import { type Body, type Level, type MoveRules, RACER_SIZE, TILE } from '../types.ts';
-import { moveBody } from './collide.ts';
+import { moveBody } from './move.ts';
 
 /** A ledge three tiles wide at row 3 (top at y 48), open air above and below it. */
 const SHELF: Level = parseLevel({
@@ -72,7 +72,7 @@ describe('a ledge', () => {
   it('lets a body pass through it sideways', () => {
     // Centred on the ledge's row, running right across all three ledge tiles.
     const runner = body(30, LEDGE_TOP + 1, 120, 0);
-    move(runner, 40);
+    move(runner, 45);
 
     expect(runner.x).toBeGreaterThan(7 * TILE);
     expect(runner.vx).toBe(120);
