@@ -1,15 +1,57 @@
 /**
- * Thornwood's object skin: items, attacks, crate and acorn, forest enemies, hazard glints and the
- * words for them. Placeholder art: Reef's textures with Thornwood's words, until
- * `registerThornwoodObjects` draws the textures `keys.ts` names and the skin points at them.
+ * Thornwood's object skin: items, attacks, the `?` crate and acorn, forest enemies, hazard glints and
+ * the words for them, plus `registerThornwoodObjects`, which draws every texture the skin names.
  */
 import type Phaser from 'phaser';
+import type { PowerUpKind } from '../../../logic/types.ts';
+import { drawSheets } from '../../art/index.ts';
+import type { ArtRef } from '../art-ref.ts';
 import type { ObjectSkin } from '../object-skin.ts';
 import { REEF_OBJECTS } from '../reef/objects.ts';
+import { ThornIconFrame, ThornItemTex, ThornTex } from './keys.ts';
+import { ATTACK_ART_SHEETS } from './sprites/attack.ts';
+import { THORN_ENEMY_SHEETS } from './sprites/enemies.ts';
+import { ITEM_ART_SHEETS } from './sprites/items.ts';
+import { THORN_PICKUP_SHEETS } from './sprites/pickups.ts';
 
-/** Reef's object textures with Thornwood's item, enemy and pickup wording. */
+/** The owner name Thornwood's textures are drawn under. */
+const THORNWOOD_ART_OWNER = 'thornwood';
+
+const icon = (kind: PowerUpKind): ArtRef => ({ texture: ThornTex.icons, frame: ThornIconFrame[kind] });
+
+/** Thornwood's objects: its own item, attack, pickup and enemy art and words. Glints keep Reef's keys, tinted for the forest. */
 export const THORNWOOD_OBJECTS: ObjectSkin = {
-  ...REEF_OBJECTS,
+  itemIcons: {
+    jetFin: icon('jetFin'),
+    bubbleShield: icon('bubbleShield'),
+    puffer: icon('puffer'),
+    inkSac: icon('inkSac'),
+    glowLantern: icon('glowLantern'),
+    homingSquid: icon('homingSquid'),
+    riptide: icon('riptide'),
+    undertow: icon('undertow'),
+    mimic: icon('mimic'),
+    cannonball: icon('cannonball'),
+  },
+  itemTextures: ThornItemTex,
+  attack: {
+    homer: ThornTex.bee,
+    riptideStreak: ThornTex.tailwindStreak,
+    undertowStreak: ThornTex.snareStreak,
+    inkCloud: ThornTex.mudCloud,
+    bubble: ThornTex.sapBubble,
+    looseGlow: ThornTex.looseGlow,
+  },
+  pickups: { pearl: ThornTex.acorn, clam: ThornTex.crate },
+  enemies: {
+    bodies: { shark: ThornTex.boar, eel: ThornTex.snakeHead, crab: ThornTex.beetle },
+    eelBody: ThornTex.snakeBody,
+    marks: ThornTex.marks,
+  },
+  glints: {
+    urchin: { ...REEF_OBJECTS.glints.urchin, colour: 0xff90b8 },
+    jelly: { ...REEF_OBJECTS.glints.jelly, colour: 0xffe070 },
+  },
   text: {
     slowedBy: 'SLOWED BY MUD',
     trapped: 'SAP',
@@ -20,5 +62,15 @@ export const THORNWOOD_OBJECTS: ObjectSkin = {
   },
 };
 
-/** Builds the objects' textures at boot. Placeholder: Reef's art is already built, so nothing yet. */
-export function registerThornwoodObjects(_scene: Phaser.Scene): void {}
+/**
+ * Draws every object texture and frame the skin names, once; calling it again changes nothing.
+ *
+ * @throws {Error} When a sprite's pixel text is malformed or a key belongs to another owner (see `drawSheets`).
+ */
+export function registerThornwoodObjects(scene: Phaser.Scene): void {
+  drawSheets(
+    scene,
+    [...ITEM_ART_SHEETS, ...ATTACK_ART_SHEETS, ...THORN_PICKUP_SHEETS, ...THORN_ENEMY_SHEETS],
+    THORNWOOD_ART_OWNER,
+  );
+}
