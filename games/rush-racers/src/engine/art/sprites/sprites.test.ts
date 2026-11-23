@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CHARACTER_IDS, POWER_UP_KINDS } from '../../../logic/types.ts';
 import { THEMES } from '../../themes/index.ts';
 import { REEF_SKIN } from '../../worlds/reef.ts';
+import { THORNWOOD_RACER_SHEETS, ThornwoodPalette } from '../../worlds/thornwood/sprites/racers.ts';
 import { Frame, Tex } from '../keys.ts';
 import { measureFrames, type NamedFrame } from '../pixel.ts';
 import { AttackPalette, RIPTIDE_TILE } from './attack.ts';
@@ -115,8 +116,12 @@ describe('world art palettes', () => {
   // Global art goes on every course, so it stands off every theme's contrast bands.
   const behind = Object.values(THEMES).flatMap((theme) => theme.contrastBands.map((band) => band.colour));
   const readable = (colour: number) => Math.min(...behind.map((water) => contrast(colour, water))) >= 3;
+  // Each world's cast is drawn on every course, so every skin's racers stand off every theme.
+  const castPalettes = { reef: CharacterPalette, thornwood: ThornwoodPalette };
   const mainColours = [
-    ...CHARACTER_IDS.map((character) => [character, CharacterPalette[character][1]] as const),
+    ...Object.entries(castPalettes).flatMap(([world, palettes]) =>
+      CHARACTER_IDS.map((character) => [`${world} ${character}`, palettes[character][1]] as const),
+    ),
     ['homing squid', AttackPalette.homingSquid[1]] as const,
     ['shark', EnemyPalette.shark[1]] as const,
     ['eel', EnemyPalette.eel[1]] as const,
@@ -128,7 +133,7 @@ describe('world art palettes', () => {
     expect(weakest).toBeGreaterThanOrEqual(3);
   });
 
-  const racerFrames = RACER_SHEETS.flatMap((sheet) =>
+  const racerFrames = [...RACER_SHEETS, ...THORNWOOD_RACER_SHEETS].flatMap((sheet) =>
     sheet.frames.map((frame) => [sheet.key, frame.name, frame] as const),
   );
   const isBright = (frame: NamedFrame, pixel: string) => pixel !== '.' && readable(frame.palette[Number(pixel)] ?? 0);
