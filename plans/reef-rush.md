@@ -3,7 +3,8 @@
 Skill: deliver. Profile: deliver. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.0/shared/scripts/plan_graph.py
 Started: 2026-11-22. Timebox: none. Landing branch: deliver/reef-rush.
-Gate: `pnpm arcade check reef-rush && pnpm --filter game-reef-rush test:difficulty && pnpm arcade smoke reef-rush` (phase 8 on: check runs the `unit` Vitest project, budget 30 s cold; the difficulty project about 27 s; smoke about 8 s). Until the phase 8 scaffold, check ran every test (27 s cold). Filtered tests: `pnpm --filter game-reef-rush exec vitest run <path>`. Typecheck: `pnpm --filter game-reef-rush typecheck`.
+Status: phases 1-8 merged to main on 2026-11-22 (tag phase-8); no later phase planned yet.
+Gate: `pnpm arcade check reef-rush && pnpm --filter game-reef-rush test:difficulty && pnpm arcade smoke reef-rush` (phase 8 on: check runs the `unit` Vitest project, budget 30 s cold; the difficulty project about 27 s; smoke about 8 s). Until the phase 8 scaffold, check ran every test (27 s cold). Filtered tests: `pnpm arcade test reef-rush <paths or @groups>` (groups in games/reef-rush/package.json). Typecheck: `pnpm --filter game-reef-rush typecheck`.
 Runner: plain commands.
 Worktree setup: `pnpm install --frozen-lockfile --offline`. Lane worktrees are created by the orchestrator (`git worktree add ../games-reef-rush-<lane> <lane branch>` from the landing tip) and lanes are dispatched without `isolation`, because agent-isolated worktrees are cut from main's HEAD and removed when an agent stops with no changes.
 Suppressions: biome-ignore, @ts-expect-error, @ts-ignore, todo: true
