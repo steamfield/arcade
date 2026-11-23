@@ -1,8 +1,9 @@
 /**
  * Page 2, OPEN CLAMS. The racer swims up to a clam; the clam shuts and a power-up pops out. Below,
  * a well like the HUD's fills with one more power-up each time round, up to three, which is all
- * you can hold.
+ * you can hold, and each held item shows its charges as a digit, as on the HUD.
  */
+import { CHARGES } from '../../../logic/powerups/charges.ts';
 
 import type { PowerUpKind } from '../../../logic/types.ts';
 import { Frame, Tex } from '../../art/keys.ts';
@@ -17,6 +18,8 @@ const KINDS: readonly PowerUpKind[] = ['jetFin', 'puffer', 'inkSac'];
 const TOP_ROW = { centreY: 50, racerX: 56, clamX: 138, itemX: 212 } as const;
 /** The well in the safe column: three slots at 2x, with a gap between. */
 const WELL = { x: 134, y: 96, w: 84, h: 26, slotX: 148, pitch: 26, centreY: 109 } as const;
+/** A slot's charge digit at 2x: right edge and top from the icon's centre, tucked against its lower right as on the HUD. */
+const DIGIT = { right: 12, top: -2 } as const;
 /** HOLD 3 sits under the well, out of the way of the power-up flying in from the clam. */
 const WELL_TITLE_TOP = 128;
 /** Ticks per power-up: the clam shuts for the first part, the item pops, then the well takes it. */
@@ -40,6 +43,7 @@ export const buildClamsPage: PageBuilder = (kit) => {
     return {
       socket: kit.bar(x, WELL.centreY, 5, 5, UiRamp.dim),
       icon: kit.icon(x, WELL.centreY, IconFrame.jetFin, 2),
+      charges: kit.words(x + DIGIT.right, WELL.centreY + DIGIT.top, '', { align: 'right', scale: 2 }),
     };
   });
 
@@ -67,6 +71,7 @@ export const buildClamsPage: PageBuilder = (kit) => {
       const slotKind = KINDS[index] ?? 'jetFin';
       slot.icon.setFrame(POWER_UP_ICON[slotKind]).setVisible(index < held);
       slot.socket.setVisible(index >= held);
+      slot.charges.setText(String(CHARGES[slotKind])).setVisible(index < held);
     });
   };
 };

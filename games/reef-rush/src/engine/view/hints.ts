@@ -3,13 +3,16 @@
  * the player has already learned this race. Nothing here draws: `hint-view.ts` shows what these
  * say, and the runtime keeps the latest answer so tests can read it.
  *
- * Four hints, each a picture-first prompt (see UI.md "Hints"):
+ * Five hints, each a picture-first prompt (see UI.md "Hints"), and never more than one at a time:
  * - PRESS FIRE: the first time an item lands in the inventory, until the player fires one. On Easy
  *   it stays up until then; on other levels (first race only) it gives up after 4 seconds. It shows
  *   the fire control (SPACE on a keyboard, A on touch).
  * - KICK: a Homing Squid is locked on and is inside the dodge window (plus a short lead) while the
  *   player's kick is ready, since a kick only dodges in the last moments before contact. The
  *   player sees it as DASH! with the dash control.
+ * - SWAP: the first time the player holds two items while no other hint wants the screen, the next
+ *   item control (E on a keyboard, the swap button on touch) and SWAP!, once a race: it goes when
+ *   the player swaps or after `SWAP_TICKS`.
  * - PULSE: items have sat unused for a while, so the fire glyph pulses on the HUD. It starts where
  *   PRESS FIRE gives up, so there is no silent gap.
  * - GUIDE: the player has pushed a while without getting closer to the finish (a wall in the way),
@@ -22,10 +25,10 @@
 import { TICK_DT } from '@arcade/core';
 import { dodgeTicks, tuningOf } from '../../logic/difficulty-level.ts';
 import { guideFor } from '../../logic/guide.ts';
-import { heldItems } from '../../logic/powerups/inventory.ts';
+import { heldItems, selectedItem, selectedSlot, slotItems } from '../../logic/powerups/inventory.ts';
 import { SQUID } from '../../logic/powerups/tuning.ts';
 import { centreOf, playerOf } from '../../logic/racers.ts';
-import type { Difficulty, Vec, World } from '../../logic/types.ts';
+import type { Difficulty, PowerUpKind, Racer, Vec, World } from '../../logic/types.ts';
 import { squidHuntingPlayer } from './threat-math.ts';
 
 /** Ticks PRESS FIRE stays up after the first item lands when it times out (not on Easy), and when the HUD pulse takes over. */
@@ -41,6 +44,15 @@ export const KICK_LEAD_TICKS = 8;
 /** Ticks stuck after which the guide arrow takes the screen from PRESS FIRE (4.5 s; before that it waits its turn). */
 export const GUIDE_OVER_PRESS_FIRE_TICKS = 270;
 
+/** Ticks the SWAP prompt stays up at most, from the tick it first shows (4 s). */
+export const SWAP_TICKS = 240;
+
+/** The selected item as last seen, so a move of the selection can be told from a swap. */
+interface SeenSelection {
+  slot: number;
+  kind: PowerUpKind;
+}
+
 /** What the player has already shown they know, per race. */
 export interface HintMemory {
   /** The tick the inventory first held an item this race, or null while it never has. */
@@ -49,14 +61,22 @@ export interface HintMemory {
   useLearned: boolean;
   /** The tick the inventory last became "held and unused": it holds something and nothing was used since. Null when it doesn't. */
   unusedSince: number | null;
+  /** The tick SWAP first showed this race, or null while it never has. It shows once. */
+  swapShownAt: number | null;
+  /** True once the player has swapped items: SWAP is retired for the race. */
+  swapLearned: boolean;
+  /** The selected item last tick, or null when nothing was selected. */
+  lastSelected: SeenSelection | null;
 }
 
-/** Which hints show right now. */
+/** Which hints show right now. At most one is on. */
 export interface HintState {
   /** PRESS (fire control)! beside the player. */
   pressFire: boolean;
   /** (dash control) DASH! beside the player: a squid is locked on and a kick dodges it. */
   kick: boolean;
+  /** (next item control) SWAP! beside the player: they hold two items and haven't swapped yet. */
+  swap: boolean;
   /** The fire glyph pulses beside the HUD's item well. */
   pulseItems: boolean;
   /** The way on as a tile offset (each of x and y in -1, 0, 1) for the guide arrow beside the player; null while no arrow shows. */
@@ -64,11 +84,18 @@ export interface HintState {
 }
 
 /** No hint showing. */
-export const NO_HINTS: HintState = { pressFire: false, kick: false, pulseItems: false, guide: null };
+export const NO_HINTS: HintState = { pressFire: false, kick: false, swap: false, pulseItems: false, guide: null };
 
 /** An empty memory, for a race that is about to start. */
 export function newHintMemory(): HintMemory {
-  return { firstHeldAt: null, useLearned: false, unusedSince: null };
+  return {
+    firstHeldAt: null,
+    useLearned: false,
+    unusedSince: null,
+    swapShownAt: null,
+    swapLearned: false,
+    lastSelected: null,
+  };
 }
 
 /** Which hints a race runs: none, or on Easy (PRESS FIRE waits for the first use) or on the first race of another level (it times out). */
@@ -91,7 +118,10 @@ export function hintConfig(racesRun: number, difficulty: Difficulty): HintConfig
 export function updateHints(memory: HintMemory, world: World, config: HintConfig): HintState {
   const player = playerOf(world);
   if (player.useCooldown > 0) memory.useLearned = true;
-  const holding = heldItems(player).length > 0;
+  if (swappedSince(memory.lastSelected, player)) memory.swapLearned = true;
+  memory.lastSelected = seenSelection(player);
+  const held = heldItems(player).length;
+  const holding = held > 0;
   const tick = world.tick;
   if (holding && memory.firstHeldAt === null) memory.firstHeldAt = tick;
   // "Unused" restarts whenever the inventory empties or an item has just been used.
@@ -106,12 +136,46 @@ export function updateHints(memory: HintMemory, world: World, config: HintConfig
   const pressFire = holding && !memory.useLearned && firstHeldAt !== null && pressFireOpen;
   const kick = kickIsUseful(world);
   const guide = guideArrow(world, kick, pressFire);
+  const showPressFire = pressFire && guide === null && !kick;
+  const spotTaken = kick || showPressFire || guide !== null;
+  const swap = !spotTaken && swapIsDue(memory, held, tick);
+  const pulse = memory.unusedSince !== null && tick - memory.unusedSince >= pulseAfter;
   return {
-    pressFire: pressFire && guide === null,
+    pressFire: showPressFire,
     kick,
-    pulseItems: memory.unusedSince !== null && tick - memory.unusedSince >= pulseAfter,
+    swap,
+    pulseItems: pulse && !spotTaken && !swap,
     guide,
   };
+}
+
+/**
+ * True when SWAP should show this tick, given no other hint wants the screen: two or more items are
+ * held, the player hasn't swapped yet, and it either has never shown or is still inside the
+ * `SWAP_TICKS` it got when it first did. Marks the first showing in `memory`.
+ */
+function swapIsDue(memory: HintMemory, held: number, tick: number): boolean {
+  if (memory.swapLearned || held < 2) return false;
+  if (memory.swapShownAt === null) {
+    memory.swapShownAt = tick;
+    return true;
+  }
+  return tick - memory.swapShownAt < SWAP_TICKS;
+}
+
+/** The racer's selected slot and its kind, or null with nothing selected. */
+function seenSelection(racer: Racer): SeenSelection | null {
+  const item = selectedItem(racer);
+  return item ? { slot: selectedSlot(racer), kind: item.kind } : null;
+}
+
+/**
+ * True when the selection moved off an item that is still in its slot: the player swapped. Using
+ * up or losing the selected item also moves the selection, but empties the slot it left.
+ */
+function swappedSince(last: SeenSelection | null, racer: Racer): boolean {
+  if (last === null || selectedSlot(racer) === last.slot) return false;
+  return slotItems(racer)[last.slot]?.kind === last.kind;
 }
 
 /**

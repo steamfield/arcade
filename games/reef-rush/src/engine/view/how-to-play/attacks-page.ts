@@ -1,5 +1,5 @@
 /**
- * Page 4, ATTACKS. Four scenes at 2x, one per attack power-up, each with its icon and name: the
+ * Page 6, ATTACKS. Four scenes at 2x, one per attack power-up, each with its icon and name: the
  * Homing Squid chases a racer, a Riptide pushes along a lane, Undertow drags a racer back, and a
  * Mimic's decoy draws a squid off the real racer. The first two sit across the top band, the
  * other two to its right in the safe column, so nothing enters the d-pad zone (x < 108, y 76+) or

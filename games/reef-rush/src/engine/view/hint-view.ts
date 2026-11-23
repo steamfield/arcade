@@ -29,6 +29,11 @@ const LOWEST = 174;
 const PULSE_GAP = 3;
 const WELL_TOP = 23;
 const WELL_HEIGHT = 17;
+/**
+ * The back link's corner (UI.md "Safe zones": x 248 and right, y 0-26). A glyph that would reach
+ * into it, Nib's SPACE cap beside a four-slot well, drops to just under it instead.
+ */
+const BACK_LINK = { left: 248, bottom: 26 } as const;
 /** The glyph on the HUD blinks every this many ticks, 2 blinks a second. */
 const PULSE_TICKS = 15;
 
@@ -61,7 +66,8 @@ export function createHintView(
   const pressFire = createLine(scene, touch, 'PRESS', 'fire', '!');
   const kick = createLine(scene, touch, '', 'dash', 'DASH!');
   const pulse = createActionGlyph(scene, 'fire', touch, { fixed: true, depth: Layer.hud });
-  pulse.setPosition(hudRight + PULSE_GAP, WELL_TOP + Math.floor((WELL_HEIGHT - GLYPH_SIZE) / 2));
+  const pulseX = hudRight + PULSE_GAP;
+  pulse.setPosition(pulseX, pulseTop(pulseX, pulse.width));
   pulse.setVisible(false);
 
   return {
@@ -82,6 +88,12 @@ export function createHintView(
       pulse.setHighlighted(reducedMotion || lit);
     },
   };
+}
+
+/** The HUD glyph's top: level with the well, or under the back link when it would reach into it. */
+function pulseTop(left: number, width: number): number {
+  const level = WELL_TOP + Math.floor((WELL_HEIGHT - GLYPH_SIZE) / 2);
+  return left + width > BACK_LINK.left ? BACK_LINK.bottom + 1 : level;
 }
 
 /**
