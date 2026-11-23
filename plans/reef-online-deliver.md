@@ -165,6 +165,7 @@ Inline at landing (the orchestrator, after both lanes merge): record the top-rou
 Demo: `pnpm arcade test reef-rush src/logic/humans.test.ts src/logic/human-rules.test.ts`: two scripted humans race the default course and a slot whose input stops is finished by the AI.
 Depends on: phase 1
 Scaffold: ac22da6
+Tag: reef-online/phase-2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
