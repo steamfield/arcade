@@ -31,7 +31,7 @@ export type GameEvent =
   | { type: 'racer.kicked'; id: RacerId }
   /** A racer's centre left the water for the air above a surface. */
   | { type: 'racer.breached'; id: RacerId }
-  /** A racer's centre came back down from the air into the water. */
+  /** A racer that breached came back down, its centre `SPLASH_DEPTH` px under the surface. */
   | { type: 'racer.splashed'; id: RacerId }
   | { type: 'racer.bumped'; a: RacerId; b: RacerId }
   | { type: 'coral.broken'; tx: number; ty: number; by: RacerId }

@@ -40,8 +40,10 @@ export const TOP_ROUTE_LAST_HOLD = 30;
  * countdown, going over the coral gate rather than through it. Re-recorded when the course gained its surface
  * section, its cave, more eels and hunting Hard sharks, by steering along the medium's aim (`Medium.aimFrom`, 3 tiles ahead, bent round hazards by `avoidHazards`)
  * snapped to the eight key directions, with a diagonal nudge for 24 ticks whenever it sat pinned on a
- * corner, so it takes whatever hits that line runs into. It crosses the finish at tick 10689, ahead of
- * every rival, so the race is still on when it crosses; `top-route.test.ts` fails if that margin drops below 300.
+ * corner, so it takes whatever hits that line runs into. It crosses the finish on tick 10689 counted
+ * from the start of the countdown, before any rival is home, so the DNF cutoff (the last rival's finish
+ * plus the grace) is still ahead of it; `top-route.test.ts` fails if it crosses less than 300 ticks
+ * before that cutoff.
  *
  * Results come up about 60 ticks after it ends. The route is tied to OCEAN_LEVEL and to the rivals'
  * tuning (they bump and hit the player, and the pace they hold decides when the race would end on

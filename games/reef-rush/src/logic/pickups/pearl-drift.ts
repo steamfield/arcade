@@ -6,11 +6,9 @@
  * rng stream.
  */
 import { isAirAt, isSolid } from '../level/query.ts';
+import { AIR_GRAVITY } from '../level/surface.ts';
 import { PEARL } from '../powerups/tuning.ts';
 import { type LoosePearl, type RacerId, TILE, type Vec, type World } from '../types.ts';
-
-/** Downward acceleration on a pearl in the air, px/s². */
-const AIR_GRAVITY = 450;
 
 /**
  * Unit scatter directions for a racer facing right, in the order pearls take them: straight back,

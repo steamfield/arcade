@@ -112,8 +112,8 @@ function hazardsNear(world: World, body: Box, hurts: { urchins: boolean; jellies
 const SHARK_CHARGE_LOOKAHEAD_S = 0.4;
 
 /**
- * The box a rival keeps out of for `enemy`, or null when it can't hurt: a crab, or a shark that isn't
- * charging, at its box; a winding-up or charging shark along the next SHARK_CHARGE_LOOKAHEAD_S of its path; an eel
+ * The box a rival keeps out of for `enemy`, or null when it can't hurt: a crab, or a shark that is
+ * neither winding up nor charging, at its box; a winding-up or charging shark along the next SHARK_CHARGE_LOOKAHEAD_S of its path; an eel
  * from the start of its warning to the end of its lunge, along its whole reach, since it comes out
  * faster than a rival turns.
  */

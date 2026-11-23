@@ -41,7 +41,7 @@ export interface SwimPilot extends PilotMemory {
 /** A swimmer's movement state: whether it was in the air above a surface when last sampled. */
 export interface SwimMotion extends RacerMotion {
   readonly kind: 'swim';
-  /** True from the tick its sampled environment reads air until the tick it reads water again. */
+  /** True from the tick its sampled environment reads air until its centre is `SPLASH_DEPTH` px back under the surface. */
   airborne: boolean;
 }
 

@@ -5,6 +5,7 @@
  */
 import { ABILITY } from '../../abilities.ts';
 import { TRAPPED_RISE_SPEED } from '../../hazards/tuning.ts';
+import { AIR_GRAVITY } from '../../level/surface.ts';
 import { LOOSE } from '../../powerups/tuning.ts';
 import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
 
@@ -21,7 +22,7 @@ export const SWIM_TUNING = {
   drag: 3,
   maxSpeed: 180,
   kick: 110,
-  extra: { sink: 14, currentForce: 160, kelpDragMul: 2.2, airGravity: 450, airDrag: 0.4, airSteer: 0.15 },
+  extra: { sink: 14, currentForce: 160, kelpDragMul: 2.2, airGravity: AIR_GRAVITY, airDrag: 0.4, airSteer: 0.15 },
 } as const satisfies MediumTuning;
 
 /**

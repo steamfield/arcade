@@ -59,7 +59,10 @@ const Depth = {
 /** Phaser's additive blend mode by name, which keeps this module free of a runtime Phaser import. */
 const ADDITIVE = 'ADD';
 
-/** The level's top tile row is solid; the surface the light comes through is just under it. */
+/**
+ * Where the light starts, one tile down, whatever the top row holds: under rock it is the water's
+ * surface, and over open sky (a level surface) the rays simply begin in the air above the waterline.
+ */
 const SURFACE_Y = TILE;
 
 /**

@@ -5,6 +5,9 @@
 import type { Cell, EnemyKind, SurfaceDef, Vec } from '../types.ts';
 import { errorAt, LevelError } from './level-error.ts';
 
+/** Downward pull in the air above a surface, px/s², on racers (swim's `airGravity`) and on pearls alike. */
+export const AIR_GRAVITY = 450;
+
 /**
  * Copies of the surface ranges, each checked to be a forward range of columns on the map with its
  * surface row inside it (1..height-1, so there is air above and water below).

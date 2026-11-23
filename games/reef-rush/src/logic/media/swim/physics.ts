@@ -13,8 +13,7 @@ import { type SwimEnv, swimEnv, swimMotion } from './data.ts';
 import { SWIM_KICK_RULES } from './tuning.ts';
 
 /** The swim extras `applyIntent` reads from `tuning.extra`. */
-const SWIM_EXTRAS = ['sink', 'currentForce', 'kelpDragMul', 'airGravity', 'airDrag', 'airSteer'] as const;
-type SwimExtra = (typeof SWIM_EXTRAS)[number];
+type SwimExtra = 'sink' | 'currentForce' | 'kelpDragMul' | 'airGravity' | 'airDrag' | 'airSteer';
 type SwimExtras = Record<SwimExtra, number>;
 
 const DOWN: Vec = { x: 0, y: 1 };
@@ -25,19 +24,27 @@ const DOWN: Vec = { x: 0, y: 1 };
  * @throws {Error} When `tuning.extra` lacks one, which means the tuning isn't swim's.
  */
 function swimExtras(tuning: MediumTuning): SwimExtras {
-  const read = (key: SwimExtra): [SwimExtra, number] => {
+  const read = (key: SwimExtra): number => {
     const value = tuning.extra[key];
     if (value === undefined) throw new Error(`Swim tuning has no extra '${key}'; pass swim's tuning (effectiveTuning)`);
-    return [key, value];
+    return value;
   };
-  return Object.fromEntries(SWIM_EXTRAS.map(read)) as SwimExtras;
+  return {
+    sink: read('sink'),
+    currentForce: read('currentForce'),
+    kelpDragMul: read('kelpDragMul'),
+    airGravity: read('airGravity'),
+    airDrag: read('airDrag'),
+    airSteer: read('airSteer'),
+  };
 }
 
 /**
  * Updates a racer's velocity, facing and kick cooldown for one tick: swimming in water, or an arc
  * under gravity in the air above a surface, where the stick only nudges and a kick doesn't fire.
  * Emits `racer.kicked` on the tick a kick fires, `racer.breached` on the first tick its environment
- * reads air after water, and `racer.splashed` on the first tick it reads water after air.
+ * reads air after water, and `racer.splashed` once it is back in and its centre is `SPLASH_DEPTH` px
+ * under the surface (not on the first water tick, so bobbing at the waterline doesn't flicker).
  *
  * @param tuning Swim's tuning with the course's overrides (`effectiveTuning`).
  * @param dt Tick length in seconds.
