@@ -121,6 +121,15 @@ describe('the soundtrack', () => {
     expect(songs.title.bpm).toBeLessThan(race.bpm);
   });
 
+  it('gives Thornwood its own song: a loop at A, another meter and tempo, and not the race hook', () => {
+    const thornwood = songs.thornwood;
+    expect(thornwood.loopStart).toBe(sectionBeats(thornwood, 'A')[0]);
+    expect(thornwood.bpm).not.toBe(race.bpm);
+    expect(thornwood.beatsPerBar).not.toBe(race.beatsPerBar);
+    expect(hookStatements(thornwood)).toBe(0);
+    expect(quotesHookCell(thornwood)).toBe(false);
+  });
+
   it.each([['win'], ['lose'], ['results']] as const)('quotes the hook cell in the %s music', (name) => {
     expect(quotesHookCell(songs[name])).toBe(true);
   });
