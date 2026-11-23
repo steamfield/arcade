@@ -1,19 +1,23 @@
 /**
  * Run's rival pilot: it follows the best link out of the stand tile it is on. It runs toward a walk
  * or a drop, starts a jump at the link's take-off with Up held for the link's hold ticks, steers in
- * the air toward the tile it means to land on, lets go of Up before it lands, and plans again from
- * where it stands. It dashes on flat ground, hops over a slower racer it would otherwise push into,
- * and a loose (high-wobble) profile now and then lets go of the stick on flat ground. When the
- * generic backstop sends `forceRecover`, it backs off from the finish, then jumps toward it.
+ * the air toward the tile it means to land on (or back from a pit its speed would carry it into),
+ * lets go of Up before it lands, and plans again from where it stands. It dashes on flat ground,
+ * hops over a slower racer it would otherwise push into, and a loose (high-wobble) profile now and
+ * then lets go of the stick on flat ground. When the generic backstop sends `forceRecover`, it
+ * backs off from the finish, then jumps toward it.
  */
 import { TICK_DT } from '@arcade/core';
 import { isLedge, isSolid } from '../../level/query.ts';
 import { canDash } from '../../powerups/dash-meter.ts';
 import { isDowned } from '../../status.ts';
 import { type MoveModifiers, type Racer, TILE, type Vec, type World } from '../../types.ts';
+import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { runMotion } from './data.ts';
+import { feetOnRow, landingX } from './landing.ts';
 import { HOP_HOLD_TICKS } from './nav.ts';
+import { runExtra, runPace } from './physics.ts';
 import { runAimFrom } from './way.ts';
 import { type RunLink, type RunNav, type RunPilot, runNav, runPilot } from './way-data.ts';
 
@@ -74,7 +78,7 @@ export function createRunPilot(): RunPilot {
 export function steerRunner(
   world: World,
   racer: Racer,
-  _mods: MoveModifiers,
+  mods: MoveModifiers,
   draws: AiDraws,
   forceRecover: boolean,
 ): Steering {
@@ -110,7 +114,7 @@ export function steerRunner(
   if (up) memory.holdUpTicks--;
   memory.upHeld = up;
   const hesitates = grounded && !up && link !== null && hesitatesOn(nav, link, racer, draws.wobble);
-  const x = hesitates ? 0 : grounded ? (link?.dir ?? heading) : airSteer(nav, racer, memory.landingTile, heading);
+  const x = hesitates ? 0 : grounded ? (link?.dir ?? heading) : airSteer(world, nav, racer, memory, mods, heading);
   const kick = grounded && !up && link?.kind === 'walk' && wantsDash(world, racer, link.dir, draws.kick);
   return { move: { x, y: up ? -1 : 0 }, kick, kickHeld: kick, aim, recovering: false };
 }
@@ -168,11 +172,46 @@ function atTakeOff(nav: RunNav, racer: Racer, stand: number, link: RunLink): boo
   return (centreX - takeOffX) * link.dir >= -TAKEOFF_SLACK_PX;
 }
 
-/** Horizontal stick in the air: toward the middle of the tile it means to land on, else toward the finish. */
-function airSteer(nav: RunNav, racer: Racer, landingTile: number | null, heading: -1 | 1): number {
+/**
+ * Horizontal stick in the air. With no landing planned, toward the finish. Otherwise it looks at
+ * where it comes down on the landing's row if it flies on as it is going (`landingX`): links are
+ * planned at `plannedSpeed`, so a runner that took off faster, out of a dash or at a quicker pace,
+ * flies past the tile it meant to land on. Where that is a pit's mouth or a wall, it steers back
+ * toward the landing tile at once, while there is still air to shed the speed; where it is ground
+ * past the landing tile, it flies on and lands there. Short of the landing tile, it steers toward
+ * the tile's middle and stops steering over it.
+ */
+function airSteer(
+  world: World,
+  nav: RunNav,
+  racer: Racer,
+  memory: RunPilot,
+  mods: MoveModifiers,
+  heading: -1 | 1,
+): number {
+  const { landingTile } = memory;
   if (landingTile === null) return heading;
-  const offset = ((landingTile % nav.width) + 0.5) * TILE - (racer.body.x + racer.body.w / 2);
-  return Math.abs(offset) <= LANDING_DEADBAND_PX ? 0 : Math.sign(offset);
+  const { body } = racer;
+  const landingCentre = ((landingTile % nav.width) + 0.5) * TILE;
+  const offset = landingCentre - (body.x + body.w / 2);
+  const towardMiddle = Math.abs(offset) <= LANDING_DEADBAND_PX ? 0 : Math.sign(offset);
+  const row = Math.floor(landingTile / nav.width);
+  const extra = runExtra(effectiveTuning(world));
+  const flying = { body, holdTicks: memory.upHeld ? memory.holdUpTicks + 1 : 0, cruise: runPace(extra, mods) };
+  const comesDownAt = landingX(flying, feetOnRow(row), extra);
+  if (comesDownAt === null) return towardMiddle;
+  if (!standsOver(nav, comesDownAt, body.w, row)) return Math.sign(landingCentre - comesDownAt);
+  const overshoots = body.vx !== 0 && Math.sign(comesDownAt - landingCentre) === Math.sign(body.vx);
+  return overshoots ? Math.sign(body.vx) : towardMiddle;
+}
+
+/** True when a box `width` px wide with its middle at x `middle` has stand tiles of row `row` under both edges. */
+function standsOver(nav: RunNav, middle: number, width: number, row: number): boolean {
+  return [middle - width / 2, middle + width / 2 - 1].every((x) => {
+    const col = Math.floor(x / TILE);
+    const tile = row * nav.width + col;
+    return col >= 0 && col < nav.width && nav.anchor[tile] === tile;
+  });
 }
 
 /**
