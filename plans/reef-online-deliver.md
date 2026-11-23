@@ -41,7 +41,7 @@ Error model: logic stays total over valid state and throws only for programmer e
 - `stepRace` ignores an entry in `inputs` for a racer the AI drives (that is how `playerBot` works today) and for a finished racer. A missing entry for a human-driven racer is the takeover signal, never an error.
 - `hashWorld` never throws for a world built by `createWorld`. It throws `TypeError` naming the path if it meets a value it has no rule for (a function, a symbol, a `Map`), so a new kind of state cannot be silently left out of the hash.
 - A `?local=` race is a debug race: it is never saved (treated like a staged race), and when the save's level is Easy it runs on Normal with one logged warning, because Easy is single-player in slot 1.
-- The engine's `?local=` is ignored without `?debug=1` or the test harness, and an unknown slot logs one warning naming it and falls back to `player`, like `?course=`.
+- The engine's `?local=` is ignored without `?debug=1` (in the test harness too, so both cases can be tested), and an unknown slot logs one warning naming it and falls back to `player`, like `?course=`.
 
 ## Contracts (scaffold commit)
 
@@ -246,9 +246,36 @@ Depends on: phase 2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/engine/, games/reef-rush/tests/local-racer.spec.ts, games/reef-rush/DESIGN.md | contracts, games/reef-rush/src/logic/racers.ts | games/reef-rush/src/engine/local-racer.test.ts | opus | pending | | local racer tests pass |
+| a | M | games/reef-rush/src/engine/, games/reef-rush/tests/local-racer.spec.ts, games/reef-rush/DESIGN.md | contracts, games/reef-rush/src/logic/racers.ts | | opus | pending | | local racer tests pass |
 
-(Test cases and brief written during phase 2.)
+Test cases, `tests/local-racer.spec.ts` (Playwright through the `game` fixture, which the lane writes; assert on `debugSummary()`, `debugState()` and events, never pixels):
+
+- `?debug=1&local=tess` on a Hard save: after the title-to-race inputs and the countdown, holding right moves the `tess` racer right and `debugSummary().player` describes that racer (its tile advances); `debugSummary().local` is `tess`.
+- In the same race the `player` slot moves without any input for it (the AI swims it), and a dash press emits `racer.kicked` with id `tess` and none for `player` on that tick.
+- The HUD's place readout in the summary is the local racer's place, not slot 1's (stage or steer the race so they differ).
+- `?local=tess` without `debug=1` races as slot 1: no `local` key in the summary and input moves `player`.
+- `?debug=1&local=nobody` races as slot 1.
+- `?debug=1&local=tess` on a fresh save (Easy) races on Normal: `debugState()` shows the world's difficulty as `normal`.
+- A finished `?local=` race writes no save: after the race ends and the title reloads, the save's `races` count and bests are what they were. Use the cheapest real way to end a race (the existing staged or DNF scenarios show how); if none ends a `?local` race within a smoke-sized test, cover this one in a Vitest test of the runtime's finish path instead and say so in the report.
+- Every existing scenario and spec still passes unedited: with no `?local`, nothing the game shows or logs changes.
+
+#### Lane a brief
+
+- Goal: make the screen follow any racer slot, so a later phase can put each online player in their own slot. Today about 67 places in 20 engine files read `playerOf(world)` or the literal `'player'` to mean "the racer this screen is about".
+- Interface:
+  - `Runtime.localRacer: RacerId`, `'player'` except in a `?local=` debug race. It is the source of truth.
+  - A new `src/engine/local-racer.ts`: `followRacer(world: World, id: RacerId): void`, called by the runtime when a race starts, and `localOf(world: World): Racer`, for views that hold only a world. Backed by a `WeakMap<World, RacerId>` that falls back to `'player'`, so a world nobody registered still works. Consumers that see only events (the audio adapter, `fx/event-effects.ts`) get the id through a closure or option from the runtime, the way `audibleFromPlayer` is passed today.
+  - `debugSummary().player` describes the local racer. `debugSummary().local` is present only when the local racer is not `player`, so existing assertions and snapshots do not change.
+- Behavior:
+  - Replace each engine use of `playerOf(world)` or `'player'` that means "this screen's racer" with the local racer: camera, HUD, hints, threat warnings, dark view, guide view, race text, progress, racer moments, audio (what is audible, whose place jingle plays), effects, results. Keep the ones that mean slot 1 as a slot (for example a list of all four racers in slot order). `logic/` is not yours: `playerOf` stays there.
+  - `player.place` now carries `id` and is emitted for every human. React only when `id` is the local racer.
+  - The results screen and `lastResult` show the local racer's place and time, read from `standings` and the racer's own finish, since `race.finished` still reports slot 1 in `playerPlace` and `playerTicks`.
+  - `tickRace` calls `stepRace(world, { [localRacer]: readPlayerInput() }, dt)`.
+  - `?local=<slot>` with `?debug=1`: `startRace` creates the world with `humans: [slot]` (so slot 1 is AI-driven unless it is the slot) and follows that slot. An unknown slot logs one warning naming it and races as slot 1, like `?course=`. A `?local=` race is never saved, like a staged race; give the two cases one flag with a name that covers both. When the saved level is Easy, a `?local=` race for a slot other than `player` runs on Normal with one logged warning, because Easy's guide is single-player in slot 1.
+  - `DESIGN.md`: add `?local=` to the launch parameters, and a short entry under "Rules worth knowing" on human slots, `stepRace` and AI takeover (read the plan's assumptions for the rules; keep it to a few sentences).
+- Decisions already made: no new scenes, no lobby, no second input source. The Easy guide and its views stay tied to slot 1.
+- Out of scope: anything under `src/logic/`, `packages/`, networking, more than one human on one screen, save shape.
+- Done when: `pnpm arcade test reef-rush src/engine` passes, the new spec passes through the command the repo's `verify-game` skill gives for running one Playwright spec, `pnpm arcade check reef-rush --skip-tests` passes, and you have looked at a capture from `pnpm arcade see reef-rush --query "debug=1&local=tess" --input "_*200 right*120"` (read `.arcade/runs/latest/frames.png`): the camera and HUD follow the second racer. Say in the report what the capture showed.
 
 ## Log
 
