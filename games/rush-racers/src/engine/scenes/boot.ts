@@ -30,6 +30,7 @@ export class BootScene extends Phaser.Scene {
     registerSkinTextures(this);
     for (const skin of Object.values(SKINS)) assertSkinTextures(this.textures, skin);
     if (RACE_SCENE_PARAMS.includes(this.rt.ctx.params.scene)) this.rt.startRace();
+    else if (this.rt.ctx.params.scene === 'friends') this.rt.goTo('friends');
     else this.rt.goTo('title');
   }
 }

@@ -12,9 +12,11 @@ import { debugState, debugSummary } from './debug.ts';
 import { Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
 import { BootScene } from './scenes/boot.ts';
 import { CourseScene } from './scenes/course.ts';
+import { FriendsScene } from './scenes/friends.ts';
 import { HowToPlayScene } from './scenes/how-to-play.ts';
 import { RaceScene } from './scenes/race.ts';
 import { ResultsScene } from './scenes/results.ts';
+import { RoomScene } from './scenes/room.ts';
 import { SelectScene } from './scenes/select.ts';
 import { TitleScene } from './scenes/title.ts';
 import { type Stage, stageFor } from './stage.ts';
@@ -74,6 +76,8 @@ function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
       new SelectScene(rt),
       new RaceScene(rt),
       new ResultsScene(rt),
+      new FriendsScene(rt),
+      new RoomScene(rt),
     ],
   });
 }

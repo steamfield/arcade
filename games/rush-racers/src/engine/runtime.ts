@@ -40,6 +40,7 @@ import { type PagePress, turnPage } from './how-to-play.ts';
 import { input } from './input.ts';
 import { localOf, setLocalRacer } from './local-racer.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
+import type { OnlineState } from './online/state.ts';
 import { raceProgress } from './race-progress.ts';
 import { assertCourseAssets } from './themes/course-assets.ts';
 import {
@@ -54,7 +55,7 @@ import {
 import { assertSkinAssets, skinFor } from './worlds/index.ts';
 
 /** Phaser scene keys, one per screen. */
-export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'course' | 'select' | 'race' | 'results';
+export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'course' | 'select' | 'race' | 'results' | 'friends' | 'room';
 
 /** Events the engine adds on top of the world's. */
 export type EngineEvent =
@@ -160,6 +161,14 @@ export class Runtime {
   howToSince = 0;
   /** The in-race hints showing now, refreshed each racing tick; none outside a race. */
   hints: HintState = NO_HINTS;
+  /** What the friends and room screens draw. */
+  readonly online: OnlineState = {
+    friends: { mode: 'menu', selected: 0, cells: [], cell: 0 },
+    room: { row: 0 },
+    code: null,
+    view: null,
+    notice: null,
+  };
   /** Save writes asked for and not yet settled. */
   private writesPending = 0;
   /** Where the write queue ends: each write starts once the one before it has settled. */
