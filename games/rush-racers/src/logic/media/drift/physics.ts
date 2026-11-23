@@ -10,10 +10,7 @@ import { length } from '../../num.ts';
 import type { Body, Intent, MoveModifiers, Racer, Vec } from '../../types.ts';
 import type { MediumEnv, MediumTuning } from '../types.ts';
 import { type DriftEnv, type DriftMotion, driftEnv } from './data.ts';
-import { DRIFT_KICK_RULES, type DriftExtras, driftExtras } from './tuning.ts';
-
-/** Share of what forceMul adds to thrust that it also adds to cruise. */
-const CRUISE_SHARE_OF_FORCE = 0.5;
+import { DRIFT_KICK_RULES, type DriftExtras, driftCruise, driftExtras } from './tuning.ts';
 
 /** A drifter's movement state at the start line. */
 export function createDriftMotion(_body: Body): DriftMotion {
@@ -42,7 +39,7 @@ export function applyDriftIntent(
   const surroundings = driftEnv(env);
   const { body } = racer;
   const stick = unitStick(intent.move);
-  const cruise = cruiseOf(extras, mods, surroundings);
+  const cruise = driftCruise(extras, mods.forceMul, surroundings.inDust);
   if (intent.move.x !== 0) racer.facing = intent.move.x > 0 ? 1 : -1;
   thrust(body, stick, tuning.force * mods.forceMul * dt, cruise);
   blow(body, surroundings, extras.windForce * dt);
@@ -55,12 +52,6 @@ export function applyDriftIntent(
 function unitStick(move: Vec): Vec {
   const size = length(move.x, move.y);
   return size === 0 ? { x: 0, y: 0 } : { x: move.x / size, y: move.y / size };
-}
-
-/** The speed thrust alone reaches: `cruise`, raised by half of what forceMul adds, lowered in dust. */
-function cruiseOf(extras: DriftExtras, mods: MoveModifiers, env: DriftEnv): number {
-  const boosted = extras.cruise * (1 + (mods.forceMul - 1) * CRUISE_SHARE_OF_FORCE);
-  return env.inDust ? boosted * extras.dustCruiseMul : boosted;
 }
 
 /**

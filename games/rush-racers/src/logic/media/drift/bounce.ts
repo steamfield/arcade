@@ -1,6 +1,6 @@
 /**
- * What happens to a drifter after it has moved through the tiles (`Medium.afterMove`): a tile that
- * stopped it sends it back the way it came with part of its speed, and a hard enough impact emits
+ * The wall bounce: a tile that
+ * stopped a drifter sends it back the way it came with part of its speed, and a hard enough impact emits
  * `racer.bounced`.
  */
 import type { EventSink } from '@arcade/core';
@@ -11,14 +11,14 @@ import { effectiveTuning } from '../index.ts';
 import { driftExtras } from './tuning.ts';
 
 /**
- * Drift's `afterMove`. Sets each component a tile stopped to `-lost * bounce`, keeping the other,
+ * Bounces a drifter off the tiles that stopped it. Sets each component a tile stopped to `-lost * bounce`, keeping the other,
  * and emits `racer.bounced` with the impact speed and the axis of its larger component when that
  * speed is at least `bounceMinSpeed`. A racer an item dash drives is left as `moveBody` stopped it,
  * since the dash rewrites its velocity every tick and would bounce it on each of them.
  *
  * @throws {Error} When the world's tuning lacks one of drift's extras.
  */
-export function afterDriftMove(world: World, racer: Racer, contacts: MoveContacts, events: EventSink<GameEvent>): void {
+export function bounceDrifter(world: World, racer: Racer, contacts: MoveContacts, events: EventSink<GameEvent>): void {
   const { lost } = contacts;
   if (lost.x === 0 && lost.y === 0) return;
   if (racer.status.dashing > 0) return;

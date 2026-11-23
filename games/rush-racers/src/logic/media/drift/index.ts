@@ -6,7 +6,7 @@
  * and rules in `tuning.ts`, and data shapes in `data.ts` and `way-data.ts`.
  */
 import type { Medium } from '../types.ts';
-import { afterDriftMove } from './bounce.ts';
+import { afterDriftMove } from './after-move.ts';
 import { sampleDriftEnvironment } from './env.ts';
 import { buildDriftNav, driftCost, validateDriftLevel } from './nav.ts';
 import { applyDriftIntent, createDriftMotion } from './physics.ts';

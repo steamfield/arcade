@@ -28,8 +28,9 @@ import { CORAL_BREAKERS } from '../../powerups/tuning.ts';
 import { type MoveModifiers, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
-import { driftExtras } from './tuning.ts';
-import { type DriftRoute, driftRouteAim, freeDistanceAlong, wayRunsStraight } from './way.ts';
+import { freeDistanceAlong, wayRunsStraight } from './lookahead.ts';
+import { driftCruise, driftExtras } from './tuning.ts';
+import { type DriftRoute, driftRouteAim } from './way.ts';
 import { type DriftPilot, driftPilot } from './way-data.ts';
 
 /** How much looser a rival steers in a dark zone it can't see in: wobble bound and reaction time multipliers. */
@@ -147,7 +148,8 @@ function wobbledAim(memory: DriftPilot): Vec {
  */
 function wantedVelocity(world: World, racer: Racer, aim: Vec, mods: MoveModifiers, route: DriftRoute): Vec {
   const tuning = effectiveTuning(world);
-  const cruise = driftExtras(tuning).cruise * (1 + (mods.forceMul - 1) * 0.5);
+  // Open-space cruise: the pilot plans as if clear of dust, and drag slows it to dust cruise inside.
+  const cruise = driftCruise(driftExtras(tuning), mods.forceMul, false);
   const { vx, vy } = racer.body;
   const speed = length(vx, vy);
   const target = Math.max(cruise, vx * aim.x + vy * aim.y);

@@ -58,6 +58,18 @@ export function driftExtras(tuning: MediumTuning): DriftExtras {
   return extras as DriftExtras;
 }
 
+/** Share of what forceMul adds to thrust that it also adds to cruise. */
+const CRUISE_SHARE_OF_FORCE = 0.5;
+
+/**
+ * The speed thrust alone reaches for a racer with `forceMul`: `cruise`, raised by half of what
+ * forceMul adds, and lowered to `dustCruiseMul` of that in nebula dust.
+ */
+export function driftCruise(extras: DriftExtras, forceMul: number, inDust: boolean): number {
+  const boosted = extras.cruise * (1 + (forceMul - 1) * CRUISE_SHARE_OF_FORCE);
+  return inDust ? boosted * extras.dustCruiseMul : boosted;
+}
+
 /**
  * A dash, knockback or decoy holds velocity on both axes; a trapped racer floats still and a loose
  * power-up stays where it dropped; enemies can't be stomped; pods open on touch; the level is walled

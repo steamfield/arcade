@@ -1,7 +1,7 @@
 /**
- * The shared fall, park and respawn timer for media with open pits (`effects.pitBelow`): run and
- * flight both put a fallen racer out of play for a while and bring it back on a spot the medium
- * chose. Each medium keeps its own rule for which spots are safe and calls these from `afterMove`:
+ * The shared park and respawn timer for media whose racers can be put out of play: run and
+ * flight for a fall through a pit, drift for a black hole. Each puts the racer out for a while and
+ * brings it back on a spot the medium chose. Each medium keeps its own rule for which spots are safe and calls these from `afterMove`:
  * `fallOut` once the racer `isBelowLevel`, then `waitOut` each tick it is out, and `respawnAt` on the
  * tick `waitOut` says the wait is over. A racer is out while `status.fallen` is above 0;
  * `tickStatuses` leaves that count to `waitOut`.
@@ -16,7 +16,7 @@ import type { RacerMotion } from './types.ts';
 
 /** Racer motion of a medium whose racers can fall out: it holds the spot a fallen racer waits at. */
 export interface ParkingMotion extends RacerMotion {
-  /** Top-left of where a fallen racer waits, out of the level, until it respawns. */
+  /** Top-left of where a racer that is out waits until it respawns. */
   parkedAt: Vec;
 }
 
@@ -26,7 +26,8 @@ export function isBelowLevel(level: Level, body: Box): boolean {
 }
 
 /**
- * Starts a fall: stops the racer where it is (out of the level, below its last row), remembers that
+ * Puts a racer out of play: stops it where it is (below the last row after a fall, or wherever the
+ * medium's rule caught it), remembers that
  * spot as where it waits, sets `status.fallen` to `respawnTicks` and emits `racer.fell`.
  *
  * @throws {Error} When the racer's motion keeps no `parkedAt` spot.
