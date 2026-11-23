@@ -1,0 +1,25 @@
+{
+  "name": "@arcade/api",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./protocol": "./src/protocol.ts"
+  },
+  "scripts": {
+    "dev": "wrangler dev --config wrangler.jsonc --port 8788 --ip 127.0.0.1",
+    "types": "wrangler types --config wrangler.jsonc worker-configuration.d.ts",
+    "typecheck": "pnpm types > /dev/null && tsc -p tsconfig.json && tsc -p tsconfig.test.json",
+    "test": "vitest run",
+    "deploy": "wrangler deploy --config wrangler.jsonc"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@arcade/config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

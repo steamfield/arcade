@@ -1,0 +1,5 @@
+{
+  "//": "The Workers themselves: ES plus the runtime types `wrangler types` generates. No DOM, no Node.",
+  "extends": "@arcade/config/tsconfig.logic.json",
+  "include": ["src", "worker-configuration.d.ts"]
+}

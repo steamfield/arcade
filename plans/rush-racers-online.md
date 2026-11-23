@@ -1,0 +1,174 @@
+# Plan: Rush Racers online races (RFC phases 2 to 4)
+
+Skill: deliver. Profile: deliver. On resume, re-read shared/lane-dag.md before anything else.
+plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.0/shared/scripts/plan_graph.py
+Started: 2026-11-23. Timebox: none. Landing branch: deliver/reef-net (worktree `/Users/riley/Projects/games/.claude/worktrees/reef-net`).
+Gate: `pnpm arcade check --all && pnpm arcade smoke rush-racers` (about 4 min). Filtered tests: `pnpm arcade test rush-racers <paths>` for the game, `pnpm --filter @arcade/api test` for the room service. Typecheck and lint: `pnpm arcade check rush-racers --skip-tests` (game), `pnpm --filter @arcade/api typecheck && pnpm exec biome check apps/api` (room service).
+Runner: plain commands.
+Worktree setup: `pnpm install --frozen-lockfile --offline`.
+Suppressions: biome-ignore, @ts-expect-error, @ts-ignore, todo: true
+Manifests: package.json, pnpm-lock.yaml, pnpm-workspace.yaml
+
+## Spec
+
+Product and design spec: `plans/reef-rush-multiplayer.md` (the RFC; the game has since been renamed `games/rush-racers`). RFC phase 1 is on main: `hashWorld`, `world.humans`, `stepRace`, AI takeover and the engine's local racer. This run builds the rest for up to four racers: friends open a link, pick characters in a room, and race each other with every browser running the same simulation and exchanging only inputs through a Cloudflare Durable Object.
+
+Paths below are under `games/rush-racers/` unless they start with `apps/`, `tools/`, `docs/`, `plans/` or a root file name.
+
+In scope:
+
+- `src/net/`: the binary codec, the lockstep session (RFC 5.3, 5.4), the lobby state, and a client that runs one peer's whole flow (lobby, race, back to the lobby) over a connection. No DOM outside `net/transport/websocket.ts`.
+- `apps/api`: a Worker with one SQLite Durable Object class `Room` that relays messages (RFC 5.5), reached from the site through a service binding on `/api/*`.
+- Engine: `friends` and `room` scenes, an online race driven by the session, online results, `?room=<code>`, a Friends option on the title, `debugSummary().net`.
+- Departures: a closed socket, a hidden tab during a race, a silent peer kicked after 5 s, each handing that racer to the AI on the same tick everywhere.
+- Unavailable, room-full, unknown-room, reload-to-update and out-of-sync states shown to the player.
+
+Out of scope: more than four racers and everything in RFC 5.10. WebRTC. Rejoining a race. Easy online. Saving anything from an online race. Spectators, names, chat. Changes under `packages/`. Changes to `src/logic/` (if a lane finds it needs one, it stops and reports).
+
+Decisions that differ from the RFC or settle what it left open:
+
+- There is no `hello` message. The protocol version and build id travel as query parameters on the WebSocket URL, so the room accepts or refuses a socket in one step.
+- The room broadcasts `phase` when the derived race phase changes, so a peer waiting in the room during a race learns when it is over.
+- A binary message starts with a kind byte (1 inputs, 2 hash). The room forwards it with the sender's peer id in front.
+- The room wire protocol (what the room itself reads) lives in `apps/api/src/protocol.ts` and the game imports it as `@arcade/api/protocol`. The game-level messages (`lobby`, `start`, `end`) are the game's, in `src/net/messages.ts`; the room relays them without reading their payload.
+- Peer ids are join sequence numbers 1 to 255. A room that has handed out 255 refuses further joins as unavailable.
+- A connection is polled, not subscribed to: `RoomConnection.poll()` returns what arrived since the last call. The client drains it once per logic tick, so message handling happens inside ticks and test mode stays in control.
+- Two peers may want one character and `createWorld` refuses duplicates. At Start the host resolves picks in join order: a later peer whose pick is taken gets the first free character in `CHARACTER_IDS` order.
+- Slots are `RACER_IDS` in join order of the ready peers. `humans` is passed to `createWorld` in `RACER_IDS` order.
+- The room is tested through wrangler's `unstable_startWorker` with real WebSockets from Node, not `@cloudflare/vitest-pool-workers`. Spiked 2026-11-23: it starts in under a second on Vitest 5's Node.
+- Routing is the service binding. Spiked 2026-11-23: `wrangler dev -c wrangler.jsonc -c apps/api/wrangler.jsonc` serves assets, forwards `/api/*` including WebSocket upgrades and binary frames, and still answers unmatched paths with the 404 page without running the script.
+- The API deploys with `pnpm deploy:api` (`wrangler deploy -c apps/api/wrangler.jsonc`), by hand, before a site deploy that needs it. A second Workers Builds connection is dashboard setup the owner can add later.
+- The `?online=1` gate is dropped: this run lands all phases together, so Friends ships on the title when phase 3 tags. The RFC's two-network real-device check stays with the owner.
+- Online races run Normal or Hard. A host whose save is on Easy starts the room on Normal.
+- The origin rule: a request with no `Origin` header is allowed (not a browser); otherwise the origin's host must equal the request's host, or its hostname must be `localhost` or `127.0.0.1`. The API Worker has no public route of its own (`workers_dev: false`), so every browser request arrives through the site.
+- `start` puts in the race only the connected peers its `slots` names; the room reads that one field. Everyone else waits in the lobby and owes the room no `end`. A peer named in `slots` that is already gone when a client handles `start` is handed to the AI at once (`peerLeft` straight after `createSession`).
+- The room never relays a message whose type is one of its own (`RESERVED_TYPES`), and its own messages are strict objects, so no peer can forge a `left`.
+- A refused socket is accepted outside the hibernation API (`server.accept()`, then `close`), so it never appears in `ctx.getWebSockets()` and produces no `left`. A socket the room closes itself (`kicked`, `limit`, `idle`) has `departed` set in its attachment first; `left` is broadcast once per peer whichever of close, error or the room's own close comes first, and anything arriving from a departed socket is dropped.
+- Close codes map to `CloseReason` as: `full`, `version`, `unknownRoom`, `kicked` to their namesakes; `unavailable`, `limit`, `idle`, `origin` and a socket that never opened to `unavailable`; anything else to `lost`. `createRoom` resolves to `{ ok: true, code }` or `{ ok: false }` and never rejects.
+- A desync ends the race on every peer that sees the mismatch. Such a peer stays connected, sends `end`, shows the out-of-sync notice and goes back to the room. With one bad peer among four all four may stop; that is accepted for v1.
+- Hiding the tab during a race leaves the room: the socket closes, and the player comes back to the title with a notice. RFC 5.8's "reconnect and wait in the room" is not built. In the lobby, hiding sends `ready: false`. Both are sent from the visibility handler itself, because the shell stops the game loop when the tab hides: every client setter sends at once, not on the next tick.
+- Landing order: `pnpm deploy:api` first, then the site (the site's service binding needs `arcade-api` to exist). `PROTOCOL_VERSION` stays 1 for this release; a later bump deploys the API first and accepts that open pages must reload.
+- Lanes write their own tests from the case lists in their briefs, and watch each fail once. The scaffold holds contracts and stubs only. Lane review checks the tests against the case list.
+
+Error model:
+
+- `src/net` never throws for anything a peer or the network sends. Malformed JSON, a message that fails its schema, binary of the wrong length or kind, input for a tick already stepped, and messages from an unknown peer are dropped and counted in `ClientView.dropped`; the first of each kind per race logs one `warn`.
+- Programmer errors throw `Error` naming the value: `buildStart` when not host or with fewer than two ready peers, `createSession` with a `local` slot not in `humans` or a delay outside 1 to 12, `encodeInput` given a `move` that is not one of the nine digital values.
+- A closed connection becomes `ClientView.status === 'closed'` with a `reason` (`CloseReason`), never an exception. The scenes show the reason's text and return to the title.
+- A hash mismatch sets the session to `desynced`, emits `net.desync` with the tick and both hashes, and ends that peer's race with the out-of-sync notice. No resync.
+- The room refuses with WebSocket close codes after accepting the socket, never with an HTTP error on the upgrade (a 4xx there logs a console error and fails the game fixture). `POST /api/rooms` answers 201 `{ code }`, or 503 `{ error }` when no code could be claimed, and 403 for a disallowed origin.
+- The room drops, without closing: JSON it cannot parse or without a string `type`, `start` from a peer that is not host or while racing, `kick` naming an unknown peer or one heard from within the silence window. It closes with `limit` a socket that sends more than 80 messages in a second or a message over 1 kB.
+- A failed `socket.send` to one peer is caught per socket and never stops the relay to the others.
+
+## Contracts (scaffold commit)
+
+Layout, one responsibility each:
+
+    apps/api/
+      wrangler.jsonc           the arcade-api Worker: Room binding, SQLite migration, no public route
+      src/protocol.ts          the room wire protocol: versions, limits, close codes, room-code alphabet, schemas for what the room reads and sends. Zod only, no Workers types (scaffold, complete)
+      src/index.ts             the Worker's fetch: origin check, POST /api/rooms, upgrade routing to a Room; wiring only
+      src/origin.ts            allowedOrigin(request): the origin rule above; pure
+      src/codes.ts             randomRoomCode(random): a code from the alphabet; pure
+      src/room.ts              the Room Durable Object: claim, join, relay, phase, kick, limits, idle alarm
+      src/forward.ts           the site Worker's script: forwards /api/* to the API through the service binding
+      test/*.test.ts           room service tests through unstable_startWorker
+    games/rush-racers/src/net/
+      codec.ts                 binary encode and decode of inputs and hash messages
+      messages.ts              zod schemas and types for lobby, start and end (scaffold, complete)
+      session.ts               the lockstep session: when the world may step, hash comparison, stalls, departures
+      lobby.ts                 who is in the room, their picks, pings and readiness; builds the start message
+      client.ts                one peer's flow over a RoomConnection: lobby, race, back to lobby; the only module the engine talks to (phase 2)
+      transport/types.ts       RoomConnection and ConnectionEvent (scaffold, complete)
+      transport/memory.ts      an in-memory room for tests, with scripted delay; behaves like apps/api's Room for relay, joined and left (scaffold, complete)
+      transport/websocket.ts   RoomConnection over a browser WebSocket, and createRoom over fetch (phase 2; the only DOM in net)
+    games/rush-racers/src/engine/
+      online/friends-screen.ts the friends screen's cursor and code entry as plain state (phase 2)
+      online/room-screen.ts    the room screen's focus and actions as plain state (phase 2)
+      scenes/friends.ts, scenes/room.ts   Phaser views of those two (phase 2)
+
+Signatures the lanes implement are in the scaffold's stubs; the briefs name them.
+
+## Phases
+
+### Phase 1: lockstep core and room service (MVP)
+
+Demo: `pnpm arcade test rush-racers src/net && pnpm --filter @arcade/api test` (four sessions on the in-memory room finish one race hash-equal; the real Room relays between real sockets)
+Test cases: in each lane brief.
+
+| Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| a | M | games/rush-racers/src/net/codec.ts, games/rush-racers/src/net/codec.test.ts, games/rush-racers/src/net/session.ts, games/rush-racers/src/net/session.test.ts | plan, RFC 5.3 and 5.4, src/net/transport/memory.ts, src/logic/two-peers.test.ts | | opus | pending | | codec and session tests pass |
+| b | M | games/rush-racers/src/net/lobby.ts, games/rush-racers/src/net/lobby.test.ts, games/rush-racers/src/net/messages.test.ts | plan, src/net/messages.ts, apps/api/src/protocol.ts | | opus | pending | | lobby and messages tests pass |
+| c | M | apps/api/src/index.ts, apps/api/src/origin.ts, apps/api/src/codes.ts, apps/api/src/room.ts, apps/api/test/ | plan, RFC 5.5, apps/api/src/protocol.ts, games/rush-racers/src/net/transport/memory.ts | | opus | pending | | room service tests pass |
+
+#### Lane a brief
+
+- Goal: the binary codec and the lockstep session, so that any number of peers stepping their own worlds from exchanged inputs stay in the same state.
+- Interface: implement the stubs in `src/net/codec.ts` (`encodeInputs`, `encodeHash`, `decode`, `IDLE_INPUT`) and `src/net/session.ts` (`createSession(options): Session`) exactly as declared. The session imports `stepRace` from `../logic/world.ts`, `hashWorld` from `../logic/hash.ts` and `TICK_DT` from `@arcade/core`.
+- Behavior, codec: an input is 2 bytes as RFC 5.4 describes; `decode` rebuilds exactly the nine `move` values `input.vector` produces (0, 1, -1 and `Math.SQRT1_2` diagonals) and always sets `kickHeld` as a boolean; `useSlot` is never encoded. `encodeInputs(tick, input)` is `[1, tick as uint32 little-endian, 2 bytes]`; `encodeHash(tick, hash)` is `[2, tick uint32, hash uint32]`. `decode(bytes)` returns a tagged value or `null` for a wrong length, unknown kind or reserved bit pattern. `encodeInputs` throws for a `move` that is not one of the nine values.
+- Behavior, session: RFC 5.3's pump, steps 1 to 5, with `D = options.delay`. The local input is stored as `decode(encode(input))`, so every peer steps from identical values. Ticks 1 to `D` step with `IDLE_INPUT` for every human. `receive(slot, bytes)` takes a forwarded binary message already mapped to a slot. `peerLeft(slot)` sets that slot gone from the tick after the last input held for it (never before tick `D + 1`); inputs for it that arrive afterwards are dropped. From its gone tick the slot is omitted from `stepRace`'s inputs, which is the logic's takeover signal. Every 60th stepped tick the session sends `encodeHash(tick, hashWorld(world))` and keeps it; a remote hash is compared when both sides of that tick are known, whichever arrives first, and kept hashes older than 600 ticks are discarded. A mismatch sets `state` to `'desynced'`, calls `onDesync({ tick, local, remote, slot })` once, and the session never steps again. `stalledMs` accumulates the `elapsedMs` of pumps that could not step while behind, and resets on a step; `waitingOn` lists the slots whose input for the next tick is missing. When `kickAfterMs` is not null and `stalledMs` passes it, `requestKick(slot)` is called for each slot in `waitingOn`, at most once per `kickAfterMs` per slot. The session stops pumping usefully once the world's race has ended; `pump` after that returns 0 and sends nothing.
+- Test cases, codec: every combination of the nine moves with kick, kickHeld, use and each cycle value round-trips to equal values; `decode` returns null for empty, short, long and unknown-kind bytes; `encodeInputs` throws on `move.x = 0.5`.
+- Test cases, session (drive real worlds on `RUN_TEST` or the default course through `createMemoryRoom`, with scripted inputs per peer; a helper pumps all peers round-robin and delivers the room's queue): two and four sessions finish a race hash-equal at delays 1, 3 and 12 with a room latency of 0, 2 and 8 ticks; with jitter (latency varying per message from a seeded rng); with one peer pumping every other round; a late input stalls a peer, its `targetTick` stops, and it resumes without multi-stepping; a `use` pressed during a stall fires on the next scheduled tick and exactly once; `peerLeft` after the peer's input for tick K takes the slot over at K + 1 on every session, including one that had only stepped to K - 5, and the worlds stay hash-equal to the end (`racer.takeover` set on that tick everywhere); a peer that leaves before sending anything is taken over at `D + 1`; `kickAfterMs` of 5000 asks for a kick after 5000 ms of stall and not at 4900, and never when null; a world tampered on one peer reports `onDesync` at the next multiple of 60 on both sides and stops stepping; a remote hash that arrives before the local tick is compared when the tick is reached; input for a gone slot and malformed bytes are dropped without effect.
+- Decisions already made: see "Decisions" and "Error model" above. One `inputs` message per scheduled tick, no batching. The session does not know about peer ids, JSON or the lobby.
+- Out of scope: reconnecting, resync, rollback, batching, any DOM or timer. No change under `src/logic/`.
+- Done when: `pnpm arcade test rush-racers src/net/codec.test.ts src/net/session.test.ts` and `pnpm arcade check rush-racers --skip-tests` pass, each test having been watched failing once.
+
+#### Lane b brief
+
+- Goal: the lobby state one peer holds about its room, and tests pinning the game's JSON messages.
+- Interface: implement `createLobby(options): Lobby` in `src/net/lobby.ts` as stubbed. `Lobby.apply(event)` takes a room message (`welcome`, `joined`, `left`, `phase` from `@arcade/api/protocol`) or a relayed game message (`lobby`, `start`, `end` with `from`, from `./messages.ts`); `Lobby.view` is the current `LobbyView`; `Lobby.mine()` returns the `lobby` message this peer should send now; `Lobby.buildStart(seed)` returns the `start` message.
+- Behavior: peers are listed in join order with labels P1 to P4 by position. The host is whoever the room last named. A peer's pick, ping and readiness come from its latest `lobby` message; a peer that has sent none shows no pick and not ready. Only the host's `course` and `difficulty` fields are applied; they are ignored from anyone else. `left` removes the peer and relabels the rest. `phase` sets the room phase. `setCharacter`, `setPing`, `setReady`, and for the host `setCourse` and `setDifficulty`, change this peer's own entry, and `mine()` reflects them. `view.canStart` is true only for the host, in phase `lobby`, with at least two ready peers including itself. `buildStart(seed)` assigns `RACER_IDS` in join order to the ready peers (at most four), resolves duplicate picks in join order (a later peer whose pick is taken, or who has none, gets the first free id in `CHARACTER_IDS`), and sets `delay = clamp(ceil(worstOneWayMs / (1000 / 60)) + 2, 3, 12)` where `worstOneWayMs` is the largest sum of two different ready peers' pings. It throws when called by a non-host or without two ready peers. A host on difficulty `easy` is given `normal` at `createLobby`.
+- Test cases, lobby: join order and labels after joins and a leave; the host changing after the host leaves; picks, pings and away state shown from `lobby` messages; course and difficulty taken from the host only; `canStart` in each of its false cases and its true case; `buildStart` slot assignment skipping an away peer; duplicate picks resolved; delay 3 for local pings, 8 for two peers at 50 ms each, capped at 12; both throws with their messages; messages from a peer the lobby does not know are ignored.
+- Test cases, messages: each schema accepts a well-formed message and rejects a wrong type, an unknown character, a `delay` of 13, a `slots` entry naming an unknown slot, and a `difficulty` of `easy`.
+- Out of scope: sockets, timers, the session, anything visual. No change to `messages.ts` or `protocol.ts` (report if one is needed).
+- Done when: `pnpm arcade test rush-racers src/net/lobby.test.ts src/net/messages.test.ts` and `pnpm arcade check rush-racers --skip-tests` pass, each test watched failing once.
+
+#### Lane c brief
+
+- Goal: the room service of RFC 5.5 for four peers, as amended by "Decisions" above.
+- Interface: `apps/api/src/index.ts` default-exports the Worker and re-exports `Room`; routes `POST /api/rooms` and `GET /api/rooms/<code>?v=<n>&build=<id>` with `Upgrade: websocket`; anything else under `/api/` is 404 JSON. `Room` extends `DurableObject` from `cloudflare:workers` with the Hibernation API (`ctx.acceptWebSocket`, `webSocketMessage`, `webSocketClose`, `webSocketError`, `alarm`) and one RPC method `claim(): Promise<boolean>`. Everything the room sends or reads is a type from `src/protocol.ts`. `Env` has `ROOM` and an optional `KICK_SILENCE_MS` string (default 5000) so tests can shorten it.
+- Behavior: as RFC 5.5, with these specifics. State that must survive hibernation is in each socket's attachment (`peer`, `build`, `racing`, `ended`); the next peer id and the claimed flag are in storage, written only on claim and join. State in attachments also includes `departed` (see Decisions). On join the room refuses, by accepting outside the hibernation API then closing with the matching `CLOSE` code: an unclaimed room (`unknownRoom`), a fifth socket (`full`), `v` different from `PROTOCOL_VERSION` or `build` different from a present socket's (`version`), a 256th peer id (`unavailable`). An accepted peer gets `welcome`, the others get `joined`. Any JSON object with a string `type` other than `kick` is relayed to every other socket with `from` added; a message whose type is in `RESERVED_TYPES` is dropped; `start` is relayed only from the host in phase `lobby` and only when it parses as `StartRelaySchema`, and marks racing exactly the connected sockets whose peer id is a key of its `slots`; `end` marks its sender ended. Binary is relayed with the sender's peer id as the first byte. Whenever the derived phase changes the room broadcasts `phase`. Close and error broadcast `left` exactly once per socket and the host is recomputed as the lowest connected peer id. `kick` closes the named socket with `kicked` only in phase `racing` and only if the room has heard nothing from it for the silence window; a socket the room has no heard-time for since waking is not kicked. The auto-response pair is `PING`/`PONG` from the protocol. The alarm is set to an hour ahead on claim, join, `start` and when the phase returns to `lobby`; when it fires the room closes every socket with `idle` and deletes its storage.
+- Test cases (each through real sockets on `unstable_startWorker`; a small `test/room-kit.ts` opens sockets and awaits the next message, with no sleeps): create returns a six-character code from the alphabet; create with a foreign `Origin` is 403 and a join with one is closed with `origin`; joining an unknown code is closed with `unknownRoom` and logs no HTTP error; first peer is host and gets `welcome` with phase `lobby`; second peer's `welcome` lists both and the first gets `joined`; a fifth socket is closed `full`; a different `build` is closed `version`; a wrong `v` is closed `version`; JSON is relayed with `from` and not echoed to the sender; binary is relayed with the sender prefix; `start` from a non-host is not relayed; `start` from the host is relayed and `phase: racing` follows; a third peer joining then gets `welcome` with phase `racing`; `end` from every racer returns the phase to `lobby`, and so does the last racer leaving without `end`; a leaving peer produces one `left` and the next lowest peer becomes host; `kick` of a chatty peer does nothing and `kick` of a silent one closes it `kicked` and broadcasts `left` (with `KICK_SILENCE_MS` set small, polling by resending `kick` rather than sleeping); a 2 kB message closes the sender `limit`; more than 80 messages in a second closes the sender `limit`; `PING` is answered with `PONG`; a peer sending `{type:'left'}` or `{type:'phase'}` reaches nobody; after a refused join (full, version) a valid join still succeeds and nobody received a `left` for the refused socket; a kicked peer produces exactly one `left`; a `start` whose `slots` leaves out a connected peer returns the phase to `lobby` once the named peers have sent `end`; a `start` without `slots` is not relayed.
+- Decisions already made: tests set `Origin` through the Node WebSocket `headers` option; workerd on one machine is shared, so every test creates its own room.
+- Out of scope: ten sockets, batching, storage on the message path, authentication, the site Worker's config, deploying.
+- Done when: `pnpm --filter @arcade/api test`, `pnpm --filter @arcade/api typecheck` and `pnpm exec biome check apps/api` pass, each test watched failing once.
+
+### Phase 2: one peer's whole flow, and the screens
+
+Demo: `pnpm arcade test rush-racers src/net/client.test.ts src/engine/online` (two to four clients on the in-memory room go lobby, race, results, lobby; the friends and room screens move as plain state)
+Depends on: phase 1
+
+| Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| a | M | games/rush-racers/src/net/client.ts, games/rush-racers/src/net/client.test.ts, games/rush-racers/src/net/transport/websocket.ts | | | opus | pending | | client tests pass |
+| b | M | games/rush-racers/src/engine/online/, games/rush-racers/src/engine/scenes/friends.ts, games/rush-racers/src/engine/scenes/room.ts | | | opus | pending | | screen-state tests pass |
+
+(Briefs written during phase 1.)
+
+### Phase 3: a race between two browsers
+
+Demo: `pnpm arcade test rush-racers tests/online.spec.ts` (two browser pages create and join a room, pick characters and finish one race with equal standings and hashes)
+Depends on: phase 2
+
+| Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| a | L | games/rush-racers/src/engine/runtime.ts, games/rush-racers/src/engine/debug.ts, games/rush-racers/src/engine/game.ts, games/rush-racers/tests/online.spec.ts | | | opus | pending | | |
+
+(Lanes and briefs settled during phase 2; the runtime work is split into new modules there.)
+
+### Phase 4: departures, states and the Friends button
+
+Demo: `pnpm arcade see rush-racers --scene title` shows Friends; `pnpm arcade test rush-racers tests/online-leave.spec.ts`
+Depends on: phase 3
+
+| Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| a | M | games/rush-racers/tests/online-leave.spec.ts | | | opus | pending | | |
+
+(Lanes and briefs settled during phase 3.)
+
+## Log
+
+- 2026-11-23 plan critique (devils-advocate, opus, against the code): eight findings, all applied. 1 `start` marks only the peers in `slots` racing, and a named peer already gone is taken over at once. 2 client setters send at once so a hidden tab can report; hidden mid-race leaves to the title, and the RFC's reconnect is cut. 3 refused sockets stay out of the hibernation set; `departed` added; one `left` per peer. 4 `StartSchema` checks its fields against each other; the room drops its own message types and its messages are strict. 5 the websocket transport must use `arraybuffer` and keep arrival order (phase 2 brief). 6 close codes mapped to reasons; `createRoom` result shaped; desync behaviour stated. 7 phases split: client and screens, then runtime and the two-browser race, then departures. 8 landing order and protocol version rule stated.
+

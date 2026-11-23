@@ -1,0 +1,6 @@
+{
+  "//": "Tests run in Node and talk to the Worker over real sockets, so they get Node types and never the Workers runtime's.",
+  "extends": "@arcade/config/tsconfig.base.json",
+  "compilerOptions": { "types": ["node"] },
+  "include": ["test", "vitest.config.ts", "src/protocol.ts"]
+}

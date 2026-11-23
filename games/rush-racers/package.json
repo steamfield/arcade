@@ -11,6 +11,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@arcade/api": "workspace:*",
     "@arcade/core": "workspace:*",
     "@arcade/input": "workspace:*",
     "@arcade/save": "workspace:*",

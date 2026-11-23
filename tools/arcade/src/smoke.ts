@@ -6,7 +6,8 @@ import { elapsed, run } from './run.ts';
 
 /**
  * Production check: build, assemble everything (templates included), serve it
- * with `wrangler dev` exactly as Cloudflare will, and run each game's
+ * with `wrangler dev` exactly as Cloudflare will (the site Worker and the API
+ * Worker it forwards `/api/*` to, in one process), and run each game's
  * Playwright suite against it. This is where wrong base paths, missing assets
  * and Safari-only breakage show up.
  */
@@ -19,7 +20,14 @@ export async function smoke(slug: string | undefined): Promise<number> {
   const port = await freePort();
   const wrangler = spawn(
     'pnpm',
-    ['exec', 'wrangler', 'dev', '--port', String(port), '--ip', '127.0.0.1', '--log-level', 'error'],
+    [
+      'exec',
+      'wrangler',
+      'dev',
+      // The first config is the one served on the port; the API is reached through its service binding.
+      ...['--config', 'wrangler.jsonc', '--config', 'apps/api/wrangler.jsonc'],
+      ...['--port', String(port), '--ip', '127.0.0.1', '--log-level', 'error'],
+    ],
     {
       cwd: ROOT,
       env: { ...process.env, WRANGLER_SEND_METRICS: 'false' },

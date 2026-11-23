@@ -132,7 +132,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/` (or `--out`); `--query` launch params, `--compare` pixel diff against an earlier run. |
 | `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths, `@group`s from the game's package.json, or `-t`; one line when green. |
 | `tools/arcade/src/test.test.ts` | `@group` expansion for `arcade test`. |
-| `tools/arcade/src/smoke.ts` | `smoke`: assemble, `wrangler dev`, Playwright per game against the production build. |
+| `tools/arcade/src/smoke.ts` | `smoke`: assemble, `wrangler dev` (site Worker plus the API Worker behind `/api/*`), Playwright per game against the production build. |
 | `tools/arcade/src/assemble.ts` | `assemble`, `selectGames`, `includeForBranch`: builds site plus games into `dist/`, writes `_headers`, checks Cloudflare limits. |
 | `tools/arcade/src/assemble.test.ts` | Which games a Cloudflare build ships per branch. |
 | `tools/arcade/src/attract.ts` | `attract`: plays a scenario headlessly and records a game's landing-page loop (`public/attract.mp4`) and cover (`public/cover.png`) with ffmpeg. Settings in the game's package.json `arcade.attract`. |
@@ -141,6 +141,20 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/repo-map.test.ts` | Keeps this map in sync with the files on disk. |
 | `tools/biome/no-nondeterminism.grit` | Biome plugin banning `Math.random`, `Date.now`, `new Date` in logic folders. |
 | `tools/biome/no-inexact-math.grit` | Biome plugin banning `**`, `**=` and `Math.pow` in rush-racers logic and allowing only the exactly specified `Math` members it lists, so lockstep races match bit for bit. |
+
+## Room service (`apps/api/`)
+
+The relay for online races, a separate Worker (`arcade-api`) the site forwards `/api/*` to. Design: `plans/reef-rush-multiplayer.md` section 5.5 and `plans/rush-racers-online.md`. Tests are in `apps/api/test/` and run the Worker in-process (`pnpm --filter @arcade/api test`).
+
+| File | What it is |
+| --- | --- |
+| `apps/api/wrangler.jsonc` | The Worker: the `Room` Durable Object binding and its SQLite migration; no public route. Deployed by hand with `pnpm deploy:api`. |
+| `apps/api/src/protocol.ts` | The room wire protocol (versions, limits, close codes, room codes, schemas), also imported by games as `@arcade/api/protocol`. |
+| `apps/api/src/index.ts` | The Worker's fetch: origin check, `POST /api/rooms`, WebSocket upgrade routing to a `Room`. |
+| `apps/api/src/origin.ts` | `allowedOrigin`: which pages may use the service. |
+| `apps/api/src/codes.ts` | `randomRoomCode`. |
+| `apps/api/src/room.ts` | The `Room` Durable Object: claim, join, relay, race phase, kick, limits, idle alarm. |
+| `apps/api/src/forward.ts` | The site Worker's script: forwards `/api/*` to the API Worker through the service binding. |
 
 ## Landing page (`apps/site/`)
 
