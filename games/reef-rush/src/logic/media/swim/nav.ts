@@ -13,6 +13,8 @@ const WITH_CURRENT_COST = 0.4;
 const AGAINST_CURRENT_COST = 3;
 const SMASH_CORAL_COST = 6;
 const RAM_CORAL_COST = 3;
+/** Air above a surface: a swimmer can only arc through it, so it is a costly way round. */
+const AIR_COST = 4;
 
 const CURRENT_DIRECTION: Partial<Record<Cell, Vec>> = {
   'current-right': { x: 1, y: 0 },
@@ -21,11 +23,15 @@ const CURRENT_DIRECTION: Partial<Record<Cell, Vec>> = {
   'current-down': { x: 0, y: 1 },
 };
 
-/** What a swimmer feels: kelp drags, currents help or hinder, unbroken coral is a wall. Swim's `enterCost`. */
+/**
+ * What a swimmer feels: kelp drags, currents help or hinder, unbroken coral is a wall, air is dear.
+ * Swim's `enterCost`.
+ */
 export const steerCost: EntryCost = (cell, isBroken, move) => {
   if (cell === 'rock') return Number.POSITIVE_INFINITY;
   if (cell === 'coral') return isBroken ? 1 : Number.POSITIVE_INFINITY;
   if (cell === 'kelp') return KELP_COST;
+  if (cell === 'air') return AIR_COST;
   const current = CURRENT_DIRECTION[cell];
   return current ? currentCost(current, move) : 1;
 };

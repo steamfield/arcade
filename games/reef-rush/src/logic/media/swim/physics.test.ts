@@ -4,7 +4,7 @@ import { PLAYER_PROFILE } from '../../ai/profiles.ts';
 import type { GameEvent } from '../../events.ts';
 import { noItems } from '../../racers.ts';
 import { type MoveModifiers, RACER_SIZE, type Racer, type Vec } from '../../types.ts';
-import type { SwimEnv } from './data.ts';
+import type { SwimEnv, SwimMotion } from './data.ts';
 import { applyIntent } from './physics.ts';
 import { SWIM_TUNING as SWIM } from './tuning.ts';
 
@@ -21,7 +21,7 @@ function makeRacer(): Racer {
   return {
     id: 'player',
     character: 'rudy',
-    motion: { kind: 'swim' },
+    motion: { kind: 'swim', airborne: false } as SwimMotion,
     body: { x: 40, y: 40, vx: 0, vy: 0, w: RACER_SIZE.width, h: RACER_SIZE.height },
     facing: 1,
     kickCooldown: 0,

@@ -214,3 +214,90 @@ describe('parseLevel rejecting bad levels', () => {
     expect(levelErrorFrom(level('#1234..F', [[5, 2]]))).toBeInstanceOf(LevelError);
   });
 });
+
+describe('parseLevel opening the surface', () => {
+  /** Water, rock and objects in rows 0-2, above the starts in row 3. */
+  const SEA = `
+    ...#.?o....F
+    .........#.F
+    ...........F
+    #1234......F
+  `;
+  const IN_COLS_2_TO_9 = [{ from: 2, to: 9, row: 3 }];
+  const withSurface = (surface: LevelDef['surface'], ascii = SEA): LevelDef => ({ name: 'Open Sea', ascii, surface });
+
+  it('turns the water above the surface row to air in its columns only, leaving rock and objects in place', () => {
+    const parsed = parseLevel(withSurface(IN_COLS_2_TO_9));
+
+    const cellRows = parsed.cells.map((row) => row.map((cell) => (cell === 'air' ? 'a' : cell[0])).join(''));
+    expect(cellRows).toEqual(['wwaraaaaaaww', 'wwaaaaaaarww', 'wwaaaaaaaaww', 'rwwwwwwwwwww']);
+    expect(parsed.clams).toEqual([{ x: 5, y: 0 }]);
+    expect(parsed.pearls).toEqual([{ x: 6, y: 0 }]);
+    expect(parsed.surface).toEqual(IN_COLS_2_TO_9);
+  });
+
+  it('leaves a level with no surface without air', () => {
+    const parsed = parseLevel(withSurface(undefined));
+
+    expect(parsed.cells.flat()).not.toContain('air');
+    expect(parsed.surface).toEqual([]);
+  });
+
+  it.each([
+    {
+      surface: { from: 9, to: 2, row: 3 },
+      why: 'runs backwards',
+      message: 'Surface 0 runs backwards from column 9 to 2',
+    },
+    {
+      surface: { from: 2, to: 12, row: 3 },
+      why: 'runs off the map',
+      message: 'Surface 0 covers columns 2-12 but the map has columns 0-11',
+    },
+    {
+      surface: { from: -1, to: 9, row: 3 },
+      why: 'starts before the map',
+      message: 'Surface 0 covers columns -1-9 but the map has columns 0-11',
+    },
+    {
+      surface: { from: 2, to: 9, row: 0 },
+      why: 'has no air above it',
+      message: 'Surface 0 sits at row 0 but must be a row from 1 to 3',
+    },
+    {
+      surface: { from: 2, to: 9, row: 4 },
+      why: 'has no water below it',
+      message: 'Surface 0 sits at row 4 but must be a row from 1 to 3',
+    },
+  ])('rejects a surface that $why', ({ surface, message }) => {
+    const error = levelErrorFrom(withSurface([surface]));
+
+    expect(error.message).toBe(message);
+    expect(error).toMatchObject({ row: null, col: null });
+  });
+
+  it.each([
+    { glyph: 'S', kind: 'shark' },
+    { glyph: 'E', kind: 'eel' },
+    { glyph: 'K', kind: 'crab' },
+  ])('rejects a $kind in the air at its row and col', ({ glyph, kind }) => {
+    const error = levelErrorFrom(withSurface(IN_COLS_2_TO_9, SEA.replace('.........#.F', `....${glyph}....#.F`)));
+
+    expect(error.message).toBe(`A ${kind} can't sit in the air above a surface at row 1, col 4`);
+    expect(error).toMatchObject({ row: 1, col: 4 });
+  });
+
+  it('accepts an enemy just under the surface', () => {
+    const parsed = parseLevel(withSurface(IN_COLS_2_TO_9, SEA.replace('#1234......F', '#1234..S...F')));
+
+    expect(parsed.enemies).toEqual([{ kind: 'shark', tile: { x: 7, y: 3 } }]);
+  });
+
+  it('rejects a start tile in the air at its row and col', () => {
+    const ascii = '.1.........F\n....234....F\n...........F';
+    const error = levelErrorFrom(withSurface([{ from: 0, to: 9, row: 2 }], ascii));
+
+    expect(error.message).toBe("Start 1 can't sit in the air above a surface at row 0, col 1");
+    expect(error).toMatchObject({ row: 0, col: 1 });
+  });
+});

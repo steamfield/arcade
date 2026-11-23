@@ -4,8 +4,8 @@
  * one (harmless, knocked back along the bonk).
  *
  * Modes: 'patrol' → 'windup' (SHARK.windupTicks, `enemy.telegraphed`) → 'charge' (up to
- * SHARK.chargeTicks, `enemy.charged`, cut short by rock) → 'recover' (the level's `recoverTicks`,
- * still) → 'patrol'. A wind-up whose target has finished goes straight back to 'patrol'. A bonk from
+ * SHARK.chargeTicks, `enemy.charged`, cut short by rock or the surface) → 'recover' (the level's
+ * `recoverTicks`, still) → 'patrol'. A wind-up whose target has finished goes straight back to 'patrol'. A bonk from
  * any of them goes to 'stagger' for SHARK.staggerTicks, then 'patrol'. How far it sees and patrols,
  * how long it recovers and how hard it turns mid-charge come from the level's `SharkTuning`
  * (`tuningOf(world).shark`). Deterministic: no randomness.
@@ -13,10 +13,11 @@
 import { TICK_DT } from '@arcade/core';
 import { hasClearSweep } from '../../ai/steer.ts';
 import { tuningOf } from '../../difficulty-level.ts';
+import { bodyTiles, cellAt } from '../../level/query.ts';
 import { length } from '../../num.ts';
 import { centreOf } from '../../racers.ts';
 import { isDowned, isInvulnerable } from '../../status.ts';
-import { type Enemy, type EnemyMode, type Racer, TILE, type Vec, type World } from '../../types.ts';
+import { type Box, type Enemy, type EnemyMode, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { enemyBox } from './contact.ts';
 import { SHARK } from './tuning.ts';
 
@@ -162,12 +163,27 @@ function spot(world: World, shark: Enemy, racers: readonly Racer[]): Racer | nul
   return best;
 }
 
-/** Moves the shark one tick along its velocity unless that sweeps it into rock; true when it moved. */
+/**
+ * Moves the shark one tick along its velocity unless that sweeps it into rock or puts its box over
+ * air above a surface (sharks never leave the water); true when it moved.
+ */
 function move(world: World, shark: Enemy): boolean {
   const next = { x: shark.at.x + shark.vel.x * TICK_DT, y: shark.at.y + shark.vel.y * TICK_DT };
   if (!hasClearSweep(world.level, world.broken, enemyBox(shark), next)) return false;
+  if (touchesAir(world, enemyBox({ ...shark, at: next }))) return false;
   shark.at = next;
   return true;
+}
+
+/** True when any tile the box overlaps is air. */
+function touchesAir(world: World, box: Box): boolean {
+  const { left, right, top, bottom } = bodyTiles(box);
+  for (let ty = top; ty <= bottom; ty++) {
+    for (let tx = left; tx <= right; tx++) {
+      if (cellAt(world.level, tx, ty) === 'air') return true;
+    }
+  }
+  return false;
 }
 
 function enter(shark: Enemy, mode: EnemyMode): void {

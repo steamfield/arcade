@@ -1,19 +1,23 @@
 /**
- * Swimming: how one racer's velocity responds to its intent and the water, the swim medium's
- * `applyIntent`. Velocity, facing and kick cooldown only; position is moved by `race/collide.ts`. Every
- * number comes from the tuning it is handed: swim's (`SWIM_TUNING`) with the course's overrides.
+ * Swimming: how one racer's velocity responds to its intent and the water, or the air above a
+ * surface, the swim medium's `applyIntent`. Velocity, facing, kick cooldown and the airborne flag
+ * only; position is moved by `race/collide.ts`. Every number comes from the tuning it is handed:
+ * swim's (`SWIM_TUNING`) with the course's overrides.
  */
 import type { EventSink } from '@arcade/core';
 import { kickImpulse } from '../../abilities.ts';
 import type { GameEvent } from '../../events.ts';
 import type { Body, Intent, MoveModifiers, Racer, Vec } from '../../types.ts';
 import type { MediumEnv, MediumTuning } from '../types.ts';
-import { type SwimEnv, swimEnv } from './data.ts';
+import { type SwimEnv, swimEnv, swimMotion } from './data.ts';
 import { SWIM_KICK_RULES } from './tuning.ts';
 
 /** The swim extras `applyIntent` reads from `tuning.extra`. */
-const SWIM_EXTRAS = ['sink', 'currentForce', 'kelpDragMul'] as const;
-type SwimExtras = Record<(typeof SWIM_EXTRAS)[number], number>;
+const SWIM_EXTRAS = ['sink', 'currentForce', 'kelpDragMul', 'airGravity', 'airDrag', 'airSteer'] as const;
+type SwimExtra = (typeof SWIM_EXTRAS)[number];
+type SwimExtras = Record<SwimExtra, number>;
+
+const DOWN: Vec = { x: 0, y: 1 };
 
 /**
  * Swim's extras from `tuning`.
@@ -21,21 +25,24 @@ type SwimExtras = Record<(typeof SWIM_EXTRAS)[number], number>;
  * @throws {Error} When `tuning.extra` lacks one, which means the tuning isn't swim's.
  */
 function swimExtras(tuning: MediumTuning): SwimExtras {
-  const read = (key: (typeof SWIM_EXTRAS)[number]): number => {
+  const read = (key: SwimExtra): [SwimExtra, number] => {
     const value = tuning.extra[key];
     if (value === undefined) throw new Error(`Swim tuning has no extra '${key}'; pass swim's tuning (effectiveTuning)`);
-    return value;
+    return [key, value];
   };
-  return { sink: read('sink'), currentForce: read('currentForce'), kelpDragMul: read('kelpDragMul') };
+  return Object.fromEntries(SWIM_EXTRAS.map(read)) as SwimExtras;
 }
 
 /**
- * Updates a racer's velocity, facing and kick cooldown for one tick.
- * Emits `racer.kicked` on the tick a kick fires.
+ * Updates a racer's velocity, facing and kick cooldown for one tick: swimming in water, or an arc
+ * under gravity in the air above a surface, where the stick only nudges and a kick doesn't fire.
+ * Emits `racer.kicked` on the tick a kick fires, `racer.breached` on the first tick its environment
+ * reads air after water, and `racer.splashed` on the first tick it reads water after air.
  *
  * @param tuning Swim's tuning with the course's overrides (`effectiveTuning`).
  * @param dt Tick length in seconds.
- * @throws {Error} When `tuning.extra` lacks one of swim's extras, or `env` isn't swim's (`swimEnv`).
+ * @throws {Error} When `tuning.extra` lacks one of swim's extras, or `env` or the racer's motion
+ *   isn't swim's (`swimEnv`, `swimMotion`).
  */
 export function applyIntent(
   racer: Racer,
@@ -46,23 +53,62 @@ export function applyIntent(
   events: EventSink<GameEvent>,
   dt: number,
 ): void {
-  const { sink, currentForce } = swimExtras(tuning);
-  const water = swimEnv(env);
+  const extras = swimExtras(tuning);
+  const surroundings = swimEnv(env);
+  noteSurfaceCrossing(racer, surroundings.inAir, events);
   const direction = unit(intent.move);
-  const body = racer.body;
   updateFacing(racer, intent.move.x);
 
+  if (surroundings.inAir) fly(racer.body, direction, tuning, extras, mods, dt);
+  else swim(racer.body, direction, surroundings, tuning, extras, mods, dt);
+
+  // There is nothing to push off in the air, so a kick only fires underwater.
+  const kicks = intent.kick && racer.kickCooldown === 0 && !surroundings.inAir;
+  if (kicks) kick(racer, direction, tuning.kick * mods.kickMul, mods, events);
+  else if (racer.kickCooldown > 0) racer.kickCooldown -= 1;
+
+  capSpeed(racer.body, tuning.maxSpeed);
+}
+
+/** Records whether the racer is in the air, emitting `racer.breached` or `racer.splashed` when that changes. */
+function noteSurfaceCrossing(racer: Racer, inAir: boolean, events: EventSink<GameEvent>): void {
+  const motion = swimMotion(racer.motion);
+  if (motion.airborne === inAir) return;
+  motion.airborne = inAir;
+  events.emit({ type: inAir ? 'racer.breached' : 'racer.splashed', id: racer.id });
+}
+
+/** One tick underwater: the stick's force, an idle sink, the current, and drag (more of it in kelp). */
+function swim(
+  body: Body,
+  direction: Vec,
+  water: SwimEnv,
+  tuning: MediumTuning,
+  extras: SwimExtras,
+  mods: MoveModifiers,
+  dt: number,
+): void {
   accelerate(body, direction, tuning.force * mods.forceMul * dt);
   // A racer only sinks while idle; swimming in any direction holds depth, so cruise speed
   // scales exactly with forceMul.
-  if (direction.x === 0 && direction.y === 0) accelerate(body, { x: 0, y: 1 }, sink * dt);
-  if (water.current) accelerate(body, water.current, currentForce * dt);
-  applyDrag(body, water, tuning, mods, dt);
+  if (direction.x === 0 && direction.y === 0) accelerate(body, DOWN, extras.sink * dt);
+  if (water.current) accelerate(body, water.current, extras.currentForce * dt);
+  const kelpMul = water.inKelp ? extras.kelpDragMul : 1;
+  applyDrag(body, tuning.drag * mods.dragMul * kelpMul, dt);
+}
 
-  if (intent.kick && racer.kickCooldown === 0) kick(racer, direction, tuning.kick * mods.kickMul, mods, events);
-  else if (racer.kickCooldown > 0) racer.kickCooldown -= 1;
-
-  capSpeed(body, tuning.maxSpeed);
+/** One tick in the air: gravity, `airSteer` of the stick's swim force, and the air's light drag. */
+function fly(
+  body: Body,
+  direction: Vec,
+  tuning: MediumTuning,
+  extras: SwimExtras,
+  mods: MoveModifiers,
+  dt: number,
+): void {
+  accelerate(body, direction, tuning.force * mods.forceMul * extras.airSteer * dt);
+  accelerate(body, DOWN, extras.airGravity * dt);
+  applyDrag(body, extras.airDrag, dt);
 }
 
 /** The vector scaled to length 1, or zero when it has no length. */
@@ -83,10 +129,10 @@ function accelerate(body: Body, direction: Vec, amount: number): void {
   body.vy += direction.y * amount;
 }
 
-function applyDrag(body: Body, env: SwimEnv, tuning: MediumTuning, mods: MoveModifiers, dt: number): void {
-  const kelpMul = env.inKelp ? swimExtras(tuning).kelpDragMul : 1;
+/** Takes `drag` per second off the body's velocity. */
+function applyDrag(body: Body, drag: number, dt: number): void {
   // A long enough dt would make the factor negative and reverse the racer; drag only ever stops it.
-  const keep = Math.max(0, 1 - tuning.drag * mods.dragMul * kelpMul * dt);
+  const keep = Math.max(0, 1 - drag * dt);
   body.vx *= keep;
   body.vy *= keep;
 }

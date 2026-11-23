@@ -2,10 +2,24 @@
  * Sharks through `stepWorld`: a patrol around home, a telegraphed wind-up on a racer it sees, a charge
  * at where that racer was, and two dash bonks (or one Homing Squid) to beat it.
  */
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTY } from '../../difficulty-level.ts';
-import { eventsIn, giveItems, hold, placeOnTile, racerOf, step, ticksOf, tileCentre } from '../../test-world.ts';
-import { TILE, type Vec } from '../../types.ts';
+import type { GameEvent } from '../../events.ts';
+import {
+  courseFromLevel,
+  eventsIn,
+  giveItems,
+  hold,
+  placeOnTile,
+  racerOf,
+  step,
+  ticksOf,
+  tileCentre,
+} from '../../test-world.ts';
+import { type LevelDef, TILE, type Vec } from '../../types.ts';
+import { createWorld } from '../../world.ts';
+import { enemyBox } from './contact.ts';
 import { ARENA_TOP, arena, enemyAt, swimUntilNear, towardEnemy } from './test-arena.ts';
 import { SHARK } from './tuning.ts';
 
@@ -233,5 +247,46 @@ describe('beating a shark', () => {
 
     expect(shark.mode).toBe('stagger');
     expect(eventsIn(log, 'racer.hit')).toEqual([]);
+  });
+});
+
+describe('a shark under the surface', () => {
+  /** Air above row 2 in columns 1-8, a shark at (4, 3) under it, and the rivals in sealed lanes below. */
+  const OPEN_SEA: LevelDef = {
+    name: 'Open Sea',
+    ascii: [
+      '###########',
+      '#........F#',
+      '#........F#',
+      '#1..S....F#',
+      '#........F#',
+      '###########',
+      '#2.......F#',
+      '###########',
+      '#3.......F#',
+      '###########',
+      '#4.......F#',
+      '###########',
+    ].join('\n'),
+    surface: [{ from: 1, to: 8, row: 2 }],
+  };
+
+  it('cuts a charge short at the surface rather than leaving the water', () => {
+    const log = new EventLog<GameEvent>(10_000);
+    const world = createWorld(courseFromLevel(OPEN_SEA), log, { seed: 1 });
+    world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+    const shark = enemyAt(world);
+    shark.mode = 'charge';
+    shark.modeTicks = 0;
+    shark.vel = { x: 0, y: -SHARK.chargeSpeed };
+    const highestTops: number[] = [];
+    for (let tick = 0; tick < 12; tick++) {
+      step(world, log);
+      highestTops.push(enemyBox(shark).y);
+    }
+
+    expect(Math.min(...highestTops)).toBeGreaterThanOrEqual(2 * TILE);
+    expect(Math.min(...highestTops)).toBeLessThan(2 * TILE + 3);
+    expect(shark.mode).toBe('recover');
   });
 });
