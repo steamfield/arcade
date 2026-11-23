@@ -117,9 +117,16 @@ const MENUS: Partial<Record<SceneKey, readonly MenuOption[]>> = MENU_OPTIONS;
 
 const log = createLogger('reef-rush');
 
+/** Events the runtime log holds before the oldest drop. */
+const RUNTIME_EVENT_CAPACITY = 5000;
+
 /** Shared engine state. Logic changes only inside the FixedStep callback. */
 export class Runtime {
-  readonly events = new EventLog<RuntimeEvent>();
+  /**
+   * Room for a whole idle race between drains: a test that waits out the race limit in one step
+   * hears every eel's warning (17 of them, one each 2.5 s) before it reads the log again.
+   */
+  readonly events = new EventLog<RuntimeEvent>(RUNTIME_EVENT_CAPACITY);
   readonly step = new FixedStep((dt) => this.tick(dt));
   scene: SceneKey = 'boot';
   /** True between asking for a scene and that scene's create(); ticks wait while it is set. */
