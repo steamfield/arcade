@@ -141,12 +141,40 @@ describe('a shark that sees a racer', () => {
     Object.assign(shark, { home: { x: 5, y: SHARK_ROW }, at: tileCentre(5, SHARK_ROW) });
     pinned(world, log, 2, SHARK.windupTicks + 1);
     // The player slips away behind it, so the charge runs on into the wall at col 0.
-    pinned(world, log, 18, SHARK.chargeTicks);
+    let charging = 0;
+    for (; charging <= SHARK.chargeTicks && shark.mode === 'charge'; charging++) pinned(world, log, 18, 1);
 
+    // From col 5 the wall is closer than a full charge, so rock ends it early.
+    expect(charging).toBeLessThan(SHARK.chargeTicks);
     expect(shark.at.x).toBeGreaterThanOrEqual(TILE + SHARK.size / 2);
-    expect(shark.vel).toEqual({ x: 0, y: 0 });
-    pinned(world, log, 18, SHARK.recoverTicks + 2);
-    expect(shark.mode).toBe('patrol');
+    expect(shark).toMatchObject({ mode: 'recover', vel: { x: 0, y: 0 } });
+    pinned(world, log, 18, SHARK.recoverTicks - 1);
+    expect(shark.mode).toBe('recover');
+    pinned(world, log, 18, 1);
+    expect(shark).toMatchObject({ mode: 'patrol', target: null });
+  });
+
+  it('recovers when its charge runs out in open water', () => {
+    const { world, log, shark } = sea();
+    pinned(world, log, 8, SHARK.windupTicks + 1);
+    // Out of the way, so the charge runs its full length without a hit.
+    pinned(world, log, 18, SHARK.chargeTicks + 1);
+
+    expect(shark).toMatchObject({ mode: 'recover', vel: { x: 0, y: 0 } });
+  });
+
+  it('calls the charge off and patrols again when its target finishes during the wind-up', () => {
+    const { world, log, shark, player } = sea();
+    // The race runs on for the rivals once the player is home.
+    world.race.endsWhen = 'everyone';
+    pinned(world, log, 8, 10);
+    player.finished = { tick: world.tick, place: 1, overshoot: 0 };
+    step(world, log, SHARK.windupTicks);
+
+    expect(eventsIn(log, 'enemy.telegraphed', 'enemy.charged')).toEqual([
+      { type: 'enemy.telegraphed', index: 0, kind: 'shark' },
+    ]);
+    expect(shark).toMatchObject({ mode: 'patrol', target: null });
   });
 });
 

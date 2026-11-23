@@ -100,7 +100,7 @@ function hazardsNear(world: World, body: Box, hurts: { urchins: boolean; jellies
   }
   if (hurts.enemies) {
     for (const enemy of world.enemies) {
-      const box = enemyDanger(world, enemy);
+      const box = enemyDanger(enemy);
       if (box && near(box.x, box.y)) found.push(box);
     }
   }
@@ -112,9 +112,9 @@ function hazardsNear(world: World, body: Box, hurts: { urchins: boolean; jellies
  * harmful, at its box; an eel from the start of its warning to the end of its lunge, along its whole
  * reach, since it comes out faster than a rival turns.
  */
-export function enemyDanger(world: World, enemy: Enemy): Box | null {
+export function enemyDanger(enemy: Enemy): Box | null {
   if (enemy.kind === 'eel') {
-    return enemy.mode === 'windup' || enemy.mode === 'lunge' ? eelReachBox(world.level, enemy) : null;
+    return enemy.mode === 'windup' || enemy.mode === 'lunge' ? eelReachBox(enemy) : null;
   }
   return isHarmful(enemy) ? enemyBox(enemy) : null;
 }

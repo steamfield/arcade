@@ -2,8 +2,9 @@
  * Sharks: patrol a lane either side of home, wind up on a racer they see ahead, then charge at where
  * it was when the wind-up ended. A bonk staggers one (harmless, knocked back along the bonk).
  *
- * Modes: 'patrol' → 'windup' (SHARK.windupTicks, `enemy.telegraphed`) → 'charge' (SHARK.chargeTicks
- * moving, `enemy.charged`, then SHARK.recoverTicks still) → 'patrol'. A bonk from any of them goes to
+ * Modes: 'patrol' → 'windup' (SHARK.windupTicks, `enemy.telegraphed`) → 'charge' (up to
+ * SHARK.chargeTicks, `enemy.charged`, cut short by rock) → 'recover' (SHARK.recoverTicks, still) →
+ * 'patrol'. A wind-up whose target has finished goes straight back to 'patrol'. A bonk from any of them goes to
  * 'stagger' for SHARK.staggerTicks, then 'patrol'. Deterministic: no randomness.
  */
 import { TICK_DT } from '@arcade/core';
@@ -25,8 +26,9 @@ import { SHARK } from './tuning.ts';
 export function stepShark(world: World, shark: Enemy, index: number, racers: readonly Racer[]): void {
   shark.modeTicks += 1;
   if (shark.mode === 'patrol') patrol(world, shark, index, racers);
-  else if (shark.mode === 'windup') windUp(world, shark, index);
+  else if (shark.mode === 'windup') windUp(world, shark, index, racers);
   else if (shark.mode === 'charge') charge(world, shark);
+  else if (shark.mode === 'recover') recover(shark);
   else if (shark.mode === 'stagger') stagger(world, shark);
 }
 
@@ -66,29 +68,37 @@ function patrol(world: World, shark: Enemy, index: number, racers: readonly Race
   }
 }
 
-/** Holds still for the tell, then charges at where its target is now (along its facing if it's gone). */
-function windUp(world: World, shark: Enemy, index: number): void {
+/**
+ * Holds still for the tell, then charges at where its target is now. A target that has finished or
+ * left the race by then calls the charge off: back to patrol, nothing emitted.
+ */
+function windUp(world: World, shark: Enemy, index: number, racers: readonly Racer[]): void {
   if (shark.modeTicks < SHARK.windupTicks) return;
-  const target = world.racers.find((racer) => racer.id === shark.target && racer.finished === null);
-  const aim = target ? unitFrom(shark.at, centreOf(target), { x: shark.facing, y: 0 }) : { x: shark.facing, y: 0 };
+  const target = racers.find((racer) => racer.id === shark.target && racer.finished === null);
+  if (!target) {
+    enter(shark, 'patrol');
+    shark.target = null;
+    return;
+  }
+  const aim = unitFrom(shark.at, centreOf(target), { x: shark.facing, y: 0 });
   enter(shark, 'charge');
   shark.vel = { x: aim.x * SHARK.chargeSpeed, y: aim.y * SHARK.chargeSpeed };
   if (aim.x !== 0) shark.facing = aim.x > 0 ? 1 : -1;
-  if (target) world.events.emit({ type: 'enemy.charged', index, kind: 'shark', target: target.id });
+  world.events.emit({ type: 'enemy.charged', index, kind: 'shark', target: target.id });
 }
 
-/** Moves straight on until rock stops it or the charge runs out, then sits out its recovery. */
+/** Moves straight on until the charge runs out or rock stops it, then recovers. */
 function charge(world: World, shark: Enemy): void {
-  if (shark.modeTicks <= SHARK.chargeTicks) {
-    if (move(world, shark)) return;
-    // Rock ends the charge early: straight to the recovery part.
-    shark.modeTicks = SHARK.chargeTicks;
-  }
+  if (shark.modeTicks <= SHARK.chargeTicks && move(world, shark)) return;
+  enter(shark, 'recover');
   shark.vel = { x: 0, y: 0 };
-  if (shark.modeTicks >= SHARK.chargeTicks + SHARK.recoverTicks) {
-    enter(shark, 'patrol');
-    shark.target = null;
-  }
+}
+
+/** Sits still for SHARK.recoverTicks, then patrols again. */
+function recover(shark: Enemy): void {
+  if (shark.modeTicks < SHARK.recoverTicks) return;
+  enter(shark, 'patrol');
+  shark.target = null;
 }
 
 /** Drifts back along the bonk, slowing, until the stagger wears off. */

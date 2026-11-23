@@ -85,18 +85,14 @@ describe('an eel', () => {
     expect(ticksOf(log, 'enemy.telegraphed')).toHaveLength(1);
   });
 
-  it('refuses an eel with no rock beside it, naming its tile', () => {
-    const course = courseFromLevel(`
-      ########
-      #1....F#
-      #2..E.F#
-      #3....F#
-      #4....F#
-      ########
-    `);
+  it.each([
+    ['with no rock beside it', '#1....F#\n#2..E.F#\n#3....F#\n#4....F#', 2, 4],
+    ['with rock in the way of its lunge', '#1....F#\n#2....F#\n##E.#.F#\n#3....F#\n#4....F#', 3, 2],
+  ])('refuses an eel %s, naming its tile', (_name, rows, row, col) => {
+    const course = courseFromLevel(`########\n${rows}\n########`);
     const create = () => createWorld(course, new EventLog<GameEvent>(), { seed: 1 });
 
     expect(create).toThrow(LevelError);
-    expect(create).toThrow(expect.objectContaining({ row: 2, col: 4 }));
+    expect(create).toThrow(expect.objectContaining({ row, col }));
   });
 });

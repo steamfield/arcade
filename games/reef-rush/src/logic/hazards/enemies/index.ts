@@ -21,11 +21,14 @@ const START: Record<EnemyKind, Pick<Enemy, 'hp' | 'mode'>> = {
  * One enemy per `level.enemies` entry, in order, at its tile centre, unhurt, facing left: sharks and
  * crabs patrolling, eels hidden.
  *
- * @throws {LevelError} With row and col for an eel with no rock beside it, or a crab with no rock below it.
+ * Each eel's lunge direction (`out`) is worked out here, once; sharks and crabs get a zero `out`.
+ *
+ * @throws {LevelError} With row and col for an eel with no rock beside it or no open water to lunge
+ *   into, or a crab with no rock below it.
  */
 export function createEnemies(level: Level): Enemy[] {
   return level.enemies.map(({ kind, tile }) => {
-    if (kind === 'eel') eelOutward(level, tile);
+    const out = kind === 'eel' ? eelOutward(level, tile) : { x: 0, y: 0 };
     if (kind === 'crab') requireCrabFloor(level, tile);
     return {
       kind,
@@ -33,6 +36,7 @@ export function createEnemies(level: Level): Enemy[] {
       at: { x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE },
       vel: { x: 0, y: 0 },
       facing: -1,
+      out,
       ...START[kind],
       modeTicks: 0,
       target: null,

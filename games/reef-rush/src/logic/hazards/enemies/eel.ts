@@ -22,15 +22,24 @@ const HIDDEN_TICKS = EEL.cycleTicks - EEL.telegraphTicks - EEL.lungeTicks;
 
 /**
  * The unit direction an eel at `home` lunges: away from the first rock beside it, trying left, right,
- * above, then below.
+ * above, then below. `createEnemies` calls it once and stores the result as `enemy.out`.
  *
- * @throws {LevelError} With the tile's row and col when no orthogonal neighbour is rock.
+ * @throws {LevelError} With the tile's row and col when no orthogonal neighbour is rock, or when the
+ *   EEL.lungeTiles tiles it would lunge across aren't all open water.
  */
 export function eelOutward(level: Level, home: Vec): Vec {
   const hole = HOLES.find(({ wall }) => cellAt(level, home.x + wall.x, home.y + wall.y) === 'rock');
   if (!hole) {
     throw new LevelError(
       `Eel at row ${home.y}, col ${home.x} needs rock beside it (left, right, above or below) to hide in`,
+      home.y,
+      home.x,
+    );
+  }
+  for (let step = 1; step <= EEL.lungeTiles; step++) {
+    if (cellAt(level, home.x + hole.out.x * step, home.y + hole.out.y * step) === 'water') continue;
+    throw new LevelError(
+      `Eel at row ${home.y}, col ${home.x} needs ${EEL.lungeTiles} tiles of open water in front of its hole to lunge into`,
       home.y,
       home.x,
     );
@@ -53,15 +62,15 @@ export function stepEel(world: World, eel: Enemy, index: number): void {
   } else if (eel.mode === 'lunge' && eel.modeTicks >= EEL.lungeTicks) {
     enter(eel, 'hidden');
   }
-  placeEel(world.level, eel);
+  placeEel(eel);
 }
 
 /**
- * Where the eel's centre is: its home tile centre, pushed out along `eelOutward` by a triangle that
+ * Where the eel's centre is: its home tile centre, pushed out along `enemy.out` by a triangle that
  * peaks at EEL.lungeTiles halfway through the lunge.
  */
-function placeEel(level: Level, eel: Enemy): void {
-  const out = eelOutward(level, eel.home);
+function placeEel(eel: Enemy): void {
+  const { out } = eel;
   const half = EEL.lungeTicks / 2;
   const reach = eel.mode === 'lunge' ? (EEL.lungeTiles * TILE * (half - Math.abs(eel.modeTicks - half))) / half : 0;
   eel.at = { x: (eel.home.x + 0.5) * TILE + out.x * reach, y: (eel.home.y + 0.5) * TILE + out.y * reach };
@@ -69,9 +78,9 @@ function placeEel(level: Level, eel: Enemy): void {
 }
 
 /** The tile span an eel can reach from home, as a box in world px: what a rival steers clear of. */
-export function eelReachBox(level: Level, eel: Enemy): Box {
+export function eelReachBox(eel: Enemy): Box {
   const size = EEL.size;
-  const out = eelOutward(level, eel.home);
+  const { out } = eel;
   const cx = (eel.home.x + 0.5) * TILE;
   const cy = (eel.home.y + 0.5) * TILE;
   const ex = cx + out.x * EEL.lungeTiles * TILE;
