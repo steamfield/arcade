@@ -86,7 +86,11 @@ function handleArrivals(peer: Peer): void {
 
 function createPeer(room: MemoryRoom, slot: RacerId, humans: readonly RacerId[], options: RaceOptions): Peer {
   const connection = room.connect();
-  const world = createWorld(RUN_TEST_COURSE, new EventLog<GameEvent>(10_000), { seed: 7, humans, difficulty: 'normal' });
+  const world = createWorld(RUN_TEST_COURSE, new EventLog<GameEvent>(10_000), {
+    seed: 7,
+    humans,
+    difficulty: 'normal',
+  });
   const desyncs: Desync[] = [];
   const kicks: RacerId[] = [];
   const session = createSession({
