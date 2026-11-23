@@ -143,6 +143,7 @@ Test cases (the scaffold writes them; lanes treat them as read-only):
 ### Phase 2: gravity wells and black holes
 
 Scaffold: 6599cdb
+Tag: farside/phase-2
 Demo: `/games/rush-racers/?course=drift-test&debug=1`: swing round a planet without burning, get swallowed by the black hole and come back, watch rivals swing the planet and keep clear of the hole.
 Depends on: phase 1
 
