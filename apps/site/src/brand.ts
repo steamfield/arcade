@@ -98,7 +98,7 @@ function place(inner: string, x: number, y: number, scale: number): { svg: strin
   const open = inner.slice(0, inner.indexOf('>') + 1);
   const nested = inner.replace(
     open,
-    `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 ${m[1]} ${m[2]}">`,
+    `<svg x="${x}" y="${y}" width="${w}" height="${h}" viewBox="0 0 ${m[1]} ${m[2]}" aria-hidden="true">`,
   );
   return { svg: nested, w, h };
 }
