@@ -23,9 +23,11 @@ let testCourses = 0;
 
 /**
  * A fresh unlisted course on `level` (a definition, or bare ASCII), registered so a world can hold
- * its id. Each call makes its own course, so two tests never share a level.
+ * its id. Each call makes its own course, so two tests never share a level. `overrides` (such as
+ * `tuning`) are applied before the course is registered, since a course must not change after its
+ * first use.
  */
-export function courseFromLevel(level: LevelDef | string, medium = 'swim'): Course {
+export function courseFromLevel(level: LevelDef | string, medium = 'swim', overrides: Partial<Course> = {}): Course {
   testCourses++;
   const def = typeof level === 'string' ? { name: 'test', ascii: level } : level;
   const course: Course = {
@@ -37,6 +39,7 @@ export function courseFromLevel(level: LevelDef | string, medium = 'swim'): Cour
     song: 'race',
     listed: false,
     parTicks: 60 * 60,
+    ...overrides,
   };
   registerCourse(course);
   return course;

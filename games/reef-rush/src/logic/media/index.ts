@@ -55,9 +55,12 @@ const tunings = new WeakMap<Course, MediumTuning>();
 
 /**
  * The tuning a world races with: its medium's, with the course's overrides on top (`extra` merged
- * key by key). Worked out once per course object.
+ * key by key). Worked out once per course object and cached, so a course object must not change
+ * after its first use.
  *
  * @throws {Error} When the world names a course or medium that is neither shipped nor registered.
+ * @throws {Error} When the course's `tuning.extra` names a key the medium's `extra` doesn't have,
+ *   naming the course, the key and the medium's valid extra keys.
  */
 export function effectiveTuning(world: Pick<World, 'course' | 'medium'>): MediumTuning {
   const course = courseOf(world);
@@ -65,9 +68,25 @@ export function effectiveTuning(world: Pick<World, 'course' | 'medium'>): Medium
   if (cached) return cached;
   const base = mediumOf(world).tuning;
   const overrides = course.tuning ?? {};
+  assertKnownExtras(course, world.medium, base.extra, overrides.extra ?? {});
   const tuning = { ...base, ...overrides, extra: { ...base.extra, ...overrides.extra } };
   tunings.set(course, tuning);
   return tuning;
+}
+
+/** Throws on a course extra the medium doesn't read, since a misspelt key would otherwise do nothing. */
+function assertKnownExtras(
+  course: Course,
+  mediumId: string,
+  mediumExtra: MediumTuning['extra'],
+  courseExtra: MediumTuning['extra'],
+): void {
+  const unknown = Object.keys(courseExtra).find((key) => !Object.hasOwn(mediumExtra, key));
+  if (unknown === undefined) return;
+  const valid = Object.keys(mediumExtra).join(', ') || 'none';
+  throw new Error(
+    `Course '${course.id}' tunes unknown extra '${unknown}' for medium '${mediumId}' (valid extras: ${valid})`,
+  );
 }
 
 /**

@@ -207,8 +207,8 @@ describe('the progress backstop', () => {
     return moves.findIndex(sideways);
   }
 
-  it('sends a rival that gets no closer for 240 ticks into recovery, and not a tick before', () => {
-    // The first tick sets her best; 240 more without beating it start the recovery.
+  it(`sends a rival that gets no closer for ${PROGRESS_BACKSTOP_TICKS} ticks into recovery, and not a tick before`, () => {
+    // The first tick sets her best; PROGRESS_BACKSTOP_TICKS more without beating it start the recovery.
     expect(firstRecovery(PROGRESS_BACKSTOP_TICKS + 100)).toBe(PROGRESS_BACKSTOP_TICKS);
   });
 

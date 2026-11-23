@@ -7,13 +7,14 @@
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
-import type { LegendEntry, Level } from '../../logic/types.ts';
+import type { Level } from '../../logic/types.ts';
 import { TILE, type Vec } from '../../logic/types.ts';
 import { Frame, type FrameKey, Tex, type TexKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { HazardSkin, TerrainArt, Theme } from '../themes/types.ts';
 import { addHazardSprite } from './hazard-view.ts';
 import { Layer } from './layers.ts';
+import { type Legend, tileAt } from './terrain-tile.ts';
 
 /** Course objects drawn as stand-ins until the pickup and hazard views replace them. */
 export interface LevelPlaceholders {
@@ -30,11 +31,7 @@ export interface LevelView {
   onEvents(events: readonly Stamped<RuntimeEvent>[]): void;
 }
 
-/** A course's glyph legend (`LevelDef.legend`): extra glyph to its base cell and art name. */
-type Legend = Readonly<Record<string, LegendEntry>>;
-
 const TILESET_NAME = 'reef';
-const EMPTY_TILE = -1;
 
 /**
  * Builds every course object for `level` in `scene`, drawn with `theme`. `legend` is the course's
@@ -55,16 +52,6 @@ export function createLevelView(scene: Phaser.Scene, level: Level, theme: Theme,
       }
     },
   };
-}
-
-/** The tile the theme draws at (x, y): the glyph's own art when the theme has a tile for it, else its cell's tile. */
-function tileAt(level: Level, terrain: TerrainArt, legend: Legend, x: number, y: number): number {
-  const glyph = level.glyphs[y]?.[x];
-  const art = glyph !== undefined && Object.hasOwn(legend, glyph) ? legend[glyph]?.art : undefined;
-  if (art !== undefined && Object.hasOwn(terrain.glyphTiles, art)) return terrain.glyphTiles[art] ?? EMPTY_TILE;
-  const cell = level.cells[y]?.[x];
-  if (cell === undefined) return EMPTY_TILE;
-  return terrain.tiles[cell] ?? EMPTY_TILE;
 }
 
 function createTileLayer(

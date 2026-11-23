@@ -8,13 +8,16 @@ import type { Level, World } from '../types.ts';
 import { SUNLIT_SHALLOWS } from './sunlit-shallows.ts';
 import type { Course, ShippedCourseId } from './types.ts';
 
-/** Every shipped course by id. */
+/** Every shipped course by id, in menu order: course select lists the `listed` ones in this order. */
 export const COURSES: Readonly<Record<ShippedCourseId, Course>> = {
   'sunlit-shallows': SUNLIT_SHALLOWS,
 };
 
-/** Courses shown on course select, in menu order. */
-export const LISTED_COURSES: readonly Course[] = [SUNLIT_SHALLOWS];
+/**
+ * Courses shown on course select, in menu order: the shipped courses whose `listed` flag is set, so
+ * the menu and the save rules (bests, `lastCourse`) can never disagree about which courses are listed.
+ */
+export const LISTED_COURSES: readonly Course[] = Object.values(COURSES).filter((course) => course.listed);
 
 /** The course a new player, an unknown `?course=` and an unlisted `lastCourse` fall back to. */
 export const DEFAULT_COURSE: Course = SUNLIT_SHALLOWS;

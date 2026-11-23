@@ -4,6 +4,7 @@
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import type { Course } from '../courses/types.ts';
 import type { GameEvent } from '../events.ts';
 import { length } from '../num.ts';
 import { courseFromLevel, hold, placeOnTile, racerOf } from '../test-world.ts';
@@ -20,9 +21,8 @@ const POOL = `
 `;
 
 /** A racing swim world on a course with `tuning` overrides. */
-function swimWith(tuning: NonNullable<ReturnType<typeof courseFromLevel>['tuning']>) {
-  const course = courseFromLevel(POOL);
-  course.tuning = tuning;
+function swimWith(tuning: NonNullable<Course['tuning']>) {
+  const course = courseFromLevel(POOL, 'swim', { tuning });
   const world = createWorld(course, new EventLog<GameEvent>(100_000), { seed: 1 });
   world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
   return world;
@@ -37,6 +37,14 @@ describe('course tuning', () => {
       maxSpeed: 220,
       extra: { ...MEDIA.swim.tuning.extra, sink: 0 },
     });
+  });
+
+  it('rejects an extra the medium does not have, naming the course, the key and the valid extras', () => {
+    const world = swimWith({ extra: { kelpDrag: 0.5 } });
+
+    expect(() => effectiveTuning(world)).toThrow(
+      `Course '${world.course}' tunes unknown extra 'kelpDrag' for medium 'swim' (valid extras: ${Object.keys(MEDIA.swim.tuning.extra).join(', ')})`,
+    );
   });
 
   it("caps a swimmer at the course's maxSpeed, not swim's own", () => {
