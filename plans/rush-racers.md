@@ -178,11 +178,13 @@ Test cases:
 Demo: `/games/rush-racers/?course=run-test` in the forest theme with the Thornwood cast, items, crates, acorns, enemies and song; `?stage=enemy-modes&course=run-test` shows the forest enemies.
 Depends on: phase 2
 
+Scaffold: a14dda6
+
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/engine/worlds/thornwood/cast.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/racers.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/portraits.ts, games/rush-racers/src/engine/art/sprites/sprites.test.ts | contracts | games/rush-racers/src/engine/worlds/thornwood/cast.test.ts | opus | pending | | cast art covers every slot, contrast holds |
-| b | M | games/rush-racers/src/engine/worlds/thornwood/objects.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/items.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/pickups.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/enemies.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/attack.ts | contracts | games/rush-racers/src/engine/worlds/thornwood/objects.test.ts | opus | pending | | object art covers every key |
-| c | M | games/rush-racers/src/engine/themes/forest.ts, games/rush-racers/src/engine/themes/forest/, games/rush-racers/src/engine/audio/songs/thornwood.ts | contracts, games/rush-racers/src/engine/themes/ocean.ts | games/rush-racers/src/engine/themes/forest.test.ts | opus | pending | | theme and song resolve, contrast holds |
+| a | M | games/rush-racers/src/engine/worlds/thornwood/cast.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/racers.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/portraits.ts, games/rush-racers/src/engine/art/sprites/sprites.test.ts | contracts | games/rush-racers/src/engine/worlds/thornwood/cast.test.ts | opus | running | deliver/rush-racers-3a | cast art covers every slot, contrast holds |
+| b | M | games/rush-racers/src/engine/worlds/thornwood/objects.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/items.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/pickups.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/enemies.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/attack.ts | contracts | games/rush-racers/src/engine/worlds/thornwood/objects.test.ts | opus | running | deliver/rush-racers-3b | object art covers every key |
+| c | M | games/rush-racers/src/engine/themes/forest.ts, games/rush-racers/src/engine/themes/forest/, games/rush-racers/src/engine/audio/songs/thornwood.ts | contracts, games/rush-racers/src/engine/themes/ocean.ts | games/rush-racers/src/engine/themes/forest.test.ts | opus | running | deliver/rush-racers-3c | theme and song resolve, contrast holds |
 
 Scaffold contents: `ThemeId` gains `forest` and `SongId` `thornwood`; `THEMES.forest` is a placeholder (ocean's look under id `forest`) and `songs.thornwood` the race song renamed; `run-test` names both. `themes/forest/palettes.ts` fixes the forest's colours as a contract: dusky canopy greens (`WOOD_BANDS`, seven bands about as dark as `WATER_BANDS`), far and near tree silhouettes, terrain (earth, cracked stone, branch, mud), hazards (thorn bush, wasp), so every racer and all global art keep 3:1 against them. `engine/worlds/thornwood/keys.ts` names every Thornwood texture and frame (`ThornTex`, `ThornIconFrame`, `ThornPortraitFrame`); `worlds/thornwood/cast.ts` and `objects.ts` hold today's placeholder skins (Reef textures, Thornwood words) and export `registerThornwoodCast(scene)` and `registerThornwoodObjects(scene)` as no-ops; `worlds/thornwood.ts` is wiring only. `worlds/index.ts` gains `assertSkinTextures(textures, skin)`, called at boot after textures register, which throws naming the world and key for any texture or frame the skin names that doesn't exist (the check deferred from phase 1).
 
@@ -223,6 +225,8 @@ Test cases:
 Demo: rivals finish `run-test` and the run conformance geometries without stalling, take a high route when it is shorter, and never aim at ground they can't reach; Easy's guide arrow points up at the next jump; Easy's assist never jumps for the player.
 Depends on: phase 2
 
+Scaffold: a14dda6
+
 One lane: the jump-aware nav and the pilot that follows it are one contract (the pilot executes the nav's links), so splitting them would make one lane test against a fake of the other. No scaffold: the lane owns every file it changes, and `Medium`'s members don't change.
 
 Test cases:
@@ -245,7 +249,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/logic/media/run/links.ts, games/rush-racers/src/logic/media/run/nav.ts, games/rush-racers/src/logic/media/run/way.ts, games/rush-racers/src/logic/media/run/pilot.ts, games/rush-racers/src/logic/media/run/index.ts, games/rush-racers/src/logic/media/run/way-data.ts, games/rush-racers/src/logic/media/run/simple-way.ts, games/rush-racers/src/logic/media/run/simple-pilot.ts, games/rush-racers/src/logic/media/run/way.test.ts, games/rush-racers/src/logic/conformance/medium.test.ts, games/rush-racers/src/logic/conformance/geometries.ts, games/rush-racers/src/logic/courses/run-test.ts | contracts, games/rush-racers/src/logic/media/run/physics.ts | games/rush-racers/src/logic/media/run/nav.test.ts, games/rush-racers/src/logic/media/run/pilot.test.ts | opus | pending | | rivals plan jumps, run conformance and par pass |
+| a | L | games/rush-racers/src/logic/media/run/links.ts, games/rush-racers/src/logic/media/run/nav.ts, games/rush-racers/src/logic/media/run/way.ts, games/rush-racers/src/logic/media/run/pilot.ts, games/rush-racers/src/logic/media/run/index.ts, games/rush-racers/src/logic/media/run/way-data.ts, games/rush-racers/src/logic/media/run/simple-way.ts, games/rush-racers/src/logic/media/run/simple-pilot.ts, games/rush-racers/src/logic/media/run/way.test.ts, games/rush-racers/src/logic/conformance/medium.test.ts, games/rush-racers/src/logic/conformance/geometries.ts, games/rush-racers/src/logic/courses/run-test.ts | contracts, games/rush-racers/src/logic/media/run/physics.ts | games/rush-racers/src/logic/media/run/nav.test.ts, games/rush-racers/src/logic/media/run/pilot.test.ts | opus | running | deliver/rush-racers-4a | rivals plan jumps, run conformance and par pass |
 
 ### Phase 5: Bramble Run
 
