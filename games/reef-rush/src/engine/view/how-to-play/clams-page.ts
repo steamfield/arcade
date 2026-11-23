@@ -18,7 +18,7 @@ const TOP_ROW = { centreY: 50, racerX: 56, clamX: 138, itemX: 212 } as const;
 /** The well in the safe column: three slots at 2x, with a gap between. */
 const WELL = { x: 134, y: 96, w: 84, h: 26, slotX: 148, pitch: 26, centreY: 109 } as const;
 /** HOLD 3 sits under the well, out of the way of the power-up flying in from the clam. */
-const WELL_TITLE_TOP = 130;
+const WELL_TITLE_TOP = 128;
 /** Ticks per power-up: the clam shuts for the first part, the item pops, then the well takes it. */
 const ROUND_TICKS = 90;
 const POP_TICKS = 10;
