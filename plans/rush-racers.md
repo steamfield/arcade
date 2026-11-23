@@ -219,15 +219,32 @@ Test cases:
 
 ### Phase 4: rivals that platform
 
-Demo: rivals finish `run-test` and the run conformance geometries without stalling; Easy's guide arrow points at the next jump; Easy's assist never jumps for the player.
+Demo: rivals finish `run-test` and the run conformance geometries without stalling, take a high route when it is shorter, and never aim at ground they can't reach; Easy's guide arrow points up at the next jump; Easy's assist never jumps for the player.
 Depends on: phase 2
+
+One lane: the jump-aware nav and the pilot that follows it are one contract (the pilot executes the nav's links), so splitting them would make one lane test against a fake of the other. No scaffold: the lane owns every file it changes, and `Medium`'s members don't change.
+
+Test cases:
+- Stand tiles: an open tile with rock, unbroken coral, a ledge or a shut crate (solid in run) under it is a stand tile; breaking the coral under one removes it.
+- Links: from each stand tile, `walk` to the next stand tile on the same row; `drop` off an edge to the stand tile it lands on (falling at `maxFall` while moving at `runSpeed`); `jump` to every stand tile a held jump of some length reaches without its arc (a few samples of body-sized boxes along the parabola) crossing a solid tile, each with the hold ticks that reach it (from `jumpPeak`). A ledge is landable from below; a shut crate is not passed through. A 3-tile pit is jumped; a 5-tile pit isn't linked.
+- Nav: the distance from each stand tile is the least time to the finish over links (Dijkstra on ticks: walk and drop at `runSpeed`, jump by its air time), so a high route that is shorter in time wins and a route that needs an impossible jump is Infinity; every open tile above a stand tile (air, a pit's mouth) reads the distance of the stand tile it falls to, or the nearest stand tile's distance on its row plus a penalty, so progress and the guide keep working mid-jump. `nextTile` from a stand tile follows its best link's first step (up or diagonal for a jump), so Easy's guide arrow points up at a jump. Building nav for a 300x20 level takes under 50 ms in Vitest.
+- `validateLevel`: a start whose distance is Infinity reports the start's row and col (replaces phase 2's start-reach and finish checks with the link graph's answer).
+- Pilot: a rival follows its stand tile's best link: runs toward a walk or a drop, starts a jump from within a tile of the take-off with Up held for the link's hold ticks, lets go to land, and re-plans on landing; it dashes on flat runs as today; on `forceRecover` it backs off and re-jumps as today. It never holds Up across a landing.
+- Conformance: run gets a "high route" geometry (a ledge staircase to a shorter upper path) and a "dead-end jump" geometry (an unjumpable gap beside a longer ground path); rivals finish both; every rival finishes `run-test` from every start under par across seeds 1-5 and all characters; `media/run/simple-way.ts` and `simple-pilot.ts` are removed, with their tests moved to `nav.test.ts` and `pilot.test.ts`.
+- Easy: `assistedIntent` in run never sets `move.y < -0.5` (aimFrom stays horizontal), checked on a level where the guide points up.
+
+#### Lane a brief
+
+- Goal: rivals in run that plan jumps from a link graph, so any course whose route needs jumps, drops and ledges is raced well, and the Easy guide points at the jump.
+- Interface: `Medium`'s members are unchanged. `media/run/links.ts` (`standTiles`, `buildLinks`), `media/run/nav.ts` (`buildRunNav` over links), `media/run/way.ts` (`runDistanceAt`, `runNextTile`, `runAimFrom` horizontal only, `validateRunLevel`), `media/run/pilot.ts` (`createRunPilot`, `steerRunner`); `RunNav` and `RunPilot` in `way-data.ts` grow what they need (links per stand tile, best link, distances in ticks); `index.ts` wires them. `physics.ts`'s `jumpPeak` is read-only; ask before changing physics.
+- Behavior: the phase 4 test cases above. Distances are in ticks, so a racer's progress and `top-route.test.ts` keep comparing the same way; check that `progressAt` and the race standings still rank racers sensibly mid-air (a rival over a pit isn't shown as last).
+- Decisions already made: no wall jump; the dash is not planned as a jump extender (the pilot may dash on flat ground only); a crate is a platform once shut, never a route through.
+- Out of scope: art, Bramble Run itself (phase 5 uses this nav and must not need changes to it), tuning the physics.
+- Done when: `pnpm arcade test rush-racers @media @courses @seams @platform src/logic/conformance src/logic/media/run src/logic/guide.test.ts src/logic/difficulty/easy-guide.test.ts src/logic/top-route.test.ts` passes, the `--skip-tests` check passes, `pnpm --filter game-rush-racers test:difficulty` still passes, and a `see --query course=run-test` capture after 600 ticks shows rivals past the plateau.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/logic/media/run/nav.ts, games/rush-racers/src/logic/media/run/links.ts, games/rush-racers/src/logic/media/run/way.ts | contracts, games/rush-racers/src/logic/media/run/physics.ts | games/rush-racers/src/logic/media/run/nav.test.ts | opus | pending | | nav tests pass, build time bounded |
-| b | M | games/rush-racers/src/logic/media/run/pilot.ts, games/rush-racers/src/logic/media/run/index.ts, games/rush-racers/src/logic/media/run/simple-way.ts, games/rush-racers/src/logic/conformance/medium.test.ts, games/rush-racers/src/logic/conformance/geometries.ts | contracts, games/rush-racers/src/logic/media/run/nav.ts | games/rush-racers/src/logic/media/run/pilot.test.ts | opus | pending | | pilot tests and run geometries pass |
-
-(Test cases and briefs written during phase 2.)
+| a | L | games/rush-racers/src/logic/media/run/links.ts, games/rush-racers/src/logic/media/run/nav.ts, games/rush-racers/src/logic/media/run/way.ts, games/rush-racers/src/logic/media/run/pilot.ts, games/rush-racers/src/logic/media/run/index.ts, games/rush-racers/src/logic/media/run/way-data.ts, games/rush-racers/src/logic/media/run/simple-way.ts, games/rush-racers/src/logic/media/run/simple-pilot.ts, games/rush-racers/src/logic/media/run/way.test.ts, games/rush-racers/src/logic/conformance/medium.test.ts, games/rush-racers/src/logic/conformance/geometries.ts, games/rush-racers/src/logic/courses/run-test.ts | contracts, games/rush-racers/src/logic/media/run/physics.ts | games/rush-racers/src/logic/media/run/nav.test.ts, games/rush-racers/src/logic/media/run/pilot.test.ts | opus | pending | | rivals plan jumps, run conformance and par pass |
 
 ### Phase 5: Bramble Run
 
