@@ -15,7 +15,7 @@ const FARSIDE_CAST: CastSkin = {
   ...REEF_CAST,
   abilities: {
     rudy: { name: 'SHAKE IT OFF', blurb: 'STUNS AND TRAPS END FAST' },
-    gil: { name: 'SPRING BURN', blurb: 'BURNS UP AND DOWN HARDER' },
+    gil: { name: 'SPRING BURN', blurb: 'DASHES UP OR DOWN HARDER' },
     streak: { name: 'WIND-UP', blurb: 'GAINS SPEED ON STRAIGHTS' },
     onyx: { name: 'AMBUSH', blurb: 'REAR BUMPS STEAL SPEED' },
     nib: { name: 'DEEP POCKETS', blurb: 'HOLDS 4 POWER-UPS, NOT 3' },

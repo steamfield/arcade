@@ -25,12 +25,16 @@ const DRIFT = 'LET GO TO DRIFT';
 const BRAKE = 'BURN BACK TO BRAKE';
 const ALL_MOVES = [BURN, DRIFT, BRAKE].join('\n');
 
-/** One beat: how long it lasts, the arrow lit (none while drifting), the caption, and the speed (px a tick) it ends at. */
+/**
+ * One beat: how long it lasts, the arrow lit (none while drifting), the caption, the speed (px a
+ * tick) it ends at, and whether the racer leaves a drifting trail.
+ */
 interface Beat {
   ticks: number;
   arrow: Direction | null;
   caption: string;
   speedTo: number;
+  trail: boolean;
 }
 
 /**
@@ -38,10 +42,10 @@ interface Beat {
  * a burn back that stops it, then a moment at rest before the racer is back at the start.
  */
 const BEATS: readonly Beat[] = [
-  { ticks: 40, arrow: 'right', caption: BURN, speedTo: 1 },
-  { ticks: 60, arrow: null, caption: DRIFT, speedTo: 0.9 },
-  { ticks: 30, arrow: 'left', caption: BRAKE, speedTo: 0 },
-  { ticks: 30, arrow: null, caption: BRAKE, speedTo: 0 },
+  { ticks: 40, arrow: 'right', caption: BURN, speedTo: 1, trail: false },
+  { ticks: 60, arrow: null, caption: DRIFT, speedTo: 0.9, trail: true },
+  { ticks: 30, arrow: 'left', caption: BRAKE, speedTo: 0, trail: false },
+  { ticks: 30, arrow: null, caption: BRAKE, speedTo: 0, trail: false },
 ];
 const DRIFT_PERIOD = BEATS.reduce((total, beat) => total + beat.ticks, 0);
 /** Reduced motion holds the racer three quarters through its first burn, Right lit and flame out. */
@@ -87,9 +91,8 @@ export const buildDriftMovePage: PageBuilder = (kit) => {
     // A burn to the right throws its flame out behind; a burn back throws it out ahead.
     const flameX = beat.arrow === 'right' ? x - FLAME.offset : x + FLAME.offset;
     for (const bar of flame) bar.setVisible(beat.arrow !== null).setX(flameX);
-    const drifting = beat.caption === DRIFT;
     trail.forEach((dot, i) => {
-      dot.setVisible(drifting).setX(x - TRAIL.offset - i * TRAIL.gap);
+      dot.setVisible(beat.trail).setX(x - TRAIL.offset - i * TRAIL.gap);
     });
   };
 };

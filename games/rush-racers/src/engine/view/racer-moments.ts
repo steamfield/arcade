@@ -90,7 +90,9 @@ export function createRacerMoments(id: RacerId, place: number, local: RacerId = 
       const sinceFlash = tick - placeGainedAt;
       const flashing = sinceFlash >= 0 && sinceFlash < PLACE_FLASH_TICKS;
       // The latest of a kick, a flap and a bounce shapes the sprite, so a new moment shows at once.
-      if (bouncedAt > kickedAt && bouncedAt > flappedAt) {
+      // A bounce wins a tie: within a tick the wall stops the racer after its intent kicked or
+      // flapped, so a dash into a wall ends in the squash.
+      if (bouncedAt >= kickedAt && bouncedAt >= flappedAt) {
         const stretch = bounceStretchAt(tick - bouncedAt);
         return { stretch, axis: stretch === 0 ? null : bounceAxis, flashing };
       }
