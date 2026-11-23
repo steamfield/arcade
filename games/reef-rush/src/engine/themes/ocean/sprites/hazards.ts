@@ -3,13 +3,14 @@
  * with sharp, stinging shapes, so they read as dangerous by silhouette and
  * not by colour alone.
  */
-import { Frame, Tex } from '../keys.ts';
+import { Frame } from '../../../art/keys.ts';
+import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
+import { OceanTex, type OceanTexKey } from '../keys.ts';
 import { HazardPalette } from '../palettes.ts';
-import { type ArtSheet, sheet } from './sheet.ts';
 
 /** Hazard sheets. The jelly's `a` frame is the open bell, `b` the squeezed one. */
-export const HAZARD_SHEETS: readonly ArtSheet[] = [
-  sheet(Tex.urchin, HazardPalette.urchin, {
+export const HAZARD_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
+  sheet(OceanTex.urchin, HazardPalette.urchin, {
     [Frame.a]: [
       '2....2....2.',
       '.0...0...0..',
@@ -25,7 +26,7 @@ export const HAZARD_SHEETS: readonly ArtSheet[] = [
       '.....2......',
     ],
   }),
-  sheet(Tex.jelly, HazardPalette.jelly, {
+  sheet(OceanTex.jelly, HazardPalette.jelly, {
     [Frame.a]: [
       '..00111100..',
       '.0111111110.',

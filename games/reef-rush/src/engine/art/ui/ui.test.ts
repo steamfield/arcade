@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WATER_BANDS, WaterLight } from '../palettes.ts';
+import { THEMES } from '../../themes/index.ts';
 import { measureFrames, type NamedFrame } from '../pixel.ts';
 import { UI_SHEETS } from './index.ts';
 import { IconFrame, MedalFrame, PortraitFrame, UiTex } from './keys.ts';
@@ -243,10 +243,17 @@ describe('UI palette contrast', () => {
         sum | (Math.round(((base >> shift) & 0xff) * (1 - alpha) + ((light >> shift) & 0xff) * alpha) << shift),
       0,
     );
-  // The brightest water on screen: the shallowest band under the caustics (alpha 0.22) and a god ray
-  // (alpha 0.05), the alphas `view/backdrop.ts` draws them at.
-  const brightestWater = over(over(WATER_BANDS[0] ?? 0, WaterLight.caustic, 0.22), WaterLight.ray, 0.05);
-  const water = [...WATER_BANDS, brightestWater];
+  // Each theme's brightest backdrop: its top band under the caustics (alpha 0.22) and a ray (alpha 0.05),
+  // the alphas `view/backdrop.ts` draws them at, when the theme has them.
+  const brightestOf = ({ backdrop }: (typeof THEMES)[keyof typeof THEMES]) => {
+    const top = backdrop.bands[0] ?? 0;
+    const lit = backdrop.caustics === null ? top : over(top, backdrop.caustics, 0.22);
+    return backdrop.rays === null ? lit : over(lit, backdrop.rays, 0.05);
+  };
+  const water = Object.values(THEMES).flatMap((theme) => [
+    ...theme.contrastBands.map((band) => band.colour),
+    brightestOf(theme),
+  ]);
   const offPanel = OFF_PANEL_TONES.flatMap((tone) => [
     [tone, UiTone[tone], 4.5] as const,
     // Display text is large text, where WCAG asks 3:1.

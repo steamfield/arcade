@@ -1,20 +1,12 @@
 /**
- * Every texture, frame and animation key the game uses, as typed consts. Views
- * and the art builder both import from here, so a typo fails typecheck and the
- * phase 4 pixel art can replace a texture by building the same key.
+ * The global texture and frame keys, as typed consts: racers, pickups, power-ups, attack art, HUD
+ * sprites and the guide arrow, which look the same on every course. Views and the art builder both
+ * import from here, so a typo fails typecheck. A course's own look (terrain, hazards, backdrop) keys
+ * its textures in its theme under `themes/`, never here.
  */
 
 /** Texture keys. Phase 3's pickups, hazards and power-ups are declared now so their views have keys to use. */
 export const Tex = {
-  /** Tileset for the tilemap: one frame per entry in TileIndex. */
-  tiles: 'tiles',
-  coralDebris: 'coral-debris',
-  kelp: 'kelp',
-  currentRight: 'current-right',
-  currentLeft: 'current-left',
-  currentUp: 'current-up',
-  currentDown: 'current-down',
-  finishGate: 'finish-gate',
   /** One racer texture per character, keyed by CharacterId so views can look up `Tex[racer.character]`. */
   rudy: 'racer-rudy',
   gil: 'racer-gil',
@@ -26,8 +18,6 @@ export const Tex = {
   rook: 'racer-rook',
   pearl: 'pearl',
   clam: 'clam',
-  urchin: 'urchin',
-  jelly: 'jelly',
   jetFin: 'powerup-jet-fin',
   bubbleShield: 'powerup-bubble-shield',
   puffer: 'powerup-puffer',
@@ -48,8 +38,6 @@ export const Tex = {
   looseGlow: 'loose-glow',
   hudMarker: 'hud-marker',
   kickPip: 'kick-pip',
-  backdropFar: 'backdrop-far',
-  backdropNear: 'backdrop-near',
   /** The Easy guide's arrow (13x13, pointing right and down-right frames); the view turns it in quarter turns. */
   guideArrow: 'guide-arrow',
 } as const;
@@ -59,7 +47,7 @@ export type TexKey = (typeof Tex)[keyof typeof Tex];
 
 /** Named frames inside multi-frame textures. */
 export const Frame = {
-  /** Two-frame cycles: racer swim strokes, kelp sway, current flow, jelly pulse. */
+  /** Two-frame cycles: racer swim strokes, and a theme's own loops (the ocean's kelp, currents and jelly). */
   a: 'a',
   b: 'b',
   squidLatched: 'latched',
@@ -77,22 +65,3 @@ export const Frame = {
 
 /** Any frame name in `Frame`. */
 export type FrameKey = (typeof Frame)[keyof typeof Frame];
-
-/** Tile indices inside `Tex.tiles`. The tilemap stores these; -1 is empty water. */
-export const TileIndex = {
-  rock: 0,
-  coral: 1,
-} as const;
-
-/** Global animation keys, registered once by `buildTextures`. */
-export const Anim = {
-  kelpSway: 'kelp-sway',
-  currentRight: 'current-right-flow',
-  currentLeft: 'current-left-flow',
-  currentUp: 'current-up-flow',
-  currentDown: 'current-down-flow',
-  jellyPulse: 'jelly-pulse',
-} as const;
-
-/** Any animation key in `Anim`. */
-export type AnimKey = (typeof Anim)[keyof typeof Anim];

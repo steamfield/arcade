@@ -1,8 +1,10 @@
 /**
- * The water behind the course, back to front: depth bands that darken toward
- * the floor (joined by line dithering), a caustic shimmer just under the
- * surface, a far reef ridge, slow-swaying god rays, a mid kelp forest, and
- * drifting motes. Far layers follow less of the camera's scroll than near ones.
+ * What sits behind the course, back to front, in the course theme's look: colour bands down the
+ * level (joined by line dithering), a caustic shimmer just under the top, painted layers behind
+ * the light rays, slow-swaying rays, painted layers in front of them, and drifting motes. For the
+ * ocean that is water darkening toward the floor, a far reef ridge, god rays and a mid kelp forest.
+ * A theme leaves out caustics, rays or motes by giving no colour for them. Far layers follow less
+ * of the camera's scroll than near ones.
  *
  * Every moving part is a pure function of the world tick and the camera
  * scroll, so captures repeat. With reduced motion the time-driven parts hold
@@ -11,11 +13,10 @@
  */
 import Phaser from 'phaser';
 import { type Level, TILE, type Vec } from '../../logic/types.ts';
-import { Tex, type TexKey } from '../art/keys.ts';
-import { WATER_BANDS, WaterLight } from '../art/palettes.ts';
+import type { BackdropSpec, PaintedLayer, Theme } from '../themes/types.ts';
 import { Layer } from './layers.ts';
 
-/** The water behind the course, built once per race. */
+/** The backdrop behind the course, built once per screen. */
 export interface Backdrop {
   /**
    * Moves the animated layers to where they are at `tick`.
@@ -46,29 +47,24 @@ interface AnimatedPart {
 const Depth = {
   bands: Layer.backdrop,
   caustics: Layer.backdrop + 1,
-  farReef: Layer.parallax,
+  behindRays: Layer.parallax,
   rays: Layer.parallax + 1,
-  kelpForest: Layer.parallax + 2,
+  aboveRays: Layer.parallax + 2,
   motes: Layer.parallax + 3,
 } as const;
 
-/** The level's top tile row is rock; the water surface is just under it. */
+/** The level's top tile row is solid; the surface the light comes through is just under it. */
 const SURFACE_Y = TILE;
 
-/** Each factor is the fraction of camera scroll the layer follows: far layers move less. */
-const PAINTED_LAYERS: readonly { texture: TexKey; height: number; factor: number; depth: number }[] = [
-  { texture: Tex.backdropFar, height: 64, factor: 0.15, depth: Depth.farReef },
-  { texture: Tex.backdropNear, height: 80, factor: 0.35, depth: Depth.kelpForest },
-];
-
 /**
- * Adds the backdrop for `level` behind everything else in `scene`.
+ * Adds the backdrop for `level`, in `theme`'s look, behind everything else in `scene`.
  *
  * @param options Defaults to full motion when the caller has no settings to pass.
  */
 export function createBackdrop(
   scene: Phaser.Scene,
   level: Level,
+  theme: Pick<Theme, 'backdrop' | 'ambient'>,
   options: BackdropOptions = { reducedMotion: false },
 ): Backdrop {
   const camera = scene.cameras.main;
@@ -76,9 +72,13 @@ export function createBackdrop(
     screen: { width: camera.width, height: camera.height },
     maxScroll: { x: level.width * TILE - camera.width, y: level.height * TILE - camera.height },
   };
-  addDepthBands(scene, level, viewport);
-  addPaintedLayers(scene, level, viewport);
-  const parts = [createCaustics(scene), createLightRays(scene, viewport), createMotes(scene, viewport)];
+  const { backdrop } = theme;
+  addDepthBands(scene, level, viewport, backdrop.bands);
+  addPaintedLayers(scene, level, viewport, backdrop.layers);
+  const parts: AnimatedPart[] = [];
+  if (backdrop.caustics !== null) parts.push(createCaustics(scene, backdrop.caustics));
+  if (backdrop.rays !== null) parts.push(createLightRays(scene, viewport, backdrop.rays));
+  if (theme.ambient.motes !== null) parts.push(createMotes(scene, viewport, theme.ambient.motes));
   // update runs every rendered frame, so it reuses one scroll object rather than allocating per frame.
   const scroll = { x: 0, y: 0 };
 
@@ -101,16 +101,16 @@ const DITHER = [
   { rowsAbove: [3, 2, 1], hit: (x: number, y: number) => (x + y) % 2 === 0 },
 ] as const;
 
-function addDepthBands(scene: Phaser.Scene, level: Level, viewport: Viewport): void {
+function addDepthBands(scene: Phaser.Scene, level: Level, viewport: Viewport, colours: BackdropSpec['bands']): void {
   const levelHeight = level.height * TILE;
-  const bandHeight = Math.ceil(levelHeight / WATER_BANDS.length);
+  const bandHeight = Math.ceil(levelHeight / colours.length);
   const width = viewport.screen.width;
   const graphics = scene.make.graphics({}, false);
 
-  WATER_BANDS.forEach((colour, band) => {
+  colours.forEach((colour, band) => {
     const top = band * bandHeight;
     graphics.fillStyle(colour, 1).fillRect(0, top, width, bandHeight);
-    const deeper = WATER_BANDS[band + 1];
+    const deeper = colours[band + 1];
     if (deeper === undefined) return;
     graphics.fillStyle(deeper, 1);
     for (const { rowsAbove, hit } of DITHER) {
@@ -128,10 +128,15 @@ function addDepthBands(scene: Phaser.Scene, level: Level, viewport: Viewport): v
   graphics.destroy();
 }
 
-function addPaintedLayers(scene: Phaser.Scene, level: Level, viewport: Viewport): void {
+function addPaintedLayers(
+  scene: Phaser.Scene,
+  level: Level,
+  viewport: Viewport,
+  layers: readonly PaintedLayer[],
+): void {
   const { screen, maxScroll } = viewport;
   const floorY = floorTop(level);
-  for (const layer of PAINTED_LAYERS) {
+  for (const layer of layers) {
     // Wide enough to cover the screen at the far end of the course, and placed so the layer
     // stands on the course's rock floor (not hidden behind it) when the camera is at the bottom.
     const width = Math.ceil(screen.width + maxScroll.x * layer.factor);
@@ -140,11 +145,11 @@ function addPaintedLayers(scene: Phaser.Scene, level: Level, viewport: Viewport)
       .tileSprite(0, y, width, layer.height, layer.texture)
       .setOrigin(0)
       .setScrollFactor(layer.factor)
-      .setDepth(layer.depth);
+      .setDepth(layer.aboveRays ? Depth.aboveRays : Depth.behindRays);
   }
 }
 
-/** Pixels each painted layer tucks behind the floor, so no water shows between them. */
+/** Pixels each painted layer tucks behind the floor, so no band shows between them. */
 const FLOOR_OVERLAP = 4;
 
 /** World y of the top of the solid rock rows at the bottom of the level (its height if there are none). */
@@ -157,7 +162,7 @@ function floorTop(level: Level): number {
 /** Caustic net: one dash per cell, wobbling within its cell, fading with depth below the surface. */
 const CAUSTICS = { cell: { w: 12, h: 5 }, rows: 5, factor: 0.5, stepTicks: 6, alpha: 0.22 } as const;
 
-function createCaustics(scene: Phaser.Scene): AnimatedPart {
+function createCaustics(scene: Phaser.Scene, colour: number): AnimatedPart {
   const graphics = scene.add
     .graphics()
     .setScrollFactor(0, 1)
@@ -179,7 +184,7 @@ function createCaustics(scene: Phaser.Scene): AnimatedPart {
       const firstColumn = Math.floor(shift / cell.w);
       graphics.clear();
       for (let row = 0; row < CAUSTICS.rows; row++) {
-        graphics.fillStyle(WaterLight.caustic, CAUSTICS.alpha * (1 - row / CAUSTICS.rows));
+        graphics.fillStyle(colour, CAUSTICS.alpha * (1 - row / CAUSTICS.rows));
         for (let column = firstColumn; column * cell.w - shift < width; column++) {
           const seed = hash(column, row);
           const wobble = Math.round(3 * Math.sin(step * 0.7 + seed * 6.28));
@@ -205,7 +210,7 @@ const RAYS = {
   swayTicks: 480,
 } as const;
 
-function createLightRays(scene: Phaser.Scene, viewport: Viewport): AnimatedPart {
+function createLightRays(scene: Phaser.Scene, viewport: Viewport, colour: number): AnimatedPart {
   const graphics = scene.add
     .graphics()
     .setScrollFactor(RAYS.factor, 1)
@@ -236,7 +241,7 @@ function createLightRays(scene: Phaser.Scene, viewport: Viewport): AnimatedPart 
       drawn = key;
 
       graphics.clear();
-      graphics.fillStyle(WaterLight.ray, RAYS.alpha);
+      graphics.fillStyle(colour, RAYS.alpha);
       visible.forEach((shaft, index) => {
         const sway = sways[index] ?? 0;
         drawShaft(graphics, shaft.x, sway, shaft.length);
@@ -256,15 +261,15 @@ function drawShaft(graphics: Phaser.GameObjects.Graphics, x: number, sway: numbe
   graphics.fillTriangle(x, SURFACE_Y, foot + footWidth, bottom, foot, bottom);
 }
 
-/** Motes: specks of drifting matter nearer than the kelp forest, wrapping around the screen. */
+/** Motes: specks of drifting matter nearer than every painted layer, wrapping around the screen. */
 const MOTES = { count: 30, factor: 0.6, alpha: 0.55, driftTicks: 900 } as const;
 
-function createMotes(scene: Phaser.Scene, viewport: Viewport): AnimatedPart {
+function createMotes(scene: Phaser.Scene, viewport: Viewport, colour: number): AnimatedPart {
   const { width, height } = viewport.screen;
   const motes = Array.from({ length: MOTES.count }, (_, index) => {
     const size = hash(index, 11) > 0.8 ? 2 : 1;
     const speck = scene.add
-      .rectangle(0, 0, size, size, WaterLight.mote, MOTES.alpha)
+      .rectangle(0, 0, size, size, colour, MOTES.alpha)
       .setOrigin(0)
       .setScrollFactor(0)
       .setDepth(Depth.motes);

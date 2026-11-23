@@ -4,7 +4,9 @@ import type { SaveResult, SaveStore } from '@arcade/save';
 import { createSaveStore } from '@arcade/save';
 import type { GameContext } from '@arcade/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_COURSE } from '../logic/courses/index.ts';
 import { migrations, NEW_GAME, SAVE_VERSION, type SaveData, SaveSchema } from '../logic/save.ts';
+import { courseFromLevel } from '../logic/test-world.ts';
 import { input } from './input.ts';
 import { Runtime } from './runtime.ts';
 
@@ -28,8 +30,8 @@ interface Harness {
   gameErrors: string[];
 }
 
-/** A runtime on its title screen, as the shell hands it over, over `saves`. */
-function titleRuntime(saves: SaveStore<SaveData>): Harness {
+/** A runtime on its title screen, as the shell hands it over, over `saves`, opened at `search`. */
+function titleRuntime(saves: SaveStore<SaveData>, search = ''): Harness {
   const gameErrors: string[] = [];
   const ctx = {
     params: { seed: 1, scene: null, debug: false, testMode: true },
@@ -39,7 +41,7 @@ function titleRuntime(saves: SaveStore<SaveData>): Harness {
     notice: () => {},
     registerAudioContext: () => {},
   } as unknown as GameContext;
-  const rt = new Runtime({ ctx, saves, save: null, prefersReducedMotion: false, startScene: () => {} });
+  const rt = new Runtime({ ctx, saves, save: null, prefersReducedMotion: false, startScene: () => {}, search });
   rt.entered('title');
   rt.step.advance(ARMED);
   return { rt, gameErrors };
@@ -155,5 +157,50 @@ describe('loading a save fixture', () => {
 
     expect(rt.settings.muted).toBe(true);
     expect(setMuted).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('the course a session races', () => {
+  it('falls back to the default course with one warning naming an unknown ?course=', async () => {
+    const { rt } = titleRuntime(await realStore(), '?course=nope');
+
+    expect(rt.course).toBe(DEFAULT_COURSE);
+    expect(logged).toEqual([
+      {
+        level: 'warn',
+        namespace: 'reef-rush',
+        message: 'unknown course in ?course=, racing the default',
+        data: { course: 'nope', default: DEFAULT_COURSE.id },
+      },
+    ]);
+  });
+
+  it('races an unlisted ?course= course, but shows no NEW BEST and saves neither a best nor the course', async () => {
+    const course = courseFromLevel({
+      name: 'sprint',
+      ascii: `
+        ###########
+        #1.......F#
+        #2.......F#
+        #3.......F#
+        #4.......F#
+        ###########
+      `,
+    });
+    const { rt, gameErrors } = titleRuntime(await realStore(), `?course=${course.id}`);
+    rt.startRace();
+    rt.entered('race');
+    input.inject('right', true);
+    for (let tick = 0; tick < 1200 && !rt.lastResult; tick++) rt.step.advance(1);
+    input.inject('right', false);
+    await settled(rt);
+
+    expect(rt.world?.course).toBe(course.id);
+    expect(rt.lastResult).toMatchObject({ result: { playerPlace: expect.any(Number) }, newBest: false });
+    expect(rt.lastResult?.result.playerTicks).not.toBeNull();
+    expect(rt.save).toMatchObject({ races: 1, bests: {}, lastCourse: null });
+    // The title still draws the default course behind it: an unlisted course is never the last course.
+    expect(rt.menuCourse).toBe(DEFAULT_COURSE);
+    expect(gameErrors).toEqual([]);
   });
 });
