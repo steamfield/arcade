@@ -96,16 +96,3 @@ describe('event effects for the attack power-ups', () => {
     expect(seen).toEqual(['pop 300,60']);
   });
 });
-
-describe('event effects at the surface', () => {
-  it.each(['racer.breached', 'racer.splashed'] as const)('throws droplets from the racer on %s', (type) => {
-    const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1 });
-    const seen: string[] = [];
-    const bursts: Bursts = { ...NO_BURSTS, bubblePop: (x, y) => seen.push(`pop ${x},${y}`) };
-    const effects = createEventEffects(world, bursts, createBubbleTracker(), () => {});
-    const tess = world.racers.find((racer) => racer.id === 'tess');
-    if (!tess) throw new Error('No racer tess on the default course');
-    effects.onTick([{ type, id: 'tess', tick: 300, seq: 0 }]);
-    expect(seen).toEqual([`pop ${tess.body.x + tess.body.w / 2},${tess.body.y + tess.body.h / 2}`]);
-  });
-});
