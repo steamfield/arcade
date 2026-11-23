@@ -11,7 +11,10 @@ export default scenario({
   start: { save: HARD_SAVE },
   input: [...TITLE_TO_RACE, ...TOP_ROUTE, wait(64), tap('fire'), wait(3)],
   expect({ summary, events }) {
-    expect(summary).toMatchObject({ scene: 'results', menu: { options: ['Race again', 'Title'], selected: 0 } });
+    expect(summary).toMatchObject({
+      scene: 'results',
+      menu: { options: ['Race again', 'Character', 'Title'], selected: 0 },
+    });
     // The title and select presses before the race are menu picks too; only the results screen counts.
     const finished = events.find((e) => e.type === 'race.finished')?.tick ?? 0;
     expect(events.filter((e) => e.tick >= finished).map((e) => e.type)).not.toContain('menu.selected');

@@ -38,6 +38,7 @@ export const OPTION_LABELS: Readonly<Record<MenuOption, string>> = {
   Sound: 'SOUND',
   Motion: 'MOTION',
   'Race again': 'RACE AGAIN',
+  Character: 'CHARACTER',
   Title: 'TITLE',
 };
 

@@ -6,11 +6,12 @@ import type { GameContext } from '@arcade/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
-import { COUNTDOWN_TICKS } from '../logic/race/standings.ts';
+import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../logic/race/standings.ts';
 import { playerOf } from '../logic/racers.ts';
 import { migrations, NEW_GAME, SAVE_VERSION, type SaveData, SaveSchema } from '../logic/save.ts';
 import { courseFromLevel, giveItems } from '../logic/test-world.ts';
 import { type Action, input } from './input.ts';
+import { selectedOption } from './menu.ts';
 import { Runtime } from './runtime.ts';
 
 /** Title rows: Race, How to play, Level, Sound, Motion. Sound is three down. */
@@ -268,6 +269,83 @@ describe('course select', () => {
     rt.step.advance(ARMED);
     press(rt, 'dash');
     expect(rt.scene).toBe('title');
+  });
+});
+
+describe('changing character from the results screen', () => {
+  /**
+   * Picks Gil on the first select screen (right once from Rudy), races an idle player to a DNF and waits
+   * out the results menu's arming ticks. `listedCourses` with more than one course adds a course select first.
+   */
+  function onResults(rt: Runtime, { courseSelect = false } = {}): void {
+    press(rt, 'fire');
+    if (courseSelect) {
+      rt.step.advance(ARMED);
+      press(rt, 'fire');
+    }
+    rt.step.advance(ARMED);
+    press(rt, 'right');
+    press(rt, 'fire');
+    rt.step.advance(COUNTDOWN_TICKS + RACE_LIMIT_TICKS + 90 + ARMED);
+  }
+  const playerCharacter = (rt: Runtime) => rt.world && playerOf(rt.world).character;
+  const twoCourses = () => ['Reef', 'Sunlit'].map((name) => courseFromLevel({ name, ascii: '#1234F#' }));
+
+  it('offers Race again, Character and Title', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    onResults(rt);
+    expect([rt.scene, rt.menu?.options]).toEqual(['results', ['Race again', 'Character', 'Title']]);
+  });
+
+  it('opens select on the current pick, and the next race runs as the pick moved to', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    onResults(rt);
+    expect(playerCharacter(rt)).toBe('gil');
+    press(rt, 'down');
+    press(rt, 'fire');
+    expect([rt.scene, rt.selectedCharacter]).toEqual(['select', 'gil']);
+    rt.step.advance(ARMED);
+    press(rt, 'right');
+    press(rt, 'fire');
+    expect([rt.scene, playerCharacter(rt)]).toEqual(['race', 'streak']);
+  });
+
+  it('opens course select first while it is shown, then select', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: twoCourses() });
+    onResults(rt, { courseSelect: true });
+    expect(rt.scene).toBe('results');
+    press(rt, 'down');
+    press(rt, 'fire');
+    expect(rt.scene).toBe('course');
+    rt.step.advance(ARMED);
+    press(rt, 'fire');
+    expect(rt.scene).toBe('select');
+  });
+
+  it('goes back to results on B from select, keeping the finished race and Character selected', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    onResults(rt);
+    press(rt, 'down');
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'dash');
+    expect([rt.scene, rt.lastResult === null, rt.world === null]).toEqual(['results', false, false]);
+    expect(rt.menu && selectedOption(rt.menu)).toBe('Character');
+  });
+
+  it('goes back to results on B from select and again from course select', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: twoCourses() });
+    onResults(rt, { courseSelect: true });
+    press(rt, 'down');
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'dash');
+    expect(rt.scene).toBe('course');
+    rt.step.advance(ARMED);
+    press(rt, 'dash');
+    expect(rt.scene).toBe('results');
   });
 });
 

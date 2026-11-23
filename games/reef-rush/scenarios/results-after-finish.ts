@@ -14,7 +14,7 @@ export default scenario({
     const finish = events.find((e) => e.type === 'race.finished');
     expect(summary).toMatchObject({
       scene: 'results',
-      menu: { options: ['Race again', 'Title'], selected: 0 },
+      menu: { options: ['Race again', 'Character', 'Title'], selected: 0 },
       result: { place: finish?.playerPlace, ticks: finish?.playerTicks, newBest: true, saveFailed: false },
     });
     expect(finish?.playerTicks).toBeGreaterThan(0);
