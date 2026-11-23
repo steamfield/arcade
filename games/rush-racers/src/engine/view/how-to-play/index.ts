@@ -15,6 +15,7 @@ import { buildClamsPage } from './clams-page.ts';
 import { buildDodgePage } from './dodge-page.ts';
 import { buildEnemiesPage } from './enemies-page.ts';
 import { buildFirePage } from './fire-page.ts';
+import { buildFlightMovePage } from './flight-page.ts';
 import { createPage, type Page, type PageBuilder } from './kit.ts';
 import { buildMovePage } from './move-page.ts';
 import { buildPearlsPage } from './pearls-page.ts';
@@ -65,8 +66,7 @@ export const MEDIUM_PAGES: Readonly<Record<ShippedMediumId, MediumPages>> = {
       build: buildRunShieldPage,
     },
   },
-  // Scaffold placeholder: swim's move page until phase 1 lane c draws flight's.
-  flight: { move: { heading: 'SWIM AND DASH', build: buildMovePage } },
+  flight: { move: { heading: 'FLAP AND SWOOP', build: buildFlightMovePage } },
 };
 
 /** The medium whose pages stand in for one How to Play has none for. */
