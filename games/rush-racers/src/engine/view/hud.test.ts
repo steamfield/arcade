@@ -1,6 +1,9 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { raceOn, racerOf } from '../../logic/test-world.ts';
+import type { GameEvent } from '../../logic/events.ts';
+import { courseFromLevel, raceOn, racerOf } from '../../logic/test-world.ts';
 import { POWER_UP_KINDS } from '../../logic/types.ts';
+import { createWorld } from '../../logic/world.ts';
 import { Frame } from '../art/keys.ts';
 import { ICON_SHEETS } from '../art/ui/icons.ts';
 import { IconFrame, UiTex } from '../art/ui/keys.ts';
@@ -219,6 +222,15 @@ describe('the squid warnings on the HUD', () => {
     racerOf(world, 'player').status.latched = 100;
     expect(captionText(world, view)).toBe('');
     expect(promptText(world, false)).toEqual({ headline: 'DASH!', hint: '' });
+  });
+
+  it('keeps its caption while latched where a dash cannot shake the latch, since no DASH! prompt shows there', () => {
+    const log = new EventLog<GameEvent>(100_000);
+    const world = createWorld(courseFromLevel(ARENA, 'run'), log, { seed: 1 });
+    world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+    world.squids.push({ x: 90, y: 40, vx: 0, vy: 0, ttl: 100, owner: 'tess', target: { kind: 'racer', id: 'player' } });
+    racerOf(world, 'player').status.latched = 100;
+    expect([captionText(world, view), promptText(world, false).headline]).toEqual(['LOCKED ON!', '']);
   });
 
   it('adds PRESS B on a touch screen, and prompts nothing when not latched', () => {

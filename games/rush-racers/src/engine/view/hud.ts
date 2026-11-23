@@ -28,6 +28,7 @@ import type { ArtRef } from '../worlds/art-ref.ts';
 import type { CastSkin } from '../worlds/cast-skin.ts';
 import { skinFor } from '../worlds/index.ts';
 import { besidePlayerY } from './beside-player.ts';
+import { latchPromptShows } from './hints.ts';
 import { addHudIcon as addIcon, createDashMeter, createWell } from './hud-well.ts';
 import { Layer } from './layers.ts';
 import { createRaceSplash, formatRaceTime, ordinal, slideRemaining, TONE_CSS } from './race-text.ts';
@@ -283,8 +284,8 @@ export function captionText(world: World, view: CaptionView): string {
   const { status } = local;
   // A fallen racer is being put back and needs no warning.
   if (status.fallen > 0) return '';
-  // A latched squid's KICK! prompt takes the caption's place.
-  if (status.latched > 0) return '';
+  // A latched squid's DASH! prompt takes the caption's place, where the medium shows one.
+  if (latchPromptShows(world)) return '';
   if (status.trapped > 0) return 'TRAPPED!';
   if (status.stunned > 0) return 'STUNNED!';
   if (squidHuntingLocal(world)) return 'LOCKED ON!';
