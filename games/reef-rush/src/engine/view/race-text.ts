@@ -13,7 +13,6 @@
 import { TICK_HZ } from '@arcade/core';
 import type Phaser from 'phaser';
 import { CHARACTERS } from '../../logic/characters.ts';
-import { playerOf } from '../../logic/racers.ts';
 import {
   type CharacterId,
   DIFFICULTIES,
@@ -24,6 +23,7 @@ import {
 } from '../../logic/types.ts';
 import { createLabel } from '../art/font.ts';
 import { toneCss, UiColour, UiRamp, type UiToneName } from '../art/ui/palette.ts';
+import { localOf } from '../local-racer.ts';
 import { FINAL_STRETCH_AT, raceProgress } from '../race-progress.ts';
 import { Layer } from './layers.ts';
 
@@ -145,6 +145,8 @@ export interface SplashMoments {
 export interface SplashClock {
   tick: number;
   race: Pick<RaceState, 'phase' | 'raceTick' | 'result'>;
+  /** Whether the local racer crossed the line, for FINISH or TIME UP. Omitted, slot 1's time in the result decides. */
+  localFinished?: boolean;
 }
 
 /**
@@ -169,19 +171,28 @@ export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean, ce
     fixed: true,
     depth: Layer.banner,
   });
-  // The player's distance to the finish at the first sync, which is the start line.
+  // The local racer's distance to the finish at the first sync, which is the start line.
   let startProgress: number | null = null;
   const moments: SplashMoments = { stretchAt: null, endedAt: null };
   // Reused every frame, so the splash allocates nothing per frame.
   const frame: SplashFrame = { text: '', tone: 'foam', dx: 0, dy: 0 };
   const levelView = createLevelView(scene, centreX);
+  const clock: Required<SplashClock> = {
+    tick: 0,
+    race: { phase: 'countdown', raceTick: 0, result: null },
+    localFinished: false,
+  };
 
   return {
     sync(world) {
       levelView(levelBanner(world));
-      startProgress ??= playerOf(world).progress;
+      const local = localOf(world);
+      startProgress ??= local.progress;
       noteSplashMoments(moments, world.race.phase, world.tick, raceProgress(world, startProgress));
-      splashFrame(world, moments, reducedMotion, frame);
+      clock.tick = world.tick;
+      clock.race = world.race;
+      clock.localFinished = local.finished !== null;
+      splashFrame(clock, moments, reducedMotion, frame);
       label.setColor(TONE_CSS[frame.tone]).setOffset(frame.dx, frame.dy).setText(frame.text);
       return frame.text !== '';
     },
@@ -246,8 +257,8 @@ export function splashFrame(
   }
   if (moments.endedAt !== null) {
     // Coral is not allowed over the water (UI.md), so running out of time reads by its words, in foam.
-    const timeUp = race.result?.playerTicks === null;
-    const [text, tone] = timeUp ? ([NO_TIME_TEXT, 'foam'] as const) : (['FINISH', 'sun'] as const);
+    const crossed = world.localFinished ?? race.result?.playerTicks !== null;
+    const [text, tone] = crossed ? (['FINISH', 'sun'] as const) : ([NO_TIME_TEXT, 'foam'] as const);
     return banner(out, text, tone, world.tick - moments.endedAt, reducedMotion);
   }
   if (moments.stretchAt !== null && isBannerUp(world.tick - moments.stretchAt))

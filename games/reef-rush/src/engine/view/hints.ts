@@ -1,6 +1,7 @@
 /**
  * The in-race hints for young players, as pure functions of the world plus a small memory of what
- * the player has already learned this race. Nothing here draws: `hint-view.ts` shows what these
+ * the player has already learned this race. They read the local racer (the slot the screen follows),
+ * except the guide, which like the rest of Easy's guide is for slot 1. Nothing here draws: `hint-view.ts` shows what these
  * say, and the runtime keeps the latest answer so tests can read it.
  *
  * Five hints, each a picture-first prompt (see UI.md "Hints"), and never more than one at a time:
@@ -31,6 +32,7 @@ import { heldItems, selectedItem, selectedSlot, slotItems } from '../../logic/po
 import { SQUID } from '../../logic/powerups/tuning.ts';
 import { centreOf, playerOf } from '../../logic/racers.ts';
 import type { Difficulty, PowerUpKind, Racer, Vec, World } from '../../logic/types.ts';
+import { localOf } from '../local-racer.ts';
 import { squidHuntingPlayer } from './threat-math.ts';
 
 /** Ticks PRESS FIRE stays up after the first item lands when it times out (not on Easy), and when the HUD pulse takes over. */
@@ -118,19 +120,19 @@ export function hintConfig(racesRun: number, difficulty: Difficulty): HintConfig
  * and always when the config has them off.
  */
 export function updateHints(memory: HintMemory, world: World, config: HintConfig): HintState {
-  const player = playerOf(world);
-  if (player.useCooldown > 0) memory.useLearned = true;
-  if (swappedSince(memory.lastSelected, player)) memory.swapLearned = true;
-  memory.lastSelected = seenSelection(player);
-  const held = heldItems(player).length;
+  const local = localOf(world);
+  if (local.useCooldown > 0) memory.useLearned = true;
+  if (swappedSince(memory.lastSelected, local)) memory.swapLearned = true;
+  memory.lastSelected = seenSelection(local);
+  const held = heldItems(local).length;
   const holding = held > 0;
   const tick = world.tick;
   if (holding && memory.firstHeldAt === null) memory.firstHeldAt = tick;
   // "Unused" restarts whenever the inventory empties or an item has just been used.
-  if (!holding || player.useCooldown > 0) memory.unusedSince = null;
+  if (!holding || local.useCooldown > 0) memory.unusedSince = null;
   else memory.unusedSince ??= tick;
 
-  if (!config.enabled || world.race.phase !== 'racing' || player.finished) return NO_HINTS;
+  if (!config.enabled || world.race.phase !== 'racing' || local.finished) return NO_HINTS;
   const firstHeldAt = memory.firstHeldAt;
   const heldFor = firstHeldAt === null ? 0 : tick - firstHeldAt;
   const pressFireOpen = config.easy || heldFor < PRESS_FIRE_TICKS;
@@ -138,7 +140,7 @@ export function updateHints(memory: HintMemory, world: World, config: HintConfig
   const pressFire = holding && !memory.useLearned && firstHeldAt !== null && pressFireOpen;
   const kick = kickIsUseful(world);
   // A latched squid puts the threat HUD's own DASH! prompt in the hint spot.
-  const latched = player.status.latched > 0;
+  const latched = local.status.latched > 0;
   const guide = guideArrow(world, kick || latched, pressFire);
   const showPressFire = pressFire && guide === null && !kick && !latched;
   const spotTaken = latched || kick || showPressFire || guide !== null;
@@ -195,11 +197,11 @@ function guideArrow(world: World, dashPrompt: boolean, pressFire: boolean): Vec 
 
 /** A squid locked on the player is inside the dodge window plus the lead, and the player can kick now (ready, with a dash charge). */
 function kickIsUseful(world: World): boolean {
-  const player = playerOf(world);
-  if (player.status.latched > 0 || player.kickCooldown > 0 || !canDash(player)) return false;
+  const local = localOf(world);
+  if (local.status.latched > 0 || local.kickCooldown > 0 || !canDash(local)) return false;
   const squid = squidHuntingPlayer(world);
   if (squid === null) return false;
   const reach = (dodgeTicks(world) + KICK_LEAD_TICKS) * SQUID.speed * TICK_DT;
-  const at = centreOf(player);
+  const at = centreOf(local);
   return (squid.x - at.x) ** 2 + (squid.y - at.y) ** 2 <= reach * reach;
 }

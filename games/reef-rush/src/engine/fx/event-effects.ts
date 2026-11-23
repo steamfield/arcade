@@ -1,14 +1,14 @@
 /**
  * Maps one tick's drained events to effects: which burst plays where (including the attack
- * power-ups' fire, lane, pull, shake-off and pop), and how much screen shake the player's own
- * knocks add. Positions come from the event and the world as it stands
+ * power-ups' fire, lane, pull, shake-off and pop), and how much screen shake the local racer's own
+ * knocks add (the slot the screen follows; see `local-racer.ts`). Positions come from the event and the world as it stands
  * after the tick. Shake is only ever asked for through `shake`, which the caller leaves out
  * under reduced motion.
  */
 import type { Stamped } from '@arcade/core';
 import { CANNONBALL } from '../../logic/powerups/tuning.ts';
-import { playerOf } from '../../logic/racers.ts';
 import { type Decoy, type RacerId, type Squid, TILE, type Vec, type World } from '../../logic/types.ts';
+import { localIdOf, localOf } from '../local-racer.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { BubbleTracker } from './bubble-tracker.ts';
 import type { Bursts } from './bursts.ts';
@@ -18,11 +18,11 @@ export interface EventEffects {
   onTick(events: readonly Stamped<RuntimeEvent>[]): void;
 }
 
-/** Trauma (0..1, see `shake.ts`) for a hit that lands on the player. */
+/** Trauma (0..1, see `shake.ts`) for a hit that lands on the local racer. */
 const PLAYER_HIT_TRAUMA = 0.7;
-/** A Bubble Shield soaking up a hit on the player: felt, but lighter than a hit. */
+/** A Bubble Shield soaking up a hit on the local racer: felt, but lighter than a hit. */
 const SHIELD_POP_TRAUMA = 0.4;
-/** Added once per tick on which the player's cannonball smashes coral or a racer; a gate stacks up to a big jolt. */
+/** Added once per tick on which the local racer's cannonball smashes coral or a racer; a gate stacks up to a big jolt. */
 const CANNONBALL_TRAUMA = 0.6;
 /** Bubbles shed along a new Riptide lane, one per this many px of its length. */
 const LANE_BUBBLE_SPACING = 12;
@@ -40,7 +40,8 @@ export function createEventEffects(
   bubbles: BubbleTracker,
   shake: (trauma: number) => void,
 ): EventEffects {
-  let playerPlace = playerOf(world).place;
+  const local = localIdOf(world);
+  let localPlace = localOf(world).place;
   // Squids and decoys are gone from the world by the time their end events are drained, so remember where they were.
   const lastSquidAt = new Map<Squid, Vec>();
   const lastDecoyAt = new Map<Decoy, Vec>();
@@ -50,9 +51,9 @@ export function createEventEffects(
     if (racer) effect(racer.body.x + racer.body.w / 2, racer.body.y + racer.body.h / 2);
   };
   const tileCentre = (tile: number) => tile * TILE + TILE / 2;
-  const playerCannonballing = () => {
-    const player = playerOf(world);
-    return player.status.dashing > 0 && player.dashSpeed === CANNONBALL.speed;
+  const localCannonballing = () => {
+    const racer = localOf(world);
+    return racer.status.dashing > 0 && racer.dashSpeed === CANNONBALL.speed;
   };
 
   return {
@@ -60,8 +61,8 @@ export function createEventEffects(
       let cannonballImpact = false;
       let bubblesPopped = false;
       // A shielded hit emits both racer.hit and shield.popped on one tick; only the lighter shake applies.
-      let playerHit = false;
-      let playerShieldPopped = false;
+      let localHit = false;
+      let localShieldPopped = false;
       for (const event of events) {
         switch (event.type) {
           case 'racer.kicked': {
@@ -71,16 +72,16 @@ export function createEventEffects(
           }
           case 'coral.broken':
             bursts.coralDebris(tileCentre(event.tx), tileCentre(event.ty));
-            if (event.by === 'player' && playerCannonballing()) cannonballImpact = true;
+            if (event.by === local && localCannonballing()) cannonballImpact = true;
             break;
           case 'racer.hit':
             racerAt(event.id, bursts.hitSparks);
-            if (event.id === 'player') playerHit = true;
-            if (event.by === 'player' && event.cause === 'puffer' && playerCannonballing()) cannonballImpact = true;
+            if (event.id === local) localHit = true;
+            if (event.by === local && event.cause === 'puffer' && localCannonballing()) cannonballImpact = true;
             break;
           case 'shield.popped':
             racerAt(event.id, bursts.bubblePop);
-            if (event.id === 'player') playerShieldPopped = true;
+            if (event.id === local) localShieldPopped = true;
             break;
           case 'pearl.collected': {
             const pearl = world.level.pearls[event.index];
@@ -104,11 +105,12 @@ export function createEventEffects(
             bubblesPopped = true;
             break;
           case 'player.place':
-            if (event.place < playerPlace) racerAt('player', bursts.placeUp);
-            playerPlace = event.place;
+            if (event.id !== local) break;
+            if (event.place < localPlace) racerAt(local, bursts.placeUp);
+            localPlace = event.place;
             break;
           case 'racer.finished':
-            if (event.id === 'player') racerAt('player', bursts.finishBurst);
+            if (event.id === local) racerAt(local, bursts.finishBurst);
             break;
           case 'squid.spawned':
             racerAt(event.owner, bursts.bubblePop);
@@ -138,8 +140,8 @@ export function createEventEffects(
           }
         }
       }
-      if (playerShieldPopped) shake(SHIELD_POP_TRAUMA);
-      else if (playerHit) shake(PLAYER_HIT_TRAUMA);
+      if (localShieldPopped) shake(SHIELD_POP_TRAUMA);
+      else if (localHit) shake(PLAYER_HIT_TRAUMA);
       if (cannonballImpact) shake(CANNONBALL_TRAUMA);
       if (bubblesPopped) bubbles.vanished(world, bursts.bubblePop);
       bubbles.remember(world);

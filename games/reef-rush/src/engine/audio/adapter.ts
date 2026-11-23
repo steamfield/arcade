@@ -1,15 +1,15 @@
 /**
- * Turns the game's drained events into sound: an effect per player-facing
- * event, and the music each screen wants (title theme, race theme from GO with
+ * Turns the game's drained events into sound: an effect per event that concerns the local racer
+ * (the slot this screen follows), and the music each screen wants (title theme, race theme from GO with
  * a tempo lift on the final stretch, a win or lose jingle into the results
- * loop). Enemies are heard when they are within about a screen of the player: a shark's
- * wind-up and an eel's warning, a bonk and a defeat; an enemy getting the player always is. Every sound that actually starts is announced once as `audio.played`,
+ * loop). Enemies are heard when they are within about a screen of the local racer: a shark's
+ * wind-up and an eel's warning, a bonk and a defeat; an enemy getting the local racer always is. Every sound that actually starts is announced once as `audio.played`,
  * on the game's tick, so tests can hear the game. Nothing plays or is announced
  * while the AudioContext is not running (before the first gesture).
  */
 import type { EventSink, Rng, Stamped } from '@arcade/core';
-import { playerOf } from '../../logic/racers.ts';
 import { ENEMY_KINDS, type EnemyKind, type HitCause, type RacerId, type World } from '../../logic/types.ts';
+import { localOf } from '../local-racer.ts';
 import { FINAL_STRETCH_AT } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { createAttackSfx, HEARING_PX } from './attack-sfx.ts';
@@ -37,10 +37,12 @@ export interface AdapterOptions {
    * effect is a one-off (unlike songs, which the sequencer stops after one report).
    */
   onError(error: unknown): void;
-  /** Whether racer `id` is near enough the player to hear what it does; every racer is when omitted. */
+  /** Whether racer `id` is near enough the local racer to hear what it does; every racer is when omitted. */
   audibleFromPlayer?(id: RacerId): boolean;
-  /** Whether enemy `index` (in `world.enemies`) is near enough the player to hear; every enemy is when omitted. */
+  /** Whether enemy `index` (in `world.enemies`) is near enough the local racer to hear; every enemy is when omitted. */
   enemyAudible?(index: number): boolean;
+  /** The slot the screen follows, whose own moments sound; 'player' when omitted. */
+  localRacer?(): RacerId;
   /** The song the current race plays: the course's own (`Course.song`). Read when each race starts. */
   raceSong(): SongName;
 }
@@ -55,13 +57,13 @@ const STEADY: ReadonlySet<SfxKey> = new Set(['countdown', 'go']);
 /** The warning each enemy kind sounds when it telegraphs; a crab gives none. */
 const TELL_SFX: Record<EnemyKind, SfxKey | null> = { shark: 'shark.windup', eel: 'eel.warn', crab: null };
 
-/** Whether enemy `index` in `world` is within `HEARING_PX` of the player, like a racer's attack. */
+/** Whether enemy `index` in `world` is within `HEARING_PX` of the local racer, like a racer's attack. */
 export function enemyWithinHearing(world: World, index: number): boolean {
   const enemy = world.enemies[index];
   if (!enemy) return false;
-  const player = playerOf(world);
-  const dx = enemy.at.x - (player.body.x + player.body.w / 2);
-  const dy = enemy.at.y - (player.body.y + player.body.h / 2);
+  const local = localOf(world);
+  const dx = enemy.at.x - (local.body.x + local.body.w / 2);
+  const dy = enemy.at.y - (local.body.y + local.body.h / 2);
   return Math.hypot(dx, dy) <= HEARING_PX;
 }
 
@@ -84,13 +86,16 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
   let started: SongName | null = null;
   let lifted = false;
   /**
-   * The player's last announced place. Null until the race's first announcement, which only
+   * The local racer's last announced place. Null until the race's first announcement, which only
    * replaces the grid order at GO, so it sets the baseline silently instead of sounding a drop.
    */
   let place: number | null = null;
   let won: boolean | null = null;
+  /** Whether the local racer crossed the line this race; `race.finished` only says whether slot 1 did. */
+  let localFinished = false;
 
-  const attacks = createAttackSfx(options.audibleFromPlayer);
+  const local = options.localRacer ?? (() => 'player');
+  const attacks = createAttackSfx(options.audibleFromPlayer, local);
   const enemyAudible = options.enemyAudible ?? (() => true);
   const announce = (key: string, kind: 'sfx' | 'song') => events.emit({ type: 'audio.played', key, kind });
 
@@ -136,6 +141,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
           lifted = false;
           place = null;
           won = null;
+          localFinished = false;
         } else if (event.scene === 'results') wanted = won === null ? 'results' : won ? 'win' : 'lose';
         return;
       case 'race.countdown':
@@ -144,30 +150,32 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
         wanted = options.raceSong();
         return sfx('go');
       case 'racer.kicked':
-        if (event.id === 'player') sfx('kick');
+        if (event.id === local()) sfx('kick');
         return;
       case 'pearl.collected':
       case 'loosePearl.collected':
-        if (event.id === 'player') sfx('pearl');
+        if (event.id === local()) sfx('pearl');
         return;
       case 'pearls.dropped':
-        if (event.id === 'player') sfx('pearl.drop');
+        if (event.id === local()) sfx('pearl.drop');
         return;
       case 'item.used':
-        if (event.id === 'player') sfx('item.use');
+        if (event.id === local()) sfx('item.use');
         return;
       case 'racer.bumped':
-        if (event.a === 'player' || event.b === 'player') sfx('bump');
+        if (event.a === local() || event.b === local()) sfx('bump');
         return;
       case 'player.place':
+        if (event.id !== local()) return;
         if (place !== null && event.place !== place) sfx(event.place < place ? 'place.up' : 'place.down');
         place = event.place;
         return;
       case 'racer.finished':
-        if (event.id === 'player') sfx('finish');
-        return;
+        if (event.id !== local()) return;
+        localFinished = true;
+        return sfx('finish');
       case 'race.finished':
-        won = event.playerPlace === 1 && event.playerTicks !== null;
+        won = event.standings[0] === local() && localFinished;
         return;
       case 'coral.broken':
         return sfx('coral');
@@ -184,7 +192,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
         if (enemyAudible(event.index)) sfx('enemy.defeat');
         return;
       case 'racer.hit':
-        if (event.id === 'player' && isEnemy(event.cause)) sfx('enemy.bite');
+        if (event.id === local() && isEnemy(event.cause)) sfx('enemy.bite');
         return;
       case 'menu.selected':
         return sfx('menu.confirm');

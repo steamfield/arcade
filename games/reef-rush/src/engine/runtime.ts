@@ -18,19 +18,19 @@ import type { GameContext } from '@arcade/shell';
 import { courseById, DEFAULT_COURSE, LISTED_COURSES } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
 import type { GameEvent } from '../logic/events.ts';
-import { playerOf } from '../logic/racers.ts';
 import { isNewBest, recordRace } from '../logic/records.ts';
 import { NEW_GAME, type SaveData } from '../logic/save.ts';
 import {
   type CharacterId,
   DIFFICULTIES,
   type Difficulty,
+  RACER_IDS,
   type RaceResult,
   type RacerId,
   type TickInput,
   type World,
 } from '../logic/types.ts';
-import { createWorld, stepWorld } from '../logic/world.ts';
+import { createWorld, stepRace } from '../logic/world.ts';
 import { enemyWithinHearing } from './audio/adapter.ts';
 import { withinHearing } from './audio/attack-sfx.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
@@ -38,6 +38,7 @@ import { moveCharacter } from './character-select.ts';
 import { applyStage, stageFor } from './debug-stage.ts';
 import { type PagePress, turnPage } from './how-to-play.ts';
 import { input } from './input.ts';
+import { followRacer, localOf } from './local-racer.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 import { raceProgress } from './race-progress.ts';
 import { assertCourseAssets } from './themes/course-assets.ts';
@@ -99,7 +100,7 @@ export interface RuntimeOptions {
   prefersReducedMotion: boolean;
   /** Stops the running scenes and starts `scene`. Phaser does the switch; the runtime only asks for it. */
   startScene(scene: SceneKey): void;
-  /** The page's query string (`location.search`), read for `?course=` and `?stage=`. Empty when there is none. */
+  /** The page's query string (`location.search`), read for `?course=`, `?stage=` and `?local=`. Empty when there is none. */
   search?: string;
   /** The courses course select offers, in menu order. Defaults to `LISTED_COURSES`; tests pass their own. */
   listedCourses?: readonly Course[];
@@ -143,8 +144,8 @@ export class Runtime {
   /** The course select cursor, an index into `listedCourses`; put on the current course each time the screen opens. */
   courseCursor = 0;
   readonly audio: AudioPort;
-  /** True when the current race was staged for a capture (`?stage=`); its result is never saved. */
-  staged = false;
+  /** True when the current race is a debug race, staged for a capture (`?stage=`) or followed from another slot (`?local=`); its result is never saved. */
+  debugRace = false;
   /** The page How to Play shows, 0-based; back to the first page each time the screen opens. */
   howToPage = 0;
   /** The logic tick the current How to Play page came up on, so its animation starts from its first moment however many frames were drawn. */
@@ -157,14 +158,14 @@ export class Runtime {
   private writeQueue: Promise<void> = Promise.resolve();
   /** Counts write requests, so a write can tell whether a newer one was asked for after it. */
   private writesRequested = 0;
-  /** The player's progress-field distance at the start line, for the race progress fraction. */
+  /** The local racer's progress-field distance at the start line, for the race progress fraction. */
   private startProgress = 0;
   private hintMemory: HintMemory = newHintMemory();
   /** The menu option to put the cursor on when the next menu screen opens, or null for the first. */
   private returnTo: MenuOption | null = null;
   private hintConfig: HintConfig = { enabled: false, easy: false };
 
-  /** How far the player is through the current race, 0 to 1; 0 with no race. */
+  /** How far the local racer is through the current race, 0 to 1; 0 with no race. */
   get raceFraction(): number {
     return this.world ? raceProgress(this.world, this.startProgress) : 0;
   }
@@ -174,6 +175,8 @@ export class Runtime {
   private readonly prefersReducedMotion: boolean;
   private readonly startScene: (scene: SceneKey) => void;
   private readonly search: string;
+  /** The slot `?local=` asks this screen to follow, or null when it names none (or `?debug=1` is missing). */
+  private readonly localSlot: RacerId | null;
   private readonly listeners = new Set<EventListener>();
   private cursor = 0;
   /** Which screen opened the select screens, so dash goes back there. Set each time the results or title menu opens them. */
@@ -190,6 +193,7 @@ export class Runtime {
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.startScene = options.startScene;
     this.search = options.search ?? '';
+    this.localSlot = options.ctx.params.debug ? localSlotFor(this.search) : null;
     this.listedCourses = options.listedCourses ?? LISTED_COURSES;
     this.courseSelectShown = this.listedCourses.length > 1;
     this.selectedCharacter = this.savedCharacter;
@@ -202,6 +206,7 @@ export class Runtime {
       {
         audibleFromPlayer: (id) => this.audibleFromPlayer(id),
         enemyAudible: (index) => (this.world ? enemyWithinHearing(this.world, index) : true),
+        localRacer: () => this.localRacer,
       },
       () => this.course.song,
     );
@@ -225,6 +230,11 @@ export class Runtime {
   /** The course the title and select screens draw behind them: the save's last course when it is listed, else the default. */
   get menuCourse(): Course {
     return listedLastCourse(this.save?.lastCourse ?? null);
+  }
+
+  /** The slot this screen follows. 'player' except in a `?local=` debug race. */
+  get localRacer(): RacerId {
+    return this.localSlot ?? 'player';
   }
 
   /** The character picked last, from the save; Rudy when there is none. */
@@ -268,28 +278,39 @@ export class Runtime {
   }
 
   /**
-   * Builds a fresh world on the course with the player as `selectedCharacter` and starts the race
+   * Builds a fresh world on the course with slot 1 as `selectedCharacter` and starts the race
    * scene at the countdown. The seed moves on with every recorded race, so a rematch differs (rivals
-   * included) while a test run still repeats.
+   * included) while a test run still repeats. A `?local=` race makes its slot the only human one,
+   * follows it, and runs Easy as Normal (Easy's guide is for slot 1 alone).
    */
   startRace(): void {
     const seed = this.ctx.params.seed + (this.save?.races ?? 0);
-    const { difficulty } = this.settings;
+    const difficulty = this.raceDifficulty();
     this.world = createWorld(this.course, this.events, {
       seed,
       character: this.selectedCharacter,
       difficulty,
+      ...(this.localSlot ? { humans: [this.localSlot] } : {}),
     });
+    followRacer(this.world, this.localRacer);
     this.hintMemory = newHintMemory();
     this.hintConfig = hintConfig(this.save?.races ?? 0, difficulty);
     this.hints = NO_HINTS;
     const stage = stageFor(this.ctx.params, this.search);
     if (stage) applyStage(this.world, stage);
-    this.staged = stage !== null;
-    this.startProgress = playerOf(this.world).progress;
+    this.debugRace = stage !== null || this.localSlot !== null;
+    this.startProgress = localOf(this.world).progress;
     this.lastResult = null;
     this.resultsIn = null;
     this.goTo('race');
+  }
+
+  /** The saved difficulty, except that a `?local=` race for a slot other than 'player' runs Easy as Normal, with a warning. */
+  private raceDifficulty(): Difficulty {
+    const { difficulty } = this.settings;
+    if (difficulty !== 'easy' || this.localRacer === 'player') return difficulty;
+    log.warn(`?local=${this.localRacer} races on Normal: Easy is single-player in slot 1`);
+    return 'normal';
   }
 
   /**
@@ -340,7 +361,7 @@ export class Runtime {
     return () => this.listeners.delete(listener);
   }
 
-  /** Whether racer `id` is within about a screen of the player, whom the camera follows. */
+  /** Whether racer `id` is within about a screen of the local racer, whom the camera follows. */
   private audibleFromPlayer(id: RacerId): boolean {
     return this.world ? withinHearing(this.world, id) : true;
   }
@@ -472,7 +493,7 @@ export class Runtime {
   private tickRace(dt: number): void {
     const world = this.world;
     if (!world) throw new Error('The race scene is ticking without a world; start races with startRace()');
-    stepWorld(world, readPlayerInput(), dt);
+    stepRace(world, { [this.localRacer]: readPlayerInput() }, dt);
     this.hints = updateHints(this.hintMemory, world, this.hintConfig);
     this.audio.onRaceProgress(this.raceFraction);
     if (this.resultsIn === null) return;
@@ -494,14 +515,19 @@ export class Runtime {
       this.lastResult = { ...this.lastResult, saveFailed: true };
   }
 
-  private finishRace({ standings, playerPlace, playerTicks }: RaceResult): void {
-    const result: RaceResult = { standings, playerPlace, playerTicks };
+  private finishRace({ standings }: RaceResult): void {
+    const local = this.world ? localOf(this.world) : null;
+    const result: RaceResult = {
+      standings,
+      playerPlace: standings.indexOf(this.localRacer) + 1,
+      playerTicks: local?.finished?.tick ?? null,
+    };
     const before = this.save ?? NEW_GAME;
     const difficulty = this.world?.difficulty ?? this.settings.difficulty;
     const courseId = this.world?.course ?? this.course.id;
     this.lastResult = { result, newBest: isNewBest(before, courseId, difficulty, result), saveFailed: false };
     this.resultsIn = RESULTS_DELAY_TICKS;
-    if (this.staged) return;
+    if (this.debugRace) return;
     void this.persist(recordRace(before, courseId, difficulty, result), 'Race result');
   }
 }
@@ -527,6 +553,19 @@ function listedLastCourse(lastCourse: string | null): Course {
   return last?.listed ? last : DEFAULT_COURSE;
 }
 
+/**
+ * The slot `?local=` names, or null without one. An unknown slot is warned about once and ignored,
+ * so the race runs as slot 1.
+ */
+function localSlotFor(search: string): RacerId | null {
+  const asked = new URLSearchParams(search).get('local');
+  if (asked === null) return null;
+  const slot = RACER_IDS.find((id) => id === asked);
+  if (slot) return slot;
+  log.warn(`unknown slot in ?local=${asked}, racing as slot 1 (slots: ${RACER_IDS.join(', ')})`);
+  return null;
+}
+
 /** The next difficulty in the cycle EASY, NORMAL, HARD, then back to EASY. */
 function nextDifficulty(current: Difficulty): Difficulty {
   const index = DIFFICULTIES.indexOf(current);
@@ -542,7 +581,7 @@ function readPagePress(): PagePress | null {
 }
 
 /**
- * The player's input this tick as plain data for `stepWorld`: fire uses the selected item, dash
+ * The keyboard and touch input this tick as plain data for `stepRace`, for the local racer: fire uses the selected item, dash
  * kicks, and prev and next cycle the selection (cancelling out when both are pressed).
  */
 function readPlayerInput(): TickInput {

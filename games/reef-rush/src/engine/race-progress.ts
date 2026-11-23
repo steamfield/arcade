@@ -1,28 +1,28 @@
 /**
- * How far the player is through a race, shared by the music's tempo lift and the HUD's
+ * How far the local racer (the slot the screen follows) is through a race, shared by the music's tempo lift and the HUD's
  * FINAL STRETCH splash so both fire at the same moment. Also where the progress strip puts
  * racers' heads when they bunch, so the heads never hide each other.
  */
-import { playerOf } from '../logic/racers.ts';
 import type { World } from '../logic/types.ts';
+import { localOf } from './local-racer.ts';
 
 /** Race progress (0..1) at which the final stretch starts. */
 export const FINAL_STRETCH_AT = 0.75;
 
 /**
- * How far the player is through the course, 0 at the start line and 1 at the finish, from the
- * progress field. `start` is the player's progress when the race was built.
+ * How far the local racer is through the course, 0 at the start line and 1 at the finish, from the
+ * progress field. `start` is its progress when the race was built.
  */
 export function raceProgress(world: World, start: number): number {
-  const player = playerOf(world);
-  if (player.finished) return 1;
-  if (!Number.isFinite(player.progress) || start <= 0) return 0;
-  return Math.min(1, Math.max(0, 1 - player.progress / start));
+  const racer = localOf(world);
+  if (racer.finished) return 1;
+  if (!Number.isFinite(racer.progress) || start <= 0) return 0;
+  return Math.min(1, Math.max(0, 1 - racer.progress / start));
 }
 
 /**
  * Spreads progress-strip heads so no two sit closer than `minGap` px, keeping the head at `anchor`
- * (the player's) exactly where it is unless the strip's ends force it to move. `xs` are each head's
+ * (the local racer's) exactly where it is unless the strip's ends force it to move. `xs` are each head's
  * true x; the result is each head's drawn x, in the same order, all within `lo..hi`. Heads that
  * share a spot fan out away from the anchor: to its right near the start, to its left near the end,
  * so a pack at the finish line does not run off the strip.

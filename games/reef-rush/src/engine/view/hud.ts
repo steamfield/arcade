@@ -1,27 +1,27 @@
 /**
  * The race HUD, built from the UI kit to the rects in UI.md and read from the
- * world each frame. Along the top: the place panel (the player's portrait and
- * place numeral, with an arrow and a tone pop when the place changes), the
+ * world each frame, for the local racer (the slot the screen follows). Along the top: the place
+ * panel (the local racer's portrait and place numeral, with an arrow and a tone pop when the place changes), the
  * timer, the dash and item well (`hud-well.ts`), and a track-style progress strip
- * with one head per racer (spread apart when racers bunch, the player's never moved
+ * with one head per racer (spread apart when racers bunch, the local racer's never moved
  * unless the strip's end forces it) and the finish flag. Every piece sits clear of the
  * back link and the touch controls.
  *
  * Over the water: the centre splash (`race-text.ts`), a caption line for what
- * the player can't see (their own status, a squid locked on, rival bubbles out of view), and
+ * the local racer can't see (their own status, a squid locked on, rival bubbles out of view), and
  * the squid warnings in `threat-hud.ts` (an edge arrow, a DASH! prompt). Text
  * over the water is foam or sun and outlined. Motion is timed from the world
  * tick and holds still under reduced motion.
  */
 import type Phaser from 'phaser';
 import { stackMaxFor } from '../../logic/abilities.ts';
-import { playerOf } from '../../logic/racers.ts';
 import { type CharacterId, type RacePhase, TILE, type World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { Frame, Tex } from '../art/keys.ts';
 import { IconFrame, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import type { UiToneName } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
+import { localIdOf, localOf } from '../local-racer.ts';
 import { spreadHeads } from '../race-progress.ts';
 import { besidePlayerY } from './beside-player.ts';
 import { addHudIcon as addIcon, createDashMeter, createWell } from './hud-well.ts';
@@ -63,10 +63,10 @@ const PLACE_POP = { slidePx: 4, slideTicks: 8, ticks: 30 } as const;
 const THREAT_RANGE_TILES = 10;
 /** Adds the HUD for `world`'s race to `scene`, pinned to the screen, with each racer's character on its portrait and head. */
 export function createHud(scene: Phaser.Scene, world: World, reducedMotion: boolean, layout: ScreenLayout): Hud {
-  const place = createPlacePanel(scene, playerOf(world).character, reducedMotion);
+  const place = createPlacePanel(scene, localOf(world).character, reducedMotion);
   const timer = createTimer(scene);
   let shownTime = -1;
-  const slots = stackMaxFor(playerOf(world));
+  const slots = stackMaxFor(localOf(world));
   const well = createWell(scene, slots);
   const meter = createDashMeter(scene, slots, reducedMotion);
   const pearls = createPearlCounter(scene, meter.right + HUD_GAP);
@@ -106,7 +106,7 @@ export function pearlText(pearls: number): string {
   return String(Math.min(pearls, PEARLS.maxShown));
 }
 
-/** The pearl counter: the pearl sprite and the player's count, under the progress strip and clear of the back link. */
+/** The pearl counter: the pearl sprite and the local racer's count, under the progress strip and clear of the back link. */
 function createPearlCounter(scene: Phaser.Scene, x: number): WorldView & { right: number } {
   createPanel(scene, x, PEARLS.y, PEARLS_WIDTH, PEARLS.h, 'inset', { fixed: true, depth: Layer.hud });
   scene.add
@@ -122,7 +122,7 @@ function createPearlCounter(scene: Phaser.Scene, x: number): WorldView & { right
   return {
     right: x + PEARLS_WIDTH,
     sync(world) {
-      const pearls = playerOf(world).pearls;
+      const pearls = localOf(world).pearls;
       if (pearls === shown) return;
       shown = pearls;
       count.setText(pearlText(pearls));
@@ -135,7 +135,7 @@ interface WorldView {
   sync(world: World): void;
 }
 
-/** What the place panel knows about the player's place between frames. */
+/** What the place panel knows about the local racer's place between frames. */
 export interface PlaceTrack {
   /** The place the panel last showed, or null when there is no baseline yet (the countdown). */
   shown: number | null;
@@ -164,7 +164,7 @@ export function isPlacePopping(track: PlaceTrack, tick: number): boolean {
   return age >= 0 && age < PLACE_POP.ticks;
 }
 
-/** The gold place panel: the player's portrait, place numeral (hidden in the countdown), and the change arrow under it. */
+/** The gold place panel: the local racer's portrait, place numeral (hidden in the countdown), and the change arrow under it. */
 function createPlacePanel(scene: Phaser.Scene, character: CharacterId, reducedMotion: boolean): WorldView {
   const { x, y, w, h } = PLACE_PANEL;
   createPanel(scene, x, y, w, h, 'accent', { fixed: true, depth: Layer.hud });
@@ -185,7 +185,7 @@ function createPlacePanel(scene: Phaser.Scene, character: CharacterId, reducedMo
 
   return {
     sync(world) {
-      trackPlace(track, world.race.phase, playerOf(world).place, world.tick);
+      trackPlace(track, world.race.phase, localOf(world).place, world.tick);
       if (track.shown !== numeralPlace) numeral.setText(track.shown === null ? '' : ordinal(track.shown));
       numeralPlace = track.shown;
       const popping = isPlacePopping(track, world.tick);
@@ -216,9 +216,10 @@ function createTimer(scene: Phaser.Scene): Label {
 /** The progress strip: a 7x7 head per racer, showing its character, travelling toward the finish flag. */
 function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
   const { x, y, w, h, headY, headFrom, headTo } = STRIP;
+  const local = localIdOf(world);
   createPanel(scene, x, y, w, h, 'inset', { fixed: true, depth: Layer.hud });
   addIcon(scene, FLAG_AT.x, FLAG_AT.y, IconFrame.finishFlag);
-  // The player's head draws at a higher depth than the rivals', so it is never hidden.
+  // The local racer's head draws at a higher depth than the others', so it is never hidden.
   const heads = new Map(
     world.racers.map((racer) => [
       racer.id,
@@ -226,7 +227,7 @@ function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
         .image(headFrom, headY, UiTex.heads, PortraitFrame[racer.character])
         .setOrigin(0, 0)
         .setScrollFactor(0)
-        .setDepth(racer.id === 'player' ? Layer.banner : Layer.hud),
+        .setDepth(racer.id === local ? Layer.banner : Layer.hud),
     ]),
   );
   // Distance to the finish from the furthest start, fixed at the first sync; heads show the share of it covered.
@@ -237,7 +238,7 @@ function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
   let drawn: number[] = [];
   const anchor = Math.max(
     0,
-    world.racers.findIndex((racer) => racer.id === 'player'),
+    world.racers.findIndex((racer) => racer.id === local),
   );
 
   return {
@@ -261,24 +262,24 @@ function createProgressStrip(scene: Phaser.Scene, world: World): WorldView {
 }
 
 /**
- * The caption line: the player's status (trapped, stunned, or a squid locked on) first, else a
+ * The caption line: the local racer's status (trapped, stunned, or a squid locked on) first, else a
  * rival bubble nearby but out of view, else nothing. */
 /** The parts of the camera's view the caption reads. */
 export type CaptionView = Pick<Phaser.Geom.Rectangle, 'contains' | 'centerX' | 'centerY'>;
 
 export function captionText(world: World, view: CaptionView): string {
-  const player = playerOf(world);
-  const { status } = player;
+  const local = localOf(world);
+  const { status } = local;
   // A latched squid's KICK! prompt takes the caption's place.
   if (status.latched > 0) return '';
   if (status.trapped > 0) return 'TRAPPED!';
   if (status.stunned > 0) return 'STUNNED!';
   if (squidHuntingPlayer(world)) return 'LOCKED ON!';
   if (status.slowed > 0) return 'SLOWED BY INK';
-  const px = player.body.x + player.body.w / 2;
-  const py = player.body.y + player.body.h / 2;
+  const px = local.body.x + local.body.w / 2;
+  const py = local.body.y + local.body.h / 2;
   for (const bubble of world.bubbles) {
-    if (bubble.owner === 'player' || view.contains(bubble.x, bubble.y)) continue;
+    if (bubble.owner === local.id || view.contains(bubble.x, bubble.y)) continue;
     if (Math.hypot(bubble.x - px, bubble.y - py) > THREAT_RANGE_TILES * TILE) continue;
     const dx = bubble.x - view.centerX;
     const dy = bubble.y - view.centerY;
@@ -293,11 +294,11 @@ function longestStart(world: World): number {
   return Math.max(1, ...finite);
 }
 
-/** Ticks shown on the timer: zero in the countdown, the player's finish time once they cross. */
+/** Ticks shown on the timer: zero in the countdown, the local racer's finish time once they cross. */
 function raceTime(world: World): number {
   const { race } = world;
   if (race.phase === 'countdown') return 0;
-  return playerOf(world).finished?.tick ?? race.raceTick;
+  return localOf(world).finished?.tick ?? race.raceTick;
 }
 
 function clampUnit(value: number): number {
