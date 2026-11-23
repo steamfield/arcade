@@ -258,8 +258,11 @@ describe('the solved nav', () => {
     expect(run.nextTile(world, { x: 20, y: 6 })).toBeNull();
   });
 
-  it('points a tile in the air down toward the stand tile it reads', () => {
-    expect(run.nextTile(world, { x: 3, y: 3 })).toEqual({ x: 0, y: 1 });
+  it("gives a tile in the air the first step of its stand tile's link, so the arrow stays up through a jump", () => {
+    expect(run.nextTile(world, { x: 3, y: 3 })).toEqual({ x: 1, y: 0 });
+    expect(run.nextTile(world, { x: 7, y: 3 })).toEqual({ x: 1, y: -1 });
+    // Over the middle of the pit it reads the far side, a walk on.
+    expect(run.nextTile(world, { x: 9, y: 3 })).toEqual({ x: 1, y: 0 });
   });
 
   it('aims only sideways from every open tile, so the Easy assist never presses Up', () => {
@@ -271,6 +274,14 @@ describe('the solved nav', () => {
 
     expect(aims.filter((aim) => aim.y !== 0)).toEqual([]);
     expect(run.aimFrom(world, { x: 3 * TILE + 2, y: 6 * TILE + 3, w: 12, h: 10 }, 1)).toEqual({ x: 1, y: 0 });
+  });
+
+  it('reads the air above a pit, not only its mouth, so the guide and the assist keep a way on mid-jump', () => {
+    const aboveThePit = { x: 9, y: 3 };
+
+    expect(run.distanceAt(world, aboveThePit)).toBeLessThan(Number.POSITIVE_INFINITY);
+    expect(run.nextTile(world, aboveThePit)).not.toBeNull();
+    expect(run.aimFrom(world, { x: 9 * TILE + 2, y: 3 * TILE + 3, w: 12, h: 10 }, 1)).toEqual({ x: 1, y: 0 });
   });
 
   it('ranks a runner over the pit ahead of one still before it', () => {
@@ -293,10 +304,10 @@ describe('route choice', () => {
     return found.ascii;
   };
 
-  it('takes a shorter high route over the longer way down and back up', () => {
+  it('takes the ledge staircase to the shorter high route, not the longer way down and back up', () => {
     const world = runWorld(geometry('a high route'));
 
-    expect(run.nextTile(world, { x: 8, y: 4 })).toEqual({ x: 1, y: -1 });
+    expect(run.nextTile(world, { x: 5, y: 9 })).toEqual({ x: 1, y: -1 });
   });
 
   it('never links a jump across a gap too wide to cross, and gets over by the floor below', () => {

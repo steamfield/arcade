@@ -25,18 +25,25 @@ function firstStep(link: RunLink, from: Vec, width: number): Vec {
   return { x: Math.sign((link.to % width) - from.x), y: -1 };
 }
 
-/** The step from an open tile with no link toward the stand tile it reads, or null when it reads none or is on it. */
-function stepToAnchor(nav: RunNav, tile: Vec): Vec | null {
+/**
+ * The step for an open tile with no link of its own: the first step of the link its stand tile
+ * follows, so a runner in the air keeps the arrow the jump had; the step toward that stand tile when
+ * it follows none. Null when the tile reads no stand tile or is on the finish.
+ */
+function stepFromAnchor(nav: RunNav, tile: Vec): Vec | null {
   const anchor = nav.anchor[tile.y * nav.width + tile.x] ?? -1;
   if (anchor < 0) return null;
-  const step = { x: Math.sign((anchor % nav.width) - tile.x), y: Math.sign(Math.floor(anchor / nav.width) - tile.y) };
+  const anchorTile = { x: anchor % nav.width, y: Math.floor(anchor / nav.width) };
+  const link = nav.best[anchor];
+  if (link) return firstStep(link, anchorTile, nav.width);
+  const step = { x: Math.sign(anchorTile.x - tile.x), y: Math.sign(anchorTile.y - tile.y) };
   return step.x === 0 && step.y === 0 ? null : step;
 }
 
 /**
  * Offset of the next step toward the finish from `tile`: the first step of a stand tile's best link
- * (up or diagonal for a jump), or for an open tile in the air the step toward the stand tile it
- * reads. Null at the finish, where nothing is reachable, off the grid or in rock.
+ * (up or diagonal for a jump), or for an open tile in the air the first step of the link of the
+ * stand tile it reads. Null at the finish, where nothing is reachable, off the grid or in rock.
  *
  * @throws {Error} When the world's nav was built by another medium.
  */
@@ -45,7 +52,7 @@ export function runNextTile(world: World, tile: Vec): Vec | null {
   if (tile.x < 0 || tile.y < 0 || tile.x >= nav.width || tile.y >= nav.height) return null;
   if (!Number.isFinite(runDistanceAt(world, tile))) return null;
   const link = nav.best[tile.y * nav.width + tile.x];
-  return link ? firstStep(link, tile, nav.width) : stepToAnchor(nav, tile);
+  return link ? firstStep(link, tile, nav.width) : stepFromAnchor(nav, tile);
 }
 
 /**

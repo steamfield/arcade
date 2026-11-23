@@ -91,7 +91,8 @@ function nearestOnRow(terrain: Terrain, stand: ReadonlySet<number>, col: number,
 
 /**
  * The stand tile each open tile reads, by scanning every column upward: a tile reads the nearest stand tile
- * below it in its open run, else the nearest on its own row.
+ * below it in its open run; over a pit, the open tile under it reads the nearest on its own row, and
+ * the tiles above take that tile's anchor and price, so the air over a pit's mouth reads it too.
  *
  * @returns The anchor of every tile, and the extra ticks it pays for reading a tile on its row.
  */
@@ -109,6 +110,9 @@ function anchorsOf(terrain: Terrain, stand: ReadonlySet<number>, walkTicksPerTil
         anchor[tile] = tile;
       } else if (below >= 0) {
         anchor[tile] = below;
+      } else if (row + 1 < terrain.height && (anchor[tile + terrain.width] ?? -1) >= 0) {
+        anchor[tile] = anchor[tile + terrain.width] ?? -1;
+        extraTicks[tile] = extraTicks[tile + terrain.width] ?? 0;
       } else {
         const beside = nearestOnRow(terrain, stand, col, row);
         anchor[tile] = beside?.tile ?? -1;

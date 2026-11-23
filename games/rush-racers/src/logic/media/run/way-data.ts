@@ -57,7 +57,7 @@ export interface RunPilot extends PilotMemory {
   inFlight: boolean;
   /** Index of the stand tile whose link the runner is following; null until it stands on one after a landing. */
   planTile: number | null;
-  /** Index of the stand tile the flight in progress aims to land on; null on the ground or in an unplanned fall. */
+  /** The `to` of the link being followed: set each tick on the ground, kept through the flight, null when no link is being followed. */
   landingTile: number | null;
   /** Ticks left of a stuck recovery; 0 when not recovering. */
   recoverTicks: number;

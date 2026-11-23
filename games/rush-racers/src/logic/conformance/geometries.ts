@@ -153,8 +153,9 @@ const LEDGE_HOP: Geometry = {
   `,
 };
 
-// A valley too wide to jump, with ledge stepping stones across its top and a ledge staircase up its
-// right wall. Dropping in and climbing out is the longer way; the stones are the shorter one.
+// A valley too wide to jump. The way over is a three-step ledge staircase up from the start floor and
+// ledge stepping stones across the top, then a drop to the far floor; the way through is a drop into
+// the valley and a climb out by a ledge staircase up its far wall, which takes longer.
 const HIGH_ROUTE: Geometry = {
   name: 'a high route',
   ascii: `
@@ -162,19 +163,23 @@ const HIGH_ROUTE: Geometry = {
     #.......................F..#
     #.......................F..#
     #.......................F..#
-    #1.2.3.4................F..#
-    #########..==..==.##########
-    #########.........##########
-    #########........=##########
+    #.......................F..#
+    #.......................F..#
+    #.......................F..#
+    #.......==..==..==......F..#
+    #......=................F..#
+    #1234.=.................F..#
     #########.........##########
     #########.......=.##########
+    #########.........##########
+    #########......=..##########
     #########.........##########
     ############################
   `,
 };
 
-// A seven-tile gap in the floor that no jump crosses, with a ledge staircase up the far wall from the
-// floor below: the way on is to drop in and climb out, never to jump.
+// A gap of six open tiles in the floor, then the top ledge of a staircase, that no jump crosses; a ledge
+// staircase leads up the far wall from the floor below: the way on is to drop in and climb out.
 const DEAD_END_JUMP: Geometry = {
   name: 'a dead-end jump',
   ascii: `

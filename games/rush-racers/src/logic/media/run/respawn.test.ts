@@ -140,6 +140,8 @@ describe('falling into a pit', () => {
 
     // Under the rivals' 3 rows and the headroom, the ledge is the row after the start's.
     expect(race.player.body.y + race.player.body.h).toBe((HEADROOM.length + 4) * TILE);
+    // The first ledge, cols 1-3, not the second one it never reached.
+    expect(race.player.body.x + race.player.body.w).toBeLessThanOrEqual(4 * TILE);
   });
 
   it('never counts cracked stone as safe ground, since it can break for good', () => {
