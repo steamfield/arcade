@@ -2,6 +2,7 @@
  * Every global world sprite sheet in one list, gathered from the family files so the art builder
  * and the art data test walk the same set. A theme's sheets live with the theme.
  */
+import { ENEMY_SHEETS } from './enemies.ts';
 import { GUIDE_SHEETS } from './guide.ts';
 import { HUD_SHEETS } from './hud.ts';
 import { PICKUP_SHEETS } from './pickups.ts';
@@ -18,4 +19,5 @@ export const ART_SHEETS: readonly ArtSheet[] = [
   ...POWERUP_SHEETS,
   ...HUD_SHEETS,
   ...GUIDE_SHEETS,
+  ...ENEMY_SHEETS,
 ];

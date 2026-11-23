@@ -1,5 +1,5 @@
 /**
- * The race screen. It assembles the views, drawn in the course's theme (backdrop, course, pickups, hazards,
+ * The race screen. It assembles the views, drawn in the course's theme (backdrop, course, pickups, hazards, enemies,
  * the attack power-ups in the water, racers and their power-up effects, the darkness
  * over dark zones, HUD, the hints for young players, camera, debug overlay, and any layers the theme adds) over the
  * runtime's world and syncs them every rendered frame.
@@ -21,6 +21,7 @@ import { besidePlayerY } from '../view/beside-player.ts';
 import { followRacer } from '../view/camera.ts';
 import { createDarkView } from '../view/dark-view.ts';
 import { createDebugOverlay } from '../view/debug-overlay.ts';
+import { createEnemyView } from '../view/enemy-view.ts';
 import { createFireButtonIcon } from '../view/fire-button.ts';
 import { createGuideView } from '../view/guide-view.ts';
 import { createHazardView } from '../view/hazard-view.ts';
@@ -67,6 +68,7 @@ export class RaceScene extends Phaser.Scene {
     const { reducedMotion } = this.rt.settings;
     const pickups = createPickupView(this, world.level, reducedMotion);
     const hazards = createHazardView(this, world.level, theme.hazards, reducedMotion);
+    const enemies = createEnemyView(this, world, reducedMotion);
     const attacks = createAttackView(this, reducedMotion);
     const racers = world.racers.map((racer) => ({
       racer,
@@ -86,6 +88,7 @@ export class RaceScene extends Phaser.Scene {
     const stopListening = this.rt.listen((events) => {
       const tick = this.rt.world?.tick ?? 0;
       level.onEvents(events);
+      enemies.onEvents(events, tick);
       for (const { view, effects } of racers) {
         view.onEvents(events, tick);
         effects.onEvents(events, tick);
@@ -104,6 +107,7 @@ export class RaceScene extends Phaser.Scene {
       backdrop.update(current.tick);
       pickups.sync(current, current.tick);
       hazards.sync(current, current.tick);
+      enemies.sync(current);
       attacks.sync(current, current.tick);
       for (const layer of themeLayers) layer.sync(current);
       for (const { racer, view, effects } of racers) {

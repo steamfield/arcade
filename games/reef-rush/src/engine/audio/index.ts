@@ -6,9 +6,8 @@
 
 import { createLogger, createRng, type EventSink, type Stamped } from '@arcade/core';
 import type { GameContext } from '@arcade/shell';
-import type { RacerId } from '../../logic/types.ts';
 import type { RuntimeEvent, Settings } from '../runtime.ts';
-import { createAdapter } from './adapter.ts';
+import { type AdapterOptions, createAdapter } from './adapter.ts';
 import { createSequencer } from './sequencer.ts';
 import type { SongName } from './songs/index.ts';
 import { createSynth, type Synth } from './synth.ts';
@@ -40,8 +39,8 @@ const SILENT: AudioPort = {
 
 /**
  * Creates the game's audio on its own AudioContext, registered with the shell so it is
- * resumed after a gesture or an iOS interruption. `audibleFromPlayer` says which racers are near enough for their
- * attacks to be heard. `events` is the runtime's log, where
+ * resumed after a gesture or an iOS interruption. `hearing.audibleFromPlayer` says which racers are near enough
+ * for their attacks to be heard, and `hearing.enemyAudible` which enemies (by index in `world.enemies`). `events` is the runtime's log, where
  * `audio.played` is emitted once a sound actually starts. `settings.muted` applies at once.
  * When WebAudio can't be set up the failure goes to `ctx.reportError` and the game runs silent.
  */
@@ -49,7 +48,7 @@ export function createAudio(
   ctx: GameContext,
   settings: Settings,
   events: EventSink<RuntimeEvent>,
-  audibleFromPlayer: (id: RacerId) => boolean,
+  hearing: Pick<AdapterOptions, 'audibleFromPlayer' | 'enemyAudible'>,
   raceSong: () => SongName,
 ): AudioPort {
   const reportError = (error: unknown) => ctx.reportError('audio', error);
@@ -67,7 +66,7 @@ export function createAudio(
     events,
     rng: createRng((ctx.params.seed ^ COSMETIC_SALT) >>> 0),
     onError: reportError,
-    audibleFromPlayer,
+    ...hearing,
     raceSong,
   });
   log.debug('audio ready', { state: context.state, muted: settings.muted });

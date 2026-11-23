@@ -58,10 +58,68 @@ describe('applying a stage', () => {
     expect(world.racers.find((r) => r.id === 'player')?.status.latched).toBeGreaterThan(0);
   });
 
-  it('knows every stage it names, except those that need a current, a dark zone or coral in the course', () => {
-    for (const stage of STAGES.filter((name) => name !== 'riptide' && name !== 'dark' && name !== 'cannonball')) {
+  it('knows every stage it names, except those that need a current, a dark zone, coral or a tall room', () => {
+    const needsMore = ['riptide', 'dark', 'cannonball', 'enemy-modes'];
+    for (const stage of STAGES.filter((name) => !needsMore.includes(name))) {
       const { world } = raceOn(ARENA);
       expect(() => applyStage(world, stage), stage).not.toThrow();
     }
+  });
+
+  it('stands the player on the floor, a crab 3 tiles ahead walking away, a shark 6 ahead facing them, rivals up top', () => {
+    const { world } = raceOn(ARENA);
+    applyStage(world, 'enemies');
+    const player = world.racers.find((r) => r.id === 'player');
+    const tile = player && {
+      x: Math.floor((player.body.x + player.body.w / 2) / 16),
+      y: Math.floor((player.body.y + player.body.h / 2) / 16),
+    };
+    expect(tile).toEqual({ x: 1, y: 4 });
+    expect(world.enemies.map(({ kind, home, facing, mode }) => ({ kind, home, facing, mode }))).toEqual([
+      { kind: 'crab', home: { x: 4, y: 4 }, facing: 1, mode: 'patrol' },
+      { kind: 'shark', home: { x: 7, y: 2 }, facing: -1, mode: 'patrol' },
+    ]);
+    const rivalRows = world.racers
+      .filter((r) => r.id !== 'player')
+      .map((r) => Math.floor((r.body.y + r.body.h / 2) / 16));
+    expect(rivalRows).toEqual([1, 2, 3]);
+  });
+
+  it('lines up every enemy kind in each of its modes for enemy-modes', () => {
+    const { world } = raceOn(`
+      ####################
+      #.................F#
+      #.................F#
+      #1................F#
+      #2................F#
+      #3................F#
+      #4................F#
+      ####################
+    `);
+    applyStage(world, 'enemy-modes');
+    expect(world.enemies.map(({ kind, mode }) => `${kind} ${mode}`)).toEqual([
+      'crab patrol',
+      'crab stagger',
+      'eel hidden',
+      'eel windup',
+      'eel lunge',
+      'shark patrol',
+      'shark windup',
+      'shark charge',
+      'shark stagger',
+    ]);
+  });
+
+  it('names the column when a stage needs a floor the course does not have', () => {
+    const { world } = raceOn(`
+      ####################
+      #1................F#
+      #2................F#
+      #3................F#
+      #4................F#
+      ####################
+    `);
+    world.level.cells[5] = world.level.cells[5]?.map(() => 'water') ?? [];
+    expect(() => applyStage(world, 'enemies')).toThrow('need a floor below row 1 in column 1');
   });
 });

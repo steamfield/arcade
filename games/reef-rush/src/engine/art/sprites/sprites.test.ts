@@ -5,6 +5,7 @@ import { POWER_UP_TEX } from '../../view/powerup-view.ts';
 import { Frame, Tex } from '../keys.ts';
 import { measureFrames, type NamedFrame } from '../pixel.ts';
 import { AttackPalette, RIPTIDE_TILE } from './attack.ts';
+import { EnemyPalette, MARK_SIZE } from './enemies.ts';
 import { GUIDE_SIZE } from './guide.ts';
 import { ART_SHEETS } from './index.ts';
 import { CharacterPalette, RACER_SHEETS } from './racers.ts';
@@ -69,6 +70,27 @@ describe('world art data', () => {
     });
   });
 
+  it('gives each enemy the poses its view asks for, at its size', () => {
+    const size = (key: string) => measureFrames(key, sheetFor(key)?.frames ?? []);
+    expect(frameNames(Tex.shark)).toEqual([Frame.a, Frame.b, Frame.enemyBite, Frame.enemyStagger]);
+    expect(size(Tex.shark)).toEqual({ width: 24, height: 14 });
+    expect(frameNames(Tex.eelHead)).toEqual([Frame.a, Frame.b]);
+    // The body tile is as tall as the head, so the two join row for row.
+    expect(size(Tex.eelHead)).toEqual({ width: 16, height: 10 });
+    expect(size(Tex.eelBody)).toEqual({ width: 8, height: 10 });
+    expect(frameNames(Tex.crab)).toEqual([Frame.a, Frame.b, Frame.enemyStagger]);
+    expect(size(Tex.crab)).toEqual({ width: 16, height: 12 });
+    expect(frameNames(Tex.enemyMark)).toEqual([
+      Frame.markHole,
+      Frame.markEyes,
+      Frame.markAlert,
+      Frame.markBubble,
+      Frame.markStar,
+      Frame.markPop,
+    ]);
+    expect(size(Tex.enemyMark)).toEqual({ width: MARK_SIZE, height: MARK_SIZE });
+  });
+
   it('keeps racers within 16x12 so they fit around their 12x10 bodies', () => {
     for (const key of RACER_KEYS) {
       expect(measureFrames(key, sheetFor(key)?.frames ?? []), key).toEqual({ width: 16, height: 12 });
@@ -95,6 +117,9 @@ describe('world art palettes', () => {
   const mainColours = [
     ...CHARACTER_IDS.map((character) => [character, CharacterPalette[character][1]] as const),
     ['homing squid', AttackPalette.homingSquid[1]] as const,
+    ['shark', EnemyPalette.shark[1]] as const,
+    ['eel', EnemyPalette.eel[1]] as const,
+    ['crab', EnemyPalette.crab[1]] as const,
   ];
 
   it.each(mainColours)("%s main colour stands 3:1 off every theme's contrast bands", (_, colour) => {
