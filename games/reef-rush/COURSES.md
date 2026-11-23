@@ -118,7 +118,7 @@ A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic c
 - `logic/media/<medium-id>/index.ts` (and helpers beside it): the medium object. `logic/media/swim/` is the example.
 - `logic/media/index.ts`: add it to `MEDIA`.
 - `logic/courses/types.ts`: add the id to `ShippedMediumId`.
-- `logic/media/types.ts`: `MediumEnv`, `MediumNav` and `RacerMotion` are unions that grow one member per medium.
+- `logic/media/types.ts`: `MediumEnv`, `MediumNav` and `RacerMotion` are unions that grow one member per medium. `PilotMemory` is still a fixed interface holding swim's fields; when a second medium ships it must become a union too (swim's fields as one member, the new medium's as another).
 - A course that races in it (an unlisted test course is enough to start), and a How to Play move page for it: How to Play explains swimming only, so each medium needs its own page.
 
 ### Every member
@@ -128,7 +128,7 @@ A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic c
 | `id` | Registry key, the course's `medium`. | `'swim'` |
 | `tuning` | `base` modifiers, `force`, `drag`, `maxSpeed`, `kick`, and medium-only numbers in `extra`. `modifiersFor` merges `course.tuning` over it. | Today's swim constants; `extra` holds `sink`, `currentForce`, `kelpDragMul`. |
 | `createMotion(body)` | Per-racer movement state the medium owns (`Racer.motion`). | `{}` |
-| `createPilot()` | Per-rival AI state the medium owns. | Wobble, speed-based stuck count, recovery, aim and replan timer. |
+| `createPilot()` | Per-rival AI state for the medium's `steer`. Today `PilotMemory` is a fixed interface with swim's fields, so a second medium must first turn it into a union (see Files). | Wobble, speed-based stuck count, recovery, aim and replan timer. |
 | `sampleEnvironment(world, racer)` | What the surroundings do to this racer this tick. Takes the racer because a held power-up can change what its holder feels. | The current under the racer (including a Riptide's lane) and whether it's in kelp. |
 | `applyIntent(racer, intent, env, mods, events, dt)` | Velocity, facing and kick cooldown for one tick. Every `MoveModifiers` field must have a visible effect. | Thrust toward the stick, drag, idle sink, current push, kelp drag, kick with cooldown, speed cap. |
 | `buildNav(level, broken)` | Navigation over the level with broken coral gone; rebuilt when coral breaks. | Flow fields toward the finish: steer, smash, ram. |

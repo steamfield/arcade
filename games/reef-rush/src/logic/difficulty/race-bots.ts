@@ -178,10 +178,17 @@ export function table(runs: Run[]): string {
     .join('\n');
 }
 
-/** The mean player finish over the runs it finished, in ticks; 0 when it finished none. */
-export function meanPlayerFinish(runs: Run[]): number {
+/**
+ * The mean player finish over the runs it finished, in ticks. `courseId` names the course in the error.
+ *
+ * @throws {Error} When the player finished none of the runs, so there is no mean to judge.
+ */
+export function meanPlayerFinish(runs: Run[], courseId: string): number {
   const times = runs.map((run) => run.finish.player).filter((t) => t !== null);
-  return times.reduce((sum, t) => sum + t, 0) / Math.max(1, times.length);
+  if (times.length === 0) {
+    throw new Error(`The player finished none of ${runs.length} runs on '${courseId}', so it has no mean finish`);
+  }
+  return times.reduce((sum, t) => sum + t, 0) / times.length;
 }
 
 /** The largest rival finish time over the player's, across runs; Infinity when anyone failed to finish. */
@@ -213,6 +220,8 @@ function closeWin(run: Run): boolean {
 /**
  * Registers the expert bars (wins, balance, race length) for the player racing as `character` on the
  * course with `courseId`.
+ *
+ * @throws {Error} When `courseId` is neither a shipped nor a registered course.
  */
 export function describeDifficulty(character: CharacterId, courseId: string = DEFAULT_COURSE.id): void {
   const course = courseOf({ course: courseId });
@@ -244,9 +253,9 @@ export function describeDifficulty(character: CharacterId, courseId: string = DE
       () => {
         const runs = expert();
         const finished = runs.filter((run) => run.finish.player !== null).length;
-        const mean = meanPlayerFinish(runs);
-        const band = parBand(courseId);
         expect(finished, `expert finished every seed:\n${table(runs)}`).toBe(SEEDS.length);
+        const mean = meanPlayerFinish(runs, courseId);
+        const band = parBand(courseId);
         expect(mean, `mean expert finish ${seconds(mean)} s:\n${table(runs)}`).toBeGreaterThan(band.min);
         expect(mean, `mean expert finish ${seconds(mean)} s:\n${table(runs)}`).toBeLessThan(band.max);
       },
@@ -258,6 +267,8 @@ export function describeDifficulty(character: CharacterId, courseId: string = DE
 /**
  * Registers the novice bar for the player racing as `character` on the course with `courseId`, in a
  * file of its own so it runs beside the expert bars.
+ *
+ * @throws {Error} When `courseId` is neither a shipped nor a registered course.
  */
 export function describeNovice(character: CharacterId, courseId: string = DEFAULT_COURSE.id): void {
   const course = courseOf({ course: courseId });

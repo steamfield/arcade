@@ -75,7 +75,7 @@ interface Markers {
 /**
  * Parses a course definition.
  *
- * @throws {LevelError} For a legend glyph that isn't one character, reuses a built-in character or
+ * @throws {LevelError} For a legend glyph that isn't one UTF-16 character, is whitespace, reuses a built-in character or
  *   names an unknown cell; ragged rows, unknown characters, missing or duplicate start digits,
  *   no finish tile, finish tiles in more than one column, or a dark zone outside the map or reversed.
  */
@@ -106,8 +106,13 @@ export function parseLevel(def: LevelDef): Level {
 function readLegend(entries: NonNullable<LevelDef['legend']>): Legend {
   const legend = new Map<string, Cell>();
   for (const [glyph, { cell }] of Object.entries(entries)) {
-    if ([...glyph].length !== 1) {
-      throw new LevelError(`Legend glyph "${glyph}" must be exactly one character`);
+    // Row widths count UTF-16 units, so an emoji (two units) would make a row wider than its tiles.
+    if (glyph.length !== 1) {
+      throw new LevelError(`Legend glyph "${glyph}" must be exactly one character (one UTF-16 unit, so no emoji)`);
+    }
+    // Rows are trimmed before they're read, so a whitespace glyph at a row's edge would vanish.
+    if (/\s/.test(glyph)) {
+      throw new LevelError(`Legend glyph "${glyph}" is whitespace, which rows lose when trimmed; pick a visible one`);
     }
     if (VALID_CHARACTERS.includes(glyph)) {
       throw new LevelError(`Legend glyph "${glyph}" is a built-in tile (${VALID_CHARACTERS}); pick another character`);

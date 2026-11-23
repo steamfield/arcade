@@ -25,14 +25,14 @@ describe.each(CHARACTERS)(`the sanity bar on ${DEFAULT_COURSE.name} on Hard as %
     `lets an expert finish every race, win at least ${EXPERT_MIN_WINS} of ${SEEDS.length} and finish near par on average`,
     () => {
       const runs = expertRuns();
-      const mean = meanPlayerFinish(runs);
-      const band = parBand(DEFAULT_COURSE.id);
 
       expect(
         runs.filter((run) => run.finish.player === null),
         table(runs),
       ).toEqual([]);
       expect(runs.filter((run) => run.playerPlace === 1).length, table(runs)).toBeGreaterThanOrEqual(EXPERT_MIN_WINS);
+      const mean = meanPlayerFinish(runs, DEFAULT_COURSE.id);
+      const band = parBand(DEFAULT_COURSE.id);
       expect(mean, `mean expert finish ${seconds(mean)} s:\n${table(runs)}`).toBeGreaterThan(band.min);
       expect(mean, `mean expert finish ${seconds(mean)} s:\n${table(runs)}`).toBeLessThan(band.max);
     },

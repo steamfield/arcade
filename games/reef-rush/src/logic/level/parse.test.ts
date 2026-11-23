@@ -135,10 +135,19 @@ describe('parseLevel reading a legend', () => {
     expect(levelErrorFrom(legendLevel('#1234F', legend)).message).toContain('unknown cell "lava"');
   });
 
-  it('rejects a legend key longer than one character', () => {
-    const error = levelErrorFrom(legendLevel('#1234F', { ww: { cell: 'rock', art: 'wreck' } }));
+  it.each([
+    { glyph: 'ww', why: 'two characters' },
+    { glyph: '🚢', why: 'an emoji, two UTF-16 units wide' },
+  ])('rejects a legend key of $why', ({ glyph }) => {
+    const error = levelErrorFrom(legendLevel(`#1234${glyph}F`, { [glyph]: { cell: 'rock', art: 'wreck' } }));
 
     expect(error.message).toContain('exactly one character');
+  });
+
+  it('rejects a whitespace legend key, which trimmed rows would lose', () => {
+    const error = levelErrorFrom(legendLevel('#1234F', { ' ': { cell: 'rock', art: 'wreck' } }));
+
+    expect(error.message).toContain('is whitespace');
   });
 });
 
