@@ -57,8 +57,18 @@ test('a race on Bramble Run makes it the last course, and the title shows its be
   await game.loadState(TWO_COURSE_SAVE);
   expect(await game.summary()).toMatchObject({ scene: 'title', course: 'sunlit-shallows', best: SUNLIT_BEST });
 
-  // Race, down to Bramble Run and pick it, then race as the saved pick and stand still to a DNF.
-  await game.play([wait(25), tap('fire'), wait(5), tap('down'), wait(20), tap('fire'), wait(25), tap('fire')]);
+  // Race opens course select on Sunlit Shallows; down moves to Bramble Run.
+  await game.play([wait(25), tap('fire'), wait(5), tap('down'), wait(2)]);
+  expect(await game.summary()).toMatchObject({
+    scene: 'course',
+    courseSelect: { rows: [{ id: 'sunlit-shallows' }, { id: 'bramble-run' }], selected: 1 },
+  });
+  // Fire picks it: select shows Thornwood's cast, the cursor on the saved pick's slot (rudy is Grit there).
+  await game.play([wait(20), tap('fire'), wait(2)]);
+  expect(await game.summary()).toMatchObject({ scene: 'select', course: 'bramble-run', selectName: 'GRIT' });
+  // Race as the saved pick, on foot, and stand still to a DNF.
+  await game.play([wait(25), tap('fire'), wait(2)]);
+  expect(await game.summary()).toMatchObject({ scene: 'race', course: 'bramble-run', medium: 'run' });
   await game.play([wait(IDLE_TO_RESULTS)]);
   expect(await game.summary()).toMatchObject({ scene: 'results', course: 'bramble-run', medium: 'run' });
   // A DNF saves no best, so both bests stay the save's.
