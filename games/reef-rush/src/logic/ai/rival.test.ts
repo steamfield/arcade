@@ -400,8 +400,9 @@ const CORAL_LANE = `
 type Spots = Partial<Record<RacerId, [number, number]>>;
 
 /**
- * Tess holding `kinds` with item aggression `aggression`. By default she sits mid-arena at (10, 5)
- * and everyone else is about 10 tiles away; `spots` moves racers to other tiles.
+ * Tess holding `kinds` with item aggression `aggression`, reacting every tick (`reactionTicks` 1), so
+ * `aggression` alone is her chance per tick to fire. By default she sits mid-arena at (10, 5) and
+ * everyone else is about 10 tiles away; `spots` moves racers to other tiles.
  */
 function itemScene(kinds: (PowerUpKind | null)[], spots: Spots = {}, aggression = 1, ascii = ARENA) {
   const { world } = raceOn(ascii);
@@ -412,7 +413,7 @@ function itemScene(kinds: (PowerUpKind | null)[], spots: Spots = {}, aggression 
   updateProgress(world);
   const tess = racer(world, 'tess');
   giveItems(tess, kinds);
-  tess.profile = { ...tess.profile, itemAggression: aggression };
+  tess.profile = { ...tess.profile, itemAggression: aggression, reactionTicks: 1 };
   const decide = (ticks = 1) => Array.from({ length: ticks }, () => rivalIntent(world, tess, world.rngs['ai.tess']));
   return { world, tess, decide };
 }
@@ -560,6 +561,52 @@ describe('using items', () => {
     expect(never).toBe(0);
   });
 
+  it('fires after about reactionTicks / itemAggression ticks with a target in reach, sooner when quicker', () => {
+    /** Ticks until each fire over 2000 ticks with a target always in reach, averaged. */
+    const meanWait = (reactionTicks: number, aggression: number) => {
+      const { tess, decide } = itemScene(['glowLantern'], { player: [12, 5] }, aggression);
+      tess.profile = { ...tess.profile, reactionTicks };
+      const fired = uses(
+        Array.from({ length: 2000 }, () => {
+          tess.body.vx = 60;
+          return decide()[0] as Intent;
+        }),
+      );
+      return 2000 / fired;
+    };
+
+    expect(meanWait(6, 1)).toBeGreaterThan(5);
+    expect(meanWait(6, 1)).toBeLessThan(7.5);
+    expect(meanWait(3, 1)).toBeLessThan(4);
+    expect(meanWait(3, 0.5)).toBeGreaterThan(5);
+  });
+
+  it('drops its Mimic on a racer within 4 tiles behind while it leads, and holds it otherwise', () => {
+    const fires = (place: number, behind: [number, number]) => {
+      const { tess, decide } = itemScene(['mimic'], { player: behind });
+      tess.place = place;
+      return uses(decide());
+    };
+
+    expect(fires(1, [7, 5])).toBe(1);
+    expect(fires(2, [7, 5])).toBe(0);
+    expect(fires(1, [5, 5])).toBe(0);
+    expect(fires(1, [13, 5])).toBe(0);
+  });
+
+  it('never drops ink or a decoy on the player while leading on Easy, but does on a rival', () => {
+    const fires = (kind: PowerUpKind, behind: RacerId) => {
+      const { world, tess, decide } = itemScene([kind], { [behind]: [7, 5] });
+      world.difficulty = 'easy';
+      tess.place = 1;
+      // Easy scales the chance per tick down, so ask for 30 ticks rather than one.
+      return uses(decide(30)) > 0;
+    };
+
+    expect([fires('inkSac', 'player'), fires('mimic', 'player')]).toEqual([false, false]);
+    expect([fires('inkSac', 'squib'), fires('mimic', 'squib')]).toEqual([true, true]);
+  });
+
   it('never fires while its item use cools down', () => {
     const { tess, decide } = itemScene(['glowLantern'], { player: [12, 5] });
     tess.useCooldown = 10;
@@ -632,7 +679,7 @@ describe('using items', () => {
     updateProgress(world);
     const tess = racer(world, 'tess');
     giveItems(tess, ['inkSac', 'glowLantern']);
-    tess.profile = { ...tess.profile, itemAggression: 1 };
+    tess.profile = { ...tess.profile, itemAggression: 1, reactionTicks: 1 };
 
     step(world, log, 1, IDLE);
 

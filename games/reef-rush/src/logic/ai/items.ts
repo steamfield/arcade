@@ -40,6 +40,8 @@ export const ITEM_USE = {
   riptideClearTiles: 6,
   /** ...and a racer this close behind, who would draft it (a lane nobody can use is not worth a charge). */
   riptideBehindTiles: 5,
+  /** Leading with Ink Sac or Mimic: a racer behind within this many tiles makes it worth dropping. */
+  defendBehindTiles: 4,
   /** Undertow: a racer this many tiles further ahead makes it worth firing (from 3rd or 4th place only). */
   undertowLeadTiles: 8,
   /** Mimic: drop the decoy when a squid locked on this racer is within this many tiles. */
@@ -49,22 +51,23 @@ export const ITEM_USE = {
    * scales the chance by this. A Cannonball or Puffer with coral just ahead is worth firing at once:
    * a rival that waits at the gate for a use it almost never takes jams the corridor.
    */
-  jetChanceMul: 0.02,
+  jetChanceMul: 0.1,
 } as const;
 
 /**
  * The slot the racer fires this tick, or null. Null when its item use is cooling down or nothing held
  * has a use. The slot is the first holding a Puffer or Cannonball when coral is just ahead
  * (`pufferHasCoral`), else the first held slot whose kind has a use. It fires only when `roll` is
- * under `profile.itemAggression` (times the difficulty level's multiplier), times
- * ITEM_USE.jetChanceMul when that slot is Jet Fins or a Cannonball and no coral is ahead.
+ * under `fireChance` (`itemAggression` times the difficulty level's multiplier, over `reactionTicks`),
+ * times ITEM_USE.jetChanceMul when that slot is Jet Fins or a Cannonball and no coral is ahead.
  *
  * Uses: inkSac, a racer behind (higher progress) within 4 tiles; bubbleShield, a racer ahead within
  * 6 tiles inside the aim cone; glowLantern, a racer ahead within 2 tiles; puffer, unbroken coral
  * within 3 tiles ahead (`Medium.coralAhead`); jetFin, a clear straight path of 5 tiles along the aim;
  * cannonball, either of the last two; homingSquid, a target in lock range (`pickSquidTarget`);
  * riptide, 6 clear tiles along the aim with a racer within 5 tiles behind to draft it; undertow, in
- * 3rd or 4th with a racer 8 or more tiles ahead; mimic, a squid locked on it within 8 tiles.
+ * 3rd or 4th with a racer 8 or more tiles ahead; mimic, a squid locked on it within 8 tiles. Leading
+ * the race, inkSac and mimic also have a use whenever a racer is within 4 tiles behind.
  *
  * @param aim The unit aim the medium's steering chose this tick (`Steering.aim`).
  * @param roll The tick's item draw from the racer's rng, in [0, 1).
@@ -76,9 +79,19 @@ export function chooseItemSlot(world: World, racer: Racer, aim: Vec, roll: numbe
   const slot = breaker >= 0 ? breaker : slotWithUse(world, racer, aim);
   const kind = itemAt(racer, slot)?.kind;
   if (kind === undefined) return null;
-  const aggression = racer.profile.itemAggression * itemAggressionMul(world, racer);
   const dashes = kind === 'jetFin' || (kind === 'cannonball' && !coral);
-  return roll < aggression * (dashes ? ITEM_USE.jetChanceMul : 1) ? slot : null;
+  return roll < fireChance(world, racer) * (dashes ? ITEM_USE.jetChanceMul : 1) ? slot : null;
+}
+
+/**
+ * The chance per tick that `racer` fires an item that has a use: its `itemAggression` (times the
+ * difficulty level's multiplier) over its `reactionTicks`. So with a use in front of it a rival fires
+ * after `reactionTicks / itemAggression` ticks on average, sooner for quick and eager characters.
+ * A chance and not a countdown, so the decision stays one draw a tick and needs no memory.
+ */
+function fireChance(world: World, racer: Racer): number {
+  const aggression = racer.profile.itemAggression * itemAggressionMul(world, racer);
+  return aggression / Math.max(1, racer.profile.reactionTicks);
 }
 
 /** The first slot holding one of `kinds` that can fire now (`canFire`), or -1. */
@@ -92,6 +105,7 @@ function slotWithUse(world: World, racer: Racer, aim: Vec): number {
 }
 
 function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolean {
+  if (DEFENSIVE_KINDS.includes(kind) && chasedWhileLeading(world, racer)) return true;
   switch (kind) {
     case 'inkSac':
       return othersNear(world, racer, ITEM_USE.inkBehindTiles).some((other) => other.progress > racer.progress);
@@ -128,6 +142,19 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
           withinTiles(centreOf(racer), squid, ITEM_USE.mimicSquidTiles),
       );
   }
+}
+
+/**
+ * The items a leading rival drops behind it on a chaser: ink in the chaser's way, a decoy for the
+ * squid it may fire. A Bubble Shield would need aiming backwards, which the rival's intent can't do
+ * yet, so it keeps its shield.
+ */
+const DEFENSIVE_KINDS: readonly PowerUpKind[] = ['inkSac', 'mimic'];
+
+/** True when `racer` leads the race (place 1) with another racer within ITEM_USE.defendBehindTiles behind it. */
+function chasedWhileLeading(world: World, racer: Racer): boolean {
+  if (racer.place !== 1) return false;
+  return othersNear(world, racer, ITEM_USE.defendBehindTiles).some((other) => other.progress > racer.progress);
 }
 
 /**

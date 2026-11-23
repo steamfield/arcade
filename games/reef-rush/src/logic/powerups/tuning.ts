@@ -131,7 +131,7 @@ export const PASSIVE = {
  * anyone ahead of `undertowMinPlace`, whatever the interpolation says (`clamWeights`).
  */
 export const CLAM = {
-  closedTicks: 240,
+  closedTicks: 30,
   /** Undertow only rolls for racers in this place or worse (3rd or 4th). */
   undertowMinPlace: 3,
   firstWeights: {
