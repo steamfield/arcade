@@ -1,7 +1,7 @@
 /**
  * Capture stages for `arcade see`-style review: `?stage=<name>` on the race URL puts the attack
- * power-ups into the world before the first frame, so their views can be looked at while the
- * logic that spawns them is still being built (and without waiting for a race to roll one). A
+ * power-ups into the world before the first frame, so their views can be reviewed without waiting
+ * for a race to roll one (a seed rarely draws the squid, and the dark zone is the course's last stretch). A
  * stage only writes plain world state (a stack, a status, a squid, a lane, a decoy) that the views
  * read. It is honoured only with `?debug=1` or in test mode, and `Runtime.startRace` marks the race
  * staged so its result is never saved. Applied by `Runtime.startRace`, right after the world is built.

@@ -10,7 +10,7 @@ export default scenario({
     expect(summary).toMatchObject({
       scene: 'title',
       best: null,
-      menu: { options: ['Race', 'Difficulty', 'How to play', 'Sound', 'Motion'], selected: 0 },
+      menu: { options: ['Race', 'How to play', 'Difficulty', 'Sound', 'Motion'], selected: 0 },
     });
     expect(summary).not.toHaveProperty('phase');
     expect(summary).not.toHaveProperty('player');

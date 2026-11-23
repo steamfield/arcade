@@ -11,10 +11,10 @@ export const { scenario, hold, tap, wait } = scenarioKit<Action>();
  * the scenario's `seed`.
  */
 export const HARD_SAVE = {
-  version: 4,
+  version: 5,
   savedAt: '2026-11-22T00:00:00.000Z',
   data: {
-    best: null,
+    best: { easy: null, normal: null, hard: null },
     races: 0,
     settings: { muted: false, reducedMotion: null, difficulty: 'hard' },
     character: 'rudy',

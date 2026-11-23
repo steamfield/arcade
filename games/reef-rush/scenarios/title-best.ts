@@ -11,7 +11,7 @@ export default scenario({
     expect(summary).toMatchObject({
       scene: 'title',
       best: 'Best 0:45.20 (2nd)',
-      menu: { options: ['Race', 'Difficulty', 'How to play', 'Sound', 'Motion'] },
+      menu: { options: ['Race', 'How to play', 'Difficulty', 'Sound', 'Motion'] },
     });
   },
 });

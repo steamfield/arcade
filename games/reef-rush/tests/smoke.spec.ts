@@ -9,7 +9,7 @@ test('starts on WebGL, races from the title through the select screen, and swims
   expect(await game.renderer()).toBe('webgl');
   expect(await game.summary()).toMatchObject({
     scene: 'title',
-    menu: { options: ['Race', 'Difficulty', 'How to play', 'Sound', 'Motion'], selected: 0 },
+    menu: { options: ['Race', 'How to play', 'Difficulty', 'Sound', 'Motion'], selected: 0 },
     best: null,
   });
 
@@ -64,5 +64,5 @@ test('a finished race is saved and its best time shows on the title after a relo
     scene: 'title',
     best: expect.stringMatching(/^Best \d:\d\d\.\d\d \(\d(st|nd|rd|th)\)$/),
   });
-  expect(await game.state()).toMatchObject({ save: { best: { ticks, place }, races: 1 } });
+  expect(await game.state()).toMatchObject({ save: { best: { hard: { ticks, place } }, races: 1 } });
 });

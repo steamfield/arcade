@@ -90,8 +90,6 @@ export function worldIcon(rows: PixelRows): PixelRows {
 
 /** Size of one Riptide lane tile, px. */
 export const RIPTIDE_TILE = 16;
-/** Size of the squid sprite (and the latched pose), px. */
-export const SQUID_SIZE = { width: 16, height: 12 } as const;
 
 /** World sheets for the squid, the lane tile and the pull lines. */
 export const ATTACK_SHEETS: readonly ArtSheet[] = [

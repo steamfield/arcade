@@ -88,11 +88,11 @@ describe('pixel faces', () => {
 
   it('covers every character the HUD, menus and results print', () => {
     const screens =
-      'RACE AGAIN TITLE RESULTS NEW BEST! BEST TIME NOT SAVED > 1ST 2ND 3RD 4TH DNF KICK ' +
+      'RACE AGAIN TITLE RESULTS NEW BEST! BEST TIME NOT SAVED > 1ST 2ND 3RD 4TH TIME UP KICK ' +
       'RUDY GIL STREAK ONYX NIB BARON BARNACLE SELENE ROOK WIND-UP HOLDS 4 POWER-UPS, NOT 3';
     const readouts = 'BEST 0:24.46 (2ND) TICK 1234 TILE 12,7 PRESS A';
     expect(normalizeText(TEXT_FACE, screens + readouts)).toBe(screens + readouts);
-    const splashes = '3 2 1 GO! FINISH! FINAL STRETCH NEW BEST DNF 1ST 2ND 3RD 4TH 0:24.46 PICK A RACER';
+    const splashes = '3 2 1 GO! FINISH! FINAL STRETCH NEW BEST TIME UP 1ST 2ND 3RD 4TH 0:24.46 PICK A RACER';
     expect(normalizeText(DISPLAY_FACE, splashes)).toBe(splashes);
   });
 

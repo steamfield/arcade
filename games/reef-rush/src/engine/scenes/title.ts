@@ -1,9 +1,10 @@
 /**
  * The title screen, laid out to UI.md: the REEF RUSH logotype over the reef
- * backdrop, the four racers swimming past, the Race / Level / How to play / Sound / Motion
+ * backdrop, the four racers swimming past, the Race / How to play / Level / Sound / Motion
  * buttons (Level, Sound and Motion show the setting in force and change the moment it does),
  * a blinking PRESS A on touch screens (on a keyboard A is a move key, so the
- * hint would mislead), and the best-time card, to the right of the buttons, when the save has a best.
+ * hint would mislead), and the best-time card, to the right of the buttons, when the save has a
+ * best on the level now selected (it follows the Level button).
  *
  * The screen stays up while the player toggles Motion, so every motion here
  * reads `rt.settings.reducedMotion` live each frame. Motion is timed from the
@@ -13,7 +14,7 @@ import Phaser from 'phaser';
 import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
 import { parseLevel } from '../../logic/level/parse.ts';
 import { NEW_GAME } from '../../logic/save.ts';
-import type { CharacterId } from '../../logic/types.ts';
+import type { CharacterId, Difficulty } from '../../logic/types.ts';
 import { DIFFICULTIES } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { Frame, Tex } from '../art/keys.ts';
@@ -44,6 +45,8 @@ const BEST_BADGE_AT = { x: 218, y: 87 } as const;
 const BEST_PLACE_AT = { x: 234, y: 86 } as const;
 const BEST_TIME_AT = { x: 234, y: 95 } as const;
 
+/** The Level button's row in the title menu, counting from the top. */
+const LEVEL_ROW = MENU_OPTIONS.title.indexOf('Difficulty');
 /** The Level button's pips: 3 px squares 5 px apart, 6 px in from the button's left edge. */
 const LEVEL_PIPS = { size: 3, pitch: 5, inset: 6 } as const;
 
@@ -73,6 +76,8 @@ export class TitleScene extends Phaser.Scene {
   private swimmers: { image: Phaser.GameObjects.Image; speed: number; offset: number }[] = [];
   private pressA: Label | null = null;
   private levelPips: Phaser.GameObjects.Rectangle[] = [];
+  /** Each level's best-time card, for the levels that have a best; one shows at a time. */
+  private bestCards: Partial<Record<Difficulty, BestCard>> = {};
 
   constructor(rt: Runtime) {
     super('title');
@@ -98,8 +103,12 @@ export class TitleScene extends Phaser.Scene {
     this.pressA = isTouchScreen()
       ? createLabel(this, PRESS_A.x, PRESS_A.top + 3, 'PRESS A', { align: 'center', outline: true })
       : null;
-    const best = rt.save?.best;
-    if (best) addBestCard(this, best, rt.save?.character ?? NEW_GAME.character);
+    const bests = rt.save?.best ?? NEW_GAME.best;
+    this.bestCards = {};
+    for (const level of DIFFICULTIES) {
+      const best = bests[level];
+      if (best) this.bestCards[level] = addBestCard(this, best, rt.save?.character ?? NEW_GAME.character);
+    }
     this.rt.entered('title');
     this.update();
   }
@@ -109,9 +118,11 @@ export class TitleScene extends Phaser.Scene {
     const { reducedMotion } = this.rt.settings;
     this.backdrop?.update(tick);
     this.menuView?.sync(this.rt.menu, tick, reducedMotion);
-    const level = DIFFICULTIES.indexOf(this.rt.settings.difficulty) + 1;
+    const { difficulty } = this.rt.settings;
+    const level = DIFFICULTIES.indexOf(difficulty) + 1;
     for (const [index, pip] of this.levelPips.entries())
       pip.setFillStyle(index < level ? UiColour.sun : UiRamp.indigoLight);
+    for (const shown of DIFFICULTIES) this.bestCards[shown]?.setVisible(shown === difficulty);
     this.pressA?.setVisible(reducedMotion || tick % (BLINK.on + BLINK.off) < BLINK.on);
     const stroke = reducedMotion || Math.floor(tick / STROKE_TICKS) % 2 === 0 ? Frame.a : Frame.b;
     for (const swimmer of this.swimmers) swimmer.image.setX(swimmerX(swimmer, tick, reducedMotion)).setFrame(stroke);
@@ -133,7 +144,7 @@ function optionText(option: MenuOption, settings: Settings): string {
  * button's word is centred, and the widest, NORMAL, starts at x 142, clear of the pips.
  */
 function addLevelPips(scene: Phaser.Scene): Phaser.GameObjects.Rectangle[] {
-  const top = MENU.top + MENU.pitch + (BUTTON_HEIGHT - LEVEL_PIPS.size) / 2;
+  const top = MENU.top + LEVEL_ROW * MENU.pitch + (BUTTON_HEIGHT - LEVEL_PIPS.size) / 2;
   const left = MENU.centreX - MENU.width / 2 + LEVEL_PIPS.inset;
   return DIFFICULTIES.map((_, index) =>
     scene.add
@@ -150,12 +161,32 @@ function swimmerX({ speed, offset }: { speed: number; offset: number }, tick: nu
   return Math.floor(travelled % span) - RACER_WIDTH;
 }
 
-/** The raised best-time card: a medal for a podium best (else the saved character's portrait), the place, and the time. */
-function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }, character: CharacterId): void {
-  createPanel(scene, BEST_CARD.x, BEST_CARD.y, BEST_CARD.w, BEST_CARD.h, 'raised');
+/** A best-time card's parts, shown or hidden together. */
+interface BestCard {
+  setVisible(visible: boolean): void;
+}
+
+/**
+ * The raised best-time card, built hidden: a medal for a podium best (else the saved character's
+ * portrait), the place, and the time.
+ */
+function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }, character: CharacterId): BestCard {
+  const parts: { setVisible(visible: boolean): unknown }[] = [
+    createPanel(scene, BEST_CARD.x, BEST_CARD.y, BEST_CARD.w, BEST_CARD.h, 'raised'),
+  ];
   const medal = MEDAL_FOR_PLACE[best.place];
-  if (medal) scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y, UiTex.medals, medal).setOrigin(0, 0);
-  else scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y - 1, UiTex.portraits, PortraitFrame[character]).setOrigin(0, 0);
-  createLabel(scene, BEST_PLACE_AT.x, BEST_PLACE_AT.y, `BEST ${ordinal(best.place)}`, { tone: 'dim' });
-  createLabel(scene, BEST_TIME_AT.x, BEST_TIME_AT.y, formatRaceTime(best.ticks), { tone: 'foam' });
+  parts.push(
+    medal
+      ? scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y, UiTex.medals, medal).setOrigin(0, 0)
+      : scene.add
+          .image(BEST_BADGE_AT.x, BEST_BADGE_AT.y - 1, UiTex.portraits, PortraitFrame[character])
+          .setOrigin(0, 0),
+    createLabel(scene, BEST_PLACE_AT.x, BEST_PLACE_AT.y, `BEST ${ordinal(best.place)}`, { tone: 'dim' }),
+    createLabel(scene, BEST_TIME_AT.x, BEST_TIME_AT.y, formatRaceTime(best.ticks), { tone: 'foam' }),
+  );
+  return {
+    setVisible(visible) {
+      for (const part of parts) part.setVisible(visible);
+    },
+  };
 }

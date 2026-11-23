@@ -1,5 +1,5 @@
 /**
- * The difficulty bars, shared by one test file per character in this folder so Vitest runs the
+ * The difficulty bars, shared by two test files per character in this folder (expert bars, novice bar) so Vitest runs the
  * characters in parallel. Bots drive the player's racer through whole races on the real course: an
  * expert (rival AI with player physics, full kicks and items) and a novice (loose steering, an
  * occasional kick, no items). The player races as the character, ability included, against the
@@ -106,7 +106,7 @@ function closeWin(run: Run): boolean {
   return run.playerPlace === 1 && player !== null && rival !== null && rival - player <= 8 * TICK_HZ;
 }
 
-/** Registers the difficulty bars for the player racing as `character`. */
+/** Registers the expert bars (wins, balance, race length) for the player racing as `character`. */
 export function describeDifficulty(character: CharacterId): void {
   describe(`difficulty on the full course as ${character}`, () => {
     let expertRuns: Run[] | null = null;
@@ -137,6 +137,24 @@ export function describeDifficulty(character: CharacterId): void {
     );
 
     it(
+      'a good race on the course takes about 90 s',
+      () => {
+        const runs = expert();
+        const times = runs.map((run) => run.finish.player).filter((t) => t !== null);
+        const mean = times.reduce((sum, t) => sum + t, 0) / Math.max(1, times.length);
+        expect(times.length, `expert finished every seed:\n${table(runs)}`).toBe(SEEDS.length);
+        expect(mean / TICK_HZ, `mean expert finish ${seconds(mean)} s:\n${table(runs)}`).toBeGreaterThan(75);
+        expect(mean / TICK_HZ, `mean expert finish ${seconds(mean)} s:\n${table(runs)}`).toBeLessThan(105);
+      },
+      RACES_TIMEOUT_MS,
+    );
+  });
+}
+
+/** Registers the novice bar for the player racing as `character`, in a file of its own so it runs beside the expert bars. */
+export function describeNovice(character: CharacterId): void {
+  describe(`novice on the full course as ${character}`, () => {
+    it(
       'a novice places 3rd or 4th in most seeds and finishes within 1.3x the winner time',
       () => {
         const runs = SEEDS.map((seed) => race(BOT_PROFILES.novice, character, seed));
@@ -150,19 +168,6 @@ export function describeDifficulty(character: CharacterId): void {
         expect(inTouch.length, `novice finished within 1.3x the winner time:\n${table(runs)}`).toBeGreaterThanOrEqual(
           24,
         );
-      },
-      RACES_TIMEOUT_MS,
-    );
-
-    it(
-      'a good race on the course takes about 90 s',
-      () => {
-        const runs = expert();
-        const times = runs.map((run) => run.finish.player).filter((t) => t !== null);
-        const mean = times.reduce((sum, t) => sum + t, 0) / Math.max(1, times.length);
-        expect(times.length, `expert finished every seed:\n${table(runs)}`).toBe(SEEDS.length);
-        expect(mean / TICK_HZ, `mean expert finish ${seconds(mean)} s:\n${table(runs)}`).toBeGreaterThan(75);
-        expect(mean / TICK_HZ, `mean expert finish ${seconds(mean)} s:\n${table(runs)}`).toBeLessThan(105);
       },
       RACES_TIMEOUT_MS,
     );

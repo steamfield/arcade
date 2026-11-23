@@ -40,20 +40,6 @@ export function drawSprite(scene: Phaser.Scene, key: string, rows: PixelRows, pa
 }
 
 /**
- * Draws equal-sized frames side by side into one texture under `key`, adding a frame per entry
- * (named by its index as a string) so animations and sprites can address them.
- *
- * @throws {Error} Naming the key, frame and row when frames differ in size or a digit has no palette entry.
- */
-export function drawSheet(scene: Phaser.Scene, key: string, frames: readonly PixelRows[], palette: Palette): void {
-  drawFrames(
-    scene,
-    key,
-    frames.map((rows, index) => ({ name: String(index), rows, palette })),
-  );
-}
-
-/**
  * Draws equal-sized frames side by side into one texture under `key`, each with its own name and
  * palette.
  *

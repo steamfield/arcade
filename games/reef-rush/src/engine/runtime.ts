@@ -125,8 +125,6 @@ export class Runtime {
    * saved pick, and goes back to it each time the select screen opens.
    */
   selectedCharacter: CharacterId;
-  /** True from the start of a save write until it settles. The test harness waits on it through idle(). */
-  saving = false;
   readonly audio: AudioPort;
   /** True when the current race was staged for a capture (`?stage=`); its result is never saved. */
   staged = false;
@@ -136,6 +134,12 @@ export class Runtime {
   howToSince = 0;
   /** The in-race hints showing now, refreshed each racing tick; none outside a race. */
   hints: HintState = NO_HINTS;
+  /** Save writes asked for and not yet settled. */
+  private writesPending = 0;
+  /** Where the write queue ends: each write starts once the one before it has settled. */
+  private writeQueue: Promise<void> = Promise.resolve();
+  /** Counts write requests, so a write can tell whether a newer one was asked for after it. */
+  private writesRequested = 0;
   /** The player's progress-field distance at the start line, for the race progress fraction. */
   private startProgress = 0;
   private hintMemory: HintMemory = newHintMemory();
@@ -167,6 +171,11 @@ export class Runtime {
     this.startScene = options.startScene;
     this.selectedCharacter = this.savedCharacter;
     this.audio = createAudio(options.ctx, this.settings, this.events, (id) => this.audibleFromPlayer(id));
+  }
+
+  /** True while any save write is queued or running. The test harness waits on it through idle(). */
+  get saving(): boolean {
+    return this.writesPending > 0;
   }
 
   /** Settings from the save, with a null `reducedMotion` following the OS. */
@@ -241,21 +250,46 @@ export class Runtime {
     this.goTo('race');
   }
 
-  /** Writes `data` to the save slot, emitting `save.written` or `save.failed`. The race carries on either way. */
-  async persist(data: SaveData): Promise<void> {
-    this.saving = true;
+  /**
+   * Queues a write of `data` to the save slot, emitting `save.written` or `save.failed`. Writes run
+   * one at a time in the order asked for, so a slow older write can't land after a newer one. A
+   * write that fails, whether the store reports it or throws, is warned about once (`what` names the
+   * data) and becomes `save.failed`; the race carries on either way, so the promise never rejects.
+   * A write that succeeds makes `data` the current save unless a newer write was asked for since.
+   */
+  persist(data: SaveData, what: string): Promise<void> {
+    const request = ++this.writesRequested;
+    this.writesPending++;
+    const write = this.writeQueue.then(() => this.write(data, what, request));
+    this.writeQueue = write;
+    return write;
+  }
+
+  private async write(data: SaveData, what: string, request: number): Promise<void> {
     try {
       const outcome = await this.saves.save(SAVE_SLOT, data);
       if (outcome.ok) {
-        this.save = data;
+        if (request === this.writesRequested) this.save = data;
         this.events.emit({ type: 'save.written' });
-        return;
+      } else {
+        this.failWrite(what, outcome.reason);
       }
-      log.warn(`Best time not saved: ${outcome.reason}`);
-      this.events.emit({ type: 'save.failed', reason: outcome.reason });
+    } catch (error) {
+      this.failWrite(what, error instanceof Error ? error.message : String(error));
     } finally {
-      this.saving = false;
+      this.writesPending--;
     }
+  }
+
+  private failWrite(what: string, reason: string): void {
+    log.warn(`${what} not saved: ${reason}`);
+    this.events.emit({ type: 'save.failed', reason });
+  }
+
+  /** Makes `data` the current save, as when a fixture is loaded: its sound setting applies at once, as a change from the title does. */
+  loadSave(data: SaveData): void {
+    this.save = data;
+    this.audio.setMuted(this.settings.muted);
   }
 
   /** Calls `listener` with every later tick's drained events. Returns the function that stops it. */
@@ -346,7 +380,7 @@ export class Runtime {
   private pickCharacter(): void {
     const data: SaveData = { ...(this.save ?? NEW_GAME), character: this.selectedCharacter };
     this.save = data;
-    this.persist(data).catch((error: unknown) => this.ctx.reportError('save', error));
+    void this.persist(data, 'Character pick');
     this.startRace();
   }
 
@@ -361,7 +395,7 @@ export class Runtime {
     const { muted, reducedMotion, difficulty } = this.settings;
     this.audio.setMuted(muted);
     this.events.emit({ type: 'settings.changed', muted, reducedMotion, difficulty });
-    this.persist(data).catch((error: unknown) => this.ctx.reportError('save', error));
+    void this.persist(data, 'Settings');
   }
 
   private tickRace(dt: number): void {
@@ -392,10 +426,11 @@ export class Runtime {
   private finishRace({ standings, playerPlace, playerTicks }: RaceResult): void {
     const result: RaceResult = { standings, playerPlace, playerTicks };
     const before = this.save ?? NEW_GAME;
-    this.lastResult = { result, newBest: isNewBest(before, result), saveFailed: false };
+    const difficulty = this.world?.difficulty ?? this.settings.difficulty;
+    this.lastResult = { result, newBest: isNewBest(before, result, difficulty), saveFailed: false };
     this.resultsIn = RESULTS_DELAY_TICKS;
     if (this.staged) return;
-    this.persist(recordResult(before, result)).catch((error: unknown) => this.ctx.reportError('save', error));
+    void this.persist(recordResult(before, result, difficulty), 'Race result');
   }
 }
 

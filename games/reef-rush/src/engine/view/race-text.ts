@@ -1,7 +1,7 @@
 /**
  * How race facts read on screen: times as m:ss.cc, places as "2nd", each
- * racer's display name, and the race's big splashes (the 3-2-1 countdown,
- * GO, FINAL STRETCH, FINISH) in the outlined display face over the water. The
+ * racer's display name, a results row, and the race's big splashes (the 3-2-1 countdown,
+ * GO, FINAL STRETCH, FINISH, TIME UP) in the outlined display face over the water. The
  * HUD, title and results all format and slide text through here so the same
  * fact always reads, and moves, the same way.
  *
@@ -14,9 +14,16 @@ import { TICK_HZ } from '@arcade/core';
 import type Phaser from 'phaser';
 import { CHARACTERS } from '../../logic/characters.ts';
 import { playerOf } from '../../logic/racers.ts';
-import type { CharacterId, RacePhase, RaceState, World } from '../../logic/types.ts';
+import {
+  type CharacterId,
+  DIFFICULTIES,
+  type Difficulty,
+  type RacePhase,
+  type RaceState,
+  type World,
+} from '../../logic/types.ts';
 import { createLabel } from '../art/font.ts';
-import { toneCss, type UiToneName } from '../art/ui/palette.ts';
+import { toneCss, UiColour, UiRamp, type UiToneName } from '../art/ui/palette.ts';
 import { FINAL_STRETCH_AT, raceProgress } from '../race-progress.ts';
 import { Layer } from './layers.ts';
 
@@ -51,6 +58,36 @@ export function racerShortName(character: CharacterId): string {
   return first;
 }
 
+/** What a racer's time column says when they never finished: a phrase a child can read, not an abbreviation. */
+export const NO_TIME_TEXT = 'TIME UP';
+
+/**
+ * One results standings row, 18 characters (107 px, UI.md's row width): the place in 4, the short
+ * name in 7 (6 letters at most, then a space) and the time or TIME UP right-aligned in 7, e.g.
+ * "4TH BARON  0:24.46" or "2ND STREAK 3:06.30".
+ */
+export function standingsRow(
+  racer: { character: CharacterId; finished: { tick: number } | null },
+  place: number,
+): string {
+  const time = racer.finished ? formatRaceTime(racer.finished.tick) : NO_TIME_TEXT;
+  const name = racerShortName(racer.character).toUpperCase();
+  return `${ordinal(place).toUpperCase().padEnd(4)}${name.padEnd(7)}${time.padStart(7)}`;
+}
+
+/** The word and lit pips the race countdown shows for the level the race was built on. */
+export interface LevelBanner {
+  text: string;
+  /** 1 for Easy, 2 for Normal, 3 for Hard, as on the title's Level button. */
+  pips: number;
+}
+
+/** The level banner while the countdown runs, null once the race is under way. */
+export function levelBanner(world: { difficulty: Difficulty; race: Pick<RaceState, 'phase'> }): LevelBanner | null {
+  if (world.race.phase !== 'countdown') return null;
+  return { text: world.difficulty.toUpperCase(), pips: DIFFICULTIES.indexOf(world.difficulty) + 1 };
+}
+
 /**
  * How many px of a slide are still to go `age` ticks after it started: `distance` at age 0, then
  * evenly down to 0 at `ticks`. Under reduced motion nothing slides, so it is always 0.
@@ -76,6 +113,11 @@ export interface RaceSplash {
 
 /** Where every splash is centred (UI.md "Splash"); FINAL STRETCH, the widest, spans x 53-267, y 50-74. */
 const SPLASH_CENTRE = { x: 160, y: 62 } as const;
+/**
+ * The countdown's level word (display, centred) and pips (6 px squares with a 1 px outline, 4 px
+ * apart, centred), under the numeral, in the safe column and clear of the lock-on caption above.
+ */
+const LEVEL_BANNER = { x: 160, wordY: 88, pipsY: 98, pip: 6, gap: 4 } as const;
 const COUNTDOWN_TICKS_PER_NUMBER = 60;
 const COUNTDOWN_DROP = { px: 6, ticks: 6 } as const;
 const BANNER_SLIDE = { px: 12, ticks: 8 } as const;
@@ -129,15 +171,55 @@ export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean): R
   const moments: SplashMoments = { stretchAt: null, endedAt: null };
   // Reused every frame, so the splash allocates nothing per frame.
   const frame: SplashFrame = { text: '', tone: 'foam', dx: 0, dy: 0 };
+  const levelView = createLevelView(scene);
 
   return {
     sync(world) {
+      levelView(levelBanner(world));
       startProgress ??= playerOf(world).progress;
       noteSplashMoments(moments, world.race.phase, world.tick, raceProgress(world, startProgress));
       splashFrame(world, moments, reducedMotion, frame);
       label.setColor(TONE_CSS[frame.tone]).setOffset(frame.dx, frame.dy).setText(frame.text);
       return frame.text !== '';
     },
+  };
+}
+
+/**
+ * The level under the countdown numeral: its word in foam and three pips, as many lit (sun) as the
+ * level's number, so a child who can't read EASY still sees one, two or three. Returns the redraw,
+ * which hides everything for a null banner.
+ */
+function createLevelView(scene: Phaser.Scene): (banner: LevelBanner | null) => void {
+  const word = createLabel(scene, LEVEL_BANNER.x, LEVEL_BANNER.wordY, '', {
+    size: 'display',
+    outline: true,
+    align: 'center',
+    fixed: true,
+    depth: Layer.banner,
+  });
+  const span = DIFFICULTIES.length * LEVEL_BANNER.pip + (DIFFICULTIES.length - 1) * LEVEL_BANNER.gap;
+  const pips = DIFFICULTIES.map((_, index) =>
+    scene.add
+      .rectangle(
+        LEVEL_BANNER.x - span / 2 + index * (LEVEL_BANNER.pip + LEVEL_BANNER.gap),
+        LEVEL_BANNER.pipsY,
+        LEVEL_BANNER.pip,
+        LEVEL_BANNER.pip,
+      )
+      .setOrigin(0, 0)
+      .setStrokeStyle(1, UiColour.ink)
+      .setScrollFactor(0)
+      .setDepth(Layer.banner)
+      .setVisible(false),
+  );
+  return (banner) => {
+    word.setVisible(banner !== null);
+    if (banner) word.setText(banner.text);
+    for (const [index, pip] of pips.entries()) {
+      pip.setVisible(banner !== null);
+      if (banner) pip.setFillStyle(index < banner.pips ? UiColour.sun : UiRamp.indigoLight);
+    }
   };
 }
 
@@ -160,9 +242,10 @@ export function splashFrame(
     return setFrame(out, COUNTDOWN_TEXT[n] ?? '', 'foam', 0, dy);
   }
   if (moments.endedAt !== null) {
-    // Coral is not allowed over the water (UI.md), so a DNF reads by its word, in foam.
-    const dnf = race.result?.playerTicks === null;
-    return banner(out, dnf ? 'DNF' : 'FINISH', dnf ? 'foam' : 'sun', world.tick - moments.endedAt, reducedMotion);
+    // Coral is not allowed over the water (UI.md), so running out of time reads by its words, in foam.
+    const timeUp = race.result?.playerTicks === null;
+    const [text, tone] = timeUp ? ([NO_TIME_TEXT, 'foam'] as const) : (['FINISH', 'sun'] as const);
+    return banner(out, text, tone, world.tick - moments.endedAt, reducedMotion);
   }
   if (moments.stretchAt !== null && isBannerUp(world.tick - moments.stretchAt))
     return banner(out, 'FINAL STRETCH', 'sun', world.tick - moments.stretchAt, reducedMotion);
