@@ -172,6 +172,20 @@ describe('running', () => {
     expect(speeds.at(-1)).toBeCloseTo(RUN_TUNING.extra.runSpeed * RUN_TUNING.extra.mudSpeedMul, 9);
   });
 
+  it('slows to mud speed within 0.12 s of running into mud, and to running pace as soon as a gust behind it drops', () => {
+    const { runSpeed, windSpeed, mudSpeedMul } = RUN_TUNING.extra;
+    const intoMud = bareRunner();
+    intoMud.body.vx = runSpeed;
+    const leavingGust = bareRunner();
+    leavingGust.body.vx = runSpeed + windSpeed;
+
+    expect(runFor(intoMud, ticksIn(0.12), hold(RIGHT), { ...ON_GROUND, inMud: true }).speeds.at(-1)).toBeCloseTo(
+      runSpeed * mudSpeedMul,
+      9,
+    );
+    expect(runFor(leavingGust, ticksIn(0.12), hold(RIGHT)).speeds.at(-1)).toBe(runSpeed);
+  });
+
   it('is carried by a gust standing still, and helped or held back by one while running', () => {
     const drift = (wind: Vec, move: Vec) =>
       runFor(bareRunner(), 60, hold(move), { ...ON_GROUND, wind }).speeds.at(-1) ?? Number.NaN;
@@ -352,14 +366,26 @@ describe('dash', () => {
     expect(eventsIn(log)).toEqual([{ type: 'racer.kicked', id: 'player' }]);
   });
 
-  it('glides back to running pace over about half a second while right is held', () => {
+  it('glides back to running pace over about 0.8 s while right is held', () => {
     const racer = bareRunner();
     racer.body.vx = RUN_TUNING.extra.runSpeed;
     runFor(racer, 1, hold(RIGHT, { kick: true }));
     const { speeds } = runFor(racer, ticksIn(1), hold(RIGHT));
 
     expect(speeds[ticksIn(0.25) - 1]).toBeGreaterThan(RUN_TUNING.extra.runSpeed * 1.3);
+    expect(speeds[ticksIn(0.75) - 1]).toBeGreaterThan(RUN_TUNING.extra.runSpeed);
     expect(speeds.at(-1)).toBe(RUN_TUNING.extra.runSpeed);
+  });
+
+  it('glides a dash into mud back to running pace, then slows to mud speed at full friction', () => {
+    const { runSpeed, mudSpeedMul } = RUN_TUNING.extra;
+    const racer = bareRunner();
+    racer.body.vx = runSpeed;
+    runFor(racer, 1, hold(RIGHT, { kick: true }), { ...ON_GROUND, inMud: true });
+    const { speeds } = runFor(racer, ticksIn(1.2), hold(RIGHT), { ...ON_GROUND, inMud: true });
+
+    expect(speeds[ticksIn(0.5) - 1]).toBeGreaterThan(runSpeed);
+    expect(speeds.at(-1)).toBeCloseTo(runSpeed * mudSpeedMul, 9);
   });
 
   it('stops within 0.3 s of letting go straight after a dash', () => {

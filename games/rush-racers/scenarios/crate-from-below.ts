@@ -5,12 +5,6 @@
 import { expect } from '@playwright/test';
 import { HARD_SAVE, hold, scenario, tap, wait } from './kit.ts';
 
-/** Easy, so the timing below is the player's Easy run on foot; pinned so a new default can't move it. */
-const EASY_SAVE = {
-  ...HARD_SAVE,
-  data: { ...HARD_SAVE.data, settings: { ...HARD_SAVE.data.settings, difficulty: 'easy' } },
-};
-
 /** Run Test's only crate: column 24, row 6, one open tile above the one-tile block at row 8. */
 const CRATE_INDEX = 0;
 const TILE_ON_BLOCK_UNDER_CRATE = [24, 7];
@@ -22,7 +16,8 @@ const TILE_ON_BLOCK_UNDER_CRATE = [24, 7];
  */
 export default scenario({
   description: 'jumping into a crate from below opens it for the runner under it',
-  start: { save: EASY_SAVE, seed: 1, query: { course: 'run-test' } },
+  // Hard gives the player no catch-up boost, so the timing below doesn't depend on where the rivals are.
+  start: { save: HARD_SAVE, seed: 1, query: { course: 'run-test' } },
   input: [
     // Run Test is unlisted, so Race skips course select: title Race, then race as the saved pick.
     wait(25),
@@ -32,8 +27,8 @@ export default scenario({
     wait(180),
     hold('right', 130),
     hold(['right', 'up'], 20),
-    hold('right', 59),
-    hold(['right', 'up'], 4),
+    hold('right', 65),
+    hold(['right', 'up'], 3),
     wait(20),
     hold('right', 5),
     wait(15),

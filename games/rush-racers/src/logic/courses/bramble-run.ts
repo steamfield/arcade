@@ -54,20 +54,21 @@ const LEVEL: LevelDef = {
 };
 
 /**
- * The expert bot's mean Hard finish (70.6 s) over seeds 1-200 and all eight characters, measured as
- * COURSES.md "parTicks" says: 1600 races, every one finished, the slowest in 4895 ticks. Re-measured
+ * The expert bot's mean Hard finish (71.2 s) over seeds 1-200 and all eight characters, measured as
+ * COURSES.md "parTicks" says: 1600 races, every one finished, the slowest in 4911 ticks. Re-measured
  * in v2 phase 5 once the run dash carried (`dashDrag`) and rivals hopped slower racers; it was 4886.
  */
-const PAR_TICKS = 4237;
+const PAR_TICKS = 4274;
 
 /**
  * Normal rivals hover this many tiles behind the player here, not the table's 2. On foot a rival
  * feels half of its force multiplier (`FORCE_SHARE` in `media/run/physics.ts`), so Normal's 0.95
  * slows it only 2.5 % and the catch-up holds it half as firmly. At 2 the player who never dashes
- * placed top 3 in only 2-5 of 10 races as Baron, Nib and Streak. At 7 it places top 3 in 7-10 for
- * every character and the expert still wins 10, 9-10 more than it (v2 phase 5, seeds 1-10).
+ * placed top 3 in only 2-5 of 10 races as Baron, Nib and Streak, and at 7 in 5 as Selene. At 9 it
+ * places top 3 in 7-9 for every character, the expert still wins all 10 (7-10 more than it), and the
+ * novice wins 1-6 (v2 phase 5, seeds 1-10).
  */
-const NORMAL_LAG_TILES = 7;
+const NORMAL_LAG_TILES = 9;
 
 /** Bramble Run: Thornwood's listed course, run on foot through the forest. */
 export const BRAMBLE_RUN: Course = {

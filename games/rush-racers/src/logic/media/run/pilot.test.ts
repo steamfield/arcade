@@ -142,10 +142,22 @@ describe('the run rival pilot on the ground', () => {
   });
 });
 
+/** PIT_LEVEL with the pit moved one tile nearer: cols 7-9, five tiles past tile 2. */
+const NEAR_PIT_LEVEL = `
+  ####################
+  #..................#
+  #..................#
+  #..................#
+  #..................#
+  #..................#
+  #1.2.3.4..........F#
+  #######...##########
+`;
+
 describe('the run rival pilot among other racers', () => {
-  /** Tess running right at `speed` on tile (2, 6) of the pit level, with Squib on the next tile at `aheadSpeed`. */
-  function closingOn(speed: number, aheadSpeed: number): { world: World; tess: Racer } {
-    const world = runWorld(PIT_LEVEL);
+  /** Tess running right at `speed` on tile (2, 6) of `level`, with Squib on the next tile at `aheadSpeed`. */
+  function closingOn(speed: number, aheadSpeed: number, level = PIT_LEVEL): { world: World; tess: Racer } {
+    const world = runWorld(level);
     const tess = standingRival(world, 2, 6);
     tess.body.vx = speed;
     const squib = racerOf(world, 'squib');
@@ -159,6 +171,14 @@ describe('the run rival pilot among other racers', () => {
     const { world, tess } = closingOn(160, 100);
 
     expect(upTicks(world, tess)).toBeGreaterThan(0);
+  });
+
+  it('does not hop out of its own dash when the hop would land past the ground ahead', () => {
+    const atRunPace = closingOn(100, 60, NEAR_PIT_LEVEL);
+    const dashing = closingOn(200, 60, NEAR_PIT_LEVEL);
+
+    expect(upTicks(atRunPace.world, atRunPace.tess)).toBeGreaterThan(0);
+    expect(upTicks(dashing.world, dashing.tess)).toBe(0);
   });
 
   it('follows a racer ahead running as fast as it is', () => {

@@ -6,12 +6,14 @@
  * and a loose (high-wobble) profile now and then lets go of the stick on flat ground. When the
  * generic backstop sends `forceRecover`, it backs off from the finish, then jumps toward it.
  */
+import { TICK_DT } from '@arcade/core';
 import { isLedge, isSolid } from '../../level/query.ts';
 import { canDash } from '../../powerups/dash-meter.ts';
 import { isDowned } from '../../status.ts';
 import { type MoveModifiers, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { runMotion } from './data.ts';
+import { HOP_HOLD_TICKS } from './nav.ts';
 import { runAimFrom } from './way.ts';
 import { type RunLink, type RunNav, type RunPilot, runNav, runPilot } from './way-data.ts';
 
@@ -25,10 +27,6 @@ const TAKEOFF_SLACK_PX = 2;
 const LANDING_DEADBAND_PX = 3;
 /** Tiles of flat, open ground ahead a rival wants before it dashes. */
 const DASH_CLEAR_TILES = 3;
-/** Tiles of flat ground with open air above it a runner wants ahead before it hops over a racer. */
-const HOP_CLEAR_TILES = 4;
-/** Ticks of Up a hop over a racer holds: enough to clear a racer's height with room to spare. */
-const HOP_HOLD_TICKS = 6;
 /** How much faster, px/s, a runner must be closing on a racer ahead before it hops it rather than following. */
 const HOP_CLOSING_SPEED = 15;
 /** How close ahead, px between the two racers' facing edges, a racer has to be before a runner hops it. */
@@ -104,7 +102,7 @@ export function steerRunner(
   if (grounded) memory.landingTile = link?.to ?? null;
   if (stand !== null && link?.kind === 'jump' && canPress(memory) && atTakeOff(nav, racer, stand, link)) {
     memory.holdUpTicks = link.holdTicks;
-  } else if (link?.kind === 'walk' && canPress(memory) && wantsHop(world, racer, link.dir)) {
+  } else if (link?.kind === 'walk' && canPress(memory) && wantsHop(world, nav, racer, link.dir)) {
     memory.holdUpTicks = HOP_HOLD_TICKS;
     memory.landingTile = null;
   }
@@ -210,14 +208,19 @@ function wantsDash(world: World, racer: Racer, dir: -1 | 1, roll: number): boole
 }
 
 /**
- * True when a slower racer on its feet is just ahead along `dir` and the ground beyond is flat with
- * open air above: running on would only push into it (racers block each other sideways), so the
- * runner hops over, passing through it on the way down.
+ * True when a slower racer on its feet is just ahead along `dir` and the ground is flat with open
+ * air above out to where the hop comes down at the runner's speed (`nav.hopAirTicks`), its far
+ * edge included: running on would only push into it (racers block each other sideways), so the
+ * runner hops over, passing through it on the way down. Sized from speed because a runner in its
+ * own dash hops nearly twice as far, and can't steer out of a pit once airborne.
  */
-function wantsHop(world: World, racer: Racer, dir: -1 | 1): boolean {
+function wantsHop(world: World, nav: RunNav, racer: Racer, dir: -1 | 1): boolean {
   if (!blockedByRacer(world, racer, dir)) return false;
   const at = footingOf(racer);
-  for (let tiles = 0; tiles <= HOP_CLEAR_TILES; tiles++) {
+  const { body } = racer;
+  const reach = Math.abs(body.vx) * nav.hopAirTicks * TICK_DT + body.w / 2;
+  const landingCol = Math.floor((body.x + body.w / 2 + dir * reach) / TILE);
+  for (let tiles = 0; tiles <= Math.abs(landingCol - at.col); tiles++) {
     const col = at.col + dir * tiles;
     if (tiles > 0 && !isGround(world, col, at.row + 1)) return false;
     for (let up = 0; up <= 2; up++) if (isSolid(world.level, world.broken, col, at.row - up)) return false;

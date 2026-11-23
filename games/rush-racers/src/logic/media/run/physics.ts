@@ -29,6 +29,7 @@ export function createRunMotion(body: Body): RunMotion {
     upWasHeld: false,
     jumping: false,
     airDashUsed: false,
+    dashGlide: 0,
     lastSafe: { x: body.x, y: body.y },
     parkedAt: { x: body.x, y: body.y },
   };
@@ -57,6 +58,7 @@ export function applyRunIntent(
   const surroundings = runEnv(env);
   const extra = runExtra(tuning);
   if (racer.status.fallen > 0) {
+    motion.dashGlide = 0;
     park(racer.body);
     coolDownKick(racer);
     return;
@@ -68,7 +70,7 @@ export function applyRunIntent(
   advanceJumpTimers(motion, surroundings.grounded, pressed, extra);
   updateFacing(racer, intent.move.x);
 
-  run(racer.body, intent.move.x, surroundings, tuning, extra, mods, dt);
+  run(racer.body, motion, intent.move.x, surroundings, tuning, extra, mods, dt);
   if (jumpNow) jump(racer, motion, extra.jumpSpeed * jumpMulFor(racer), events);
   dashOrCoolDown(racer, motion, intent.kick, surroundings.grounded, tuning, mods, events);
   racer.body.vx = clamp(racer.body.vx, -tuning.maxSpeed, tuning.maxSpeed);
@@ -133,6 +135,27 @@ export function jumpPeak(tuning: MediumTuning, holdTicks: number, dt: number): n
   return peak;
 }
 
+/**
+ * Ticks a jump from standing on flat ground stays in the air when Up is held for `holdTicks` ticks
+ * counting the press, with no wind: from the press until the runner is back down at the height it
+ * left from, each tick `fall` exactly as `applyRunIntent` applies it.
+ *
+ * @param dt Tick length in seconds.
+ * @throws {Error} When `tuning` lacks one of run's extras.
+ */
+export function jumpAirTicks(tuning: MediumTuning, holdTicks: number, dt: number): number {
+  const extra = runExtra(tuning);
+  const stillAir: RunEnv = { kind: 'run', grounded: false, wind: null, inMud: false };
+  const body: Body = { x: 0, y: 0, w: 0, h: 0, vx: 0, vy: -extra.jumpSpeed };
+  let ticks = 0;
+  do {
+    fall(body, ticks >= holdTicks, stillAir, extra, dt);
+    body.y += body.vy * dt;
+    ticks++;
+  } while (body.y < 0);
+  return ticks;
+}
+
 /** Fallen racers wait out of sight: no velocity, so no gravity carries them further. */
 function park(body: Body): void {
   body.vx = 0;
@@ -169,13 +192,16 @@ function forceScale(mods: MoveModifiers): number {
 }
 
 /**
- * Moves `vx` toward the held direction's top speed plus any gust. Over that speed (after a dash or
- * a hit) while still steering that way, the runner glides back at `dashDrag`, on the ground or in
- * the air, so a dash carries through a jump; with nothing held it slows at full friction to the
- * gust's drift.
+ * Moves `vx` toward the held direction's top speed plus any gust. Over that speed while still
+ * steering that way, the part above running pace (`runSpeed` times the force share, before mud and
+ * gusts) that a dash still carries (`motion.dashGlide`) bleeds at `dashDrag`, on the ground or in
+ * the air; everything else (mud's lower top speed, a gust that dropped, a hit) slows at full
+ * friction, as does letting go of the stick, which slows to the gust's drift. The glide itself
+ * falls by `dashDrag` every tick.
  */
 function run(
   body: Body,
+  motion: RunMotion,
   wanted: number,
   env: RunEnv,
   tuning: MediumTuning,
@@ -184,19 +210,29 @@ function run(
   dt: number,
 ): void {
   const scale = forceScale(mods);
-  const top = extra.runSpeed * scale * (env.inMud ? extra.mudSpeedMul : 1);
+  const pace = extra.runSpeed * scale;
+  const top = pace * (env.inMud ? extra.mudSpeedMul : 1);
   const drift = (env.wind?.x ?? 0) * extra.windSpeed;
   const accel = (env.grounded ? tuning.force * scale : extra.airAccel) * dt;
   // dragMul scales air friction too, so ink or a power-up slows a runner the same in a jump.
   const friction = (env.grounded ? tuning.drag : extra.airFriction) * mods.dragMul * dt;
+  const glideStep = extra.dashDrag * mods.dragMul * dt;
+  const glide = motion.dashGlide > pace ? motion.dashGlide : 0;
+  motion.dashGlide = Math.max(0, motion.dashGlide - glideStep);
   if (wanted === 0) {
     body.vx = approach(body.vx, drift, friction);
     return;
   }
   const target = Math.sign(wanted) * top + drift;
   const overTarget = Math.sign(body.vx) === Math.sign(target) && Math.abs(body.vx) > Math.abs(target);
-  const glide = extra.dashDrag * mods.dragMul * dt;
-  body.vx = approach(body.vx, target, overTarget ? glide : accel);
+  if (!overTarget) {
+    body.vx = approach(body.vx, target, accel);
+    return;
+  }
+  const speed = Math.abs(body.vx);
+  const glidingTo = Math.min(speed - glideStep, glide);
+  const slowed = Math.max(speed - friction, glidingTo, Math.abs(target));
+  body.vx = Math.sign(body.vx) * slowed;
 }
 
 function jump(racer: Racer, motion: RunMotion, speed: number, events: EventSink<GameEvent>): void {
