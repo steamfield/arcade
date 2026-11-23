@@ -3,7 +3,7 @@
  * prices (see FlowFields), and the level check that every start can reach the finish. Walking the
  * fields lives in `way.ts` and `ai/steer.ts`.
  */
-import { distancesToFinish, type EntryCost, fieldAt } from '../../race/flowfield.ts';
+import { distancesToFinish, fieldAt } from '../../race/flowfield.ts';
 import type { Cell, Level, Vec } from '../../types.ts';
 import type { LevelProblem, MediumNav } from '../types.ts';
 import { type SwimNav, swimNav } from './data.ts';
@@ -27,7 +27,7 @@ const CURRENT_DIRECTION: Partial<Record<Cell, Vec>> = {
  * What a swimmer feels: kelp drags, currents help or hinder, unbroken coral is a wall, air is dear.
  * Swim's `enterCost`.
  */
-export const steerCost: EntryCost = (cell, isBroken, move) => {
+export const steerCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
   if (cell === 'rock') return Number.POSITIVE_INFINITY;
   if (cell === 'coral') return isBroken ? 1 : Number.POSITIVE_INFINITY;
   if (cell === 'kelp') return KELP_COST;
@@ -48,11 +48,11 @@ function currentCost(current: Vec, move: Vec): number {
 }
 
 /** Like steer, but a racer able to break coral may plough through it at a price. */
-const smashCost: EntryCost = (cell, isBroken, move) =>
+const smashCost = (cell: Cell, isBroken: boolean, move: Vec): number =>
   cell === 'coral' && !isBroken ? SMASH_CORAL_COST : steerCost(cell, isBroken, move);
 
 /** Like steer, but a racer that rams through coral as it swims pays only a little for it. */
-const ramCost: EntryCost = (cell, isBroken, move) =>
+const ramCost = (cell: Cell, isBroken: boolean, move: Vec): number =>
   cell === 'coral' && !isBroken ? RAM_CORAL_COST : steerCost(cell, isBroken, move);
 
 /** Builds the steer, smash and ram fields by Dijkstra from the finish column, with `broken` coral open. */

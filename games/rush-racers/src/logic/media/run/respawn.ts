@@ -11,7 +11,7 @@ import type { GameEvent } from '../../events.ts';
 import { blocksBody, bodyTiles, cellAt, isLedge } from '../../level/query.ts';
 import { moveRulesFor } from '../../race/move.ts';
 import { type Box, type Level, type MoveContacts, type Racer, TILE, type Vec, type World } from '../../types.ts';
-import { fallOut, holdParked, respawnAt } from '../fall-out.ts';
+import { fallOut, isBelowLevel, respawnAt, waitOut } from '../fall-out.ts';
 import { effectiveTuning } from '../index.ts';
 import { type RunMotion, runMotion } from './data.ts';
 import { runExtra } from './physics.ts';
@@ -25,7 +25,10 @@ export function afterRunMove(world: World, racer: Racer, contacts: MoveContacts,
   const motion = runMotion(racer.motion);
   const extra = runExtra(effectiveTuning(world));
   if (racer.status.fallen > 0) {
-    waitToRespawn(world, racer, motion, extra.respawnInvulnTicks, events);
+    if (waitOut(racer)) {
+      respawnAt(racer, respawnSpot(world, racer.body, motion), extra.respawnInvulnTicks, events);
+      resetAfterRespawn(motion);
+    }
     return;
   }
   const { body } = racer;
@@ -35,7 +38,7 @@ export function afterRunMove(world: World, racer: Racer, contacts: MoveContacts,
     motion.airDashUsed = false;
     if (hasSafeFooting(world, body)) motion.lastSafe = { x: body.x, y: body.y };
   }
-  if (body.y >= world.level.height * TILE) {
+  if (isBelowLevel(world.level, body)) {
     fallOut(racer, events, extra.respawnTicks);
     motion.grounded = false;
   }
@@ -57,25 +60,16 @@ function isFirmGround(level: Level, tx: number, ty: number): boolean {
   return cellAt(level, tx, ty) === 'rock' || isLedge(level, tx, ty);
 }
 
-/**
- * One tick out of play for a fallen runner: held on its park spot, then put back on its last safe
- * spot once the fall's count runs out, with its jump timers cleared.
- */
-function waitToRespawn(
-  world: World,
-  racer: Racer,
-  motion: RunMotion,
-  invulnTicks: number,
-  events: EventSink<GameEvent>,
-): void {
-  holdParked(racer);
-  racer.status.fallen -= 1;
-  if (racer.status.fallen > 0) return;
+/** Where a fallen runner comes back: its last safe spot, backed off from the edge it fell from. */
+function respawnSpot(world: World, body: Box, motion: RunMotion): Vec {
   // The last safe spot is usually the pit's lip, so back off away from where the runner fell (park
   // point toward the safe spot; facing can't say, since a runner may turn in the air).
   const back = Math.sign(motion.lastSafe.x - motion.parkedAt.x);
-  const spot = { x: runUpX(world, racer.body, motion.lastSafe, back), y: motion.lastSafe.y };
-  respawnAt(racer, spot, invulnTicks, events);
+  return { x: runUpX(world, body, motion.lastSafe, back), y: motion.lastSafe.y };
+}
+
+/** A runner back in play: its jump timers cleared. */
+function resetAfterRespawn(motion: RunMotion): void {
   motion.coyote = 0;
   motion.buffer = 0;
   motion.jumping = false;

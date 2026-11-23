@@ -13,9 +13,9 @@ import { PriorityQueue } from './priority-queue.ts';
 /**
  * Cost multiplier for moving into a tile along `move` (-1, 0 or 1 per axis); Infinity means closed.
  * `tile` is where the tile is, for a medium whose price depends on it (flight keeps flyers off the
- * bottom rows over open sky); `distancesToFinish` always passes it, and most costs ignore it.
+ * bottom rows over open sky); most costs ignore it and take fewer parameters.
  */
-export type EntryCost = (cell: Cell, isBroken: boolean, move: Vec, tile?: Vec) => number;
+export type EntryCost = (cell: Cell, isBroken: boolean, move: Vec, tile: Vec) => number;
 
 /** A tile waiting in the Dijkstra frontier with the cost it was reached at. */
 type QueuedTile = { cost: number; tx: number; ty: number };

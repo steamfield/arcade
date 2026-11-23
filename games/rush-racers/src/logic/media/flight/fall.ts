@@ -13,8 +13,8 @@
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../../events.ts';
 import { bodyTiles, cellAt } from '../../level/query.ts';
-import { type Box, type Level, type MoveContacts, type Racer, TILE, type World } from '../../types.ts';
-import { fallOut, holdParked, respawnAt } from '../fall-out.ts';
+import type { Box, Level, MoveContacts, Racer, World } from '../../types.ts';
+import { fallOut, isBelowLevel, respawnAt, waitOut } from '../fall-out.ts';
 import { effectiveTuning } from '../index.ts';
 import { type FlightMotion, flightMotion } from './data.ts';
 import { flightExtra } from './physics.ts';
@@ -36,12 +36,15 @@ export function afterFlightMove(
   const motion = flightMotion(racer.motion);
   const extra = flightExtra(effectiveTuning(world));
   if (racer.status.fallen > 0) {
-    waitToRespawn(racer, motion, extra.respawnInvulnTicks, events);
+    if (waitOut(racer)) {
+      respawnAt(racer, motion.lastSafe, extra.respawnInvulnTicks, events);
+      resetAfterRespawn(motion);
+    }
     return;
   }
   const { body } = racer;
   if (isSafeSpot(world.level, body)) motion.lastSafe = { x: body.x, y: body.y };
-  if (body.y >= world.level.height * TILE) fallOut(racer, events, extra.respawnTicks);
+  if (isBelowLevel(world.level, body)) fallOut(racer, events, extra.respawnTicks);
 }
 
 /**
@@ -80,15 +83,8 @@ function hasRockBelow(level: Level, column: number, fromRow: number): boolean {
   return false;
 }
 
-/**
- * One tick out of play for a fallen flyer: held on its park spot, then put back on its last safe
- * spot once the fall's count runs out, with the flap cooldown cleared, no dive and no dash window.
- */
-function waitToRespawn(racer: Racer, motion: FlightMotion, invulnTicks: number, events: EventSink<GameEvent>): void {
-  holdParked(racer);
-  racer.status.fallen -= 1;
-  if (racer.status.fallen > 0) return;
-  respawnAt(racer, motion.lastSafe, invulnTicks, events);
+/** A flyer back in play: the flap cooldown cleared, no dive and no dash window. */
+function resetAfterRespawn(motion: FlightMotion): void {
   // A fallen racer's input reaches the medium as nothing (`controlledIntent`), so whether Up is held
   // through the wait is unknown: count it as held, and a flap back in play needs a fresh press.
   motion.upWasHeld = true;

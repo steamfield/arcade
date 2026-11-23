@@ -35,7 +35,7 @@ const WIND_DIRECTION: Partial<Record<Cell, Vec>> = {
 };
 
 /** What a flyer feels: rock and unbroken puff clouds are walls, fog is slow, wind helps or hinders. Flight's `enterCost`. */
-export const flightCost: EntryCost = (cell, isBroken, move) => {
+export const flightCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
   if (cell === 'rock') return Number.POSITIVE_INFINITY;
   if (cell === 'coral') return isBroken ? 1 : Number.POSITIVE_INFINITY;
   if (cell === 'kelp') return FOG_COST;
@@ -56,7 +56,7 @@ function windCost(wind: Vec, move: Vec): number {
  * at a price, for a flyer that will dash through it. A dash only goes sideways, so a cloud entered
  * straight up or down stays closed.
  */
-const ramCost: EntryCost = (cell, isBroken, move) => {
+const ramCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
   if (cell !== 'coral' || isBroken) return flightCost(cell, isBroken, move);
   const vertical = move.x === 0 && move.y !== 0;
   return vertical ? Number.POSITIVE_INFINITY : RAM_PUFF_COST;
@@ -74,10 +74,10 @@ export function buildFlightNav(level: Level, broken: ReadonlySet<number>, _tunin
 }
 
 /** `cost` with LOW_SKY_EXTRA added for entering an open tile in the bottom LOW_SKY_ROWS rows of a column open to the sky below. */
-function keptOffLowSky(level: Level, cost: EntryCost): EntryCost {
+function keptOffLowSky(level: Level, cost: (cell: Cell, isBroken: boolean, move: Vec) => number): EntryCost {
   return (cell, isBroken, move, tile) => {
     const price = cost(cell, isBroken, move);
-    return tile && Number.isFinite(price) && isLowSky(level, tile) ? price + LOW_SKY_EXTRA : price;
+    return Number.isFinite(price) && isLowSky(level, tile) ? price + LOW_SKY_EXTRA : price;
   };
 }
 

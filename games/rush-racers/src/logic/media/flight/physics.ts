@@ -7,7 +7,7 @@
  * along their arrow and fog lowers cruise. Every number comes from the `tuning` passed in (the
  * world's effective tuning), so a course's overrides and Easy's lighter gravity apply.
  */
-import type { EventSink } from '@arcade/core';
+import { type EventSink, TICK_DT } from '@arcade/core';
 import { jumpMulFor } from '../../abilities.ts';
 import type { GameEvent } from '../../events.ts';
 import type { Body, Intent, MoveModifiers, Racer } from '../../types.ts';
@@ -77,6 +77,24 @@ export function applyFlightIntent(
   if (pressed && motion.flapCooldown === 0) flap(racer, motion, extra, events);
   dashOrCoolDown(racer, motion, intent.kick, tuning, extra, mods, events);
   body.vx = Math.min(tuning.maxSpeed, Math.max(-tuning.maxSpeed, body.vx));
+}
+
+/**
+ * True when a fresh Up press on the next tick flaps. `applyFlightIntent` takes a tick off the flap
+ * cooldown before it tries the flap, so a cooldown of 1 is already ready.
+ */
+export function flapReadyNextTick(motion: FlightMotion): boolean {
+  return motion.flapCooldown <= 1;
+}
+
+/**
+ * Px a dash carries a flyer while it still pops puff clouds: the dash's launch speed over its
+ * `dashTicks` window, ignoring drag and steering.
+ *
+ * @throws {Error} When `tuning` lacks one of flight's extras.
+ */
+export function dashReachPx(tuning: MediumTuning, mods: MoveModifiers): number {
+  return dashSpeed(tuning, mods) * flightExtra(tuning).dashTicks * TICK_DT;
 }
 
 /** True while the racer's last dash still pops puff clouds it touches: flight's `ramsCoral`. */
@@ -205,13 +223,18 @@ function dashOrCoolDown(
   events: EventSink<GameEvent>,
 ): void {
   if (kick && racer.kickCooldown === 0) {
-    racer.body.vx = racer.facing * tuning.kick * mods.kickMul;
+    racer.body.vx = racer.facing * dashSpeed(tuning, mods);
     motion.dashWindow = extra.dashTicks;
     racer.kickCooldown = mods.kickCooldownTicks;
     events.emit({ type: 'racer.kicked', id: racer.id });
     return;
   }
   coolDownKick(racer);
+}
+
+/** Horizontal speed, px/s, a dash sets along facing. */
+function dashSpeed(tuning: MediumTuning, mods: MoveModifiers): number {
+  return tuning.kick * mods.kickMul;
 }
 
 /** Takes a tick off the kick cooldown, stopping at 0. */

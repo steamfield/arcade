@@ -3,12 +3,10 @@
  * `kind: 'flight'`, and their accessors. The nav is two distance fields to the finish over 8
  * neighbours (one with puff clouds closed, one with them open at a price); the pilot remembers the
  * point on the way it flies toward, which field it follows, and whether it held Up last tick, so
- * every flap is a real press. The pilot reads the physics numbers it flies by from the effective
- * tuning by key (`flightPilotNumbers`).
+ * every flap is a real press.
  */
-import { TICK_DT } from '@arcade/core';
-import { type GridSize, type MoveModifiers, TILE, type Vec } from '../../types.ts';
-import type { MediumNav, MediumTuning, PilotMemory } from '../types.ts';
+import type { GridSize, Vec } from '../../types.ts';
+import type { MediumNav, PilotMemory } from '../types.ts';
 import { wrongKind } from './data.ts';
 
 /**
@@ -69,44 +67,4 @@ export function flightNav(nav: MediumNav): FlightNav {
 export function flightPilot(memory: PilotMemory): FlightPilot {
   if (memory.kind !== 'flight') throw wrongKind('pilot memory', memory.kind);
   return memory as FlightPilot;
-}
-
-/** The physics numbers a flight rival flies by, from the world's effective tuning and the racer's modifiers. */
-export interface FlightPilotNumbers {
-  /** Upward speed a flap leaves, px/s. */
-  flapLift: number;
-  /** Top horizontal speed it steers toward, px/s. */
-  cruise: number;
-  /** Ticks after a dash in which it still pops puff clouds. */
-  dashTicks: number;
-  /** Tiles a dash carries it while the dash still pops puff clouds; at least 1. */
-  dashReachTiles: number;
-}
-
-/**
- * The pilot's numbers, read from `tuning` by key so they follow the physics' current values and
- * Easy's multipliers.
- *
- * @throws {Error} When `tuning.extra` lacks `flapLift`, `cruise` or `dashTicks`, which means the tuning isn't flight's.
- */
-export function flightPilotNumbers(tuning: MediumTuning, mods: MoveModifiers): FlightPilotNumbers {
-  const dashTicks = extraOf(tuning, 'dashTicks');
-  const dashReachPx = tuning.kick * mods.kickMul * dashTicks * TICK_DT;
-  return {
-    flapLift: extraOf(tuning, 'flapLift'),
-    cruise: extraOf(tuning, 'cruise'),
-    dashTicks,
-    dashReachTiles: Math.max(1, Math.floor(dashReachPx / TILE)),
-  };
-}
-
-/**
- * One of flight's extras by key.
- *
- * @throws {Error} When `tuning.extra` has no `key`.
- */
-function extraOf(tuning: MediumTuning, key: string): number {
-  const value = tuning.extra[key];
-  if (value === undefined) throw new Error(`Flight pilot needs tuning extra '${key}'; pass flight's effectiveTuning`);
-  return value;
 }

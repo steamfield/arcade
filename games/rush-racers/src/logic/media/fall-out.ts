@@ -1,21 +1,28 @@
 /**
  * The shared fall, park and respawn timer for media with open pits (`effects.pitBelow`): run and
  * flight both put a fallen racer out of play for a while and bring it back on a spot the medium
- * chose. Each medium keeps its own rule for which spots are safe and calls these from `afterMove`.
- * A racer is out while `status.fallen` is above 0; `tickStatuses` leaves that count to the medium.
+ * chose. Each medium keeps its own rule for which spots are safe and calls these from `afterMove`:
+ * `fallOut` once the racer `isBelowLevel`, then `waitOut` each tick it is out, and `respawnAt` on the
+ * tick `waitOut` says the wait is over. A racer is out while `status.fallen` is above 0;
+ * `tickStatuses` leaves that count to `waitOut`.
  *
  * A medium that uses these keeps a `parkedAt` spot in its racer motion (`ParkingMotion`), where
  * `fallOut` remembers where the racer waits.
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
-import type { Racer, Vec } from '../types.ts';
+import { type Box, type Level, type Racer, TILE, type Vec } from '../types.ts';
 import type { RacerMotion } from './types.ts';
 
 /** Racer motion of a medium whose racers can fall out: it holds the spot a fallen racer waits at. */
 export interface ParkingMotion extends RacerMotion {
   /** Top-left of where a fallen racer waits, out of the level, until it respawns. */
   parkedAt: Vec;
+}
+
+/** True when the top of `body` has passed below the level's last row, so the racer has fallen out. */
+export function isBelowLevel(level: Level, body: Box): boolean {
+  return body.y >= level.height * TILE;
 }
 
 /**
@@ -34,9 +41,22 @@ export function fallOut(racer: Racer, events: EventSink<GameEvent>, respawnTicks
 }
 
 /**
+ * One tick out of play for a fallen racer: holds it parked (`holdParked`) and counts
+ * `status.fallen` down. True on the tick the count reaches 0, when the medium calls `respawnAt` and
+ * resets its own motion.
+ *
+ * @throws {Error} When the racer's motion keeps no `parkedAt` spot.
+ */
+export function waitOut(racer: Racer): boolean {
+  holdParked(racer);
+  racer.status.fallen -= 1;
+  return racer.status.fallen <= 0;
+}
+
+/**
  * Holds a fallen racer on the spot `fallOut` stopped it at, at rest: generic movement after
- * `applyIntent` (a dash item, an Undertow, a latch drift) would otherwise slide it. The medium
- * calls it each tick the racer is out, counts `status.fallen` down, and calls `respawnAt` at 0.
+ * `applyIntent` (a dash item, an Undertow, a latch drift) would otherwise slide it. `waitOut` calls
+ * it each tick the racer is out.
  *
  * @throws {Error} When the racer's motion keeps no `parkedAt` spot.
  */

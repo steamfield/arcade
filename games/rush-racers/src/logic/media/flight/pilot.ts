@@ -1,13 +1,14 @@
 /**
  * Flight's rival pilot: fly toward a point a few tiles along the way, flapping with real presses
  * (Up let go between flaps, pressed only once the flap is ready) while below it, holding Up after a
- * flap to glide down to it while above it, diving when it is more than DIVE_BELOW_TILES below, and
+ * flap to glide down to it while above it, diving when it is further below, and
  * dashing on aligned straights as `kickSkill` allows. With a dash ready and a puff cloud blocking a
  * shorter way, it may follow the ram field instead and dash sideways into the cloud, holding toward
  * it without replanning until the cloud pops or the dash's window ends. It reads the way again every `reactionTicks` (at once when knocked far from its
  * target), puts the profile's `wobble` on that point as an altitude and aim jitter (never on the
  * stick, so it never flaps by accident), and on `forceRecover` backs off and flaps up for a beat.
- * Its memory is a `FlightPilot` (`way-data.ts`).
+ * Its memory is a `FlightPilot` (`way-data.ts`); the stick it holds toward its target and the
+ * physics numbers it flies by are in `stick.ts`.
  */
 import { tileOf } from '../../ai/steer.ts';
 import { isSolid } from '../../level/query.ts';
@@ -17,15 +18,9 @@ import { centreOf } from '../../racers.ts';
 import { type MoveModifiers, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
-import { flightMotion } from './data.ts';
+import { climbPress, type FlightPilotNumbers, flightPilotNumbers, horizontalStick, verticalStick } from './stick.ts';
 import { flightCoralAhead, flightCornerAhead, flightPuffInDashLine, flightRouteDistanceAt } from './way.ts';
-import {
-  type FlightPilot,
-  type FlightPilotNumbers,
-  type FlightRoute,
-  flightPilot,
-  flightPilotNumbers,
-} from './way-data.ts';
+import { type FlightPilot, type FlightRoute, flightPilot } from './way-data.ts';
 
 /** Most tiles along the way the pilot flies toward (it stops at a turn). */
 const LOOKAHEAD_TILES = 3;
@@ -33,20 +28,10 @@ const LOOKAHEAD_TILES = 3;
 const LOST_TILES = 6;
 /** Ticks of a stuck recovery: backing off and flapping up. */
 const RECOVER_TICKS = 40;
-/** Px the target may sit above the flyer's centre before it flaps. */
-const CLIMB_MARGIN = 4;
-/** It flaps again only once a flap's rise has slowed to this, as a share of the flap's lift. */
-const FLAP_AGAIN_RISE = 0.4;
-/** Target this far below, in tiles, and it dives. */
-const DIVE_BELOW_TILES = 2;
 /** Largest jitter, in tiles, a wobble of 1 puts on the target's height and reach. */
 const WOBBLE_TILES = 1.5;
 /** Share of the height jitter put on the target's reach. */
 const WOBBLE_REACH_SHARE = 0.5;
-/** Px/s of horizontal speed wanted per px of distance to the target, so it slows as it lines up. */
-const APPROACH_GAIN = 6;
-/** Px/s either side of the wanted horizontal speed where it lets go of the stick. */
-const SPEED_SLACK = 10;
 /** Its aim must be this close to level for a dash on a straight. */
 const DASH_ALIGN = 0.9;
 /** Tiles ahead on the ram field within which a puff cloud makes it keep its dash for the cloud. */
@@ -228,47 +213,6 @@ function wantsStraightDash(world: World, racer: Racer, memory: FlightPilot, tile
 /** The dash is off cooldown and the meter holds a charge. */
 function dashReady(racer: Racer): boolean {
   return racer.kickCooldown === 0 && canDash(racer);
-}
-
-/**
- * Up (-1), nothing (0) or Down (1): flap with a real press while the target is above, keep holding
- * Up after a flap to glide down to it while it is up to DIVE_BELOW_TILES below, dive when it is further.
- */
-function verticalStick(racer: Racer, memory: FlightPilot, numbers: FlightPilotNumbers, dy: number): number {
-  if (dy < -CLIMB_MARGIN) return climbPress(racer, memory, numbers, dy) ? -1 : 0;
-  if (dy > DIVE_BELOW_TILES * TILE) {
-    memory.upHeld = false;
-    return 1;
-  }
-  // A held Up after a flap glides; never a new press, which would flap.
-  return memory.upHeld ? -1 : 0;
-}
-
-/**
- * Whether to hold Up this tick to climb: press once the flap is ready and the last flap's rise has
- * slowed, let go the tick before so the press is fresh, and keep gliding while waiting.
- */
-function climbPress(racer: Racer, memory: FlightPilot, { flapLift }: FlightPilotNumbers, dy: number): boolean {
-  const wantsFlap = dy < -CLIMB_MARGIN && racer.body.vy > -flapLift * FLAP_AGAIN_RISE;
-  // The cooldown counts down before the flap is tried, so a press at 1 flaps.
-  const ready = flightMotion(racer.motion).flapCooldown <= 1;
-  const up = wantsFlap && ready ? !memory.upHeld : memory.upHeld && !ready;
-  memory.upHeld = up;
-  return up;
-}
-
-/**
- * Left, right or nothing: toward the target's column, easing off as it lines up so momentum doesn't
- * carry it past. Over cruise toward a far target (after a dash or a dive) it keeps holding on, since
- * air drag bleeds the surplus and pushing back would throw the speed away.
- */
-function horizontalStick(racer: Racer, { cruise }: FlightPilotNumbers, dx: number): number {
-  const wanted = Math.max(-cruise, Math.min(cruise, dx * APPROACH_GAIN));
-  const vx = racer.body.vx;
-  if (Math.abs(wanted) === cruise && vx * wanted > cruise * cruise) return Math.sign(wanted);
-  if (vx < wanted - SPEED_SLACK) return 1;
-  if (vx > wanted + SPEED_SLACK) return -1;
-  return 0;
 }
 
 /** Unit vector from `from` toward `to`; zero when they meet. */
