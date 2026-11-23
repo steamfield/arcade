@@ -5,11 +5,18 @@
  * step stands for, and everything the network sent is handled there. Setters and `leave` send at
  * once, because a hiding tab stops ticking before it can wait for one.
  */
+import { type RoomMessage, RoomMessageSchema } from '@arcade/api/protocol';
 import type { CharacterId, RacerId, TickInput, World } from '../logic/types.ts';
-import type { LobbyOptions, LobbyView } from './lobby.ts';
-import type { OnlineDifficulty, StartMessage } from './messages.ts';
+import { createLobby, type LobbyOptions, type LobbyView } from './lobby.ts';
+import {
+  type OnlineDifficulty,
+  type RelayedGameMessage,
+  RelayedGameMessageSchema,
+  type StartMessage,
+} from './messages.ts';
+import { createOnlineRace, type OnlineRace } from './race.ts';
 import type { Desync } from './session.ts';
-import type { CloseReason, RoomConnection } from './transport/types.ts';
+import type { CloseReason, ConnectionEvent, RoomConnection } from './transport/types.ts';
 
 /** Where a client is in its flow. */
 export type ClientStatus =
@@ -98,7 +105,185 @@ export interface OnlineClient {
   leave(): void;
 }
 
+/** A ping change, in milliseconds, too small to be worth re-sending this peer's lobby entry for. */
+const PING_RESEND_MS = 5;
+
+/** What a client tracks between calls. */
+interface ClientState {
+  status: ClientStatus;
+  reason: CloseReason | null;
+  race: OnlineRace | null;
+  dropped: number;
+  /** The kinds of drop already warned about in this race (or before the first). */
+  warned: Set<string>;
+  /** The ping carried by the last lobby entry sent; null before the first. */
+  sentPing: number | null;
+}
+
 /** A client on `options.connection`, not yet welcomed. */
-export function createClient(_options: ClientOptions): OnlineClient {
-  throw new Error('not implemented');
+export function createClient(options: ClientOptions): OnlineClient {
+  const { connection } = options;
+  const lobby = createLobby(options.lobby);
+  const state: ClientState = {
+    status: 'connecting',
+    reason: null,
+    race: null,
+    dropped: 0,
+    warned: new Set(),
+    sentPing: null,
+  };
+  const isOpen = () => state.status !== 'closed';
+  const isWelcomed = () => state.status === 'lobby' || state.status === 'racing';
+
+  /** Counts a dropped message and warns about the first of its kind in this race. */
+  function drop(kind: string, detail: string): void {
+    state.dropped++;
+    if (state.warned.has(kind)) return;
+    state.warned.add(kind);
+    options.warn(`online: dropped ${detail}`);
+  }
+
+  function sendEntry(): void {
+    if (!isWelcomed()) return;
+    const entry = lobby.mine();
+    state.sentPing = entry.ping;
+    connection.send(entry);
+  }
+
+  function handleStart(start: StartMessage, from: number): void {
+    if (from !== lobby.view.host) {
+      drop('start-not-host', `a start from peer ${from}, who is not host`);
+      return;
+    }
+    if (state.status === 'racing') {
+      drop('start-racing', `a start from peer ${from} during a race`);
+      return;
+    }
+    const local = start.slots[String(lobby.view.you)];
+    if (local === undefined) return;
+    state.race = createOnlineRace({
+      start,
+      local,
+      present: lobby.view.peers,
+      createRace: options.createRace,
+      send: (message) => connection.send(message),
+      kickAfterMs: options.kickAfterMs,
+    });
+    state.status = 'racing';
+    state.warned = new Set();
+  }
+
+  function handleRoomMessage(message: RoomMessage): void {
+    lobby.apply(message);
+    if (message.type === 'welcome' && state.status === 'connecting') {
+      state.status = 'lobby';
+      sendEntry();
+    }
+    // Every newcomer needs everyone's entry, and nobody else will repeat it.
+    if (message.type === 'joined') sendEntry();
+    if (message.type === 'left') state.race?.peerLeft(message.peer);
+  }
+
+  function handleGameMessage(message: RelayedGameMessage): void {
+    if (!lobby.view.peers.some((peer) => peer.id === message.from)) {
+      drop('stranger', `a ${message.type} message from unknown peer ${message.from}`);
+      return;
+    }
+    lobby.apply(message);
+    if (message.type === 'start') handleStart(message, message.from);
+    if (message.type === 'end') state.race?.receiveEnd(message.from, message);
+  }
+
+  function handleJson(message: unknown): void {
+    const room = RoomMessageSchema.safeParse(message);
+    const game = room.success ? null : RelayedGameMessageSchema.safeParse(message);
+    if (room.success) handleRoomMessage(room.data);
+    else if (game?.success) handleGameMessage(game.data);
+    else drop('malformed', `a malformed message: ${JSON.stringify(message).slice(0, 80)}`);
+  }
+
+  function handleBinary(from: number, bytes: Uint8Array): void {
+    if (state.race?.receiveBinary(from, bytes)) return;
+    drop('binary', `${bytes.length} bytes of binary from peer ${from}`);
+  }
+
+  function handlePing(roundTripMs: number): void {
+    lobby.setPing(roundTripMs / 2);
+    const ping = lobby.mine().ping;
+    if (state.sentPing === null || Math.abs(ping - state.sentPing) >= PING_RESEND_MS) sendEntry();
+  }
+
+  function handle(event: ConnectionEvent): void {
+    switch (event.kind) {
+      case 'open':
+        break;
+      case 'json':
+        handleJson(event.message);
+        break;
+      case 'binary':
+        handleBinary(event.from, event.bytes);
+        break;
+      case 'ping':
+        handlePing(event.roundTripMs);
+        break;
+      case 'closed':
+        state.status = 'closed';
+        state.reason = event.reason;
+        break;
+    }
+  }
+
+  /** Applies a lobby setter and tells the room at once, unless the connection is over. */
+  const setter =
+    <T>(apply: (value: T) => void, hostOnly = false) =>
+    (value: T): void => {
+      if (!isOpen() || (hostOnly && lobby.view.you !== lobby.view.host)) return;
+      apply(value);
+      sendEntry();
+    };
+
+  return {
+    get view(): ClientView {
+      return {
+        status: state.status,
+        reason: state.reason,
+        lobby: lobby.view,
+        race: state.race?.view ?? null,
+        dropped: state.dropped,
+      };
+    },
+    get world() {
+      return state.race?.world ?? null;
+    },
+    tick(input, elapsedMs) {
+      for (const event of connection.poll()) {
+        if (!isOpen()) break;
+        handle(event);
+      }
+      if (!isOpen() || state.race === null) return 0;
+      return state.race.tick(input, elapsedMs);
+    },
+    setCharacter: setter(lobby.setCharacter),
+    setReady: setter(lobby.setReady),
+    setCourse: setter(lobby.setCourse, true),
+    setDifficulty: setter(lobby.setDifficulty, true),
+    start(seed) {
+      if (!isOpen()) return;
+      const start = lobby.buildStart(seed);
+      connection.send(start);
+      handleStart(start, lobby.view.you ?? 0);
+    },
+    returnToLobby() {
+      // Before its `end` is sent the room still counts this peer as racing, so only a finished race can be left.
+      if (state.status !== 'racing' || !state.race?.view.over) return;
+      state.race = null;
+      state.status = 'lobby';
+    },
+    leave() {
+      if (!isOpen()) return;
+      connection.close();
+      state.status = 'closed';
+      state.reason = 'left';
+    },
+  };
 }
