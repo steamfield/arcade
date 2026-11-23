@@ -8,6 +8,15 @@
  *   o  pearl         ?  clam                *  urchin          j  jellyfish
  *
  * Start, finish and object tiles are open water. Every row must be the same width.
+ *
+ * Cell names are materials, but what they mean is a behaviour the world's medium interprets:
+ * rock is solid, coral is solid until broken, kelp slows a racer, a current pushes it along its
+ * arrow, and water is open. Swimming makes kelp drag and currents flow; another medium may make
+ * slow and flow mean something else (thick cloud, a tailwind).
+ *
+ * A level may add glyphs of its own in `LevelDef.legend`: each extra character behaves as one base
+ * cell and names the art a theme draws it with (a shipwreck hull that is rock, a sand bar that is
+ * kelp). `Level.glyphs` keeps the character written at every tile, so a theme can tell them apart.
  */
 import { type Cell, type Level, type LevelDef, RACER_IDS, type Vec } from '../types.ts';
 
@@ -47,6 +56,10 @@ const OBJECTS: ReadonlyMap<string, ObjectList> = new Map([
 const START_DIGITS = '1234';
 const FINISH = 'F';
 const VALID_CHARACTERS = [...TERRAIN.keys(), ...START_DIGITS, FINISH, ...OBJECTS.keys()].join('');
+const BASE_CELLS: readonly Cell[] = [...TERRAIN.values()];
+
+/** A level's extra glyphs, each to the base cell it behaves as. */
+type Legend = ReadonlyMap<string, Cell>;
 
 /** Everything on the map that isn't terrain, collected while the tiles are read. */
 interface Markers {
@@ -62,21 +75,22 @@ interface Markers {
 /**
  * Parses a course definition.
  *
- * @throws {LevelError} For ragged rows, unknown characters, missing or duplicate start digits,
+ * @throws {LevelError} For a legend glyph that isn't one UTF-16 character, is whitespace, reuses a built-in character or
+ *   names an unknown cell; ragged rows, unknown characters, missing or duplicate start digits,
  *   no finish tile, finish tiles in more than one column, or a dark zone outside the map or reversed.
  */
 export function parseLevel(def: LevelDef): Level {
+  const legend = readLegend(def.legend ?? {});
   const rows = readRows(def.ascii);
   const width = requireEqualWidths(rows);
   const markers: Markers = { starts: [], finishX: null, pearls: [], clams: [], urchins: [], jellies: [] };
-  const cells = rows.map((row, y) => [...row].map((ch, x) => readTile(ch, x, y, markers)));
+  const cells = rows.map((row, y) => [...row].map((ch, x) => readTile(ch, x, y, markers, legend)));
 
   return {
     name: def.name,
     width,
     height: rows.length,
     cells,
-    // Legend glyphs (LevelDef.legend) arrive in lane 8/c; until then every glyph is a built-in one.
     glyphs: rows.map((row) => [...row]),
     starts: requireAllStarts(markers.starts),
     finishX: requireFinish(markers.finishX),
@@ -86,6 +100,31 @@ export function parseLevel(def: LevelDef): Level {
     jellies: markers.jellies,
     dark: requireDarkZonesOnMap(def.dark ?? [], width),
   };
+}
+
+/** Checks each legend entry and returns the glyph-to-cell map the tile reader uses. */
+function readLegend(entries: NonNullable<LevelDef['legend']>): Legend {
+  const legend = new Map<string, Cell>();
+  for (const [glyph, { cell }] of Object.entries(entries)) {
+    // Row widths count UTF-16 units, so an emoji (two units) would make a row wider than its tiles.
+    if (glyph.length !== 1) {
+      throw new LevelError(`Legend glyph "${glyph}" must be exactly one character (one UTF-16 unit, so no emoji)`);
+    }
+    // Rows are trimmed before they're read, so a whitespace glyph at a row's edge would vanish.
+    if (/\s/.test(glyph)) {
+      throw new LevelError(`Legend glyph "${glyph}" is whitespace, which rows lose when trimmed; pick a visible one`);
+    }
+    if (VALID_CHARACTERS.includes(glyph)) {
+      throw new LevelError(`Legend glyph "${glyph}" is a built-in tile (${VALID_CHARACTERS}); pick another character`);
+    }
+    if (!BASE_CELLS.includes(cell)) {
+      throw new LevelError(
+        `Legend glyph "${glyph}" maps to unknown cell "${cell}" (expected one of ${BASE_CELLS.join(', ')})`,
+      );
+    }
+    legend.set(glyph, cell);
+  }
+  return legend;
 }
 
 /** Splits level text into trimmed rows, dropping blank lines before the first row and after the last. */
@@ -111,15 +150,15 @@ function requireEqualWidths(rows: string[]): number {
 }
 
 /** The cell for one character, recording any start, finish or object it marks. */
-function readTile(ch: string, x: number, y: number, markers: Markers): Cell {
-  const terrain = TERRAIN.get(ch);
+function readTile(ch: string, x: number, y: number, markers: Markers, legend: Legend): Cell {
+  const terrain = TERRAIN.get(ch) ?? legend.get(ch);
   if (terrain) return terrain;
 
   const objectList = OBJECTS.get(ch);
   if (objectList) markers[objectList].push({ x, y });
   else if (START_DIGITS.includes(ch)) recordStart(markers, Number(ch) - 1, x, y);
   else if (ch === FINISH) recordFinish(markers, x, y);
-  else throw errorAt(`Unknown tile "${ch}" (expected one of ${VALID_CHARACTERS})`, y, x);
+  else throw errorAt(`Unknown tile "${ch}" (expected one of ${VALID_CHARACTERS}${[...legend.keys()].join('')})`, y, x);
   return 'water';
 }
 

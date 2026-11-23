@@ -1,6 +1,10 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { wantsBurst } from './ai/items.ts';
-import { DIFFICULTY, dodgeTicks } from './difficulty-level.ts';
+import { registerCourse } from './courses/index.ts';
+import type { Course } from './courses/types.ts';
+import { DIFFICULTY, dodgeTicks, rivalCatchUpFor } from './difficulty-level.ts';
+import type { GameEvent } from './events.ts';
 import { applyHit } from './hazards/hits.ts';
 import { advanceProjectiles } from './hazards/projectiles.ts';
 import { pickSquidTarget } from './hazards/squid-target.ts';
@@ -14,8 +18,9 @@ import { SQUID } from './powerups/tuning.ts';
 import { fireUndertow } from './powerups/undertow.ts';
 import { updateProgress } from './race/standings.ts';
 import { activeRacers, centreOf } from './racers.ts';
-import { eventsIn, hold, IDLE, placeOnTile, raceOn, racerOf, step } from './test-world.ts';
+import { courseFromLevel, eventsIn, hold, IDLE, placeOnTile, raceOn, racerOf, step } from './test-world.ts';
 import type { Difficulty, RacerId } from './types.ts';
+import { createWorld } from './world.ts';
 
 /** Open water with a clam, all four racers on the left edge and the finish on the right. */
 const ARENA = `
@@ -145,6 +150,27 @@ describe('swim force on each level', () => {
     expect(force('easy', [4, 1])).toBeGreaterThan(1.3);
     expect(force('easy', [20, 1])).toBe(1);
     expect(force('hard', [4, 1])).toBe(1);
+  });
+});
+
+describe('rival catch-up bounds on a course', () => {
+  const LEVELS: Difficulty[] = ['easy', 'normal', 'hard'];
+  const HARD_OVERRIDE = { lagTiles: 6, max: 1.4 };
+  /** The arena as an unlisted course that loosens Hard's catch-up only. */
+  const hardOnly: Course = { ...courseFromLevel(ARENA), id: 'catch-up-hard-only', catchUp: { hard: HARD_OVERRIDE } };
+  registerCourse(hardOnly);
+
+  const boundsOn = (course: Course, difficulty: Difficulty) =>
+    rivalCatchUpFor(createWorld(course, new EventLog<GameEvent>(100), { seed: 1, difficulty }));
+
+  it.each(LEVELS)('are the table bounds on %s for a course without an override', (difficulty) => {
+    expect(boundsOn(courseFromLevel(ARENA), difficulty)).toEqual(DIFFICULTY[difficulty].rivalCatchUp);
+  });
+
+  it('take a Hard-only override field by field and leave Easy and Normal as the table has them', () => {
+    expect(boundsOn(hardOnly, 'hard')).toEqual({ ...DIFFICULTY.hard.rivalCatchUp, ...HARD_OVERRIDE });
+    expect(boundsOn(hardOnly, 'normal')).toEqual(DIFFICULTY.normal.rivalCatchUp);
+    expect(boundsOn(hardOnly, 'easy')).toEqual(DIFFICULTY.easy.rivalCatchUp);
   });
 });
 
