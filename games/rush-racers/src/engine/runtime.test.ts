@@ -263,6 +263,20 @@ describe('course select', () => {
     expect([rt.scene, rt.courseCursor]).toEqual(['course', 1]);
   });
 
+  it('keeps the course in force when the player picks another and backs out to the title', async () => {
+    const courses = [DEFAULT_COURSE, ...threeCourses()];
+    const rt = await onCourseSelect(courses);
+    rt.step.advance(ARMED);
+    press(rt, 'down');
+    press(rt, 'fire');
+    expect([rt.scene, rt.course]).toEqual(['select', courses[1]]);
+    rt.step.advance(ARMED);
+    press(rt, 'dash');
+    rt.step.advance(ARMED);
+    press(rt, 'dash');
+    expect([rt.scene, rt.course]).toEqual(['title', DEFAULT_COURSE]);
+  });
+
   it('is skipped for an unlisted ?course=: Race goes straight to select on that course, and B there to the title', async () => {
     const { rt } = titleRuntime(await realStore(), { search: '?course=run-test', listedCourses: threeCourses() });
     press(rt, 'fire');
@@ -340,6 +354,28 @@ describe('changing character from the results screen', () => {
     press(rt, 'dash');
     expect([rt.scene, rt.lastResult === null, rt.world === null]).toEqual(['results', false, false]);
     expect(rt.menu && selectedOption(rt.menu)).toBe('Character');
+  });
+
+  it('races the finished course again after another is picked on course select and backed out of', async () => {
+    const courses = twoCourses();
+    const { rt } = titleRuntime(await realStore(), { listedCourses: courses });
+    onResults(rt, { courseSelect: true });
+    expect(rt.world?.course).toBe(courses[0]?.id);
+    press(rt, 'down');
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'down');
+    press(rt, 'fire');
+    expect([rt.scene, rt.course]).toEqual(['select', courses[1]]);
+    rt.step.advance(ARMED);
+    press(rt, 'dash');
+    rt.step.advance(ARMED);
+    press(rt, 'dash');
+    expect(rt.scene).toBe('results');
+    rt.step.advance(ARMED);
+    press(rt, 'up');
+    press(rt, 'fire');
+    expect([rt.scene, rt.world?.course]).toEqual(['race', courses[0]?.id]);
   });
 
   it('goes back to results on B from select and again from course select', async () => {

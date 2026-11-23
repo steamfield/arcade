@@ -3,6 +3,7 @@
  * builder in this folder, and starts hidden; the scene shows one at a time. Page 1 explains how
  * the current course's medium moves; the rest are shared unless the medium has its own.
  */
+import { createLogger } from '@arcade/core';
 import type Phaser from 'phaser';
 import type { ShippedMediumId } from '../../../logic/courses/types.ts';
 import type { CharacterId } from '../../../logic/types.ts';
@@ -20,6 +21,7 @@ import { buildPearlsPage } from './pearls-page.ts';
 import { buildRunCratesPage } from './run-crates-page.ts';
 import { buildRunEnemiesPage } from './run-enemies-page.ts';
 import { buildRunMovePage } from './run-page.ts';
+import { buildRunShieldPage } from './run-shield-page.ts';
 
 export type { Page } from './kit.ts';
 
@@ -39,14 +41,16 @@ export interface MovePage {
 }
 
 /**
- * The pages a medium has of its own. The move page is required; the crates and enemies pages
- * replace the shared ones where a medium plays differently (run hits crates from below and
- * stomps enemies instead of dashing into them).
+ * The pages a medium has of its own. The move page is required; the crates, enemies and dodge pages
+ * replace the shared ones where a medium plays differently (run hits crates from below, stomps
+ * enemies instead of dashing into them, and has no dash that dodges a squid, so its page 7 shows a
+ * shield stopping one).
  */
 export interface MediumPages {
   move: MovePage;
   crates?: PageSpec;
   enemies?: PageSpec;
+  dodge?: PageSpec;
 }
 
 /** Each shipped medium's own pages, so shipping a medium without a move page fails to compile. */
@@ -56,11 +60,19 @@ export const MEDIUM_PAGES: Readonly<Record<ShippedMediumId, MediumPages>> = {
     move: { heading: 'RUN AND JUMP', build: buildRunMovePage },
     crates: { heading: (_touch, skin) => skin.objects.text.cratesHeading, build: buildRunCratesPage },
     enemies: { heading: () => 'JUMP TO STOMP', build: buildRunEnemiesPage },
+    dodge: {
+      heading: (_touch, skin) => `SHIELD STOPS THE ${skin.objects.text.attackCaptions.homingSquid}`,
+      build: buildRunShieldPage,
+    },
   },
 };
 
 /** The medium whose pages stand in for one How to Play has none for. */
 const FALLBACK_MEDIUM: ShippedMediumId = 'swim';
+
+const log = createLogger('rush-racers:how-to-play');
+/** Media already warned about, so a page rebuilt on resize doesn't warn again. */
+const warnedMedia = new Set<string>();
 
 /** The pages every medium shares unless it overrides them. */
 const SHARED_CRATES: PageSpec = { heading: (_touch, skin) => skin.objects.text.cratesHeading, build: buildClamsPage };
@@ -68,19 +80,28 @@ const SHARED_ENEMIES: PageSpec = { heading: () => 'DASH TO BONK', build: buildEn
 const FIRE_PAGE: PageSpec = { heading: (touch) => `${controlName('fire', touch)} FIRES ONE`, build: buildFirePage };
 const PEARLS_PAGE: PageSpec = { heading: (_touch, skin) => skin.objects.text.pearlsHeading, build: buildPearlsPage };
 const ATTACKS_PAGE: PageSpec = { heading: () => 'ATTACKS', build: buildAttacksPage };
-const DODGE_PAGE: PageSpec = { heading: () => 'DASH TO DODGE', build: buildDodgePage };
+const SHARED_DODGE: PageSpec = { heading: () => 'DASH TO DODGE', build: buildDodgePage };
 
 /**
- * The pages for `medium`, a course's medium id. A medium that isn't shipped, such as one a test
- * registered, gets swim's pages.
+ * The pages for `medium`, a course's medium id. Every shipped medium has its own (`MEDIUM_PAGES` is
+ * typed by `ShippedMediumId`); one that isn't shipped, such as one a test registered, gets swim's
+ * pages, with a warning once per medium, since they may teach moves it doesn't have.
  */
 export function mediumPagesFor(medium: string): MediumPages {
-  return Object.hasOwn(MEDIUM_PAGES, medium) ? MEDIUM_PAGES[medium as ShippedMediumId] : MEDIUM_PAGES[FALLBACK_MEDIUM];
+  if (Object.hasOwn(MEDIUM_PAGES, medium)) return MEDIUM_PAGES[medium as ShippedMediumId];
+  if (!warnedMedia.has(medium)) {
+    warnedMedia.add(medium);
+    log.warn(`How to Play has no pages for medium '${medium}': showing ${FALLBACK_MEDIUM}'s`, {
+      medium,
+      shipped: Object.keys(MEDIUM_PAGES),
+    });
+  }
+  return MEDIUM_PAGES[FALLBACK_MEDIUM];
 }
 
 /** Every page's heading and builder, in order, using `medium`'s own page wherever it has one. */
 export function pageSpecsFor(medium: string): readonly PageSpec[] {
-  const { move, crates, enemies } = mediumPagesFor(medium);
+  const { move, crates, enemies, dodge } = mediumPagesFor(medium);
   return [
     { heading: () => move.heading, build: move.build },
     crates ?? SHARED_CRATES,
@@ -88,7 +109,7 @@ export function pageSpecsFor(medium: string): readonly PageSpec[] {
     PEARLS_PAGE,
     enemies ?? SHARED_ENEMIES,
     ATTACKS_PAGE,
-    DODGE_PAGE,
+    dodge ?? SHARED_DODGE,
   ];
 }
 

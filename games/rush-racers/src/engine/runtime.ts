@@ -182,6 +182,11 @@ export class Runtime {
   private cursor = 0;
   /** Which screen opened the select screens, so dash goes back there. Set each time the results or title menu opens them. */
   private selectOpenedFrom: 'title' | 'results' = 'title';
+  /**
+   * The course in force when the select screens opened. Course select's pick takes effect at once (the
+   * select screen draws the picked course's world), so backing out of the selects puts this one back.
+   */
+  private courseBeforeSelects: Course;
   /** Ticks left before the results screen, or null when no race has finished. */
   private resultsIn: number | null = null;
   /** Ticks left before the current menu or the select screen accepts fire. */
@@ -199,6 +204,7 @@ export class Runtime {
     this.courseSelectShown = this.listedCourses.length > 1;
     this.selectedCharacter = this.savedCharacter;
     this.course = startingCourse(this.search, options.save?.lastCourse ?? null);
+    this.courseBeforeSelects = this.course;
     assertCourseAssets(this.course);
     assertSkinAssets(skinFor(this.course));
     this.audio = createAudio(
@@ -407,6 +413,7 @@ export class Runtime {
     else if (option === 'Title') this.goTo('title');
     else if (option === 'Race' || option === 'Character') {
       this.selectOpenedFrom = option === 'Character' ? 'results' : 'title';
+      this.courseBeforeSelects = this.course;
       this.goTo(this.courseSelectOpens ? 'course' : 'select');
     } else this.startRace();
   }
@@ -443,8 +450,13 @@ export class Runtime {
     } else if (input.justPressed('fire')) this.pickCharacter();
   }
 
-  /** Backs out of the first select screen to where it was opened from: results (on Character) or the title. */
+  /**
+   * Backs out of the first select screen to where it was opened from: results (on Character) or the
+   * title, with the course in force before the selects opened, so a course browsed and backed out of
+   * is never raced or shown.
+   */
   private leaveSelects(): void {
+    this.course = this.courseBeforeSelects;
     if (this.selectOpenedFrom === 'results') {
       this.returnTo = 'Character';
       this.goTo('results');

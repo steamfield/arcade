@@ -2,7 +2,8 @@
  * What the HUD says about a Homing Squid hunting the player's racer (the local racer, the slot the
  * screen follows): an arrow on the screen's edge that
  * points at the squid while it is locked on, and a big DASH! prompt (with PRESS B on touch screens,
- * where B is the dash button) while one is latched on, since dashes are how it is shaken off. The
+ * where B is the dash button) while one is latched on where the course's medium lets dashes shake it
+ * off (`kickRules.shakesLatch`; on foot the latch just runs out, so no prompt shows). The
  * prompt sits by the player, above them when that fits, so a player looking at their own racer sees
  * it without looking away. The short LOCKED ON! caption is the HUD's own caption line. Everything
  * reads world state only; the arrow blinks at 3 Hz, the WCAG ceiling, and shows steadily under
@@ -15,6 +16,7 @@ import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { DISPLAY_FACE, TEXT_FACE } from '../art/ui/typeface.ts';
 import { localOf } from '../local-racer.ts';
 import { isTouchScreen } from '../touch.ts';
+import { latchPromptShows } from './hints.ts';
 import { Layer } from './layers.ts';
 import { TONE_CSS } from './race-text.ts';
 import { BASE_LAYOUT, type ScreenLayout } from './screen-layout.ts';
@@ -35,9 +37,9 @@ export interface PromptText {
   hint: string;
 }
 
-/** What the DASH! prompt says: a latched squid wants dashes, and on a touch screen says which button. */
+/** What the DASH! prompt says: a latched squid that dashes shake wants dashes, and on a touch screen says which button. */
 export function promptText(world: World, touch: boolean): PromptText {
-  const latched = localOf(world).status.latched > 0;
+  const latched = latchPromptShows(world);
   return { headline: latched ? 'DASH!' : '', hint: latched && touch ? 'PRESS B' : '' };
 }
 

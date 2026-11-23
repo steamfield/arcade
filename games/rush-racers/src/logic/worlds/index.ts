@@ -16,14 +16,14 @@ export const WORLDS: Readonly<Record<ShippedWorldId, WorldDef>> = {
   thornwood: THORNWOOD,
 };
 
-const registered = new Map<string, WorldDef>();
+const registered = new Map<string, WorldDef<string>>();
 
 function isShipped(id: string): id is ShippedWorldId {
   return Object.hasOwn(WORLDS, id);
 }
 
 /** The world with `id`, shipped or registered, or null. */
-export function worldById(id: string): WorldDef | null {
+export function worldById(id: string): WorldDef<string> | null {
   if (isShipped(id)) return WORLDS[id];
   return registered.get(id) ?? null;
 }
@@ -33,7 +33,7 @@ export function worldById(id: string): WorldDef | null {
  *
  * @throws {Error} When `world.id` is a shipped world's id or already registered to another world.
  */
-export function registerWorld(world: WorldDef): void {
+export function registerWorld(world: WorldDef<string>): void {
   if (isShipped(world.id)) throw new Error(`World id '${world.id}' belongs to a shipped world`);
   const existing = registered.get(world.id);
   if (existing && existing !== world) throw new Error(`World id '${world.id}' is already registered`);
@@ -45,7 +45,7 @@ export function registerWorld(world: WorldDef): void {
  *
  * @throws {Error} When the course names a world that is neither shipped nor registered, naming both.
  */
-export function worldOf(course: Pick<Course, 'id' | 'world'>): WorldDef {
+export function worldOf(course: Pick<Course, 'id' | 'world'>): WorldDef<string> {
   const world = worldById(course.world);
   if (!world) throw new Error(`Course '${course.id}' names unknown world '${course.world}'`);
   return world;
@@ -61,6 +61,6 @@ export function mediumIdOf(course: Pick<Course, 'id' | 'world'>): string {
 }
 
 /** The name `character`'s slot goes by in `world`. */
-export function castName(world: WorldDef, character: CharacterId): string {
+export function castName(world: WorldDef<string>, character: CharacterId): string {
   return world.cast[character];
 }
