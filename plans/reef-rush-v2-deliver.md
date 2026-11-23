@@ -2,7 +2,7 @@
 
 Skill: deliver. Profile: deliver. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.0/shared/scripts/plan_graph.py
-Started: 2026-11-22. Timebox: none. Landing branch: main.
+Started: 2026-11-22. Finished: 2026-11-23 (all four phases on main, nothing pushed). Timebox: none. Landing branch: main.
 Gate: `pnpm arcade check reef-rush && pnpm arcade smoke reef-rush && pnpm --filter game-reef-rush test:difficulty` (about 2 min; the difficulty project rejoined the gate when phase 4 landed). Filtered tests: `pnpm arcade test reef-rush <paths or @groups>`. Typecheck and lint: `pnpm arcade check reef-rush --skip-tests`.
 Runner: plain commands.
 Worktree setup: `pnpm install --frozen-lockfile --offline`.

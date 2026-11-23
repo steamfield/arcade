@@ -1,6 +1,6 @@
 # Reef Rush v2: product spec
 
-Status: spec, not started. Written 2026-11-22 from a play session. Hand to `deliver` to turn into phases and lanes.
+Status: delivered on main 2026-11-23 (see reef-rush-v2-deliver.md). Written 2026-11-22 from a play session. Hand to `deliver` to turn into phases and lanes.
 
 ## Problem
 
