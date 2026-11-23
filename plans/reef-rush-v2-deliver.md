@@ -50,6 +50,7 @@ New and changed modules, with their single responsibilities:
 
 ### Phase 1: fire the item you choose (MVP)
 
+Scaffold: ed80dfb
 Demo: `pnpm arcade dev reef-rush`, race, open clams: Space fires only the framed item and its charge digit drops, Q/E move the frame, a Cannonball smashes the coral gate. `pnpm arcade see reef-rush --scenario cannonball-item`.
 Test cases:
 - Slots are fixed: `items` always has `stackMaxFor(racer)` entries (3, Nib 4), each a `HeldItem` or null, so held items never slide in the HUD.
@@ -71,7 +72,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/reef-rush/src/, games/reef-rush/scenarios/, games/reef-rush/tests/, games/reef-rush/DESIGN.md, games/reef-rush/UI.md | plans/reef-rush-v2.md, this plan | | opus | pending | | check, smoke and the new tests pass |
+| a | L | games/reef-rush/src/, games/reef-rush/scenarios/, games/reef-rush/tests/, games/reef-rush/DESIGN.md, games/reef-rush/UI.md | plans/reef-rush-v2.md, this plan | | opus | running | v2-1a | check, smoke and the new tests pass |
 
 #### Lane a brief
 
@@ -101,6 +102,7 @@ Depends on: phase 1
 | a | M | games/reef-rush/src/logic/powerups/dash-meter.ts, games/reef-rush/src/logic/powerups/dash-meter.test.ts, games/reef-rush/src/logic/status.ts, games/reef-rush/src/logic/status.test.ts, games/reef-rush/src/logic/race/collide.ts, games/reef-rush/src/logic/race/collide.test.ts, games/reef-rush/src/logic/characters.ts, games/reef-rush/src/logic/characters.test.ts, games/reef-rush/src/logic/world.ts, games/reef-rush/src/logic/world.test.ts, games/reef-rush/src/logic/top-route.test.ts, games/reef-rush/scenarios/kit.ts | | | opus | pending | | |
 | b | M | games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/hazards/hits.ts, games/reef-rush/src/logic/hazards/hits.test.ts, games/reef-rush/src/logic/powerups/tuning.ts, games/reef-rush/src/logic/powerups/passives.ts, games/reef-rush/src/logic/powerups/passives.test.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/ai/rival.test.ts | | | opus | pending | | |
 | c | M | games/reef-rush/src/engine/view/hud.ts, games/reef-rush/src/engine/view/hud.test.ts, games/reef-rush/src/engine/view/pickup-view.ts, games/reef-rush/src/engine/audio/sfx.ts, games/reef-rush/src/engine/art/sprites/hud.ts, games/reef-rush/src/engine/art/ui/icons.ts, games/reef-rush/tests/hud.spec.ts | | | sonnet | pending | | |
+| d | S | games/reef-rush/src/engine/runtime.ts, games/reef-rush/src/engine/runtime.test.ts, games/reef-rush/src/engine/menu.ts, games/reef-rush/src/engine/scenes/results.ts, games/reef-rush/src/engine/scenes/results-layout.ts, games/reef-rush/scenarios/change-character.ts, games/reef-rush/UI.md | | | sonnet | pending | | Results offers Character, which opens select on the current pick, so the next race runs as the new pick |
 
 (Briefs and test cases written while phase 1 runs.)
 
@@ -133,3 +135,4 @@ Depends on: phase 3
 - 2026-11-22: phase 1 runs as one lane, not scaffold plus parallel lanes. The item model replaces `Racer.stack`, which about 40 files under `src/logic` and `src/engine` read. A scaffold can't change that type and still typecheck without doing the migration itself. Splitting logic and engine across lanes would leave each lane's tests failing at runtime until the other merged. The lane writes its own tests from the phase 1 test-case list; the lane review checks them against it.
 - 2026-11-22 plan critique (opus): all 8 findings accepted. Phase 1 gets `dashSpeed` and dash-conflict rules, AI slot choice and Cannonball use with `pilot.ts`, `LoosePowerUp.charges` and the `summarize()` shape, same-tick cycle/use order and stun handling, clam fall-through for full racers, a staged Cannonball scenario, and fixed slots (spec said slots empty in place). Phase 2: `characters.ts` (par force and aggression numbers) belongs to one lane, and I re-record `TOP_ROUTE` at phase landing rather than in a lane. Phase 3's scaffold wires `World.enemies`, the stepWorld slot, types, events and level glyphs, so its lanes own only behavior and views. Applied when those phases are briefed. Accepted risk: rivals never cycle, so selected-only passives depend on their pickup order; phase 4 measures it.
 - 2026-11-22: the white-racer tick bug was fixed and committed on main before the run (4d82050).
+- 2026-11-22 playtest: no way to change character once picked. Select only opens from Title > Race, and results offers Race again and Title, so the race-again loop never shows a way out. Phase 2 lane d adds a Character option to the results menu that opens select (course select first while it is shown).
