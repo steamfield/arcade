@@ -86,7 +86,35 @@ Depends on: phase 1
 | a | M | games/reef-rush/src/logic/level/, games/reef-rush/src/logic/media/swim/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/hazards/enemies/shark.ts, games/reef-rush/src/logic/hazards/enemies/shark.test.ts, games/reef-rush/src/logic/status.ts, games/reef-rush/src/logic/surface.test.ts | contracts | | opus | pending | | surface logic tests pass |
 | b | M | games/reef-rush/src/engine/themes/, games/reef-rush/src/engine/view/level-view.ts, games/reef-rush/src/engine/view/backdrop.ts, games/reef-rush/src/engine/fx/event-effects.ts | contracts | | opus | pending | | theme tests pass, see capture shows sky, waterline and cave |
 
-(Briefs written when phase 1 lands.)
+Phase 2 scaffold (when phase 1 tags): `Environment.inAir: boolean` in types.ts (query.ts sets it false until lane a), GameEvents `{ type: 'racer.breached'; id: RacerId }` and `{ type: 'racer.splashed'; id: RacerId }` in events.ts, and a test level in `src/logic/surface.test.ts` scaffolded empty for lane a.
+
+Test cases (lane a writes them in `src/logic/surface.test.ts` and `level/parse.test.ts`):
+- `surface: [{ from: 2, to: 9, row: 3 }]` parses rows 0-2 water in cols 2-9 to 'air'; rock, and water outside the range, are unchanged; an object glyph (`?`, `o`) in that region sits on an air tile and is still recorded.
+- A surface range reversed, off the map, or with `row` outside 1..height-1 throws `LevelError`; an enemy glyph on an air tile throws `LevelError` with its row and col.
+- A racer holding up at cruise reaches the surface and pops out less than 1 tile (top of its box never above row - 1), then falls back into the water.
+- A racer that dashes straight up from 1 tile under the surface clears 2 tiles above the surface (overlaps a clam placed at row - 2) and opens it.
+- In air: no idle sink, no current or kelp effect, a kick does not fire (no `racer.kicked`), the stick steers at a fraction of swim force, and gravity brings the racer back into the water.
+- `racer.breached` fires once on the tick a racer's centre goes from water to air, `racer.splashed` once on re-entry.
+- Swim's `steerCost` prices air at 4; a rival on a surface-lane level swims under the air rather than through it, and its field values in air are finite.
+- A loose power-up rising toward the surface stops at it (never enters air); a bubble-trapped racer stops rising at the surface; scattered pearls never move into air.
+- A shark never moves into air (its patrol or charge stops at the surface like rock).
+
+#### Lane 2a brief
+
+- Goal: the surface of the sea, in logic. Water above a surface row becomes air; racers breach out with momentum, arc under gravity and splash back in.
+- Interface: `LevelDef.surface` / `Level.surface` (`SurfaceDef`), Cell `'air'`, `Environment.inAir`, events `racer.breached` / `racer.splashed` (all in the scaffold). `parseLevel` validates and applies surface ranges. `sampleEnvironment` (level/query.ts) sets `inAir`. Swim physics branches on `env.inAir`. `SwimMotion` gains `airborne: boolean` (media/swim/data.ts) so applyIntent can emit breach/splash on the change. New tuning in `SWIM_TUNING.extra`: `airGravity` (start 450 px/s²), `airDrag` (0.4), `airSteer` (0.15); adjust until the dash-up and cruise-pop test cases hold. `steerCost` gets `AIR_COST = 4`.
+- Behavior: the test cases above. Kick cooldown keeps counting down in air. Speed cap still applies. Air never pushes or slows (no current, no kelp drag) and has no idle sink, only gravity.
+- Decisions already made: momentum breach, no jump button; rivals don't plan through air; objects in air are normal pickups; enemies never enter air.
+- Out of scope: course edits, engine art, sounds, rival pilot changes beyond what the cost gives, items behaving differently in air (Jet Fins, Cannonball, Riptide just do what they do).
+- Done when: `pnpm arcade test reef-rush src/logic/surface.test.ts src/logic/level src/logic/media src/logic/pickups src/logic/hazards src/logic/conformance` passes and `pnpm arcade check reef-rush --skip-tests` passes. The sfx pin (`@behavior`) must not change (Sunlit has no air yet).
+
+#### Lane 2b brief
+
+- Goal: the ocean theme draws a sky over air, a moving waterline at the surface, splashes on breach and re-entry, and an underwater cave over dark ranges.
+- Interface: `TerrainArt.tiles.air` (a sky tile, or sky drawn by the backdrop over air tiles; lane's choice, reported), a new optional `TerrainArt.surface: FlowingArt` drawn on every water tile whose tile above is air, `glyphTiles` entries `caveRock`, `stalactite` and `stalagmite` (each a rock-like tile in darker cave stone; stalactite hangs from above, stalagmite rises from below), and a new optional `BackdropSpec.cave: { texture: string }` drawn behind the terrain across every `level.dark` column range (dark rock wall with faint texture), in `themes/types.ts`, `themes/ocean.ts`, `themes/ocean/`, `view/level-view.ts`, `view/backdrop.ts`. Splashes: `fx/event-effects.ts` bursts droplets on `racer.breached` and `racer.splashed` from the theme's `splash` particle physics. Palette rules: at most 4 colours per frame, sky colours added to the theme's contrast bands only if racers stay 3:1 against them (`sprites.test.ts`, `ocean.test.ts`).
+- Behavior: a level with a surface shows sky above the waterline in those columns and water below; a level without one looks exactly as today (Sunlit pixels unchanged until phase 3 adds a surface). The cave backdrop shows only in dark columns, under the dark veil.
+- Out of scope: logic, course edits, audio, the dark veil itself.
+- Done when: `pnpm arcade test reef-rush src/engine/themes src/engine/art src/engine/view src/engine/fx` passes, typecheck passes, and a `pnpm arcade see reef-rush --query course=<test course>` capture of a level with a surface and a dark range shows sky, waterline and cave wall (use a scratch unlisted course only if one already exists; otherwise review via `?stage=` frames on Sunlit for the cave and report the surface as unreviewed until phase 3).
 
 ### Phase 3: course, cave layout and balance
 
