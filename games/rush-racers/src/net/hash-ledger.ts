@@ -9,13 +9,17 @@ import type { Desync } from './session.ts';
 /** Ticks a hash is kept waiting for the other side of its tick: ten seconds. */
 export const HASH_KEEP_TICKS = 600;
 
+/** Ticks between hash checks: peers hash only ticks that are multiples of this. */
+export const HASH_INTERVAL_TICKS = 60;
+
 /** The hashes kept for comparison between this peer and the others. */
 export interface HashLedger {
   /** Keeps this peer's hash at `tick`, compares it with any remote hash already held for that tick, and forgets hashes past the window. */
   recordLocal(tick: number, hash: number): void;
   /**
    * Compares a remote hash with this peer's hash at `tick`, or keeps it until this peer reaches
-   * `tick`. Returns false when `tick` is already stepped and its local hash is no longer kept.
+   * `tick`. Returns false, keeping nothing, when `tick` is not a multiple of `HASH_INTERVAL_TICKS`,
+   * is more than `HASH_KEEP_TICKS` ahead of `simTick`, or is already stepped and no longer kept.
    */
   receiveRemote(slot: RacerId, tick: number, hash: number, simTick: number): boolean;
 }
@@ -46,6 +50,8 @@ export function createHashLedger(onMismatch: (mismatch: Desync) => void): HashLe
       forgetBefore(tick - HASH_KEEP_TICKS);
     },
     receiveRemote(slot, tick, hash, simTick) {
+      // A peer only hashes interval ticks, and none runs a window ahead; anything else would sit here unchecked.
+      if (tick % HASH_INTERVAL_TICKS !== 0 || tick > simTick + HASH_KEEP_TICKS) return false;
       if (localHashes.has(tick)) {
         compare(tick, slot, hash);
         return true;

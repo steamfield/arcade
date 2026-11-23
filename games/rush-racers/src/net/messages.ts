@@ -3,7 +3,9 @@
  * lobby entry, the host's race start, and a peer's race end. Each arrives with `from`, the sender's
  * peer id, added by the room. Binary messages (inputs and hashes) are in `codec.ts`.
  */
+import { MAX_PEER_ID } from '@arcade/api/protocol';
 import { z } from 'zod';
+import { courseById } from '../logic/courses/index.ts';
 import { CHARACTER_IDS, type CharacterId, RACER_IDS, type RacerId } from '../logic/types.ts';
 
 /** The levels an online race may run on. Easy's guide and immunity are written for one human. */
@@ -15,11 +17,25 @@ export const MIN_INPUT_DELAY = 3;
 /** The most ticks between reading an input and applying it (200 ms); past this a race stalls instead. */
 export const MAX_INPUT_DELAY = 12;
 
+/** The largest half round trip a lobby message may carry, in milliseconds. */
+export const MAX_PING_MS = 5000;
+
 const Character = z.enum(CHARACTER_IDS as [CharacterId, ...CharacterId[]]);
 const Slot = z.enum(RACER_IDS as [RacerId, ...RacerId[]]);
 const Difficulty = z.enum(ONLINE_DIFFICULTIES);
 const Uint32 = z.number().int().min(0).max(0xffffffff);
-const From = z.number().int().min(1).max(255);
+const From = z.number().int().min(1).max(MAX_PEER_ID);
+/** A course id this build has, so a start can never name a course `createWorld` would refuse. */
+const CourseId = z
+  .string()
+  .min(1)
+  .max(64)
+  .refine((id) => courseById(id) !== null, { message: 'unknown course' });
+/** A peer id as a `slots` key: digits naming an id from 1 to `MAX_PEER_ID`. */
+const PeerIdKey = z
+  .string()
+  .regex(/^[1-9]\d{0,2}$/)
+  .refine((key) => Number(key) <= MAX_PEER_ID, { message: `peer id above ${MAX_PEER_ID}` });
 
 /**
  * A peer's lobby entry, sent whenever it changes and once to greet each newcomer. `ping` is half the
@@ -29,9 +45,9 @@ const From = z.number().int().min(1).max(255);
 export const LobbySchema = z.object({
   type: z.literal('lobby'),
   character: Character,
-  ping: z.number().int().min(0).max(5000),
+  ping: z.number().int().min(0).max(MAX_PING_MS),
   ready: z.boolean(),
-  course: z.string().min(1).max(64).optional(),
+  course: CourseId.optional(),
   difficulty: Difficulty.optional(),
 });
 export type LobbyMessage = z.infer<typeof LobbySchema>;
@@ -46,9 +62,9 @@ export type LobbyMessage = z.infer<typeof LobbySchema>;
 const StartFields = z.object({
   type: z.literal('start'),
   seed: Uint32,
-  course: z.string().min(1).max(64),
+  course: CourseId,
   difficulty: Difficulty,
-  slots: z.record(z.string().regex(/^[1-9]\d{0,2}$/), Slot),
+  slots: z.record(PeerIdKey, Slot),
   characters: z.partialRecord(Slot, Character),
   delay: z.number().int().min(MIN_INPUT_DELAY).max(MAX_INPUT_DELAY),
 });

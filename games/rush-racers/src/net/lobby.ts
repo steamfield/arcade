@@ -7,6 +7,7 @@ import { CHARACTER_IDS, type CharacterId, type Difficulty, RACER_IDS, type Racer
 import {
   type LobbyMessage,
   MAX_INPUT_DELAY,
+  MAX_PING_MS,
   MIN_INPUT_DELAY,
   type OnlineDifficulty,
   type RelayedGameMessage,
@@ -88,8 +89,6 @@ const MIN_RACERS = 2;
 const TICKS_PER_SECOND = 60;
 /** Ticks of delay added on top of the worst one-way latency, to absorb jitter. */
 const DELAY_MARGIN_TICKS = 2;
-/** The largest ping a lobby message may carry (see `LobbySchema`). */
-const MAX_PING_MS = 5000;
 /** How a peer that has sent no lobby message yet is shown. */
 const UNKNOWN_PEER: PeerEntry = { character: null, ping: null, ready: false };
 

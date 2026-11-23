@@ -7,7 +7,7 @@ import type { CharacterId } from '../logic/types.ts';
 import { createLobby, type Lobby, type LobbyOptions } from './lobby.ts';
 import { type RelayedGameMessage, StartSchema } from './messages.ts';
 
-const OPTIONS: LobbyOptions = { character: 'rudy', course: 'reef', difficulty: 'normal' };
+const OPTIONS: LobbyOptions = { character: 'rudy', course: 'sunlit-shallows', difficulty: 'normal' };
 
 /** A lobby welcomed into a room as peer `you`, with `peers` present in join order and `host` hosting. */
 function welcomed(you: number, peers: number[], host: number, options: LobbyOptions = OPTIONS): Lobby {
@@ -89,7 +89,7 @@ describe('lobby race settings', () => {
   it('takes course and difficulty from the host only', () => {
     const lobby = welcomed(3, [1, 2, 3], 1);
     lobby.apply(entry(2, 'gil', { course: 'not-host', difficulty: 'hard' }));
-    expect([lobby.view.course, lobby.view.difficulty]).toEqual(['reef', 'normal']);
+    expect([lobby.view.course, lobby.view.difficulty]).toEqual(['sunlit-shallows', 'normal']);
 
     lobby.apply(entry(1, 'onyx', { course: 'bramble', difficulty: 'hard' }));
     expect([lobby.view.course, lobby.view.difficulty]).toEqual(['bramble', 'hard']);
@@ -118,7 +118,7 @@ describe('lobby race settings', () => {
       host: false,
       you: true,
     });
-    expect([guest.view.course, guest.view.difficulty]).toEqual(['reef', 'normal']);
+    expect([guest.view.course, guest.view.difficulty]).toEqual(['sunlit-shallows', 'normal']);
 
     const host = welcomed(1, [1, 2], 1);
     host.setCourse('bramble');
@@ -184,7 +184,7 @@ describe('lobby buildStart', () => {
     expect(start).toEqual({
       type: 'start',
       seed: 77,
-      course: 'reef',
+      course: 'sunlit-shallows',
       difficulty: 'normal',
       slots: { '1': 'player', '2': 'tess', '4': 'squib' },
       characters: { player: 'rudy', tess: 'gil', squib: 'nib' },
