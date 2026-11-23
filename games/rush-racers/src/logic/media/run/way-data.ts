@@ -1,23 +1,49 @@
 /**
  * Run's navigation and rival pilot shapes, extending the opaque bases in `media/types.ts` with
- * `kind: 'run'`, and their accessors. Phase 2's simple way and pilot fill them; the jump-link nav
- * replaces their insides later without changing generic code.
+ * `kind: 'run'`, and their accessors. The nav is a graph of links between stand tiles (`links.ts`)
+ * solved for the least ticks to the finish (`nav.ts`); the pilot's memory holds the jump it is
+ * flying and the recovery it is in.
  */
 
 import type { GridSize } from '../../types.ts';
 import type { MediumNav, PilotMemory } from '../types.ts';
 import { wrongKind } from './data.ts';
 
-/** Run's navigation: a distance to the finish per tile, and how long to hold Up for each jump height. */
+/** How a runner gets from one stand tile to another. */
+export type LinkKind = 'walk' | 'drop' | 'jump';
+
+/** One way from a stand tile to another, with the time it takes. */
+export interface RunLink {
+  kind: LinkKind;
+  /** Index (`y * width + x`) of the stand tile it ends on. */
+  to: number;
+  /** The way it heads, -1 left or 1 right, from the start of the link to its end. */
+  dir: -1 | 1;
+  /** Ticks from leaving the stand tile to standing on `to`. */
+  ticks: number;
+  /** Ticks Up is held from the press, counting it; 0 unless the link is a jump. */
+  holdTicks: number;
+  /** True for a jump over a gap or off an edge: the runner takes off from the far edge of the stand tile for the most reach. */
+  takeOffAtEdge: boolean;
+}
+
+/**
+ * Run's navigation. A stand tile is an open tile with something to stand on under it. Every open
+ * tile has an `anchor`, the stand tile whose distance it reads, so progress and the guide keep
+ * working in the air.
+ */
 export interface RunNav extends MediumNav, GridSize {
   readonly kind: 'run';
-  /** Distance to the finish in tiles, indexed `y * width + x`. */
+  /** Ticks to the finish from each tile, indexed `y * width + x`; Infinity where unreachable or closed. */
   distance: Float32Array;
   /**
-   * Ticks Up must be held for a jump that lifts the feet onto ground `index` tiles higher, worked out
-   * from the world's tuning. The last index is the highest ground a full jump reaches.
+   * The index of the stand tile each open tile reads its distance from, indexed like `distance`: a
+   * stand tile is its own anchor, an open tile above one anchors to the one it falls to, and one over
+   * a pit to the nearest stand tile on its row. -1 for a closed tile or one with no anchor.
    */
-  jumpHoldTicks: readonly number[];
+  anchor: Int32Array;
+  /** The link to follow from each stand tile (null off stand tiles, at the finish and where unreachable). */
+  best: readonly (RunLink | null)[];
 }
 
 /** A run rival's memory between ticks. */
@@ -27,6 +53,12 @@ export interface RunPilot extends PilotMemory {
   holdUpTicks: number;
   /** Up was pressed last tick, so a new jump has to let go of it first. */
   upHeld: boolean;
+  /** True from the tick a jump or drop starts until the runner stands again. */
+  inFlight: boolean;
+  /** Index of the stand tile whose link the runner is following; null until it stands on one after a landing. */
+  planTile: number | null;
+  /** Index of the stand tile the flight in progress aims to land on; null on the ground or in an unplanned fall. */
+  landingTile: number | null;
   /** Ticks left of a stuck recovery; 0 when not recovering. */
   recoverTicks: number;
   /** Which way the finish lay when the recovery started: it backs off the other way, then jumps this way. */

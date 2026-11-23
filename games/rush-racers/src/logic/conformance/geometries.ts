@@ -2,8 +2,8 @@
  * Small courses for the medium conformance suite, and which of them apply to each medium. Free
  * movers (swim, glide) get an overhang, a 1-tile gap, a shaft with a lip, a drop and an open arena
  * to move in eight ways. Runners skip what needs free movement (the shaft, eight-way open space and
- * the gap's mid-air starts) and get a flat run, a step up, a pit and a ledge hop instead, plus open
- * ground to run left and right on. Each course becomes a fresh registered course in the medium under
+ * the gap's mid-air starts) and get a flat run, a step up, a pit, a ledge hop, a high route and a
+ * dead-end jump instead, plus open ground to run left and right on. Each course becomes a fresh registered course in the medium under
  * test (`courseFromLevel`), raced through `createWorld` and `stepWorld`. Test-only.
  */
 import type { Course } from '../courses/types.ts';
@@ -153,6 +153,44 @@ const LEDGE_HOP: Geometry = {
   `,
 };
 
+// A valley too wide to jump, with ledge stepping stones across its top and a ledge staircase up its
+// right wall. Dropping in and climbing out is the longer way; the stones are the shorter one.
+const HIGH_ROUTE: Geometry = {
+  name: 'a high route',
+  ascii: `
+    ############################
+    #.......................F..#
+    #.......................F..#
+    #.......................F..#
+    #1.2.3.4................F..#
+    #########..==..==.##########
+    #########.........##########
+    #########........=##########
+    #########.........##########
+    #########.......=.##########
+    #########.........##########
+    ############################
+  `,
+};
+
+// A seven-tile gap in the floor that no jump crosses, with a ledge staircase up the far wall from the
+// floor below: the way on is to drop in and climb out, never to jump.
+const DEAD_END_JUMP: Geometry = {
+  name: 'a dead-end jump',
+  ascii: `
+    ############################
+    #.......................F..#
+    #.......................F..#
+    #.......................F..#
+    #1.2.3.4................F..#
+    ##########......=###########
+    ##########.......###########
+    ##########.....=.###########
+    ##########.......###########
+    ############################
+  `,
+};
+
 /** Open water with the starts in one corner, the finish far right, and about ten tiles of room in every direction from its centre. */
 const OPEN_ARENA: Arena = {
   ascii: `
@@ -223,7 +261,7 @@ const FREE_MOVEMENT: MediumCases = {
 
 /** Media that run on the ground under gravity and jump. */
 const ON_FOOT: MediumCases = {
-  geometries: [FLAT_RUN, OVERHANG, DROP, STEP_UP, PIT, LEDGE_HOP],
+  geometries: [FLAT_RUN, OVERHANG, DROP, STEP_UP, PIT, LEDGE_HOP, HIGH_ROUTE, DEAD_END_JUMP],
   directions: [
     { x: 1, y: 0 },
     { x: -1, y: 0 },
