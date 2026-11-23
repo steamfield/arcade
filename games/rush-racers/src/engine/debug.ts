@@ -7,6 +7,7 @@ import { playerOf } from '../logic/racers.ts';
 import { bestFor } from '../logic/records.ts';
 import type { World } from '../logic/types.ts';
 import { summarize, toAscii } from '../logic/world.ts';
+import { mediumIdOf } from '../logic/worlds/index.ts';
 import { HOW_TO_PLAY_PAGES } from './how-to-play.ts';
 import type { Runtime } from './runtime.ts';
 import { formatBest, levelBanner } from './view/race-text.ts';
@@ -29,7 +30,7 @@ export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: 
     save: saveStatus,
     character: rt.selectedCharacter,
     course: rt.course.id,
-    medium: rt.course.medium,
+    medium: mediumIdOf(rt.course),
     difficulty: rt.settings.difficulty,
     ...(world
       ? {

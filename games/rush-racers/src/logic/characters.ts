@@ -6,10 +6,11 @@
 import type { Rng } from '@arcade/core';
 import { type AbilityId, CHARACTER_IDS, type CharacterId, type RivalProfile } from './types.ts';
 
-/** A character as data. The slot it races in supplies the profile's `id`. */
+/**
+ * A character slot as data: its ability and how it races as a rival, the same in every world. The
+ * slot it races in supplies the profile's `id`; each world names it (`WorldDef.cast`).
+ */
 export interface Character {
-  /** Display name; the view upper-cases it. */
-  name: string;
   ability: AbilityId;
   /** How it swims when the computer drives it. */
   profile: Omit<RivalProfile, 'id'>;
@@ -46,42 +47,34 @@ export interface Character {
  */
 export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
   rudy: {
-    name: 'Rudy',
     ability: 'shakeItOff',
     profile: { forceMul: 0.95, kickSkill: 0.006, wobble: 0.1, reactionTicks: 5, mass: 1.1, itemAggression: 0.5 },
   },
   gil: {
-    name: 'Gil',
     ability: 'springKick',
     profile: { forceMul: 1.04, kickSkill: 0.012, wobble: 0.25, reactionTicks: 4, mass: 0.8, itemAggression: 0.3 },
   },
   streak: {
-    name: 'Streak',
     ability: 'windUp',
     profile: { forceMul: 1.05, kickSkill: 0.003, wobble: 0.05, reactionTicks: 4, mass: 0.9, itemAggression: 0.5 },
   },
   onyx: {
-    name: 'Onyx',
     ability: 'ambush',
     profile: { forceMul: 1.05, kickSkill: 0.008, wobble: 0.06, reactionTicks: 4, mass: 1.3, itemAggression: 0.2 },
   },
   nib: {
-    name: 'Nib',
     ability: 'deepPockets',
     profile: { forceMul: 1.1, kickSkill: 0.005, wobble: 0.2, reactionTicks: 5, mass: 0.7, itemAggression: 1 },
   },
   baron: {
-    name: 'Baron Barnacle',
     ability: 'bulldozer',
     profile: { forceMul: 1, kickSkill: 0.002, wobble: 0.1, reactionTicks: 8, mass: 2, itemAggression: 0.5 },
   },
   selene: {
-    name: 'Selene',
     ability: 'moonlight',
     profile: { forceMul: 1, kickSkill: 0.004, wobble: 0.12, reactionTicks: 7, mass: 0.9, itemAggression: 0.5 },
   },
   rook: {
-    name: 'Rook',
     ability: 'frenzy',
     profile: { forceMul: 1, kickSkill: 0.008, wobble: 0.15, reactionTicks: 3, mass: 1.4, itemAggression: 0.36 },
   },

@@ -82,7 +82,7 @@ describe('touching a crab', () => {
     step(world, log, 11, hold(RIGHT));
 
     expect(eventsIn(log, 'racer.hit', 'enemy.bonked', 'enemy.defeated', 'pearls.burst')).toEqual([
-      { type: 'enemy.bonked', index: 0, kind: 'crab', by: 'player', hpLeft: 0 },
+      { type: 'enemy.bonked', index: 0, kind: 'crab', by: 'player', hpLeft: 0, how: 'dash' },
       { type: 'enemy.defeated', index: 0, kind: 'crab', by: 'player' },
       { type: 'pearls.burst', index: 0, count: CRAB.pearls },
     ]);

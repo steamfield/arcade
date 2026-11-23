@@ -34,7 +34,15 @@ export const GLIDE_TUNING = {
 } as const satisfies MediumTuning;
 
 /** Gravity keeps the vertical speed through a dash or knockback; trapped racers and loose power-ups fall. */
-export const GLIDE_EFFECTS: MediumEffects = { dashAxes: 'horizontal', trappedDrift: 20, looseDrift: 15 };
+export const GLIDE_EFFECTS: MediumEffects = {
+  dashAxes: 'horizontal',
+  trappedDrift: 20,
+  looseDrift: 15,
+  stompBounce: null,
+  solidClams: false,
+  pitBelow: false,
+  allowsLedges: false,
+};
 
 /** No kick counter works in the air; Gil's spring kick needs a kick aimed straight up. */
 export const GLIDE_KICK_RULES: KickRules = {
@@ -125,6 +133,7 @@ export const GLIDE_MEDIUM: Medium = {
   distanceAt: glideDistanceAt,
   coralAhead: () => false,
   validateLevel: validateGlideLevel,
+  afterMove: () => {},
   racerCollision: 'ghost',
   effects: GLIDE_EFFECTS,
   kickRules: GLIDE_KICK_RULES,

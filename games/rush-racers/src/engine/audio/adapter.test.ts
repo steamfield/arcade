@@ -102,13 +102,13 @@ describe('the adapter and the enemies', () => {
 
   it('hears a bonk and a defeat nearby, sounding the bonk that beats an enemy as its defeat', () => {
     const near: RuntimeEvent[] = [
-      { type: 'enemy.bonked', index: NEAR_SHARK, kind: 'shark', by: 'player', hpLeft: 1 },
-      { type: 'enemy.bonked', index: NEAR_SHARK, kind: 'shark', by: 'player', hpLeft: 0 },
+      { type: 'enemy.bonked', index: NEAR_SHARK, kind: 'shark', by: 'player', hpLeft: 1, how: 'dash' },
+      { type: 'enemy.bonked', index: NEAR_SHARK, kind: 'shark', by: 'player', hpLeft: 0, how: 'dash' },
       { type: 'enemy.defeated', index: NEAR_SHARK, kind: 'shark', by: 'player' },
     ];
     expect(heard(near, true, inEarshot)).toEqual(['enemy.bonk', 'enemy.defeat']);
     const far: RuntimeEvent[] = [
-      { type: 'enemy.bonked', index: FAR_SHARK, kind: 'shark', by: 'tess', hpLeft: 1 },
+      { type: 'enemy.bonked', index: FAR_SHARK, kind: 'shark', by: 'tess', hpLeft: 1, how: 'dash' },
       { type: 'enemy.defeated', index: FAR_SHARK, kind: 'shark', by: 'tess' },
     ];
     expect(heard(far, true, inEarshot)).toEqual([]);

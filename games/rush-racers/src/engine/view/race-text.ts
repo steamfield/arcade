@@ -12,7 +12,8 @@
  */
 import { TICK_HZ } from '@arcade/core';
 import type Phaser from 'phaser';
-import { CHARACTERS } from '../../logic/characters.ts';
+import { DEFAULT_COURSE } from '../../logic/courses/index.ts';
+import type { Course } from '../../logic/courses/types.ts';
 import { playerOf } from '../../logic/racers.ts';
 import {
   type CharacterId,
@@ -22,6 +23,7 @@ import {
   type RaceState,
   type World,
 } from '../../logic/types.ts';
+import { castName, worldOf } from '../../logic/worlds/index.ts';
 import { createLabel } from '../art/font.ts';
 import { toneCss, UiColour, UiRamp, type UiToneName } from '../art/ui/palette.ts';
 import { FINAL_STRETCH_AT, raceProgress } from '../race-progress.ts';
@@ -47,14 +49,19 @@ export function formatBest(best: { ticks: number; place: number }): string {
   return `Best ${formatRaceTime(best.ticks)} (${ordinal(best.place)})`;
 }
 
-/** The name a character goes by on screen, e.g. "Baron Barnacle". */
-export function racerName(character: CharacterId): string {
-  return CHARACTERS[character].name;
+/**
+ * The name a character's slot goes by on screen in `course`'s world, e.g. "Baron Barnacle" in Reef.
+ * The default course is scaffolding: lane 1/a passes the course everywhere and removes it.
+ *
+ * @throws {Error} When the course names an unknown world.
+ */
+export function racerName(character: CharacterId, course: Pick<Course, 'id' | 'world'> = DEFAULT_COURSE): string {
+  return castName(worldOf(course), character);
 }
 
-/** The first word of a character's name, for rows and cells too narrow for the whole: "Baron". */
-export function racerShortName(character: CharacterId): string {
-  const [first = ''] = racerName(character).split(' ');
+/** The first word of a character's name in `course`'s world, for rows and cells too narrow for the whole: "Baron". */
+export function racerShortName(character: CharacterId, course: Pick<Course, 'id' | 'world'> = DEFAULT_COURSE): string {
+  const [first = ''] = racerName(character, course).split(' ');
   return first;
 }
 

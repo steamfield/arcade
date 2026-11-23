@@ -77,7 +77,7 @@ describe('an eel', () => {
     step(world, log, 8, hold(towardEnemy(world, eel)));
 
     expect(eventsIn(log, 'racer.hit', 'enemy.bonked', 'enemy.defeated', 'pearls.burst')).toEqual([
-      { type: 'enemy.bonked', index: 0, kind: 'eel', by: 'player', hpLeft: 0 },
+      { type: 'enemy.bonked', index: 0, kind: 'eel', by: 'player', hpLeft: 0, how: 'dash' },
       { type: 'enemy.defeated', index: 0, kind: 'eel', by: 'player' },
       { type: 'pearls.burst', index: 0, count: EEL.pearls },
     ]);

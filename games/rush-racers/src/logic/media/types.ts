@@ -12,7 +12,7 @@
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
-import type { Body, Box, Cell, Intent, Level, MoveModifiers, Racer, Vec, World } from '../types.ts';
+import type { Body, Box, Cell, Intent, Level, MoveContacts, MoveModifiers, Racer, Vec, World } from '../types.ts';
 
 /** A medium's numbers. Swim's are today's `SWIM` constants with `base` as `BASE_MODIFIERS`. */
 export interface MediumTuning {
@@ -92,6 +92,17 @@ export interface MediumEffects {
   trappedDrift: number;
   /** Vertical speed of a loose power-up, px/s; negative is up. */
   looseDrift: number;
+  /**
+   * Upward speed, px/s, a racer leaves with after landing on an enemy, which bonks it (a stomp).
+   * Null: enemies can't be stomped, only bonked by a dash.
+   */
+  stompBounce: number | null;
+  /** True: a ready clam (crate) is a solid tile that opens only when a racer's head hits it from below. */
+  solidClams: boolean;
+  /** True: no floor below the last row, so racers fall out through pits and `afterMove` brings them back. */
+  pitBelow: boolean;
+  /** True: the medium's levels may use ledges (`=`), which only hold a body coming down onto them. */
+  allowsLedges: boolean;
 }
 
 /** How the generic counters read a kick in this medium. */
@@ -151,7 +162,13 @@ export interface Medium {
   coralAhead(world: World, tile: Vec, steps: number): boolean;
   /** Why `level` can't be raced in this medium; empty when it can. */
   validateLevel(level: Level, nav: MediumNav): LevelProblem[];
-  racerCollision: 'solid' | 'ghost';
+  /**
+   * After this tick's `moveBody` for an unfinished racer, with what it ran into: grounded state,
+   * falls and respawns. Runs in RACER_IDS order, before crates are opened from below.
+   */
+  afterMove(world: World, racer: Racer, contacts: MoveContacts, events: EventSink<GameEvent>): void;
+  /** 'solid': racers bump each other; 'ghost': they pass through; 'horizontal': they push apart along x only. */
+  racerCollision: 'solid' | 'ghost' | 'horizontal';
   effects: MediumEffects;
   kickRules: KickRules;
 }

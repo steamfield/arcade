@@ -50,6 +50,7 @@ import {
   newHintMemory,
   updateHints,
 } from './view/hints.ts';
+import { assertSkinAssets, skinFor } from './worlds/index.ts';
 
 /** Phaser scene keys, one per screen. */
 export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'course' | 'select' | 'race' | 'results';
@@ -195,6 +196,7 @@ export class Runtime {
     this.selectedCharacter = this.savedCharacter;
     this.course = startingCourse(this.search, options.save?.lastCourse ?? null);
     assertCourseAssets(this.course);
+    assertSkinAssets(skinFor(this.course));
     this.audio = createAudio(
       options.ctx,
       this.settings,

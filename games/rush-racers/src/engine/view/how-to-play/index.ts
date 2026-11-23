@@ -7,6 +7,7 @@ import type Phaser from 'phaser';
 import type { ShippedMediumId } from '../../../logic/courses/types.ts';
 import type { CharacterId } from '../../../logic/types.ts';
 import { HOW_TO_PLAY_PAGES } from '../../how-to-play.ts';
+import type { WorldSkin } from '../../worlds/types.ts';
 import { controlName } from '../control-glyphs.ts';
 import { buildAttacksPage } from './attacks-page.ts';
 import { buildClamsPage } from './clams-page.ts';
@@ -63,11 +64,17 @@ export function movePageFor(medium: string): MovePage {
  *
  * @throws {Error} When the pages here and `HOW_TO_PLAY_PAGES` disagree, since paging would go wrong.
  */
-export function createPages(scene: Phaser.Scene, medium: string, touch: boolean, character: CharacterId): Page[] {
+export function createPages(
+  scene: Phaser.Scene,
+  medium: string,
+  touch: boolean,
+  character: CharacterId,
+  skin: WorldSkin,
+): Page[] {
   const move = movePageFor(medium);
   const pages: readonly PageSpec[] = [{ heading: () => move.heading, build: move.build }, ...SHARED_PAGES];
   if (pages.length !== HOW_TO_PLAY_PAGES) {
     throw new Error(`How to Play has ${pages.length} pages built but paging expects ${HOW_TO_PLAY_PAGES}`);
   }
-  return pages.map(({ heading, build }) => createPage(scene, touch, character, heading(touch), build));
+  return pages.map(({ heading, build }) => createPage(scene, touch, character, skin, heading(touch), build));
 }

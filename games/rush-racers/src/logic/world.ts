@@ -60,6 +60,7 @@ import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgres
 import { activeRacers, centreOf, noItems, playerOf } from './racers.ts';
 import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
 import {
+  type Cell,
   type CharacterId,
   type Difficulty,
   type EnemyKind,
@@ -77,6 +78,7 @@ import {
   type TickInput,
   type World,
 } from './types.ts';
+import { mediumIdOf } from './worlds/index.ts';
 
 export interface WorldOptions {
   /** Seeds every random stream. Same seed and inputs, same race. */
@@ -105,12 +107,13 @@ const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 }
  *   first problem, with any others appended to the message after `; `.
  * @throws {Error} When `course` isn't the course its id is registered to (unregistered, or a copy
  *   with changes), since the world keeps only the id and reads the rest back from the registry.
- * @throws {Error} When the course names a medium that is neither shipped nor registered.
+ * @throws {Error} When the course names an unknown world, or its world a medium that is neither shipped nor registered.
  */
 export function createWorld(course: Course, events: EventSink<GameEvent>, options: WorldOptions): World {
   requireRegistered(course);
-  const medium = mediumById(course.medium);
-  if (!medium) throw new Error(`Course '${course.id}' names unknown medium '${course.medium}'`);
+  const mediumId = mediumIdOf(course);
+  const medium = mediumById(mediumId);
+  if (!medium) throw new Error(`Course '${course.id}' names unknown medium '${mediumId}'`);
   const level = levelOf(course);
   const broken = new Set<number>();
   const nav = medium.buildNav(level, broken);
@@ -352,7 +355,8 @@ const CELL_CHAR = {
   'current-left': '<',
   'current-up': '^',
   'current-down': 'v',
-} as const;
+  ledge: '=',
+} as const satisfies Record<Cell, string>;
 
 const RACER_CHAR: Record<RacerId, string> = { player: '@', tess: 'T', squib: 'S', bo: 'B' };
 

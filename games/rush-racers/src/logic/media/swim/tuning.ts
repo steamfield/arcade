@@ -27,6 +27,10 @@ export const SWIM_EFFECTS: MediumEffects = {
   dashAxes: 'both',
   trappedDrift: -TRAPPED_RISE_SPEED,
   looseDrift: -LOOSE.riseSpeed,
+  stompBounce: null,
+  solidClams: false,
+  pitBelow: false,
+  allowsLedges: false,
 };
 
 /**

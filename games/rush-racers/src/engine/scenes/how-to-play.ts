@@ -9,6 +9,7 @@
  */
 import Phaser from 'phaser';
 import { DEFAULT_COURSE, levelOf } from '../../logic/courses/index.ts';
+import { mediumIdOf } from '../../logic/worlds/index.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
@@ -20,6 +21,7 @@ import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { actionGlyphWidth, createActionGlyph } from '../view/control-glyphs.ts';
 import { createPages, type Page } from '../view/how-to-play/index.ts';
+import { skinFor } from '../worlds/index.ts';
 
 /** UI.md "How to Play" rects, in game px. */
 const HEADING = { x: 160, y: 12 } as const;
@@ -64,7 +66,7 @@ export class HowToPlayScene extends Phaser.Scene {
       outline: true,
       align: 'center',
     });
-    this.pages = createPages(this, rt.course.medium, touch, rt.savedCharacter);
+    this.pages = createPages(this, mediumIdOf(rt.course), touch, rt.savedCharacter, skinFor(rt.course));
     this.dots = this.pages.map((_, index) => addDot(this, index, this.pages.length));
     addFooter(this, touch);
     this.shown = null;

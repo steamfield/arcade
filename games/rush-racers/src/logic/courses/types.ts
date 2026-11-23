@@ -1,5 +1,5 @@
 /**
- * What a course is: a level plus the movement style, look and song it races with, and any course
+ * What a course is: a level plus the world (and so the movement style), look and song it races with, and any course
  * tuning. Ids are plain strings so test courses can register alongside shipped ones; the unions
  * below name the shipped ones. The engine maps theme and song ids to art and music, never the reverse.
  */
@@ -9,7 +9,7 @@ import type { Difficulty, LevelDef } from '../types.ts';
 
 /** Shipped courses. Grows with each course: 'kelp-forest', 'sky-test', ... */
 export type ShippedCourseId = 'sunlit-shallows';
-/** Shipped movement styles. Grows: 'flight', later 'ground', 'space'. */
+/** Shipped movement styles. Grows: 'run', later 'flight' or 'space'. */
 export type ShippedMediumId = 'swim';
 /** Looks the engine draws a course with. */
 export type ThemeId = 'ocean';
@@ -22,8 +22,8 @@ export interface Course {
   /** Shown on course select and results. */
   name: string;
   level: LevelDef;
-  /** A key of `MEDIA` (or a medium registered for tests). */
-  medium: string;
+  /** A key of `WORLDS` (or a world registered for tests); the course is raced in that world's medium. */
+  world: string;
   theme: ThemeId;
   song: SongId;
   /** False: reachable only by `?course=` and tests; never written to `lastCourse` and never given a best. */

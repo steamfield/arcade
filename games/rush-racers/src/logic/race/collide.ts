@@ -6,7 +6,16 @@ import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
 import { bodyTiles, isSolid, overlapsTile } from '../level/query.ts';
 import { isDowned } from '../status.ts';
-import { type Body, type Level, RACER_IDS, type Racer, TILE } from '../types.ts';
+import {
+  type Body,
+  type Level,
+  type MoveContacts,
+  type MoveRules,
+  RACER_IDS,
+  type Racer,
+  TILE,
+  type World,
+} from '../types.ts';
 
 /**
  * Longest distance a body moves between collision checks. It is under one tile, so a body's
@@ -26,10 +35,17 @@ const MAX_SUBSTEPS = 64;
  * @param dt Tick length in seconds. A tick needing more than MAX_SUBSTEPS sub-steps moves the
  *   body at most MAX_SUBSTEPS * MAX_STEP pixels, less than its velocity asks for.
  */
-export function moveBody(body: Body, level: Level, broken: ReadonlySet<number>, dt: number): void {
+export function moveBody(
+  body: Body,
+  level: Level,
+  broken: ReadonlySet<number>,
+  dt: number,
+  _rules: MoveRules = NO_MOVE_RULES,
+): MoveContacts {
+  // Scaffold: lane 1/c applies the rules and reports real contacts.
   pushOutOfSolids(body, level, broken);
   const speed = Math.sqrt(body.vx * body.vx + body.vy * body.vy);
-  if (speed === 0) return;
+  if (speed === 0) return noContacts();
 
   const steps = Math.min(MAX_SUBSTEPS, Math.max(1, Math.ceil((speed * dt) / MAX_STEP)));
   const stepDt = Math.min(dt / steps, MAX_STEP / speed);
@@ -39,6 +55,14 @@ export function moveBody(body: Body, level: Level, broken: ReadonlySet<number>, 
     body.y += body.vy * stepDt;
     resolveY(body, level, broken);
   }
+  return noContacts();
+}
+
+/** The rules of a medium with no platformer seams: open floor nowhere, no extra solid tiles. */
+export const NO_MOVE_RULES: MoveRules = { pitBelow: false, solidTiles: new Set() };
+
+function noContacts(): MoveContacts {
+  return { floor: false, ceiling: false, wallLeft: false, wallRight: false, ceilingTiles: [] };
 }
 
 /**
@@ -238,4 +262,14 @@ function contactKey(a: Racer, b: Racer): string {
 /** The key marking a pair that overlapped while one of them was down and hasn't come apart since. */
 function ghostKey(key: string): string {
   return `~${key}`;
+}
+
+/**
+ * What `moveBody` treats as solid beyond the level's tiles for `world`'s medium: whether there is a
+ * floor below the last row, and the ready crate tiles when crates are solid.
+ *
+ * @throws {Error} Always, until lane 1/c implements it.
+ */
+export function moveRulesFor(_world: World): MoveRules {
+  throw new Error('moveRulesFor: not implemented');
 }

@@ -67,6 +67,18 @@
       ],
       "bars": [
         "src/logic/difficulty/"
+      ],
+      "platform": [
+        "src/logic/race/move-contacts.test.ts",
+        "src/logic/race/ledge.test.ts",
+        "src/logic/race/pit.test.ts",
+        "src/logic/hazards/enemies/stomp.test.ts",
+        "src/logic/pickups/crates.test.ts",
+        "src/logic/conformance/seams.test.ts"
+      ],
+      "worlds": [
+        "src/engine/worlds",
+        "src/logic/worlds"
       ]
     }
   }

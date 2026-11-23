@@ -29,6 +29,12 @@ export type GameEvent =
   | { type: 'race.countdown'; n: 3 | 2 | 1 }
   | { type: 'race.started' }
   | { type: 'racer.kicked'; id: RacerId }
+  /** A racer left the ground on a jump (a jumping medium only; never spends a dash charge). */
+  | { type: 'racer.jumped'; id: RacerId }
+  /** A racer fell out of the level through a pit. */
+  | { type: 'racer.fell'; id: RacerId }
+  /** A racer that fell is back on the last safe ground it stood on. */
+  | { type: 'racer.respawned'; id: RacerId; x: number; y: number }
   | { type: 'racer.bumped'; a: RacerId; b: RacerId }
   | { type: 'coral.broken'; tx: number; ty: number; by: RacerId }
   | { type: 'player.place'; place: number }
@@ -45,7 +51,7 @@ export type GameEvent =
   | { type: 'racer.dashRecharged'; id: RacerId; charges: number }
   | { type: 'enemy.telegraphed'; index: number; kind: EnemyKind }
   | { type: 'enemy.charged'; index: number; kind: EnemyKind; target: RacerId }
-  | { type: 'enemy.bonked'; index: number; kind: EnemyKind; by: RacerId; hpLeft: number }
+  | { type: 'enemy.bonked'; index: number; kind: EnemyKind; by: RacerId; hpLeft: number; how: 'dash' | 'stomp' }
   | { type: 'enemy.defeated'; index: number; kind: EnemyKind; by: RacerId }
   | { type: 'pearls.burst'; index: number; count: number }
   | { type: 'item.used'; id: RacerId; kind: PowerUpKind; slot: number; chargesLeft: number }

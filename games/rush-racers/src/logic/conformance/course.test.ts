@@ -12,6 +12,7 @@ import type { Course } from '../courses/types.ts';
 import { race, table } from '../difficulty/race-bots.ts';
 import { mediumById } from '../media/index.ts';
 import type { Level } from '../types.ts';
+import { mediumIdOf } from '../worlds/index.ts';
 
 const SEEDS = [1, 2, 3, 4, 5];
 /** The slowest finish any racer may post, as a multiple of the course's par. */
@@ -41,7 +42,7 @@ const WRECK_COVE: Course = {
     `,
     legend: { w: { cell: 'rock', art: 'wreck' }, s: { cell: 'kelp', art: 'sand' } },
   },
-  medium: 'swim',
+  world: 'reef',
   theme: 'ocean',
   song: 'race',
   listed: false,
@@ -72,10 +73,10 @@ describe.each(CONFORMING)('course conformance for $name ($id)', (course) => {
   });
 
   it('has nothing its medium objects to', () => {
-    const medium = mediumById(course.medium);
+    const medium = mediumById(mediumIdOf(course));
     const level = levelOf(course);
 
-    expect(medium, `course names unknown medium '${course.medium}'`).not.toBeNull();
+    expect(medium, `course races in unknown medium '${mediumIdOf(course)}'`).not.toBeNull();
     expect(medium?.validateLevel(level, medium.buildNav(level, new Set()))).toEqual([]);
   });
 

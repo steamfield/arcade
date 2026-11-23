@@ -23,8 +23,20 @@ import {
   type World,
 } from './types.ts';
 import { createWorld, stepWorld } from './world.ts';
+import { registerWorld, WORLDS, worldById } from './worlds/index.ts';
 
 let testCourses = 0;
+
+/**
+ * The id of a world that races in `medium`: Reef for swim, else a test world with Reef's names
+ * (registered on first use), so a test course can race in a test medium such as glide.
+ */
+export function worldFor(medium: string): string {
+  if (medium === WORLDS.reef.medium) return WORLDS.reef.id;
+  const id = `test-${medium}`;
+  if (!worldById(id)) registerWorld({ ...WORLDS.reef, id, name: id, medium });
+  return id;
+}
 
 /**
  * A fresh unlisted course on `level` (a definition, or bare ASCII), registered so a world can hold
@@ -34,12 +46,13 @@ let testCourses = 0;
  */
 export function courseFromLevel(level: LevelDef | string, medium = 'swim', overrides: Partial<Course> = {}): Course {
   testCourses++;
+  const world = worldFor(medium);
   const def = typeof level === 'string' ? { name: 'test', ascii: level } : level;
   const course: Course = {
     id: `test-${testCourses}`,
     name: def.name,
     level: def,
-    medium,
+    world,
     theme: 'ocean',
     song: 'race',
     listed: false,

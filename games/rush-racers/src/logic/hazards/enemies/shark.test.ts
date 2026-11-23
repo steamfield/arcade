@@ -194,8 +194,8 @@ describe('beating a shark', () => {
     step(world, log, 11, hold(towardEnemy(world, shark)));
 
     expect(eventsIn(log, 'racer.hit', 'enemy.bonked', 'enemy.defeated', 'pearls.burst')).toEqual([
-      { type: 'enemy.bonked', index: 0, kind: 'shark', by: 'player', hpLeft: 1 },
-      { type: 'enemy.bonked', index: 0, kind: 'shark', by: 'player', hpLeft: 0 },
+      { type: 'enemy.bonked', index: 0, kind: 'shark', by: 'player', hpLeft: 1, how: 'dash' },
+      { type: 'enemy.bonked', index: 0, kind: 'shark', by: 'player', hpLeft: 0, how: 'dash' },
       { type: 'enemy.defeated', index: 0, kind: 'shark', by: 'player' },
       { type: 'pearls.burst', index: 0, count: SHARK.pearls },
     ]);
@@ -209,7 +209,7 @@ describe('beating a shark', () => {
     step(world, log, 40, hold(RIGHT));
 
     expect(eventsIn(log, 'racer.hit', 'enemy.bonked')).toEqual([
-      { type: 'enemy.bonked', index: 0, kind: 'shark', by: 'player', hpLeft: 1 },
+      { type: 'enemy.bonked', index: 0, kind: 'shark', by: 'player', hpLeft: 1, how: 'dash' },
     ]);
   });
 

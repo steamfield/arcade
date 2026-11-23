@@ -92,7 +92,31 @@ export type Cell =
   | 'current-right'
   | 'current-left'
   | 'current-up'
-  | 'current-down';
+  | 'current-down'
+  | 'ledge';
+
+/**
+ * What one tick of movement through the tiles ran into (`moveBody`). Tiles only: racers and enemies
+ * are separate. The medium reads it in `afterMove` (grounded, landing, a head bump).
+ */
+export interface MoveContacts {
+  /** Stopped by a tile below: rock, unbroken coral, a solid tile, or a ledge from above. */
+  floor: boolean;
+  /** Stopped by a tile above. */
+  ceiling: boolean;
+  wallLeft: boolean;
+  wallRight: boolean;
+  /** Tile indices (`tileIndex`) the body's head hit this tick, left to right; empty unless `ceiling`. */
+  ceilingTiles: readonly number[];
+}
+
+/** What `moveBody` treats as solid beyond the level's own tiles, from the world's medium (`moveRulesFor`). */
+export interface MoveRules {
+  /** True: there is no floor below the last row, so a body can fall out of the level (a pit). */
+  pitBelow: boolean;
+  /** Extra tile indices that block like rock this tick (ready crates in a solid-crate medium). */
+  solidTiles: ReadonlySet<number>;
+}
 
 /** An extra level glyph: the base cell it behaves as, and the art key a theme draws it with. */
 export interface LegendEntry {

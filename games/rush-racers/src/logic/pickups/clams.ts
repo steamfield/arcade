@@ -13,7 +13,7 @@ import { chargesFor } from '../powerups/charges.ts';
 import { gainItem, heldItems, inventoryFull } from '../powerups/inventory.ts';
 import { CLAM } from '../powerups/tuning.ts';
 import { hitbox } from '../racers.ts';
-import { POWER_UP_KINDS, type PowerUpKind, RACER_IDS, type Racer, type World } from '../types.ts';
+import { type MoveContacts, POWER_UP_KINDS, type PowerUpKind, RACER_IDS, type Racer, type World } from '../types.ts';
 
 const LAST_PLACE = RACER_IDS.length;
 
@@ -103,4 +103,15 @@ export function rollClam(
   }
   // Float rounding can leave a sliver past the last weight; it belongs to the last kind.
   return last;
+}
+
+/**
+ * Opens each ready clam whose tile is in `contacts.ceilingTiles` for `racer`, as a head bump from
+ * below does in a solid-crate medium (`MediumEffects.solidClams`). A racer with a full inventory
+ * leaves the crate shut. Does nothing in a medium whose clams aren't solid.
+ *
+ * @throws {Error} Always, until lane 1/c implements it.
+ */
+export function openClamsFromBelow(_world: World, _racer: Racer, _contacts: MoveContacts): void {
+  throw new Error('openClamsFromBelow: not implemented');
 }

@@ -81,7 +81,7 @@ export const SUNLIT_SHALLOWS: Course = {
   id: 'sunlit-shallows',
   name: 'Sunlit Shallows',
   level: LEVEL,
-  medium: 'swim',
+  world: 'reef',
   theme: 'ocean',
   song: 'race',
   listed: true,

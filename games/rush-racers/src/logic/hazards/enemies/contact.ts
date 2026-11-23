@@ -75,7 +75,7 @@ function bonk(
 ): void {
   enemy.hp = Math.max(0, enemy.hp - 1);
   enemy.bonkedBy.push(racer.id);
-  world.events.emit({ type: 'enemy.bonked', index, kind: enemy.kind, by: racer.id, hpLeft: enemy.hp });
+  world.events.emit({ type: 'enemy.bonked', index, kind: enemy.kind, by: racer.id, hpLeft: enemy.hp, how: 'dash' });
   if (enemy.hp === 0) defeatEnemy(world, index, racer.id, racer.facing);
   else onBonked(enemy, racer);
 }

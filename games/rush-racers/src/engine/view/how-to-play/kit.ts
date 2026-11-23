@@ -10,6 +10,7 @@ import { createLabel, type Label, type LabelOptions } from '../../art/font.ts';
 import { Frame, Tex, type TexKey } from '../../art/keys.ts';
 import { type IconFrameKey, UiTex } from '../../art/ui/keys.ts';
 import { createPanel } from '../../art/ui/panel.ts';
+import type { WorldSkin } from '../../worlds/types.ts';
 import { type ActionName, createActionGlyph, createMoveGlyph, type Glyph, type MoveGlyph } from '../control-glyphs.ts';
 
 /** Anything a page owns that can be shown or hidden. */
@@ -36,10 +37,12 @@ export type PageBuilder = (kit: PageKit) => PageAnimation;
 export interface PageKit {
   /** True on a touch screen, so glyphs draw as on-screen buttons. */
   readonly touch: boolean;
+  /** The world skin the pages draw items, pickups and enemies from (the course's world). */
+  skin: WorldSkin;
   /** The texture of the racer the player picked, so the pictures show their own character. */
-  readonly racer: TexKey;
+  readonly racer: string;
   /** A sprite centred on (x, y), at a whole-number scale. */
-  sprite(x: number, y: number, texture: TexKey, frame: string, scale?: number): Phaser.GameObjects.Image;
+  sprite(x: number, y: number, texture: string, frame: string, scale?: number): Phaser.GameObjects.Image;
   /** A HUD icon, 9x9 at `scale`, centred on (x, y). */
   icon(x: number, y: number, frame: IconFrameKey, scale?: number): Phaser.GameObjects.Image;
   /** Outlined text over the water, anchored by `align` at (x, top). */
@@ -53,7 +56,7 @@ export interface PageKit {
     y: number,
     width: number,
     height: number,
-    texture: TexKey,
+    texture: string,
     frame: string,
   ): Phaser.GameObjects.TileSprite;
   /** An inset well like the HUD's, with its top-left at (x, y). */
@@ -65,7 +68,7 @@ export interface PageKit {
 }
 
 /** Creates a kit for one page. */
-export function createPageKit(scene: Phaser.Scene, touch: boolean, character: CharacterId): PageKit {
+export function createPageKit(scene: Phaser.Scene, touch: boolean, character: CharacterId, skin: WorldSkin): PageKit {
   const owned: Showable[] = [];
   const own = <T extends Showable>(item: T): T => {
     owned.push(item);
@@ -73,7 +76,8 @@ export function createPageKit(scene: Phaser.Scene, touch: boolean, character: Ch
   };
   return {
     touch,
-    racer: Tex[character],
+    skin,
+    racer: skin.cast.racers[character],
     sprite: (x, y, texture, frame, scale = 1) => own(scene.add.image(x, y, texture, frame).setScale(scale)),
     icon: (x, y, frame, scale = 1) => own(scene.add.image(x, y, UiTex.icons, frame).setScale(scale)),
     words: (x, top, text, options = {}) =>
@@ -97,10 +101,11 @@ export function createPage(
   scene: Phaser.Scene,
   touch: boolean,
   character: CharacterId,
+  skin: WorldSkin,
   heading: string,
   build: PageBuilder,
 ): Page {
-  const kit = createPageKit(scene, touch, character);
+  const kit = createPageKit(scene, touch, character, skin);
   const animate = build(kit);
   kit.setVisible(false);
   return {
