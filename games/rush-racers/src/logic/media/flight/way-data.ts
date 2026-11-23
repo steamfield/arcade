@@ -1,11 +1,12 @@
 /**
  * Flight's navigation and rival pilot shapes, extending the opaque bases in `media/types.ts` with
  * `kind: 'flight'`, and their accessors. The nav is two distance fields to the finish over 8
- * neighbours (one with puff clouds closed, one with them open at a price); the pilot remembers the
- * point on the way it flies toward, which field it follows, and whether it held Up last tick, so
- * every flap is a real press.
+ * neighbours (one with puff clouds closed, one with them open at a price) and the level's bounce
+ * pads; the pilot remembers the point on the way it flies toward, which field it follows, whether
+ * it held Up last tick (so every flap is a real press), and the set-piece plans it is flying: a
+ * bounce off a cloud, a ring line, a wait at a storm zone and a pass around a racer ahead.
  */
-import type { GridSize, Vec } from '../../types.ts';
+import type { GridSize, RacerId, Vec } from '../../types.ts';
 import type { MediumNav, PilotMemory } from '../types.ts';
 import { wrongKind } from './data.ts';
 
@@ -19,6 +20,8 @@ export interface FlightNav extends MediumNav, GridSize {
   steer: Float32Array;
   /** The way for a flyer with a dash ready: unbroken puff clouds open at a price, since a dash pops them. */
   ram: Float32Array;
+  /** Every bounce cloud tile with open sky right above it, in reading order: where a flyer can land and spring up. */
+  bouncePads: Vec[];
 }
 
 /** Which of the nav's fields a rival follows: `steer`, or `ram` while it means to dash through a puff cloud. */
@@ -47,6 +50,18 @@ export interface FlightPilot extends PilotMemory {
   ramRestTicks: number;
   /** The puff cloud it dashed at and the ticks left of that dash's window; null when not dashing at one. */
   puffDash: { tile: Vec; ticksLeft: number } | null;
+  /** The bounce pad it is dropping onto and the ticks it still gives that plan; null when not bouncing. */
+  bounce: { pad: Vec; ticksLeft: number } | null;
+  /** Ticks before it may plan another bounce, so it never bounces again in place. */
+  bounceRestTicks: number;
+  /** Index into `level.rings` of the ring it is flying through; null when none. */
+  ring: number | null;
+  /** Its skill roll for the last ring it considered, so a ring is judged once rather than on every replan. */
+  ringRoll: { ring: number; takes: boolean } | null;
+  /** The x (world px) its centre waits at short of a storm zone until it can cross; null when flying on. */
+  stormHoldX: number | null;
+  /** The racer it is passing, the side it passes on (-1 over, 1 under) and the ticks it still gives the pass; null when not passing. */
+  pass: { id: RacerId; side: -1 | 1; ticksLeft: number } | null;
 }
 
 /**

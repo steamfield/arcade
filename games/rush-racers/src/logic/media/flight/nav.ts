@@ -1,10 +1,10 @@
 /**
  * Flight's navigation over a level: what a flyer pays to enter each tile, the two distance fields
  * to the finish built from those prices (steer, with puff clouds closed, and ram, with them open at
- * a price), and the level check that every start can reach the finish without popping one. Its nav
- * is a `FlightNav` (`way-data.ts`); `way.ts` reads it.
+ * a price), the bounce pads a flyer can spring off, and the level check that every start can reach
+ * the finish without popping one. Its nav is a `FlightNav` (`way-data.ts`); `way.ts` reads it.
  */
-import { cellAt, isRockLike } from '../../level/query.ts';
+import { cellAt, isRockLike, isSolid } from '../../level/query.ts';
 import { distancesToFinish, type EntryCost, fieldAt } from '../../race/flowfield.ts';
 import type { Cell, Level, Vec } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
@@ -66,7 +66,10 @@ const ramCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
   return vertical ? Number.POSITIVE_INFINITY : RAM_PUFF_COST;
 };
 
-/** Flight's nav for `level` with `broken` puff clouds open: the steer and ram fields, each kept off the bottom over open sky. */
+/**
+ * Flight's nav for `level` with `broken` puff clouds open: the steer and ram fields, each kept off
+ * the bottom over open sky, and the bounce pads.
+ */
 export function buildFlightNav(level: Level, broken: ReadonlySet<number>, _tuning: MediumTuning): FlightNav {
   return {
     kind: 'flight',
@@ -74,7 +77,19 @@ export function buildFlightNav(level: Level, broken: ReadonlySet<number>, _tunin
     height: level.height,
     steer: distancesToFinish(level, broken, keptOffLowSky(level, flightCost)),
     ram: distancesToFinish(level, broken, keptOffLowSky(level, ramCost)),
+    bouncePads: bouncePads(level, broken),
   };
+}
+
+/** Every bounce cloud tile of `level` whose tile above is open, in reading order. */
+function bouncePads(level: Level, broken: ReadonlySet<number>): Vec[] {
+  const pads: Vec[] = [];
+  for (let y = 1; y < level.height; y++) {
+    for (let x = 0; x < level.width; x++) {
+      if (cellAt(level, x, y) === 'bounce' && !isSolid(level, broken, x, y - 1)) pads.push({ x, y });
+    }
+  }
+  return pads;
 }
 
 /**
