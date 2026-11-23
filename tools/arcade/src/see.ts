@@ -13,6 +13,8 @@ export interface SeeOptions {
   at?: string;
   seed?: string;
   scene?: string;
+  /** Extra launch parameters as k=v strings; they override the scenario's `start.query`. */
+  query?: string[];
   debug: boolean;
   mobile: boolean;
   ascii: boolean;
@@ -63,7 +65,9 @@ export async function see(slug: string, opts: SeeOptions): Promise<number> {
     const driver = new GameDriver(page, `/games/${slug}/`);
     const seed = opts.seed ?? scenario?.start?.seed;
     const scene = opts.scene ?? scenario?.start?.scene;
+    const query = { ...scenario?.start?.query, ...parseQuery(opts.query ?? []) };
     await driver.open({
+      query,
       ...(seed !== undefined && { seed: Number(seed) }),
       ...(scene !== undefined && { scene }),
       debug: opts.debug,
@@ -168,6 +172,17 @@ export async function see(slug: string, opts: SeeOptions): Promise<number> {
   writeFileSync(join(runDir, 'summary.txt'), text);
   console.log(text);
   return failed ? 1 : 0;
+}
+
+/** `["stage=guide", "a=b"]` → `{ stage: 'guide', a: 'b' }`. */
+export function parseQuery(pairs: string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const pair of pairs) {
+    const eq = pair.indexOf('=');
+    if (eq <= 0) throw new UsageError(`--query takes key=value, got "${pair}"`);
+    out[pair.slice(0, eq)] = pair.slice(eq + 1);
+  }
+  return out;
 }
 
 async function loadScenario(gameDir: string, name: string): Promise<Scenario> {

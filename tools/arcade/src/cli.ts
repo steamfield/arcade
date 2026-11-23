@@ -22,6 +22,7 @@ const HELP = `arcade: build, check and see games in this repo
         --input "<steps>"   right*30 = hold 30 ticks, jump = tap, right+jump*10 = chord, _*20 = wait
         --at 0,30,end       capture at these ticks (default: end)
         --seed <n>  --scene <name>  --debug  --mobile (phone viewport + touch controls)
+        --query k=v         extra launch parameter, repeatable (e.g. --query stage=guide)
         --ascii             print the tile map as text (games that expose debugState().ascii)
         --field <path>      print one value from debugState(), e.g. --field world.player
         --events <type>     list events with their ticks ("all", or a prefix like "player")
@@ -53,6 +54,7 @@ async function main(argv: string[]): Promise<number> {
       at: { type: 'string' },
       seed: { type: 'string' },
       scene: { type: 'string' },
+      query: { type: 'string', multiple: true },
       debug: { type: 'boolean', default: false },
       mobile: { type: 'boolean', default: false },
       ascii: { type: 'boolean', default: false },
@@ -89,6 +91,7 @@ async function main(argv: string[]): Promise<number> {
         ...(values.at !== undefined && { at: values.at }),
         ...(values.seed !== undefined && { seed: values.seed }),
         ...(values.scene !== undefined && { scene: values.scene }),
+        ...(values.query !== undefined && { query: values.query }),
         ...(values.field !== undefined && { field: values.field }),
         ...(values.crop !== undefined && { crop: values.crop }),
         ...(values.events !== undefined && { events: values.events }),
