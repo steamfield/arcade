@@ -256,12 +256,63 @@ Depends on: phase 2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/engine/worlds/farside/cast.ts, games/rush-racers/src/engine/worlds/farside/sprites/racers.ts, games/rush-racers/src/engine/worlds/farside/sprites/portraits.ts | contracts, games/rush-racers/src/engine/worlds/thornwood/cast.ts | games/rush-racers/src/engine/worlds/farside/cast.test.ts | opus | pending | | cast art passes contrast and skin checks |
-| b | L | games/rush-racers/src/engine/worlds/farside/objects.ts, games/rush-racers/src/engine/worlds/farside/sprites/items.ts, games/rush-racers/src/engine/worlds/farside/sprites/pickups.ts, games/rush-racers/src/engine/worlds/farside/sprites/enemies.ts, games/rush-racers/src/engine/worlds/farside/sprites/attack.ts, games/rush-racers/src/engine/worlds/farside/sprites/marks.ts | contracts, games/rush-racers/src/engine/worlds/thornwood/objects.ts | games/rush-racers/src/engine/worlds/farside/objects.test.ts | opus | pending | | object art passes skin checks |
-| c | L | games/rush-racers/src/engine/themes/space.ts, games/rush-racers/src/engine/themes/space/ | contracts, games/rush-racers/src/engine/themes/forest.ts | games/rush-racers/src/engine/themes/space.test.ts | opus | pending | | theme draws every cell, well and hole |
-| d | M | games/rush-racers/src/engine/audio/songs/farside.ts, games/rush-racers/src/engine/audio/sfx.ts, games/rush-racers/src/engine/audio/adapter.ts | contracts, games/rush-racers/src/engine/audio/songs/thornwood.ts | games/rush-racers/src/engine/audio/songs/songs.test.ts, games/rush-racers/src/engine/audio/sfx-pin.test.ts | opus | pending | | song parses, new sfx play, pin unchanged |
+| a | L | games/rush-racers/src/engine/worlds/farside/cast.ts, games/rush-racers/src/engine/worlds/farside/sprites/racers.ts, games/rush-racers/src/engine/worlds/farside/sprites/portraits.ts, games/rush-racers/src/engine/worlds/farside/sprites/palette.ts | contracts, games/rush-racers/src/engine/worlds/thornwood/cast.ts | games/rush-racers/src/engine/worlds/farside/cast.test.ts, games/rush-racers/src/engine/art/sprites/sprites.test.ts | opus | pending | | cast art is Farside's own and passes contrast |
+| b | L | games/rush-racers/src/engine/worlds/farside/objects.ts, games/rush-racers/src/engine/worlds/farside/sprites/items.ts, games/rush-racers/src/engine/worlds/farside/sprites/pickups.ts, games/rush-racers/src/engine/worlds/farside/sprites/enemies.ts, games/rush-racers/src/engine/worlds/farside/sprites/attack.ts, games/rush-racers/src/engine/worlds/farside/sprites/marks.ts | contracts, games/rush-racers/src/engine/worlds/thornwood/objects.ts | games/rush-racers/src/engine/worlds/farside/objects.test.ts | opus | pending | | object art is Farside's own |
+| c | L | games/rush-racers/src/engine/themes/space.ts, games/rush-racers/src/engine/themes/space/sprites/, games/rush-racers/src/engine/view/well-view.ts | contracts, games/rush-racers/src/engine/themes/forest.ts | games/rush-racers/src/engine/themes/space.test.ts, games/rush-racers/src/engine/view/well-view.test.ts | opus | pending | | theme, planets and holes drawn |
+| d | M | games/rush-racers/src/engine/audio/songs/farside.ts, games/rush-racers/src/engine/audio/sfx.ts, games/rush-racers/src/engine/audio/adapter.ts | contracts, games/rush-racers/src/engine/audio/songs/thornwood.ts | games/rush-racers/src/engine/audio/songs/songs.test.ts, games/rush-racers/src/engine/audio/adapter.test.ts, games/rush-racers/src/engine/audio/sfx-pin.test.ts | opus | pending | | Farside's song and three new sounds |
 
-(Test cases and briefs written during phase 2. The scaffold owns `engine/themes/space/palettes.ts`, `engine/worlds/farside/keys.ts`, `engine/worlds/farside/sprites/palette.ts` and the registry lines.)
+Contracts (this phase's scaffold, paths under `games/rush-racers/src/`). The scaffold ships Farside's skin, the space theme and Farside's song as working copies of Thornwood's, the forest's and Thornwood's song, with every key already renamed for what it will draw, so the game runs at every commit and each lane's job is to redraw its own files.
+
+    logic/courses/types.ts              ThemeId gains 'space', SongId gains 'farside'
+    engine/themes/index.ts              THEMES.space = SPACE_THEME
+    engine/themes/space/keys.ts         SpaceTex, SpaceTile, SpaceAnim (frozen: lanes draw these keys, never rename them)
+    engine/themes/space/palettes.ts     VOID_BANDS (the contrast bands, frozen), the backdrop and StarLight colours
+    engine/worlds/farside/keys.ts       FarRacerTex, FarTex, FarItemTex, FarCastFrame, FarIconFrame (frozen)
+    engine/audio/songs/index.ts         songs.farside
+
+Test cases (the scaffold writes them and they fail at the scaffold; a lane may add cases to its own test file and reword ones the copy left describing a forest, never weaken the ones named here):
+- Cast (`worlds/farside/cast.test.ts`): no racer, portrait or head frame is one of Thornwood's; no slot's palette is Thornwood's; every slot still has four colours, its own main colour, and the same palette at all three sizes; `art/sprites/sprites.test.ts` keeps every racer's main colour 3:1 off every theme's contrast bands, VOID_BANDS included.
+- Objects (`worlds/farside/objects.test.ts`): no item, attack, pickup, enemy or mark frame is one of Thornwood's; every sheet keeps the size of its Reef counterpart; no two items share art; each 9x9 icon fills most of its frame; stardust is at least as bright as the pearl and 3:1 off the space bands.
+- Theme (`themes/space.test.ts`): no particle rises or falls (every `ay` is 0); no tile, backdrop, flow or hazard frame is one of the forest's; the sky is darker than every other theme's (already true of the frozen palette); the mine's body is 3:1 off every band.
+- Audio: `songs.farside` loops at its A section, is slower than the race song, has a tempo that isn't Thornwood's, doesn't state or quote the race hook, and its lead isn't Thornwood's (`songs.test.ts`); the player's `racer.bounced`, `racer.fell` and `racer.respawned` play `bounce`, `fall` and `respawn`, a rival's play nothing (`adapter.test.ts`); the Sunlit Shallows sound pin doesn't change (`sfx-pin.test.ts`).
+
+Every lane: art is pixel text drawn the way the file it replaces draws it (`engine/art/pixel.ts`), original, and readable at 16 px on a near-black sky. Look at your work with `pnpm arcade see rush-racers --query course=drift-test --query scene=race --input "_*200 right*260"` on your own branch: until phase 5 flips Drift Test's theme and song, temporarily set its `theme: 'space'` and `song: 'farside'` in `logic/courses/drift-test.ts` to look, and revert that before committing. The Spec's "Decisions" list names every racer and object.
+
+#### Lane a brief
+
+- Goal: Farside's eight racers, drawn.
+- Interface: `FARSIDE_CAST` in `worlds/farside/cast.ts`, `FarsidePalette` in `sprites/palette.ts`, sheets in `sprites/racers.ts` (16x12, frames a and b) and `sprites/portraits.ts` (16x16 portraits, 7x7 heads), under the frozen keys.
+- Behavior: the Cast test cases. Slot by slot: rudy Bolt (dented red robot with a glass dome), gil Zib (long-legged green alien), streak Flare (blue comet-tailed alien), onyx Umbra (black stealth drone with one amber eye), nib Widget (tiny alien in goggles with a backpack), baron Admiral Crater (huge moon-rock golem with an antenna crown), selene Nova (glowing star sprite), rook Krag (spiked grey raider). Each reads as its own silhouette at 16x12, and frames a and b differ as a thruster flicker or stride. Rewrite the comments the copy left describing forest animals.
+- Decisions already made: ability text in `cast.ts` is already Farside's; change it only to fix an error. Umbra's main colour still has to pass 3:1 on the darkest band, which is why Thornwood's black cub has a lilac sheen as its main: do the same kind of thing.
+- Out of scope: objects, theme, audio, keys, any file outside the four owned.
+- Done when: `pnpm arcade test rush-racers src/engine/worlds/farside/cast.test.ts src/engine/art/sprites src/engine/worlds/skins.test.ts` and `pnpm arcade check rush-racers --skip-tests` pass, and you have looked at a capture of the racers in a race and of the character select.
+
+#### Lane b brief
+
+- Goal: Farside's items, pickups, enemies, attack effects and marks, drawn.
+- Interface: `FARSIDE_OBJECTS` in `worlds/farside/objects.ts` and the sheets in `sprites/items.ts`, `pickups.ts`, `enemies.ts`, `attack.ts`, `marks.ts`, under the frozen keys.
+- Behavior: the Objects test cases. Supply Pod (a `?` pod, closed and open), Stardust, Rocket Ray (the shark's slot: frames a, b, bite, stagger), Moon Worm (head and body), Moon Mite, the Homing Probe in flight, Ion Stream and Tractor Beam streaks, Gas Bomb cloud, Force Field bubble, and the ten item sprites and icons: Ion Thrusters, Force Field, Shock Bubble, Gas Bomb, Star Flare, Homing Probe, Ion Stream, Tractor Beam, Hologram, Comet. Rewrite the comments the copy left describing forest things.
+- Decisions already made: words in `objects.ts` are already Farside's. `sprites/palette.ts` is lane a's: colours you need live in your own files.
+- Out of scope: cast, theme, audio, keys.
+- Done when: `pnpm arcade test rush-racers src/engine/worlds/farside/objects.test.ts src/engine/worlds/skins.test.ts` and `pnpm arcade check rush-racers --skip-tests` pass, and you have looked at a capture showing pods, stardust and at least one enemy in a race.
+
+#### Lane c brief
+
+- Goal: space itself: asteroid terrain, ice, nebula dust, solar wind, the finish gate, mines and orbs, a starfield backdrop, drifting particles, and planets and black holes worth looking at.
+- Interface: `SPACE_THEME` in `themes/space.ts` and the sheets under `themes/space/sprites/` (rename `trees.ts` to what it now draws and update `sprites/index.ts`), under the frozen keys and palette; `createWellView` and `wellMarks` in `view/well-view.ts` keep their signatures.
+- Behavior: the Theme test cases. Rock is cratered asteroid, ice is pale and cracked (it breaks), dust is a soft nebula cloud racers stay visible in, wind cells show streaks along their direction, the mine is spiked and still, the orb pulses. Backdrop: far stars and a near layer of distant rocks or a moon limb, both tiling at the sizes the theme declares. Particles drift sideways or hang, never fall or rise. In `well-view.ts` replace the placeholder shapes: a planet is a shaded body with a faint reach ring, a black hole a black disc with a bright accretion rim; still one static drawing, nothing animated, under wind and the gate as now.
+- Decisions already made: `palettes.ts` and `keys.ts` are frozen (the bands are what every racer's contrast was checked against). The ledge tile stays drawn though drift courses have none.
+- Out of scope: cast, objects, audio, `view/layers.ts`, `scenes/race.ts`.
+- Done when: `pnpm arcade test rush-racers src/engine/themes src/engine/view/well-view.test.ts` and `pnpm arcade check rush-racers --skip-tests` pass, and you have looked at captures of the first straight, the planet bend and the black hole on Drift Test.
+
+#### Lane d brief
+
+- Goal: Farside's song and the sounds of bouncing, falling into a hole and coming back.
+- Interface: `songs/farside.ts` in the notation Thornwood's song uses; `SfxKey` gains `bounce`, `fall`, `respawn` in `sfx.ts`; `adapter.ts` plays them for the local player's `racer.bounced`, `racer.fell`, `racer.respawned`.
+- Behavior: the Audio test cases. The song is spacious and slower than the race song: a held, floating lead over a steady pulse, in a mode and metre of your choosing, looping at A. Bounce is a short dull thud, fall a downward sweep, respawn a rising shimmer. Check the events carry the fields the test uses (`logic/events.ts`).
+- Decisions already made: `racer.fell` and `racer.respawned` are shared with Cloudreach's pits, so the sounds are generic by name and play there too. The Sunlit Shallows pin must not change.
+- Out of scope: any file outside the three owned.
+- Done when: `pnpm arcade test rush-racers src/engine/audio` and `pnpm arcade check rush-racers --skip-tests` pass.
 
 ### Phase 5: list it
 
