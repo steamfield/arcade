@@ -11,7 +11,9 @@ import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
  * `kick` the speed a dash sets along facing (px/s). In `extra`: `gravity` (px/s²); `cutGravityMul`,
  * gravity's multiplier while rising with Up released (the short hop); `maxFall` (px/s); `airAccel`
  * and `airFriction` (px/s²); `jumpSpeed` (px/s, a held jump rises about 3.3 tiles); `coyoteTicks` and
- * `bufferTicks`; `respawnTicks`, how long a fallen racer is out; `respawnInvulnTicks`.
+ * `bufferTicks`; `respawnTicks`, how long a fallen racer is out; `respawnInvulnTicks`; `windSpeed`
+ * (px/s), how much a left or right gust adds to the speed a runner settles at; `draftForce` (px/s²),
+ * how hard an updraft or downdraft pushes; `mudSpeedMul`, top speed's multiplier in mud.
  */
 export const RUN_TUNING = {
   base: { forceMul: 1, kickMul: 1, kickCooldownTicks: 36, dragMul: 1 },
@@ -30,6 +32,9 @@ export const RUN_TUNING = {
     bufferTicks: 6,
     respawnTicks: 60,
     respawnInvulnTicks: 60,
+    windSpeed: 60,
+    draftForce: 1000,
+    mudSpeedMul: 0.6,
   },
 } as const satisfies MediumTuning;
 

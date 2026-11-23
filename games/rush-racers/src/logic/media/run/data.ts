@@ -12,9 +12,9 @@ export interface RunMotion extends RacerMotion {
   readonly kind: 'run';
   /** Standing on a floor, ledge or crate after this tick's move. Set by `afterRunMove`. */
   grounded: boolean;
-  /** Ticks left in which a jump still works after leaving the ground. */
+  /** Ticks after this one in which a jump still works after leaving the ground. */
   coyote: number;
-  /** Ticks left in which a jump press is remembered until the runner lands. */
+  /** Ticks after this one in which an Up press is remembered until the runner lands. */
   buffer: number;
   /** Up was held last tick, so holding it doesn't jump again: a jump needs a fresh press. */
   upWasHeld: boolean;
@@ -31,6 +31,10 @@ export interface RunEnv extends MediumEnv {
   readonly kind: 'run';
   /** Standing on something this tick (from last tick's contacts). */
   grounded: boolean;
+  /** Unit direction of the wind cell under the runner's centre (a gust, updraft or downdraft), or null. */
+  wind: Vec | null;
+  /** The runner's centre is in mud (a kelp cell), which lowers its top speed. */
+  inMud: boolean;
 }
 
 /**
