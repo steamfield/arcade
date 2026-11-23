@@ -2,7 +2,8 @@
  * One racer's sprite, synced from logic state: whole-pixel position, a flip for
  * facing, a two-frame swim stroke that quickens with speed, a squash-then-stretch
  * when a kick fires, a flicker while invulnerable (3 Hz, the WCAG ceiling) and,
- * for the player, a one-off white flash on gaining a place. All timing is counted
+ * for the player, a one-off white flash on gaining a place. A racer that has fallen out of the
+ * level (`status.fallen > 0`) is hidden until it respawns. All timing is counted
  * in logic ticks so captures repeat. Under reduced motion the sprite holds its
  * shape, shows invulnerability as a steady see-through look and skips the flash;
  * the kick puff and place-up sparkles in `fx/` still carry those moments.
@@ -72,6 +73,7 @@ export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion
         kickVertical = Math.abs(body.vy) > Math.abs(body.vx);
       }
       sprite.setPosition(Math.round(body.x + body.w / 2), Math.round(body.y + body.h / 2));
+      sprite.setVisible(current.status.fallen === 0);
       sprite.setFlipX(current.facing < 0);
       sprite.setFrame(strokeFrame(Math.hypot(body.vx, body.vy), tick));
       const { stretch, flashing } = moments.look(tick, reducedMotion);
