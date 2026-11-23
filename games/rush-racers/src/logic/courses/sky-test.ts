@@ -71,8 +71,8 @@ export const SKY_TEST: ShippedCourse = {
   name: 'Sky Test',
   level: LEVEL,
   world: 'cloudreach',
-  theme: 'ocean',
-  song: 'race',
+  theme: 'sky',
+  song: 'cloudreach',
   listed: false,
   parTicks: PAR_TICKS,
 };

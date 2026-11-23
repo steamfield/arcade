@@ -16,8 +16,8 @@ describe('engine conformance', () => {
   );
 
   it('names the course and the missing theme', () => {
-    const course = { ...courseFromLevel('#1F#'), theme: 'sky' } as unknown as Course;
-    expect(() => assertCourseAssets(course)).toThrow(`Course '${course.id}' names theme 'sky'`);
+    const course = { ...courseFromLevel('#1F#'), theme: 'moon' } as unknown as Course;
+    expect(() => assertCourseAssets(course)).toThrow(`Course '${course.id}' names theme 'moon'`);
   });
 
   it('names the course, the glyph and the art key when the theme has no tile for legend art', () => {

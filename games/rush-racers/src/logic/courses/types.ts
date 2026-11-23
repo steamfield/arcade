@@ -13,9 +13,9 @@ export type ShippedCourseId = 'sunlit-shallows' | 'bramble-run' | 'run-test' | '
 /** Shipped movement styles. Grows: later 'space'. */
 export type ShippedMediumId = 'swim' | 'run' | 'flight';
 /** Looks the engine draws a course with. */
-export type ThemeId = 'ocean' | 'forest';
+export type ThemeId = 'ocean' | 'forest' | 'sky';
 /** Songs the engine can play for a race, by the soundtrack's names. */
-export type SongId = 'race' | 'thornwood';
+export type SongId = 'race' | 'thornwood' | 'cloudreach';
 
 /**
  * A course as data. `World` is the type of its world id: any string by default, so tests and previews
