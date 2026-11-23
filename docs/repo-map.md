@@ -127,9 +127,10 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/cli.ts` | Argument parsing and help for every command. Entry point. |
 | `tools/arcade/src/games.ts` | `listGames`, `findGame`, `ROOT`, `UsageError`. Reads every `game.json`. |
 | `tools/arcade/src/run.ts` | `run(cmd)` subprocess helper with captured output, `elapsed`. |
-| `tools/arcade/src/check.ts` | `check`: turbo typecheck, lint, test for the slug plus changed packages; condenses output. |
+| `tools/arcade/src/check.ts` | `check`: turbo typecheck, lint, test (or `--skip-tests`) for the slug plus changed packages; condenses output. |
 | `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/` (or `--out`); `--query` launch params, `--compare` pixel diff against an earlier run. |
-| `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths or `-t`, one line when green. |
+| `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths, `@group`s from the game's package.json, or `-t`; one line when green. |
+| `tools/arcade/src/test.test.ts` | `@group` expansion for `arcade test`. |
 | `tools/arcade/src/smoke.ts` | `smoke`: assemble, `wrangler dev`, Playwright per game against the production build. |
 | `tools/arcade/src/assemble.ts` | `assemble`, `selectGames`: builds site plus games into `dist/`, writes `_headers`, checks Cloudflare limits. |
 | `tools/arcade/src/new-game.ts` | `newGame`: copies a template, renames, registers it in `.claude/launch.json`, installs. |

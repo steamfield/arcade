@@ -22,10 +22,10 @@ Run everything through `pnpm arcade` (`pnpm arcade help` for all options).
 
 | When                     | Command                                                                                                                                                                                                                         |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| While iterating          | `pnpm arcade test <slug> [paths] [-t name]`: only the game's unit tests, narrowed. Use this instead of calling Vitest directly.                                                                                                                         |
-| After every change       | `pnpm arcade check <slug>`: typecheck, lint, unit tests for the game plus every package changed since HEAD and its dependents. One line when green.                                                                             |
+| Proving your change      | `pnpm arcade test <slug> <paths or @groups> [-t name]`: only the tests that cover what you changed (see "Test scope" below), plus `pnpm arcade check <slug> --skip-tests` for typecheck and lint. |
+| Before a merge           | `pnpm arcade check <slug>`: typecheck, lint and every unit test for the game plus every package changed since HEAD and its dependents. Whoever merges runs it, once. |
 | To see the game          | `pnpm arcade see <slug> --scenario <name>` or `--input "right*30 jump"`. Read `.arcade/runs/latest/frame-*.png` / `frames.png` with your image tool; `summary.txt`, `state.json`, `events.jsonl`, `console.log` are next to it. `--query stage=x` passes launch params; `--out dir` then `--compare dir` diffs against a baseline. |
-| Before handing work back | `pnpm arcade smoke <slug>`: production build served by `wrangler dev`, Playwright on desktop Chromium, a phone, and WebKit (2D).                                                                                                |
+| Before a merge, too      | `pnpm arcade smoke <slug>`: production build served by `wrangler dev`, Playwright on desktop Chromium, a phone, and WebKit (2D). `rr suite -- <slug>` runs the Vitest suite sharded across the remote hosts when this machine is busy. |
 | Formatting / safe fixes  | `pnpm fix`                                                                                                                                                                                                                      |
 | New game                 | `pnpm arcade new <slug> --template phaser-2d\|three-3d --title "Name"`                                                                                                                                                          |
 | Play it                  | `pnpm arcade dev <slug>` then open `/games/<slug>/` (`?debug=1`, `?scene=play`, `?seed=7`, `?touch=1`, `?log=debug`)                                                                                                            |
@@ -82,10 +82,19 @@ Follow the behavior-first approach: test what a player or caller can observe.
 - Watch every new test fail once: break the behavior, run it, see the failure message you expect, restore.
 - Mock nothing you own. Time and randomness are already controlled (ticks, seeds).
 
+## Test scope
+
+Run the narrowest tests that prove your change, and leave the full suite for the merge.
+
+- While working, and before reporting, run `pnpm arcade test <slug>` with the paths or `@groups` that cover the files you touched, plus any guard the change could break (a game's `@behavior` group, for example, if it has one), and `pnpm arcade check <slug> --skip-tests`. Name the paths you ran in your report.
+- Don't run `pnpm arcade check <slug>` without `--skip-tests`, the game's whole Vitest suite, slow test projects or `pnpm arcade smoke` unless your brief asks for them or you are the one merging. Several agents run at once on one machine, and full runs from each of them slow everyone down and time out tests.
+- The full suite runs once per merge: whoever merges a branch runs `pnpm arcade check <slug>`, any slow project the game defines, and `pnpm arcade smoke <slug>` on the merged result. `rr suite -- <slug>` shards the Vitest part across the remote hosts in `.rr.yaml`.
+- A game lists related tests as named groups in its `package.json` (`"arcade": { "testGroups": { "courses": ["src/logic/courses", "src/logic/conformance"] } }`), run with `pnpm arcade test <slug> @courses`. An unknown group lists the ones that exist. Add a group when you find yourself typing the same set of paths twice.
+
 ## Done means
 
-`pnpm arcade check <slug>` and `pnpm arcade smoke <slug>` pass, you've looked at a `see` capture of what you changed, `DESIGN.md` reflects the change, and any new behavior has a scenario or logic test. If you added, moved or removed a shared or template file, `docs/repo-map.md` says so.
+For a change someone else merges: the tests covering it pass by "Test scope", typecheck and lint pass, you've looked at a `see` capture of what you changed, `DESIGN.md` reflects the change, and any new behavior has a scenario or logic test. For a merge: `pnpm arcade check <slug>` and `pnpm arcade smoke <slug>` pass as well, you've looked at a `see` capture of what you changed, `DESIGN.md` reflects the change, and any new behavior has a scenario or logic test. If you added, moved or removed a shared or template file, `docs/repo-map.md` says so.
 
 ## Hooks
 
-`.claude/hooks/format.ts` (Biome-format each edited file) and `.claude/hooks/check-on-stop.ts` (run `pnpm arcade check` before ending a turn that changed code) exist but only run once a person registers them in a Claude Code `settings.json`. Agents shouldn't register them on their own. Until they're registered, run `pnpm fix` and `pnpm arcade check` yourself.
+`.claude/hooks/format.ts` (Biome-format each edited file) and `.claude/hooks/check-on-stop.ts` (run `pnpm arcade check` before ending a turn that changed code) exist but only run once a person registers them in a Claude Code `settings.json`. Agents shouldn't register them on their own. Until they're registered, run `pnpm fix` and the checks "Test scope" asks for yourself.

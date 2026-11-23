@@ -1,0 +1,37 @@
+# rr (Road Runner) runs this repo's Vitest suites on the remote hosts in ~/.rr/config.yaml,
+# so a full-suite run before a merge doesn't load this machine. See docs/agent-experience.md
+# ("Running tests") for when to use which task.
+version: 1
+
+# Work-stealing order: the Macs first, then the 4-core Linux box, then this machine.
+hosts: [m4-mini, m1-mini, m1-linux, mbp]
+
+defaults:
+  # The hosts have Node but not the repo's pnpm (pinned in package.json), so a shim runs that
+  # exact version through npx, and every run starts from an installed tree.
+  setup:
+    - mkdir -p .rr-bin && printf '#!/bin/sh\nexec npx -y pnpm@12.9.1 "$@"\n' > .rr-bin/pnpm && chmod +x .rr-bin/pnpm
+    - PATH="$PWD/.rr-bin:$PATH" pnpm install --frozen-lockfile --prefer-offline --reporter=silent
+
+tasks:
+  test:
+    description: "One game's tests, narrowed like arcade test: rr test -- <slug> [paths] [-t name]"
+    run: PATH="$PWD/.rr-bin:$PATH" pnpm arcade test {args}
+
+  check:
+    description: "arcade check on a host: rr check -- <slug>"
+    run: PATH="$PWD/.rr-bin:$PATH" pnpm arcade check {args}
+
+  # A game's whole Vitest suite split by file across hosts: rr suite -- <slug>
+  suite:
+    description: "A game's full Vitest suite (every project) in four shards across hosts"
+    forward_args: true
+    parallel: [suite-1, suite-2, suite-3, suite-4]
+  suite-1:
+    run: cd games/{args} && PATH="$OLDPWD/.rr-bin:$PATH" pnpm exec vitest run --shard=1/4
+  suite-2:
+    run: cd games/{args} && PATH="$OLDPWD/.rr-bin:$PATH" pnpm exec vitest run --shard=2/4
+  suite-3:
+    run: cd games/{args} && PATH="$OLDPWD/.rr-bin:$PATH" pnpm exec vitest run --shard=3/4
+  suite-4:
+    run: cd games/{args} && PATH="$OLDPWD/.rr-bin:$PATH" pnpm exec vitest run --shard=4/4
