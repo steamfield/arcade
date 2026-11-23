@@ -227,6 +227,7 @@ Demo: rivals finish `run-test` and the run conformance geometries without stalli
 Depends on: phase 2
 
 Scaffold: a14dda6
+Tag: rush-racers-phase-4
 
 One lane: the jump-aware nav and the pilot that follows it are one contract (the pilot executes the nav's links), so splitting them would make one lane test against a fake of the other. No scaffold: the lane owns every file it changes, and `Medium`'s members don't change.
 
@@ -300,3 +301,4 @@ Test cases:
 - 2026-11-23 main merged into the landing branch (a6b2d19) before phases 3 and 4 started: main had gained the reef-online lockstep groundwork and the reef-difficulty sprint (seats, local racer, world hash, catch-up, the no-inexact-math lint rule, now pointed at rush-racers logic). World-hash pins moved only because racers carry `status.fallen`; with it stripped they match main's. Phase 3 and 4 lanes start from a6b2d19 (`check-lane` base a6b2d19). `ce:builder` always runs in its own worktree cut from main, so lane setup renames that branch and hard-resets it to the landing branch.
 - 2026-11-23 phase 5 briefs written: the scaffold lists Bramble Run and adds the course select step to `TITLE_TO_RACE`, since turning course select on changes every menu walk.
 - 2026-11-23 phase 3 landing: reviews applied (3/b own glint keys, since `ensureGlintTexture` bakes colour per key so shared keys would cross-colour worlds; marks split; full frame-name coverage. 3/c song guard test, full key-collision set, wasp stripe index. 3/a Duke grounded, per-slot palette test, palette split, Duke and Dusk portraits redrawn). Merger fixes: `TerrainArt.buriedTiles` so forest earth draws grass only where it meets open space; one `THORNWOOD_ART_OWNER`; select draws the picked course's look behind its cast instead of the menus' last course. `check-lane` flags lane test files listed under Tests rather than Owns; ignored as a table quirk.
+- 2026-11-23 phase 4 landing: the lane's new `validateLevel` made respawn.test.ts's unjumpable pits invalid, so the lane took that file, plus `terrain.ts`, `arc.ts` and a `stepFallSpeed` export from physics (a pure extraction) to bring links.ts under 250 lines. Review applied: air tiles above a pit's mouth now inherit the anchor of the tile below (they read Infinity, dropping the guide and Easy assist mid-jump); air tiles' `nextTile` follows the anchor's link, so the arrow keeps pointing up-right mid-jump; HIGH_ROUTE is now a real ledge staircase to a higher, shorter path; respawn ledge test pins which ledge. run-test par 713.
