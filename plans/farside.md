@@ -86,6 +86,7 @@ Later phases add their contracts in their own scaffold. Phase 2: `LevelDef.wells
 ### Phase 1: drift it (MVP)
 
 Scaffold: aefae3c
+Tag: farside/phase-1
 Demo: `pnpm arcade dev rush-racers`, open `/games/rush-racers/?course=drift-test&debug=1`: burn, let go and keep drifting, brake by burning back, dash and keep the speed, bounce off an asteroid, slow in dust, ride a solar wind lane; three rivals fly the course and finish. Placeholder Reef art with Farside words.
 Test cases (the scaffold writes them; lanes treat them as read-only):
 - Thrust: holding right from rest gains `force * dt` a tick and settles at cruise (within `drag * dt`) inside 1 s; it never passes cruise by thrust alone; `forceMul` 1.4 raises cruise by 20 %.
