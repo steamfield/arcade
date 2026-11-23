@@ -10,6 +10,7 @@ import { PriorityQueue } from '../../race/priority-queue.ts';
 import { type Level, TILE } from '../../types.ts';
 import type { MediumTuning } from '../types.ts';
 import { buildLinks, plannedSpeed } from './links.ts';
+import { jumpAirTicks } from './physics.ts';
 import { isSolidTile, type Terrain, terrainOf } from './terrain.ts';
 import type { RunLink, RunNav } from './way-data.ts';
 
@@ -123,6 +124,9 @@ function anchorsOf(terrain: Terrain, stand: ReadonlySet<number>, walkTicksPerTil
   return { anchor, extraTicks };
 }
 
+/** Ticks of Up a pilot's hop over another racer holds: enough to clear a racer's height with room to spare. */
+export const HOP_HOLD_TICKS = 6;
+
 /**
  * Run's nav for `level` with `broken` coral open; jumps come from `tuning`.
  *
@@ -144,5 +148,6 @@ export function buildRunNav(level: Level, broken: ReadonlySet<number>, tuning: M
     distance,
     anchor,
     best: bestLinks(distance.length, links, ticks),
+    hopAirTicks: jumpAirTicks(tuning, HOP_HOLD_TICKS, TICK_DT),
   };
 }

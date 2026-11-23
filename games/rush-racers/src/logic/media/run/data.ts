@@ -22,6 +22,12 @@ export interface RunMotion extends RacerMotion {
   jumping: boolean;
   /** The air dash is spent; it comes back on landing. */
   airDashUsed: boolean;
+  /**
+   * The speed, px/s, a dash glides down from: the dash's own speed when it fires, falling by
+   * `dashDrag` a second after. Speed over running pace bleeds at `dashDrag` only while under this,
+   * so a dash carries but mud, a dropped gust or a hit slow a runner at full friction. 0 with no dash.
+   */
+  dashGlide: number;
   /** Top-left of the last spot the runner stood on with rock or a ledge under both feet; a fall returns it here. */
   lastSafe: Vec;
   /** Top-left of where a fallen runner waits, out of the level, until it respawns. */

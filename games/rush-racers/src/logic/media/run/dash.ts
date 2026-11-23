@@ -12,7 +12,7 @@ import type { RunMotion } from './data.ts';
 /**
  * Dashes when the button is pressed and the dash is ready; otherwise runs the cooldown down a tick.
  * A dash sets `vx` to `tuning.kick * mods.kickMul` along facing (`applyRunIntent` then caps it at
- * `maxSpeed`) and never touches `vy`.
+ * `maxSpeed`), starts the glide back from that speed (`motion.dashGlide`), and never touches `vy`.
  */
 export function dashOrCoolDown(
   racer: Racer,
@@ -25,6 +25,7 @@ export function dashOrCoolDown(
 ): void {
   if (kick && canDash(racer, motion, grounded)) {
     racer.body.vx = racer.facing * tuning.kick * mods.kickMul;
+    motion.dashGlide = Math.min(tuning.kick * mods.kickMul, tuning.maxSpeed);
     racer.kickCooldown = mods.kickCooldownTicks;
     if (!grounded) motion.airDashUsed = true;
     events.emit({ type: 'racer.kicked', id: racer.id });

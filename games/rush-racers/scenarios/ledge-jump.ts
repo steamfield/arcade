@@ -5,12 +5,6 @@
 import { expect } from '@playwright/test';
 import { HARD_SAVE, hold, scenario, tap, wait } from './kit.ts';
 
-/** Easy, so the timing below is the player's Easy run on foot; pinned so a new default can't move it. */
-const EASY_SAVE = {
-  ...HARD_SAVE,
-  data: { ...HARD_SAVE.data, settings: { ...HARD_SAVE.data.settings, difficulty: 'easy' } },
-};
-
 /** Run Test's ledge run: columns 38-43 (x 608-704) on row 7, whose top is at y 112. */
 const LEDGE_LEFT = 608;
 const LEDGE_RIGHT = 704;
@@ -24,7 +18,8 @@ const LEDGE_TOP = 112;
  */
 export default scenario({
   description: 'a runner jumps up through a ledge from below and stands on it',
-  start: { save: EASY_SAVE, seed: 1, query: { course: 'run-test' } },
+  // Hard gives the player no catch-up boost, so the timing below doesn't depend on where the rivals are.
+  start: { save: HARD_SAVE, seed: 1, query: { course: 'run-test' } },
   input: [
     // Run Test is unlisted, so Race skips course select: title Race, then race as the saved pick.
     wait(25),
@@ -34,8 +29,8 @@ export default scenario({
     wait(180),
     hold('right', 130),
     hold(['right', 'up'], 20),
-    hold('right', 62),
-    hold(['right', 'up'], 4),
+    hold('right', 65),
+    hold(['right', 'up'], 3),
     wait(20),
     hold('right', 5),
     wait(15),
