@@ -4,7 +4,7 @@
  * the light rays, slow-swaying rays, painted layers in front of them, and drifting motes. For the
  * ocean that is water darkening toward the floor, a far reef ridge, god rays and a mid kelp forest.
  * A theme leaves out caustics, rays or motes by giving no colour for them, and may add thin haze
- * streaks drifting sideways over the bands (the sky's evening haze). Far layers follow less
+ * streaks drifting sideways over the bands (`backdrop-haze.ts`). Far layers follow less
  * of the camera's scroll than near ones. In front of all of that and still behind the terrain, a
  * theme with a cave wall tiles it down every dark column range, so a dark stretch reads as a cave
  * under the dark veil.
@@ -17,6 +17,7 @@
 import type Phaser from 'phaser';
 import { type Level, TILE, type Vec } from '../../logic/types.ts';
 import type { BackdropSpec, HazeSpec, PaintedLayer, Theme } from '../themes/types.ts';
+import { createHaze } from './backdrop-haze.ts';
 import { Layer } from './layers.ts';
 
 /** The backdrop behind the course, built once per screen. */
@@ -67,6 +68,34 @@ const ADDITIVE = 'ADD';
  */
 const SURFACE_Y = TILE;
 
+/** One part of the backdrop that moves with time or the camera, and what the theme draws it with. */
+export type MovingPart = { kind: 'caustics' | 'rays' | 'motes'; colour: number } | { kind: 'haze'; haze: HazeSpec };
+
+/** The moving parts `theme`'s backdrop has, back to front: only those the theme gives a colour or haze for. */
+export function movingParts(theme: Pick<Theme, 'backdrop' | 'ambient'>): MovingPart[] {
+  const { backdrop, ambient } = theme;
+  const parts: MovingPart[] = [];
+  if (backdrop.caustics !== null) parts.push({ kind: 'caustics', colour: backdrop.caustics });
+  if (backdrop.haze) parts.push({ kind: 'haze', haze: backdrop.haze });
+  if (backdrop.rays !== null) parts.push({ kind: 'rays', colour: backdrop.rays });
+  if (ambient.motes !== null) parts.push({ kind: 'motes', colour: ambient.motes });
+  return parts;
+}
+
+/** Adds one moving `part` of the backdrop to `scene`. */
+function addMovingPart(scene: Phaser.Scene, level: Level, viewport: Viewport, part: MovingPart): AnimatedPart {
+  switch (part.kind) {
+    case 'caustics':
+      return createCaustics(scene, part.colour);
+    case 'haze':
+      return createHaze(scene, level.height * TILE, part.haze, Depth.haze);
+    case 'rays':
+      return createLightRays(scene, viewport, part.colour);
+    case 'motes':
+      return createMotes(scene, viewport, part.colour);
+  }
+}
+
 /**
  * Adds the backdrop for `level`, in `theme`'s look, behind everything else in `scene`.
  *
@@ -87,11 +116,7 @@ export function createBackdrop(
   addDepthBands(scene, level, viewport, backdrop.bands);
   addPaintedLayers(scene, level, viewport, backdrop.layers);
   if (backdrop.cave) addCaveWalls(scene, level, backdrop.cave.texture);
-  const parts: AnimatedPart[] = [];
-  if (backdrop.caustics !== null) parts.push(createCaustics(scene, backdrop.caustics));
-  if (backdrop.haze) parts.push(createHaze(scene, level, backdrop.haze));
-  if (backdrop.rays !== null) parts.push(createLightRays(scene, viewport, backdrop.rays));
-  if (theme.ambient.motes !== null) parts.push(createMotes(scene, viewport, theme.ambient.motes));
+  const parts = movingParts(theme).map((part) => addMovingPart(scene, level, viewport, part));
   // update runs every rendered frame, so it reuses one scroll object rather than allocating per frame.
   const scroll = { x: 0, y: 0 };
 
@@ -226,44 +251,6 @@ function createCaustics(scene: Phaser.Scene, colour: number): AnimatedPart {
           graphics.fillRect(x, SURFACE_Y + row * cell.h + ((column + row) % 2), length, 1);
         }
       }
-    },
-  };
-}
-
-/**
- * Haze: long thin streaks spread down the level, pinned to it like the bands and drifting slowly
- * sideways at their own speeds, wrapping around the screen. Each streak keeps to its own `spacing`
- * px slot of level height, so streaks never overlap and the haze is one even opacity over the bands.
- */
-const HAZE = { spacing: 12, minLength: 24, maxLength: 88, pxPerTick: 1 / 12 } as const;
-
-function createHaze(scene: Phaser.Scene, level: Level, haze: HazeSpec): AnimatedPart {
-  const graphics = scene.add.graphics().setScrollFactor(0, 1).setDepth(Depth.haze);
-  const width = scene.cameras.main.width;
-  const levelHeight = level.height * TILE;
-  const streaks = Array.from({ length: Math.floor(levelHeight / HAZE.spacing) }, (_, index) => ({
-    home: hash(index, 13) * width,
-    y: index * HAZE.spacing + Math.floor(hash(index, 17) * (HAZE.spacing - 2)),
-    length: Math.round(HAZE.minLength + hash(index, 19) * (HAZE.maxLength - HAZE.minLength)),
-    thickness: hash(index, 23) > 0.7 ? 2 : 1,
-    speed: 0.5 + hash(index, 29),
-  }));
-  let drawn = '';
-
-  return {
-    update(tick) {
-      const lefts = streaks.map((streak) =>
-        Math.round(wrap(streak.home + tick * HAZE.pxPerTick * streak.speed, width + streak.length) - streak.length),
-      );
-      // Streaks move a pixel every several ticks; redraw only when one has.
-      const key = lefts.join(',');
-      if (key === drawn) return;
-      drawn = key;
-      graphics.clear();
-      graphics.fillStyle(haze.colour, haze.alpha);
-      streaks.forEach((streak, index) => {
-        graphics.fillRect(lefts[index] ?? 0, streak.y, streak.length, streak.thickness);
-      });
     },
   };
 }
