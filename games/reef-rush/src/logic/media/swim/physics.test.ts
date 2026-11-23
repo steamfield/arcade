@@ -10,7 +10,7 @@ import { SWIM_TUNING as SWIM } from './tuning.ts';
 
 const BASE_MODIFIERS = SWIM.base;
 
-const WATER: SwimEnv = { kind: 'swim', current: null, inKelp: false, inAir: false };
+const WATER: SwimEnv = { kind: 'swim', current: null, inKelp: false, inAir: false, nearSurface: false };
 const CRUISE = SWIM.force / SWIM.drag;
 const STILL: Vec = { x: 0, y: 0 };
 const RIGHT: Vec = { x: 1, y: 0 };

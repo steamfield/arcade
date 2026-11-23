@@ -6,19 +6,22 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from './events.ts';
+import { applyHit } from './hazards/hits.ts';
 import { parseLevel } from './level/parse.ts';
-import { cellAt } from './level/query.ts';
+import { isAirAt } from './level/query.ts';
 import type { SwimEnv } from './media/swim/data.ts';
 import { buildSwimNav, steerCost } from './media/swim/nav.ts';
 import { applyIntent } from './media/swim/physics.ts';
-import { SWIM_TUNING as SWIM } from './media/swim/tuning.ts';
+import { SPLASH_DEPTH, SWIM_TUNING as SWIM } from './media/swim/tuning.ts';
 import { spawnLoose } from './pickups/loose.ts';
 import { scatterPearls } from './pickups/pearl-drift.ts';
+import { CANNONBALL } from './powerups/tuning.ts';
 import { fieldAt } from './race/flowfield.ts';
 import { centreOf } from './racers.ts';
 import {
   courseFromLevel,
   eventsIn,
+  giveItems,
   hold,
   placeAt,
   placeOnTile,
@@ -66,8 +69,9 @@ function raceOnOpenSea() {
   return { world, log, player: racerOf(world, 'player') };
 }
 
-function isAirAt(world: World, at: Vec): boolean {
-  return cellAt(world.level, Math.floor(at.x / TILE), Math.floor(at.y / TILE)) === 'air';
+/** True when the point `at` (world px) is in an air tile. */
+function inAir(world: World, at: Vec): boolean {
+  return isAirAt(world.level, at.x, at.y);
 }
 
 describe('breaching the surface', () => {
@@ -103,28 +107,38 @@ describe('breaching the surface', () => {
     ]);
   });
 
-  it('emits racer.breached once on the first tick the centre is in air and racer.splashed once back in water', () => {
+  it('emits racer.breached once on the first tick the centre is in air, and racer.splashed once it is 4 px under', () => {
     const { world, log, player } = raceOnOpenSea();
     placeAt(player, { x: 5.5 * TILE, y: SURFACE_Y + 8 });
     player.body.vy = -150;
-    const airAtTickStart: boolean[] = [];
+    const centreYAtTickStart: number[] = [];
     for (let tick = 0; tick < 120; tick++) {
-      airAtTickStart.push(isAirAt(world, centreOf(player)));
+      centreYAtTickStart.push(centreOf(player).y);
       step(world, log);
     }
-    const firstAir = airAtTickStart.indexOf(true);
-    const backInWater = airAtTickStart.indexOf(false, firstAir);
+    const firstAir = centreYAtTickStart.findIndex((y) => y < SURFACE_Y);
+    const splashDown = centreYAtTickStart.findIndex((y, tick) => tick > firstAir && y >= SURFACE_Y + SPLASH_DEPTH);
 
     expect(firstAir).toBeGreaterThan(0);
-    expect(backInWater).toBeGreaterThan(firstAir);
+    expect(splashDown).toBeGreaterThan(firstAir);
     expect(ticksOf(log, 'racer.breached')).toEqual([firstAir + 1]);
-    expect(ticksOf(log, 'racer.splashed')).toEqual([backInWater + 1]);
+    expect(ticksOf(log, 'racer.splashed')).toEqual([splashDown + 1]);
+  });
+
+  it('breaches only once or twice while a racer holds up against the surface for ten seconds', () => {
+    const { world, log, player } = raceOnOpenSea();
+    placeOnTile(player, 5, 4);
+
+    step(world, log, 600, hold(UP));
+
+    expect(ticksOf(log, 'racer.breached').length).toBeGreaterThanOrEqual(1);
+    expect(ticksOf(log, 'racer.breached').length).toBeLessThanOrEqual(2);
   });
 });
 
 describe('a racer in the air', () => {
-  const AIR: SwimEnv = { kind: 'swim', current: null, inKelp: false, inAir: true };
-  const WATER: SwimEnv = { ...AIR, inAir: false };
+  const AIR: SwimEnv = { kind: 'swim', current: null, inKelp: false, inAir: true, nearSurface: true };
+  const WATER: SwimEnv = { ...AIR, inAir: false, nearSurface: false };
   const DECAY = 1 - SWIM.extra.airDrag * TICK_DT;
 
   /** A racer from a fresh world, at rest, after one `applyIntent` tick in `env`, plus that tick's events. */
@@ -191,7 +205,7 @@ describe('what stays in the water', () => {
     for (let tick = 0; tick < 150; tick++) {
       step(world, log);
       const loose = world.loose[0];
-      expect(loose && isAirAt(world, loose)).toBe(false);
+      expect(loose && inAir(world, loose)).toBe(false);
     }
 
     expect(world.loose[0]?.y).toBeGreaterThanOrEqual(SURFACE_Y);
@@ -204,7 +218,7 @@ describe('what stays in the water', () => {
     player.status.trapped = 200;
     for (let tick = 0; tick < 150; tick++) {
       step(world, log);
-      expect(isAirAt(world, centreOf(player))).toBe(false);
+      expect(inAir(world, centreOf(player))).toBe(false);
     }
 
     expect(centreOf(player).y).toBeGreaterThanOrEqual(SURFACE_Y);
@@ -216,9 +230,66 @@ describe('what stays in the water', () => {
     world.loosePearls.push(...scatterPearls(tileCentre(8, 3), 1, 3, null));
     for (let tick = 0; tick < 30; tick++) {
       step(world, log);
-      expect(world.loosePearls.filter((pearl) => isAirAt(world, pearl.at))).toEqual([]);
+      expect(world.loosePearls.filter((pearl) => inAir(world, pearl.at))).toEqual([]);
     }
 
     expect(world.loosePearls).toHaveLength(3);
+  });
+
+  it('drops what a hit in the air knocks loose back into the water', () => {
+    const { world, log, player } = raceOnOpenSea();
+    placeAt(player, { x: 7.5 * TILE, y: SURFACE_Y - 10 });
+    giveItems(player, ['inkSac']);
+    player.pearls = 5;
+
+    applyHit(world, player, 'urchin', null, centreOf(player));
+    placeOnTile(player, 2, 4);
+    step(world, log, 90);
+
+    expect(world.loose).toHaveLength(1);
+    expect(world.loosePearls.length).toBeGreaterThan(0);
+    const itemsInAir = [...world.loose, ...world.loosePearls.map((pearl) => pearl.at)].filter((at) => inAir(world, at));
+    expect(itemsInAir).toEqual([]);
+  });
+});
+
+describe('dashing through the surface', () => {
+  it('arcs a Cannonball fired straight up back to the surface while it still runs, then into the water', () => {
+    const { world, log, player } = raceOnOpenSea();
+    placeAt(player, { x: 5.5 * TILE, y: SURFACE_Y + TILE });
+    giveItems(player, ['cannonball']);
+
+    step(world, log, 1, hold(UP, { use: true }));
+    const airborneTicks: boolean[] = [];
+    for (let tick = 0; tick < 150; tick++) {
+      step(world, log);
+      airborneTicks.push(inAir(world, centreOf(player)));
+    }
+    const firstInAir = airborneTicks.indexOf(true);
+    const backAtSurface = airborneTicks.indexOf(false, firstInAir);
+
+    expect(eventsIn(log, 'item.used')).toHaveLength(1);
+    expect(firstInAir).toBeGreaterThanOrEqual(0);
+    expect(backAtSurface).toBeGreaterThan(firstInAir);
+    expect(backAtSurface).toBeLessThan(CANNONBALL.ticks);
+    expect(eventsIn(log, 'racer.breached', 'racer.splashed').slice(0, 2)).toEqual([
+      { type: 'racer.breached', id: 'player' },
+      { type: 'racer.splashed', id: 'player' },
+    ]);
+    expect(inAir(world, centreOf(player))).toBe(false);
+  });
+
+  it('lets a racer dashing sideways in the air keep falling', () => {
+    const { world, log, player } = raceOnOpenSea();
+    placeAt(player, { x: 3.5 * TILE, y: SURFACE_Y - 12 });
+    giveItems(player, ['jetFin']);
+    const startY = centreOf(player).y;
+
+    step(world, log, 1, hold(RIGHT, { use: true }));
+    step(world, log, 3, hold(RIGHT));
+
+    expect(player.status.dashing).toBeGreaterThan(0);
+    expect(player.body.vx).toBeGreaterThan(SWIM.maxSpeed);
+    expect(centreOf(player).y).toBeGreaterThan(startY + 1);
   });
 });

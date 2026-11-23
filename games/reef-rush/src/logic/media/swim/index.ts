@@ -5,14 +5,15 @@
  * `nav.ts` and `way.ts`, the rival pilot in `pilot.ts`, numbers and rules in `tuning.ts`, and swim's
  * data shapes with their accessors in `data.ts`.
  */
-import { sampleEnvironment } from '../../level/query.ts';
+import { isAirAt, sampleEnvironment } from '../../level/query.ts';
 import { feltCurrent } from '../../powerups/riptides.ts';
+import { centreOf } from '../../racers.ts';
 import type { Medium } from '../types.ts';
 import type { SwimEnv, SwimMotion } from './data.ts';
 import { buildSwimNav, steerCost, validateSwimLevel } from './nav.ts';
 import { applyIntent } from './physics.ts';
 import { createSwimPilot, steerSwimmer } from './pilot.ts';
-import { SWIM_EFFECTS, SWIM_KICK_RULES, SWIM_TUNING } from './tuning.ts';
+import { SPLASH_DEPTH, SWIM_EFFECTS, SWIM_KICK_RULES, SWIM_TUNING } from './tuning.ts';
 import { coralOnSmashPath, swimAimFrom, swimDistanceAt, swimNextTile } from './way.ts';
 
 /** The swim medium. */
@@ -23,8 +24,14 @@ export const SWIM_MEDIUM: Medium = {
   createPilot: createSwimPilot,
   sampleEnvironment(world, racer) {
     const water = sampleEnvironment(world.level, racer.body);
+    const centre = centreOf(racer);
     // A Riptide lane over the racer replaces the tile's current, and holding one strengthens either.
-    const env: SwimEnv = { kind: 'swim', ...water, current: feltCurrent(world, racer, water.current) };
+    const env: SwimEnv = {
+      kind: 'swim',
+      ...water,
+      current: feltCurrent(world, racer, water.current),
+      nearSurface: isAirAt(world.level, centre.x, centre.y - SPLASH_DEPTH),
+    };
     return env;
   },
   applyIntent,

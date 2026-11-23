@@ -1,14 +1,15 @@
 /**
  * What a racer's timed statuses do to its control and how they run out. Stunned
  * and trapped racers lose their input, trapped racers drift straight up or down as
- * the medium says (never up through a surface into air), downed racers (`isDowned`) pass through other racers, and every
- * counter (plus the item use cooldown) loses one tick at the end of each tick.
+ * the medium says (never up through a surface into air), downed racers (`isDowned`)
+ * pass through other racers, and every counter (plus the item use cooldown) loses one
+ * tick at the end of each tick.
  */
 import { TICK_DT } from '@arcade/core';
-import { cellAt } from './level/query.ts';
+import { isAirAt } from './level/query.ts';
 import { mediumOf } from './media/index.ts';
 import { centreOf, noItems } from './racers.ts';
-import { type Intent, type Racer, type RacerStatus, TILE, type World } from './types.ts';
+import type { Intent, Racer, RacerStatus, World } from './types.ts';
 
 const STATUS_KEYS = Object.keys(noItems(0).status) as (keyof RacerStatus)[];
 
@@ -49,13 +50,9 @@ export function floatTrapped(world: World, racer: Racer): void {
   if (racer.status.trapped === 0) return;
   racer.body.vx = 0;
   const centre = centreOf(racer);
-  if (isAirAt(world, centre.x, centre.y)) return;
+  if (isAirAt(world.level, centre.x, centre.y)) return;
   const drift = mediumOf(world).effects.trappedDrift;
-  racer.body.vy = isAirAt(world, centre.x, centre.y + drift * TICK_DT) ? 0 : drift;
-}
-
-function isAirAt(world: World, x: number, y: number): boolean {
-  return cellAt(world.level, Math.floor(x / TILE), Math.floor(y / TILE)) === 'air';
+  racer.body.vy = isAirAt(world.level, centre.x, centre.y + drift * TICK_DT) ? 0 : drift;
 }
 
 /**
