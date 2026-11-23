@@ -163,11 +163,12 @@ Inline at landing (the orchestrator, after both lanes merge): record the top-rou
 
 Demo: `pnpm arcade test reef-rush src/logic/humans.test.ts src/logic/human-rules.test.ts`: two scripted humans race the default course and a slot whose input stops is finished by the AI.
 Depends on: phase 1
+Scaffold: ac22da6
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/world.ts, games/reef-rush/src/logic/race/standings.ts, games/reef-rush/src/logic/characters.ts, games/reef-rush/src/engine/view/racer-moments.test.ts, games/reef-rush/src/logic/humans.test.ts | contracts, games/reef-rush/src/logic/racers.ts, games/reef-rush/src/logic/ai/rival.ts | games/reef-rush/src/logic/two-peers.test.ts | opus | pending | | humans tests pass, top-route hash unmoved |
-| b | M | games/reef-rush/src/logic/difficulty-level.ts, games/reef-rush/src/logic/modifiers.ts, games/reef-rush/src/logic/pickups/clams.ts, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/race/catch-up.ts, games/reef-rush/src/logic/human-rules.test.ts | contracts, games/reef-rush/src/logic/racers.ts | | opus | pending | | rule tests pass, top-route hash unmoved |
+| a | M | games/reef-rush/src/logic/world.ts, games/reef-rush/src/logic/race/standings.ts, games/reef-rush/src/logic/characters.ts, games/reef-rush/src/engine/view/racer-moments.test.ts, games/reef-rush/src/logic/humans.test.ts | contracts, games/reef-rush/src/logic/racers.ts, games/reef-rush/src/logic/ai/rival.ts | games/reef-rush/src/logic/two-peers.test.ts | opus | running | deliver/reef-online-2a | humans tests pass, top-route hash unmoved |
+| b | M | games/reef-rush/src/logic/difficulty-level.ts, games/reef-rush/src/logic/modifiers.ts, games/reef-rush/src/logic/pickups/clams.ts, games/reef-rush/src/logic/ai/rival.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/race/catch-up.ts, games/reef-rush/src/logic/human-rules.test.ts | contracts, games/reef-rush/src/logic/racers.ts | | opus | running | deliver/reef-online-2b | rule tests pass, top-route hash unmoved |
 
 The scaffold declares the types, implements `isHuman`, `isRival` and `activeHumans` in `racers.ts`, makes `createWorld` store `humans: ['player']`, adds `humans` to the hash skip list, adds `id` to `player.place` and the `racer.takeover` event, and stubs `stepRace` (throws) and `catchUpTarget` (returns `playerOf(world)`, so the tree stays green for one human). `isRival` takes an id, like `isHuman`: `isRival(world: World, id: RacerId): boolean`.
 
