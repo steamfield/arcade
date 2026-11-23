@@ -1,12 +1,14 @@
 /**
  * The sky theme's colours: Cloudreach's thunderheads, puff, bounce and fog clouds, wind, spark clouds
- * and static wisps, the far and near cloud banks, the sky's bands, the sunlight through it and the
- * storm cell's tint. A daytime sky, deep blue overhead and hazier toward the ground, but held no
- * lighter than the racers allow: every racer's main colour and all global art hold 3:1 off every sky
- * band and cloud bank (the sky theme's contrast bands, checked in `art/sprites/sprites.test.ts`), so
- * the haze near the bottom is no lighter than the ocean's surface water. Terrain is
- * mid-value or pale and hazards bright, so they read in front of the sky. Lanes may tune these only
- * while every contrast test still passes.
+ * and static wisps, the far and near cloud banks and the setting sun, the sky's bands, the evening
+ * haze across them and the storm cell's tint. A sky at dusk, twilight indigo overhead and dusky rose
+ * at the horizon, held no lighter than the racers allow: every racer's main colour and all global art
+ * hold 3:1 off every sky band, every band seen through the haze, and every cloud bank and the sun
+ * (the sky theme's contrast bands, checked in `art/sprites/sprites.test.ts`). So nothing behind play
+ * is lighter than the ocean's surface water, and the sun and haze are no brighter than the lowest
+ * band. Terrain is mid-value or pale and hazards bright, so they read in front of the sky; the pale
+ * puff and bounce clouds are the bright accents. Lanes may tune these only while every contrast test
+ * still passes.
  */
 import type { Palette } from '../../art/pixel.ts';
 
@@ -36,20 +38,20 @@ export const SkyHazardPalette = {
 
 /** Backdrop palettes: cloud banks a step away from the bands behind them, kept as dark as the bands allow. */
 export const SkyBackdropPalette = {
-  /** Far cloud banks: silhouette and its sunlit crown. */
-  far: [0x2a426e, 0x304872],
-  /** Near cloud banks: shadowed underside, lit edge. */
-  near: [0x203a66, 0x263f6a],
+  /** Far cloud banks: violet silhouette, its crown lit dusky rose, and the setting sun half hidden behind them. */
+  far: [0x3e3a6a, 0x5c3e54, 0x843814],
+  /** Near cloud banks: shadowed underside, and the edge the low sun lights rose. */
+  near: [0x302e60, 0x503652],
 } as const satisfies Record<string, Palette>;
 
-/** The open sky from the top of the level down to the ground: deep blue overhead, a hazy band at the bottom. */
-export const SKY_BANDS: readonly number[] = [0x0e2c64, 0x143670, 0x1a3e78, 0x22467e, 0x2c4c80, 0x364e7c, 0x444e72];
+/**
+ * The open sky from the top of the level down to the ground: twilight indigo overhead, warming
+ * through violet to a hazy dusky rose at the horizon.
+ */
+export const SKY_BANDS: readonly number[] = [0x1c2060, 0x22266a, 0x2a2c70, 0x343476, 0x4a4078, 0x564474, 0x5c4866];
 
-/** Sunlight in the sky: the shafts from the top of the level and the specks drifting across it. */
-export const SunLight = {
-  ray: 0xfff4d0,
-  mote: 0xf0f4ff,
-} as const;
+/** The evening haze streaked across the sky: a dusky rose no lighter than the horizon band. */
+export const EVENING_HAZE = 0x68445a;
 
-/** The veil over a lightning zone's storm cell: a dark slate-violet, drawn translucent. */
+/** The veil over a sky course's dark stretches (`level.dark`): a dark slate-violet, drawn translucent. */
 export const STORM_TINT = 0x1c1838;

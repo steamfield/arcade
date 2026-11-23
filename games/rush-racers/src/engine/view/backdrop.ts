@@ -3,19 +3,21 @@
  * level (joined by line dithering), a caustic shimmer just under the top, painted layers behind
  * the light rays, slow-swaying rays, painted layers in front of them, and drifting motes. For the
  * ocean that is water darkening toward the floor, a far reef ridge, god rays and a mid kelp forest.
- * A theme leaves out caustics, rays or motes by giving no colour for them. Far layers follow less
+ * A theme leaves out caustics, rays or motes by giving no colour for them, and may add thin haze
+ * streaks drifting sideways over the bands (`backdrop-haze.ts`). Far layers follow less
  * of the camera's scroll than near ones. In front of all of that and still behind the terrain, a
  * theme with a cave wall tiles it down every dark column range, so a dark stretch reads as a cave
  * under the dark veil.
  *
  * Every moving part is a pure function of the world tick and the camera
  * scroll, so captures repeat. With reduced motion the time-driven parts hold
- * still (static rays, no drift or shimmer); scroll parallax stays because it
+ * still (static rays, no drift, haze or shimmer); scroll parallax stays because it
  * only follows the camera.
  */
 import type Phaser from 'phaser';
 import { type Level, TILE, type Vec } from '../../logic/types.ts';
-import type { BackdropSpec, PaintedLayer, Theme } from '../themes/types.ts';
+import type { BackdropSpec, HazeSpec, PaintedLayer, Theme } from '../themes/types.ts';
+import { createHaze } from './backdrop-haze.ts';
 import { Layer } from './layers.ts';
 
 /** The backdrop behind the course, built once per screen. */
@@ -30,7 +32,7 @@ export interface Backdrop {
 
 /** How the backdrop may move. */
 export interface BackdropOptions {
-  /** Hold rays, caustics and motes still. */
+  /** Hold rays, caustics, haze and motes still. */
   reducedMotion: boolean;
 }
 
@@ -49,6 +51,7 @@ interface AnimatedPart {
 const Depth = {
   bands: Layer.backdrop,
   caustics: Layer.backdrop + 1,
+  haze: Layer.backdrop + 2,
   behindRays: Layer.parallax,
   rays: Layer.parallax + 1,
   aboveRays: Layer.parallax + 2,
@@ -64,6 +67,34 @@ const ADDITIVE = 'ADD';
  * surface, and over open sky (a level surface) the rays simply begin in the air above the waterline.
  */
 const SURFACE_Y = TILE;
+
+/** One part of the backdrop that moves with time or the camera, and what the theme draws it with. */
+export type MovingPart = { kind: 'caustics' | 'rays' | 'motes'; colour: number } | { kind: 'haze'; haze: HazeSpec };
+
+/** The moving parts `theme`'s backdrop has, back to front: only those the theme gives a colour or haze for. */
+export function movingParts(theme: Pick<Theme, 'backdrop' | 'ambient'>): MovingPart[] {
+  const { backdrop, ambient } = theme;
+  const parts: MovingPart[] = [];
+  if (backdrop.caustics !== null) parts.push({ kind: 'caustics', colour: backdrop.caustics });
+  if (backdrop.haze) parts.push({ kind: 'haze', haze: backdrop.haze });
+  if (backdrop.rays !== null) parts.push({ kind: 'rays', colour: backdrop.rays });
+  if (ambient.motes !== null) parts.push({ kind: 'motes', colour: ambient.motes });
+  return parts;
+}
+
+/** Adds one moving `part` of the backdrop to `scene`. */
+function addMovingPart(scene: Phaser.Scene, level: Level, viewport: Viewport, part: MovingPart): AnimatedPart {
+  switch (part.kind) {
+    case 'caustics':
+      return createCaustics(scene, part.colour);
+    case 'haze':
+      return createHaze(scene, level.height * TILE, part.haze, Depth.haze);
+    case 'rays':
+      return createLightRays(scene, viewport, part.colour);
+    case 'motes':
+      return createMotes(scene, viewport, part.colour);
+  }
+}
 
 /**
  * Adds the backdrop for `level`, in `theme`'s look, behind everything else in `scene`.
@@ -85,10 +116,7 @@ export function createBackdrop(
   addDepthBands(scene, level, viewport, backdrop.bands);
   addPaintedLayers(scene, level, viewport, backdrop.layers);
   if (backdrop.cave) addCaveWalls(scene, level, backdrop.cave.texture);
-  const parts: AnimatedPart[] = [];
-  if (backdrop.caustics !== null) parts.push(createCaustics(scene, backdrop.caustics));
-  if (backdrop.rays !== null) parts.push(createLightRays(scene, viewport, backdrop.rays));
-  if (theme.ambient.motes !== null) parts.push(createMotes(scene, viewport, theme.ambient.motes));
+  const parts = movingParts(theme).map((part) => addMovingPart(scene, level, viewport, part));
   // update runs every rendered frame, so it reuses one scroll object rather than allocating per frame.
   const scroll = { x: 0, y: 0 };
 

@@ -6,10 +6,10 @@
  */
 import { Frame } from '../../../art/keys.ts';
 import type { PixelRows } from '../../../art/pixel.ts';
+import { flipRows, mirrorRows, shiftRows } from '../../../art/rows.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { ForestTex, type ForestTexKey } from '../keys.ts';
 import { ForestTerrainPalette } from '../palettes.ts';
-import { flipRows, mirrorRows, shiftRows } from './rows.ts';
 
 /** Mud: sparse dark blotches with a few wet-shine rings, which rise a row in the next frame. */
 const MUD_ROWS = [
