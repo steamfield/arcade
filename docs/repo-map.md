@@ -140,7 +140,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/new-game.ts` | `newGame`: copies a template, renames, registers it in `.claude/launch.json`, installs. |
 | `tools/arcade/src/repo-map.test.ts` | Keeps this map in sync with the files on disk. |
 | `tools/biome/no-nondeterminism.grit` | Biome plugin banning `Math.random`, `Date.now`, `new Date` in logic folders. |
-| `tools/biome/no-inexact-math.grit` | Biome plugin banning `**`, `**=` and engine-dependent `Math` functions in reef-rush logic, so lockstep races match bit for bit. |
+| `tools/biome/no-inexact-math.grit` | Biome plugin banning `**`, `**=` and `Math.pow` in reef-rush logic and allowing only the exactly specified `Math` members it lists, so lockstep races match bit for bit. |
 
 ## Landing page (`apps/site/`)
 

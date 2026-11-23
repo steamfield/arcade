@@ -107,10 +107,18 @@ function writeBoolean(sink: ByteSink, value: boolean): void {
   sink.byte(value ? 1 : 0);
 }
 
+/** The canonical quiet NaN, little-endian. */
+const NAN_BYTES = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xf8, 0x7f] as const;
+
 function writeNumber(sink: ByteSink, value: number): void {
   sink.byte(TAG.number);
-  // Every NaN is written as the one NaN constant, since engines may keep different NaN payloads.
-  doubleView.setFloat64(0, Number.isNaN(value) ? Number.NaN : value, true);
+  // Every NaN is written as these fixed bytes and never through setFloat64, since the spec lets an
+  // engine store any NaN bit pattern there, even for the Number.NaN constant.
+  if (Number.isNaN(value)) {
+    for (const byte of NAN_BYTES) sink.byte(byte);
+    return;
+  }
+  doubleView.setFloat64(0, value, true);
   for (let index = 0; index < DOUBLE_BYTES; index++) sink.byte(doubleView.getUint8(index));
 }
 

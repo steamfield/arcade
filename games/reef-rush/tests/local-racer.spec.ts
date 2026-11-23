@@ -4,8 +4,8 @@
  */
 import type { GameDriver } from '@arcade/testing';
 import { expect, test } from '@arcade/testing/playwright';
-import { HARD_SAVE, hold, IDLE_TO_RESULTS, TITLE_TO_RACE, tap, wait } from '../scenarios/kit.ts';
-import { COUNTDOWN_TICKS } from '../src/logic/race/standings.ts';
+import { HARD_SAVE, hold, IDLE_TO_RESULTS, TITLE_TO_RACE, TOP_ROUTE, tap, wait } from '../scenarios/kit.ts';
+import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../src/logic/race/standings.ts';
 import { TILE } from '../src/logic/types.ts';
 
 /** The racer fields `debugState().racers` carries that these tests read. */
@@ -62,11 +62,26 @@ test('in a ?local=tess race the AI swims slot 1, and a dash kicks tess alone', a
   await game.play([wait(COUNTDOWN_TICKS), wait(SWIM_TICKS)]);
   expect((await racersBySlot(game)).player?.body.x).toBeGreaterThan(start.player?.body.x ?? 0);
 
+  const beforeTap = await game.events();
   await game.play([tap('dash')]);
-  const kicks = (await game.events()).filter((event) => event.type === 'racer.kicked');
-  const tessKick = kicks.find((event) => event.id === 'tess');
-  expect(tessKick, 'the dash press should kick tess').toBeDefined();
-  expect(kicks.filter((event) => event.tick === tessKick?.tick && event.id === 'player')).toEqual([]);
+  const all = await game.events();
+  // The tap is one tick, so everything logged after it was stamped on the tap's tick.
+  const onTap = all.slice(beforeTap.length);
+  const kicks = onTap.filter((event) => event.type === 'racer.kicked');
+  expect(kicks, 'the dash press kicks tess and nobody else').toEqual([
+    expect.objectContaining({ type: 'racer.kicked', id: 'tess' }),
+  ]);
+  expect(onTap.map((event) => event.tick)).toEqual(onTap.map(() => kicks[0]?.tick));
+  expect(all.filter((event) => event.type === 'racer.takeover' && event.id === 'tess')).toEqual([]);
+});
+
+test('a ?local=tess race seats the picked character in the followed slot', async ({ game }) => {
+  const pickedGil = { ...HARD_SAVE, data: { ...HARD_SAVE.data, character: 'gil' } };
+  await startRace(game, { debug: true, local: 'tess', save: pickedGil });
+
+  const racers = (await game.state()) as { racers: { id: string; character: string }[] };
+  expect(racers.racers.find((racer) => racer.id === 'tess')?.character).toBe('gil');
+  expect(racers.racers.filter((racer) => racer.character === 'gil').map((racer) => racer.id)).toEqual(['tess']);
 });
 
 test("the HUD's place in a ?local=tess race is tess's, not slot 1's", async ({ game }) => {
@@ -138,6 +153,28 @@ test('a finished ?local=tess race shows tess on the results and writes no save',
   await game.open({ debug: true, query: { local: 'tess' } });
   expect(await game.summary()).toMatchObject({ scene: 'title' });
   expect(await game.state()).toMatchObject({ save: { races: before.races, bests: before.bests } });
+});
+
+test('a ?debug=1&local=player race faster than the saved best is not a new best and writes no save', async ({
+  game,
+}) => {
+  const slowBest = {
+    ...HARD_SAVE,
+    data: { ...HARD_SAVE.data, best: { easy: null, normal: null, hard: { ticks: RACE_LIMIT_TICKS, place: 4 } } },
+  };
+  await startRace(game, { debug: true, local: 'player', save: slowBest });
+  const raceStart = (await game.events()).length;
+
+  await game.play([...TOP_ROUTE, wait(90)]);
+  const finish = (await game.events()).slice(raceStart);
+  const finished = finish.find((event) => event.type === 'race.finished');
+  expect(finished?.playerTicks).toBeLessThan(RACE_LIMIT_TICKS);
+  expect(await game.summary()).toMatchObject({
+    scene: 'results',
+    local: 'player',
+    result: { ticks: finished?.playerTicks, newBest: false, saveFailed: false },
+  });
+  expect(finish.filter((event) => event.type === 'save.written' || event.type === 'save.failed')).toEqual([]);
 });
 
 test('?debug=1&local=player races as slot 1 and still says it is a ?local= race', async ({ game }) => {

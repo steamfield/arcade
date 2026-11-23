@@ -83,7 +83,10 @@ export interface WorldOptions {
   seed: number;
   /** When set, this profile's AI drives the player's racer and `stepWorld` ignores its input. Used by bot tests. */
   playerBot?: RivalProfile;
-  /** 'everyone' keeps racing after the player finishes, so difficulty tests can time every racer. Default 'player'. */
+  /**
+   * 'player' (the default) ends the race when no active human is left racing; 'everyone' keeps racing
+   * until all four finish, so difficulty tests can time every racer.
+   */
   endsWhen?: 'player' | 'everyone';
   /** Who the player races as. Default 'rudy'. The rivals are drawn from the rest by seed. */
   character?: CharacterId;
@@ -113,8 +116,9 @@ const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 }
  *   with changes), since the world keeps only the id and reads the rest back from the registry.
  * @throws {Error} When the course names a medium that is neither shipped nor registered.
  * @throws {Error} When `humans` is empty, repeats a slot, names an unknown slot, or is not
- *   `['player']` on Easy; when `characters` names an unknown slot or gives one character twice; or
- *   when `character` and `characters.player` differ.
+ *   `['player']` on Easy; when `characters` or `character` names an unknown slot or character, or
+ *   `characters` gives one character twice; when `character` and `characters.player` differ; or when
+ *   `playerBot` is set and `humans` leaves out 'player'.
  */
 export function createWorld(course: Course, events: EventSink<GameEvent>, options: WorldOptions): World {
   requireRegistered(course);
@@ -285,11 +289,18 @@ export function stepRace(world: World, inputs: Partial<Record<RacerId, TickInput
 }
 
 /**
- * Advances the race by one fixed tick. `input` drives the player's racer unless a bot does. In a
- * world whose `humans` is not exactly `['player']`, every other human slot has no input here and is
- * taken over by the AI on its first tick; step such worlds with `stepRace`.
+ * Advances a single-player race by one fixed tick. `input` drives the player's racer unless a bot
+ * does.
+ *
+ * @throws {Error} When `world.humans` is not exactly `['player']`, since the other human slots would
+ *   get no input and be taken over; step such worlds with `stepRace`.
  */
 export function stepWorld(world: World, input: TickInput, dt: number): void {
+  if (world.humans.length !== 1 || world.humans[0] !== 'player') {
+    throw new Error(
+      `stepWorld drives slot player only; this world's humans are [${world.humans.join(', ')}]; use stepRace`,
+    );
+  }
   stepRace(world, { player: input }, dt);
 }
 

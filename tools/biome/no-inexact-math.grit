@@ -1,6 +1,7 @@
 // Lockstep multiplayer needs every JavaScript engine to compute the same race bit for bit.
 // Exponentiation and the transcendental Math functions are not required to round identically
-// across engines, so logic uses multiplication and the exact helpers in src/logic/num.ts.
+// across engines, so logic uses multiplication and the exact helpers in src/logic/num.ts, and may
+// use only the Math members listed below.
 // The Math patterns match the member itself, not only a call, so `values.map(Math.sin)` is caught.
 or {
   `$base ** $exponent` as $power where {
@@ -14,17 +15,27 @@ or {
   `Math.pow` as $ref where {
     register_diagnostic(span=$ref, message="Exponentiation may round differently between JavaScript engines, and a lockstep race must match bit for bit. Multiply instead.", severity="error")
   },
+  // An allowlist, so a Math member no one has checked yet is refused until it is added here. Each
+  // one listed is exactly specified (correctly rounded or exact), so every engine agrees on it.
   `Math.$name` as $ref where {
-    $name <: or {
-      `sin`,
-      `cos`,
-      `tan`,
-      `atan2`,
-      `hypot`,
-      `exp`,
-      `log`
+    $name <: not or {
+      `abs`,
+      `ceil`,
+      `floor`,
+      `round`,
+      `trunc`,
+      `sign`,
+      `max`,
+      `min`,
+      `sqrt`,
+      `fround`,
+      `imul`,
+      `PI`,
+      `SQRT1_2`
     },
-    register_diagnostic(span=$ref, message="This Math function may round differently between JavaScript engines. Use src/logic/num.ts.", severity="error")
+    // Math.pow has its own message above.
+    $name <: not `pow`,
+    register_diagnostic(span=$ref, message="This Math member is not on the exact list and may round differently between JavaScript engines. Use src/logic/num.ts.", severity="error")
   },
   // Destructuring and bracket access would hide which function is used, and logic needs neither.
   `const { $props } = Math` as $destructure where {

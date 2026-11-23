@@ -113,7 +113,8 @@ const DEFAULT_PLAYER_CHARACTER: CharacterId = 'rudy';
  * nobody was given. The player slot, when not fixed, is Rudy if he is free. With only the player's
  * character fixed this is `[player, ...pickRivals(rng, player)]`, the same draws in the same order.
  *
- * @throws {Error} When `fixed` names a slot that is not in RACER_IDS, or gives two slots one character.
+ * @throws {Error} When `fixed` names a slot that is not in RACER_IDS or a character that is not in
+ *   CHARACTER_IDS, or gives two slots one character.
  */
 export function assignCharacters(rng: Rng, fixed: Partial<Record<RacerId, CharacterId>>): Record<RacerId, CharacterId> {
   const given = requireValidChoices(fixed);
@@ -133,9 +134,11 @@ function drawFrom(rng: Rng, pool: CharacterId[]): CharacterId {
 }
 
 /**
- * The characters `fixed` gives out, after checking every slot is real and no character is given twice.
+ * The characters `fixed` gives out, after checking every slot and character is real and no
+ * character is given twice.
  *
- * @throws {Error} When a slot is not in RACER_IDS or a character is given to two slots.
+ * @throws {Error} When a slot is not in RACER_IDS, a character is not in CHARACTER_IDS, or a
+ *   character is given to two slots.
  */
 function requireValidChoices(fixed: Partial<Record<RacerId, CharacterId>>): CharacterId[] {
   const given: CharacterId[] = [];
@@ -144,6 +147,11 @@ function requireValidChoices(fixed: Partial<Record<RacerId, CharacterId>>): Char
       throw new Error(`characters names unknown slot '${slot}'; slots are ${RACER_IDS.join(', ')}`);
     }
     if (character === undefined) continue;
+    if (!CHARACTER_IDS.includes(character)) {
+      throw new Error(
+        `characters gives slot '${slot}' unknown character '${character}'; characters are ${CHARACTER_IDS.join(', ')}`,
+      );
+    }
     if (given.includes(character)) {
       throw new Error(`characters gives '${character}' to two slots; each character races once`);
     }

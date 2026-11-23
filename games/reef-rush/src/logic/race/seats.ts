@@ -38,8 +38,9 @@ export interface Seat {
  * draw from `roster` per slot nobody chose a character for, in slot order (`assignCharacters`).
  *
  * @throws {Error} When `humans` is empty, repeats a slot, names a slot not in RACER_IDS, or is not
- *   `['player']` on Easy; when `characters` names an unknown slot or gives one character twice; or
- *   when `character` and `characters.player` differ.
+ *   `['player']` on Easy; when `characters` names an unknown slot or character or gives one
+ *   character twice; when `character` and `characters.player` differ; or when `playerBot` is set
+ *   and `humans` leaves out 'player'.
  */
 export function seatsFor(
   options: SeatOptions,
@@ -47,6 +48,7 @@ export function seatsFor(
   difficulty: Difficulty,
 ): { humans: RacerId[]; seats: Seat[] } {
   const humans = humanSlots(options.humans, difficulty);
+  requireBotSlotHuman(options.playerBot, humans);
   const characters = assignCharacters(roster, characterChoices(options));
   const seats = RACER_IDS.map((id, index) => seatFor(id, index, characters[id], humans, options.playerBot));
   return { humans, seats };
@@ -78,6 +80,18 @@ function humanSlots(humans: readonly RacerId[] | undefined, difficulty: Difficul
     );
   }
   return RACER_IDS.filter((id) => humans.includes(id));
+}
+
+/**
+ * Checks a test bot has the player slot to drive, since `playerBot` replaces that slot's person.
+ *
+ * @throws {Error} When `playerBot` is set and `humans` does not include 'player'.
+ */
+function requireBotSlotHuman(playerBot: RivalProfile | undefined, humans: readonly RacerId[]): void {
+  if (!playerBot || humans.includes('player')) return;
+  throw new Error(
+    `playerBot drives the player slot, but humans is [${humans.join(', ')}]; add 'player' to humans or drop playerBot`,
+  );
 }
 
 /**

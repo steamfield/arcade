@@ -1,6 +1,6 @@
 /**
  * The local racer: the slot this screen follows with its camera, HUD, sounds and effects. The
- * runtime registers it for each race with `followRacer`; views that hold only a world ask
+ * runtime registers it for each race with `setLocalRacer`; views that hold only a world ask
  * `localOf` or `localIdOf`. A world nobody registered follows slot `player`, so views built in
  * tests, and every race without `?local=`, behave as they always have.
  */
@@ -10,11 +10,11 @@ import type { Racer, RacerId, World } from '../logic/types.ts';
 const followed = new WeakMap<World, RacerId>();
 
 /** Makes `id` the racer this screen follows in `world`. */
-export function followRacer(world: World, id: RacerId): void {
+export function setLocalRacer(world: World, id: RacerId): void {
   followed.set(world, id);
 }
 
-/** The slot this screen follows in `world`: the one `followRacer` set, else `player`. */
+/** The slot this screen follows in `world`: the one `setLocalRacer` set, else `player`. */
 export function localIdOf(world: World): RacerId {
   return followed.get(world) ?? 'player';
 }

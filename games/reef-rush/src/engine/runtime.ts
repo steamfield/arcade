@@ -38,7 +38,7 @@ import { moveCharacter } from './character-select.ts';
 import { applyStage, stageFor } from './debug-stage.ts';
 import { type PagePress, turnPage } from './how-to-play.ts';
 import { input } from './input.ts';
-import { followRacer, localOf } from './local-racer.ts';
+import { localOf, setLocalRacer } from './local-racer.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 import { raceProgress } from './race-progress.ts';
 import { assertCourseAssets } from './themes/course-assets.ts';
@@ -278,7 +278,7 @@ export class Runtime {
   }
 
   /**
-   * Builds a fresh world on the course with slot 1 as `selectedCharacter` and starts the race
+   * Builds a fresh world on the course with the local slot as `selectedCharacter` and starts the race
    * scene at the countdown. The seed moves on with every recorded race, so a rematch differs (rivals
    * included) while a test run still repeats. A `?local=` race makes its slot the only human one,
    * follows it, and runs Easy as Normal (Easy's guide is for slot 1 alone).
@@ -288,11 +288,13 @@ export class Runtime {
     const difficulty = this.raceDifficulty();
     this.world = createWorld(this.course, this.events, {
       seed,
-      character: this.selectedCharacter,
       difficulty,
-      ...(this.localSlot ? { humans: [this.localSlot] } : {}),
+      // The picked character goes to the slot this person races in; a default race keeps `character`.
+      ...(this.localSlot
+        ? { humans: [this.localSlot], characters: { [this.localSlot]: this.selectedCharacter } }
+        : { character: this.selectedCharacter }),
     });
-    followRacer(this.world, this.localRacer);
+    setLocalRacer(this.world, this.localRacer);
     this.hintMemory = newHintMemory();
     this.hintConfig = hintConfig(this.save?.races ?? 0, difficulty);
     this.hints = NO_HINTS;
@@ -525,7 +527,9 @@ export class Runtime {
     const before = this.save ?? NEW_GAME;
     const difficulty = this.world?.difficulty ?? this.settings.difficulty;
     const courseId = this.world?.course ?? this.course.id;
-    this.lastResult = { result, newBest: isNewBest(before, courseId, difficulty, result), saveFailed: false };
+    // A debug race saves nothing, so it never sets a best.
+    const newBest = !this.debugRace && isNewBest(before, courseId, difficulty, result);
+    this.lastResult = { result, newBest, saveFailed: false };
     this.resultsIn = RESULTS_DELAY_TICKS;
     if (this.debugRace) return;
     void this.persist(recordRace(before, courseId, difficulty, result), 'Race result');

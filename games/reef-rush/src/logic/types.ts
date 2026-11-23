@@ -341,7 +341,7 @@ export interface RaceState {
   raceTick: number;
   /** Race tick on which the third rival finished, or null. Starts the DNF grace period. */
   rivalsDoneAt: number | null;
-  /** 'player' ends the race when the player finishes (play); 'everyone' runs until all four do (bot tests). */
+  /** 'player' ends the race when no active human is left racing (play); 'everyone' runs until all four finish (bot tests). */
   endsWhen: 'player' | 'everyone';
   result: RaceResult | null;
 }

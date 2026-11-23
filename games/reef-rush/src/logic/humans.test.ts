@@ -12,7 +12,7 @@ import type { GameEvent } from './events.ts';
 import { hashWorld } from './hash.ts';
 import { COUNTDOWN_TICKS, DNF_GRACE_TICKS } from './race/standings.ts';
 import { courseFromLevel, eventsIn, hold, IDLE, placeOnTile, racerOf, ticksOf } from './test-world.ts';
-import { CHARACTER_IDS, type RacerId, RNG_SALTS, TILE, type TickInput, type World } from './types.ts';
+import { CHARACTER_IDS, type CharacterId, type RacerId, RNG_SALTS, TILE, type TickInput, type World } from './types.ts';
 import { createWorld, stepRace, stepWorld, type WorldOptions } from './world.ts';
 
 type Inputs = Partial<Record<RacerId, TickInput>>;
@@ -88,6 +88,15 @@ describe('who races as a human', () => {
     expect(hashWorld(viaStepWorld)).toBe(hashWorld(viaStepRace));
   });
 
+  it('refuses to step a world with humans other than the player alone through stepWorld', () => {
+    const { world } = countdownOn({ humans: ['tess'] });
+
+    expect(() => stepWorld(world, IDLE, TICK_DT)).toThrow(
+      "stepWorld drives slot player only; this world's humans are [tess]; use stepRace",
+    );
+    expect(world.tick).toBe(0);
+  });
+
   it('stores human slots in slot order, each with the player profile and no AI, and the rest as rivals', () => {
     const { world } = countdownOn({ humans: ['tess', 'player'] });
 
@@ -122,6 +131,21 @@ describe('who races as a human', () => {
       /character 'nib' and characters.player 'gil' disagree/,
     ],
     ['two humans on Easy', { difficulty: 'easy', humans: ['player', 'tess'] }, /\[player, tess\] on Easy/],
+    [
+      'a player bot without the player slot human',
+      { humans: ['tess'], playerBot: BOT_PROFILES.expert },
+      /playerBot drives the player slot, but humans is \[tess\]; add 'player' to humans or drop playerBot/,
+    ],
+    [
+      'an unknown character in characters',
+      { characters: { tess: 'zed' as CharacterId } },
+      /characters gives slot 'tess' unknown character 'zed'; characters are rudy, /,
+    ],
+    [
+      'an unknown character in character',
+      { character: 'zed' as CharacterId },
+      /characters gives slot 'player' unknown character 'zed'; characters are rudy, /,
+    ],
   ])('refuses %s, naming the bad value', (_case, options, message) => {
     expect(() => countdownOn(options)).toThrow(message);
   });
