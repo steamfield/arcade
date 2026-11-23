@@ -12,7 +12,6 @@
  */
 import { TICK_HZ } from '@arcade/core';
 import type Phaser from 'phaser';
-import { DEFAULT_COURSE } from '../../logic/courses/index.ts';
 import type { Course } from '../../logic/courses/types.ts';
 import { playerOf } from '../../logic/racers.ts';
 import {
@@ -51,16 +50,15 @@ export function formatBest(best: { ticks: number; place: number }): string {
 
 /**
  * The name a character's slot goes by on screen in `course`'s world, e.g. "Baron Barnacle" in Reef.
- * The default course is scaffolding: lane 1/a passes the course everywhere and removes it.
  *
  * @throws {Error} When the course names an unknown world.
  */
-export function racerName(character: CharacterId, course: Pick<Course, 'id' | 'world'> = DEFAULT_COURSE): string {
+export function racerName(character: CharacterId, course: Pick<Course, 'id' | 'world'>): string {
   return castName(worldOf(course), character);
 }
 
 /** The first word of a character's name in `course`'s world, for rows and cells too narrow for the whole: "Baron". */
-export function racerShortName(character: CharacterId, course: Pick<Course, 'id' | 'world'> = DEFAULT_COURSE): string {
+export function racerShortName(character: CharacterId, course: Pick<Course, 'id' | 'world'>): string {
   const [first = ''] = racerName(character, course).split(' ');
   return first;
 }
@@ -71,14 +69,15 @@ export const NO_TIME_TEXT = 'TIME UP';
 /**
  * One results standings row, 18 characters (107 px, UI.md's row width): the place in 4, the short
  * name in 7 (6 letters at most, then a space) and the time or TIME UP right-aligned in 7, e.g.
- * "4TH BARON  0:24.46" or "2ND STREAK 3:06.30".
+ * "4TH BARON  0:24.46" or "2ND STREAK 3:06.30". Names come from `course`'s world cast.
  */
 export function standingsRow(
   racer: { character: CharacterId; finished: { tick: number } | null },
   place: number,
+  course: Pick<Course, 'id' | 'world'>,
 ): string {
   const time = racer.finished ? formatRaceTime(racer.finished.tick) : NO_TIME_TEXT;
-  const name = racerShortName(racer.character).toUpperCase();
+  const name = racerShortName(racer.character, course).toUpperCase();
   return `${ordinal(place).toUpperCase().padEnd(4)}${name.padEnd(7)}${time.padStart(7)}`;
 }
 

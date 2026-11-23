@@ -15,11 +15,11 @@ import { levelOf } from '../../logic/courses/index.ts';
 import { bestFor } from '../../logic/records.ts';
 import { NEW_GAME } from '../../logic/save.ts';
 import type { CharacterId, Difficulty } from '../../logic/types.ts';
-import { DIFFICULTIES } from '../../logic/types.ts';
+import { CHARACTER_IDS, DIFFICULTIES } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
-import { Frame, Tex } from '../art/keys.ts';
+import { Frame } from '../art/keys.ts';
 import { BUTTON_HEIGHT } from '../art/ui/button.ts';
-import { MedalFrame, type MedalFrameKey, PortraitFrame, UiTex } from '../art/ui/keys.ts';
+import { MedalFrame, type MedalFrameKey, UiTex } from '../art/ui/keys.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { centreOnStage } from '../centre-on-stage.ts';
@@ -31,6 +31,8 @@ import { isTouchScreen } from '../touch.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { createMenuView, type MenuView, OPTION_LABELS } from '../view/menu-view.ts';
 import { formatRaceTime, ordinal } from '../view/race-text.ts';
+import type { ArtRef } from '../worlds/art-ref.ts';
+import { skinFor } from '../worlds/index.ts';
 
 /** UI.md "Title" rects, in game px. */
 const LOGO_AT = { x: 64, y: 28, scale: 2 } as const;
@@ -59,13 +61,21 @@ const BLINK = { on: 32, off: 16 } as const;
 /** Racer sprites are 16 px wide and swap swim frames this often. */
 const RACER_WIDTH = 16;
 const STROKE_TICKS = 8;
-/** Who swims past, each one's speed across the lane in px per tick, and where it starts, so they spread out and overtake. */
-const SWIMMERS: readonly { character: CharacterId; speed: number; offset: number }[] = [
-  { character: 'rudy', speed: 0.75, offset: 210 },
-  { character: 'gil', speed: 0.6, offset: 150 },
-  { character: 'streak', speed: 0.9, offset: 60 },
-  { character: 'onyx', speed: 0.5, offset: 0 },
+/**
+ * Each title racer's speed across the lane in px per tick and where it starts, so they spread out and
+ * overtake. The first four character slots take these in order.
+ */
+const LANE_PACE: readonly { speed: number; offset: number }[] = [
+  { speed: 0.75, offset: 210 },
+  { speed: 0.6, offset: 150 },
+  { speed: 0.9, offset: 60 },
+  { speed: 0.5, offset: 0 },
 ];
+/** Who swims past: the first character slots, one per lane pace. */
+const SWIMMERS: readonly { character: CharacterId; speed: number; offset: number }[] = LANE_PACE.map((pace, index) => ({
+  character: CHARACTER_IDS[index] as CharacterId,
+  ...pace,
+}));
 const MEDAL_FOR_PLACE: Partial<Record<number, MedalFrameKey>> = {
   1: MedalFrame.first,
   2: MedalFrame.second,
@@ -104,11 +114,12 @@ export class TitleScene extends Phaser.Scene {
     // Drawn by the full-view camera (depth below 0), so they swim from edge to edge of the window.
     const at = baseOffset(this.scale);
     this.laneWidth = this.scale.width;
+    const { cast } = skinFor(backdropCourse);
     this.swimmers = SWIMMERS.map(({ character, speed, offset }) => ({
       speed,
       offset: offset + at.x,
       image: this.add
-        .image(0, RACER_LANE.y + at.y, Tex[character], Frame.a)
+        .image(0, RACER_LANE.y + at.y, cast.racers[character], Frame.a)
         .setOrigin(0, 0)
         .setDepth(RACER_LANE.depth),
     }));
@@ -121,7 +132,8 @@ export class TitleScene extends Phaser.Scene {
     this.bestCards = {};
     for (const level of DIFFICULTIES) {
       const best = bestFor(save, rt.course.id, level);
-      if (best) this.bestCards[level] = addBestCard(this, best, rt.save?.character ?? NEW_GAME.character);
+      if (best)
+        this.bestCards[level] = addBestCard(this, best, cast.portraits[rt.save?.character ?? NEW_GAME.character]);
     }
     this.rt.entered('title');
     this.update();
@@ -190,7 +202,7 @@ interface BestCard {
  * The raised best-time card, built hidden: a medal for a podium best (else the saved character's
  * portrait), the place, and the time.
  */
-function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }, character: CharacterId): BestCard {
+function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }, portrait: ArtRef): BestCard {
   const parts: { setVisible(visible: boolean): unknown }[] = [
     createPanel(scene, BEST_CARD.x, BEST_CARD.y, BEST_CARD.w, BEST_CARD.h, 'raised'),
   ];
@@ -198,9 +210,7 @@ function addBestCard(scene: Phaser.Scene, best: { ticks: number; place: number }
   parts.push(
     medal
       ? scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y, UiTex.medals, medal).setOrigin(0, 0)
-      : scene.add
-          .image(BEST_BADGE_AT.x, BEST_BADGE_AT.y - 1, UiTex.portraits, PortraitFrame[character])
-          .setOrigin(0, 0),
+      : scene.add.image(BEST_BADGE_AT.x, BEST_BADGE_AT.y - 1, portrait.texture, portrait.frame).setOrigin(0, 0),
     createLabel(scene, BEST_PLACE_AT.x, BEST_PLACE_AT.y, `BEST ${ordinal(best.place)}`, { tone: 'dim' }),
     createLabel(scene, BEST_TIME_AT.x, BEST_TIME_AT.y, formatRaceTime(best.ticks), { tone: 'foam' }),
   );
