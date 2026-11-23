@@ -179,11 +179,43 @@ Depends on: phase 2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/engine/worlds/thornwood/cast.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/racers.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/portraits.ts | contracts | games/rush-racers/src/engine/worlds/skins.test.ts | opus | pending | | cast art covers every slot, contrast holds |
-| b | M | games/rush-racers/src/engine/worlds/thornwood/objects.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/items.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/pickups.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/enemies.ts | contracts | games/rush-racers/src/engine/worlds/skins.test.ts | opus | pending | | object art covers every key |
-| c | M | games/rush-racers/src/engine/themes/forest.ts, games/rush-racers/src/engine/themes/forest/, games/rush-racers/src/engine/audio/songs/thornwood.ts | contracts, games/rush-racers/src/engine/themes/ocean.ts | games/rush-racers/src/engine/themes/course-assets.test.ts | opus | pending | | theme and song resolve, contrast holds |
+| a | M | games/rush-racers/src/engine/worlds/thornwood/cast.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/racers.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/portraits.ts, games/rush-racers/src/engine/art/sprites/sprites.test.ts | contracts | games/rush-racers/src/engine/worlds/thornwood/cast.test.ts | opus | pending | | cast art covers every slot, contrast holds |
+| b | M | games/rush-racers/src/engine/worlds/thornwood/objects.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/items.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/pickups.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/enemies.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/attack.ts | contracts | games/rush-racers/src/engine/worlds/thornwood/objects.test.ts | opus | pending | | object art covers every key |
+| c | M | games/rush-racers/src/engine/themes/forest.ts, games/rush-racers/src/engine/themes/forest/, games/rush-racers/src/engine/audio/songs/thornwood.ts | contracts, games/rush-racers/src/engine/themes/ocean.ts | games/rush-racers/src/engine/themes/forest.test.ts | opus | pending | | theme and song resolve, contrast holds |
 
-(Test cases and briefs written during phase 2. The phase 3 scaffold registers `forest` in `THEMES`, `thornwood` in songs and `ThemeId`/`SongId`, and points `run-test` at them.)
+Scaffold contents: `ThemeId` gains `forest` and `SongId` `thornwood`; `THEMES.forest` is a placeholder (ocean's look under id `forest`) and `songs.thornwood` the race song renamed; `run-test` names both. `themes/forest/palettes.ts` fixes the forest's colours as a contract: dusky canopy greens (`WOOD_BANDS`, seven bands about as dark as `WATER_BANDS`), far and near tree silhouettes, terrain (earth, cracked stone, branch, mud), hazards (thorn bush, wasp), so every racer and all global art keep 3:1 against them. `engine/worlds/thornwood/keys.ts` names every Thornwood texture and frame (`ThornTex`, `ThornIconFrame`, `ThornPortraitFrame`); `worlds/thornwood/cast.ts` and `objects.ts` hold today's placeholder skins (Reef textures, Thornwood words) and export `registerThornwoodCast(scene)` and `registerThornwoodObjects(scene)` as no-ops; `worlds/thornwood.ts` is wiring only. `worlds/index.ts` gains `assertSkinTextures(textures, skin)`, called at boot after textures register, which throws naming the world and key for any texture or frame the skin names that doesn't exist (the check deferred from phase 1).
+
+Test cases:
+- Cast art: every Thornwood slot has a 16x12 racer texture facing right with run-stride frames `a` and `b` drawn around the same 12x10 body as Reef's racers, a 16x16 portrait and a 7x7 head in the same palette; each main colour holds 3:1 against every theme's contrast bands (`sprites.test.ts`'s rule, applied to every skin's cast); the look matches the cast list in Assumptions (badger in a lamp helmet, lanky hare, red fox, black panther cub, chipmunk in goggles, mossy-crowned tortoise, owl in a scarf, grey wolf).
+- Object art: a 9x9 icon and an in-world sprite for each of the ten items in Thornwood's form (Rocket Boots, Sap Shield, Burr Ball, Mud Pie, Firefly Jar, Boulder, Homing Bee, Tailwind, Snare Vine, Copycat); attack art (bee in flight with `a`, `b`, `latched`, tailwind streak, snare streak, mud cloud, sap bubble, loose glow); the `?` crate with `closed` and `open` frames and the acorn; beetle, boar (with `bite` and `stagger` frames like the shark) and snake head and body; marks; glints for thorn bush and wasp.
+- `assertSkinTextures` passes at boot for both skins and throws naming world and key when a texture or frame is missing.
+- Forest theme: tiles for rock (earth with a grass top), coral (cracked stone), ledge (a branch you jump up through); mud and wind cells flow (mud bubbles, gust streaks, rising and falling leaves); a finish gate; debris chips; backdrop bands from `WOOD_BANDS` with far and near tree layers and light shafts through the canopy; drifting pollen motes; air particles (rise slowly, fall faster than in water, no heavy drag); thorn bush and wasp hazard sprites (the wasp animated); a root-cave dark tint; a dust trail. `assertCourseAssets(run-test)` passes; the urchin body and every racer hold 3:1 against the forest bands.
+- Song `thornwood`: parses, loops, its own key, tempo and hook (a woodsy, bouncy chase, not a reharmonised race theme); `songs.test.ts` passes; the sfx pin over Sunlit is unchanged.
+- Reef is untouched: the Sunlit how-to-play and race captures compare equal to the phase 2 baseline.
+
+#### Lane a brief
+
+- Goal: Thornwood's cast drawn: eight land critters with run strides, portraits and heads.
+- Interface: `worlds/thornwood/cast.ts` exports `THORNWOOD_CAST: CastSkin` (keep the ability text the scaffold moved there) and `registerThornwoodCast(scene)`, which draws every texture its keys in `worlds/thornwood/keys.ts` name for the cast (racers, portraits, heads) through `drawSheets` the way `art/sprites/racers.ts` and `art/ui/portraits.ts` do. Put the pixel art in `worlds/thornwood/sprites/racers.ts` and `sprites/portraits.ts`, with a `ThornwoodPalette` per slot like `CharacterPalette`.
+- Behavior: the "Cast art" test case. Each critter reads at 16x12 by silhouette (the hare's ears, the tortoise's shell, the owl's round head, the wolf's snout); frames `a` and `b` are a two-step run cycle, not a swim stroke; light from the top left, dark outline, thin limbs as 1 px lines, as in `racers.ts`'s header.
+- Out of scope: objects (lane b), theme and song (lane c), any change to Reef's art.
+- Done when: `pnpm arcade test rush-racers src/engine/worlds src/engine/art` passes with the cast contrast and size tests extended to Thornwood, `--skip-tests` check passes, and a `see --query course=run-test` capture shows the eight critters (look at it; check the select card and results too).
+
+#### Lane b brief
+
+- Goal: Thornwood's objects drawn: items, attacks, crate and acorn, enemies, marks, glints.
+- Interface: `worlds/thornwood/objects.ts` exports `THORNWOOD_OBJECTS: ObjectSkin` (keep the scaffold's Thornwood text) and `registerThornwoodObjects(scene)`, drawing every object texture and icon frame `worlds/thornwood/keys.ts` names. Pixel art in `worlds/thornwood/sprites/items.ts` (icons and in-world items), `sprites/pickups.ts` (crate, acorn), `sprites/enemies.ts` (beetle, boar, snake, marks) and attack art where it fits; frames follow `Frame` in `art/keys.ts` exactly as Reef's do, since the views ask for them by those names.
+- Behavior: the "Object art" test case. Icons stay legible at 9x9 on the HUD well; the `?` crate reads as a block you hit from below (a `?` on its face, a pop-open frame); the acorn is as bright as the pearl so it reads on the forest bands; enemies hold 3:1 against the forest bands.
+- Out of scope: cast (lane a), theme and song (lane c), Reef's art.
+- Done when: `pnpm arcade test rush-racers src/engine/worlds src/engine/art` passes, the `--skip-tests` check passes, and `see --query course=run-test` plus `see --query stage=enemy-modes&course=run-test` (or the nearest enemy stage) captures show the new objects.
+
+#### Lane c brief
+
+- Goal: the forest theme and Thornwood's song.
+- Interface: `themes/forest.ts` exports `FOREST_THEME` via `defineTheme`, replacing the scaffold placeholder, with its art under `themes/forest/` (keys, sprites, palettes; the scaffold's `palettes.ts` colours are the contract and may only change if every contrast test still passes). `audio/songs/thornwood.ts` exports `thornwood` in the game's notation, replacing the placeholder.
+- Behavior: the "Forest theme" and "Song" test cases. Terrain stays mid-value so racers pop; the branch tile is visibly thin so it reads as jump-through; mud and wind tiles read without hiding racers; the root-cave dark tint is near-black green.
+- Out of scope: cast and objects (lanes a and b), Reef's ocean theme, sfx.
+- Done when: `pnpm arcade test rush-racers src/engine/themes src/engine/audio src/engine/art` passes, the `--skip-tests` check passes, the Sunlit captures are unchanged, and a `see --query course=run-test` capture shows the forest (look at it).
 
 ### Phase 4: rivals that platform
 
