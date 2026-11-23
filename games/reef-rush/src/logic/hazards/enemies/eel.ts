@@ -23,8 +23,9 @@ const HOLES: readonly { wall: Vec; out: Vec }[] = [
 const HIDDEN_TICKS = EEL.cycleTicks - EEL.telegraphTicks - EEL.lungeTicks;
 
 /**
- * Ticks of start offset per column and per row of an eel's home tile. Neither shares a factor with
- * EEL.cycleTicks, so eels a tile or two apart start far apart in their cycle.
+ * Ticks of start offset per column and per row of an eel's home tile. A column step shifts an eel's
+ * start by 37 ticks and a row step by 11; neither shares a factor with EEL.cycleTicks, so eels in a
+ * row or a column spread through the cycle, though some nearby diagonal pairs land within a few ticks.
  */
 const START_TICKS_PER_COL = 37;
 const START_TICKS_PER_ROW = 11;
@@ -57,7 +58,7 @@ export function eelOutward(level: Level, home: Vec): Vec {
 }
 
 /**
- * Sets a newly made eel to where its start offset, `(home.x * 37 + home.y * 11) % EEL.cycleTicks`
+ * Sets a newly made eel to where its start offset, `(home.x * START_TICKS_PER_COL + home.y * START_TICKS_PER_ROW) % EEL.cycleTicks`
  * ticks, falls in its hidden → windup → lunge cycle, and places it there (out of its hole when that is
  * mid-lunge). Emits nothing: an eel that starts in its warning telegraphs at its next one.
  */

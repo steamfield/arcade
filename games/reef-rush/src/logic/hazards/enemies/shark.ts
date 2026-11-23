@@ -110,7 +110,7 @@ function charge(world: World, shark: Enemy, racers: readonly Racer[]): void {
  */
 function steerCharge(world: World, shark: Enemy, racers: readonly Racer[]): void {
   const turn = tuningOf(world).shark.chargeTurn;
-  if (turn === 0) return;
+  if (turn <= 0) return;
   const target = racers.find((racer) => racer.id === shark.target && racer.finished === null);
   if (!target || isDowned(target) || isInvulnerable(target)) return;
   const heading = unitFrom(ORIGIN, shark.vel, { x: shark.facing, y: 0 });
