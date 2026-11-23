@@ -249,7 +249,7 @@ Scaffold: f5be7c7
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/engine/, games/reef-rush/tests/local-racer.spec.ts, games/reef-rush/DESIGN.md | contracts, games/reef-rush/src/logic/racers.ts | | opus | running | deliver/reef-online-3a | local racer tests pass |
+| a | M | games/reef-rush/src/engine/, games/reef-rush/tests/local-racer.spec.ts, games/reef-rush/DESIGN.md, games/reef-rush/src/logic/world.ts | contracts, games/reef-rush/src/logic/racers.ts | | opus | running | deliver/reef-online-3a | local racer tests pass |
 
 Test cases, `tests/local-racer.spec.ts` (Playwright through the `game` fixture, which the lane writes; assert on `debugSummary()`, `debugState()` and events, never pixels):
 
