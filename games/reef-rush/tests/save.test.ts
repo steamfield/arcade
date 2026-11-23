@@ -24,6 +24,11 @@ describe('save compatibility', () => {
     for (let v = 1; v <= SAVE_VERSION; v++) expect(versions).toContain(v);
   });
 
+  // Every fixture, including ones added later without their own assertions, must still load.
+  it.each(fixtures)('%s still loads with the current code', async (file) => {
+    expect((await load(file)).kind).toBe('ok');
+  });
+
   it('upgrades a v1 save to a new game: nothing in the template save carries over', async () => {
     expect(await load('save-v1.json')).toEqual({ kind: 'ok', migratedFrom: 1, data: NEW_GAME });
   });
