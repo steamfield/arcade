@@ -26,8 +26,8 @@ export const ForestTerrainPalette = {
 
 /** Hazard palettes: dark bodies with hot accents, so danger reads by shape and value, not hue alone. */
 export const ForestHazardPalette = {
-  /** Thorn bush: near-black stems, a lit purple-red body that holds 3:1 under the canopy, thorn tips. */
-  thornBush: [0x140810, 0xd0709a, 0xffd0a0],
+  /** Thorn bush: near-black stems, a lit pink body that holds 3:1 off the lightest canopy band, thorn tips. */
+  thornBush: [0x140810, 0xe888b0, 0xffd0a0],
   /** Wasp: outline, yellow body, black stripes and wing shine. */
   wasp: [0x1a1206, 0xffd23a, 0x2a2010, 0xe8f4ff],
 } as const satisfies Record<string, Palette>;
