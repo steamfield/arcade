@@ -97,10 +97,23 @@ describe('the ocean theme', () => {
 
   it('lays the tileset out in OceanTile order on the 16 px grid, and points terrain at it', () => {
     const tiles = sheetFor(OceanTex.tiles);
-    expect(tiles?.frames.map((frame) => frame.name)).toEqual(['rock', 'coral']);
+    expect(tiles?.frames.map((frame) => frame.name)).toEqual(['rock', 'coral', 'ledge']);
     expect(Object.keys(OceanTile)).toEqual(['rock', 'coral']);
     expect(measureFrames(OceanTex.tiles, tiles?.frames ?? [])).toEqual({ width: 16, height: 16 });
-    expect(OCEAN_THEME.terrain).toMatchObject({ tileset: 'tiles', tiles: { rock: 0, coral: 1 }, glyphTiles: {} });
+    expect(OCEAN_THEME.terrain).toMatchObject({
+      tileset: 'tiles',
+      tiles: { rock: 0, coral: 1, ledge: 2 },
+      glyphTiles: {},
+    });
+  });
+
+  it('draws a ledge as a thin branch along the top of its tile and nothing below', () => {
+    const ledge = sheetFor(OceanTex.tiles)?.frames.find((frame) => frame.name === 'ledge');
+    const filledRows = ledge?.rows.map((row) => /[^.]/.test(row)) ?? [];
+    const firstEmptyRow = filledRows.indexOf(false);
+    expect(firstEmptyRow).toBeGreaterThan(0);
+    expect(firstEmptyRow).toBeLessThanOrEqual(4);
+    expect(filledRows.slice(firstEmptyRow).some(Boolean)).toBe(false);
   });
 
   it("keeps the urchin's body 3:1 off every ocean contrast band, so it reads in the deepest water", () => {

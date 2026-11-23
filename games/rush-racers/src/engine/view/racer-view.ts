@@ -2,7 +2,8 @@
  * One racer's sprite, synced from logic state: whole-pixel position, a flip for
  * facing, a two-frame swim stroke that quickens with speed, a squash-then-stretch
  * when a kick fires, a flicker while invulnerable (3 Hz, the WCAG ceiling) and,
- * for the player, a one-off white flash on gaining a place. All timing is counted
+ * for the player, a one-off white flash on gaining a place. A racer that falls out of the level is
+ * hidden from `racer.fell` until `racer.respawned`. All timing is counted
  * in logic ticks so captures repeat. Under reduced motion the sprite holds its
  * shape, shows invulnerability as a steady see-through look and skips the flash;
  * the kick puff and place-up sparkles in `fx/` still carry those moments.
@@ -19,8 +20,9 @@ import { createRacerMoments } from './racer-moments.ts';
 /** One racer's sprite, kept in step with its logic state. */
 export interface RacerView {
   /**
-   * Starts the kick squash on this racer's `racer.kicked` and, for the player, the flash on a
-   * `player.place` that gains a place, from world tick `tick` (the drain's world tick).
+   * Starts the kick squash on this racer's `racer.kicked`, hides the sprite from its `racer.fell`
+   * until its `racer.respawned` and, for the player, starts the flash on a `player.place` that
+   * gains a place, from world tick `tick` (the drain's world tick).
    */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
   /**
@@ -59,11 +61,16 @@ export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion
   // Kicks fire along the input, so the squash follows whichever axis the racer is moving on.
   let kickVertical = false;
   let kickAxisFor = Number.NaN;
+  let fallen = false;
 
   return {
     onEvents(events, tick) {
       moments.onEvents(events, tick);
-      for (const event of events) if (event.type === 'racer.kicked' && event.id === racer.id) kickedAt = tick;
+      for (const event of events) {
+        if (event.type === 'racer.kicked' && event.id === racer.id) kickedAt = tick;
+        if (event.type === 'racer.fell' && event.id === racer.id) fallen = true;
+        if (event.type === 'racer.respawned' && event.id === racer.id) fallen = false;
+      }
     },
     sync(current, tick) {
       const { body } = current;
@@ -72,6 +79,7 @@ export function createRacerView(scene: Phaser.Scene, racer: Racer, reducedMotion
         kickVertical = Math.abs(body.vy) > Math.abs(body.vx);
       }
       sprite.setPosition(Math.round(body.x + body.w / 2), Math.round(body.y + body.h / 2));
+      sprite.setVisible(!fallen);
       sprite.setFlipX(current.facing < 0);
       sprite.setFrame(strokeFrame(Math.hypot(body.vx, body.vy), tick));
       const { stretch, flashing } = moments.look(tick, reducedMotion);
