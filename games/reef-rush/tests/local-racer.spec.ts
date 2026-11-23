@@ -158,6 +158,10 @@ test('a finished ?local=tess race shows tess on the results and writes no save',
 test('a ?debug=1&local=player race faster than the saved best is not a new best and writes no save', async ({
   game,
 }) => {
+  // A whole TOP_ROUTE race with the debug overlay drawn every frame runs past 30 s on CI's
+  // software renderer. A staged race would be shorter, but staged races never save, which is what
+  // this test checks.
+  test.slow();
   const slowBest = {
     ...HARD_SAVE,
     data: { ...HARD_SAVE.data, best: { easy: null, normal: null, hard: { ticks: RACE_LIMIT_TICKS, place: 4 } } },
