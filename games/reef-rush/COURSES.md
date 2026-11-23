@@ -111,7 +111,7 @@ pnpm --filter game-reef-rush exec vitest run --project unit src/logic/conformanc
 
 ## Add a medium
 
-A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic code calls it through `mediumOf(world)` and never branches on its id (`logic/architecture.test.ts` fails on `=== 'swim'` outside `logic/media/`; `logic/media/boundary.test.ts` fails on a read of `world.nav` outside `logic/media/`).
+A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic code calls it through `mediumOf(world)` and never branches on its id (`logic/architecture.test.ts` fails on `=== 'swim'` outside `logic/media/`; `logic/media/boundary.test.ts` fails on a read of `world.nav` outside `logic/media/`, and on an import of a medium's own modules, such as `logic/media/swim/`, from generic code).
 
 ### Files
 
@@ -126,18 +126,19 @@ A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic c
 | Member | What it is | What swim does |
 | --- | --- | --- |
 | `id` | Registry key, the course's `medium`. | `'swim'` |
-| `tuning` | `base` modifiers, `force`, `drag`, `maxSpeed`, `kick`, and medium-only numbers in `extra`. `modifiersFor` merges `course.tuning` over it. | Today's swim constants; `extra` holds `sink`, `currentForce`, `kelpDragMul`. |
+| `tuning` | `base` modifiers, `force`, `drag`, `maxSpeed`, `kick`, and medium-only numbers in `extra`. `effectiveTuning(world)` (in `logic/media/index.ts`) merges `course.tuning` over it once per course, `extra` key by key; `applyIntent` and `modifiersFor` both read that result, so every override applies. | Today's swim constants; `extra` holds `sink`, `currentForce`, `kelpDragMul`. |
 | `createMotion(body)` | Per-racer movement state the medium owns (`Racer.motion`). | `{}` |
 | `createPilot()` | Per-rival AI state for the medium's `steer`. Today `PilotMemory` is a fixed interface with swim's fields, so a second medium must first turn it into a union (see Files). | Wobble, speed-based stuck count, recovery, aim and replan timer. |
 | `sampleEnvironment(world, racer)` | What the surroundings do to this racer this tick. Takes the racer because a held power-up can change what its holder feels. | The current under the racer (including a Riptide's lane) and whether it's in kelp. |
-| `applyIntent(racer, intent, env, mods, events, dt)` | Velocity, facing and kick cooldown for one tick. Every `MoveModifiers` field must have a visible effect. | Thrust toward the stick, drag, idle sink, current push, kelp drag, kick with cooldown, speed cap. |
+| `applyIntent(racer, intent, env, tuning, mods, events, dt)` | Velocity, facing and kick cooldown for one tick, reading every number from `tuning` (the effective tuning above), never from module constants. Every `MoveModifiers` field must have a visible effect. | Thrust toward the stick, drag, idle sink, current push, kelp drag, kick with cooldown, speed cap. |
 | `buildNav(level, broken)` | Navigation over the level with broken coral gone; rebuilt when coral breaks. | Flow fields toward the finish: steer, smash, ram. |
-| `steer(world, racer, mods, draws, forceRecover)` | A rival's stick, kick, held kick, aim and whether it is recovering. Uses the four `AiDraws` the generic AI draws every tick; `forceRecover` comes from the generic progress backstop (240 ticks without new best progress). | Aim along the steer field with wobble and avoidance, kick when aligned, recover from speed-based stalls. |
+| `steer(world, racer, mods, draws, forceRecover)` | A rival's stick, kick, held kick, aim and whether it is recovering. Uses the four `AiDraws` the generic AI draws every tick; `forceRecover` comes from the generic progress backstop (`PROGRESS_BACKSTOP_TICKS`, 600 racing ticks without new best progress, rivals only; it resets while stunned or trapped and holds while Undertow pulls). | Aim along the steer field with wobble and avoidance, kick when aligned, recover from speed-based stalls. |
 | `enterCost(cell, isBroken, move)` | Cost of entering a cell, for flow-field media. | Today's steer costs (kelp and currents against you cost more). |
 | `aimFrom(world, body, lookaheadTiles)` | Unit aim toward the finish along the medium's way; zero at the finish. | Reads the steer field. |
 | `nextTile(world, tile)` | Offset of the neighbour nearer the finish, or null. Draws the Easy guide's arrow. | Downhill step on the steer field. |
 | `distanceAt(world, tile)` | Distance to the finish from a tile; Infinity when unreachable. | Steer field value. |
-| `validateLevel(level, nav)` | Located problems that make the level unraceable in this medium; empty when fine. `createWorld` throws on the first. | A start that can't reach the finish without breaking coral. |
+| `validateLevel(level, nav)` | Located problems that make the level unraceable in this medium; empty when fine. `createWorld` throws one `LevelError` listing them all, located at the first. | A start that can't reach the finish without breaking coral. |
+| `coralAhead(world, tile, steps)` | Whether unbroken coral lies within `steps` tiles along the medium's way from `tile`; the Puffer item choice asks it. Return false in a medium without breakable coral. | Walks the smash field. |
 | `racerCollision` | `'solid'` racers bump each other; `'ghost'` pass through. | `'solid'` |
 | `effects` | Data the generic push rules read (below). | `dashAxes: 'both'`, bubbles and loose power-ups float up. |
 | `kickRules` | How generic counters read a kick (below). | Every counter on; Gil's spring kick applies when kicking upward. |
@@ -156,7 +157,7 @@ The progress for placing (`World.progress`) is generic and the same in every med
 
 ### Conformance
 
-`logic/conformance/medium.test.ts` runs over every entry in `MEDIA` plus a test-only glide medium: deterministic for the same seed and inputs, caps speed, honours kick cooldown, every `MoveModifiers` field changes motion, progress in open space in each direction the medium says it can move, and a rival gets through an overhang, a 1-tile gap, a shaft with a lip and a drop without stalling. Then race a course in the medium through course conformance and its own difficulty bars.
+`logic/conformance/medium.test.ts` runs over every entry in `MEDIA` plus a test-only glide medium with its own navigation and pilot (`conformance/glide.ts`, `glide-nav.ts`, `glide-pilot.ts`; a working example of a second medium): deterministic for the same seed and inputs, caps speed, honours kick cooldown, every `MoveModifiers` field changes motion, progress in open space in each direction the medium says it can move, and a rival gets through an overhang, a 1-tile gap, a shaft with a lip and a drop without stalling. Then race a course in the medium through course conformance and its own difficulty bars.
 
 ```
 pnpm --filter game-reef-rush exec vitest run --project unit src/logic/conformance
