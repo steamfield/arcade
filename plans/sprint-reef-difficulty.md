@@ -63,7 +63,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/hazards/enemies/, games/reef-rush/src/logic/difficulty-level.ts, games/reef-rush/src/logic/difficulty-level.test.ts | contracts | games/reef-rush/src/logic/hazards/enemies/shark.test.ts, games/reef-rush/src/logic/hazards/enemies/eel.test.ts | opus | running | sprint/reef-difficulty-1a | enemy tests pass, typecheck and lint pass |
+| a | M | games/reef-rush/src/logic/hazards/enemies/, games/reef-rush/src/logic/difficulty-level.ts, games/reef-rush/src/logic/difficulty-level.test.ts | contracts | games/reef-rush/src/logic/hazards/enemies/shark.test.ts, games/reef-rush/src/logic/hazards/enemies/eel.test.ts | opus | merged | sprint/reef-difficulty-1a | enemy tests pass, typecheck and lint pass |
 
 Inline (me): seven new eels on `sunlit-shallows.ts` at (134,7), (205,7), (252,7), (290,16), (352,10), (360,6), (516,4); after lane a merges, re-record TOP_ROUTE so `top-route.test.ts` passes, and run the difficulty bars. A bar that drops in phase 1 is logged and fixed in phase 3's balance pass, not here, since phase 3 reshapes the course again.
 
@@ -78,13 +78,14 @@ Inline (me): seven new eels on `sunlit-shallows.ts` at (134,7), (205,7), (252,7)
 
 ### Phase 2: the surface
 
+Scaffold: 3effaaa
 Demo: `pnpm arcade see reef-rush --scenario breach` (a dash up through the surface reaching a floating clam).
 Depends on: phase 1
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/level/, games/reef-rush/src/logic/media/swim/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/hazards/enemies/shark.ts, games/reef-rush/src/logic/hazards/enemies/shark.test.ts, games/reef-rush/src/logic/status.ts, games/reef-rush/src/logic/surface.test.ts | contracts | | opus | pending | | surface logic tests pass |
-| b | M | games/reef-rush/src/engine/themes/, games/reef-rush/src/engine/view/level-view.ts, games/reef-rush/src/engine/view/backdrop.ts, games/reef-rush/src/engine/fx/event-effects.ts | contracts | | opus | pending | | theme tests pass, see capture shows sky, waterline and cave |
+| a | M | games/reef-rush/src/logic/level/, games/reef-rush/src/logic/media/swim/, games/reef-rush/src/logic/pickups/, games/reef-rush/src/logic/hazards/enemies/shark.ts, games/reef-rush/src/logic/hazards/enemies/shark.test.ts, games/reef-rush/src/logic/status.ts, games/reef-rush/src/logic/surface.test.ts | contracts | | opus | running | sprint/reef-difficulty-2a | surface logic tests pass |
+| b | M | games/reef-rush/src/engine/themes/, games/reef-rush/src/engine/view/level-view.ts, games/reef-rush/src/engine/view/backdrop.ts, games/reef-rush/src/engine/fx/event-effects.ts | contracts | | opus | running | sprint/reef-difficulty-2b | theme tests pass, see capture shows sky, waterline and cave |
 
 Phase 2 scaffold (when phase 1 tags): `Environment.inAir: boolean` in types.ts (query.ts sets it false until lane a), GameEvents `{ type: 'racer.breached'; id: RacerId }` and `{ type: 'racer.splashed'; id: RacerId }` in events.ts, and a test level in `src/logic/surface.test.ts` scaffolded empty for lane a.
 
@@ -124,5 +125,8 @@ Depends on: phase 2
 Inline: insert the surface section, reshape the cave with irregular urchins, eels and pillars, third shark, re-record TOP_ROUTE, re-measure par, run difficulty bars and tune, update DESIGN.md and scenarios.
 
 ## Log
+
+- Lane 1a merged (24ad540). Lane review: eel offset comment and shark turn guard fixed; DESIGN.md shark/eel rows deferred to phase 3's docs pass. Lane review ran in parallel with the merge rather than before it.
+- Phase 2 started before phase 1 tagged: its lanes don't import phase 1 code, and phase 1's Hard sanity bar (Baron 2/5 wins) is being tuned inline meanwhile.
 
 - Plan critique (sonnet): (1) shark count wording fixed: 2 now, 3 after phase 3. (2) Normal and patrol-lane test cases added to lane 1a by message. (3) Inline course and route work for phase 1 named above; bars may drop before phase 3, handled there. (4) Lane 1a told to export the eel start-state helper from eel.ts. (5) Phase 2 notes folded into its briefs: steerCost needs an air case, loose.ts, pearl-drift.ts and status.ts each drift on their own, hasClearSweep is shared with rivals so the shark's air block goes in shark.ts.
