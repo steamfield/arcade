@@ -4,7 +4,7 @@
  * behind it, letting go leaves the arrows dark while it keeps drifting on at almost the same speed,
  * and holding Left burns against its motion, flame ahead, until it stops. On the second pass it
  * drifts past a small planet and its path bends up toward it. Under reduced motion the racer holds
- * still mid-burn with the planet above it, and one caption lists all four moves.
+ * still mid-burn with the planet above and ahead of it, and one caption lists all four moves.
  */
 import { Frame } from '../../art/keys.ts';
 import type { Direction } from '../control-glyphs.ts';
@@ -29,6 +29,8 @@ const ALL_MOVES = [BURN, DRIFT, BRAKE, PULL].join('\n');
 
 /** The planet on the second pass: its centre, above the racer's line and right of the caption, and radius. */
 const PLANET = { x: 190, y: 30, radius: 6, colour: 0x9fb8e8 } as const;
+/** How far left the planet sits on the still page, so it is over the racer and clear of the four-line caption. */
+const STILL_PLANET_SHIFT = 45;
 /**
  * How the planet bends the second pass: the path starts curving up at `fromX`, is `depthAtPlanet`
  * px higher when level with the planet, and leaves on the heading it had there.
@@ -139,9 +141,10 @@ export const buildDriftMovePage: PageBuilder = (kit) => {
   const trail = [0, 1, 2].map(() => kit.bar(0, DRIFTER.y, 2, 1, TRAIL.colour));
   const caption = kit.words(CAPTION.x, CAPTION.top, BURN);
   const stillCaption = kit.words(STILL_CAPTION.x, STILL_CAPTION.top, ALL_MOVES);
-  const planet = planetRows(PLANET.radius).map(({ dy, width }) =>
-    kit.bar(PLANET.x, PLANET.y + dy, width, 1, PLANET.colour),
-  );
+  const planet = planetRows(PLANET.radius).map(({ dy, width }) => {
+    const row = kit.bar(PLANET.x, PLANET.y + dy, width, 1, PLANET.colour);
+    return { row, x: row.x };
+  });
 
   return (tick, reducedMotion) => {
     const t = reducedMotion ? STILL_TICK : tick % DRIFT_PERIOD;
@@ -159,6 +162,8 @@ export const buildDriftMovePage: PageBuilder = (kit) => {
       const dotX = x - TRAIL.offset - i * TRAIL.gap;
       dot.setVisible(beat.trail).setPosition(dotX, pathY(dotX, beat));
     });
-    for (const row of planet) row.setVisible(beat.planet || reducedMotion);
+    for (const { row, x: rowX } of planet) {
+      row.setVisible(beat.planet || reducedMotion).setX(reducedMotion ? rowX - STILL_PLANET_SHIFT : rowX);
+    }
   };
 };
