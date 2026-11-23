@@ -6,6 +6,7 @@
  * its slot until it is used up or knocked loose.
  */
 import type Phaser from 'phaser';
+import { selectedItem, selectedSlot, slotItems } from '../../logic/powerups/inventory.ts';
 import { playerOf } from '../../logic/racers.ts';
 import type { HeldItem, PowerUpKind, World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
@@ -98,8 +99,9 @@ export function createWell(scene: Phaser.Scene, slots: number): { sync(world: Wo
     sync(world) {
       const player = playerOf(world);
       dash.setAlpha(player.kickCooldown === 0 ? 1 : NOT_READY_ALPHA);
-      for (const [slot, view] of views.entries()) syncSlot(view, player.items[slot] ?? null);
-      const selected = player.items[player.selected] ? player.selected : -1;
+      const items = slotItems(player);
+      for (const [slot, view] of views.entries()) syncSlot(view, items[slot] ?? null);
+      const selected = selectedItem(player) ? selectedSlot(player) : -1;
       if (selected !== framedSlot) drawSelectedFrame(frame, layout.slotX[selected]);
       framedSlot = selected;
     },

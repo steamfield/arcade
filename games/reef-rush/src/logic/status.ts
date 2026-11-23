@@ -20,6 +20,14 @@ export function controlledIntent(racer: Racer, intent: Intent): Intent {
 }
 
 /**
+ * True when hits do nothing to the racer: it was hit recently (`status.invulnerable`) or is
+ * cannonballing (`status.cannonball`). Only the first makes the racer flicker.
+ */
+export function isInvulnerable(racer: Racer): boolean {
+  return racer.status.invulnerable > 0 || racer.status.cannonball > 0;
+}
+
+/**
  * Sets a trapped racer's velocity to the medium's straight drift (`effects.trappedDrift`; water floats
  * it up); call after the medium moves it and before moving the body.
  *

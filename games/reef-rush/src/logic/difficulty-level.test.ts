@@ -216,7 +216,7 @@ function afterRivalAttack(
     case 'flash':
     case 'bubble':
     case 'puffer':
-      return { landed: applyHit(world, player, attack, 'tess', centreOf(tess)), player };
+      return { landed: applyHit(world, player, attack, 'tess', centreOf(tess)) !== null, player };
     case 'ink': {
       world.inks.push({ x: centreOf(player).x, y: centreOf(player).y, radius: 20, ttl: 100, owner: 'tess' });
       advanceProjectiles(world, activeRacers(world), 1 / 60);

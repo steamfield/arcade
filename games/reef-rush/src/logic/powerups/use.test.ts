@@ -262,12 +262,12 @@ describe('dashing kinds during a dash', () => {
 });
 
 describe('Cannonball', () => {
-  it('dashes 75 ticks at 250 px/s, inflated and invulnerable the whole way', () => {
+  it('dashes 75 ticks at 250 px/s, inflated and cannonballing the whole way', () => {
     const { world, player } = holding(['cannonball'], GATE);
 
     fireItem(world, player, 0, RIGHT);
 
-    expect(player.status).toMatchObject({ dashing: 75, inflated: 75, invulnerable: 75 });
+    expect(player.status).toMatchObject({ dashing: 75, inflated: 75, cannonball: 75, invulnerable: 0 });
     expect(player.dashSpeed).toBe(250);
     expect(player.body.vx).toBeCloseTo(250, 6);
   });
@@ -284,6 +284,35 @@ describe('Cannonball', () => {
     expect(eventsIn(log, 'coral.broken')).toEqual([{ type: 'coral.broken', tx: 5, ty: 1, by: 'player' }]);
     expect(eventsIn(log, 'racer.hit')).toEqual([{ type: 'racer.hit', id: 'tess', cause: 'puffer', by: 'player' }]);
     expect(player.status.dashing).toBe(54);
+  });
+
+  it('never sets the hit flicker, and a hit during the run does nothing until it ends', () => {
+    const long = `
+      ###########################################
+      #1.......................................F#
+      #2.......................................F#
+      #3.......................................F#
+      #4.......................................F#
+      ###########################################
+    `;
+    const { world, log, player } = holding(['cannonball', 'puffer'], long);
+    step(world, log, 1, hold(RIGHT, { use: true }));
+    const seenInvulnerable: number[] = [];
+    const outcomes: (string | null)[] = [];
+
+    for (let tick = 0; tick < 73; tick++) {
+      outcomes.push(applyHit(world, player, 'urchin', null, centreOf(player)));
+      seenInvulnerable.push(player.status.invulnerable);
+      step(world, log, 1, hold(RIGHT));
+    }
+
+    expect(new Set(outcomes)).toEqual(new Set([null]));
+    expect(new Set(seenInvulnerable)).toEqual(new Set([0]));
+    expect(eventsIn(log, 'racer.hit')).not.toContainEqual(expect.objectContaining({ id: 'player' }));
+    expect(player.items[1]).toEqual({ kind: 'puffer', charges: 2 });
+    expect(player.status.cannonball).toBe(1);
+    step(world, log, 1, hold(RIGHT));
+    expect(applyHit(world, player, 'urchin', null, centreOf(player))).toBe('knocked');
   });
 });
 

@@ -59,6 +59,7 @@ export function noItems(
     status: {
       stunned: 0,
       invulnerable: 0,
+      cannonball: 0,
       slowed: 0,
       trapped: 0,
       inflated: 0,

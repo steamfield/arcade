@@ -45,6 +45,7 @@ import { openClams } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
 import { collectPearls } from './pickups/pearls.ts';
 import { advanceDecoys } from './powerups/decoys.ts';
+import { selectedSlot, slotItems } from './powerups/inventory.ts';
 import { advanceRiptides } from './powerups/riptides.ts';
 import { applyUndertow } from './powerups/undertow.ts';
 import { driveDash, sustainItems, useItems } from './powerups/use.ts';
@@ -295,8 +296,8 @@ export function summarize(world: World) {
     progress: Number.isFinite(player.progress) ? Math.round(player.progress) : null,
     finished: player.finished !== null,
     player: { tile: centreTile(player), kickReady: player.kickCooldown === 0 },
-    items: player.items.map((item) => (item ? `${item.kind}:${item.charges}` : null)),
-    selected: player.selected,
+    items: slotItems(player).map((item) => (item ? `${item.kind}:${item.charges}` : null)),
+    selected: selectedSlot(player),
     pearls: player.pearls,
     stunned: player.status.stunned > 0,
   };

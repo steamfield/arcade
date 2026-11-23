@@ -243,8 +243,10 @@ export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash' | 'squ
 export interface RacerStatus {
   /** Input ignored (intent idle). */
   stunned: number;
-  /** Hits do nothing. */
+  /** Hits do nothing; set by a landed hit, and the racer flickers. */
   invulnerable: number;
+  /** Cannonballing: hits do nothing (`isInvulnerable`), without the hit flicker. */
+  cannonball: number;
   /** Inside another racer's ink: swims at half force. */
   slowed: number;
   /** Inside a bubble: input ignored, floats straight up. */

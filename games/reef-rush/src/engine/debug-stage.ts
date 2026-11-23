@@ -18,6 +18,7 @@
 import { guideDistanceAt, guideFor } from '../logic/guide.ts';
 import { cellAt } from '../logic/level/query.ts';
 import { CHARGES } from '../logic/powerups/charges.ts';
+import { setItems, slotItems } from '../logic/powerups/inventory.ts';
 import { playerOf } from '../logic/racers.ts';
 import { type Level, type PowerUpKind, type Racer, type RacerId, TILE, type Vec, type World } from '../logic/types.ts';
 
@@ -40,6 +41,18 @@ export const STAGES = [
 
 /** A name from `STAGES`. */
 export type StageName = (typeof STAGES)[number];
+
+/**
+ * The items a stage puts in the player's slots from the left, each with the charges a clam gives,
+ * the first selected. `icons-c` holds a lone Undertow, which has one charge, so firing it empties
+ * the inventory.
+ */
+const STAGED_ITEMS: Partial<Record<StageName, readonly PowerUpKind[]>> = {
+  'icons-a': ['homingSquid', 'riptide', 'undertow'],
+  'icons-b': ['mimic', 'cannonball'],
+  'icons-c': ['undertow'],
+  cannonball: ['cannonball'],
+};
 
 /** Ticks a staged effect lasts; long enough to still be showing when a capture is taken. */
 const STAGED_TICKS = 600;
@@ -68,19 +81,20 @@ export function applyStage(world: World, stage: StageName): void {
   const player = playerOf(world);
   const rival = racer(world, 'tess');
   const at = centreOf(player);
+  const kinds = STAGED_ITEMS[stage];
+  if (kinds) {
+    const slots = slotItems(player).map((_, slot) => {
+      const kind = kinds[slot];
+      return kind === undefined ? null : { kind, charges: CHARGES[kind] };
+    });
+    setItems(player, slots, 0);
+  }
   switch (stage) {
     case 'icons-a':
-      holdItems(player, ['homingSquid', 'riptide', 'undertow']);
-      return;
     case 'icons-b':
-      holdItems(player, ['mimic', 'cannonball']);
-      return;
     case 'icons-c':
-      // Undertow has one charge, so firing it empties the inventory.
-      holdItems(player, ['undertow']);
       return;
     case 'cannonball':
-      holdItems(player, ['cannonball']);
       faceFirstCoral(world, player);
       return;
     case 'squid-flight':
@@ -118,15 +132,6 @@ export function applyStage(world: World, stage: StageName): void {
       racer(world, 'squib').status.undertow = STAGED_TICKS;
       return;
   }
-}
-
-/** Fills the player's slots from the left with `kinds`, each with the charges a clam gives, and selects the first. */
-function holdItems(player: Racer, kinds: readonly PowerUpKind[]): void {
-  player.items = player.items.map((_, slot) => {
-    const kind = kinds[slot];
-    return kind === undefined ? null : { kind, charges: CHARGES[kind] };
-  });
-  player.selected = 0;
 }
 
 /**

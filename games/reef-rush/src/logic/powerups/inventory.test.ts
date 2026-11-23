@@ -4,8 +4,9 @@ import type { GameEvent } from '../events.ts';
 import { applyHit } from '../hazards/hits.ts';
 import { centreOf } from '../racers.ts';
 import { courseFromLevel, eventsIn, giveItems, hold, raceOn, racerOf, step } from '../test-world.ts';
+import type { HeldItem } from '../types.ts';
 import { createWorld } from '../world.ts';
-import { cycleSelection, gainItem, knockForHit } from './inventory.ts';
+import { cycleSelection, gainItem, knockSelected, selectedItem, setItems, slotItems } from './inventory.ts';
 
 /** Open water: most tests here call the inventory rules directly. */
 const BOX = `
@@ -123,7 +124,7 @@ describe('what a hit takes', () => {
     const { world, log, player, hit } = setup();
     giveItems(player, ['jetFin', 'bubbleShield', 'puffer']);
 
-    expect(hit()).toBe(true);
+    expect(hit()).toBe('absorbed');
 
     expect(player.items).toEqual([{ kind: 'jetFin', charges: 3 }, null, { kind: 'puffer', charges: 2 }]);
     expect(player.selected).toBe(0);
@@ -138,7 +139,7 @@ describe('what a hit takes', () => {
     const { world, log, player, hit } = setup();
     giveItems(player, ['jetFin', { kind: 'inkSac', charges: 2 }, 'puffer'], 1);
 
-    expect(hit()).toBe(true);
+    expect(hit()).toBe('knocked');
 
     expect(player.items).toEqual([{ kind: 'jetFin', charges: 3 }, null, { kind: 'puffer', charges: 2 }]);
     expect(player.selected).toBe(2);
@@ -154,7 +155,7 @@ describe('what a hit takes', () => {
     const { world, player } = setup();
     giveItems(player, ['jetFin', null, 'puffer'], 2);
 
-    knockForHit(world, player);
+    knockSelected(world, player);
 
     expect(player.selected).toBe(0);
   });
@@ -162,12 +163,42 @@ describe('what a hit takes', () => {
   it('stuns a racer holding nothing and changes no slot', () => {
     const { log, player, hit } = setup();
 
-    expect(hit()).toBe(true);
+    expect(hit()).toBe('stunned');
 
     expect(player.items).toEqual([null, null, null]);
     expect(eventsIn(log)).toEqual([
       { type: 'racer.hit', id: 'player', cause: 'urchin', by: null },
       { type: 'racer.stunned', id: 'player' },
     ]);
+  });
+});
+
+describe('staging an inventory', () => {
+  it('copies the slots in and selects the given slot', () => {
+    const { player } = setup();
+    const items: (HeldItem | null)[] = [null, { kind: 'puffer', charges: 2 }, null];
+
+    setItems(player, items, 1);
+    items[1] = null;
+
+    expect([slotItems(player), selectedItem(player)]).toEqual([
+      [null, { kind: 'puffer', charges: 2 }, null],
+      { kind: 'puffer', charges: 2 },
+    ]);
+  });
+
+  it.each<[string, (HeldItem | null)[], number, RegExp]>([
+    ['the wrong number of slots', [null, null], 0, /got 2 slots; \w+ has 3/],
+    ['a kind held twice', [{ kind: 'puffer', charges: 2 }, { kind: 'puffer', charges: 1 }, null], 0, /'puffer' twice/],
+    [
+      'an empty selected slot while anything is held',
+      [{ kind: 'puffer', charges: 2 }, null, null],
+      1,
+      /slot 1, which is empty/,
+    ],
+  ])('throws for %s', (_, items, selected, message) => {
+    const { player } = setup();
+
+    expect(() => setItems(player, items, selected)).toThrow(message);
   });
 });
