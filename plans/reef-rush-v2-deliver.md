@@ -181,15 +181,35 @@ Shared for every phase 3 lane: read the Spec, the scaffold contents and the Phas
 
 ### Phase 4: balance and teach
 
-Demo: `pnpm --filter game-reef-rush test:difficulty` passes the new bars; How to Play shows fire, swap, dash, charges and enemies.
+Demo: `pnpm --filter game-reef-rush test:difficulty` passes the new bars; How to Play shows fire and swap, charges, the dash meter, pearls and enemies.
 Depends on: phase 3
+Scaffold: none (no shared types; the lanes' files don't overlap). After landing, the gate adds `pnpm --filter game-reef-rush test:difficulty` (about 42 s).
+Test cases:
+- The `difficulty` project measures v2 (spec success criteria): on Normal over a fixed seed set, a bot that swims well and never dashes or fires places top 3 in at least 60% of seeds; an expert bot that dashes and fires wins clearly more often than that no-dash bot (state the margin in the bar); each rival's median item uses per race on Normal is at least 5 and every item kind fires in at least one race across the set; the existing per-character Hard expert/novice bars and the Easy toddler bar are kept, re-banded to v2 (the expert-wins band, the novice bands and the par band), with each band's numbers measured and written in the test's doc comment.
+- Par: Sunlit Shallows' `parTicks` is re-measured (a good expert race now runs about 105 s on Hard) and the sanity bar (`difficulty/sanity/bars.test.ts`, in the unit gate) gets its par-band check back.
+- Rival item supply: reach the 5-per-race median through supply, not by clams reopening faster than 1.5 s: e.g. more clams in the course sections where the pack runs, or more charges per item for rivals, or a clam giving a rival two rolls. Clam camping stays impossible (a clam still shuts 90 ticks for everyone after opening).
+- How to Play is accurate for v2 and fits on 320x180: swim, and dash on a meter of two (DASH pips refill); open clams, hold three, charge digits; fire the framed item and swap with Q/E (⇄ on touch); pearls count up and add speed, a hit scatters them; enemies: dash into them to bonk (shark twice), and what each one does. Pages turn as today; `HOW_TO_PLAY_PAGES` grows if needed, with the runtime test and how-to-play scenario updated.
+- Hints: on the first race and every Easy race, a SWAP prompt (`[E]`/`⇄`) shows once when the player first holds two items; the existing fire prompt stays. Never more than one hint on screen at a time.
+- UI.md: the HUD rects from phase 2 (dash meter, pearl counter, fire glyph at x 201, Nib's 217; confirm with a Nib capture that the Space keycap clears the back link, else move it), enemies' layering, and the new How to Play pages. DESIGN.md: balance numbers from lane a's report and the new pages.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/reef-rush/src/logic/difficulty/, games/reef-rush/src/logic/ai/profiles.ts, games/reef-rush/src/logic/difficulty-level.ts, games/reef-rush/src/logic/difficulty-level.test.ts | | | opus | pending | | |
-| b | M | games/reef-rush/src/engine/view/how-to-play/, games/reef-rush/src/engine/view/hints.ts, games/reef-rush/src/engine/view/hints.test.ts, games/reef-rush/DESIGN.md, games/reef-rush/UI.md | | | sonnet | pending | | |
+| a | L | games/reef-rush/src/logic/difficulty/, games/reef-rush/src/logic/ai/profiles.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/ai/rival.test.ts, games/reef-rush/src/logic/difficulty-level.ts, games/reef-rush/src/logic/difficulty-level.test.ts, games/reef-rush/src/logic/characters.ts, games/reef-rush/src/logic/characters.test.ts, games/reef-rush/src/logic/courses/sunlit-shallows.ts, games/reef-rush/src/logic/courses/index.test.ts, games/reef-rush/src/logic/powerups/tuning.ts, games/reef-rush/src/logic/powerups/charges.ts, games/reef-rush/src/logic/powerups/charges.test.ts, games/reef-rush/src/logic/pickups/clams.ts, games/reef-rush/src/logic/pickups/clams.test.ts | | | opus | running | v2-4a | `test:difficulty` passes, check passes |
+| b | M | games/reef-rush/src/engine/view/how-to-play/, games/reef-rush/src/engine/how-to-play.ts, games/reef-rush/src/engine/how-to-play.test.ts, games/reef-rush/src/engine/view/hints.ts, games/reef-rush/src/engine/view/hints.test.ts, games/reef-rush/src/engine/view/hint-view.ts, games/reef-rush/scenarios/how-to-play.ts, games/reef-rush/scenarios/first-race-hint.ts, games/reef-rush/tests/hints.spec.ts, games/reef-rush/DESIGN.md, games/reef-rush/UI.md | | | opus | running | v2-4b | captures of every page and the swap hint, check and smoke pass |
 
-(Briefs written while phase 3 runs.)
+Shared for every phase 4 lane: read the Spec, `plans/reef-rush-v2.md` and the Phase 4 test cases above, plus the Log for what earlier phases measured. Touch only the files you own; if you need a change elsewhere, stop and report it. Run `pnpm arcade test reef-rush <your paths>` and `pnpm arcade check reef-rush --skip-tests`, then `pnpm fix`, and commit on your branch.
+
+#### Lane a brief
+
+- Goal: the bars measure the v2 game, and the game passes them: holding forward competes, skill still pays, rivals use items a lot.
+- Behavior: rewrite and re-band `src/logic/difficulty/` per the test cases (add the no-dash bot to `ai/profiles.ts` / the bot harness; add the item-use bar as its own test file so it runs in parallel). Tune only through rival profiles, difficulty-level knobs, clam supply and charges, and the course's clams and par; keep the per-tick AI rng draw count fixed and logic deterministic. If tuning moves clams or the course, `TOP_ROUTE` will break: report it, I re-record. Report every band and measured number in your final message for DESIGN.md.
+- Out of scope: engine, docs.
+
+#### Lane b brief
+
+- Goal: a new player learns v2 from How to Play and the hints, and the docs match the game.
+- Behavior: redraw the How to Play pages per the test case in the existing page style (`view/how-to-play/kit.ts`), reusing the game's sprites (HUD well, dash pips, pearl counter, enemies from `art/sprites/enemies.ts`). Add the SWAP hint. Update UI.md and DESIGN.md as in the test cases; take balance numbers for DESIGN.md from the plan Log (lane a's numbers are added at landing by me). Look at a capture of every page (`pnpm arcade see reef-rush --scenario how-to-play` or `--query scene=howToPlay` with input to turn pages) and of the swap hint, on desktop and `--mobile`.
+- Out of scope: balance, logic.
 
 ## Log
 
