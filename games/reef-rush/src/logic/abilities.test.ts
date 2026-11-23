@@ -68,6 +68,14 @@ function stun(...racers: Racer[]): void {
   for (const racer of racers) racer.status.stunned = 300;
 }
 
+/**
+ * Takes a rival's AI away, so it acts on the test's input (idle in `step`) like the player does.
+ * Unlike a stun it leaves the racer up, so it still bumps.
+ */
+function idleRival(racer: Racer): void {
+  racer.ai = null;
+}
+
 const speedOf = (racer: Racer) => length(racer.body.vx, racer.body.vy);
 
 describe('Rudy: Shake it off', () => {
@@ -201,7 +209,7 @@ describe('Onyx: Ambush', () => {
    */
   const meet = (character: CharacterId, meeting: Meeting) => {
     const { world, log, player, tess } = raceAs(character);
-    stun(player, tess);
+    idleRival(tess);
     const [rear, front] = meeting === 'bumped from behind' ? [tess, player] : [player, tess];
     placeOnTile(rear, 10, 2);
     const beside = meeting === 'side by side';
@@ -265,7 +273,7 @@ describe('Baron Barnacle: Bulldozer', () => {
   it('barely moves in a bump', () => {
     const pushedApart = (character: CharacterId) => {
       const { world, log, player, tess } = raceAs(character);
-      stun(player, tess);
+      idleRival(tess);
       placeOnTile(player, 10, 2);
       placeAt(tess, { x: tileCentre(10, 2).x + player.body.w - 4, y: tileCentre(10, 2).y });
       const before = { player: player.body.x, tess: tess.body.x };
