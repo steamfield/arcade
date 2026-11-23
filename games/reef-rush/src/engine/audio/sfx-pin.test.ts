@@ -87,25 +87,28 @@ describe('the sound of a race on Sunlit Shallows', () => {
     expect(COURSES['sunlit-shallows'].song).toBe('race');
   });
 
-  it('plays the same sound effects and songs as with a metered dash, pearls as coins and rivals at par (v2 phase 2), over three whole races', () => {
+  it('plays the same sound effects and songs with enemies on the course, every one audible (v2 phase 3), over three whole races', () => {
     const counts: Record<string, number> = {};
     for (const race of RACES) listen(race, counts);
     expect(counts).toEqual({
-      'sfx:bump': 92,
+      'sfx:bump': 73,
       'sfx:coral': 2,
       'sfx:countdown': 9,
-      'sfx:decoy.pop': 3,
-      'sfx:decoy.spawn': 3,
+      'sfx:decoy.pop': 4,
+      'sfx:decoy.spawn': 4,
+      'sfx:eel.warn': 423,
+      'sfx:enemy.bite': 1,
       'sfx:finish': 3,
       'sfx:go': 3,
-      'sfx:item.use': 7,
+      'sfx:item.use': 6,
       'sfx:kick': 172,
-      'sfx:pearl': 14,
-      'sfx:pearl.drop': 2,
-      'sfx:place.down': 32,
-      'sfx:place.up': 37,
-      'sfx:riptide': 6,
-      'sfx:squid.fire': 2,
+      'sfx:pearl': 19,
+      'sfx:pearl.drop': 3,
+      'sfx:place.down': 25,
+      'sfx:place.up': 30,
+      'sfx:riptide': 8,
+      'sfx:shark.windup': 5,
+      'sfx:squid.fire': 5,
       'sfx:undertow': 3,
       'song:race': 3,
       'song:win': 3,
