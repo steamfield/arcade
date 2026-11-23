@@ -9,7 +9,7 @@
 import type { Rng } from '@arcade/core';
 import type { PowerUpKind } from '../../logic/types.ts';
 import { Frame } from '../art/keys.ts';
-import type { ParticleMotion, Theme } from '../themes/types.ts';
+import type { ParticleMotion, Theme, TrailLook } from '../themes/types.ts';
 import { POWER_UP_TEX } from '../view/powerup-view.ts';
 import type { Particle, ParticleField } from './particles.ts';
 import { FX_TEXTURE, FxFrame } from './textures.ts';
@@ -21,8 +21,11 @@ export interface Bursts {
    * after it; a racer that isn't moving pushes them out behind its `facing`.
    */
   kickPuff(x: number, y: number, vx: number, vy: number, facing: 1 | -1): void;
-  /** One bubble shed while swimming. */
-  trailBubble(x: number, y: number): void;
+  /**
+   * One trail particle that moves like a bubble: a racer's trail passes its theme's `look`, and the
+   * bubble strings event effects lay leave it out to get a small white bubble.
+   */
+  trailBubble(x: number, y: number, look?: TrailLook): void;
   /** A coral tile breaking into chunks that sink, drawn behind the racers so a smashing racer stays readable. */
   coralDebris(x: number, y: number): void;
   /** Sparks where a racer was hit. */
@@ -99,6 +102,9 @@ const INK_PUFF_STILL: RingShape = { count: 4, radius: 6, speed: 0, life: 22, fra
 const POP: RingShape = { count: 6, radius: 3, speed: 1.3, life: 14, frame: FxFrame.bubbleSmall, style: 'droplet' };
 const POP_STILL: RingShape = { count: 4, radius: 5, speed: 0, life: 16, frame: FxFrame.bubbleSmall, style: 'droplet' };
 
+/** The look of a bubble string an event lays, such as a Riptide lane or an Undertow pull. */
+const SMALL_BUBBLE: TrailLook = { frame: FxFrame.bubbleSmall, tint: 0xffffff, alpha: 0.6 };
+
 /** How far behind a kicking racer's centre its puff starts, px. */
 const KICK_PUFF_BEHIND = 8;
 /** How far above a racer's centre a popped power-up icon starts, px. */
@@ -153,10 +159,11 @@ export function createBursts(
         applyStyle(particle, reducedMotion ? styles.bubbleStill : styles.bubble, rng);
       }
     },
-    trailBubble(x, y) {
-      const particle = back.spawn(x, y + jitter(2), 34 + rng.int(0, 12), FX_TEXTURE, FxFrame.bubbleSmall);
+    trailBubble(x, y, look = SMALL_BUBBLE) {
+      const particle = back.spawn(x, y + jitter(2), 34 + rng.int(0, 12), FX_TEXTURE, look.frame);
       applyStyle(particle, reducedMotion ? styles.bubbleStill : styles.bubble, rng);
-      particle.alpha = 0.6;
+      particle.tint = look.tint;
+      particle.alpha = look.alpha;
     },
     coralDebris(x, y) {
       const count = reducedMotion ? 3 : 4;

@@ -119,7 +119,8 @@ A medium is an object implementing `Medium` in `logic/media/types.ts`. Generic c
 - `logic/media/index.ts`: add it to `MEDIA`.
 - `logic/courses/types.ts`: add the id to `ShippedMediumId`.
 - `logic/media/types.ts`: `MediumEnv`, `MediumNav` and `RacerMotion` are unions that grow one member per medium. `PilotMemory` is still a fixed interface holding swim's fields; when a second medium ships it must become a union too (swim's fields as one member, the new medium's as another).
-- A course that races in it (an unlisted test course is enough to start), and a How to Play move page for it: How to Play explains swimming only, so each medium needs its own page.
+- `engine/view/how-to-play/<medium-id>-page.ts` and its entry in `MOVE_PAGES` (`engine/view/how-to-play/index.ts`): How to Play's first page explains how the course's medium moves. `MOVE_PAGES` is keyed by `ShippedMediumId`, so a shipped medium without a page fails to compile; `move-page.ts` is swim's.
+- A course that races in it (an unlisted test course is enough to start).
 
 ### Every member
 
