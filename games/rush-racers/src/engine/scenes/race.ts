@@ -32,6 +32,7 @@ import { createPickupView } from '../view/pickup-view.ts';
 import { createPowerupView } from '../view/powerup-view.ts';
 import { createRacerView } from '../view/racer-view.ts';
 import { screenLayout } from '../view/screen-layout.ts';
+import { skinFor } from '../worlds/index.ts';
 
 /** Everything the race scene draws, rebuilt on each create(). */
 interface RaceViews {
@@ -73,7 +74,7 @@ export class RaceScene extends Phaser.Scene {
     const attacks = createAttackView(this, reducedMotion);
     const racers = world.racers.map((racer) => ({
       racer,
-      view: createRacerView(this, racer, reducedMotion),
+      view: createRacerView(this, racer, reducedMotion, skinFor(course).cast),
       effects: createPowerupView(this, racer.id, reducedMotion),
     }));
     const themeLayers = theme.extraLayers(this, world);
