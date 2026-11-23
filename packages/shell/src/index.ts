@@ -2,8 +2,8 @@ import { configureLogging, createLogger, type Drained, type EventLog, type LogEn
 import type { Input } from '@arcade/input';
 
 /**
- * Boots every game the same way: container sizing and mobile hygiene, the
- * tap-to-start gate (which also unlocks audio), pause and save on hide, error
+ * Boots every game the same way: container sizing and mobile hygiene, starting
+ * at once (audio unlocks on the first gesture), pause and save on hide, error
  * capture, and the window.__arcade hook that tests and `arcade see` drive.
  *
  * In test mode (set by the harness) the shell owns time: the game must not run
@@ -66,7 +66,7 @@ export interface BootOptions<A extends string> {
   manifest: { id: string; title: string; orientation: 'landscape' | 'portrait' | 'any' };
   input: Input<A, string>;
   start(ctx: GameContext): Promise<GameHandle>;
-  /** Called from the start gate's user gesture, e.g. saves.requestPersistence(). */
+  /** Called from the player's first tap, click or key press, e.g. saves.requestPersistence(). */
   onFirstGesture?(): unknown;
 }
 
@@ -193,8 +193,6 @@ export async function bootGame<A extends string>(options: BootOptions<A>): Promi
     if (handle) return;
     gate.remove();
     try {
-      await options.onFirstGesture?.();
-      resumeAudio();
       handle = await options.start(ctx);
     } catch (err) {
       reportError('start', err);
@@ -228,14 +226,27 @@ export async function bootGame<A extends string>(options: BootOptions<A>): Promi
   };
   hook.start = startGame;
 
+  // Browsers only allow audio and storage persistence after a gesture on this page, and the click
+  // that brought the player here (the landing page) doesn't carry over. So the game starts at once,
+  // silent until the first tap or key press, which unlocks audio and runs onFirstGesture.
+  const gestures = ['pointerdown', 'keydown', 'touchend'] as const;
+  const firstGesture = () => {
+    for (const type of gestures) window.removeEventListener(type, firstGesture, true);
+    resumeAudio();
+    Promise.resolve()
+      .then(() => options.onFirstGesture?.())
+      .catch((err: unknown) => reportError('first gesture', err));
+  };
+  for (const type of gestures) window.addEventListener(type, firstGesture, true);
+
+  // Test mode keeps a start gate so the harness decides when the game starts (after init scripts
+  // and save fixtures). Players never see it.
   const gate = el('button', 'arcade-gate');
   gate.dataset.arcadeStart = '';
   gate.textContent = `Play ${options.manifest.title}`;
   gate.addEventListener('click', () => void startGame());
-  container.append(gate);
-  window.addEventListener('keydown', (e) => {
-    if (!handle && (e.code === 'Enter' || e.code === 'Space')) void startGame();
-  });
+  if (params.testMode) container.append(gate);
+  else void startGame();
 
   document.addEventListener('visibilitychange', () => {
     if (!handle) return;

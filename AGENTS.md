@@ -42,7 +42,7 @@ templates/<name>/    working template games; CI tests them, they never deploy
 packages/core        logger, EventLog, createRng, FixedStep, save types. No DOM.
 packages/save        IndexedDB saves: versioned, migrated, never overwrites unreadable data
 packages/input       named actions + on-screen touch controls
-packages/shell       boot, start gate, sizing, error capture, window.__arcade test hook
+packages/shell       boot (starts at once; test-mode gate), sizing, error capture, window.__arcade test hook
 packages/testing     scenario kit, GameDriver, Playwright fixture/config
 packages/config      tsconfig bases, defineGameConfig (Vite), game.json schema
 apps/site            landing page, generated from games/*/game.json

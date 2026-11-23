@@ -12,7 +12,7 @@ Where everything is, so you can open the right file instead of searching. Every 
 | Add an input action or touch button | `<game>/src/engine/input.ts`; the mechanism is `packages/input/src/index.ts` |
 | Change a save shape | `<game>/src/logic/save.ts`, then `<game>/tests/fixtures/` and `<game>/tests/save.test.ts` |
 | Add a scenario (Playwright test + `arcade see --scenario`) | `<game>/scenarios/<name>.ts`, using `<game>/scenarios/kit.ts` |
-| Change what every game does at boot (start gate, errors, `window.__arcade`) | `packages/shell/src/index.ts` |
+| Change what every game does at boot (starting, the test-mode gate, errors, `window.__arcade`) | `packages/shell/src/index.ts` |
 | Change the test harness or scenario format | `packages/testing/src/` |
 | Change a `pnpm arcade` command | `tools/arcade/src/<command>.ts`, wired up in `tools/arcade/src/cli.ts` |
 | Change the Vite or TypeScript setup for every game | `packages/config/src/vite.ts`, `packages/config/tsconfig.*.json` |
@@ -99,7 +99,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 
 | Path | Exports |
 | --- | --- |
-| `packages/shell/src/index.ts` | `bootGame({ manifest, input, start, onFirstGesture })`, the `GameContext` passed to a game and the `GameHandle` it returns, `window.__arcade` (the test hook), URL launch params (`?seed`, `?scene`, `?debug`, `?test` via `readLaunchParams`; `?touch`, `?log` read at boot), start gate, back link (top right), rotate prompt, `integerScale`, `renderPixelRatio`. |
+| `packages/shell/src/index.ts` | `bootGame({ manifest, input, start, onFirstGesture })`, the `GameContext` passed to a game and the `GameHandle` it returns, `window.__arcade` (the test hook), URL launch params (`?seed`, `?scene`, `?debug`, `?test` via `readLaunchParams`; `?touch`, `?log` read at boot), back link (top right), rotate prompt, `integerScale`, `renderPixelRatio`. Starts the game on load; the start gate shows only in test mode, and `onFirstGesture` runs on the first tap or key press. |
 
 ### `@arcade/testing`
 

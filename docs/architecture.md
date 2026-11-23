@@ -219,7 +219,7 @@ The package's protections:
 - **Before migrating:** it copies the raw blob to a backup key.
 - **Unreadable saves and saves from newer code:** these are quarantined, never overwritten. A rollback to older code therefore leaves newer saves intact.
 - **Second tab:** a Web Locks guard opens the game read-only in the second tab.
-- **`navigator.storage.persist()`:** called from a user action (the start gate) rather than from an autosave, because Firefox shows a permission prompt.
+- **`navigator.storage.persist()`:** called from the player's first tap or key press in the game (`onFirstGesture`) rather than from an autosave, because Firefox shows a permission prompt.
 - **Saving on hide:** the shell triggers a save on `visibilitychange` to hidden, which is the last reliable moment to write on mobile.
 - **Template tests:** the template includes a round-trip test plus a migrate-from-every-fixture test, and each save version must have a committed fixture.
 - **Safari eviction:** export and import exist because Safari can delete a site's storage after 7 days without interaction.
@@ -242,7 +242,7 @@ Its scope is limited to what the first two games prove they need:
 - `visualViewport` resizes, debounced
 - device pixel ratio capped at 2
 - an integer-scale `pixelArt` mode
-- the tap-to-start gate, which also unlocks audio
+- starting the game as soon as it loads (players arrive from a click on the landing page), with audio unlocked by the first tap or key press; a start gate only in test mode, so the harness controls when a game starts
 - resuming an interrupted iOS AudioContext after backgrounding
 - pause and save on hide
 - a back-to-arcade link

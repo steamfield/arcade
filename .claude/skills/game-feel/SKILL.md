@@ -123,7 +123,7 @@ Don't: shake on every coin, flash the full screen, slow-motion on routine events
 
 Targets from the architecture doc: under 5 s to interactive for 2D and under 10 s for 3D on a mid-range phone with a cold cache.
 
-- The shell's start gate appears before any engine code has to run. Keep `main.ts` light and don't block the gate on big imports.
+- The shell starts the game as soon as the page loads, with no start button, so the first frame waits on `main.ts`. Keep it light and lazy-load big imports. Audio is silent until the first tap or key press.
 - Load only what the first screen needs before the title. Load later scenes, music and physics after the first frame, with visible progress, and keep `idle()` false while they load.
 - Show progress for anything over about a second. A frozen screen reads as a crash.
 - Compress: KTX2 or WebP textures, meshopt geometry, short mono SFX. Check the per-game numbers `arcade smoke` prints after adding assets.

@@ -119,7 +119,7 @@ For tile games, `logic/` exposes `toAscii(world)`. Unit tests snapshot it, `see 
 
   Any entry fails `see` and smoke, and shows as a red banner in dev.
 - **Asset keys:** each template generates a typed key manifest from its asset imports, so `Keys.sprites.player` is checked by the compiler. Missing-texture warnings are errors under test. Imported URLs alone fix paths but not the string keys Phaser looks things up by.
-- **Audio:** the engine's audio adapter emits `audio.played { key }` after the sound actually started, not when logic asked for it. Smoke checks that the AudioContext is `running` after the start gate. That is how an agent "hears" the game.
+- **Audio:** the engine's audio adapter emits `audio.played { key }` after the sound actually started, not when logic asked for it. Smoke checks that the AudioContext is `running` after the start gate, which only exists in test mode; players start straight into the game. That is how an agent "hears" the game.
 - **Events:** the harness drains the event log with a cursor after every step. A run fails if the ring buffer dropped any events, so "fired once" is never judged on a truncated log.
 - **Renderer:** smoke asserts the expected renderer, so a silent Canvas fallback fails.
 

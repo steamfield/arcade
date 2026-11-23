@@ -30,3 +30,12 @@ test('on-screen controls start the game and move the player @touch', async ({ ga
   await hold('right', 60);
   expect(await game.summary()).toMatchObject({ scene: 'play', player: { tile: [7, 9] } });
 });
+
+test('a player arriving from the arcade lands in the game with no start button to press', async ({ page }) => {
+  // No test flag: this is what a player gets from a link on the landing page.
+  await page.goto('/games/phaser-2d/');
+  await page.waitForFunction(() => window.__arcade?.ready === true || (window.__arcade?.errors.length ?? 0) > 0);
+  expect(await page.evaluate(() => window.__arcade?.errors)).toEqual([]);
+  await expect(page.locator('[data-arcade-start]')).toHaveCount(0);
+  await expect(page.locator('canvas')).toBeVisible();
+});
