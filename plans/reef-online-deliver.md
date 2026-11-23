@@ -105,6 +105,7 @@ The invariant every phase is held to: a world created without `humans` or `chara
 
 ### Phase 1: a hash that proves two engines ran the same race (MVP)
 
+Scaffold: 574980e
 Demo: `pnpm arcade test reef-rush src/logic/hash.test.ts src/logic/top-route.test.ts`, then `pnpm arcade smoke reef-rush`, whose "finished race" test asserts one committed hash on desktop Chromium, the phone project and WebKit.
 
 Test cases (`src/logic/hash.test.ts`, written in the scaffold):
@@ -123,8 +124,8 @@ Inline at landing (the orchestrator, after both lanes merge): record the top-rou
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/reef-rush/src/logic/hash.ts, games/reef-rush/src/engine/debug.ts | contracts, games/reef-rush/src/logic/types.ts, games/reef-rush/src/logic/media/types.ts | games/reef-rush/src/logic/hash.test.ts | sonnet | pending | | hash tests pass |
-| b | S | games/reef-rush/src/logic/abilities.ts, games/reef-rush/src/logic/hazards/squid-target.ts, games/reef-rush/src/logic/hazards/squids.ts, games/reef-rush/src/logic/hazards/enemies/test-arena.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/pickups/pearls.ts, tools/biome/no-inexact-math.grit, biome.json, docs/repo-map.md | contracts, tools/biome/no-nondeterminism.grit | | sonnet | pending | | lint bans the operators and passes on the tree |
+| a | M | games/reef-rush/src/logic/hash.ts, games/reef-rush/src/engine/debug.ts | contracts, games/reef-rush/src/logic/types.ts, games/reef-rush/src/logic/media/types.ts | games/reef-rush/src/logic/hash.test.ts | sonnet | running | deliver/reef-online-1a | hash tests pass |
+| b | S | games/reef-rush/src/logic/abilities.ts, games/reef-rush/src/logic/hazards/squid-target.ts, games/reef-rush/src/logic/hazards/squids.ts, games/reef-rush/src/logic/hazards/enemies/test-arena.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/pickups/pearls.ts, tools/biome/no-inexact-math.grit, biome.json, docs/repo-map.md | contracts, tools/biome/no-nondeterminism.grit | | sonnet | running | deliver/reef-online-1b | lint bans the operators and passes on the tree |
 
 #### Lane a brief
 
