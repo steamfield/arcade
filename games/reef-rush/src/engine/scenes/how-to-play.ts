@@ -62,7 +62,7 @@ export class HowToPlayScene extends Phaser.Scene {
       outline: true,
       align: 'center',
     });
-    this.pages = createPages(this, touch, rt.savedCharacter);
+    this.pages = createPages(this, rt.course.medium, touch, rt.savedCharacter);
     this.dots = this.pages.map((_, index) => addDot(this, index, this.pages.length));
     addFooter(this, touch);
     this.shown = null;

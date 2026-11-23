@@ -22,8 +22,8 @@ import { createEventEffects } from './event-effects.ts';
 import { createParticleLayer } from './particle-layer.ts';
 import { createParticleField } from './particles.ts';
 import { createShake } from './shake.ts';
-import { createSwimTrail } from './swim-trail.ts';
 import { ensureFxTextures } from './textures.ts';
+import { trailFor } from './trail.ts';
 
 export interface Fx {
   /** Reacts to one tick's drained events; `tick` is the world tick they happened on. */
@@ -32,7 +32,7 @@ export interface Fx {
   sync(world: World): void;
 }
 
-/** Particles behind the racers: swim trails, kick puffs and coral debris (a smashed gate uses about 40). */
+/** Particles behind the racers: trails, kick puffs and coral debris (a smashed gate uses about 40). */
 const BACK_CAPACITY = 160;
 /** Particles above the racers: everything else that marks an event. */
 const FRONT_CAPACITY = 96;
@@ -52,7 +52,7 @@ export function createFx(scene: Phaser.Scene, world: World, theme: Theme, reduce
     createParticleLayer(scene, front, Layer.player + 0.75),
   ];
   const bursts = createBursts(back, front, createRng(COSMETIC_SEED), theme, reducedMotion);
-  const trail = createSwimTrail(world.racers.length, reducedMotion);
+  const trail = trailFor(theme, world.racers.length, reducedMotion);
   const shake = createShake();
   const nudge = createCameraNudge(scene.cameras.main);
   const effects = createEventEffects(world, bursts, createBubbleTracker(), (trauma) => {
@@ -65,7 +65,7 @@ export function createFx(scene: Phaser.Scene, world: World, theme: Theme, reduce
       front.step();
       shake.step();
       effects.onTick(events);
-      trail.step(world, bursts);
+      trail?.step(world, bursts);
     },
     sync(current) {
       for (const layer of layers) layer.render();

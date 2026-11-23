@@ -6,6 +6,7 @@
 
 import { drawSheets, registerLoops } from '../art/index.ts';
 import { Frame } from '../art/keys.ts';
+import { FxFrame } from '../fx/textures.ts';
 import { defineTheme } from './define.ts';
 import { OceanAnim, OceanTex, OceanTile } from './ocean/keys.ts';
 import { BackdropPalette, WATER_BANDS, WaterLight } from './ocean/palettes.ts';
@@ -73,5 +74,6 @@ export const OCEAN_THEME = defineTheme({
   },
   // The deep water's own blue taken almost to black.
   dark: { colour: 0x020616, alpha: 0.9 },
+  trail: { frame: FxFrame.bubbleSmall, tint: 0xffffff, alpha: 0.6 },
   contrastBands: OCEAN_CONTRAST_BANDS,
 });

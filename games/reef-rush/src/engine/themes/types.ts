@@ -1,6 +1,6 @@
 /**
  * A theme is how a course looks: its textures, terrain, backdrop, ambient effects, particle physics,
- * hazard skins, dark tint and the colours sprites must stand off. Logic names a theme by id
+ * hazard skins, dark tint, racer trail and the colours sprites must stand off. Logic names a theme by id
  * (`Course.theme`); the engine maps the id to one of these, never the reverse. Racers, pickups,
  * power-ups, the HUD and the UI are global art and never part of a theme.
  */
@@ -106,6 +106,15 @@ export interface ContrastBand {
   colour: number;
 }
 
+/** How the particles shed behind a moving racer look: a frame of the fx particle sheet, tinted, at an opacity. */
+export interface TrailLook {
+  /** A frame name in the fx particle sheet (`FxFrame`). */
+  frame: string;
+  tint: number;
+  /** Opacity at spawn, 0 to 1. */
+  alpha: number;
+}
+
 /** A view layer a theme adds on top of the shared ones; the race scene syncs it every frame. */
 export interface ThemeLayer {
   sync(world: World): void;
@@ -122,6 +131,8 @@ export interface Theme {
   particles: ParticlePhysics;
   hazards: { urchin: HazardSkin; jelly: HazardSkin };
   dark: DarkTint;
+  /** What racers shed as they move (bubbles in water); null for no trail. */
+  trail: TrailLook | null;
   /** Every colour behind play: racers' main colours hold 3:1 off each, off-panel text 4.5:1 (UI.md). */
   contrastBands: readonly ContrastBand[];
   /** Extra layers for this theme's race scene, built once per race. */
