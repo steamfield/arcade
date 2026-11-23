@@ -43,6 +43,8 @@ function pitLane(beforePit: '#' | '?') {
 const HEADROOM = ['...............F', '...............F', '...............F'];
 /** Tile column where the pit starts. */
 const PIT_COLUMN = 5;
+/** Tiles of run-up a respawn leaves before the pit, ground allowing. */
+const RUN_UP_TILES = 2;
 
 /** Holds right until the player falls out; returns the tick it fell on. */
 function runIntoPit(world: ReturnType<typeof runWorld>) {
@@ -117,6 +119,29 @@ describe('falling into a pit', () => {
     expect(player.status.invulnerable).toBe(respawnInvulnTicks - 1);
   });
 
+  it('comes back two tiles short of the pit, so a runner still holding right has room to jump', () => {
+    const race = runWorld(pitLane('#'));
+    step(race.world, race.log, SETTLE);
+    runIntoPit(race);
+    step(race.world, race.log, respawnTicks);
+
+    expect(race.player.body.x + race.player.body.w).toBeLessThanOrEqual((PIT_COLUMN - RUN_UP_TILES) * TILE);
+  });
+
+  it('backs off only as far as open ground goes', () => {
+    // A wall in column 1 leaves one tile of run-up between it and the pit at column 4.
+    const race = runWorld([...HEADROOM, '.#.............F', '.#1............F', '####..##########']);
+    step(race.world, race.log, SETTLE);
+    runIntoPit(race);
+    step(race.world, race.log, respawnTicks);
+    const { x, w } = race.player.body;
+
+    expect({ clearOfWall: x >= 2 * TILE, oneTileShort: x + w <= 3 * TILE }).toEqual({
+      clearOfWall: true,
+      oneTileShort: true,
+    });
+  });
+
   it('never comes back on a crate at the edge of the pit', () => {
     const race = runWorld(pitLane('?'));
     step(race.world, race.log, SETTLE);
@@ -180,7 +205,8 @@ describe('falling into a pit', () => {
 
     expect(eventsIn(log, 'racer.fell', 'racer.respawned')).toEqual([
       { type: 'racer.fell', id: 'tess' },
-      { type: 'racer.respawned', id: 'tess', ...start },
+      // Its start is the only safe spot it stood on; it backs off the one tile the level's edge allows.
+      { type: 'racer.respawned', id: 'tess', ...start, x: start.x - TILE },
     ]);
   });
 });
