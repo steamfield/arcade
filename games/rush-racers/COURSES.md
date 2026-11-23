@@ -130,7 +130,7 @@ Everything the medium knows lives in its own folder, `logic/media/<medium-id>/`.
 
 Moving a body through the tiles (`logic/race/move.ts`) and separating racers (`logic/race/separate.ts`) is generic, so a medium only sets velocity.
 
-Outside the folder, the code needs two lines: the medium in `MEDIA` (`logic/media/index.ts`) and its id in `ShippedMediumId` (`logic/courses/types.ts`). `logic/media/types.ts` doesn't change. Then add a course that races in it (an unlisted test course is enough to start), and How to Play pages: `engine/view/how-to-play/<medium-id>-page.ts` with its entry in `MEDIUM_PAGES` (`engine/view/how-to-play/index.ts`), plus crates and enemies pages where the medium plays them differently (run's are `run-crates-page.ts` and `run-enemies-page.ts`). `MEDIUM_PAGES` is keyed by `ShippedMediumId`, so a shipped medium without a move page fails to compile; `move-page.ts` is swim's, `run-page.ts` run's. A medium is raced through a world, so a new one also needs a world (below), or a test world from `courseFromLevel(level, medium)` in `logic/test-world.ts` while it is being built.
+Outside the folder, the code needs two lines: the medium in `MEDIA` (`logic/media/index.ts`) and its id in `ShippedMediumId` (`logic/courses/types.ts`). `logic/media/types.ts` doesn't change. Then add a course that races in it (an unlisted test course is enough to start), and How to Play pages: `engine/view/how-to-play/<medium-id>-page.ts` with its entry in `MEDIUM_PAGES` (`engine/view/how-to-play/index.ts`), plus crates, enemies and dodge (page 7) pages where the medium plays them differently (run's are `run-crates-page.ts`, `run-enemies-page.ts` and `run-shield-page.ts`, the last because a dash on foot dodges nothing). A medium's `kickRules` also drive the views: the DASH! hint for a squid and the latched DASH! prompt show only where `dodgesSquid` and `shakesLatch` say a dash helps. A medium How to Play has no pages for falls back to swim's with a warning. `MEDIUM_PAGES` is keyed by `ShippedMediumId`, so a shipped medium without a move page fails to compile; `move-page.ts` is swim's, `run-page.ts` run's. A medium is raced through a world, so a new one also needs a world (below), or a test world from `courseFromLevel(level, medium)` in `logic/test-world.ts` while it is being built.
 
 ### Data shapes and accessors
 
@@ -213,9 +213,9 @@ Follow "Add a medium" above: a folder `logic/media/<medium-id>/`, its entry in `
 
 | File | What goes in it |
 | --- | --- |
-| `logic/worlds/<world-id>.ts` | One exported `WorldDef`, data only: `id`, `name`, `medium`, `cast` (a name per `CharacterId`), and the world's names for `items`, `pickups`, `enemies` and `hazards`. Copy `thornwood.ts`. |
+| `logic/worlds/<world-id>.ts` | One exported `WorldDef`, data only: `id`, `name`, `medium` (a `ShippedMediumId`, so a misspelt or unshipped medium fails to compile; `logic/worlds/index.test.ts` also checks each resolves in `MEDIA`), `cast` (a name per `CharacterId`), and the world's names for `items`, `pickups`, `enemies` and `hazards`. Copy `thornwood.ts`. |
 | `logic/worlds/index.ts` | Import it and add it to `WORLDS`; the only file that imports a world file. |
-| `logic/worlds/types.ts` | Add the id to `ShippedWorldId`. |
+| `logic/worlds/types.ts` | Add the id to `ShippedWorldId`. `logic/architecture.test.ts` then fails any `=== '<world-id>'` or `case '<world-id>':` outside `logic/worlds/` and `engine/worlds/`, as it does for medium ids outside `logic/media/`: ask the world or its skin instead. |
 
 Character ids are slots, not characters: the world's cast gives each slot a name, a look and the ability's wording, and keeps the slot's ability and rival profile. An ability that means nothing in the new medium gets a medium-neutral hook in `logic/abilities.ts` that the medium reads (Gil's slot jumps higher through `jumpMulFor`, which only run calls). Items, pickups and enemies keep their ids and balance.
 

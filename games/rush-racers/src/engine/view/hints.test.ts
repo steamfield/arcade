@@ -1,14 +1,18 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import type { GameEvent } from '../../logic/events.ts';
 import { gainItem } from '../../logic/powerups/inventory.ts';
 import { SQUID, USE_COOLDOWN_TICKS } from '../../logic/powerups/tuning.ts';
-import { giveItems, IDLE, placeOnTile, raceOn, racerOf, step } from '../../logic/test-world.ts';
+import { courseFromLevel, giveItems, IDLE, placeOnTile, raceOn, racerOf, step } from '../../logic/test-world.ts';
 import type { TickInput, World } from '../../logic/types.ts';
+import { createWorld } from '../../logic/world.ts';
 import {
   GUIDE_OVER_PRESS_FIRE_TICKS,
   type HintConfig,
   type HintMemory,
   hintConfig,
   KICK_LEAD_TICKS,
+  latchPromptShows,
   NO_HINTS,
   newHintMemory,
   PRESS_FIRE_TICKS,
@@ -46,6 +50,17 @@ const NEXT: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 
 const EASY: HintConfig = hintConfig(0, 'easy');
 const NORMAL_FIRST_RACE: HintConfig = hintConfig(0, 'normal');
 
+/** A run course: the player on a floor with open air ahead, the rivals on their own floor above, out of a squid's way. */
+const RUN_FLOOR = `
+  ................F
+  .234............F
+  #################
+  ................F
+  ................F
+  .1..............F
+  #################
+`;
+
 /** A racing world and a memory that has seen nothing; `run` steps it and asks for hints after every tick. */
 function race(config: HintConfig = EASY, ascii = OPEN) {
   const { world, log } = raceOn(ascii);
@@ -60,6 +75,23 @@ function race(config: HintConfig = EASY, ascii = OPEN) {
     return hints;
   };
   return { world, player, run };
+}
+
+/** As `race`, on RUN_FLOOR raced in the run medium, where a kick neither dodges a squid nor shakes a latch. */
+function runRace(config: HintConfig = EASY) {
+  const log = new EventLog<GameEvent>(100_000);
+  const world = createWorld(courseFromLevel(RUN_FLOOR, 'run'), log, { seed: 1 });
+  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+  const memory: HintMemory = newHintMemory();
+  const run = (ticks: number) => {
+    let hints = updateHints(memory, world, config);
+    for (let i = 0; i < ticks; i++) {
+      step(world, log, 1, IDLE);
+      hints = updateHints(memory, world, config);
+    }
+    return hints;
+  };
+  return { world, player: racerOf(world, 'player'), run };
 }
 
 /** A squid locked on the player, `px` pixels to its right. */
@@ -366,6 +398,24 @@ describe('KICK', () => {
     const [squid] = world.squids;
     if (squid) squid.target = { kind: 'racer', id: 'tess' };
     expect(run(1).kick).toBe(false);
+  });
+});
+
+describe('a course whose medium lets no kick counter a squid', () => {
+  const windowPx = SQUID.dodgeTicks * SQUID.speed * (1 / 60);
+
+  it('never prompts DASH! for a squid inside the dodge window, since a dash would not dodge it', () => {
+    const { world, run } = runRace();
+    lockSquidOnPlayer(world, Math.round(windowPx));
+    expect(run(1).kick).toBe(false);
+  });
+
+  it('shows no DASH! for a latch and leaves the hint spot to PRESS FIRE, since dashes do not shake it', () => {
+    const { world, player, run } = runRace();
+    gainItem(world, player, 'inkSac', 3);
+    player.status.latched = 60;
+    const hints = run(1);
+    expect([latchPromptShows(world), hints.pressFire]).toEqual([false, true]);
   });
 });
 

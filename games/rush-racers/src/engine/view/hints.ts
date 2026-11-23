@@ -10,7 +10,8 @@
  *   the fire control (SPACE on a keyboard, A on touch).
  * - KICK: a Homing Squid is locked on and is inside the dodge window (plus a short lead) while the
  *   player's kick is ready with a dash charge to spend, since a kick only dodges in the last moments before contact. The
- *   player sees it as DASH! with the dash control.
+ *   player sees it as DASH! with the dash control. Only where the course's medium lets a kick dodge
+ *   (`kickRules.dodgesSquid`): on foot a dash does nothing to a squid, so it never shows.
  * - SWAP: the first time the player holds two items while no other hint wants the screen, the next
  *   item control (E on a keyboard, the swap button on touch) and SWAP!, once a race: it goes when
  *   the player swaps or once it has been on screen `SWAP_TICKS`. A hint that takes its spot pauses it.
@@ -20,13 +21,14 @@
  *   on a level with the guide on (Easy): an arrow beside the player pointing the way on. KICK always
  *   outranks it, PRESS FIRE does for the first `GUIDE_OVER_PRESS_FIRE_TICKS` of being stuck and then
  *   gives way to it, so a child holding an item they never fire still finds out which way to swim.
- *   It never shows while a squid is latched, since the threat HUD's DASH! holds the spot.
+ *   It never shows while the threat HUD's DASH! holds the spot (a latched squid, where dashes shake it).
  *
  * Hints run on the first race of a save and on every Easy race; otherwise they stay silent.
  */
 import { TICK_DT } from '@arcade/core';
 import { dodgeTicks, tuningOf } from '../../logic/difficulty-level.ts';
 import { guideFor } from '../../logic/guide.ts';
+import { mediumOf } from '../../logic/media/index.ts';
 import { canDash } from '../../logic/powerups/dash-meter.ts';
 import { heldItems, selectedItem, selectedSlot, slotItems } from '../../logic/powerups/inventory.ts';
 import { SQUID } from '../../logic/powerups/tuning.ts';
@@ -139,8 +141,8 @@ export function updateHints(memory: HintMemory, world: World, config: HintConfig
   const pulseAfter = config.easy ? UNUSED_PULSE_TICKS : PRESS_FIRE_TICKS;
   const pressFire = holding && !memory.useLearned && firstHeldAt !== null && pressFireOpen;
   const kick = kickIsUseful(world);
-  // A latched squid puts the threat HUD's own DASH! prompt in the hint spot.
-  const latched = local.status.latched > 0;
+  // A latched squid that dashes shake puts the threat HUD's own DASH! prompt in the hint spot.
+  const latched = latchPromptShows(world);
   const guide = guideArrow(world, kick || latched, pressFire);
   const showPressFire = pressFire && guide === null && !kick && !latched;
   const spotTaken = latched || kick || showPressFire || guide !== null;
@@ -195,9 +197,21 @@ function guideArrow(world: World, dashPrompt: boolean, pressFire: boolean): Vec 
   return dir;
 }
 
-/** A squid locked on the local racer is inside the dodge window plus the lead, and the local racer can kick now (ready, with a dash charge). */
+/**
+ * True while a squid is latched on the local racer and the course's medium lets kicks shake it
+ * (`kickRules.shakesLatch`), so the threat HUD's DASH! prompt shows and holds the hint spot.
+ */
+export function latchPromptShows(world: World): boolean {
+  return localOf(world).status.latched > 0 && mediumOf(world).kickRules.shakesLatch;
+}
+
+/**
+ * The course's medium lets a kick dodge a squid, a squid locked on the local racer is inside the
+ * dodge window plus the lead, and the local racer can kick now (ready, with a dash charge).
+ */
 function kickIsUseful(world: World): boolean {
   const local = localOf(world);
+  if (!mediumOf(world).kickRules.dodgesSquid) return false;
   if (local.status.latched > 0 || local.kickCooldown > 0 || !canDash(local)) return false;
   const squid = squidHuntingLocal(world);
   if (squid === null) return false;

@@ -6,6 +6,7 @@
 import type { CatchUpBounds } from '../difficulty-level.ts';
 import type { MediumTuning } from '../media/types.ts';
 import type { Difficulty, LevelDef } from '../types.ts';
+import type { ShippedWorldId } from '../worlds/types.ts';
 
 /** Shipped courses. Grows with each course: 'kelp-forest', 'sky-test', ... */
 export type ShippedCourseId = 'sunlit-shallows' | 'bramble-run' | 'run-test';
@@ -16,14 +17,18 @@ export type ThemeId = 'ocean' | 'forest';
 /** Songs the engine can play for a race, by the soundtrack's names. */
 export type SongId = 'race' | 'thornwood';
 
-export interface Course {
+/**
+ * A course as data. `World` is the type of its world id: any string by default, so tests and previews
+ * can race in worlds they register; `ShippedCourse` narrows it for the shipped data.
+ */
+export interface Course<World extends string = string> {
   /** Stable id: saves, `?course=` and the registry key. */
   id: string;
   /** Shown on course select and results. */
   name: string;
   level: LevelDef;
   /** A key of `WORLDS` (or a world registered for tests); the course is raced in that world's medium. */
-  world: string;
+  world: World;
   theme: ThemeId;
   song: SongId;
   /** False: reachable only by `?course=` and tests; never written to `lastCourse` and never given a best. */
@@ -38,3 +43,6 @@ export interface Course {
    */
   catchUp?: Partial<Record<Difficulty, Partial<CatchUpBounds>>>;
 }
+
+/** A shipped course: it must be raced in a shipped world, so naming one that doesn't exist fails to compile. */
+export type ShippedCourse = Course<ShippedWorldId>;
