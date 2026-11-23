@@ -7,19 +7,24 @@ import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
 
 /**
  * Run tuning in pixels and seconds. `force` is ground acceleration toward the held direction
- * (px/s²), `drag` ground friction with nothing held (px/s²), `maxSpeed` top running speed (px/s),
- * `kick` the speed a dash sets along facing (px/s). In `extra`: `gravity` (px/s²); `cutGravityMul`,
- * gravity's multiplier while rising with Up released (the short hop); `maxFall` (px/s); `airAccel`
- * and `airFriction` (px/s²); `jumpSpeed` (px/s, a held jump rises about 3.3 tiles); `coyoteTicks` and
- * `bufferTicks`; `respawnTicks`, how long a fallen racer is out; `respawnInvulnTicks`.
+ * (px/s²), `drag` ground friction with nothing held (px/s²), `maxSpeed` the hard cap on horizontal
+ * speed that neither running nor the dash ever passes (px/s), `kick` the speed a dash sets along
+ * facing (px/s). In `extra`: `runSpeed`, top running speed before forceMul and mud (px/s);
+ * `gravity` (px/s²); `cutGravityMul`, gravity's multiplier while rising with Up released (the short
+ * hop); `maxFall` (px/s); `airAccel` and `airFriction` (px/s²); `jumpSpeed` (px/s, a held jump rises
+ * about 3.3 tiles); `coyoteTicks` and `bufferTicks`; `respawnTicks`, how long a fallen racer is out;
+ * `respawnInvulnTicks`; `windSpeed` (px/s), how much a left or right gust adds to the speed a runner
+ * settles at; `draftForce` (px/s²), how hard an updraft or downdraft pushes; `mudSpeedMul`, running
+ * speed's multiplier in mud.
  */
 export const RUN_TUNING = {
   base: { forceMul: 1, kickMul: 1, kickCooldownTicks: 36, dragMul: 1 },
   force: 700,
   drag: 900,
-  maxSpeed: 100,
+  maxSpeed: 240,
   kick: 200,
   extra: {
+    runSpeed: 100,
     gravity: 800,
     cutGravityMul: 3.5,
     maxFall: 320,
@@ -30,6 +35,9 @@ export const RUN_TUNING = {
     bufferTicks: 6,
     respawnTicks: 60,
     respawnInvulnTicks: 60,
+    windSpeed: 60,
+    draftForce: 1000,
+    mudSpeedMul: 0.6,
   },
 } as const satisfies MediumTuning;
 

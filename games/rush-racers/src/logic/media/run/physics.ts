@@ -1,19 +1,23 @@
 /**
- * Running and jumping: velocity, facing and the runner's own motion state for one tick. Position is
- * moved by `race/move.ts`. Up (`move.y < -0.5`) jumps on a fresh press and is held for height.
- *
- * Scaffold baseline ported from the ground spike: run, jump with coyote time and a buffer, the
- * short-hop cut and gravity. Phase 2 lane a adds the dash, every MoveModifiers field and Gil's
- * higher jump, and owns this file.
+ * Running and jumping: velocity, facing and the runner's own motion state for one tick, the run
+ * medium's `applyIntent`. Position is moved by `race/move.ts`. Up (`move.y < -0.5`) jumps on a fresh
+ * press and is held for height; the dash is in `dash.ts`. Wind (current cells) pushes a runner along
+ * its direction and mud (kelp cells) lowers its top speed. A fallen runner is parked until
+ * `afterRunMove` brings it back.
  */
 import type { EventSink } from '@arcade/core';
+import { jumpMulFor } from '../../abilities.ts';
 import type { GameEvent } from '../../events.ts';
 import type { Body, Intent, MoveModifiers, Racer } from '../../types.ts';
 import type { MediumEnv, MediumTuning } from '../types.ts';
-import { type RunMotion, runEnv, runMotion } from './data.ts';
+import { coolDownKick, dashOrCoolDown } from './dash.ts';
+import { type RunEnv, type RunMotion, runEnv, runMotion } from './data.ts';
 
 /** Up counts as held past this far up the stick. */
 const UP_THRESHOLD = -0.5;
+
+/** How much of forceMul's deviation from 1 reaches ground accel and top speed: 1.4 runs 20 % faster. */
+const FORCE_SHARE = 0.5;
 
 /** Fresh motion state for a runner at its start. */
 export function createRunMotion(body: Body): RunMotion {
@@ -26,14 +30,19 @@ export function createRunMotion(body: Body): RunMotion {
     jumping: false,
     airDashUsed: false,
     lastSafe: { x: body.x, y: body.y },
+    parkedAt: { x: body.x, y: body.y },
   };
 }
 
 /**
- * One tick of run, jump and gravity. A jump fires when a press is buffered and the runner is grounded
- * or inside coyote time, and emits `racer.jumped`; releasing Up while rising multiplies gravity.
+ * One tick of run, jump, dash and gravity. A jump fires when a press is buffered and the runner is
+ * grounded or inside coyote time, and emits `racer.jumped`; releasing Up while a jump rises
+ * multiplies gravity. Horizontal speed never passes `tuning.maxSpeed`, however strong the
+ * modifiers; vertical speed is capped only by `maxFall` on the way down. A fallen racer
+ * (`status.fallen`) is held still with no gravity.
  *
- * @throws {Error} When the racer's motion or `env` isn't run's.
+ * @param dt Tick length in seconds.
+ * @throws {Error} When the racer's motion or `env` isn't run's, or `tuning` lacks one of run's extras.
  */
 export function applyRunIntent(
   racer: Racer,
@@ -45,30 +54,47 @@ export function applyRunIntent(
   dt: number,
 ): void {
   const motion = runMotion(racer.motion);
-  const { grounded } = runEnv(env);
+  const surroundings = runEnv(env);
   const extra = runExtra(tuning);
+  if (racer.status.fallen > 0) {
+    park(racer.body);
+    coolDownKick(racer);
+    return;
+  }
   const upHeld = intent.move.y < UP_THRESHOLD;
   const pressed = upHeld && !motion.upWasHeld;
   motion.upWasHeld = upHeld;
+  const jumpNow = jumpReady(motion, surroundings.grounded, pressed);
+  advanceJumpTimers(motion, surroundings.grounded, pressed, extra);
+  updateFacing(racer, intent.move.x);
 
-  if (grounded) {
-    motion.coyote = extra.coyoteTicks;
-    motion.jumping = false;
-  } else if (motion.coyote > 0) motion.coyote -= 1;
-  motion.buffer = pressed ? extra.bufferTicks : Math.max(0, motion.buffer - 1);
-  if (intent.move.x > 0) racer.facing = 1;
-  else if (intent.move.x < 0) racer.facing = -1;
-
-  run(racer.body, intent.move.x, grounded, tuning, mods, dt);
-  if (motion.buffer > 0 && motion.coyote > 0) jump(racer, motion, extra.jumpSpeed, events);
-  fall(racer.body, upHeld, extra, dt);
+  run(racer.body, intent.move.x, surroundings, tuning, extra, mods, dt);
+  if (jumpNow) jump(racer, motion, extra.jumpSpeed * jumpMulFor(racer), events);
+  dashOrCoolDown(racer, motion, intent.kick, surroundings.grounded, tuning, mods, events);
+  racer.body.vx = clamp(racer.body.vx, -tuning.maxSpeed, tuning.maxSpeed);
+  fall(racer.body, motion.jumping && !upHeld, surroundings, extra, dt);
 }
 
+/** The extras run reads from `tuning.extra`. */
+const RUN_EXTRAS = [
+  'runSpeed',
+  'gravity',
+  'cutGravityMul',
+  'maxFall',
+  'airAccel',
+  'airFriction',
+  'jumpSpeed',
+  'coyoteTicks',
+  'bufferTicks',
+  'respawnTicks',
+  'respawnInvulnTicks',
+  'windSpeed',
+  'draftForce',
+  'mudSpeedMul',
+] as const;
+
 /** Run's extras from the tuning, by name. */
-type RunExtra = Record<
-  'gravity' | 'cutGravityMul' | 'maxFall' | 'airAccel' | 'airFriction' | 'jumpSpeed' | 'coyoteTicks' | 'bufferTicks',
-  number
->;
+type RunExtra = Record<(typeof RUN_EXTRAS)[number], number>;
 
 /**
  * Reads run's extras from `tuning`.
@@ -76,39 +102,76 @@ type RunExtra = Record<
  * @throws {Error} When an extra is missing, which means the tuning isn't run's.
  */
 export function runExtra(tuning: MediumTuning): RunExtra {
-  const read = (key: keyof RunExtra): number => {
+  const entries = RUN_EXTRAS.map((key) => {
     const value = tuning.extra[key];
     if (value === undefined) throw new Error(`Run tuning has no extra '${key}'; pass run's tuning (effectiveTuning)`);
-    return value;
-  };
-  return {
-    gravity: read('gravity'),
-    cutGravityMul: read('cutGravityMul'),
-    maxFall: read('maxFall'),
-    airAccel: read('airAccel'),
-    airFriction: read('airFriction'),
-    jumpSpeed: read('jumpSpeed'),
-    coyoteTicks: read('coyoteTicks'),
-    bufferTicks: read('bufferTicks'),
-  };
+    return [key, value] as const;
+  });
+  return Object.fromEntries(entries) as RunExtra;
 }
 
+/** Fallen racers wait out of sight: no velocity, so no gravity carries them further. */
+function park(body: Body): void {
+  body.vx = 0;
+  body.vy = 0;
+}
+
+/**
+ * True when a jump fires this tick: Up was pressed now or within the buffer, and the runner stands
+ * or left the ground within coyote time.
+ */
+function jumpReady(motion: RunMotion, grounded: boolean, pressed: boolean): boolean {
+  return (pressed || motion.buffer > 0) && (grounded || motion.coyote > 0);
+}
+
+/**
+ * Counts the buffer and coyote time down a tick. A press stays live for `bufferTicks` ticks after
+ * it, and standing keeps a jump available for `coyoteTicks` ticks after leaving the ground.
+ */
+function advanceJumpTimers(motion: RunMotion, grounded: boolean, pressed: boolean, extra: RunExtra): void {
+  motion.buffer = pressed ? extra.bufferTicks : Math.max(0, motion.buffer - 1);
+  motion.coyote = grounded ? extra.coyoteTicks : Math.max(0, motion.coyote - 1);
+  if (grounded) motion.jumping = false;
+}
+
+/** Faces the way the runner is steering; no horizontal input keeps the old facing. */
+function updateFacing(racer: Racer, moveX: number): void {
+  if (moveX > 0) racer.facing = 1;
+  else if (moveX < 0) racer.facing = -1;
+}
+
+/** Share of forceMul a runner feels: half its deviation from 1. */
+function forceScale(mods: MoveModifiers): number {
+  return 1 + (mods.forceMul - 1) * FORCE_SHARE;
+}
+
+/**
+ * Moves `vx` toward the held direction's top speed plus any gust. Over that speed (after a dash or
+ * a hit) the runner slows by friction instead of snapping back, and with nothing held it slows to
+ * the gust's drift.
+ */
 function run(
   body: Body,
   wanted: number,
-  grounded: boolean,
+  env: RunEnv,
   tuning: MediumTuning,
+  extra: RunExtra,
   mods: MoveModifiers,
   dt: number,
 ): void {
-  const extra = runExtra(tuning);
-  const top = tuning.maxSpeed;
-  const accel = (grounded ? tuning.force : extra.airAccel) * dt;
-  const friction = (grounded ? tuning.drag : extra.airFriction) * mods.dragMul * dt;
-  if (wanted === 0) body.vx = approach(body.vx, 0, friction);
-  else if (Math.abs(body.vx) > top && Math.sign(body.vx) === Math.sign(wanted))
-    body.vx = approach(body.vx, wanted * top, friction);
-  else body.vx = approach(body.vx, Math.sign(wanted) * top, accel);
+  const scale = forceScale(mods);
+  const top = extra.runSpeed * scale * (env.inMud ? extra.mudSpeedMul : 1);
+  const drift = (env.wind?.x ?? 0) * extra.windSpeed;
+  const accel = (env.grounded ? tuning.force * scale : extra.airAccel) * dt;
+  // dragMul scales air friction too, so ink or a power-up slows a runner the same in a jump.
+  const friction = (env.grounded ? tuning.drag : extra.airFriction) * mods.dragMul * dt;
+  if (wanted === 0) {
+    body.vx = approach(body.vx, drift, friction);
+    return;
+  }
+  const target = Math.sign(wanted) * top + drift;
+  const overTarget = Math.sign(body.vx) === Math.sign(target) && Math.abs(body.vx) > Math.abs(target);
+  body.vx = approach(body.vx, target, overTarget ? friction : accel);
 }
 
 function jump(racer: Racer, motion: RunMotion, speed: number, events: EventSink<GameEvent>): void {
@@ -119,9 +182,18 @@ function jump(racer: Racer, motion: RunMotion, speed: number, events: EventSink<
   events.emit({ type: 'racer.jumped', id: racer.id });
 }
 
-function fall(body: Body, upHeld: boolean, extra: RunExtra, dt: number): void {
-  const cut = body.vy < 0 && !upHeld ? extra.cutGravityMul : 1;
-  body.vy = Math.min(extra.maxFall, body.vy + extra.gravity * cut * dt);
+/**
+ * Gravity, stronger while a jump rises with Up released (the short hop), plus any updraft or
+ * downdraft. Only falling speed is capped, so a jump or a stomp bounce keeps its full rise.
+ */
+function fall(body: Body, cutShort: boolean, env: RunEnv, extra: RunExtra, dt: number): void {
+  const cut = cutShort && body.vy < 0 ? extra.cutGravityMul : 1;
+  const draft = (env.wind?.y ?? 0) * extra.draftForce;
+  body.vy = Math.min(extra.maxFall, body.vy + (extra.gravity * cut + draft) * dt);
+}
+
+function clamp(value: number, low: number, high: number): number {
+  return Math.min(high, Math.max(low, value));
 }
 
 function approach(value: number, target: number, step: number): number {
