@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { eventsIn, hold, IDLE, placeOnTile, racerOf, step } from '../../test-world.ts';
 import { TILE } from '../../types.ts';
-import { flightWorld, RIVAL_LANE_ROWS } from './test-kit.ts';
+import { flightWorld, RIVAL_LANE_ROWS, ticksOfRacer } from './test-kit.ts';
 import { FLIGHT_TUNING } from './tuning.ts';
 
 const RIGHT = hold({ x: 1, y: 0 });
@@ -101,6 +101,39 @@ describe('falling out of the sky', () => {
     step(race.world, race.log, respawnTicks);
 
     expect(race.player.body.x + race.player.body.w).toBeLessThanOrEqual(3 * TILE);
+  });
+
+  it('never saves a spot in a sideways gust, which would blow an idle flyer into the gap', () => {
+    // A gust over cols 2-9 blows right from the top of the sky down to the floor, ending at the gap.
+    const gustRow = `..${'>'.repeat(8)}.........F`;
+    const gustFloorRow = RIVAL_LANE_ROWS + 19;
+    const race = flightWorld([
+      ...Array.from({ length: 18 }, () => gustRow),
+      `.1${'>'.repeat(8)}.........F`,
+      '##########.....#####',
+    ]);
+    const { world, log, player } = race;
+    placeOnTile(player, 6, RIVAL_LANE_ROWS + 2);
+    step(world, log, 5, IDLE);
+    placeOnTile(player, 12, gustFloorRow);
+    untilFallen(race, IDLE);
+    step(world, log, respawnTicks + 180, IDLE);
+
+    expect(eventsIn(log, 'racer.fell')).toEqual([{ type: 'racer.fell', id: 'player' }]);
+    expect(player.body.y + player.body.h).toBe(gustFloorRow * TILE);
+    expect(player.body.x + player.body.w).toBeLessThanOrEqual(10 * TILE);
+  });
+
+  it('needs a fresh Up press to flap after coming back, even with Up held all through the wait', () => {
+    const race = flightWorld(GAP_LANE);
+    const { world, log } = race;
+    const fellOn = untilFallen(race);
+    step(world, log, respawnTicks + 10, hold({ x: 0, y: -1 }));
+
+    expect(ticksOfRacer(log, 'racer.flapped').filter((tick) => tick > fellOn)).toEqual([]);
+    step(world, log, 1, IDLE);
+    step(world, log, 1, hold({ x: 0, y: -1 }));
+    expect(ticksOfRacer(log, 'racer.flapped').filter((tick) => tick > fellOn)).toEqual([world.tick]);
   });
 
   it('brings a rival back the same way', () => {

@@ -175,13 +175,16 @@ function cruise(
 
 /**
  * Gravity, or the dive's pull while Down is held, plus any updraft or downdraft, with the fall
- * capped at `diveMaxFall` diving, `glideFall` with Up held and `maxFall` otherwise.
+ * capped at `diveMaxFall` diving, `glideFall` with Up held and `maxFall` otherwise. An updraft
+ * stronger than gravity never lifts a flyer faster than `maxFall`; a rise already faster than that
+ * is left alone.
  */
 function fall(body: Body, upHeld: boolean, downHeld: boolean, air: FlightEnv, extra: FlightExtra, dt: number): void {
   const draft = (air.wind?.y ?? 0) * extra.draftForce;
   const pull = downHeld ? extra.diveAccel : extra.gravity;
   const cap = downHeld ? extra.diveMaxFall : upHeld ? extra.glideFall : extra.maxFall;
-  body.vy = Math.min(cap, body.vy + (pull + draft) * dt);
+  const fastestRise = Math.min(body.vy, -extra.maxFall);
+  body.vy = Math.max(fastestRise, Math.min(cap, body.vy + (pull + draft) * dt));
 }
 
 /** Sets the flyer rising at least `flapLift` times its jump multiplier, starts the flap cooldown and emits `racer.flapped`. */

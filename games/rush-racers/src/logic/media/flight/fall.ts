@@ -7,7 +7,8 @@
  * A safe spot has rock somewhere below it in the flyer's own columns and in every column within
  * `SAFE_MARGIN_TILES` either side, so a flyer put back there with no input falls onto rock and never
  * drifts off the lip into the gap it fell through. Puff clouds (coral) don't count: a dash can pop
- * them for good.
+ * them for good. Nor does a spot in a sideways gust (`<` `>`): an idle flyer put back there would
+ * drift along it as it falls, possibly into the gap.
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../../events.ts';
@@ -43,13 +44,29 @@ export function afterFlightMove(
   if (body.y >= world.level.height * TILE) fallOut(racer, events, extra.respawnTicks);
 }
 
-/** True when every column from `SAFE_MARGIN_TILES` left of `body` to as far right of it has rock below it. */
+/**
+ * True when `body` is out of any sideways gust and every column from `SAFE_MARGIN_TILES` left of it
+ * to as far right of it has rock below it.
+ */
 function isSafeSpot(level: Level, body: Box): boolean {
+  if (inSidewaysGust(level, body)) return false;
   const { left, right, bottom } = bodyTiles(body);
   for (let column = left - SAFE_MARGIN_TILES; column <= right + SAFE_MARGIN_TILES; column++) {
     if (!hasRockBelow(level, column, bottom + 1)) return false;
   }
   return true;
+}
+
+/** True when `body` overlaps a gust cell (`<` or `>`), which pushes a flyer sideways. */
+function inSidewaysGust(level: Level, body: Box): boolean {
+  const { left, right, top, bottom } = bodyTiles(body);
+  for (let row = top; row <= bottom; row++) {
+    for (let column = left; column <= right; column++) {
+      const cell = cellAt(level, column, row);
+      if (cell === 'current-left' || cell === 'current-right') return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -65,14 +82,16 @@ function hasRockBelow(level: Level, column: number, fromRow: number): boolean {
 
 /**
  * One tick out of play for a fallen flyer: held on its park spot, then put back on its last safe
- * spot once the fall's count runs out, with a fresh flap, no dive and no dash window.
+ * spot once the fall's count runs out, with the flap cooldown cleared, no dive and no dash window.
  */
 function waitToRespawn(racer: Racer, motion: FlightMotion, invulnTicks: number, events: EventSink<GameEvent>): void {
   holdParked(racer);
   racer.status.fallen -= 1;
   if (racer.status.fallen > 0) return;
   respawnAt(racer, motion.lastSafe, invulnTicks, events);
-  motion.upWasHeld = false;
+  // A fallen racer's input reaches the medium as nothing (`controlledIntent`), so whether Up is held
+  // through the wait is unknown: count it as held, and a flap back in play needs a fresh press.
+  motion.upWasHeld = true;
   motion.flapCooldown = 0;
   motion.diving = false;
   motion.dashWindow = 0;

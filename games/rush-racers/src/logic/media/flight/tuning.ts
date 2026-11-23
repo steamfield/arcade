@@ -12,7 +12,7 @@ import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
  * over cruise (a dash, a dive's carry) and slows a flyer coasting with no stick; `maxSpeed` the
  * hard cap on horizontal speed that nothing passes (px/s); `kick` the speed a dash sets along facing
  * (px/s). In `extra`: `cruise`, top flying speed before forceMul and fog (px/s); `gravity` (px/s²);
- * `maxFall` (px/s); `flapLift`, the upward speed a flap leaves at least (px/s, times `jumpMulFor`);
+ * `maxFall` (px/s), which also caps how fast an updraft lifts a flyer; `flapLift`, the upward speed a flap leaves at least (px/s, times `jumpMulFor`);
  * `flapCooldownTicks`, the shortest gap between flaps; `glideFall`, the fall speed Up held caps
  * (px/s); `diveAccel` (px/s², in place of gravity while Down is held) and `diveMaxFall` (px/s);
  * `diveCarry`, the share of the fall speed added to forward speed on letting go of Down; `dashTicks`,

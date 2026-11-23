@@ -4,12 +4,16 @@
  * An accessor throws on another medium's data. Navigation and pilot shapes live in `way-data.ts`.
  */
 import type { Vec } from '../../types.ts';
+import type { ParkingMotion } from '../fall-out.ts';
 import type { MediumEnv, RacerMotion } from '../types.ts';
 
-/** A flyer's movement state. */
-export interface FlightMotion extends RacerMotion {
+/** A flyer's movement state. It can fall out of the sky, so it keeps a park spot (`ParkingMotion`). */
+export interface FlightMotion extends ParkingMotion {
   readonly kind: 'flight';
-  /** Up was held last tick, so holding it doesn't flap again: a flap needs a fresh press. */
+  /**
+   * Up was held last tick, so holding it doesn't flap again: a flap needs a fresh press. Set on
+   * respawn, since input while fallen is unseen.
+   */
   upWasHeld: boolean;
   /** Ticks until a flap is allowed again; 0 when ready. A press while above 0 is dropped. */
   flapCooldown: number;
@@ -22,8 +26,6 @@ export interface FlightMotion extends RacerMotion {
    * column within 2 tiles either side (`fall.ts`); a fall brings it back here.
    */
   lastSafe: Vec;
-  /** Top-left of where a fallen flyer waits, out of the level, until it respawns (`../fall-out.ts`). */
-  parkedAt: Vec;
 }
 
 /** What the surroundings do to a flyer this tick. */
