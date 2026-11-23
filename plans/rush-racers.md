@@ -290,7 +290,7 @@ Test cases:
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | L | games/rush-racers/src/logic/courses/bramble-run.ts, games/rush-racers/src/logic/difficulty/ | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | running | deliver/rush-racers-5a | Bramble Run bars pass |
-| b | M | games/rush-racers/scenarios/course-select.ts, games/rush-racers/scenarios/stomp.ts, games/rush-racers/scenarios/crate-from-below.ts, games/rush-racers/scenarios/ledge-jump.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/course.spec.ts, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md | contracts | games/rush-racers/tests/smoke.spec.ts | opus | running | deliver/rush-racers-5b | scenarios and smoke pass |
+| b | M | games/rush-racers/scenarios/course-select.ts, games/rush-racers/scenarios/stomp.ts, games/rush-racers/scenarios/crate-from-below.ts, games/rush-racers/scenarios/ledge-jump.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/course.spec.ts, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md | contracts | games/rush-racers/tests/smoke.spec.ts | opus | merged | deliver/rush-racers-5b | scenarios and smoke pass |
 
 ## Log
 
