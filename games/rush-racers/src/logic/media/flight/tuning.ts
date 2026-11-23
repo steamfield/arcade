@@ -12,18 +12,23 @@ import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
  * over cruise (a dash, a dive's carry) and slows a flyer coasting with no stick; `maxSpeed` the
  * hard cap on horizontal speed that nothing passes (px/s); `kick` the speed a dash sets along facing
  * (px/s). In `extra`: `cruise`, top flying speed before forceMul and fog (px/s); `gravity` (px/s²);
- * `maxFall` (px/s); `flapLift`, the upward speed a flap leaves at least (px/s, times `jumpMulFor`);
+ * `maxFall` (px/s), which also caps how fast an updraft lifts a flyer; `flapLift`, the upward speed a flap leaves at least (px/s, times `jumpMulFor`);
  * `flapCooldownTicks`, the shortest gap between flaps; `glideFall`, the fall speed Up held caps
  * (px/s); `diveAccel` (px/s², in place of gravity while Down is held) and `diveMaxFall` (px/s);
  * `diveCarry`, the share of the fall speed added to forward speed on letting go of Down; `dashTicks`,
  * the ticks after a dash in which it pops puff clouds; `respawnTicks` and `respawnInvulnTicks`;
  * `windSpeed` (px/s) a gust adds to the speed a flyer settles at; `draftForce` (px/s²) an updraft or
  * downdraft pushes with; `fogCruiseMul`, cruise's multiplier in fog.
+ *
+ * `drag` is low next to `force` so speed over cruise lasts: a dash's 110 px/s surplus takes about
+ * 1.6 s to bleed off and a 1 s dive's carry about 2 s, so both are worth using, while steering back
+ * the other way still turns a flyer round at `force`. `diveCarry` keeps a short dive's carry small
+ * and a full one just under the cap.
  */
 export const FLIGHT_TUNING = {
   base: { forceMul: 1, kickMul: 1, kickCooldownTicks: 36, dragMul: 1 },
   force: 300,
-  drag: 140,
+  drag: 70,
   maxSpeed: 260,
   kick: 230,
   extra: {
@@ -35,7 +40,7 @@ export const FLIGHT_TUNING = {
     glideFall: 50,
     diveAccel: 520,
     diveMaxFall: 340,
-    diveCarry: 0.55,
+    diveCarry: 0.4,
     dashTicks: 10,
     respawnTicks: 60,
     respawnInvulnTicks: 60,

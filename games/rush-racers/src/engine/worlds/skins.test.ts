@@ -98,8 +98,8 @@ describe('the Cloudreach skin', () => {
       eel: 'EEL LUNGES',
     });
     expect([text.cratesHeading, text.pearlsHeading, text.slowedBy, text.trapped]).toEqual([
-      'POP BALLOONS',
-      'GRAB FEATHERS',
+      'BALLOON POP',
+      'FEATHERS',
       'SLOWED BY FOG',
       'CLOUD',
     ]);

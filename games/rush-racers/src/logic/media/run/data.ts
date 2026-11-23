@@ -5,10 +5,11 @@
  */
 
 import type { Vec } from '../../types.ts';
+import type { ParkingMotion } from '../fall-out.ts';
 import type { MediumEnv, RacerMotion } from '../types.ts';
 
-/** A runner's movement state. */
-export interface RunMotion extends RacerMotion {
+/** A runner's movement state. It can fall out through a pit, so it keeps a park spot (`ParkingMotion`). */
+export interface RunMotion extends ParkingMotion {
   readonly kind: 'run';
   /** Standing on a floor, ledge or crate after this tick's move. Set by `afterRunMove`. */
   grounded: boolean;
@@ -30,8 +31,6 @@ export interface RunMotion extends RacerMotion {
   dashGlide: number;
   /** Top-left of the last spot the runner stood on with rock or a ledge under both feet; a fall returns it here. */
   lastSafe: Vec;
-  /** Top-left of where a fallen runner waits, out of the level, until it respawns. */
-  parkedAt: Vec;
 }
 
 /** What the surroundings do to a runner this tick. */

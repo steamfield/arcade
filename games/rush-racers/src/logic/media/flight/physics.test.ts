@@ -254,6 +254,13 @@ describe('surroundings', () => {
     expect(fallIn(DOWN)).toBeGreaterThan(fallIn(null));
   });
 
+  it('never lifts a flyer faster than maxFall in an updraft, however long it rides one', () => {
+    const vys = fly(bareFlyer(), ticksIn(2), IDLE, { env: air(UP) }).samples.map((sample) => sample.vy);
+
+    expect(Math.min(...vys)).toBe(-maxFall);
+    expect(vys.at(-1)).toBe(-maxFall);
+  });
+
   it('lowers cruise to fogCruiseMul in fog', () => {
     const speeds = fly(bareFlyer(), ticksIn(2), hold(RIGHT), { env: air(null, true) }).samples;
 
