@@ -3,13 +3,16 @@
  * when the race is over. Reads bodies; never moves them.
  */
 
-import { playerOf } from '../racers.ts';
+import { activeHumans, isRival, playerOf } from '../racers.ts';
 import { RACER_IDS, type RaceResult, type Racer, TILE, type World } from '../types.ts';
 import { progressAt } from './flowfield.ts';
 
 /** Ticks from the first countdown beep to the start signal. */
 export const COUNTDOWN_TICKS = 180;
-/** Ticks the player gets after the third rival finishes before the race ends without them. */
+/**
+ * Ticks the last unfinished human gets, once every rival is home and every other human has finished
+ * (or none is left), before the race ends without them.
+ */
 export const DNF_GRACE_TICKS = 600;
 /** Race ticks after which the race ends regardless. */
 export const RACE_LIMIT_TICKS = 18000;
@@ -52,7 +55,8 @@ export function updateProgress(world: World): void {
 
 /**
  * Records racers whose centre crossed the finish line this tick and emits `racer.finished`.
- * Also notes the race tick on which the last rival finishes, which starts the DNF grace period.
+ * Also notes the first race tick on which every rival (taken-over humans included) has finished
+ * and at most one active human has not, which starts the DNF grace period.
  */
 export function recordFinishes(world: World): void {
   if (world.race.phase !== 'racing') return;
@@ -70,30 +74,51 @@ export function recordFinishes(world: World): void {
     world.events.emit({ type: 'racer.finished', id: racer.id, place, ticks: world.race.raceTick });
   }
 
-  const rivalsDone = world.racers.every((racer) => racer.id === 'player' || racer.finished);
-  if (rivalsDone && world.race.rivalsDoneAt === null) world.race.rivalsDoneAt = world.race.raceTick;
+  if (world.race.rivalsDoneAt === null && onlyOneHumanLeft(world)) world.race.rivalsDoneAt = world.race.raceTick;
 }
 
-/** Ranks racers (finished by place, then by progress, ties by RACER_IDS) and emits `player.place` on change. */
+/** Whether every rival has finished and at most one active human is still racing. */
+function onlyOneHumanLeft(world: World): boolean {
+  const rivalsHome = world.racers.every((racer) => racer.finished || !isRival(world, racer.id));
+  return rivalsHome && unfinishedHumans(world).length <= 1;
+}
+
+/** Active humans still short of the line, in RACER_IDS order. */
+function unfinishedHumans(world: World): Racer[] {
+  return activeHumans(world).filter((racer) => !racer.finished);
+}
+
+/**
+ * Ranks racers (finished by place, then by progress, ties by RACER_IDS) and emits `player.place` for
+ * each active human whose place changed, in RACER_IDS order.
+ */
 export function updatePlaces(world: World): void {
   // The grid order is the standing during the countdown; announcing it would be noise.
   if (world.race.phase === 'countdown') return;
-  const player = playerOf(world);
-  const before = player.place;
+  const humans = activeHumans(world);
+  const before = humans.map((human) => human.place);
   rankRacers(world.racers).forEach((racer, index) => {
     racer.place = index + 1;
   });
-  if (player.place !== before) world.events.emit({ type: 'player.place', id: player.id, place: player.place });
+  humans.forEach((human, index) => {
+    if (human.place !== before[index]) world.events.emit({ type: 'player.place', id: human.id, place: human.place });
+  });
 }
 
-/** Ends the race when the player finishes, the DNF grace expires or the time limit hits; emits `race.finished` once. */
+/**
+ * Ends the race when no active human is left racing, the DNF grace expires or the time limit hits
+ * (or, in `endsWhen: 'everyone'` races, when all have finished); emits `race.finished` once. The
+ * result describes slot `player`.
+ */
 export function checkRaceEnd(world: World): void {
   const race = world.race;
   if (race.phase !== 'racing') return;
   const player = playerOf(world);
   const graceOver = race.rivalsDoneAt !== null && race.raceTick >= race.rivalsDoneAt + DNF_GRACE_TICKS;
   const done =
-    race.endsWhen === 'everyone' ? world.racers.every((racer) => racer.finished) : player.finished || graceOver;
+    race.endsWhen === 'everyone'
+      ? world.racers.every((racer) => racer.finished)
+      : unfinishedHumans(world).length === 0 || graceOver;
   if (!done && race.raceTick < RACE_LIMIT_TICKS) return;
 
   const standings = rankRacers(world.racers).map((racer) => racer.id);
