@@ -5,7 +5,7 @@
  */
 import { Frame } from '../../art/keys.ts';
 import { easeOut, type PageBuilder, stroke } from './kit.ts';
-import { addFloor, FLOOR_Y, type Jump, liftAt, racerCentreY } from './run-page.ts';
+import { addFloor, FLOOR_Y, type Jump, liftAt, racerCentreY } from './run-kit.ts';
 
 const RACER_X = { start: 140, landing: 190 } as const;
 /** The beetle starts out on the right and stops where the racer lands. */
@@ -24,6 +24,7 @@ function jumpProgress(tick: number): number {
   return Math.min(1, Math.max(0, (tick - JUMP.startTick) / JUMP.airTicks));
 }
 
+/** Builds the run enemies page: a racer jumps onto a walking beetle and stomps it. */
 export const buildRunEnemiesPage: PageBuilder = (kit) => {
   const { objects } = kit.skin;
   addFloor(kit);

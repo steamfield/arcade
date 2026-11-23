@@ -5,17 +5,20 @@
  */
 import { Frame } from '../../art/keys.ts';
 import { easeOut, type PageBuilder, stroke } from './kit.ts';
-import { addFloor, FLOOR_Y, type Jump, liftAt, racerCentreY } from './run-page.ts';
+import { addFloor, FLOOR_Y, type Jump, liftAt, RACER_HALF_HEIGHT, racerCentreY } from './run-kit.ts';
 
-const CRATE = { x: 168, y: 36 } as const;
-/** The jump peaks as the racer's head reaches the crate's bottom. */
-const JUMP: Jump = { startTick: 30, holdTicks: 14, airTicks: 30, peakPx: 38 };
+const CRATE = { x: 168, y: 40, halfHeight: 10 } as const;
+/** The lift at which the racer's head reaches the crate's bottom. */
+const CONTACT_LIFT = FLOOR_Y - 2 * RACER_HALF_HEIGHT - (CRATE.y + CRATE.halfHeight);
+/** The jump peaks exactly at contact, so the racer never overlaps the crate and falls from the bump. */
+const JUMP: Jump = { startTick: 30, holdTicks: 14, airTicks: 30, peakPx: CONTACT_LIFT };
 const PERIOD = 150;
-/** The crate opens at the jump's peak and the power-up rises over `ITEM.ticks`. */
+/** The crate opens at the jump's peak and the power-up rises over `ITEM.ticks`, clear of the heading. */
 const OPENS_AT = JUMP.startTick + JUMP.airTicks / 2;
-const ITEM = { risePx: 22, ticks: 20 } as const;
+const ITEM = { risePx: 16, ticks: 20 } as const;
 const BUMP = { px: 3, ticks: 4 } as const;
 
+/** Builds the run crates page: a racer jumps into a crate from below and it opens. */
 export const buildRunCratesPage: PageBuilder = (kit) => {
   const { itemTextures, pickups } = kit.skin.objects;
   addFloor(kit);
