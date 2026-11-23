@@ -5,7 +5,7 @@
  */
 import { createRng, EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { RUN_TEST } from '../logic/courses/run-test.ts';
+import { COURSES } from '../logic/courses/index.ts';
 import type { GameEvent } from '../logic/events.ts';
 import { hashWorld } from '../logic/hash.ts';
 import { RACER_IDS, type RacerId, type TickInput, type World } from '../logic/types.ts';
@@ -15,6 +15,8 @@ import { createSession, type Desync, type Session } from './session.ts';
 import { createMemoryRoom, type MemoryRoom } from './transport/memory.ts';
 import type { RoomConnection } from './transport/types.ts';
 
+/** The short course these races run on. */
+const RUN_TEST_COURSE = COURSES['run-test'];
 /** Wall time one logic step stands for, rounded so stall sums stay exact. */
 const STEP_MS = 16;
 /** Rounds after which a race that has not ended counts as stuck. */
@@ -84,7 +86,7 @@ function handleArrivals(peer: Peer): void {
 
 function createPeer(room: MemoryRoom, slot: RacerId, humans: readonly RacerId[], options: RaceOptions): Peer {
   const connection = room.connect();
-  const world = createWorld(RUN_TEST, new EventLog<GameEvent>(10_000), { seed: 7, humans, difficulty: 'normal' });
+  const world = createWorld(RUN_TEST_COURSE, new EventLog<GameEvent>(10_000), { seed: 7, humans, difficulty: 'normal' });
   const desyncs: Desync[] = [];
   const kicks: RacerId[] = [];
   const session = createSession({
@@ -393,7 +395,7 @@ describe('dropped messages', () => {
 describe('createSession', () => {
   it('refuses a local slot outside humans and a delay outside 1 to 12', () => {
     const humans: RacerId[] = ['player', 'tess'];
-    const world = createWorld(RUN_TEST, new EventLog<GameEvent>(100), { seed: 1, humans });
+    const world = createWorld(RUN_TEST_COURSE, new EventLog<GameEvent>(100), { seed: 1, humans });
     const options = {
       world,
       local: 'player' as RacerId,
