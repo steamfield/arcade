@@ -73,6 +73,20 @@ describe('a bounce', () => {
     expect(moments.look(102, false).stretch).not.toBe(0);
   });
 
+  it('wins over a kick fired on the same tick, since a dash into a wall bounces after it fires', () => {
+    const moments = createRacerMoments('player', 1);
+    moments.onEvents(
+      [
+        { type: 'racer.kicked', id: 'player', tick: STEP_TICK, seq: 0 },
+        { type: 'racer.bounced', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 1 },
+      ],
+      100,
+    );
+
+    expect(moments.look(100, false)).toMatchObject({ axis: 'x' });
+    expect(moments.look(100, false).stretch).toBeLessThan(0);
+  });
+
   it("does nothing under reduced motion or for another racer's bounce", () => {
     const moments = createRacerMoments('tess', 2);
     moments.onEvents([{ type: 'racer.bounced', id: 'tess', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
