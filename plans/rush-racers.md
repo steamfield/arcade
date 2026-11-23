@@ -253,15 +253,40 @@ Test cases:
 
 ### Phase 5: Bramble Run
 
-Demo: course select lists Sunlit Shallows and Bramble Run; race Bramble Run on each level; the bars pass.
+Demo: course select lists Sunlit Shallows and Bramble Run; pick Bramble Run, see the Thornwood cast on select, race it in the forest on each level; the bars pass.
 Depends on: phase 3, phase 4
+
+Scaffold (inline, by the orchestrator, after phases 3 and 4 tag): `'bramble-run'` in `ShippedCourseId`; `logic/courses/bramble-run.ts` registered in `COURSES` after Sunlit, `listed: true`, world thornwood, theme forest, song thornwood, with a first-draft level (run-test's ideas stretched to Sunlit's length) and a guessed `parTicks`; `TITLE_TO_RACE` in `scenarios/kit.ts` gains the course select step (fire on the course the cursor starts on, which is the course in force), and every spec or scenario that walks the menus by hand gets the same step. The gate passes on the scaffold. Listing the course in the scaffold, not at the end, is deliberate: course select turning on changes every menu walk, and lane b needs it on to test.
+
+Test cases:
+- Bramble Run's level (lane a): Thornwood's three zones left to right: forest floor (pits, mud, thorn bushes, beetles and boars, crates hit from below), the treetop high route (a ledge climb to a branch path above the floor path that is shorter in time and harder: gaps, wasps, wind gusts), and the root cave (a `dark` column range, snakes, cracked stone to break or jump), then a finish straight. Every enemy kind and cell the run medium supports appears at least once. About Sunlit's race length (par within 4500-6000 ticks).
+- `course.test.ts` conformance passes for Bramble Run with no edit: the level parses, `validateLevel` finds nothing, four racers finish within 1.6x par on seeds 1-5 on Hard with no 600-tick stall; the forest theme has a tile for every legend art key (`engine/themes` course-assets test).
+- Par measured per COURSES.md "parTicks" (expert bot, seeds 1-200, all eight characters), with a comment saying so.
+- Bars per COURSES.md "Difficulty bars": `bramble-run-<character>.test.ts` (`describeDifficulty`), `-novice` (`describeNovice`), `-normal` (`describeNormal`) for all eight, plus Easy files modelled on `easy-level.test.ts` and `easy-toddler.test.ts`, all passing with profiles unchanged. Tune the level first; a `catchUp` override on one level only if the level can't get there.
+- Course select (lane b): title, Race, course select lists Sunlit Shallows then Bramble Run with each best on the level in force; down and fire picks Bramble Run; select shows the Thornwood cast's names; the race runs with `course: 'bramble-run'`, `medium: 'run'`; dash on select goes back to course select; `lastCourse` is saved as bramble-run after a finish, and the title's best line follows it.
+- Mechanics scenarios on `run-test` (lane b), so they don't depend on lane a's layout: a stomp (`enemy.bonked` with `how: 'stomp'` and the racer bounced), a crate opened from below (`clam.opened` with the racer under it), and a ledge jumped up through and stood on. `pit-respawn` stays.
+- Smoke (lane b): a Bramble Run race starts from the menus and runs 600 ticks with no console error on desktop Chromium, the phone and WebKit; on the phone the touch controls jump on Up.
+
+#### Lane a brief
+
+- Goal: Bramble Run, Thornwood's real course, designed and tuned until it passes Sunlit's bars.
+- Interface: `logic/courses/bramble-run.ts` is data only (the scaffold's draft is yours to replace); its `listed`, id, world, theme and song stay as the scaffold set them. Difficulty files are new files in `logic/difficulty/` named `bramble-run-*.test.ts`. If the level needs a legend art key the forest theme lacks, or the run nav or physics need a change, report it rather than editing.
+- Behavior: the level, conformance, par and bars cases above.
+- Out of scope: engine art, scenarios, docs (lane b), physics and nav tuning.
+- Done when: `pnpm arcade test rush-racers @courses @behavior` passes, each new bars file passes on its own (`pnpm arcade test rush-racers src/logic/difficulty/bramble-run-<x>.test.ts`), `pnpm --filter game-rush-racers test:difficulty` passes once at the end, the `--skip-tests` check passes, and a `see --query course=bramble-run --query scene=play` capture at the high route and in the root cave looks right.
+
+#### Lane b brief
+
+- Goal: Bramble Run and the Thornwood world are reachable, tested and documented.
+- Interface: new scenarios `scenarios/course-select.ts`, `scenarios/stomp.ts`, `scenarios/crate-from-below.ts`, `scenarios/ledge-jump.ts`; `tests/smoke.spec.ts` and `tests/course.spec.ts` gain the Bramble cases. Docs: DESIGN.md (worlds, Thornwood, the run medium's controls and rules, Bramble Run's section, launch params), COURSES.md (a new "Add a world" section: the medium folder, the logic world file, the engine skin, theme, song and course, in the order this run built Thornwood, so the next world is a recipe), UI.md (course select with two courses, Thornwood's names in the HUD and How to Play).
+- Behavior: the course select, mechanics and smoke cases above.
+- Out of scope: the level itself (lane a, in parallel: describe Bramble Run in DESIGN.md from this plan's zone list and leave exact columns out), engine and logic code.
+- Done when: `pnpm arcade test rush-racers` with the new scenario files passes (run them through `pnpm arcade see --scenario <name>` too and look), `pnpm arcade smoke rush-racers` passes once at the end, and the `--skip-tests` check passes.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | L | games/rush-racers/src/logic/courses/bramble-run.ts, games/rush-racers/src/logic/difficulty/ | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | pending | | Bramble Run bars pass |
-| b | M | games/rush-racers/scenarios/, games/rush-racers/tests/, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md | contracts | games/rush-racers/tests/smoke.spec.ts | opus | pending | | scenarios and smoke pass |
-
-(Test cases and briefs written during phase 4.)
+| b | M | games/rush-racers/scenarios/course-select.ts, games/rush-racers/scenarios/stomp.ts, games/rush-racers/scenarios/crate-from-below.ts, games/rush-racers/scenarios/ledge-jump.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/course.spec.ts, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md | contracts | games/rush-racers/tests/smoke.spec.ts | opus | pending | | scenarios and smoke pass |
 
 ## Log
 
@@ -271,3 +296,5 @@ Depends on: phase 3, phase 4
 - 2026-11-23 phase 1 landing: `scenes/race.ts` was in no lane's Owns list though both 1/a and 1/b changed signatures it calls, so the merger made those call-site edits (plus `race-text.test.ts`, `hud.ts` captions, `fx/index.ts` bursts). Lane 1/b's optional Reef defaults on `enemyLook` and `createBursts` were made required so a missing skin can't silently draw Reef art. Later phases: list the scene that constructs a view in the lane that changes the view's signature.
 - 2026-11-23 lane 1/c review, applied: stomp bounce applied after the enemy pass so landing on two enemies stomps both; `progressAt` clamps the sample, not the body top, so in-level readings are unchanged; crates opened from below stay shut as long as touch-opened clams; a falling racer stomps even while dashing (stomp checked before dash bonk when the medium has a bounce); `collide.ts` split into `race/move.ts` and `race/separate.ts` with `rules` required. Also fixed three seam test setups the lane found wrong (ledge run length, swim ledge course without starts 2-4, stomp clipped by glide's speed cap on a second tick).
 - 2026-11-23 phase 1 boundary review, applied as `phase 1: boundary fixes`: a generic `status.fallen` that blocks input, counts as downed and is skipped by homing targets (the run medium owns its countdown); `buildNav` takes the effective tuning so jump links match course overrides; crates stay solid while shut, so a racer standing on one never drops through when another bumps it; the ledge check moved from swim into `createWorld`, driven by `allowsLedges`; `assertSkinAssets` checks the hazard glints. Moved to lane 2/c: How to Play backdrop from the current course and per-medium crate and enemy pages. Deferred to phase 3: checking skin texture keys exist at boot, once Thornwood's art exists. Rejected: removing `WorldDef`'s item, pickup, enemy and hazard names as unread; they are the logic-side names for anything that names things outside the engine skin, and cost nothing.
+- 2026-11-23 main merged into the landing branch (a6b2d19) before phases 3 and 4 started: main had gained the reef-online lockstep groundwork and the reef-difficulty sprint (seats, local racer, world hash, catch-up, the no-inexact-math lint rule, now pointed at rush-racers logic). World-hash pins moved only because racers carry `status.fallen`; with it stripped they match main's. Phase 3 and 4 lanes start from a6b2d19 (`check-lane` base a6b2d19). `ce:builder` always runs in its own worktree cut from main, so lane setup renames that branch and hard-resets it to the landing branch.
+- 2026-11-23 phase 5 briefs written: the scaffold lists Bramble Run and adds the course select step to `TITLE_TO_RACE`, since turning course select on changes every menu walk.
