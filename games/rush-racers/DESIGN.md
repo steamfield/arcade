@@ -174,13 +174,13 @@ About 90 s for a good player, 616 columns in five sections: the reef (columns 0-
 
 ## Bramble Run
 
-Thornwood's course (`logic/courses/bramble-run.ts`), about as long as Sunlit Shallows, in three zones left to right, then a finish straight:
+Thornwood's course (`logic/courses/bramble-run.ts`), 490 columns with par 4274 ticks (about 71 s, against Sunlit Shallows' 112 s), in three zones left to right, then a finish straight:
 
 - The forest floor: pits, mud, thorn bushes, beetles and boars, and crates to hit from below.
-- The treetop high route: a ledge climb to a branch path above the floor path, quicker but harder, with gaps, wasps and wind gusts.
+- The treetop high route: a rock-step climb up a trunk to a branch path of ledges above the floor path, quicker but harder, with gaps, wasps and wind gusts; the floor path below has mud, a headwind, a downdraft and a trench.
 - The root cave: a dark zone with snakes and cracked stone to break or jump.
 
-Every enemy kind and cell the run medium supports appears on it at least once. It passes the same difficulty bars as Sunlit Shallows (`logic/difficulty/bramble-run-*.test.ts`), with its par measured as `COURSES.md` "parTicks" says.
+Every enemy kind and cell the run medium supports appears on it at least once. It passes the same difficulty bars as Sunlit Shallows (`logic/difficulty/bramble-run-*.test.ts`), with its par measured as `COURSES.md` "parTicks" says. Its Normal rival catch-up starts 9 tiles behind the player rather than 2 (`catchUp` in the course file): on foot rivals gain less from Normal's force multiplier, and at 2 the no-dash bot fell out of the top 3 too often.
 
 ## Course format
 
