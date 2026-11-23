@@ -8,7 +8,8 @@
  *
  * The medium owns aim, avoidance, kicks and its own stuck rule. The backstop here catches what that
  * rule misses: a rival that keeps moving without getting any closer to the finish (`racer.progress`)
- * for PROGRESS_BACKSTOP_TICKS racing ticks is sent into the medium's recovery. Like the speed rule,
+ * for PROGRESS_BACKSTOP_TICKS racing ticks is sent into the medium's recovery. It is for opponents
+ * only: a bot driving the player's slot is a test harness and is left to flounder. Like the speed rule,
  * its count resets while the rival is stunned or trapped; it pauses while an Undertow pulls the
  * rival back, since that loss isn't the rival's steering. A recovering rival never bursts.
  */
@@ -20,8 +21,12 @@ import { modifiersFor } from '../modifiers.ts';
 import type { AiMemory, Intent, Racer, World } from '../types.ts';
 import { wantsBurst } from './items.ts';
 
-/** Racing ticks without a new best progress before the backstop starts the medium's recovery. */
-export const PROGRESS_BACKSTOP_TICKS = 240;
+/**
+ * Racing ticks without a new best progress before the backstop starts a rival's recovery: 10 s, the
+ * same stall limit as course conformance. A safety net for new geometry that never fires on Sunlit
+ * Shallows, where the rivals' measured worst run is 326 ticks (onyx easy/novice/7, bo as Selene, tile 33,5).
+ */
+export const PROGRESS_BACKSTOP_TICKS = 600;
 
 /** Fresh memory for a rival at the start line in `medium`. */
 export function createAiMemory(medium: Medium): AiMemory {
@@ -49,7 +54,7 @@ export function rivalIntent(world: World, racer: Racer, rng: Rng): Intent {
  * PROGRESS_BACKSTOP_TICKS, which also starts it over.
  */
 function progressStalled(world: World, racer: Racer, memory: AiMemory): boolean {
-  if (world.race.phase !== 'racing') return false;
+  if (world.race.phase !== 'racing' || racer.id === 'player') return false;
   if (racer.status.stunned > 0 || racer.status.trapped > 0) {
     memory.sinceBest = 0;
     return false;

@@ -208,11 +208,11 @@ describe('the progress backstop', () => {
 
   it('sends a rival that gets no closer for 240 ticks into recovery, and not a tick before', () => {
     // The first tick sets her best; 240 more without beating it start the recovery.
-    expect(firstRecovery(400)).toBe(PROGRESS_BACKSTOP_TICKS);
+    expect(firstRecovery(PROGRESS_BACKSTOP_TICKS + 100)).toBe(PROGRESS_BACKSTOP_TICKS);
   });
 
   it.each(['stunned', 'trapped'] as const)('starts the count over while the rival is %s', (status) => {
-    const recovery = firstRecovery(600, (r, tick) => {
+    const recovery = firstRecovery(PROGRESS_BACKSTOP_TICKS + 300, (r, tick) => {
       r.status[status] = tick === 200 ? 1 : 0;
     });
 
@@ -220,7 +220,7 @@ describe('the progress backstop', () => {
   });
 
   it('pauses the count while an Undertow pulls the rival back', () => {
-    const recovery = firstRecovery(600, (r, tick) => {
+    const recovery = firstRecovery(PROGRESS_BACKSTOP_TICKS + 300, (r, tick) => {
       r.status.undertow = tick >= 200 && tick < 250 ? 1 : 0;
     });
 
@@ -228,11 +228,39 @@ describe('the progress backstop', () => {
   });
 
   it('starts the count over whenever the rival gets closer than ever', () => {
-    const recovery = firstRecovery(600, (r, tick) => {
+    const recovery = firstRecovery(PROGRESS_BACKSTOP_TICKS + 300, (r, tick) => {
       if (tick === 200) r.progress -= 0.01;
     });
 
     expect(recovery).toBe(200 + PROGRESS_BACKSTOP_TICKS);
+  });
+
+  it('leaves a bot driving the player alone, however long it gets no closer', () => {
+    const { world } = raceOn(
+      `
+      ####################
+      #1................F#
+      ####################
+      #2................F#
+      ####################
+      #3................F#
+      ####################
+      #4................F#
+      ####################
+    `,
+      { playerBot: PLAYER_PROFILE },
+    );
+    const moves = intents(world, 'tess', PROGRESS_BACKSTOP_TICKS + 1, heldMoving);
+    const player = racer(world, 'player');
+    const playerMoves = Array.from({ length: PROGRESS_BACKSTOP_TICKS + 100 }, () => {
+      placeOnTile(player, 5, 1);
+      player.body.vx = 60;
+      player.body.vy = 0;
+      return rivalIntent(world, player, world.rngs['ai.player']);
+    });
+
+    expect(moves.findIndex(sideways)).toBe(PROGRESS_BACKSTOP_TICKS);
+    expect(playerMoves.some(sideways)).toBe(false);
   });
 
   it('never counts for a racer that has finished', () => {
