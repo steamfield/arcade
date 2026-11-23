@@ -1,6 +1,6 @@
 # RFC: Reef Rush online races with friends
 
-Status: draft, written 2026-11-23, revised the same day after a devil's-advocate review against the code (section 12 lists what the review changed). The spikes in section 9 have not run. Section 11 lists decisions that need the owner.
+Status: phase 1 in progress on `deliver/reef-online` (lane plan: `plans/reef-online-deliver.md`); its determinism guard has landed: Chromium, the phone project and WebKit hash the top route equally. Draft written 2026-11-23, revised the same day after a devil's-advocate review against the code (section 12 lists what the review changed). The spikes in section 9 have not run. Section 11 lists decisions that need the owner.
 Game: `games/reef-rush` (Phaser 4.2.1). Read `AGENTS.md`, `docs/repo-map.md`, `docs/architecture.md` ("Backend later, on Cloudflare") and `games/reef-rush/DESIGN.md` before starting.
 
 ## 1. Why

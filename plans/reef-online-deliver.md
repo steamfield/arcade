@@ -126,7 +126,7 @@ Inline at landing (the orchestrator, after both lanes merge): record the top-rou
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/reef-rush/src/logic/hash.ts, games/reef-rush/src/engine/debug.ts | contracts, games/reef-rush/src/logic/types.ts, games/reef-rush/src/logic/media/types.ts | games/reef-rush/src/logic/hash.test.ts | sonnet | merged | deliver/reef-online-1a | hash tests pass |
-| b | S | games/reef-rush/src/logic/abilities.ts, games/reef-rush/src/logic/hazards/squid-target.ts, games/reef-rush/src/logic/hazards/squids.ts, games/reef-rush/src/logic/hazards/enemies/test-arena.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/pickups/pearls.ts, tools/biome/no-inexact-math.grit, biome.json, docs/repo-map.md | contracts, tools/biome/no-nondeterminism.grit | | sonnet | running | deliver/reef-online-1b | lint bans the operators and passes on the tree |
+| b | S | games/reef-rush/src/logic/abilities.ts, games/reef-rush/src/logic/hazards/squid-target.ts, games/reef-rush/src/logic/hazards/squids.ts, games/reef-rush/src/logic/hazards/enemies/test-arena.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/pickups/pearls.ts, tools/biome/no-inexact-math.grit, biome.json, docs/repo-map.md | contracts, tools/biome/no-nondeterminism.grit | | sonnet | merged | deliver/reef-online-1b | lint bans the operators and passes on the tree |
 
 #### Lane a brief
 
@@ -246,3 +246,4 @@ Depends on: phase 2
 ## Log
 
 - 2026-11-23: plan critiqued (devils-advocate, opus). Applied: `humans` left out of the hash; separate Node and smoke hash constants; `catchUpTarget` fallback and takeover rules written into assumptions; phase 2 scaffold edits named; `runtime.localRacer` in place of a WeakMap; `?local` races unsaved and never Easy; Set elements sorted and `undefined` keys skipped in the hash; lanes 2/b and 3/a moved to opus.
+- 2026-11-23: phase 1 lanes landed. Top-route hash 3381158881 recorded on lane a alone and unchanged after lane b's `**` rewrites merged. Browser hash 2809193514 on desktop Chromium, the phone project and WebKit. Lane a review: three findings, all fixed (byte order through a DataView, NaN order in sets, holes in sparse arrays). Lane b review: two findings fixed (function references, destructuring and bracket access now caught); rejected one, a `**=` nested inside another assignment is reported twice, because GritQL in Biome 2.6 cannot bind the operator token and the real site is always reported.
