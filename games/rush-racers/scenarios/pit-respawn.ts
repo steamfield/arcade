@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { HARD_SAVE, hold, scenario, TITLE_TO_RACE, wait } from './kit.ts';
+import { HARD_SAVE, hold, scenario, tap, wait } from './kit.ts';
 
 /** Easy, so the timing below is the player's Easy run on foot; pinned so a new default can't move it. */
 const EASY_SAVE = {
@@ -17,7 +17,11 @@ export default scenario({
   description: 'a runner who falls into a pit comes back a second later on the last safe ground',
   start: { save: EASY_SAVE, seed: 1, query: { course: 'run-test' } },
   input: [
-    ...TITLE_TO_RACE,
+    // Run Test is unlisted, so Race skips course select: title Race, then race as the saved pick.
+    wait(25),
+    tap('fire'),
+    wait(25),
+    tap('fire'),
     wait(200),
     hold('right', 130),
     hold(['right', 'up'], 20),

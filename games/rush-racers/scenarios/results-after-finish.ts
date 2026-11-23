@@ -24,10 +24,11 @@ export default scenario({
     expect(written).toHaveLength(1);
     expect(written[0]?.tick).toBe(finish?.tick);
     expect(events.map((e) => e.type)).not.toContain('save.failed');
-    // Loading the Hard save restarts the title, then select and the race come before the results.
+    // Loading the Hard save restarts the title, then course select, select and the race come before the results.
     expect(events.filter((e) => e.type === 'scene.started').map((e) => e.scene)).toEqual([
       'title',
       'title',
+      'course',
       'select',
       'race',
       'results',

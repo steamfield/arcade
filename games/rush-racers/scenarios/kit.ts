@@ -21,8 +21,14 @@ export const HARD_SAVE = {
   },
 };
 
-/** Title Race, then race as the saved pick once the select screen has armed (fire on both): lands on the countdown's first tick. */
-export const TITLE_TO_RACE = [wait(25), tap('fire'), wait(25), tap('fire')];
+/**
+ * Title Race, then the course the cursor starts on (the course in force) once course select has
+ * armed: lands on the select screen's first tick.
+ */
+export const TITLE_TO_SELECT = [wait(25), tap('fire'), wait(25), tap('fire')];
+
+/** `TITLE_TO_SELECT`, then race as the saved pick once select has armed: lands on the countdown's first tick. */
+export const TITLE_TO_RACE = [...TITLE_TO_SELECT, wait(25), tap('fire')];
 
 /**
  * Ticks from the start of a race to a results screen that has been up long enough to take input,

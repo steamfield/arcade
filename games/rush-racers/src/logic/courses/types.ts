@@ -8,7 +8,7 @@ import type { MediumTuning } from '../media/types.ts';
 import type { Difficulty, LevelDef } from '../types.ts';
 
 /** Shipped courses. Grows with each course: 'kelp-forest', 'sky-test', ... */
-export type ShippedCourseId = 'sunlit-shallows' | 'run-test';
+export type ShippedCourseId = 'sunlit-shallows' | 'bramble-run' | 'run-test';
 /** Shipped movement styles. Grows: 'run', later 'flight' or 'space'. */
 export type ShippedMediumId = 'swim' | 'run';
 /** Looks the engine draws a course with. */

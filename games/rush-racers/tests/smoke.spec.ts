@@ -2,7 +2,7 @@ import { parseInput } from '@arcade/testing';
 import { expect, test } from '@arcade/testing/playwright';
 import { HARD_SAVE, TITLE_TO_RACE, TOP_ROUTE, wait } from '../scenarios/kit.ts';
 
-test('starts on WebGL, races from the title through the select screen, and swims after the countdown', async ({
+test('starts on WebGL, races from the title through course select and the select screen, and swims after the countdown', async ({
   game,
 }) => {
   await game.open();
@@ -13,9 +13,11 @@ test('starts on WebGL, races from the title through the select screen, and swims
     best: null,
   });
 
-  // Menus and the select screen ignore fire for their first 20 ticks.
+  // Menus, course select and the select screen ignore fire for their first 20 ticks.
   await game.play(parseInput('_*20 fire _*2'));
-  expect(await game.summary()).toMatchObject({ scene: 'select', character: 'rudy' });
+  expect(await game.summary()).toMatchObject({ scene: 'course' });
+  await game.play(parseInput('_*20 fire _*2'));
+  expect(await game.summary()).toMatchObject({ scene: 'select', character: 'rudy', course: 'sunlit-shallows' });
   await game.play(parseInput('_*20 fire _*2'));
   expect(await game.summary()).toMatchObject({ scene: 'race', phase: 'countdown', character: 'rudy' });
 
@@ -25,11 +27,19 @@ test('starts on WebGL, races from the title through the select screen, and swims
   expect((summary.player as { tile: number[] }).tile[0]).toBeGreaterThan(4);
   const events = await game.events();
   expect(events.filter((e) => e.type === 'menu.selected')).toMatchObject([{ option: 'Race' }]);
-  expect(events.filter((e) => e.type === 'scene.started').map((e) => e.scene)).toEqual(['title', 'select', 'race']);
+  expect(events.filter((e) => e.type === 'scene.started').map((e) => e.scene)).toEqual([
+    'title',
+    'course',
+    'select',
+    'race',
+  ]);
   expect(events.map((e) => e.type)).toContain('race.started');
 });
 
-test('on-screen controls pick a racer, start the race and swim the player @touch', async ({ game, page }) => {
+test('on-screen controls pick a course and a racer, start the race and swim the player @touch', async ({
+  game,
+  page,
+}) => {
   await game.open();
   const hold = async (action: string, ticks: number) => {
     const button = page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
@@ -38,6 +48,9 @@ test('on-screen controls pick a racer, start the race and swim the player @touch
     await button.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
   };
   await game.advance(20);
+  await hold('fire', 1);
+  // Course select: fire keeps the course in force.
+  await game.advance(21);
   await hold('fire', 1);
   await game.advance(21);
   await hold('right', 1);

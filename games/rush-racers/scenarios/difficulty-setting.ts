@@ -28,6 +28,8 @@ export default scenario({
     tap('fire'),
     wait(25),
     tap('fire'),
+    wait(25),
+    tap('fire'),
     wait(5),
   ],
   expect({ summary, state, events }) {

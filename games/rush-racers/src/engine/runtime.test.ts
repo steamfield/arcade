@@ -263,6 +263,15 @@ describe('course select', () => {
     expect([rt.scene, rt.courseCursor]).toEqual(['course', 1]);
   });
 
+  it('is skipped for an unlisted ?course=: Race goes straight to select on that course, and B there to the title', async () => {
+    const { rt } = titleRuntime(await realStore(), { search: '?course=run-test', listedCourses: threeCourses() });
+    press(rt, 'fire');
+    expect([rt.scene, rt.course.id]).toEqual(['select', 'run-test']);
+    rt.step.advance(ARMED);
+    press(rt, 'dash');
+    expect(rt.scene).toBe('title');
+  });
+
   it('is skipped while one course is listed: Race goes straight to select, and B there to the title', async () => {
     const rt = await onCourseSelect([DEFAULT_COURSE]);
     expect(rt.scene).toBe('select');

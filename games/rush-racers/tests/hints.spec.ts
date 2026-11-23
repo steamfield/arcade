@@ -15,6 +15,7 @@ async function startStagedRace(game: GameDriver, save: unknown, stage = 'icons-b
   await game.loadState(save);
   await game.play(parseInput('_*20 fire _*2'));
   await game.play(parseInput('_*20 fire _*2'));
+  await game.play(parseInput('_*20 fire _*2'));
   await game.advance(COUNTDOWN_TICKS + 5);
 }
 

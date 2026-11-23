@@ -234,6 +234,14 @@ export class Runtime {
     return listedLastCourse(this.save?.lastCourse ?? null);
   }
 
+  /**
+   * Whether Race and Character pass through course select: while it is shown, unless the course in
+   * force is an unlisted one it doesn't offer (a debug or test `?course=`), which keeps its course.
+   */
+  private get courseSelectOpens(): boolean {
+    return this.courseSelectShown && (this.course.listed || this.listedCourses.includes(this.course));
+  }
+
   /** The slot this screen follows. 'player' except in a `?local=` debug race. */
   get localRacer(): RacerId {
     return this.localSlot ?? 'player';
@@ -399,7 +407,7 @@ export class Runtime {
     else if (option === 'Title') this.goTo('title');
     else if (option === 'Race' || option === 'Character') {
       this.selectOpenedFrom = option === 'Character' ? 'results' : 'title';
-      this.goTo(this.courseSelectShown ? 'course' : 'select');
+      this.goTo(this.courseSelectOpens ? 'course' : 'select');
     } else this.startRace();
   }
 
@@ -430,7 +438,7 @@ export class Runtime {
       return;
     }
     if (input.justPressed('dash')) {
-      if (this.courseSelectShown) this.goTo('course');
+      if (this.courseSelectOpens) this.goTo('course');
       else this.leaveSelects();
     } else if (input.justPressed('fire')) this.pickCharacter();
   }
