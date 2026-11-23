@@ -9,14 +9,12 @@ import type { ArtRef } from '../art-ref.ts';
 import type { ObjectSkin } from '../object-skin.ts';
 import { REEF_OBJECTS } from '../reef/objects.ts';
 import { ThornIconFrame, ThornItemTex, ThornTex } from './keys.ts';
+import { THORNWOOD_ART_OWNER } from './owner.ts';
 import { ATTACK_ART_SHEETS } from './sprites/attack.ts';
 import { THORN_ENEMY_SHEETS } from './sprites/enemies.ts';
 import { ITEM_ART_SHEETS } from './sprites/items.ts';
 import { THORN_MARK_SHEET } from './sprites/marks.ts';
 import { THORN_PICKUP_SHEETS } from './sprites/pickups.ts';
-
-/** The owner name Thornwood's textures are drawn under. */
-const THORNWOOD_ART_OWNER = 'thornwood';
 
 const icon = (kind: PowerUpKind): ArtRef => ({ texture: ThornTex.icons, frame: ThornIconFrame[kind] });
 

@@ -9,11 +9,9 @@ import { drawSheets } from '../../art/index.ts';
 import type { ArtRef } from '../art-ref.ts';
 import type { CastSkin } from '../cast-skin.ts';
 import { ThornCastFrame, ThornRacerTex, ThornTex } from './keys.ts';
+import { THORNWOOD_ART_OWNER } from './owner.ts';
 import { THORNWOOD_FACE_SHEETS } from './sprites/portraits.ts';
 import { THORNWOOD_RACER_SHEETS } from './sprites/racers.ts';
-
-/** The owner name under which Thornwood's textures are drawn; every Thornwood texture shares it. */
-const THORNWOOD_OWNER = 'thornwood';
 
 const frameIn =
   (texture: string) =>
@@ -63,5 +61,5 @@ export const THORNWOOD_CAST: CastSkin = {
  * @throws {Error} When another owner already has one of the keys.
  */
 export function registerThornwoodCast(scene: Phaser.Scene): void {
-  drawSheets(scene, [...THORNWOOD_RACER_SHEETS, ...THORNWOOD_FACE_SHEETS], THORNWOOD_OWNER);
+  drawSheets(scene, [...THORNWOOD_RACER_SHEETS, ...THORNWOOD_FACE_SHEETS], THORNWOOD_ART_OWNER);
 }
