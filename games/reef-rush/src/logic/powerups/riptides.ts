@@ -5,9 +5,10 @@
  * asks `feltCurrent` while each racer swims, so anyone inside a lane rides it: a racer right behind
  * the one who laid it drafts it.
  */
+import { mayAttack } from '../difficulty-level.ts';
 import { isSolid } from '../level/query.ts';
 import { centreOf } from '../racers.ts';
-import { type Body, type Racer, type Riptide, TILE, type Vec, type World } from '../types.ts';
+import { type Body, type Racer, type RacerId, type Riptide, TILE, type Vec, type World } from '../types.ts';
 import { RIPTIDE } from './tuning.ts';
 
 /** How long and how strong a lane is: the plain Riptide's or the surfline's (`RIPTIDE.surfline`). */
@@ -81,11 +82,14 @@ function contains(lane: Riptide, point: Vec): boolean {
  * The current of the first riptide lane a body's centre is inside, or null outside every lane: the
  * lane's unit direction scaled by its strength (in plain-current pushes), so a lane's pull is
  * `SWIM.currentForce` times the vector's length. A lane's strength is `lane.strength`, or
- * `RIPTIDE.currentForceMul` when it has none.
+ * `RIPTIDE.currentForceMul` when it has none. With `felt` (the racer riding it), a lane the level doesn't
+ * let its owner turn on that racer (`mayAttack`) is skipped.
  */
-export function riptideCurrentAt(world: World, body: Body): Vec | null {
+export function riptideCurrentAt(world: World, body: Body, felt?: RacerId): Vec | null {
   const centre = { x: body.x + body.w / 2, y: body.y + body.h / 2 };
-  const lane = world.riptides.find((candidate) => contains(candidate, centre));
+  const lane = world.riptides.find(
+    (candidate) => contains(candidate, centre) && (felt === undefined || mayAttack(world, candidate.owner, felt)),
+  );
   if (!lane) return null;
   const strength = lane.strength ?? RIPTIDE.currentForceMul;
   return { x: lane.dir.x * strength, y: lane.dir.y * strength };
@@ -97,7 +101,7 @@ export function riptideCurrentAt(world: World, body: Body): Vec | null {
  * Null when there is none.
  */
 export function feltCurrent(world: World, racer: Racer, tileCurrent: Vec | null): Vec | null {
-  const current = riptideCurrentAt(world, racer.body) ?? tileCurrent;
+  const current = riptideCurrentAt(world, racer.body, racer.id) ?? tileCurrent;
   if (!current || !racer.stack.includes('riptide')) return current;
   return { x: current.x * RIPTIDE.currentMul, y: current.y * RIPTIDE.currentMul };
 }

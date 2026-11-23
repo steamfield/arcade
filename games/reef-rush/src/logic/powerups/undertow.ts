@@ -4,6 +4,7 @@
  * victim was when pulled), applied each tick in `stepWorld`'s swim step.
  */
 import { steerDirection } from '../ai/steer.ts';
+import { mayAttack } from '../difficulty-level.ts';
 import { activeRacers } from '../racers.ts';
 import type { Racer, World } from '../types.ts';
 import { UNDERTOW } from './tuning.ts';
@@ -12,13 +13,15 @@ import { UNDERTOW } from './tuning.ts';
 const LOOKAHEAD_TILES = 3;
 
 /**
- * Pulls every racer in play that is ahead of `user` (lower progress): `status.undertow` becomes
+ * Pulls every racer in play that is ahead of `user` (lower progress) and that `mayAttack` lets it pull: `status.undertow` becomes
  * UNDERTOW.ticks and `undertowGapTiles` the tiles of lead it had. Emits `undertow.fired {id, pulled}`
  * with the pulled racers in RACER_IDS order, even when there are none. The user is not consumed
  * here; `fireBurst` removes the power-up.
  */
 export function fireUndertow(world: World, user: Racer): void {
-  const pulled = activeRacers(world).filter((racer) => racer.id !== user.id && racer.progress < user.progress);
+  const pulled = activeRacers(world).filter(
+    (racer) => racer.id !== user.id && racer.progress < user.progress && mayAttack(world, user.id, racer.id),
+  );
   for (const racer of pulled) {
     racer.status.undertow = UNDERTOW.ticks;
     racer.undertowGapTiles = user.progress - racer.progress;

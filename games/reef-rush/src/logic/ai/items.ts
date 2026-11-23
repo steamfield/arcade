@@ -4,14 +4,15 @@
  * reads the world.
  *
  * Distances are between racer centres, in tiles. "Ahead" and "behind" compare
- * progress (lower is ahead). Rivals aim at any racer, so the field fights itself. The bubble's aim cone is ITEM_USE.aimConeCos either
+ * progress (lower is ahead). Rivals aim at any racer, so the field fights itself (except the player, where the difficulty level's `mayAttack` says no). The bubble's aim cone is ITEM_USE.aimConeCos either
  * side of the aim. Jet Fins need the whole body to slide 5 tiles along the aim.
  */
+import { itemAggressionMul, mayAttack } from '../difficulty-level.ts';
 import { pickSquidTarget } from '../hazards/squid-target.ts';
 import { cellAt, isSolid } from '../level/query.ts';
 import { length } from '../num.ts';
 import { CLAM, FLASH } from '../powerups/tuning.ts';
-import { activeRacers, centreOf } from '../racers.ts';
+import { activeRacers, centreOf, playerOf } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
 import { downhillPath, hasClearSweep, openTiles, tileOf } from './steer.ts';
 
@@ -66,7 +67,8 @@ export function wantsBurst(world: World, racer: Racer, aim: Vec, roll: number): 
   if (racer.stack.length === 0 || racer.burstCooldown > 0) return false;
   const throughCoral = racer.stack.includes('puffer') && coralOnSmashPath(world, racer);
   const dashes = racer.stack.includes('jetFin') && !throughCoral;
-  if (roll >= racer.profile.itemAggression * (dashes ? ITEM_USE.jetChanceMul : 1)) return false;
+  const aggression = racer.profile.itemAggression * itemAggressionMul(world, racer);
+  if (roll >= aggression * (dashes ? ITEM_USE.jetChanceMul : 1)) return false;
   return racer.stack.some((kind) => hasUse(world, racer, aim, kind));
 }
 
@@ -94,6 +96,7 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
     case 'undertow':
       return (
         racer.place >= CLAM.undertowMinPlace &&
+        undertowSparesPlayer(world, racer) &&
         activeRacers(world).some((other) => other.progress <= racer.progress - ITEM_USE.undertowLeadTiles)
       );
     case 'mimic':
@@ -106,10 +109,21 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
   }
 }
 
-/** Other racers in play with centres within `tiles` of this one's centre. */
+/**
+ * Whether an Undertow from `racer` would leave the player alone where the level forbids rivals to
+ * attack it: it pulls everyone ahead of the user, so the player must not be ahead.
+ */
+function undertowSparesPlayer(world: World, racer: Racer): boolean {
+  return mayAttack(world, racer.id, 'player') || playerOf(world).progress >= racer.progress;
+}
+
+/** Other racers in play (the player left out where rivals may not attack it) with centres within `tiles` of this one's centre. */
 function othersNear(world: World, racer: Racer, tiles: number): Racer[] {
   return activeRacers(world).filter(
-    (other) => other.id !== racer.id && withinTiles(centreOf(racer), centreOf(other), tiles),
+    (other) =>
+      other.id !== racer.id &&
+      mayAttack(world, racer.id, other.id) &&
+      withinTiles(centreOf(racer), centreOf(other), tiles),
   );
 }
 
