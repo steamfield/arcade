@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_COURSE } from '../logic/courses/index.ts';
 import { raceOn } from '../logic/test-world.ts';
 import { applyStage, STAGES, stageFor } from './debug-stage.ts';
 
@@ -58,12 +59,26 @@ describe('applying a stage', () => {
     expect(world.racers.find((r) => r.id === 'player')?.status.latched).toBeGreaterThan(0);
   });
 
-  it('knows every stage it names, except those that need a current, a dark zone, coral or a tall room', () => {
-    const needsMore = ['riptide', 'dark', 'cannonball', 'enemy-modes'];
+  it('knows every stage it names, except those that need a current, a dark zone, coral, a tall room or a surface', () => {
+    const needsMore = ['riptide', 'dark', 'cannonball', 'enemy-modes', 'surface'];
     for (const stage of STAGES.filter((name) => !needsMore.includes(name))) {
       const { world } = raceOn(ARENA);
       expect(() => applyStage(world, stage), stage).not.toThrow();
     }
+  });
+
+  it("puts the player 3 tiles under the ocean course's surface, with sky straight above", () => {
+    const { world } = raceOn(DEFAULT_COURSE.level);
+    applyStage(world, 'surface');
+    const player = world.racers.find((r) => r.id === 'player');
+    const surface = world.level.surface[0];
+    const tile = player && {
+      x: Math.floor((player.body.x + player.body.w / 2) / 16),
+      y: Math.floor((player.body.y + player.body.h / 2) / 16),
+    };
+
+    expect(tile).toEqual({ x: (surface?.from ?? 0) + 5, y: (surface?.row ?? 0) + 3 });
+    expect(world.level.cells[(surface?.row ?? 0) - 1]?.[tile?.x ?? 0]).toBe('air');
   });
 
   it('stands the player on the floor, a crab 3 tiles ahead walking away, a shark 6 ahead facing them, rivals up top', () => {
