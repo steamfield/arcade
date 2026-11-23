@@ -2,6 +2,7 @@ import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
 import { tileIndex } from '../level/query.ts';
+import { swimNav } from '../media/swim/data.ts';
 import { courseFromLevel } from '../test-world.ts';
 import { createWorld, toAscii } from '../world.ts';
 import { breakCoral } from './coral.ts';
@@ -24,7 +25,7 @@ function setup() {
 }
 
 const steerAt = (world: ReturnType<typeof setup>['world'], x: number, y: number) =>
-  world.nav.steer[tileIndex(world.level, x, y)];
+  swimNav(world.nav).steer[tileIndex(world.level, x, y)];
 
 describe('breaking coral', () => {
   it('opens the tile to steering and announces it once', () => {
@@ -36,7 +37,7 @@ describe('breaking coral', () => {
 
     expect(steerAt(world, 3, 1)).toBeCloseTo(3, 5);
     expect(steerAt(world, 1, 1)).toBeCloseTo(5, 5);
-    expect(world.nav.smash[tileIndex(world.level, 1, 1)]).toBeCloseTo(5, 5);
+    expect(swimNav(world.nav).smash[tileIndex(world.level, 1, 1)]).toBeCloseTo(5, 5);
     expect(world.progress.distance).toEqual(progressBefore);
     expect(toAscii(world).split('\n')[1]).toBe('#@....F#');
     expect(log.all().filter((e) => e.type === 'coral.broken')).toMatchObject([

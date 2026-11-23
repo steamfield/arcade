@@ -1,15 +1,16 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { PLAYER_PROFILE } from '../ai/profiles.ts';
-import type { GameEvent } from '../events.ts';
-import { SWIM_TUNING as SWIM } from '../media/swim/tuning.ts';
-import { noItems } from '../racers.ts';
-import { type Environment, type MoveModifiers, RACER_SIZE, type Racer, type Vec } from '../types.ts';
+import { PLAYER_PROFILE } from '../../ai/profiles.ts';
+import type { GameEvent } from '../../events.ts';
+import { noItems } from '../../racers.ts';
+import { type MoveModifiers, RACER_SIZE, type Racer, type Vec } from '../../types.ts';
+import type { SwimEnv } from './data.ts';
 import { applyIntent } from './physics.ts';
+import { SWIM_TUNING as SWIM } from './tuning.ts';
 
 const BASE_MODIFIERS = SWIM.base;
 
-const WATER: Environment = { current: null, inKelp: false };
+const WATER: SwimEnv = { kind: 'swim', current: null, inKelp: false };
 const CRUISE = SWIM.force / SWIM.drag;
 const STILL: Vec = { x: 0, y: 0 };
 const RIGHT: Vec = { x: 1, y: 0 };
@@ -20,7 +21,7 @@ function makeRacer(): Racer {
   return {
     id: 'player',
     character: 'rudy',
-    motion: {},
+    motion: { kind: 'swim' },
     body: { x: 40, y: 40, vx: 0, vy: 0, w: RACER_SIZE.width, h: RACER_SIZE.height },
     facing: 1,
     kickCooldown: 0,
@@ -36,7 +37,7 @@ function makeRacer(): Racer {
 interface Hold {
   move?: Vec;
   kick?: boolean;
-  env?: Environment;
+  env?: SwimEnv;
   mods?: MoveModifiers;
 }
 
@@ -133,7 +134,7 @@ describe('swimming', () => {
   it('never exceeds the speed cap however hard it is pushed', () => {
     const racer = makeRacer();
     const mods: MoveModifiers = { forceMul: 4, kickMul: 3, kickCooldownTicks: 0, dragMul: 1 };
-    const { top } = swim(racer, 120, { move: RIGHT, kick: true, env: { current: RIGHT, inKelp: false }, mods });
+    const { top } = swim(racer, 120, { move: RIGHT, kick: true, env: { ...WATER, current: RIGHT }, mods });
 
     expect(top).toBeLessThanOrEqual(SWIM.maxSpeed + 1e-6);
     expect(speed(racer)).toBeCloseTo(SWIM.maxSpeed, 2);
@@ -155,7 +156,7 @@ describe('swimming', () => {
 
 describe('the water', () => {
   it('lowers cruise speed in kelp', () => {
-    const inKelp = settledSpeed({ move: RIGHT, env: { current: null, inKelp: true } });
+    const inKelp = settledSpeed({ move: RIGHT, env: { ...WATER, inKelp: true } });
 
     expect(inKelp).toBeGreaterThan(0);
     expect(inKelp).toBeLessThan(settledSpeed({ move: RIGHT }) / 2);
@@ -163,7 +164,7 @@ describe('the water', () => {
 
   it('carries a racer with no input along a current', () => {
     const racer = makeRacer();
-    swim(racer, SETTLE, { env: { current: RIGHT, inKelp: false } });
+    swim(racer, SETTLE, { env: { ...WATER, current: RIGHT } });
 
     expect(racer.body.vx).toBeGreaterThan((SWIM.extra.currentForce / SWIM.drag) * 0.9);
     expect(racer.body.vx).toBeLessThanOrEqual(SWIM.extra.currentForce / SWIM.drag + 1e-6);
@@ -171,8 +172,8 @@ describe('the water', () => {
 
   it('speeds a racer swimming with a current and slows one swimming against it', () => {
     const still = settledSpeed({ move: RIGHT });
-    const withIt = settledSpeed({ move: RIGHT, env: { current: RIGHT, inKelp: false } });
-    const against = settledSpeed({ move: RIGHT, env: { current: { x: -1, y: 0 }, inKelp: false } });
+    const withIt = settledSpeed({ move: RIGHT, env: { ...WATER, current: RIGHT } });
+    const against = settledSpeed({ move: RIGHT, env: { ...WATER, current: { x: -1, y: 0 } } });
 
     expect(withIt).toBeGreaterThan(still * 1.5);
     expect(against).toBeLessThan(still / 2);
@@ -229,10 +230,11 @@ describe('a very long tick', () => {
   it('slows a racer in kelp to a stop without reversing it', () => {
     const racer = makeRacer();
     racer.body.vx = 100;
+    const kelp: SwimEnv = { ...WATER, inKelp: true };
     applyIntent(
       racer,
       { move: STILL, kick: false, burst: false },
-      { current: null, inKelp: true },
+      kelp,
       SWIM,
       BASE_MODIFIERS,
       new EventLog<GameEvent>(),

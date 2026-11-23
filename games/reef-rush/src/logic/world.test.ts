@@ -2,6 +2,7 @@ import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from './ai/profiles.ts';
 import { DEFAULT_COURSE } from './courses/index.ts';
+import type { Course } from './courses/types.ts';
 import type { GameEvent } from './events.ts';
 import { LevelError } from './level/parse.ts';
 import { fireBurst } from './powerups/burst.ts';
@@ -104,6 +105,30 @@ describe('level checks', () => {
         col: 1,
       }),
     );
+  });
+});
+
+describe('which course a world races', () => {
+  const create = (course: Course) => () => createWorld(course, new EventLog<GameEvent>(), { seed: 1 });
+
+  it('refuses a course nobody registered, saying how to register it', () => {
+    const stray: Course = { ...DEFAULT_COURSE, id: 'stray-reef' };
+
+    expect(create(stray)).toThrow(
+      "Course 'stray-reef' is not the registered course with that id; add it to COURSES or call registerCourse with it",
+    );
+  });
+
+  it("refuses a copy of a shipped course with another level, instead of racing the shipped course's tuning", () => {
+    const altered: Course = { ...DEFAULT_COURSE, level: { name: 'other', ascii: '#1234.F#' } };
+
+    expect(create(altered)).toThrow(`Course '${DEFAULT_COURSE.id}' is not the registered course with that id`);
+  });
+
+  it('refuses a registered course whose medium is neither shipped nor registered', () => {
+    const course = courseFromLevel('#1234.F#', 'warp');
+
+    expect(create(course)).toThrow(`Course '${course.id}' names unknown medium 'warp'`);
   });
 });
 

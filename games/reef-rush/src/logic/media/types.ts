@@ -1,24 +1,18 @@
 /**
  * A medium is a movement style: the only code that knows whether racers swim, fly, run or drift.
  * Generic race code asks the world's medium (`mediumOf(world)`) and never branches on its id.
- * Plain data in the world (motion, pilot memory, nav) is defined by each medium; the unions below
- * grow one member per medium.
+ *
+ * The plain data a medium keeps in the world (its nav, the environment it samples, each racer's
+ * motion and each rival's pilot memory) is opaque here: `MediumNav`, `MediumEnv`, `RacerMotion` and
+ * `PilotMemory` carry only a `kind` naming the medium that made them. Generic code and the World
+ * and Racer types see nothing more. Each medium extends them in its own folder (swim's `SwimNav`,
+ * `SwimEnv`, `SwimPilot` and `SwimMotion` in `media/swim/data.ts`) and reads its data back through
+ * accessors there (`swimNav(nav)`) that check `kind` and throw on another medium's data. A new
+ * medium adds its own shapes and accessors the same way, with no edit to this file.
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
-import type {
-  Body,
-  Box,
-  Cell,
-  Environment,
-  FlowFields,
-  Intent,
-  Level,
-  MoveModifiers,
-  Racer,
-  Vec,
-  World,
-} from '../types.ts';
+import type { Body, Box, Cell, Intent, Level, MoveModifiers, Racer, Vec, World } from '../types.ts';
 
 /** A medium's numbers. Swim's are today's `SWIM` constants with `base` as `BASE_MODIFIERS`. */
 export interface MediumTuning {
@@ -36,23 +30,28 @@ export interface MediumTuning {
   extra: Readonly<Record<string, number>>;
 }
 
-/** What the medium's surroundings do to a body this tick. Swim: today's water environment, Riptide included. */
-export type MediumEnv = Environment;
+/** What the medium's surroundings do to a body this tick. Opaque outside the medium that sampled it. */
+export interface MediumEnv {
+  /** The id of the medium that sampled it. */
+  readonly kind: string;
+}
 
-/** The medium's navigation over a level. Swim: today's flow fields (steer, smash, ram). */
-export type MediumNav = FlowFields;
+/** The medium's navigation over a level. Opaque outside the medium that built it. */
+export interface MediumNav {
+  /** The id of the medium that built it. */
+  readonly kind: string;
+}
 
-/** Per-racer movement state the medium owns. Swim and flight: nothing. */
-export type RacerMotion = Record<string, never>;
+/** Per-racer movement state the medium owns. Opaque outside the medium that created it. */
+export interface RacerMotion {
+  /** The id of the medium that created it. */
+  readonly kind: string;
+}
 
-/** Per-rival AI state the medium owns. Swim: wobble, speed-based stuck count, recovery, aim and replan timer. */
+/** Per-rival AI state the medium owns. Opaque outside the medium that created it. */
 export interface PilotMemory {
-  wobble: number;
-  stuckTicks: number;
-  recoverTicks: number;
-  recoverDir: Vec;
-  aim: Vec;
-  replanIn: number;
+  /** The id of the medium that created it. */
+  readonly kind: string;
 }
 
 /**

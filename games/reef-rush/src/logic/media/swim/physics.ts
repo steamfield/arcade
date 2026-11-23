@@ -1,14 +1,15 @@
 /**
  * Swimming: how one racer's velocity responds to its intent and the water, the swim medium's
- * `applyIntent`. Velocity, facing and kick cooldown only; position is moved by `collide.ts`. Every
+ * `applyIntent`. Velocity, facing and kick cooldown only; position is moved by `race/collide.ts`. Every
  * number comes from the tuning it is handed: swim's (`SWIM_TUNING`) with the course's overrides.
  */
 import type { EventSink } from '@arcade/core';
-import { kickImpulse } from '../abilities.ts';
-import type { GameEvent } from '../events.ts';
-import { SWIM_KICK_RULES } from '../media/swim/tuning.ts';
-import type { MediumTuning } from '../media/types.ts';
-import type { Body, Environment, Intent, MoveModifiers, Racer, Vec } from '../types.ts';
+import { kickImpulse } from '../../abilities.ts';
+import type { GameEvent } from '../../events.ts';
+import type { Body, Intent, MoveModifiers, Racer, Vec } from '../../types.ts';
+import type { MediumEnv, MediumTuning } from '../types.ts';
+import { type SwimEnv, swimEnv } from './data.ts';
+import { SWIM_KICK_RULES } from './tuning.ts';
 
 /** The swim extras `applyIntent` reads from `tuning.extra`. */
 const SWIM_EXTRAS = ['sink', 'currentForce', 'kelpDragMul'] as const;
@@ -34,18 +35,19 @@ function swimExtras(tuning: MediumTuning): SwimExtras {
  *
  * @param tuning Swim's tuning with the course's overrides (`effectiveTuning`).
  * @param dt Tick length in seconds.
- * @throws {Error} When `tuning.extra` lacks one of swim's extras.
+ * @throws {Error} When `tuning.extra` lacks one of swim's extras, or `env` isn't swim's (`swimEnv`).
  */
 export function applyIntent(
   racer: Racer,
   intent: Intent,
-  env: Environment,
+  env: MediumEnv,
   tuning: MediumTuning,
   mods: MoveModifiers,
   events: EventSink<GameEvent>,
   dt: number,
 ): void {
   const { sink, currentForce } = swimExtras(tuning);
+  const water = swimEnv(env);
   const direction = unit(intent.move);
   const body = racer.body;
   updateFacing(racer, intent.move.x);
@@ -54,8 +56,8 @@ export function applyIntent(
   // A racer only sinks while idle; swimming in any direction holds depth, so cruise speed
   // scales exactly with forceMul.
   if (direction.x === 0 && direction.y === 0) accelerate(body, { x: 0, y: 1 }, sink * dt);
-  if (env.current) accelerate(body, env.current, currentForce * dt);
-  applyDrag(body, env, tuning, mods, dt);
+  if (water.current) accelerate(body, water.current, currentForce * dt);
+  applyDrag(body, water, tuning, mods, dt);
 
   if (intent.kick && racer.kickCooldown === 0) kick(racer, direction, tuning.kick * mods.kickMul, mods, events);
   else if (racer.kickCooldown > 0) racer.kickCooldown -= 1;
@@ -81,7 +83,7 @@ function accelerate(body: Body, direction: Vec, amount: number): void {
   body.vy += direction.y * amount;
 }
 
-function applyDrag(body: Body, env: Environment, tuning: MediumTuning, mods: MoveModifiers, dt: number): void {
+function applyDrag(body: Body, env: SwimEnv, tuning: MediumTuning, mods: MoveModifiers, dt: number): void {
   const kelpMul = env.inKelp ? swimExtras(tuning).kelpDragMul : 1;
   // A long enough dt would make the factor negative and reverse the racer; drag only ever stops it.
   const keep = Math.max(0, 1 - tuning.drag * mods.dragMul * kelpMul * dt);

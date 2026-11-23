@@ -18,7 +18,8 @@ import { steerDirection } from '../../ai/steer.ts';
 import { inDark } from '../../level/query.ts';
 import { cos, length, sin } from '../../num.ts';
 import type { MoveModifiers, Racer, Vec, World } from '../../types.ts';
-import type { AiDraws, PilotMemory, Steering } from '../types.ts';
+import type { AiDraws, Steering } from '../types.ts';
+import { type SwimPilot, swimNav, swimPilot } from './data.ts';
 
 /** How much looser a rival steers in a dark zone it can't see in: wobble bound and reaction time multipliers. */
 export const DARK_STEERING = { wobbleMul: 2, reactionMul: 2 } as const;
@@ -35,15 +36,23 @@ const STUCK_TICKS = 30;
 const RECOVER_TICKS = 20;
 
 /** A swim rival's pilot memory at the start line. */
-export function createSwimPilot(): PilotMemory {
-  return { wobble: 0, stuckTicks: 0, recoverTicks: 0, recoverDir: { x: 0, y: 0 }, aim: { x: 0, y: 0 }, replanIn: 0 };
+export function createSwimPilot(): SwimPilot {
+  return {
+    kind: 'swim',
+    wobble: 0,
+    stuckTicks: 0,
+    recoverTicks: 0,
+    recoverDir: { x: 0, y: 0 },
+    aim: { x: 0, y: 0 },
+    replanIn: 0,
+  };
 }
 
 /**
  * A swim rival's steering this tick. Mutates only the rival's pilot memory. `forceRecover` starts a
  * stuck recovery now unless one is already running.
  *
- * @throws {Error} When `racer.ai` is null (a human drives it).
+ * @throws {Error} When `racer.ai` is null (a human drives it), or its memory or the world's nav isn't swim's.
  */
 export function steerSwimmer(
   world: World,
@@ -52,8 +61,9 @@ export function steerSwimmer(
   draws: AiDraws,
   forceRecover: boolean,
 ): Steering {
-  const memory = racer.ai?.pilot;
-  if (!memory) throw new Error(`swim.steer needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
+  const ai = racer.ai;
+  if (!ai) throw new Error(`swim.steer needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
+  const memory = swimPilot(ai.pilot);
   const blind = inDark(world.level, racer.body) && !racerSeesInDark(racer);
   replanAim(world, racer, memory, blind ? DARK_STEERING.reactionMul : 1);
   stepWobble(memory, racer.profile.wobble * (blind ? DARK_STEERING.wobbleMul : 1), draws.wobble);
@@ -72,7 +82,7 @@ export function steerSwimmer(
  * Stuck recovery runs only while racing and free to swim. A stunned or trapped rival sits still
  * through no fault of its steering, so that time resets its stuck count instead.
  */
-function canRecover(world: World, racer: Racer, memory: PilotMemory): boolean {
+function canRecover(world: World, racer: Racer, memory: SwimPilot): boolean {
   if (world.race.phase !== 'racing') return false;
   if (racer.status.stunned > 0 || racer.status.trapped > 0) {
     memory.stuckTicks = 0;
@@ -87,9 +97,10 @@ function canRecover(world: World, racer: Racer, memory: PilotMemory): boolean {
  * aims through coral, which its inflate breaks; while the burst cools down it steers around like
  * everyone else. A rival that rams coral reads the ram field always.
  */
-function replanAim(world: World, racer: Racer, memory: PilotMemory, reactionMul: number): void {
+function replanAim(world: World, racer: Racer, memory: SwimPilot, reactionMul: number): void {
   if (memory.replanIn <= 0) {
-    const { nav, level, broken } = world;
+    const { level, broken } = world;
+    const nav = swimNav(world.nav);
     const pufferReady = racer.stack.includes('puffer') && (racer.status.inflated > 0 || racer.burstCooldown === 0);
     const rams = breaksCoralOnContact(racer);
     const field = rams ? nav.ram : pufferReady ? nav.smash : nav.steer;
@@ -100,12 +111,12 @@ function replanAim(world: World, racer: Racer, memory: PilotMemory, reactionMul:
 }
 
 /** One step of the bounded random walk on the steering angle. */
-function stepWobble(memory: PilotMemory, bound: number, draw: number): void {
+function stepWobble(memory: SwimPilot, bound: number, draw: number): void {
   const step = (draw * 2 - 1) * bound * WOBBLE_STEP;
   memory.wobble = Math.max(-bound, Math.min(bound, memory.wobble + step));
 }
 
-function wobbledAim(memory: PilotMemory): Vec {
+function wobbledAim(memory: SwimPilot): Vec {
   const c = cos(memory.wobble);
   const s = sin(memory.wobble);
   return { x: memory.aim.x * c - memory.aim.y * s, y: memory.aim.x * s + memory.aim.y * c };
@@ -115,7 +126,7 @@ function wobbledAim(memory: PilotMemory): Vec {
  * The sideways swim of a racer that has sat nearly still too long (or that `forceRecover` sends),
  * held for RECOVER_TICKS to slide off whatever it is pinned against; null while it isn't recovering.
  */
-function recoveryMove(racer: Racer, memory: PilotMemory, sideDraw: number, forceRecover: boolean): Vec | null {
+function recoveryMove(racer: Racer, memory: SwimPilot, sideDraw: number, forceRecover: boolean): Vec | null {
   if (memory.recoverTicks === 0) {
     const speed = length(racer.body.vx, racer.body.vy);
     memory.stuckTicks = speed < STUCK_SPEED ? memory.stuckTicks + 1 : 0;

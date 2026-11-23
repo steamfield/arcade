@@ -118,7 +118,7 @@ function racer(id: RacerId, x: number, mass = 1): Racer {
   return {
     id,
     character: 'rudy',
-    motion: {},
+    motion: { kind: 'swim' },
     body: body(x, 50),
     facing: 1,
     kickCooldown: 0,
