@@ -18,6 +18,14 @@ Ramps, not new hues: `indigoLight`/`indigoDark` bevels, `well` inset fill, `sunD
 - **Text over the water:** foam or sun only (`OFF_PANEL_TONES`), always with `outline: true`. Coral and dim fall below 4.5:1 on shallow water.
 - `ui.test.ts` checks both rules, and checks icon and medal silhouettes at 3:1 on indigo and on the inset well.
 
+### Contrast bands per theme
+
+Each theme lists its `contrastBands` (`engine/themes/types.ts`): every colour that can sit behind a racer or off-panel text in play, which for the ocean is each water band and each painted backdrop layer colour. The rules hold against every theme's bands, so a new theme that breaks them fails the build:
+
+- Each racer's main colour and the Homing Squid's hold 3:1 off every band, and at least a quarter of each racer frame's pixels do, spread over most of its height (`art/sprites/sprites.test.ts`). The theme's own hazards hold 3:1 off its bands (the ocean urchin: `themes/ocean.test.ts`).
+- Off-panel text (foam or sun, outlined) holds 4.5:1, or its ink outline 3:1, off every band and off the theme's brightest backdrop: its top band under its caustics (22%) and a ray (5%), when it has them (`art/ui/ui.test.ts`).
+- Panels, the HUD and every UI colour are global, never part of a theme.
+
 ## Type scale
 
 | Size | Face | Px | Line | For |
@@ -108,9 +116,9 @@ Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.t
 | Sound button | 120, 129, 80, 15 | SOUND ON / SOUND OFF, changes the moment the setting does |
 | Motion button | 120, 146, 80, 15 | MOTION FULL / MOTION LESS. "MOTION REDUCED" is 83 px, too wide for a button whose fin clears the d-pad zone with the column centred on the logo |
 | PRESS A | 140, 167, 41, 7 | touch screens only (`?touch=1` or a coarse pointer, the rule `@arcade/input` mounts the controls by); on a keyboard A is a move key. Foam, outlined, blinks. 6 px clear of the last button, ending on the bottom margin |
-| Best card | 214, 82, 100, 24 | `raised`, right of the buttons so five buttons fit; clear of the back link above and the A/B zone (y 118 and below); medal at (218, 87), or the saved character's portrait for a 4th-place best; "BEST 2ND" in dim at (234, 86); time in foam at (234, 95). It shows the best on the level the Level button is on, and swaps as it cycles; a level with no best shows no card |
+| Best card | 214, 82, 100, 24 | `raised`, right of the buttons so five buttons fit; clear of the back link above and the A/B zone (y 118 and below); medal at (218, 87), or the saved character's portrait for a 4th-place best; "BEST 2ND" in dim at (234, 86); time in foam at (234, 95). It shows the best on the current course at the level the Level button is on, and swaps as it cycles; a level with no best there shows no card |
 
-All five buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A new save starts on Easy.
+The backdrop behind the title, course select and select is the last listed course raced (Sunlit Shallows until then), in that course's theme; How to Play always shows the ocean. All five buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A new save starts on Easy.
 
 ```
                                             (back link)
@@ -160,6 +168,27 @@ For the first race on a save and every Easy race, short prompts show beside the 
 
 Glyph frames and the pulse blink at most 3 times a second. On touch screens the real B button also shows the newest held power-up's 9x9 icon at 4x above its letter (`view/burst-button.ts`), so a child can link the button to the item; it reverts to a plain B when the stack empties.
 
+## Course select
+
+Shown between the title and select only while more than one course is listed; with one course (today) Race goes straight to select. Drawn by `view/course-view.ts`; `course-view.test.ts` holds three courses to this layout on desktop and phone.
+
+| Element | Rect | Notes |
+| --- | --- | --- |
+| Heading | centred on (160, 12) | "PICK A COURSE", display, sun, outlined |
+| Course rows | from 110, 28; 188x15; 2 px apart | one `raised` single-line readout per listed course in `LISTED_COURSES` order, the cursor's row `accent` with its name in sun (foam otherwise). Name at (+4, +4), at most `COURSE_NAME_WIDTH` (133 px, 22 characters); the best time there on the level in force right-aligned at (+184, +4) in dim, or `-:--.--` with none. Right edge on the select card's (x 297); five rows end at y 111, above the A/B zone, and a sixth course throws until the screen gets a second page |
+| Footer | 114, 159, 92, 15 | `inset`, as on select: kick icon at (122, 162) + PICK, burst icon at (164, 162) + BACK; on touch screens the button letters A and B in sun |
+
+Up and down move the cursor and wrap; A (kick) picks the course and goes to select, B (burst) goes back to the title. Like select it ignores kick for its first 20 ticks. Back from select returns here.
+
+```
+                 PICK A COURSE               (back link)
+               [SUNLIT SHALLOWS       1:24.31]
+               [MOONLIT KELP FOREST   -:--.--]
+               [REEF                  0:58.02]
+ (d-pad)                                         (A/B)
+                  [>> PICK  <> BACK]
+```
+
 ## Select
 
 | Element | Rect | Notes |
@@ -188,11 +217,12 @@ The card, preview and footer stay in the safe column (x 108-228) below the grid,
 | Element | Rect | Notes |
 | --- | --- | --- |
 | Heading | 130, 6, 60, 12 | "RESULTS", display, sun, outlined |
+| Course name | from 6, 9 | only while course select is shown: the course's name, text, foam, outlined, clear of the heading and the podium |
 | 1st plinth | 140, 44, 40, 32 | `accent`; portrait at (152, 27); medal at (154, 47) |
 | 2nd plinth | 96, 50, 40, 26 | `raised`; portrait at (108, 33); medal at (110, 53) |
 | 3rd plinth | 184, 56, 40, 20 | `raised`; portrait at (196, 39); medal at (198, 59) |
 | Standing rows | 120, 80, 107, 7, pitch 10 | 18 characters, place in 4, name in 7, time or TIME UP right-aligned in 7: "4TH BARON  0:24.46", "2ND STREAK 3:06.30"; rivals in foam, the player in sun, all outlined; the player's character's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 116 (117 with its outline) |
-| Ribbon | 114, 120, 92, 15 | `inset`, so it reads as a readout and never as a selected button; "NEW BEST" in sun or "BEST NOT SAVED" in coral, otherwise hidden |
+| Ribbon | 114, 120, 92, 15 | `inset`, so it reads as a readout and never as a selected button; "NEW BEST" (this course and level) in sun or "BEST NOT SAVED" in coral, otherwise hidden; an unlisted course never shows NEW BEST |
 | Race again | 122, 139, 76, 15 | button |
 | Title | 122, 158, 76, 15 | button; cursor fin at x 111-119 |
 

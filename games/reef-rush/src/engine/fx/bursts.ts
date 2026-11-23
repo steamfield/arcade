@@ -1,12 +1,15 @@
 /**
  * The particle recipes behind every race effect: what spawns, how many, how fast and for how
- * long. Each recipe has a reduced-motion form that keeps its information: the same shapes in
- * the same place, fewer of them, standing still or drifting slowly, and fading out instead of
- * flying. Cosmetic randomness comes from the rng passed in, so captures repeat.
+ * long. How bubbles rise, debris falls and ink and droplets drift comes from the course theme's
+ * particle physics (and the debris chunk from its terrain); sparks, sparkles and popped icons look
+ * the same everywhere. Each recipe has a reduced-motion form that keeps its information: the same
+ * shapes in the same place, fewer of them, standing still or drifting slowly, and fading out
+ * instead of flying. Cosmetic randomness comes from the rng passed in, so captures repeat.
  */
 import type { Rng } from '@arcade/core';
 import type { PowerUpKind } from '../../logic/types.ts';
-import { Frame, Tex } from '../art/keys.ts';
+import { Frame } from '../art/keys.ts';
+import type { ParticleMotion, Theme } from '../themes/types.ts';
 import { POWER_UP_TEX } from '../view/powerup-view.ts';
 import type { Particle, ParticleField } from './particles.ts';
 import { FX_TEXTURE, FxFrame } from './textures.ts';
@@ -47,15 +50,26 @@ interface Style {
   wobble: number;
 }
 
-const BUBBLE: Style = { drag: 0.92, ay: -0.025, tint: 0xffffff, alpha: 0.85, wobble: 1 };
-const BUBBLE_STILL: Style = { drag: 0.9, ay: -0.008, tint: 0xffffff, alpha: 0.85, wobble: 0 };
-const DEBRIS: Style = { drag: 0.95, ay: 0.06, tint: 0xffffff, alpha: 1, wobble: 0 };
-const DEBRIS_STILL: Style = { drag: 0.9, ay: 0.01, tint: 0xffffff, alpha: 1, wobble: 0 };
-const SPARK: Style = { drag: 0.84, ay: 0, tint: 0xffffff, alpha: 1, wobble: 0 };
-const SPARKLE: Style = { drag: 0.88, ay: 0, tint: 0xfff0a0, alpha: 1, wobble: 0 };
-const ICON: Style = { drag: 0.9, ay: 0, tint: 0xffffff, alpha: 1, wobble: 0 };
-const INK: Style = { drag: 0.88, ay: 0, tint: 0x7a64b0, alpha: 0.9, wobble: 0 };
-const DROPLET: Style = { drag: 0.85, ay: -0.01, tint: 0xffffff, alpha: 0.9, wobble: 0 };
+/** Every style a recipe uses, by name. */
+type StyleName = 'bubble' | 'bubbleStill' | 'debris' | 'debrisStill' | 'ink' | 'droplet' | 'spark' | 'sparkle' | 'icon';
+
+/** A style that moves as `motion` says, in `tint` at `alpha`. */
+const styled = (motion: ParticleMotion, tint: number, alpha: number): Style => ({ ...motion, tint, alpha });
+
+/** The styles for a race: bubbles, debris, ink and droplets move by the theme's physics, the rest the same everywhere. Built once per race. */
+function stylesFor({ particles }: Pick<Theme, 'particles'>): Readonly<Record<StyleName, Style>> {
+  return {
+    bubble: styled(particles.rise, 0xffffff, 0.85),
+    bubbleStill: styled(particles.riseStill, 0xffffff, 0.85),
+    debris: styled(particles.fall, 0xffffff, 1),
+    debrisStill: styled(particles.fallStill, 0xffffff, 1),
+    ink: styled(particles.drift, 0x7a64b0, 0.9),
+    droplet: styled(particles.splash, 0xffffff, 0.9),
+    spark: { drag: 0.84, ay: 0, tint: 0xffffff, alpha: 1, wobble: 0 },
+    sparkle: { drag: 0.88, ay: 0, tint: 0xfff0a0, alpha: 1, wobble: 0 },
+    icon: { drag: 0.9, ay: 0, tint: 0xffffff, alpha: 1, wobble: 0 },
+  };
+}
 
 /** A ring of particles: set off outward at `speed`, or (speed 0) placed on a circle of `radius` and left still. */
 interface RingShape {
@@ -64,7 +78,7 @@ interface RingShape {
   speed: number;
   life: number;
   frame: string;
-  style: Style;
+  style: StyleName;
 }
 
 const DEBRIS_BUBBLES: RingShape = {
@@ -73,17 +87,17 @@ const DEBRIS_BUBBLES: RingShape = {
   speed: 0.5,
   life: 30,
   frame: FxFrame.bubbleSmall,
-  style: BUBBLE,
+  style: 'bubble',
 };
-const HIT_SPARKS: RingShape = { count: 6, radius: 3, speed: 1.8, life: 12, frame: FxFrame.spark, style: SPARK };
-const HIT_SPARKS_STILL: RingShape = { count: 4, radius: 8, speed: 0, life: 16, frame: FxFrame.spark, style: SPARK };
-const PEARL: RingShape = { count: 5, radius: 2, speed: 1, life: 16, frame: FxFrame.sparkle, style: SPARKLE };
-const PEARL_STILL: RingShape = { count: 3, radius: 5, speed: 0, life: 18, frame: FxFrame.sparkle, style: SPARKLE };
-const PICKUP: RingShape = { count: 6, radius: 4, speed: 1.1, life: 14, frame: FxFrame.sparkle, style: SPARKLE };
-const INK_PUFF: RingShape = { count: 8, radius: 3, speed: 1.1, life: 22, frame: FxFrame.chip, style: INK };
-const INK_PUFF_STILL: RingShape = { count: 4, radius: 6, speed: 0, life: 22, frame: FxFrame.chip, style: INK };
-const POP: RingShape = { count: 6, radius: 3, speed: 1.3, life: 14, frame: FxFrame.bubbleSmall, style: DROPLET };
-const POP_STILL: RingShape = { count: 4, radius: 5, speed: 0, life: 16, frame: FxFrame.bubbleSmall, style: DROPLET };
+const HIT_SPARKS: RingShape = { count: 6, radius: 3, speed: 1.8, life: 12, frame: FxFrame.spark, style: 'spark' };
+const HIT_SPARKS_STILL: RingShape = { count: 4, radius: 8, speed: 0, life: 16, frame: FxFrame.spark, style: 'spark' };
+const PEARL: RingShape = { count: 5, radius: 2, speed: 1, life: 16, frame: FxFrame.sparkle, style: 'sparkle' };
+const PEARL_STILL: RingShape = { count: 3, radius: 5, speed: 0, life: 18, frame: FxFrame.sparkle, style: 'sparkle' };
+const PICKUP: RingShape = { count: 6, radius: 4, speed: 1.1, life: 14, frame: FxFrame.sparkle, style: 'sparkle' };
+const INK_PUFF: RingShape = { count: 8, radius: 3, speed: 1.1, life: 22, frame: FxFrame.chip, style: 'ink' };
+const INK_PUFF_STILL: RingShape = { count: 4, radius: 6, speed: 0, life: 22, frame: FxFrame.chip, style: 'ink' };
+const POP: RingShape = { count: 6, radius: 3, speed: 1.3, life: 14, frame: FxFrame.bubbleSmall, style: 'droplet' };
+const POP_STILL: RingShape = { count: 4, radius: 5, speed: 0, life: 16, frame: FxFrame.bubbleSmall, style: 'droplet' };
 
 /** How far behind a kicking racer's centre its puff starts, px. */
 const KICK_PUFF_BEHIND = 8;
@@ -91,11 +105,18 @@ const KICK_PUFF_BEHIND = 8;
 const ICON_RISE_FROM = 12;
 
 /**
- * Builds the recipes. `back` draws behind the racers (trails, kick puffs and coral debris, which
- * would otherwise bury a racer smashing a gate), `front` above them (everything else that marks
- * an event).
+ * Builds the recipes for a race drawn in `theme`. `back` draws behind the racers (trails, kick
+ * puffs and coral debris, which would otherwise bury a racer smashing a gate), `front` above them
+ * (everything else that marks an event).
  */
-export function createBursts(back: ParticleField, front: ParticleField, rng: Rng, reducedMotion: boolean): Bursts {
+export function createBursts(
+  back: ParticleField,
+  front: ParticleField,
+  rng: Rng,
+  theme: Pick<Theme, 'particles' | 'terrain'>,
+  reducedMotion: boolean,
+): Bursts {
+  const styles = stylesFor(theme);
   const jitter = (spread: number) => (rng.next() * 2 - 1) * spread;
 
   const ring = (field: ParticleField, x: number, y: number, shape: RingShape) => {
@@ -108,7 +129,7 @@ export function createBursts(back: ParticleField, front: ParticleField, rng: Rng
       const particle = field.spawn(x + cos * shape.radius, y + sin * shape.radius, life, FX_TEXTURE, shape.frame);
       particle.vx = cos * shape.speed;
       particle.vy = sin * shape.speed;
-      applyStyle(particle, shape.style, rng);
+      applyStyle(particle, styles[shape.style], rng);
     }
   };
 
@@ -129,22 +150,22 @@ export function createBursts(back: ParticleField, front: ParticleField, rng: Rng
         const spread = reducedMotion ? 0 : jitter(0.4);
         particle.vx = -dirX * push - dirY * spread;
         particle.vy = -dirY * push + dirX * spread;
-        applyStyle(particle, reducedMotion ? BUBBLE_STILL : BUBBLE, rng);
+        applyStyle(particle, reducedMotion ? styles.bubbleStill : styles.bubble, rng);
       }
     },
     trailBubble(x, y) {
       const particle = back.spawn(x, y + jitter(2), 34 + rng.int(0, 12), FX_TEXTURE, FxFrame.bubbleSmall);
-      applyStyle(particle, reducedMotion ? BUBBLE_STILL : BUBBLE, rng);
+      applyStyle(particle, reducedMotion ? styles.bubbleStill : styles.bubble, rng);
       particle.alpha = 0.6;
     },
     coralDebris(x, y) {
       const count = reducedMotion ? 3 : 4;
       for (let index = 0; index < count; index++) {
-        const particle = back.spawn(x + jitter(5), y + jitter(5), 36 + rng.int(0, 10), Tex.coralDebris, Frame.a);
+        const particle = back.spawn(x + jitter(5), y + jitter(5), 36 + rng.int(0, 10), theme.terrain.debris, Frame.a);
         particle.vx = reducedMotion ? 0 : jitter(1.4);
         particle.vy = reducedMotion ? 0 : -0.4 - rng.next() * 1.2;
         particle.flipX = rng.next() < 0.5;
-        applyStyle(particle, reducedMotion ? DEBRIS_STILL : DEBRIS, rng);
+        applyStyle(particle, reducedMotion ? styles.debrisStill : styles.debris, rng);
       }
       if (!reducedMotion) ring(back, x, y, DEBRIS_BUBBLES);
     },
@@ -157,7 +178,7 @@ export function createBursts(back: ParticleField, front: ParticleField, rng: Rng
     pickupPop(x, y, kind) {
       const icon = front.spawn(x, y - ICON_RISE_FROM, 34, POWER_UP_TEX[kind], Frame.a);
       icon.vy = reducedMotion ? 0 : -0.9;
-      applyStyle(icon, ICON, rng);
+      applyStyle(icon, styles.icon, rng);
       if (!reducedMotion) ring(front, x, y - ICON_RISE_FROM, PICKUP);
     },
     inkPuff(x, y) {
@@ -173,7 +194,7 @@ export function createBursts(back: ParticleField, front: ParticleField, rng: Rng
         const particle = front.spawn(x + jitter(8), y + jitter(6), 50 + rng.int(0, 24), FX_TEXTURE, frame);
         particle.vx = reducedMotion ? 0 : jitter(1.6);
         particle.vy = reducedMotion ? -0.3 : -0.6 - rng.next() * 1.6;
-        applyStyle(particle, reducedMotion ? BUBBLE_STILL : BUBBLE, rng);
+        applyStyle(particle, reducedMotion ? styles.bubbleStill : styles.bubble, rng);
       }
     },
     placeUp(x, y) {
@@ -182,7 +203,7 @@ export function createBursts(back: ParticleField, front: ParticleField, rng: Rng
         const offset = (index - (count - 1) / 2) * 5;
         const particle = front.spawn(x + offset, y + (reducedMotion ? -12 : 6), 28, FX_TEXTURE, FxFrame.sparkle);
         particle.vy = reducedMotion ? 0 : -1.1 - (index % 2) * 0.4;
-        applyStyle(particle, SPARKLE, rng);
+        applyStyle(particle, styles.sparkle, rng);
       }
     },
   };

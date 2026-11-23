@@ -3,14 +3,15 @@
  * debris, swaying kelp and the finish banner. Tiles are 16x16 and seamless,
  * since the same tile repeats across whole walls and kelp beds.
  */
-import { Frame, Tex } from '../keys.ts';
+import { Frame } from '../../../art/keys.ts';
+import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
+import { OceanTex, type OceanTexKey } from '../keys.ts';
 import { TerrainPalette } from '../palettes.ts';
-import { type ArtSheet, sheet } from './sheet.ts';
 
-/** Terrain sheets. The tileset frames sit in `TileIndex` order: rock first, then coral. */
-export const TERRAIN_SHEETS: readonly ArtSheet[] = [
+/** Terrain sheets. The tileset frames sit in `OceanTile` order: rock first, then coral. */
+export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
   {
-    key: Tex.tiles,
+    key: OceanTex.tiles,
     frames: [
       {
         name: 'rock',
@@ -58,10 +59,10 @@ export const TERRAIN_SHEETS: readonly ArtSheet[] = [
       },
     ],
   },
-  sheet(Tex.coralDebris, TerrainPalette.coral, {
+  sheet(OceanTex.coralDebris, TerrainPalette.coral, {
     [Frame.a]: ['.....00.', '....0120', '.00.010.', '0110.0..', '12110...', '0110..0.', '.00..030', '......0.'],
   }),
-  sheet(Tex.kelp, TerrainPalette.kelp, {
+  sheet(OceanTex.kelp, TerrainPalette.kelp, {
     [Frame.a]: [
       '...012....210...',
       '...0122...2101..',
@@ -99,7 +100,7 @@ export const TERRAIN_SHEETS: readonly ArtSheet[] = [
       '....012...210...',
     ],
   }),
-  sheet(Tex.finishGate, TerrainPalette.finish, {
+  sheet(OceanTex.finishGate, TerrainPalette.finish, {
     [Frame.a]: [
       '...00222211110..',
       '...00222211110..',

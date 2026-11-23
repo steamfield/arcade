@@ -13,6 +13,7 @@ import { createRng, type Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
 import type { World } from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import type { Theme } from '../themes/types.ts';
 import { Layer } from '../view/layers.ts';
 import { createBubbleTracker } from './bubble-tracker.ts';
 import { createBursts } from './bursts.ts';
@@ -39,10 +40,10 @@ const FRONT_CAPACITY = 96;
 const COSMETIC_SEED = 0x5eaf00d;
 
 /**
- * Builds the race scene's effects. With `reducedMotion` on, effects keep their information
- * (a hit still reads as a hit) without shake, flashing or large motion.
+ * Builds the race scene's effects, moving particles by `theme`'s physics. With `reducedMotion` on,
+ * effects keep their information (a hit still reads as a hit) without shake, flashing or large motion.
  */
-export function createFx(scene: Phaser.Scene, world: World, reducedMotion: boolean): Fx {
+export function createFx(scene: Phaser.Scene, world: World, theme: Theme, reducedMotion: boolean): Fx {
   ensureFxTextures(scene);
   const back = createParticleField(BACK_CAPACITY);
   const front = createParticleField(FRONT_CAPACITY);
@@ -50,7 +51,7 @@ export function createFx(scene: Phaser.Scene, world: World, reducedMotion: boole
     createParticleLayer(scene, back, Layer.racers - 0.75),
     createParticleLayer(scene, front, Layer.player + 0.75),
   ];
-  const bursts = createBursts(back, front, createRng(COSMETIC_SEED), reducedMotion);
+  const bursts = createBursts(back, front, createRng(COSMETIC_SEED), theme, reducedMotion);
   const trail = createSwimTrail(world.racers.length, reducedMotion);
   const shake = createShake();
   const nudge = createCameraNudge(scene.cameras.main);

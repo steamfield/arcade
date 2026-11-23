@@ -11,6 +11,7 @@ import type { SaveData } from '../logic/save.ts';
 import { debugState, debugSummary } from './debug.ts';
 import { Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
 import { BootScene } from './scenes/boot.ts';
+import { CourseScene } from './scenes/course.ts';
 import { HowToPlayScene } from './scenes/how-to-play.ts';
 import { RaceScene } from './scenes/race.ts';
 import { ResultsScene } from './scenes/results.ts';
@@ -69,6 +70,7 @@ function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
       new BootScene(rt),
       new TitleScene(rt),
       new HowToPlayScene(rt),
+      new CourseScene(rt),
       new SelectScene(rt),
       new RaceScene(rt),
       new ResultsScene(rt),

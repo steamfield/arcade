@@ -3,13 +3,14 @@
  * horizontally: a far reef ridge with coral heads and a sea fan, and a mid
  * kelp forest. Two dark colours each, a step off the water, so they recede.
  */
-import { Frame, Tex } from '../keys.ts';
+import { Frame } from '../../../art/keys.ts';
+import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
+import { OceanTex, type OceanTexKey } from '../keys.ts';
 import { BackdropPalette } from '../palettes.ts';
-import { type ArtSheet, sheet } from './sheet.ts';
 
 /** Backdrop layer sheets. */
-export const BACKDROP_SHEETS: readonly ArtSheet[] = [
-  sheet(Tex.backdropFar, BackdropPalette.far, {
+export const BACKDROP_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
+  sheet(OceanTex.backdropFar, BackdropPalette.far, {
     [Frame.a]: [
       '................................................................................................................................',
       '................................................................................................................................',
@@ -77,7 +78,7 @@ export const BACKDROP_SHEETS: readonly ArtSheet[] = [
       '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
     ],
   }),
-  sheet(Tex.backdropNear, BackdropPalette.near, {
+  sheet(OceanTex.backdropNear, BackdropPalette.near, {
     [Frame.a]: [
       '................................................................................................',
       '................................................................................................',
