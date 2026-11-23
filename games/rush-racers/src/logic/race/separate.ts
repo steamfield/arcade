@@ -1,0 +1,161 @@
+/**
+ * Pushing apart racers that overlap, with the contact bookkeeping that announces a bump once and
+ * lets downed racers pass through each other.
+ */
+import type { EventSink } from '@arcade/core';
+import type { GameEvent } from '../events.ts';
+import { isDowned } from '../status.ts';
+import { type Body, RACER_IDS, type Racer } from '../types.ts';
+
+/**
+ * Pushes overlapping racers apart in one pass over pairs (i < j) in array order,
+ * splitting the push by mass and exchanging half the relative velocity on that axis.
+ * `contacts` holds "a|b" keys of touching pairs; `racer.bumped` fires only when a contact starts.
+ * A pair with a downed racer (`isDowned`: stunned, trapped or latched) passes through: no push, no
+ * bump, and its key is cleared, so touching again after recovery is a new bump. While such a pair
+ * overlaps, `contacts` holds its ghost key ("~a|b"), and the pair keeps passing through after the
+ * racer recovers until the two separate, which drops the ghost key.
+ *
+ * @param massOf The mass each racer bumps with; its profile's unless held power-ups change it.
+ * @param onBump Called with the pair in RACER_IDS order when a contact starts, after `racer.bumped`
+ *   and after the pair has been pushed apart, but with the velocities they bumped with: the closing
+ *   speed they share is worked out before the call and added after it.
+ * @param pushAxis 'shallowest' pushes each pair apart along the axis they overlap least; 'x' always
+ *   pushes sideways, so a racer dropping onto another keeps falling (a medium's 'horizontal' collision).
+ */
+export function separateRacers(
+  racers: Racer[],
+  contacts: Set<string>,
+  events: EventSink<GameEvent>,
+  massOf: MassOf = (racer) => racer.profile.mass,
+  onBump: OnBump = () => {},
+  pushAxis: PushAxis = 'shallowest',
+): void {
+  for (let i = 0; i < racers.length; i++) {
+    for (let j = i + 1; j < racers.length; j++) {
+      const first = racers[i];
+      const second = racers[j];
+      if (first && second) separatePair(first, second, { contacts, events, massOf, onBump, pushAxis });
+    }
+  }
+}
+
+/**
+ * Whether `a` and `b` pass through each other this tick rather than touch: either is downed
+ * (`isDowned`), or `contacts` still holds the pair's ghost key because they overlapped while one was
+ * down and haven't come apart since. Anything resolved between racers (bumps, puffer hits) skips such a pair.
+ */
+export function passesThrough(contacts: ReadonlySet<string>, a: Racer, b: Racer): boolean {
+  return isDowned(a) || isDowned(b) || contacts.has(ghostKey(contactKey(a, b)));
+}
+
+type MassOf = (racer: Racer) => number;
+type OnBump = (a: Racer, b: Racer) => void;
+
+/** Which way overlapping racers are pushed apart: along their shallower overlap, or only sideways. */
+export type PushAxis = 'shallowest' | 'x';
+
+/** What separating a pair reads and reports to, shared by every pair in one pass. */
+interface Separation {
+  contacts: Set<string>;
+  events: EventSink<GameEvent>;
+  massOf: MassOf;
+  onBump: OnBump;
+  pushAxis: PushAxis;
+}
+
+/** Separates one pair and keeps its contact bookkeeping current. */
+function separatePair(a: Racer, b: Racer, { contacts, events, massOf, onBump, pushAxis }: Separation): void {
+  const key = contactKey(a, b);
+  const ghost = ghostKey(key);
+  const penetration = {
+    x: overlapLength(a.body.x, a.body.w, b.body.x, b.body.w),
+    y: overlapLength(a.body.y, a.body.h, b.body.y, b.body.h),
+  };
+  const overlapping = penetration.x > 0 && penetration.y > 0;
+  // A pair that overlapped while one was down keeps passing through after it recovers, until the two
+  // come apart; shoving them out at once would jump a racer (maybe into rock) and bump for nothing.
+  if (passesThrough(contacts, a, b)) {
+    contacts.delete(key);
+    if (overlapping) contacts.add(ghost);
+    else contacts.delete(ghost);
+    return;
+  }
+  if (penetration.x < 0 || penetration.y < 0) {
+    contacts.delete(key);
+    return;
+  }
+  // Last tick's push leaves a pair exactly touching. That keeps an existing contact alive, so
+  // pressing into another racer doesn't re-announce a bump every other tick.
+  if (penetration.x === 0 || penetration.y === 0) return;
+
+  const axis = pushAxis === 'x' || penetration.x <= penetration.y ? 'x' : 'y';
+  const masses = { a: massOf(a), b: massOf(b) };
+  pushApart(a, b, masses, axis, penetration[axis]);
+  const shared = closingSpeedShares(a, b, masses, axis);
+  if (!contacts.has(key)) {
+    contacts.add(key);
+    const [first, second] = inRacerOrder(a, b);
+    events.emit({ type: 'racer.bumped', a: first.id, b: second.id });
+    onBump(first, second);
+  }
+  const velocity = axis === 'x' ? 'vx' : 'vy';
+  a.body[velocity] += shared.a;
+  b.body[velocity] += shared.b;
+}
+
+/** Length two spans share along one axis; zero when they touch, negative when there's a gap. */
+function overlapLength(startA: number, sizeA: number, startB: number, sizeB: number): number {
+  return Math.min(startA + sizeA, startB + sizeB) - Math.max(startA, startB);
+}
+
+type Axis = 'x' | 'y';
+
+/** The bump masses of a pair being separated. */
+interface Masses {
+  a: number;
+  b: number;
+}
+
+/** +1 when b's centre is further along the axis than a's, else -1 (ties push b forward). */
+function directionFromAToB(a: Body, b: Body, axis: Axis): 1 | -1 {
+  const size = axis === 'x' ? 'w' : 'h';
+  return b[axis] + b[size] / 2 >= a[axis] + a[size] / 2 ? 1 : -1;
+}
+
+/** Moves the two bodies apart by `depth`, the lighter one further. */
+function pushApart(a: Racer, b: Racer, masses: Masses, axis: Axis, depth: number): void {
+  const direction = directionFromAToB(a.body, b.body, axis);
+  const totalMass = masses.a + masses.b;
+  a.body[axis] -= direction * depth * (masses.b / totalMass);
+  b.body[axis] += direction * depth * (masses.a / totalMass);
+}
+
+/**
+ * The velocity changes along the axis that take away the pair's closing speed while it closes:
+ * each loses a share weighted by the other's mass fraction, so equal racers lose half each and the
+ * heavier one less. Zero for both when they aren't closing.
+ */
+function closingSpeedShares(a: Racer, b: Racer, masses: Masses, axis: Axis): { a: number; b: number } {
+  const velocity = axis === 'x' ? 'vx' : 'vy';
+  const direction = directionFromAToB(a.body, b.body, axis);
+  const closing = (a.body[velocity] - b.body[velocity]) * direction;
+  if (closing <= 0) return { a: 0, b: 0 };
+  const totalMass = masses.a + masses.b;
+  return { a: -direction * closing * (masses.b / totalMass), b: direction * closing * (masses.a / totalMass) };
+}
+
+/** The pair ordered by RACER_IDS, so keys and events don't depend on array order. */
+function inRacerOrder(a: Racer, b: Racer): [Racer, Racer] {
+  return RACER_IDS.indexOf(a.id) <= RACER_IDS.indexOf(b.id) ? [a, b] : [b, a];
+}
+
+function contactKey(a: Racer, b: Racer): string {
+  const [first, second] = inRacerOrder(a, b);
+  return `${first.id}|${second.id}`;
+}
+
+/** The key marking a pair that overlapped while one of them was down and hasn't come apart since. */
+function ghostKey(key: string): string {
+  return `~${key}`;
+}

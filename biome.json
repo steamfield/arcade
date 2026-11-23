@@ -124,7 +124,7 @@
       }
     },
     {
-      "includes": ["games/reef-rush/src/logic/**", "!**/*.test.ts"],
+      "includes": ["games/rush-racers/src/logic/**", "!**/*.test.ts"],
       "plugins": ["./tools/biome/no-inexact-math.grit"]
     }
   ]

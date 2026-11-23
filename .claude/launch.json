@@ -20,9 +20,9 @@
       "port": 5180
     },
     {
-      "name": "reef-rush",
+      "name": "rush-racers",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["arcade", "dev", "reef-rush", "--port", "5183"],
+      "runtimeArgs": ["arcade", "dev", "rush-racers", "--port", "5183"],
       "port": 5183
     }
   ]

@@ -1,0 +1,13 @@
+{
+  "id": "rush-racers",
+  "slug": "rush-racers",
+  "title": "Rush Racers",
+  "pitch": "Race three rivals through reefs and forests, firing the power-up you pick.",
+  "genre": "racing platformer",
+  "engine": "phaser",
+  "inputs": ["keyboard", "touch"],
+  "orientation": "landscape",
+  "status": "published",
+  "cover": "cover.png",
+  "attract": "attract.mp4"
+}

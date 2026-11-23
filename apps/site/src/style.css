@@ -4,7 +4,7 @@
 /*
  * The page is a cabinet on an arcade floor. The cabinet (marquee, bezel, control deck) is physical:
  * smooth plastic and light. Everything on the screen is pixel-crisp. Palette is shared with the
- * games' UI kits (games/reef-rush/UI.md): ink, indigo, foam, sun, coral.
+ * games' UI kits (games/rush-racers/UI.md): ink, indigo, foam, sun, coral.
  */
 :root {
   --ink: #0b0a1e;

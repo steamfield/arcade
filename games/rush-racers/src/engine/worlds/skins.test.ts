@@ -1,0 +1,81 @@
+/**
+ * Every shipped world's skin names art and words for every character slot, item, enemy and pickup,
+ * and a course resolves to its world's skin.
+ */
+import { describe, expect, it } from 'vitest';
+import { COURSES } from '../../logic/courses/index.ts';
+import { CHARACTER_IDS } from '../../logic/types.ts';
+import { assertSkinAssets, assertSkinTextures, SKINS, skinFor, type TextureLookup } from './index.ts';
+import { REEF_SKIN } from './reef.ts';
+import type { WorldSkin } from './types.ts';
+
+describe('world skins', () => {
+  it.each(Object.values(SKINS))('$id covers every key', (skin) => {
+    expect(() => assertSkinAssets(skin)).not.toThrow();
+  });
+
+  it('names the world and the missing key when a skin has a gap', () => {
+    const { gil: _gil, ...racers } = REEF_SKIN.cast.racers;
+    const broken = {
+      ...REEF_SKIN,
+      id: 'broken',
+      cast: { ...REEF_SKIN.cast, racers },
+    } as unknown as WorldSkin;
+    expect(() => assertSkinAssets(broken)).toThrow("World 'broken' skin has no racer for 'gil'");
+  });
+
+  it('names the world and the hazard when a skin has a glint without a key', () => {
+    const { glints } = REEF_SKIN.objects;
+    const broken = {
+      ...REEF_SKIN,
+      id: 'broken',
+      objects: { ...REEF_SKIN.objects, glints: { ...glints, jelly: { ...glints.jelly, key: '' } } },
+    } as WorldSkin;
+    expect(() => assertSkinAssets(broken)).toThrow("World 'broken' skin has no glint for 'jelly'");
+  });
+
+  it('gives each slot its own racer texture', () => {
+    for (const skin of Object.values(SKINS)) {
+      const textures = CHARACTER_IDS.map((id) => skin.cast.racers[id]);
+      expect(new Set(textures).size).toBe(CHARACTER_IDS.length);
+    }
+  });
+
+  it('draws Sunlit Shallows with the reef skin', () => {
+    expect(skinFor(COURSES['sunlit-shallows'])).toBe(REEF_SKIN);
+  });
+
+  it('names the course and world when a course has no skin', () => {
+    expect(() => skinFor({ id: 'nowhere', world: 'moon' })).toThrow(
+      "Course 'nowhere' names world 'moon', which the engine has no skin for",
+    );
+  });
+});
+
+/** A texture manager that has every texture and frame except those listed. */
+function texturesWithout(missing: { texture?: string; frame?: string }): TextureLookup {
+  return {
+    exists: (key) => key !== missing.texture,
+    get: () => ({ has: (frame) => frame !== missing.frame }),
+  };
+}
+
+describe('the boot texture check', () => {
+  it.each(Object.values(SKINS))('$id passes when everything it names was built', (skin) => {
+    expect(() => assertSkinTextures(texturesWithout({}), skin)).not.toThrow();
+  });
+
+  it('names the world and the texture a skin names but never built', () => {
+    const texture = REEF_SKIN.objects.pickups.pearl;
+    expect(() => assertSkinTextures(texturesWithout({ texture }), REEF_SKIN)).toThrow(
+      `World 'reef' skin names texture '${texture}', which was never built`,
+    );
+  });
+
+  it('names the world, the frame and its texture when a frame is missing', () => {
+    const { clam } = REEF_SKIN.objects.pickups;
+    expect(() => assertSkinTextures(texturesWithout({ frame: 'open' }), REEF_SKIN)).toThrow(
+      `World 'reef' skin names frame 'open' of '${clam}', which was never built`,
+    );
+  });
+});
