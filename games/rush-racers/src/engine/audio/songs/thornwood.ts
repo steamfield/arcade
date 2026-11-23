@@ -11,7 +11,7 @@
  * - B: Bb | F | C | Dm | Bb | F | Gm | A (the borrowed flat sixth, lead in long notes)
  * - turnaround: Dm | Gm | A | A (a run of eighths that ends on the dominant)
  *
- * The hook (A, bars 1-2) is "D5 F5 A5 G5~F5 | E5 G5 E5 C5.": a rising arpeggio and a falling step,
+ * The hook (A, bars 1-2) is "D5 F5 A5 G5 F5 | E5 G5 E5 C5.": a rising arpeggio and a falling step,
  * then a rocking third that lands on the bar's last beat. It is stated in bars 1-2 and 5-6 of A.
  * Pulse 2 plays a lilting off-beat figure on the chord tones (an arpeggio in B), the triangle
  * bounces root, octave and fifth, and the drums keep kick on 1 and snare on 4 (half-time in B)

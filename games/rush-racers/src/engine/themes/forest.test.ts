@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { Tex } from '../art/keys.ts';
 import { measureFrames } from '../art/pixel.ts';
+import { ThornItemTex, ThornRacerTex, ThornTex } from '../worlds/thornwood/keys.ts';
 import { ForestAnim, ForestTex, ForestTile } from './forest/keys.ts';
 import { ForestHazardPalette } from './forest/palettes.ts';
 import { FOREST_SHEETS } from './forest/sprites/index.ts';
 import { FOREST_THEME } from './forest.ts';
+import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import { OCEAN_THEME } from './ocean.ts';
 
 /** WCAG contrast ratio of two 0xRRGGBB colours. */
@@ -32,17 +35,22 @@ describe('the forest theme', () => {
     }
   });
 
-  it('shares no texture or animation key with the ocean theme', () => {
-    const forestAnims = Object.values(ForestAnim) as string[];
-    const oceanTextures = [
-      OCEAN_THEME.terrain.tileset,
-      OCEAN_THEME.terrain.finishGate,
-      OCEAN_THEME.terrain.debris,
-      ...Object.values(OCEAN_THEME.terrain.flowing).map((art) => art.texture),
+  it('shares no texture or animation key with the ocean theme, the global art or the Thornwood skin', () => {
+    const otherTextures = [
+      ...OCEAN_SHEETS.map((sheet) => sheet.key),
+      ...Object.values(Tex),
+      ...Object.values(ThornTex),
+      ...Object.values(ThornRacerTex),
+      ...Object.values(ThornItemTex),
     ];
-    const oceanAnims = Object.values(OCEAN_THEME.terrain.flowing).map((art) => art.anim);
-    expect(oceanTextures.filter((key) => Object.values(ForestTex).includes(key as never))).toEqual([]);
-    expect(oceanAnims.filter((key) => forestAnims.includes(key))).toEqual([]);
+    const otherAnims = [
+      ...Object.values(OCEAN_THEME.terrain.flowing).map((art) => art.anim),
+      OCEAN_THEME.hazards.jelly.anim,
+    ];
+    const forestTextures: string[] = Object.values(ForestTex);
+    const forestAnims: string[] = Object.values(ForestAnim);
+    expect(otherTextures.filter((key) => forestTextures.includes(key))).toEqual([]);
+    expect(otherAnims.filter((key) => key !== null && forestAnims.includes(key))).toEqual([]);
   });
 
   it('gives every looping texture the two frames its animation asks for', () => {
