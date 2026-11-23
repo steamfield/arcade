@@ -282,7 +282,8 @@ export function captionText(world: World, view: CaptionView): string {
   if (status.trapped > 0) return 'TRAPPED!';
   if (status.stunned > 0) return 'STUNNED!';
   if (squidHuntingPlayer(world)) return 'LOCKED ON!';
-  if (status.slowed > 0) return 'SLOWED BY INK';
+  const { text } = skinFor(courseOf(world)).objects;
+  if (status.slowed > 0) return text.slowedBy;
   const px = player.body.x + player.body.w / 2;
   const py = player.body.y + player.body.h / 2;
   for (const bubble of world.bubbles) {
@@ -290,8 +291,8 @@ export function captionText(world: World, view: CaptionView): string {
     if (Math.hypot(bubble.x - px, bubble.y - py) > THREAT_RANGE_TILES * TILE) continue;
     const dx = bubble.x - view.centerX;
     const dy = bubble.y - view.centerY;
-    if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? '< BUBBLE' : 'BUBBLE >';
-    return dy < 0 ? '^ BUBBLE' : 'v BUBBLE';
+    if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? `< ${text.trapped}` : `${text.trapped} >`;
+    return dy < 0 ? `^ ${text.trapped}` : `v ${text.trapped}`;
   }
   return '';
 }

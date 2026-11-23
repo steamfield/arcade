@@ -11,7 +11,6 @@ import type { PowerUpKind } from '../../logic/types.ts';
 import { Frame } from '../art/keys.ts';
 import type { ParticleMotion, Theme, TrailLook } from '../themes/types.ts';
 import type { ObjectSkin } from '../worlds/object-skin.ts';
-import { REEF_OBJECTS } from '../worlds/reef/objects.ts';
 import type { Particle, ParticleField } from './particles.ts';
 import { FX_TEXTURE, FxFrame } from './textures.ts';
 
@@ -123,7 +122,7 @@ export function createBursts(
   rng: Rng,
   theme: Pick<Theme, 'particles' | 'terrain'>,
   reducedMotion: boolean,
-  itemTextures: ObjectSkin['itemTextures'] = REEF_OBJECTS.itemTextures,
+  itemTextures: ObjectSkin['itemTextures'],
 ): Bursts {
   const styles = stylesFor(theme);
   const jitter = (spread: number) => (rng.next() * 2 - 1) * spread;

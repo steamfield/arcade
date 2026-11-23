@@ -16,7 +16,6 @@
 import { type Enemy, TILE, type Vec } from '../../logic/types.ts';
 import { Frame, type FrameKey } from '../art/keys.ts';
 import type { EnemyArt } from '../worlds/object-skin.ts';
-import { REEF_OBJECTS } from '../worlds/reef/objects.ts';
 
 /** The world ticks on which an enemy was last bonked and defeated, or null. */
 export interface EnemyMoments {
@@ -114,7 +113,7 @@ export function enemyLook(
   moments: EnemyMoments,
   tick: number,
   reducedMotion: boolean,
-  bodies: EnemyArt['bodies'] = REEF_OBJECTS.enemies.bodies,
+  bodies: EnemyArt['bodies'],
 ): EnemyLook {
   const look: EnemyLook = { body: null, alert: null, hole: null, eelBody: null, bubbles: [], dizzy: null };
   const texture = bodies[enemy.kind];
