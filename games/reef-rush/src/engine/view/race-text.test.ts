@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { noteSplashMoments, type SplashClock, type SplashMoments, slideRemaining, splashFrame } from './race-text.ts';
+import {
+  levelBanner,
+  noteSplashMoments,
+  type SplashClock,
+  type SplashMoments,
+  slideRemaining,
+  splashFrame,
+  standingsRow,
+} from './race-text.ts';
 
 const NONE: SplashMoments = { stretchAt: null, endedAt: null };
 const countdown = (raceTick: number): SplashClock => ({
@@ -52,11 +60,11 @@ describe('the race splash', () => {
     expect(splashFrame(finished(910, 700), moments, false)).toEqual({ text: 'FINISH', tone: 'sun', dx: 12, dy: 0 });
   });
 
-  it('says DNF in foam when the player did not finish', () => {
+  it('says TIME UP in foam when the player did not finish', () => {
     const moments: SplashMoments = { stretchAt: null, endedAt: 2000 };
     noteSplashMoments(moments, 'finished', 2005, 0.2);
     expect(moments.endedAt).toBe(2000);
-    expect(splashFrame(finished(2010, null), moments, false)).toEqual({ text: 'DNF', tone: 'foam', dx: 0, dy: 0 });
+    expect(splashFrame(finished(2010, null), moments, false)).toEqual({ text: 'TIME UP', tone: 'foam', dx: 0, dy: 0 });
   });
 
   it('puts every splash in place at once under reduced motion', () => {
@@ -68,5 +76,43 @@ describe('the race splash', () => {
 
   it('slides evenly from the full distance to rest', () => {
     expect([0, 3, 5, 6, 40].map((age) => slideRemaining(age, 8, 6, false))).toEqual([8, 4, 1, 0, 0]);
+  });
+});
+
+describe('a results row', () => {
+  const finishedAt = (ticks: number) => ({ finished: { tick: ticks } });
+
+  it('keeps a six-letter name apart from a time over a minute', () => {
+    expect(standingsRow({ character: 'streak', ...finishedAt(11030) }, 2)).toBe('2ND STREAK 3:03.83');
+    expect(standingsRow({ character: 'selene', ...finishedAt(11030) }, 3)).toBe('3RD SELENE 3:03.83');
+  });
+
+  it('lines the times up whatever the name, and stays 18 characters (UI.md rows are 107 px)', () => {
+    const rows = [
+      standingsRow({ character: 'onyx', ...finishedAt(5400) }, 1),
+      standingsRow({ character: 'baron', ...finishedAt(5400) }, 4),
+      standingsRow({ character: 'rudy', finished: null }, 4),
+    ];
+    expect(rows).toEqual(['1ST ONYX   1:30.00', '4TH BARON  1:30.00', '4TH RUDY   TIME UP']);
+    for (const row of rows) expect(row).toHaveLength(18);
+  });
+});
+
+describe('the countdown level banner', () => {
+  const world = (difficulty: 'easy' | 'normal' | 'hard', phase: 'countdown' | 'racing') => ({
+    difficulty,
+    race: { phase },
+  });
+
+  it.each([
+    ['easy', 'EASY', 1],
+    ['normal', 'NORMAL', 2],
+    ['hard', 'HARD', 3],
+  ] as const)('names %s with %i lit pips while counting down', (difficulty, text, pips) => {
+    expect(levelBanner(world(difficulty, 'countdown'))).toEqual({ text, pips });
+  });
+
+  it('is gone once the race is running', () => {
+    expect(levelBanner(world('hard', 'racing'))).toBeNull();
   });
 });

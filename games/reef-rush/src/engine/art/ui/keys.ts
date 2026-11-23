@@ -77,6 +77,3 @@ export const PortraitFrame = {
   selene: 'selene',
   rook: 'rook',
 } as const satisfies Record<CharacterId, string>;
-
-/** Any portrait frame name. */
-export type PortraitFrameKey = (typeof PortraitFrame)[keyof typeof PortraitFrame];

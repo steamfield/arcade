@@ -6,7 +6,7 @@ import { IDLE_TO_RESULTS, scenario, wait } from './kit.ts';
  * results follow 90 ticks later; IDLE_TO_RESULTS waits past the latest that can happen.
  */
 export default scenario({
-  description: 'a player who never swims is placed last as DNF on the results screen, and no best is saved',
+  description: 'a player who never swims is placed last with TIME UP on the results screen, and no best is saved',
   start: { scene: 'race' },
   input: [wait(IDLE_TO_RESULTS)],
   expect({ summary, state, events }) {
@@ -22,6 +22,6 @@ export default scenario({
       { standings: [rival, rival, rival, 'player'], playerPlace: 4, playerTicks: null },
     ]);
     expect(events.filter((e) => e.type === 'save.written')).toHaveLength(1);
-    expect(state).toMatchObject({ save: { best: null, races: 1 } });
+    expect(state).toMatchObject({ save: { best: { easy: null, normal: null, hard: null }, races: 1 } });
   },
 });

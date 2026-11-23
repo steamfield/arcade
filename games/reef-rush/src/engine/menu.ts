@@ -9,7 +9,7 @@ export type MenuOption = 'Race' | 'How to play' | 'Difficulty' | 'Sound' | 'Moti
 
 /** The options each menu screen offers, top to bottom. */
 export const MENU_OPTIONS = {
-  title: ['Race', 'Difficulty', 'How to play', 'Sound', 'Motion'],
+  title: ['Race', 'How to play', 'Difficulty', 'Sound', 'Motion'],
   results: ['Race again', 'Title'],
 } as const satisfies Record<string, readonly MenuOption[]>;
 

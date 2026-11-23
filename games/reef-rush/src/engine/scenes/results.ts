@@ -1,7 +1,7 @@
 /**
  * The results screen, laid out to UI.md: the RESULTS heading, a podium with
  * the top three's portraits and medals, the standings revealed one row every
- * 20 ticks (place, character name, time or DNF; the player's row in sun with
+ * 20 ticks (place, character name, time or TIME UP; the player's row in sun with
  * its character's head beside it), then the NEW BEST or BEST NOT SAVED ribbon, and the Race again / Title
  * buttons. Motion is timed from the runtime's tick since this screen came up,
  * and holds still under reduced motion (rows still arrive in sequence).
@@ -16,7 +16,7 @@ import { MENU_OPTIONS } from '../menu.ts';
 import type { RaceOutcome, Runtime } from '../runtime.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
 import { createMenuView, type MenuView } from '../view/menu-view.ts';
-import { formatRaceTime, ordinal, racerShortName, slideRemaining, TONE_CSS } from '../view/race-text.ts';
+import { slideRemaining, standingsRow, TONE_CSS } from '../view/race-text.ts';
 
 /** UI.md "Results" rects, in game px. */
 const HEADING_CENTRE = { x: 160, y: 12 } as const;
@@ -135,7 +135,7 @@ function createStandings(scene: Phaser.Scene, world: World, standings: readonly 
   const rows = standings.map((id, index) => {
     const racer = racerIn(world, id);
     const y = ROWS.y + index * ROWS.pitch;
-    const label = createLabel(scene, ROWS.x, y, rowText(racer, index + 1), {
+    const label = createLabel(scene, ROWS.x, y, standingsRow(racer, index + 1), {
       tone: id === 'player' ? 'sun' : 'foam',
       outline: true,
     }).setVisible(false);
@@ -159,16 +159,6 @@ function createStandings(scene: Phaser.Scene, world: World, standings: readonly 
       }
     },
   };
-}
-
-/**
- * One standings row, e.g. "4TH  BARON 0:24.46", or "DNF" for a racer that never finished. Names are
- * the short form, at most 6 letters, so every row keeps the UI.md width.
- */
-function rowText(racer: Racer, place: number): string {
-  const time = racer.finished ? formatRaceTime(racer.finished.tick) : 'DNF';
-  const name = racerShortName(racer.character).toUpperCase();
-  return `${ordinal(place).toUpperCase().padEnd(5)}${name.padEnd(6)}${time.padStart(7)}`;
 }
 
 /** What the ribbon can say. */

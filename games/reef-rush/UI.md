@@ -10,9 +10,9 @@ The kit lives in `src/engine/art/ui/` and `src/engine/art/font.ts`. Screens are 
 | indigo | `#211b48` | Panel body (never water blue) |
 | foam | `#f6f0dc` | Primary text; the rim on icons and medals |
 | sun | `#ffc53a` | Accent: selection, the player's place, gold, logo |
-| coral | `#ff8a7a` | Alert: place lost, DNF, save failed |
+| coral | `#ff8a7a` | Alert: place lost, save failed |
 
-Ramps, not new hues: `indigoLight`/`indigoDark` bevels, `well` inset fill, `sunDark` gold bevel, `dim` (`#a9a6d0`) secondary text. Pick text colours with `tone`. The `color` option is deprecated: use `tone`. Never let colour alone carry meaning: pair coral with an arrow, DNF text or a medal numeral.
+Ramps, not new hues: `indigoLight`/`indigoDark` bevels, `well` inset fill, `sunDark` gold bevel, `dim` (`#a9a6d0`) secondary text. Pick text colours with `tone`. The `color` option is deprecated: use `tone`. Never let colour alone carry meaning: pair coral with an arrow, TIME UP text or a medal numeral.
 
 - **Text on a panel:** any tone, with the default drop shadow. Every tone, plain or display-shaded, holds 4.5:1 on every panel fill.
 - **Text over the water:** foam or sun only (`OFF_PANEL_TONES`), always with `outline: true`. Coral and dim fall below 4.5:1 on shallow water.
@@ -58,7 +58,8 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | Kick / power-up well | 66, 23, 61, 17 (72 wide for a stack of 4) | `inset` panel; icons at y 27 and x 70, 81, 92, 103, 114 (kick, burst, a stack of 3). The well has one slot per power-up the player can hold (`stackMaxFor`), each 11 px further right, so Nib's fourth slot sits at x 125 and the well ends at x 137, under the strip and clear of the back link (`wellLayout` in `hud.ts`). Kick and burst show at 50% opacity when not ready (`hud.test.ts` holds that to 3:1 on the well). While the burst recharges a 1 px `dim` ring around it (x 80-90, y 26-36) fills clockwise from top centre; a ready burst is the icon at full opacity with no ring. An empty slot shows a 3x3 `dim` socket at its centre. No divider: x 90-91 is the ring's column and the gap |
 | Progress strip | 122, 6, 112, 15 | `inset` panel; 7x7 `ui-heads` at y 10, travelling over x 126-223. Heads that would sit closer than 5 px are fanned out to 5 px apart (`spreadHeads` in `race-progress.ts`): the player's head keeps its true spot and draws on top, rivals move away from it, and a pack at the start fans right and a pack at the finish fans left so none leaves the strip |
 | Finish flag | 236, 9, 9, 9 | `finishFlag` at the strip's end, clear of the back link |
-| Splash | centred on (160, 62) | display at 2x, `outline: true`; countdown and DNF in foam (coral isn't allowed over the water), GO / FINAL STRETCH / FINISH in sun; the widest (FINAL STRETCH) covers x 53-267, y 50-74 |
+| Splash | centred on (160, 62) | display at 2x, `outline: true`; countdown and TIME UP in foam (coral isn't allowed over the water), GO / FINAL STRETCH / FINISH in sun; the widest (FINAL STRETCH) covers x 53-267, y 50-74 (TIME UP, 7 letters, is narrower) |
+| Countdown level | centred on x 160, word at y 88, pips at y 98 | during the countdown only, under the numeral: the level's word in `display`, foam, outlined, and three 6 px squares 4 px apart (x 147-173) with a 1 px ink outline, as many sun as the level's number (1 Easy, 2 Normal, 3 Hard) and the rest `indigoLight`, the same pips as the title's Level button. Clear of the d-pad and A/B zones and below the caption line |
 | Caption | centred on (160, 45) | text, foam, outlined: TRAPPED!, STUNNED!, LOCKED ON! (a Homing Squid has locked on the player), SLOWED BY INK, or an off-screen bubble's direction. Empty while a squid is latched, when KICK! takes the spot |
 | Lock-on arrow | `MARKER_BOUNDS` x 8-312, y 52-172 | `warnArrow` (9x9 coral wedge, foam rim) turned to the nearest 45 degrees toward the squid hunting the player. On the screen's edge when the squid is off-screen, 14 px short of it when in view. Off-screen it sits where the line from the player to the squid leaves the bounds. Never inside a touch zone, nor in the splash rectangle (x 53-267, y 50-74) while a banner shows (it slides to the nearest clear point). Blinks 14 ticks on, 6 off (3 Hz); steady under reduced motion. Paired with the LOCKED ON! caption and a rising three-ping sfx, so colour is never the only signal |
 | KICK! prompt | centred on x 168, beside the player | display, sun, outlined, while a squid is latched on the player, placed like the combo name (`comboCentreY`: 16 px clear of the player, above when it fits, within y 50-174), and the combo name is hidden while it shows; swaps sun and foam every 10 ticks (steady sun under reduced motion). On touch screens `PRESS A` in foam text sits 2 px under it as one block, since A is the kick button |
@@ -93,7 +94,7 @@ Event effects: a squid fired puffs bubbles at its owner; a shake-off pops bubble
 
 In dark zones a decoy carries the rival's 28 px light pool and a squid a 14 px one.
 
-Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.ts`, applied by `Runtime.startRace`) puts staged state in the world before the first frame: `icons-a`, `icons-b`, `icons-c`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow`. It only writes plain world state the views read, and a staged race never saves.
+Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.ts`, applied by `Runtime.startRace`) puts staged state in the world before the first frame: `icons-a`, `icons-b`, `icons-c`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow`, `dark`. It only writes plain world state the views read, and a staged race never saves.
 
 ## Title
 
@@ -102,12 +103,12 @@ Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.t
 | Logo | 67, 28, 186, 30 | `ui-logo` at 2x |
 | Racer lane | 0, 62, 320, 12 | racers swim past left to right (sprites, not text); still under reduced motion |
 | Race button | 120, 78, 80, 15 | cursor fin at x 109-117 |
-| Level button | 120, 95, 80, 15 | EASY / NORMAL / HARD, centred; each press cycles to the next and saves, and the text changes the moment the setting does. Three 3 px pips at x 126, 131 and 136 (y 101) show the level without reading: 1 lit (sun) for Easy, 2 Normal, 3 Hard, the rest dim |
-| How to play button | 120, 112, 80, 15 | HOW TO PLAY opens the How to Play screen |
+| How to play button | 120, 95, 80, 15 | HOW TO PLAY opens the How to Play screen |
+| Level button | 120, 112, 80, 15 | EASY / NORMAL / HARD, centred; each press cycles to the next and saves, and the text changes the moment the setting does. Three 3 px pips at x 126, 131 and 136 (y 118) show the level without reading: 1 lit (sun) for Easy, 2 Normal, 3 Hard, the rest dim |
 | Sound button | 120, 129, 80, 15 | SOUND ON / SOUND OFF, changes the moment the setting does |
 | Motion button | 120, 146, 80, 15 | MOTION FULL / MOTION LESS. "MOTION REDUCED" is 83 px, too wide for a button whose fin clears the d-pad zone with the column centred on the logo |
 | PRESS A | 140, 167, 41, 7 | touch screens only (`?touch=1` or a coarse pointer, the rule `@arcade/input` mounts the controls by); on a keyboard A is a move key. Foam, outlined, blinks. 6 px clear of the last button, ending on the bottom margin |
-| Best card | 214, 82, 100, 24 | `raised`, right of the buttons so five buttons fit; clear of the back link above and the A/B zone (y 118 and below); medal at (218, 87), or the saved character's portrait for a 4th-place best; "BEST 2ND" in dim at (234, 86); time in foam at (234, 95) |
+| Best card | 214, 82, 100, 24 | `raised`, right of the buttons so five buttons fit; clear of the back link above and the A/B zone (y 118 and below); medal at (218, 87), or the saved character's portrait for a 4th-place best; "BEST 2ND" in dim at (234, 86); time in foam at (234, 95). It shows the best on the level the Level button is on, and swaps as it cycles; a level with no best shows no card |
 
 All five buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A new save starts on Easy.
 
@@ -116,8 +117,8 @@ All five buttons are 80 wide so the fins line up; 80 is the widest that keeps th
               R E E F   R U S H   (2x)
   ~ ~ racers ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
                >[    RACE    ]
-                [ ■□□ EASY   ]       [BEST 2ND  ]
-                [ HOW TO PLAY]       [  0:24.46 ]
+                [ HOW TO PLAY]       [BEST 2ND  ]
+                [ ■□□ EASY   ]       [  0:24.46 ]
                 [  SOUND ON  ]
                 [ MOTION FULL]
  (d-pad)           PRESS A        (touch only)             (A/B)
@@ -189,7 +190,7 @@ The card, preview and footer stay in the safe column (x 108-228) below the grid,
 | 1st plinth | 140, 44, 40, 32 | `accent`; portrait at (152, 27); medal at (154, 47) |
 | 2nd plinth | 96, 50, 40, 26 | `raised`; portrait at (108, 33); medal at (110, 53) |
 | 3rd plinth | 184, 56, 40, 20 | `raised`; portrait at (196, 39); medal at (198, 59) |
-| Standing rows | 120, 80, 107, 7, pitch 10 | "4TH  BARON 0:24.46"; rivals in foam, the player in sun, all outlined; the player's character's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 116 (117 with its outline) |
+| Standing rows | 120, 80, 107, 7, pitch 10 | 18 characters, place in 4, name in 7, time or TIME UP right-aligned in 7: "4TH BARON  0:24.46", "2ND STREAK 3:06.30"; rivals in foam, the player in sun, all outlined; the player's character's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 116 (117 with its outline) |
 | Ribbon | 114, 120, 92, 15 | `inset`, so it reads as a readout and never as a selected button; "NEW BEST" in sun or "BEST NOT SAVED" in coral, otherwise hidden |
 | Race again | 122, 139, 76, 15 | button |
 | Title | 122, 158, 76, 15 | button; cursor fin at x 111-119 |
@@ -201,9 +202,9 @@ The card, preview and footer stay in the safe column (x 108-228) below the grid,
          +------+| (1)  |
          | (2)  ||      |+------+
          +------++------+| (3)  |
- (d-pad)       1ST  BARON 0:14.78
-               2ND  TESS  0:14.96 ...
-            @  4TH  PIP   0:24.46
+ (d-pad)       1ST BARON  0:14.78
+               2ND TESS   0:14.96 ...
+            @  4TH PIP    0:24.46
             [   NEW BEST   ]
            >[  RACE AGAIN  ]
             [    TITLE     ]                    (A/B)

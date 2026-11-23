@@ -1,7 +1,7 @@
 /**
  * Wiring between the shell and Phaser: loads the save, builds the Runtime and
  * the Phaser game with its scenes, fits the canvas at integer zoom, reports
- * WebGL context loss, registers the audio context, and returns the GameHandle
+ * WebGL context loss, and returns the GameHandle
  * the shell and tests drive. No game rules or scene logic live here.
  */
 import type { SaveStore } from '@arcade/save';
@@ -86,8 +86,8 @@ function switchScene(game: Phaser.Game, scene: SceneKey): void {
 
 /**
  * Integer zoom that follows the container, the logic clock fed once per game step (not per
- * scene, so a scene switch mid-step can't tick twice), plus context-loss and audio-context
- * hookups once Phaser is ready.
+ * scene, so a scene switch mid-step can't tick twice), plus the context-loss hookup once
+ * Phaser is ready.
  */
 function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
   game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => rt.frame(deltaMs));
@@ -96,7 +96,6 @@ function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
   game.events.once(Phaser.Core.Events.READY, () => {
     fitToContainer();
     game.canvas.addEventListener('webglcontextlost', () => ctx.reportError('webgl', 'WebGL context lost'));
-    if (game.sound instanceof Phaser.Sound.WebAudioSoundManager) ctx.registerAudioContext(game.sound.context);
   });
 }
 
@@ -120,7 +119,7 @@ function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>
       const imported = await saves.importJson(SAVE_SLOT, JSON.stringify(fixture));
       if (imported.kind !== 'ok')
         throw new Error(`Save fixture rejected by the save store: ${JSON.stringify(imported)}`);
-      rt.save = imported.data;
+      rt.loadSave(imported.data);
       rt.goTo('title');
     },
     pause: () => game.loop.sleep(),
