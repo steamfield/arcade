@@ -259,6 +259,59 @@ The three buttons sit at pitch 15, frames touching, and end at y 173, inside the
             [    TITLE     ]                    (A/B)
 ```
 
+## Friends
+
+Create a room or join one by its code, over the title's backdrop. Drawn by `view/friends-view.ts` from `online.friends` (`online/friends-screen.ts` holds the cursor logic). A link (`?room=<code>`) is the usual way in; the cells are for typing a code a friend read out.
+
+| Element | Rect | Notes |
+| --- | --- | --- |
+| Heading | centred on (160, 12) | "FRIENDS", display, sun, outlined |
+| Notice | centred on (160, 40) | `online.notice` ("CREATING ROOM...", "ROOMS ARE UNAVAILABLE"), text, foam, outlined, in menu mode only; 40 characters span x 41-279, above the d-pad zone and under the back link |
+| Menu buttons | 120, 62, 80, 15; pitch 17 | CREATE ROOM, JOIN, BACK; fin at x 109-117 as on the title. Hidden while the cells show |
+| Hint | centred on (160, 28) | UP AND DOWN CHANGE A LETTER, text, foam, outlined; wider than the safe column, so it stays above y 76 |
+| Code cells | from 101, 44; 18x20, 2 px apart | six `raised` cells (x 101-219), each one display character centred; the cursor's cell `accent` with its character in sun. The menu cursor fin turned to point up 1 px above the cursor's cell (y 34-42) and turned down 1 px below it (y 65-73), not the HUD's place-change arrows; the block ends at y 73, above the d-pad zone. A cell with no character draws empty |
+| Footer | 114, 159, 92, 15 | as on course select: PICK / BACK on the menu, NEXT / BACK in the cells, JOIN / BACK on the last cell |
+
+Menu: up and down wrap, A picks, B goes back. Cells: up and down step the cursor's character through the room-code alphabet, right or A moves on (A on the last cell joins), left or B steps back, and B from the first cell returns to the menu keeping the code.
+
+```
+                    FRIENDS                  (back link)
+           UP AND DOWN CHANGE A LETTER
+                        ^
+              [7][K][Q][2][2][2]
+ (d-pad)                v                        (A/B)
+                  [>> NEXT  <> BACK]
+```
+
+## Room
+
+The room before and between races, over the title's backdrop. Drawn by `view/room-view.ts` from `OnlineState` (`online/room-screen.ts` holds the rows and cursor logic). Until the room has welcomed this peer, and once the connection has closed, only `online.notice` shows, text, foam, outlined, centred on (160, 60), so 40 characters (x 41-279) sit above the d-pad zone.
+
+| Element | Rect | Notes |
+| --- | --- | --- |
+| Code | from 6, 6 | the room code, display at 2x, sun, outlined (at most 106 wide) |
+| Race card | 146, 6, 98, 24 | `raised`: the course's name in foam at (150, 10), the level in sun at (150, 19). Everyone sees it; only the host can change it. Ends at x 244, clear of the back link |
+| Players | 6, 32, 238, 42 | `raised`, one text row per peer in join order at y 36 + 9n: label (x 10), character's short name (x 26; `-` before their first lobby message), ping right-aligned at x 160 (`45MS`, or `-`), HOST in sun (x 168), YOU (x 196), AWAY in coral (x 216) while not ready. This peer's label and name are in sun. Ends at y 74, above the d-pad zone, and at x 244, left of the status strip |
+| Rows | 120, 76, 106, 15; pitch 15 | one button per row this peer has, frames touching: Character (the pick's short name), and for the host Course (its name), Level (NORMAL or HARD) and Start (START, or RACE IN PROGRESS while the room is racing), then COPY LINK and LEAVE. Fin at x 109-117; the right edge (x 226) stays out of the A/B zone. Six rows end at y 166 |
+| Hints | 232, 82, 64, 36 | `inset`, under the status strip and above the A/B zone: fire PICK, dash LEAVE, `<>` CHANGE (left and right step a value), lines 10 px apart from y 86; on touch the letters A and B in sun |
+| Status | from 248, 28; x 248-313 | `online.notice` ("LINK COPIED"), text, foam, outlined, word-wrapped at 11 characters a line (`wrapLines` in `view/wrap-lines.ts`; a longer word is split), 9 px lines. A 40-character notice takes at most six lines, ending at y 80, above the hints panel and under the back link. With no notice, a peer without a Start row shows RACE IN PROGRESS here while the room is racing |
+
+Up and down move over the rows and wrap; left and right step Character, Course and Level; A on Start (while it can start), Copy link and Leave acts; B leaves from any row.
+
+```
+ 7KQ2MX (2x)           [SUNLIT SHALLOWS ]    (back link)
+                       [HARD            ]
+ [P1 BARON          120MS HOST           ]  LINK
+ [P2 SELENE          18MS      YOU       ]  COPIED
+ [P3 NIB                -           AWAY ]
+ (d-pad)        >[    SELENE    ]
+                 [SUNLIT SHALLOWS] [>> PICK  ]
+                 [     HARD     ] [>> LEAVE ]
+                 [    START     ] [<> CHANGE]
+                 [  COPY LINK   ]
+                 [    LEAVE     ]            (A/B)
+```
+
 ## Motion (ticks at 60/s)
 
 | Motion | Normal | Reduced motion |
