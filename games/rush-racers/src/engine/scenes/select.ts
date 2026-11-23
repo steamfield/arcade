@@ -95,7 +95,7 @@ export class SelectScene extends Phaser.Scene {
     this.rt = rt;
   }
 
-  /** The course the race will run on, whose world cast the screen shows. */
+  /** The course the race will run on, whose world cast and look the screen shows. */
   private get course(): Course {
     return this.rt.course;
   }
@@ -103,8 +103,8 @@ export class SelectScene extends Phaser.Scene {
   create(): void {
     centreOnStage(this);
     const rt = this.rt;
-    const backdropCourse = rt.menuCourse;
-    this.backdrop = createBackdrop(this, levelOf(backdropCourse), themeFor(backdropCourse), {
+    // The picked course's look, not the menus', so its cast stands in its own world.
+    this.backdrop = createBackdrop(this, levelOf(this.course), themeFor(this.course), {
       get reducedMotion() {
         return rt.settings.reducedMotion;
       },
