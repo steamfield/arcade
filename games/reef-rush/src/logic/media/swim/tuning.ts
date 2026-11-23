@@ -12,6 +12,8 @@ import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
  * Swim tuning in pixels and seconds. Cruise speed is `force / drag`. In `extra`: `sink` is the
  * downward acceleration while no direction is held (px/s²), `currentForce` the acceleration a
  * current applies along its direction (px/s²), `kelpDragMul` the drag multiplier inside kelp.
+ * In the air above a surface: `airGravity` pulls a racer down (px/s²), `airDrag` is the linear drag
+ * per second, and `airSteer` is the share of swim force the stick still has.
  */
 export const SWIM_TUNING = {
   base: { forceMul: 1, kickMul: 1, kickCooldownTicks: 36, dragMul: 1 },
@@ -19,7 +21,7 @@ export const SWIM_TUNING = {
   drag: 3,
   maxSpeed: 180,
   kick: 110,
-  extra: { sink: 14, currentForce: 160, kelpDragMul: 2.2 },
+  extra: { sink: 14, currentForce: 160, kelpDragMul: 2.2, airGravity: 450, airDrag: 0.4, airSteer: 0.15 },
 } as const satisfies MediumTuning;
 
 /** Water holds a dash, knockback or decoy on both axes, and floats trapped racers and loose power-ups up. */

@@ -1,8 +1,9 @@
 /**
  * Swimming as a medium: free 8-direction swimming with momentum and drag, an idle sink, currents and
- * kelp, and a kick. This file only assembles the members; each lives in its own module: physics in
- * `physics.ts`, navigation in `nav.ts` and `way.ts`, the rival pilot in `pilot.ts`, numbers and
- * rules in `tuning.ts`, and swim's data shapes with their accessors in `data.ts`.
+ * kelp, a kick, and a breach into the air above a surface that gravity brings back down. This file
+ * only assembles the members; each lives in its own module: physics in `physics.ts`, navigation in
+ * `nav.ts` and `way.ts`, the rival pilot in `pilot.ts`, numbers and rules in `tuning.ts`, and swim's
+ * data shapes with their accessors in `data.ts`.
  */
 import { sampleEnvironment } from '../../level/query.ts';
 import { feltCurrent } from '../../powerups/riptides.ts';
@@ -18,7 +19,7 @@ import { coralOnSmashPath, swimAimFrom, swimDistanceAt, swimNextTile } from './w
 export const SWIM_MEDIUM: Medium = {
   id: 'swim',
   tuning: SWIM_TUNING,
-  createMotion: (): SwimMotion => ({ kind: 'swim' }),
+  createMotion: (): SwimMotion => ({ kind: 'swim', airborne: false }),
   createPilot: createSwimPilot,
   sampleEnvironment(world, racer) {
     const water = sampleEnvironment(world.level, racer.body);

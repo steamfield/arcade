@@ -1,12 +1,14 @@
 /**
  * What a racer's timed statuses do to its control and how they run out. Stunned
  * and trapped racers lose their input, trapped racers drift straight up or down as
- * the medium says, downed racers (`isDowned`) pass through other racers, and every
+ * the medium says (never up through a surface into air), downed racers (`isDowned`) pass through other racers, and every
  * counter (plus the item use cooldown) loses one tick at the end of each tick.
  */
+import { TICK_DT } from '@arcade/core';
+import { cellAt } from './level/query.ts';
 import { mediumOf } from './media/index.ts';
-import { noItems } from './racers.ts';
-import type { Intent, Racer, RacerStatus, World } from './types.ts';
+import { centreOf, noItems } from './racers.ts';
+import { type Intent, type Racer, type RacerStatus, TILE, type World } from './types.ts';
 
 const STATUS_KEYS = Object.keys(noItems(0).status) as (keyof RacerStatus)[];
 
@@ -37,14 +39,23 @@ export function isDowned(racer: Racer): boolean {
 
 /**
  * Sets a trapped racer's velocity to the medium's straight drift (`effects.trappedDrift`; water floats
- * it up); call after the medium moves it and before moving the body.
+ * it up); call after the medium moves it and before moving the body. The drift stops at a surface:
+ * when this tick's drift would carry the racer's centre into air it holds still instead. A racer
+ * trapped while already in the air keeps the vertical speed the medium gave it, so it falls back.
  *
  * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
 export function floatTrapped(world: World, racer: Racer): void {
   if (racer.status.trapped === 0) return;
   racer.body.vx = 0;
-  racer.body.vy = mediumOf(world).effects.trappedDrift;
+  const centre = centreOf(racer);
+  if (isAirAt(world, centre.x, centre.y)) return;
+  const drift = mediumOf(world).effects.trappedDrift;
+  racer.body.vy = isAirAt(world, centre.x, centre.y + drift * TICK_DT) ? 0 : drift;
+}
+
+function isAirAt(world: World, x: number, y: number): boolean {
+  return cellAt(world.level, Math.floor(x / TILE), Math.floor(y / TILE)) === 'air';
 }
 
 /**

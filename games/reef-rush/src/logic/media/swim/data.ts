@@ -33,9 +33,11 @@ export interface SwimPilot extends PilotMemory {
   replanIn: number;
 }
 
-/** Swim keeps no per-racer movement state beyond its kind. */
+/** A swimmer's movement state: whether it was in the air above a surface when last sampled. */
 export interface SwimMotion extends RacerMotion {
   readonly kind: 'swim';
+  /** True from the tick its sampled environment reads air until the tick it reads water again. */
+  airborne: boolean;
 }
 
 /**
@@ -66,6 +68,16 @@ export function swimEnv(env: MediumEnv): SwimEnv {
 export function swimPilot(memory: PilotMemory): SwimPilot {
   if (memory.kind !== 'swim') throw wrongKind('pilot memory', memory.kind);
   return memory as SwimPilot;
+}
+
+/**
+ * A racer's motion as swim's.
+ *
+ * @throws {Error} When the motion was created by another medium.
+ */
+export function swimMotion(motion: RacerMotion): SwimMotion {
+  if (motion.kind !== 'swim') throw wrongKind('motion', motion.kind);
+  return motion as SwimMotion;
 }
 
 function wrongKind(what: string, kind: string): Error {

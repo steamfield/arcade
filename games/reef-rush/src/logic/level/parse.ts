@@ -7,7 +7,9 @@
  *   F  finish line (every F sits in one column)
  *   o  pearl         ?  clam                *  urchin          j  jellyfish
  *
- * Start, finish and object tiles are open water. Every row must be the same width.
+ * Start, finish and object tiles are open water. Every row must be the same width. A level's
+ * `surface` ranges then turn the water above each surface row to air (`surface.ts`); objects there
+ * stay recorded and float in the air, but enemies and starts may not sit in it.
  *
  * Cell names are materials, but what they mean is a behaviour the world's medium interprets:
  * rock is solid, coral is solid until broken, kelp slows a racer, a current pushes it along its
@@ -19,19 +21,10 @@
  * kelp). `Level.glyphs` keeps the character written at every tile, so a theme can tell them apart.
  */
 import { type Cell, type EnemyKind, type Level, type LevelDef, RACER_IDS, type Vec } from '../types.ts';
+import { errorAt, LevelError } from './level-error.ts';
+import { openToAir, requireSurfacesOnMap, requireUnderwater } from './surface.ts';
 
-/** A course that can't be parsed or raced. `row` and `col` are 0-based and null when the whole level is at fault. */
-export class LevelError extends Error {
-  readonly row: number | null;
-  readonly col: number | null;
-
-  constructor(message: string, row: number | null = null, col: number | null = null) {
-    super(message);
-    this.name = 'LevelError';
-    this.row = row;
-    this.col = col;
-  }
-}
+export { LevelError } from './level-error.ts';
 
 const TERRAIN: ReadonlyMap<string, Cell> = new Map([
   ['#', 'rock'],
@@ -87,14 +80,20 @@ interface Markers {
  *
  * @throws {LevelError} For a legend glyph that isn't one UTF-16 character, is whitespace, reuses a built-in character or
  *   names an unknown cell; ragged rows, unknown characters, missing or duplicate start digits,
- *   no finish tile, finish tiles in more than one column, or a dark zone outside the map or reversed.
+ *   no finish tile, finish tiles in more than one column, a dark zone outside the map or reversed, a
+ *   surface range reversed, off the map or with its row outside 1..height-1, or an enemy or start tile
+ *   in the air above a surface.
  */
 export function parseLevel(def: LevelDef): Level {
   const legend = readLegend(def.legend ?? {});
   const rows = readRows(def.ascii);
   const width = requireEqualWidths(rows);
   const markers: Markers = { starts: [], finishX: null, pearls: [], clams: [], urchins: [], jellies: [], enemies: [] };
-  const cells = rows.map((row, y) => [...row].map((ch, x) => readTile(ch, x, y, markers, legend)));
+  const water = rows.map((row, y) => [...row].map((ch, x) => readTile(ch, x, y, markers, legend)));
+  const surface = requireSurfacesOnMap(def.surface ?? [], width, rows.length);
+  const cells = openToAir(water, surface);
+  const starts = requireAllStarts(markers.starts);
+  requireUnderwater(cells, markers.enemies, starts);
 
   return {
     name: def.name,
@@ -102,7 +101,7 @@ export function parseLevel(def: LevelDef): Level {
     height: rows.length,
     cells,
     glyphs: rows.map((row) => [...row]),
-    starts: requireAllStarts(markers.starts),
+    starts,
     finishX: requireFinish(markers.finishX),
     pearls: markers.pearls,
     clams: markers.clams,
@@ -110,8 +109,7 @@ export function parseLevel(def: LevelDef): Level {
     jellies: markers.jellies,
     enemies: markers.enemies,
     dark: requireDarkZonesOnMap(def.dark ?? [], width),
-    // Scaffold: phase 2 lane a validates the ranges and turns water above each row into air.
-    surface: (def.surface ?? []).map((s) => ({ ...s })),
+    surface,
   };
 }
 
@@ -212,8 +210,4 @@ function requireDarkZonesOnMap(zones: NonNullable<LevelDef['dark']>, width: numb
     }
     return [from, to];
   });
-}
-
-function errorAt(what: string, row: number, col: number): LevelError {
-  return new LevelError(`${what} at row ${row}, col ${col}`, row, col);
 }
