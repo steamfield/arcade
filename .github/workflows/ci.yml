@@ -38,8 +38,6 @@ jobs:
 
       # Same commands agents run locally, so "passes locally" means the same thing here.
       - run: pnpm arcade check --all
-      # Rush Racers' 30-seed difficulty bars: too slow for check, so they run here and at each lane landing.
-      - run: pnpm --filter game-rush-racers test:difficulty
       - run: pnpm arcade smoke
 
       - if: failure()
@@ -52,3 +50,22 @@ jobs:
             games/*/playwright-report
             templates/*/playwright-report
           retention-days: 7
+
+  # Rush Racers' 30-seed difficulty bars: too slow for check, and over half an hour on one runner,
+  # so they run here in parallel shards (by file) beside the check job.
+  difficulty:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter game-rush-racers test:difficulty --shard=${{ matrix.shard }}/4
