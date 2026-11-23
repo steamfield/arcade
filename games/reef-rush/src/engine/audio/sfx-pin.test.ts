@@ -87,31 +87,32 @@ describe('the sound of a race on Sunlit Shallows', () => {
     expect(COURSES['sunlit-shallows'].song).toBe('race');
   });
 
-  it('plays the same sound effects and songs with enemies on the course, every one audible, and the v2 balance (v2 phase 4), over three whole races', () => {
+  it('plays the same sound effects and songs with enemies on the course, every one audible, and the reef-difficulty course, over three whole races', () => {
     const counts: Record<string, number> = {};
     for (const race of RACES) listen(race, counts);
+    // Re-pinned when the course gained its surface section, cave, 17 eels and a third shark. This
+    // harness hears every enemy; the game's own `enemyAudible` keeps far-off eels quiet.
     expect(counts).toEqual({
-      'sfx:bump': 46,
+      'sfx:bump': 74,
       'sfx:coral': 2,
       'sfx:countdown': 9,
-      'sfx:decoy.pop': 4,
-      'sfx:decoy.spawn': 4,
-      'sfx:eel.warn': 420,
-      'sfx:enemy.bonk': 1,
+      'sfx:decoy.pop': 3,
+      'sfx:decoy.spawn': 3,
+      'sfx:eel.warn': 2786,
+      'sfx:enemy.bite': 3,
+      'sfx:enemy.bonk': 6,
+      'sfx:enemy.defeat': 5,
       'sfx:finish': 3,
       'sfx:go': 3,
-      'sfx:item.use': 7,
-      'sfx:kick': 170,
-      'sfx:pearl': 20,
-      'sfx:pearl.drop': 3,
-      'sfx:place.down': 22,
-      'sfx:place.up': 27,
-      'sfx:riptide': 8,
-      'sfx:shark.windup': 5,
-      'sfx:squid.fire': 11,
-      'sfx:squid.latch': 1,
-      'sfx:squid.lock': 1,
-      'sfx:squid.shake': 1,
+      'sfx:item.use': 9,
+      'sfx:kick': 196,
+      'sfx:pearl': 26,
+      'sfx:pearl.drop': 4,
+      'sfx:place.down': 23,
+      'sfx:place.up': 28,
+      'sfx:riptide': 14,
+      'sfx:shark.windup': 14,
+      'sfx:squid.fire': 5,
       'sfx:undertow': 3,
       'song:race': 3,
       'song:win': 3,

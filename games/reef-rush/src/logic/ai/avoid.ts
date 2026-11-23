@@ -148,10 +148,12 @@ const SHARK_BONK_LEAD_S = 0.15;
  */
 export function aboutToBonk(world: World, racer: Racer, dir: Vec): boolean {
   if (dir.x === 0 && dir.y === 0) return false;
-  const targets = world.enemies.filter((enemy) => isHarmful(enemy) && (enemy.kind !== 'shark' || enemy.mode === 'charge')).map((enemy) =>
-    // A charging shark closes faster than a rival turns: meet it with a dash just before it lands.
-    enemy.kind === 'shark' ? sweptAlong(enemyBox(enemy), enemy.vel, SHARK_BONK_LEAD_S) : enemyBox(enemy),
-  );
+  const targets = world.enemies
+    .filter((enemy) => isHarmful(enemy) && (enemy.kind !== 'shark' || enemy.mode === 'charge'))
+    .map((enemy) =>
+      // A charging shark closes faster than a rival turns: meet it with a dash just before it lands.
+      enemy.kind === 'shark' ? sweptAlong(enemyBox(enemy), enemy.vel, SHARK_BONK_LEAD_S) : enemyBox(enemy),
+    );
   if (targets.length === 0) return false;
   const { body } = racer;
   for (let travelled = 0; travelled <= BONK_LOOKAHEAD_PX; travelled += HAZARD_AVOID.stepPx) {

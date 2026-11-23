@@ -74,9 +74,7 @@ describe('enemies on the ocean course', () => {
     expect(placed.every((e) => e.x > 60)).toBe(true);
     // Drawn where each one is now: eels start out of step, so some begin mid-lunge, away from home.
     const drawn = world.enemies.map(({ kind, at }) => [kind, rows[Math.floor(at.y / TILE)]?.[Math.floor(at.x / TILE)]]);
-    expect(drawn).toEqual(
-      placed.map(({ kind }) => [kind, { shark: 'S', eel: 'E', crab: 'K' }[kind]]),
-    );
+    expect(drawn).toEqual(placed.map(({ kind }) => [kind, { shark: 'S', eel: 'E', crab: 'K' }[kind]]));
   });
 });
 
