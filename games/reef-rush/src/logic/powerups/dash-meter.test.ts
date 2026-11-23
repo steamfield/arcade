@@ -5,7 +5,7 @@ import type { GameEvent } from '../events.ts';
 import { SWIM_TUNING } from '../media/swim/tuning.ts';
 import { eventsIn, hold, IDLE, raceOn, racerOf, step } from '../test-world.ts';
 import type { RacerId, World } from '../types.ts';
-import { DASH_METER } from './dash-meter.ts';
+import { DASH_METER, dashCharges } from './dash-meter.ts';
 
 /** Four walled lanes, 200 tiles long so nobody finishes within ten seconds of dashing. */
 const LANES = (() => {
@@ -36,12 +36,12 @@ function kicksOf(log: EventLog<GameEvent>, id: RacerId): number[] {
 describe('the dash meter', () => {
   it('starts every racer with two charges, and a dash spends one', () => {
     const { world, log, player } = playerAlone();
-    expect(world.racers.map((racer) => racer.kickCharges)).toEqual([2, 2, 2, 2]);
+    expect(world.racers.map(dashCharges)).toEqual([2, 2, 2, 2]);
 
     step(world, log, 1, DASH);
 
     expect(eventsIn(log, 'racer.kicked')).toEqual([{ type: 'racer.kicked', id: 'player' }]);
-    expect(player.kickCharges).toBe(1);
+    expect(dashCharges(player)).toBe(1);
   });
 
   it('does nothing for a dash press with the meter empty: no kick and no impulse', () => {

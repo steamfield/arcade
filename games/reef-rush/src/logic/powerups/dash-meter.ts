@@ -11,6 +11,11 @@ import type { Racer, World } from '../types.ts';
 /** How many dashes the meter holds, and the ticks one charge takes to come back. */
 export const DASH_METER = { charges: 2, rechargeTicks: 90 } as const;
 
+/** The dash charges `racer` holds now, 0..DASH_METER.charges. */
+export function dashCharges(racer: Racer): number {
+  return racer.kickCharges;
+}
+
 /** Whether `racer` has a dash charge to spend on a kick this tick. */
 export function canDash(racer: Racer): boolean {
   return racer.kickCharges > 0;

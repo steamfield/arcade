@@ -21,8 +21,11 @@ const SCATTER: readonly Vec[] = [
 /**
  * `count` new loose pearls at `at` (world px), moving away along SCATTER (mirrored for a racer
  * facing left) at PEARL.scatterSpeed. Directions repeat past the third pearl.
+ *
+ * @param droppedBy The racer that dropped them, who must wait before collecting one; null when nobody
+ *   did (an enemy's burst), so anyone may collect them at once.
  */
-export function scatterPearls(at: Vec, facing: 1 | -1, count: number, droppedBy: RacerId): LoosePearl[] {
+export function scatterPearls(at: Vec, facing: 1 | -1, count: number, droppedBy: RacerId | null): LoosePearl[] {
   return Array.from({ length: count }, (_, index): LoosePearl => {
     const direction = SCATTER[index % SCATTER.length] as Vec;
     return {

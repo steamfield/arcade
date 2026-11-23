@@ -7,7 +7,7 @@
  * pips, one per dash charge, that is not a slot (no icon, no frame, no digit).
  */
 import type Phaser from 'phaser';
-import { DASH_METER } from '../../logic/powerups/dash-meter.ts';
+import { DASH_METER, dashCharges } from '../../logic/powerups/dash-meter.ts';
 import { selectedItem, selectedSlot, slotItems } from '../../logic/powerups/inventory.ts';
 import { playerOf } from '../../logic/racers.ts';
 import type { HeldItem, PowerUpKind, World } from '../../logic/types.ts';
@@ -202,7 +202,7 @@ export function createDashMeter(
   return {
     right: x + METER_WIDTH,
     sync(world) {
-      const charges = playerOf(world).kickCharges;
+      const charges = dashCharges(playerOf(world));
       trackDashCharges(track, charges, world.tick);
       dashPipFrames(charges).forEach((frame, pip) => {
         pips[pip]

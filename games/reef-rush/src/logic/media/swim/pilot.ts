@@ -19,6 +19,7 @@ import { avoidHazards } from '../../ai/avoid.ts';
 import { steerDirection } from '../../ai/steer.ts';
 import { inDark } from '../../level/query.ts';
 import { cos, length, sin } from '../../num.ts';
+import { canDash, dashCharges } from '../../powerups/dash-meter.ts';
 import { holds } from '../../powerups/inventory.ts';
 import { CORAL_BREAKERS } from '../../powerups/tuning.ts';
 import type { MoveModifiers, Racer, Vec, World } from '../../types.ts';
@@ -160,9 +161,9 @@ function sidewaysFrom(aim: Vec, facing: 1 | -1, side: 1 | -1): Vec {
  * leader by more than RESERVE_WAIVED_BEHIND places.
  */
 function hasDashToSpend(racer: Racer): boolean {
-  if (racer.kickCharges === 0) return false;
+  if (!canDash(racer)) return false;
   if (racer.status.latched > 0 || racer.place - 1 > RESERVE_WAIVED_BEHIND) return true;
-  return racer.kickCharges > DASH_RESERVE;
+  return dashCharges(racer) > DASH_RESERVE;
 }
 
 /** Kicks when ready, has a dash to spend, is already moving roughly along its aim, and the skill roll passes. */

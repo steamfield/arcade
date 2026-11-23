@@ -99,11 +99,6 @@ export function defeatEnemy(world: World, index: number, by: RacerId, facing: 1 
   world.events.emit({ type: 'enemy.defeated', index, kind: enemy.kind, by });
   const count = KIND[enemy.kind].pearls;
   // scatterPearls fans pearls behind the facing it is given, so the opposite facing sends them ahead.
-  // It takes an owner, but nobody dropped these: anyone may pick them up straight away.
-  const burst = scatterPearls(enemy.at, facing === 1 ? -1 : 1, count, by).map((pearl) => ({
-    ...pearl,
-    droppedBy: null,
-  }));
-  world.loosePearls.push(...burst);
+  world.loosePearls.push(...scatterPearls(enemy.at, facing === 1 ? -1 : 1, count, null));
   world.events.emit({ type: 'pearls.burst', index, count });
 }

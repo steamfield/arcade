@@ -35,7 +35,8 @@ export type HitOutcome = 'absorbed' | 'stunned' | 'trapped' | 'knocked';
  *   HIT.stunTicks (`racer.stunned`), 'stunned'.
  * A hit the shield didn't absorb then knocks some pearls loose (`dropPearls`, `pearls.dropped`).
  * Stun and trap lengths are scaled by `statusTicks` (the racer's `statusDurationMul`, and the difficulty level's for the player), rounded to whole ticks.
- * Every landed hit ends any dash (`status.dashing = 0`; a Cannonball is invulnerable, so none lands on it), sets
+ * Every landed hit ends any dash and its enemy bonk window (`status.dashing = 0`, `status.bonking = 0`, so a
+ * racer knocked into an enemy is hurt, not bonking; a Cannonball is invulnerable, so none lands on it), sets
  * `status.invulnerable = HIT.invulnerableTicks` and sets the racer's velocity to HIT.knockbackSpeed
  * directly away from `from` (along facing when `from` is its centre), on the axes the medium holds
  * (`effects.dashAxes`: horizontal only keeps the vertical speed gravity gave it). A trapped racer's float
@@ -61,6 +62,7 @@ export function applyHit(
   const outcome = sufferHit(world, racer, blow);
   if (outcome !== 'absorbed') dropPearls(world, racer);
   racer.status.dashing = 0;
+  racer.status.bonking = 0;
   racer.status.invulnerable = invulnerableTicks(world, racer, HIT.invulnerableTicks);
   knockBack(world, racer, from);
   return outcome;
