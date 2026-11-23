@@ -70,12 +70,12 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | Finish flag | 236, 9, 9, 9 | `finishFlag` at the strip's end, clear of the back link |
 | Splash | centred on (160, 62) | display at 2x, `outline: true`; countdown and TIME UP in foam (coral isn't allowed over the water), GO / FINAL STRETCH / FINISH in sun; the widest (FINAL STRETCH) covers x 53-267, y 50-74 (TIME UP, 7 letters, is narrower) |
 | Countdown level | centred on x 160, word at y 88, pips at y 98 | during the countdown only, under the numeral: the level's word in `display`, foam, outlined, and three 6 px squares 4 px apart (x 147-173) with a 1 px ink outline, as many sun as the level's number (1 Easy, 2 Normal, 3 Hard) and the rest `indigoLight`, the same pips as the title's Level button. Clear of the d-pad and A/B zones and below the caption line |
-| Caption | centred on (160, 45) | text, foam, outlined: TRAPPED!, STUNNED!, LOCKED ON! (a Homing Squid has locked on the player), SLOWED BY INK, or an off-screen bubble's direction. Empty while a squid is latched, when DASH! takes the spot |
+| Caption | centred on (160, 45) | text, foam, outlined: TRAPPED!, STUNNED!, LOCKED ON! (a Homing Squid has locked on the player), SLOWED BY INK, or an off-screen bubble's direction (`< BUBBLE`). Words that name an item come from the course's world skin, so in Thornwood they read SLOWED BY MUD and `< SAP`. Empty while a squid is latched, when DASH! takes the spot |
 | Lock-on arrow | `MARKER_BOUNDS` x 8-312, y 52-172 | `warnArrow` (9x9 coral wedge, foam rim) turned to the nearest 45 degrees toward the squid hunting the player. On the screen's edge when the squid is off-screen, 14 px short of it when in view. Off-screen it sits where the line from the player to the squid leaves the bounds. Never inside a touch zone, nor in the splash rectangle (x 53-267, y 50-74) while a banner shows (it slides to the nearest clear point). Blinks 14 ticks on, 6 off (3 Hz); steady under reduced motion. Paired with the LOCKED ON! caption and a rising three-ping sfx, so colour is never the only signal |
 | DASH! prompt | centred on x 168, beside the player | display, sun, outlined, while a squid is latched on the player, placed beside the player (`besidePlayerY` in `beside-player.ts`: 16 px clear of the player, above when it fits, within y 50-174); swaps sun and foam every 10 ticks (steady sun under reduced motion). On touch screens `PRESS B` in foam text sits 2 px under it as one block, since B is the dash button |
 | Darkness | whole screen, over a dark zone's columns | `view/dark-view.ts`: a near-black veil (90%) under the HUD layer, faded in over 32 px at each end of the zone, with a light pool cut around every racer (player 64 px, leaning up to 16 px ahead along their velocity; rival 28; +32 holding a Glow Lantern; four 4 px rings of falling light at the edge), so at top speed a hazard is lit about 0.35 s before contact. Urchins (coral, 55%) and jellies (lilac, 60%) in a zone show a 5x5 glint above the veil. A player who sees in the dark (`racerSeesInDark`, Selene) gets only a 30% tint. One screen-sized render texture, redrawn only while a zone is on screen and the tick or scroll changed; numbers in `view/dark-math.ts` |
 
-Held items in the well, 9x9 with a foam rim: Jet Fins (fin), Bubble Shield (ring), Puffer (spiny fish), Ink Sac (drop), Glow Lantern (lamp), Homing Squid (upright magenta-pink squid), Riptide (green swell peaks), Undertow (violet arrow pulling left), Mimic (lilac octopus with gold eyes), Cannonball (iron ball with an orange spark). While a Cannonball dashes, the racer wears the 12x12 Cannonball at 2x where an inflated Puffer would show. Each has a 12x12 world twin (the same rows padded, dark outline) for loose pickups and clam pops.
+Every racer, portrait, head, item icon, attack, pickup and enemy on the HUD and in the world comes from the course's world skin (`skinFor(course)`), so a Thornwood race shows Grit, Skip and the rest, Rocket Boots and acorns, at the same rects. Reef's held items in the well, 9x9 with a foam rim: Jet Fins (fin), Bubble Shield (ring), Puffer (spiny fish), Ink Sac (drop), Glow Lantern (lamp), Homing Squid (upright magenta-pink squid), Riptide (green swell peaks), Undertow (violet arrow pulling left), Mimic (lilac octopus with gold eyes), Cannonball (iron ball with an orange spark). While a Cannonball dashes, the racer wears the 12x12 Cannonball at 2x where an inflated Puffer would show. Each has a 12x12 world twin (the same rows padded, dark outline) for loose pickups and clam pops.
 
 Enemies draw in the world between the tiles and the racers: an eel's hole over the rock tiles (tiles + 0.5), warning bubbles, the eel's body and every enemy body on the objects layer (objects + 0.1 to + 0.3, under every racer), and the shark's `!`, the dizzy star, defeat pop rings and flying pearls just over the racers (racers + 0.5 and + 0.6), so a tell is never hidden behind a racer. Nothing enemy-related draws on the HUD layers (`view/enemy-view.ts`).
 
@@ -121,7 +121,7 @@ Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.t
 | PRESS A | 140, 167, 41, 7 | touch screens only (`?touch=1` or a coarse pointer, the rule `@arcade/input` mounts the controls by); on a keyboard A is a move key. Foam, outlined, blinks. 6 px clear of the last button, ending on the bottom margin |
 | Best card | 214, 82, 100, 24 | `raised`, right of the buttons so five buttons fit; clear of the back link above and the A/B zone (y 118 and below); medal at (218, 87), or the saved character's portrait for a 4th-place best; "BEST 2ND" in dim at (234, 86); time in foam at (234, 95). It shows the best on the current course at the level the Level button is on, and swaps as it cycles; a level with no best there shows no card |
 
-The backdrop behind the title, course select and select is the last listed course raced (Sunlit Shallows until then), in that course's theme; How to Play always shows the ocean. All five buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A new save starts on Easy.
+The backdrop behind the title and course select is the last listed course raced (Sunlit Shallows until then), in that course's theme; select shows the picked course's, and How to Play the current course's level in its theme. All five buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A new save starts on Easy.
 
 ```
                                             (back link)
@@ -137,7 +137,7 @@ The backdrop behind the title, course select and select is the last listed cours
 
 ## How to Play
 
-Seven picture pages, built for a reader who may be six: at most four short words on any line, and every idea is also a moving picture of the game's own sprites (the player's saved racer, the clam, the item well, the dash meter's pips, pearls, the enemies, the squid). Opened from the title; A or right turns to the next page, B or left to the previous one. Left and right stop at the first and last page: only B on the first page and A on the last page leave, back to the title with HOW TO PLAY still selected. Each turn plays the menu-move sound. Like every menu it ignores presses for its first 20 ticks. Drawn over the reef backdrop, so words are foam or sun and outlined.
+Seven picture pages, built for a reader who may be six: at most four short words on any line, and every idea is also a moving picture of the game's own sprites (the player's saved racer, the clam, the item well, the dash meter's pips, pearls, the enemies, the squid). Opened from the title; A or right turns to the next page, B or left to the previous one. Left and right stop at the first and last page: only B on the first page and A on the last page leave, back to the title with HOW TO PLAY still selected. Each turn plays the menu-move sound. Like every menu it ignores presses for its first 20 ticks. Drawn over the current course's level in its theme, so words are foam or sun and outlined. The sprites, headings and captions are the course's world's: in Thornwood the player's saved racer is its Thornwood critter, crates and acorns replace clams and pearls, the enemies page shows a beetle, and the attacks are BEE, TAILWIND, SNARE VINE and COPYCAT. Pages 1, 2 and 5 belong to the medium (`MEDIUM_PAGES`); Thornwood's are below the table.
 
 | Element | Rect | Notes |
 | --- | --- | --- |
@@ -158,6 +158,14 @@ Control glyphs (`view/control-glyphs.ts`) are drawn from kit colours: on a keybo
 | 6 ATTACKS | Four scenes at 2x, each captioned with its 9 px icon and name. Across the top: SQUID (a squid chases a racer) and RIPTIDE (a green lane of streaks carrying a racer). Under them in the safe column: UNDERTOW (a racer swims ahead, then is dragged back with violet lines behind it) and MIMIC (a squid, an arrow pointing at a see-through copy, and the real racer swimming off the other way, so the squid chases the copy and not you). Captions end at y 113, names on the left at y 62 |
 | 7 DASH TO DODGE | Alone at 2x in the safe column: the dash control at the top lights at the last moment, the racer hops up 20 px and the squid, which started at x 126, swims underneath and out |
 
+In Thornwood (the run medium), three pages change:
+
+| Page | Pictures |
+| --- | --- |
+| 1 RUN AND JUMP | The arrows light as the racer runs along a floor: a quick tap of Up makes a short hop and a longer hold a tall jump. Below, the dash control lights and the racer lurches forward with speed lines (`run-page.ts`) |
+| 2 HIT CRATES | The racer jumps up under a crate, its head meets the crate's bottom at the jump's peak, the crate opens and a power-up rises over it (`run-crates-page.ts`) |
+| 5 JUMP TO STOMP | A beetle walks toward the racer, which jumps and lands on it; the beetle pops into an acorn (`run-enemies-page.ts`) |
+
 Reduced motion holds each page on its clearest still moment (the pressed arrow and loop halfway, the first dash half out with one pip spent, the last pop with all three held and their charges, the first item just fired, the pearls just scattered with the counter at two, the crab popping, the shark dizzy and the eel out, the dragged racer, the dodge made). The page's animation counts from the tick it came up on, so captures repeat.
 
 ## Hints
@@ -176,7 +184,7 @@ Glyph frames and the pulse blink at most 3 times a second. On touch screens the 
 
 ## Course select
 
-Shown between the title and select only while more than one course is listed; with one course (today) Race goes straight to select. Drawn by `view/course-view.ts`; `course-view.test.ts` holds three courses to this layout on desktop and phone.
+Shown between the title and select while more than one course is listed, which is now: Sunlit Shallows, then Bramble Run. With one course listed, or with an unlisted `?course=` in force (such as `run-test`), Race goes straight to select. Drawn by `view/course-view.ts`; `course-view.test.ts` holds three courses to this layout on desktop and phone.
 
 | Element | Rect | Notes |
 | --- | --- | --- |
@@ -189,8 +197,7 @@ Up and down move the cursor and wrap; A (fire) picks the course and goes to sele
 ```
                  PICK A COURSE               (back link)
                [SUNLIT SHALLOWS       1:24.31]
-               [MOONLIT KELP FOREST   -:--.--]
-               [REEF                  0:58.02]
+               [BRAMBLE RUN           -:--.--]
  (d-pad)                                         (A/B)
                   [>> PICK  <> BACK]
 ```
@@ -200,7 +207,7 @@ Up and down move the cursor and wrap; A (fire) picks the course and goes to sele
 | Element | Rect | Notes |
 | --- | --- | --- |
 | Heading | 112, 6, 96, 12 | "PICK A RACER", display, sun, outlined, centred on x 160 |
-| Grid cells | from 22, 28; 66x22; 4 px between columns, 2 between rows | 4x2 in `CHARACTER_IDS` order: rows y 28-49 and 52-73. `raised`, the cursor's cell `accent` with its name in sun; 16x16 portrait at (+3, +3), short name in foam at (+22, +8). The top-right cell (x 232-297) starts below the back link; the bottom row ends above the d-pad zone |
+| Grid cells | from 22, 28; 66x22; 4 px between columns, 2 between rows | the picked course's world's cast (Reef: Rudy to Rook; Thornwood: Grit, Skip, Blaze, Shade, Cheeks, Duke, Dusk, Fang, short names being the first word), 4x2 in `CHARACTER_IDS` order: rows y 28-49 and 52-73. `raised`, the cursor's cell `accent` with its name in sun; 16x16 portrait at (+3, +3), short name in foam at (+22, +8). The top-right cell (x 232-297) starts below the back link; the bottom row ends above the d-pad zone |
 | Card | 110, 78, 188, 40 | `raised`; right edge on the grid's, bottom at y 117 above the A/B zone. Portrait at 2x (32x32) at (114, 82); text column x 150-293 (`CARD_TEXT_WIDTH` 144): full name in display sun at y 83, ability in foam at y 98, blurb in dim at y 107. `character-select.test.ts` holds every line to the column |
 | Preview | 144, 128, 32, 24 | the picked racer's sprite at 2x, centred on (160, 140), swimming in place |
 | Footer | 114, 159, 92, 15 | `inset` readout: fire icon at (122, 162) + RACE, dash icon at (164, 162) + BACK, words in foam 11 px right of their icons. On touch screens (the PRESS A rule) the icons give way to the button letters A and B in sun |

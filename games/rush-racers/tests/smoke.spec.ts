@@ -1,3 +1,7 @@
+/**
+ * Smoke checks on every browser project: boot, the menus into a race on each world, touch controls
+ * on the phone, a saved best surviving a reload, and the world hash agreeing across engines.
+ */
 import { parseInput } from '@arcade/testing';
 import { expect, test } from '@arcade/testing/playwright';
 import { HARD_SAVE, TITLE_TO_RACE, TOP_ROUTE, wait } from '../scenarios/kit.ts';
@@ -61,6 +65,41 @@ test('on-screen controls pick a course and a racer, start the race and swim the 
   const summary = await game.summary();
   expect(summary).toMatchObject({ scene: 'race', phase: 'racing', character: 'gil' });
   expect((summary.player as { tile: number[] }).tile[0]).toBeGreaterThan(4);
+});
+
+test('a Bramble Run race starts from the menus and runs 600 ticks on foot', async ({ game }) => {
+  await game.open();
+  // Title Race, then down to Bramble Run on course select once it has armed.
+  await game.play(parseInput('_*20 fire _*2 _*20 down _*1 fire _*2'));
+  expect(await game.summary()).toMatchObject({ scene: 'select', course: 'bramble-run', medium: 'run' });
+  await game.play(parseInput('_*20 fire _*2 _*180 right*600'));
+  // The game fixture fails the test on any console error, failed request or game error along the way.
+  const summary = await game.summary();
+  expect(summary).toMatchObject({ scene: 'race', phase: 'racing', course: 'bramble-run', medium: 'run' });
+  expect(summary.raceTick).toBeGreaterThanOrEqual(600);
+});
+
+test('on Bramble Run the on-screen Up button jumps @touch', async ({ game, page }) => {
+  await game.open();
+  const hold = async (action: string, ticks: number) => {
+    const button = page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
+    await button.dispatchEvent('pointerdown', { pointerId: 1, isPrimary: true });
+    await game.advance(ticks);
+    await button.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
+  };
+  await game.advance(20);
+  await hold('fire', 1);
+  // Course select: down to Bramble Run, then pick it; then race as the saved pick.
+  await game.advance(21);
+  await hold('down', 1);
+  await hold('fire', 1);
+  await game.advance(21);
+  await hold('fire', 1);
+  await game.advance(190);
+  await hold('up', 10);
+  expect(await game.summary()).toMatchObject({ scene: 'race', phase: 'racing', course: 'bramble-run' });
+  const events = await game.events();
+  expect(events.filter((e) => e.type === 'racer.jumped' && e.id === 'player')).toHaveLength(1);
 });
 
 /**
