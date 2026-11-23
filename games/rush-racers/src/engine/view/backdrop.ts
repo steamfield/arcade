@@ -3,19 +3,20 @@
  * level (joined by line dithering), a caustic shimmer just under the top, painted layers behind
  * the light rays, slow-swaying rays, painted layers in front of them, and drifting motes. For the
  * ocean that is water darkening toward the floor, a far reef ridge, god rays and a mid kelp forest.
- * A theme leaves out caustics, rays or motes by giving no colour for them. Far layers follow less
+ * A theme leaves out caustics, rays or motes by giving no colour for them, and may add thin haze
+ * streaks drifting sideways over the bands (the sky's evening haze). Far layers follow less
  * of the camera's scroll than near ones. In front of all of that and still behind the terrain, a
  * theme with a cave wall tiles it down every dark column range, so a dark stretch reads as a cave
  * under the dark veil.
  *
  * Every moving part is a pure function of the world tick and the camera
  * scroll, so captures repeat. With reduced motion the time-driven parts hold
- * still (static rays, no drift or shimmer); scroll parallax stays because it
+ * still (static rays, no drift, haze or shimmer); scroll parallax stays because it
  * only follows the camera.
  */
 import type Phaser from 'phaser';
 import { type Level, TILE, type Vec } from '../../logic/types.ts';
-import type { BackdropSpec, PaintedLayer, Theme } from '../themes/types.ts';
+import type { BackdropSpec, HazeSpec, PaintedLayer, Theme } from '../themes/types.ts';
 import { Layer } from './layers.ts';
 
 /** The backdrop behind the course, built once per screen. */
@@ -30,7 +31,7 @@ export interface Backdrop {
 
 /** How the backdrop may move. */
 export interface BackdropOptions {
-  /** Hold rays, caustics and motes still. */
+  /** Hold rays, caustics, haze and motes still. */
   reducedMotion: boolean;
 }
 
@@ -49,6 +50,7 @@ interface AnimatedPart {
 const Depth = {
   bands: Layer.backdrop,
   caustics: Layer.backdrop + 1,
+  haze: Layer.backdrop + 2,
   behindRays: Layer.parallax,
   rays: Layer.parallax + 1,
   aboveRays: Layer.parallax + 2,
@@ -87,6 +89,7 @@ export function createBackdrop(
   if (backdrop.cave) addCaveWalls(scene, level, backdrop.cave.texture);
   const parts: AnimatedPart[] = [];
   if (backdrop.caustics !== null) parts.push(createCaustics(scene, backdrop.caustics));
+  if (backdrop.haze) parts.push(createHaze(scene, level, backdrop.haze));
   if (backdrop.rays !== null) parts.push(createLightRays(scene, viewport, backdrop.rays));
   if (theme.ambient.motes !== null) parts.push(createMotes(scene, viewport, theme.ambient.motes));
   // update runs every rendered frame, so it reuses one scroll object rather than allocating per frame.
@@ -223,6 +226,44 @@ function createCaustics(scene: Phaser.Scene, colour: number): AnimatedPart {
           graphics.fillRect(x, SURFACE_Y + row * cell.h + ((column + row) % 2), length, 1);
         }
       }
+    },
+  };
+}
+
+/**
+ * Haze: long thin streaks spread down the level, pinned to it like the bands and drifting slowly
+ * sideways at their own speeds, wrapping around the screen. Each streak keeps to its own `spacing`
+ * px slot of level height, so streaks never overlap and the haze is one even opacity over the bands.
+ */
+const HAZE = { spacing: 12, minLength: 24, maxLength: 88, pxPerTick: 1 / 12 } as const;
+
+function createHaze(scene: Phaser.Scene, level: Level, haze: HazeSpec): AnimatedPart {
+  const graphics = scene.add.graphics().setScrollFactor(0, 1).setDepth(Depth.haze);
+  const width = scene.cameras.main.width;
+  const levelHeight = level.height * TILE;
+  const streaks = Array.from({ length: Math.floor(levelHeight / HAZE.spacing) }, (_, index) => ({
+    home: hash(index, 13) * width,
+    y: index * HAZE.spacing + Math.floor(hash(index, 17) * (HAZE.spacing - 2)),
+    length: Math.round(HAZE.minLength + hash(index, 19) * (HAZE.maxLength - HAZE.minLength)),
+    thickness: hash(index, 23) > 0.7 ? 2 : 1,
+    speed: 0.5 + hash(index, 29),
+  }));
+  let drawn = '';
+
+  return {
+    update(tick) {
+      const lefts = streaks.map((streak) =>
+        Math.round(wrap(streak.home + tick * HAZE.pxPerTick * streak.speed, width + streak.length) - streak.length),
+      );
+      // Streaks move a pixel every several ticks; redraw only when one has.
+      const key = lefts.join(',');
+      if (key === drawn) return;
+      drawn = key;
+      graphics.clear();
+      graphics.fillStyle(haze.colour, haze.alpha);
+      streaks.forEach((streak, index) => {
+        graphics.fillRect(lefts[index] ?? 0, streak.y, streak.length, streak.thickness);
+      });
     },
   };
 }

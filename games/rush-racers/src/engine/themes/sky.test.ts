@@ -11,6 +11,7 @@ import { Tex } from '../art/keys.ts';
 import { measureFrames, type NamedFrame } from '../art/pixel.ts';
 import type { NoteEvent, Song } from '../audio/notation.ts';
 import { songs } from '../audio/songs/index.ts';
+import { FxFrame } from '../fx/textures.ts';
 import { STORM_TEXTURE } from '../view/lightning-view.ts';
 import { RING_TEXTURE } from '../view/ring-view.ts';
 import { SkyItemTex, SkyRacerTex, SkyTex } from '../worlds/cloudreach/keys.ts';
@@ -22,7 +23,14 @@ import { THEMES, themeFor } from './index.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import { OCEAN_THEME } from './ocean.ts';
 import { SkyThemeAnim, SkyThemeTex, SkyThemeTile } from './sky/keys.ts';
-import { SKY_BANDS, SkyBackdropPalette, SkyHazardPalette, SkyTerrainPalette, STORM_TINT } from './sky/palettes.ts';
+import {
+  EVENING_HAZE,
+  SKY_BANDS,
+  SkyBackdropPalette,
+  SkyHazardPalette,
+  SkyTerrainPalette,
+  STORM_TINT,
+} from './sky/palettes.ts';
 import { SKY_SHEETS } from './sky/sprites/index.ts';
 import { SKY_THEME } from './sky.ts';
 
@@ -59,11 +67,7 @@ describe('the sky theme', () => {
     expect(songs[skyTest.song].name).toBe('cloudreach');
   });
 
-  it('draws a bounce cloud', () => {
-    expect(SKY_THEME.terrain.tiles.bounce).toBeDefined();
-  });
-
-  it('grades seven sky bands from a deep blue overhead to a paler, hazier band at the bottom', () => {
+  it('grades seven sky bands from twilight indigo overhead to a paler, hazier band at the bottom', () => {
     expect(SKY_BANDS).toHaveLength(7);
     const lightness = SKY_BANDS.map(luminance);
     expect(lightness).toEqual([...lightness].sort((a, b) => a - b));
@@ -72,9 +76,22 @@ describe('the sky theme', () => {
     expect(saturation(SKY_BANDS.at(-1) ?? 0)).toBeLessThan(saturation(SKY_BANDS[0] ?? 0));
   });
 
-  it('counts every sky band and both cloud banks as contrast bands, since racers fly in front of all of them', () => {
+  it('counts every sky band, every band seen through the haze, and the cloud banks and sun as contrast bands, since racers fly in front of all of them', () => {
+    const haze = SKY_THEME.backdrop.haze;
+    const alpha = haze?.alpha ?? 0;
+    const hazeChannels = channels(haze?.colour ?? 0);
+    const throughHaze = (band: number) =>
+      channels(band)
+        .map((channel, index) => Math.round(channel * (1 - alpha) + (hazeChannels[index] ?? 0) * alpha))
+        .reduce((colour, channel) => (colour << 8) | channel, 0);
     const colours = SKY_THEME.contrastBands.map((band) => band.colour);
-    expect(colours).toEqual([...SKY_BANDS, ...SkyBackdropPalette.far, ...SkyBackdropPalette.near]);
+    expect(haze?.colour).toBe(EVENING_HAZE);
+    expect(colours).toEqual([
+      ...SKY_BANDS,
+      ...SKY_BANDS.map(throughHaze),
+      ...SkyBackdropPalette.far,
+      ...SkyBackdropPalette.near,
+    ]);
   });
 
   it.each([
@@ -191,7 +208,7 @@ describe('the sky art', () => {
     expect(bounce?.rows.slice(3).every((row) => !row.includes('.'))).toBe(true);
   });
 
-  it('draws fog over at most a third of each frame, so racers show through a fog bank', () => {
+  it('draws fog over at most a third of each frame, so a fog bank reads as a soft band, not a wall', () => {
     for (const frame of sheetFor(SkyThemeTex.fog)?.frames ?? []) {
       const pixels = pixelsOf(frame);
       const drawn = pixels.filter((pixel) => pixel !== '.');
@@ -199,14 +216,14 @@ describe('the sky art', () => {
     }
   });
 
-  it('tiles both backdrop layers at the size the theme draws them, over the sky bands, with sun shafts and motes', () => {
+  it('tiles both backdrop layers at the size the theme draws them, over hazy sky bands with no water light', () => {
     const [far, near] = SKY_THEME.backdrop.layers;
     const sizeOf = (key: string) => measureFrames(key, sheetFor(key)?.frames ?? []);
     expect(sizeOf(far?.texture ?? '').height).toBe(far?.height);
     expect(sizeOf(near?.texture ?? '').height).toBe(near?.height);
-    expect(SKY_THEME.backdrop).toMatchObject({ bands: SKY_BANDS, caustics: null });
-    expect(SKY_THEME.backdrop.rays).not.toBeNull();
-    expect(SKY_THEME.ambient.motes).not.toBeNull();
+    expect(SKY_THEME.backdrop).toMatchObject({ bands: SKY_BANDS, caustics: null, rays: null });
+    expect(SKY_THEME.backdrop.haze).toBeDefined();
+    expect(SKY_THEME.ambient.motes).toBeNull();
   });
 
   it('animates the spark cloud and the static wisp in the hazard slots the views read', () => {
@@ -222,16 +239,22 @@ describe('the sky art', () => {
     });
   });
 
-  it('veils a dark stretch in the storm tint and leaves a contrail behind racers', () => {
+  it('veils a dark stretch in the storm tint, and sheds puffs of vapour rather than bubbles', () => {
+    const bubbles: string[] = [FxFrame.bubble, FxFrame.bubbleSmall];
     expect(SKY_THEME.dark.colour).toBe(STORM_TINT);
     expect(SKY_THEME.trail).not.toBeNull();
+    expect(bubbles).not.toContain(SKY_THEME.trail?.frame);
+    expect(bubbles).not.toContain(SKY_THEME.bubbleFrames?.large);
+    expect(bubbles).not.toContain(SKY_THEME.bubbleFrames?.small);
   });
 
-  it('moves particles through air: every motion drags less than water does', () => {
+  it('moves particles through air: every motion drags less than water does, and nothing floats up', () => {
     for (const [motion, { drag }] of Object.entries(SKY_THEME.particles)) {
       const water = OCEAN_THEME.particles[motion as keyof typeof OCEAN_THEME.particles].drag;
       expect(drag, motion).toBeGreaterThan(water);
     }
+    expect(SKY_THEME.particles.rise.ay).toBe(0);
+    expect(SKY_THEME.particles.riseStill.ay).toBe(0);
   });
 });
 

@@ -11,15 +11,16 @@ import { SkyThemeTex, type SkyThemeTexKey } from '../keys.ts';
 import { SkyTerrainPalette } from '../palettes.ts';
 
 /**
- * Thunderhead inside the storm cloud: a flat, solid body with one faint billow crown per tile and a
- * few shadow flecks, so a wall reads as one heavy cloud mass rather than bricks or scales.
+ * Thunderhead inside the storm cloud: a flat, solid body crossed by one faint dithered streak that
+ * runs edge to edge, with a few shadow flecks, so a wall reads as continuous horizontal cloud layers
+ * rather than bricks or scales.
  */
 const BURIED_THUNDERHEAD_ROWS = [
   '1111111111111111',
   '1111111111111111',
-  '1111112222111111',
-  '1111221111221111',
-  '1112111111112111',
+  '1111111111111111',
+  '1212121212121212',
+  '1112111211121112',
   '1111111111111111',
   '1111111111111111',
   '1111111111111011',

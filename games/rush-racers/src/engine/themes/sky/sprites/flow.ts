@@ -1,14 +1,15 @@
 /**
  * The flowing cells: a fog bank and the four winds (gust streaks left and right, rising and falling
- * wisps). Each is two frames drawn over open cells, so they are sparse and the racer stays visible
- * through them; the fog is a quarter-density haze with a few brighter wisps, so a fog bank reads as a
- * see-through band. Every sprite is 16x16 and seamless in both axes; frame `b` is frame `a` moved
- * along the flow, and the left wind and the downdraft are the mirror images of right and up.
+ * wisps). Each is two frames drawn over open cells and under the racers, so racers always show in
+ * front of them. The fog is a quarter-density haze with a few brighter wisps, so a fog bank reads as
+ * a soft band the backdrop shows through rather than a wall. Every sprite is 16x16 and seamless in
+ * both axes; frame `b` is frame `a` moved along the flow, and the left wind and the downdraft are the
+ * mirror images of right and up.
  */
 import { Frame } from '../../../art/keys.ts';
 import type { PixelRows } from '../../../art/pixel.ts';
+import { flipRows, mirrorRows, shiftRows } from '../../../art/rows.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
-import { flipRows, mirrorRows, shiftRows } from '../../forest/sprites/rows.ts';
 import { SkyThemeTex, type SkyThemeTexKey } from '../keys.ts';
 import { SkyTerrainPalette } from '../palettes.ts';
 

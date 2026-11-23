@@ -1,14 +1,15 @@
 /**
- * Draws the backdrop's cloud banks as pixel rows from short lists of billows, so the 128-pixel layers
- * are described by where their billows sit rather than typed out. A bank is every billow's disc plus
- * a solid base along the bottom, with its skyline lit: each body pixel within a few rows below open
- * sky takes the lit colour. Banks tile horizontally: a billow that crosses the right edge continues
- * from the left.
+ * Draws the backdrop's cloud banks as pixel rows from short lists of billows, so the wide layers are
+ * described by where their billows sit rather than typed out. A bank is every billow's disc plus a
+ * solid base along the bottom, with its skyline lit: each body pixel within a few rows below open
+ * sky takes the lit colour. A bank may have a setting sun behind it: the upper half of its disc,
+ * sitting on the horizon, drawn first so billows in front of it hide its edges. Banks tile horizontally: a billow that crosses the right edge continues from the left.
  */
 import type { PixelRows } from '../../../art/pixel.ts';
 
 const BODY = '0';
 const LIT = '1';
+const SUN = '2';
 const CLEAR = '.';
 
 /** One rounded billow of a bank: its centre column, centre row and radius in px. */
@@ -18,11 +19,15 @@ export interface Billow {
   radius: number;
 }
 
-/** How a bank is shaped: its billows, the rows of solid base along the bottom and how thick its lit skyline is. */
+/**
+ * How a bank is shaped: its billows, the rows of solid base along the bottom, how thick its lit
+ * skyline is, and the sun setting behind it, if any: its disc's centre is on the horizon line.
+ */
 export interface CloudBankShape {
   billows: readonly Billow[];
   baseRows: number;
   litRows: number;
+  sun?: Billow;
 }
 
 /** A blank `width` by `height` grid of pixels. */
@@ -37,12 +42,12 @@ function plot(grid: string[][], x: number, y: number, pixel: string): void {
   row[((x % row.length) + row.length) % row.length] = pixel;
 }
 
-/** Fills one billow's disc with the body colour. */
-function drawBillow(grid: string[][], billow: Billow): void {
-  const { x, y, radius } = billow;
-  for (let dy = -radius; dy <= radius; dy++) {
+/** Fills the rows of a disc from `fromRow` to `toRow` (offsets from its centre) with `pixel`. */
+function drawDiscRows(grid: string[][], disc: Billow, pixel: string, fromRow: number, toRow: number): void {
+  const { x, y, radius } = disc;
+  for (let dy = fromRow; dy <= toRow; dy++) {
     for (let dx = -radius; dx <= radius; dx++) {
-      if (dx * dx + dy * dy <= radius * radius) plot(grid, x + dx, y + dy, BODY);
+      if (dx * dx + dy * dy <= radius * radius) plot(grid, x + dx, y + dy, pixel);
     }
   }
 }
@@ -66,10 +71,11 @@ function lightSkyline(grid: string[][], rows: number): void {
   });
 }
 
-/** A cloud bank `width` by `height`: billows on a solid base, lit along its skyline. */
+/** A cloud bank `width` by `height`: billows on a solid base, lit along its skyline, in front of its sun. */
 export function cloudBank(width: number, height: number, shape: CloudBankShape): PixelRows {
   const grid = blankGrid(width, height);
-  for (const billow of shape.billows) drawBillow(grid, billow);
+  if (shape.sun) drawDiscRows(grid, shape.sun, SUN, -shape.sun.radius, 0);
+  for (const billow of shape.billows) drawDiscRows(grid, billow, BODY, -billow.radius, billow.radius);
   for (let y = height - shape.baseRows; y < height; y++) {
     for (let x = 0; x < width; x++) plot(grid, x, y, BODY);
   }

@@ -14,7 +14,7 @@
  *
  * The hook (A, bars 1-2) is "C5 F5 G5 C6 B5 | B5. A5 G5 D5": a launch up a fourth, a step and a
  * fourth to a long high C that slips to the lydian B, then a glide down. It is stated in bars 1-2
- * and 5-6 of A, and sequenced a step higher in bar 3. Pulse 2 is the steady pulse: a rolling
+ * and 5-6 of A, and sequenced a major third higher in bar 3. Pulse 2 is the steady pulse: a rolling
  * eighth-note arpeggio on the chord in every section. The triangle drives root-octave eighths (walking
  * quarters in B), and the drums keep a backbeat (half-time in B) with a fill at the end of every
  * section.
@@ -39,7 +39,7 @@ triangle: [F2/8 F3/8]x4 | [G2/8 G3/8]x4
 noise: [k/8 h/8@0.35]x4 | k/8 h/8@0.35 k/8 h/8@0.35 s/16 s/16 s/16 s/16 s/8 s/8
 
 section: A
-// hook, then the same launch a step higher
+// hook, then the same launch a major third higher
 pulse1: C5/8 F5/8 G5/8 C6/2 B5/8 | B5/4. A5/8 G5/4 D5/4 | E5/8 A5/8 B5/8 E6/2 D6/8 | C6/4. B5/8 G5/4 E5/4
 // hook, then the highest launch and a glide onto the dominant
 pulse1: C5/8 F5/8 G5/8 C6/2 B5/8 | B5/4. A5/8 G5/4 D5/4 | F5/8 A5/8 D6/8 F6/2 E6/8 | D6/4. C6/8 G5/2v

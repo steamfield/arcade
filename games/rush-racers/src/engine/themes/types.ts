@@ -67,6 +67,18 @@ export interface BackdropSpec {
   rays: number | null;
   /** A cave wall tiled behind the terrain across every dark column range; leave out for none. */
   cave?: { texture: string };
+  /**
+   * Thin horizontal streaks of haze over the bands, pinned to the level's height like them and
+   * drifting slowly sideways; leave out for none. Each band seen through a streak is a colour racers
+   * sit in front of, so a theme with haze lists those blends in its contrast bands.
+   */
+  haze?: HazeSpec;
+}
+
+/** The backdrop's haze streaks: their colour and how opaque they are over the bands, 0 to 1. */
+export interface HazeSpec {
+  colour: number;
+  alpha: number;
 }
 
 /** Small moving things in front of the backdrop. */
@@ -128,6 +140,15 @@ export interface TrailLook {
   alpha: number;
 }
 
+/**
+ * The fx particle sheet frames (`FxFrame`) a theme's medium sheds where the ocean sheds bubbles: in
+ * kick puffs, around breaking debris and in the finish burst. `large` and `small` alternate in a burst.
+ */
+export interface BubbleFrames {
+  large: string;
+  small: string;
+}
+
 /** A view layer a theme adds on top of the shared ones; the race scene syncs it every frame. */
 export interface ThemeLayer {
   sync(world: World): void;
@@ -146,6 +167,8 @@ export interface Theme {
   dark: DarkTint;
   /** What racers shed as they move (bubbles in water); null for no trail. */
   trail: TrailLook | null;
+  /** The frames kick puffs, debris and the finish burst shed; leave out for the ocean's bubbles. */
+  bubbleFrames?: BubbleFrames;
   /** Every colour behind play: racers' main colours hold 3:1 off each, off-panel text 4.5:1 (UI.md). */
   contrastBands: readonly ContrastBand[];
   /** Extra layers for this theme's race scene, built once per race. */

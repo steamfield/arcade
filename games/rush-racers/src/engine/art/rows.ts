@@ -2,7 +2,7 @@
  * Small transforms on pixel rows, so a sprite's second frame or its mirror image is derived from
  * one drawing instead of being typed twice.
  */
-import type { PixelRows } from '../../../art/pixel.ts';
+import type { PixelRows } from './pixel.ts';
 
 /** `rows` flipped left to right. */
 export function mirrorRows(rows: PixelRows): PixelRows {
