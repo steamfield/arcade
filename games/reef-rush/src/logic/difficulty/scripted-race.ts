@@ -1,11 +1,11 @@
 /**
- * A race on the real course where the player is a scripted child: a bot steers, but for a stretch
+ * A race on a real course (Sunlit Shallows unless a course id is given) where the player is a scripted child: a bot steers, but for a stretch
  * mid-race the child stops swimming altogether, then holds right (into whatever wall is there).
  * Reports how fast the rivals swam while the child sat still. Test-only; nothing in the game imports it.
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { BOT_PROFILES } from '../ai/profiles.ts';
-import { DEFAULT_COURSE } from '../courses/index.ts';
+import { courseOf, DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
 import { length } from '../num.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
@@ -26,9 +26,19 @@ export interface ScriptedRun {
   rivalSpeedWhileIdle: Record<'tess' | 'squib' | 'bo', number>;
 }
 
-/** Races the toddler bot as `character`, with the idle-then-hold-right interruption of `SCRIPT`. */
-export function scriptedRace(character: CharacterId, seed: number, difficulty: Difficulty): ScriptedRun {
-  const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(100_000), {
+/**
+ * Races the toddler bot as `character` on the course with `courseId`, with the idle-then-hold-right
+ * interruption of `SCRIPT`.
+ *
+ * @throws {Error} When `courseId` is neither a shipped nor a registered course.
+ */
+export function scriptedRace(
+  character: CharacterId,
+  seed: number,
+  difficulty: Difficulty,
+  courseId: string = DEFAULT_COURSE.id,
+): ScriptedRun {
+  const world = createWorld(courseOf({ course: courseId }), new EventLog<GameEvent>(100_000), {
     seed,
     difficulty,
     playerBot: BOT_PROFILES.toddler,

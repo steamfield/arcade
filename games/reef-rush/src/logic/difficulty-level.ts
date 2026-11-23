@@ -6,6 +6,7 @@
  * replace them, so a race on Easy still looks like a race.
  */
 import { statusDurationMul } from './abilities.ts';
+import { courseOf } from './courses/index.ts';
 import type { Difficulty, PowerUpKind, Racer, RacerId, World } from './types.ts';
 
 /**
@@ -121,11 +122,21 @@ export function tuningOf(world: World): DifficultyTuning {
 
 /**
  * The rivals' catch-up bounds for the world's course and level: the level's own bounds, with any
- * per-level override the course makes (`Course.catchUp`) merged in. Lane 8/c adds the course merge;
- * until then every course races the table's bounds.
+ * per-level override the course makes (`Course.catchUp`) merged in field by field. Levels store
+ * absolute bounds, so an override for one level leaves the others exactly as the table has them.
+ *
+ * @throws {Error} When the world holds a course id that is neither shipped nor registered.
  */
 export function rivalCatchUpFor(world: World): CatchUpBounds {
-  return tuningOf(world).rivalCatchUp;
+  const table = tuningOf(world).rivalCatchUp;
+  const override = courseOf(world).catchUp?.[world.difficulty];
+  if (!override) return table;
+  return {
+    lagTiles: override.lagTiles ?? table.lagTiles,
+    perTile: override.perTile ?? table.perTile,
+    min: override.min ?? table.min,
+    max: override.max ?? table.max,
+  };
 }
 
 /**

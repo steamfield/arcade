@@ -98,6 +98,50 @@ describe('parseLevel reading tiles', () => {
   });
 });
 
+describe('parseLevel reading a legend', () => {
+  /** A level with its own legend. */
+  const legendLevel = (ascii: string, legend: LevelDef['legend']): LevelDef => ({ name: 'Wreck Reef', ascii, legend });
+  /** A wreck glyph that is rock and a sand glyph that is kelp. */
+  const WRECK_AND_SAND = { w: { cell: 'rock', art: 'wreck' }, s: { cell: 'kelp', art: 'sand' } } as const;
+
+  it('reads a legend glyph as its base cell and keeps the glyph written at every tile', () => {
+    const parsed = parseLevel(legendLevel('w#s~.1234F', WRECK_AND_SAND));
+
+    expect(parsed.cells[0]).toEqual(['rock', 'rock', 'kelp', 'kelp', ...Array(6).fill('water')]);
+    expect(parsed.glyphs).toEqual([['w', '#', 's', '~', '.', '1', '2', '3', '4', 'F']]);
+  });
+
+  it('still rejects a character neither built in nor in the legend, listing the legend glyphs too', () => {
+    const error = levelErrorFrom(legendLevel('#1234F\n#.x..F', WRECK_AND_SAND));
+
+    expect(error).toMatchObject({ row: 1, col: 2 });
+    expect(error.message).toContain('jws)');
+  });
+
+  it.each([
+    { glyph: '#', why: 'a terrain character' },
+    { glyph: 'o', why: 'an object character' },
+    { glyph: '1', why: 'a start digit' },
+    { glyph: 'F', why: 'the finish' },
+  ])('rejects a legend glyph that reuses $why', ({ glyph }) => {
+    const error = levelErrorFrom(legendLevel('#1234F', { [glyph]: { cell: 'rock', art: 'wreck' } }));
+
+    expect(error.message).toContain(`Legend glyph "${glyph}" is a built-in tile`);
+  });
+
+  it('rejects a legend glyph that maps to a cell that does not exist', () => {
+    const legend = { w: { cell: 'lava', art: 'wreck' } } as unknown as LevelDef['legend'];
+
+    expect(levelErrorFrom(legendLevel('#1234F', legend)).message).toContain('unknown cell "lava"');
+  });
+
+  it('rejects a legend key longer than one character', () => {
+    const error = levelErrorFrom(legendLevel('#1234F', { ww: { cell: 'rock', art: 'wreck' } }));
+
+    expect(error.message).toContain('exactly one character');
+  });
+});
+
 describe('parseLevel rejecting bad levels', () => {
   it('rejects a row of a different width and names that row', () => {
     const error = levelErrorFrom(level('#1234F\n####'));
