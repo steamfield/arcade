@@ -4,7 +4,6 @@
  */
 import { describe, expect, it } from 'vitest';
 import { ENEMY_KINDS, POWER_UP_KINDS } from '../../../logic/types.ts';
-import { Frame } from '../../art/keys.ts';
 import { measureFrames } from '../../art/pixel.ts';
 import { ART_SHEETS } from '../../art/sprites/index.ts';
 import type { ArtSheet } from '../../art/sprites/sheet.ts';
@@ -17,6 +16,7 @@ import { THORNWOOD_OBJECTS } from './objects.ts';
 import { ATTACK_ART_SHEETS } from './sprites/attack.ts';
 import { THORN_ENEMY_SHEETS, ThornEnemyPalette } from './sprites/enemies.ts';
 import { ITEM_ART_SHEETS } from './sprites/items.ts';
+import { THORN_MARK_SHEET, THORN_MARK_SIZE } from './sprites/marks.ts';
 import { AcornPalette, THORN_PICKUP_SHEETS } from './sprites/pickups.ts';
 
 const THORN_SHEETS: readonly ArtSheet<string>[] = [
@@ -24,6 +24,7 @@ const THORN_SHEETS: readonly ArtSheet<string>[] = [
   ...ATTACK_ART_SHEETS,
   ...THORN_PICKUP_SHEETS,
   ...THORN_ENEMY_SHEETS,
+  THORN_MARK_SHEET,
 ];
 
 const thornSheet = (key: string) => THORN_SHEETS.find((sheet) => sheet.key === key);
@@ -68,41 +69,42 @@ describe('Thornwood object art', () => {
     expect(sizeOf(icons)).toEqual(measureFrames('reef icons', reefIcons?.frames ?? []));
   });
 
-  it("sizes every item, attack, pickup and enemy sprite like its Reef counterpart's", () => {
-    const { itemTextures, attack, pickups, enemies } = THORNWOOD_OBJECTS;
-    const reef = REEF_OBJECTS;
-    const pairs: [string, string][] = [
-      ...POWER_UP_KINDS.map((kind): [string, string] => [itemTextures[kind], reef.itemTextures[kind]]),
-      [attack.homer, reef.attack.homer],
-      [attack.riptideStreak, reef.attack.riptideStreak],
-      [attack.undertowStreak, reef.attack.undertowStreak],
-      [attack.inkCloud, reef.attack.inkCloud],
-      [attack.bubble, reef.attack.bubble],
-      [attack.looseGlow, reef.attack.looseGlow],
-      [pickups.pearl, reef.pickups.pearl],
-      [pickups.clam, reef.pickups.clam],
-      ...ENEMY_KINDS.map((kind): [string, string] => [enemies.bodies[kind], reef.enemies.bodies[kind]]),
-      [enemies.eelBody, reef.enemies.eelBody],
-      [enemies.marks, reef.enemies.marks],
-    ];
-    for (const [thorn, reefKey] of pairs) expect(sizeOf(thornSheet(thorn)), thorn).toEqual(sizeOf(reefSheet(reefKey)));
+  const { itemTextures, attack, pickups, enemies } = THORNWOOD_OBJECTS;
+  /** Every Thornwood texture paired with the Reef texture in the same slot. */
+  const counterparts: [string, string][] = [
+    ...POWER_UP_KINDS.map((kind): [string, string] => [itemTextures[kind], REEF_OBJECTS.itemTextures[kind]]),
+    [attack.homer, REEF_OBJECTS.attack.homer],
+    [attack.riptideStreak, REEF_OBJECTS.attack.riptideStreak],
+    [attack.undertowStreak, REEF_OBJECTS.attack.undertowStreak],
+    [attack.inkCloud, REEF_OBJECTS.attack.inkCloud],
+    [attack.bubble, REEF_OBJECTS.attack.bubble],
+    [attack.looseGlow, REEF_OBJECTS.attack.looseGlow],
+    [pickups.pearl, REEF_OBJECTS.pickups.pearl],
+    [pickups.clam, REEF_OBJECTS.pickups.clam],
+    ...ENEMY_KINDS.map((kind): [string, string] => [enemies.bodies[kind], REEF_OBJECTS.enemies.bodies[kind]]),
+    [enemies.eelBody, REEF_OBJECTS.enemies.eelBody],
+    [enemies.marks, REEF_OBJECTS.enemies.marks],
+  ];
+
+  it.each(counterparts)("sizes %s like its Reef counterpart's %s", (thorn, reefKey) => {
+    expect(sizeOf(thornSheet(thorn))).toEqual(sizeOf(reefSheet(reefKey)));
   });
 
-  it("gives each sprite the frames Reef's counterpart has, since views ask for them by name", () => {
-    const { attack, pickups, enemies } = THORNWOOD_OBJECTS;
-    const reef = REEF_OBJECTS;
-    const pairs: [string, string][] = [
-      [attack.homer, reef.attack.homer],
-      [attack.undertowStreak, reef.attack.undertowStreak],
-      [pickups.clam, reef.pickups.clam],
-      [enemies.bodies.shark, reef.enemies.bodies.shark],
-      [enemies.bodies.eel, reef.enemies.bodies.eel],
-      [enemies.bodies.crab, reef.enemies.bodies.crab],
-      [enemies.marks, reef.enemies.marks],
-    ];
-    for (const [thorn, reefKey] of pairs)
-      expect(frameNames(thornSheet(thorn)), thorn).toEqual(frameNames(reefSheet(reefKey)));
-    expect(frameNames(thornSheet(pickups.clam))).toEqual([Frame.clamClosed, Frame.clamOpen]);
+  it.each(counterparts)(
+    'gives %s the frames its Reef counterpart %s has, since views ask for them by name',
+    (thorn, reefKey) => {
+      expect(frameNames(thornSheet(thorn))).toEqual(frameNames(reefSheet(reefKey)));
+    },
+  );
+
+  it('draws the marks on frames of THORN_MARK_SIZE', () => {
+    expect(sizeOf(thornSheet(ThornTex.marks))).toEqual({ width: THORN_MARK_SIZE, height: THORN_MARK_SIZE });
+  });
+
+  it("gives Thornwood's glints keys of their own, since the dark view bakes the colour into the texture", () => {
+    const thornKeys = Object.values(THORNWOOD_OBJECTS.glints).map((glint) => glint.key);
+    const reefKeys = Object.values(REEF_OBJECTS.glints).map((glint) => glint.key);
+    expect(thornKeys.filter((key) => reefKeys.includes(key))).toEqual([]);
   });
 
   it('gives no two items the same art', () => {

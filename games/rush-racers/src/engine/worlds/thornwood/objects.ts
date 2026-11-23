@@ -12,6 +12,7 @@ import { ThornIconFrame, ThornItemTex, ThornTex } from './keys.ts';
 import { ATTACK_ART_SHEETS } from './sprites/attack.ts';
 import { THORN_ENEMY_SHEETS } from './sprites/enemies.ts';
 import { ITEM_ART_SHEETS } from './sprites/items.ts';
+import { THORN_MARK_SHEET } from './sprites/marks.ts';
 import { THORN_PICKUP_SHEETS } from './sprites/pickups.ts';
 
 /** The owner name Thornwood's textures are drawn under. */
@@ -19,7 +20,7 @@ const THORNWOOD_ART_OWNER = 'thornwood';
 
 const icon = (kind: PowerUpKind): ArtRef => ({ texture: ThornTex.icons, frame: ThornIconFrame[kind] });
 
-/** Thornwood's objects: its own item, attack, pickup and enemy art and words. Glints keep Reef's keys, tinted for the forest. */
+/** Thornwood's objects: its own item, attack, pickup and enemy art and words. Glints have their own keys, because the dark view bakes a glint's colour into the texture under its key. */
 export const THORNWOOD_OBJECTS: ObjectSkin = {
   itemIcons: {
     jetFin: icon('jetFin'),
@@ -49,8 +50,8 @@ export const THORNWOOD_OBJECTS: ObjectSkin = {
     marks: ThornTex.marks,
   },
   glints: {
-    urchin: { ...REEF_OBJECTS.glints.urchin, colour: 0xff90b8 },
-    jelly: { ...REEF_OBJECTS.glints.jelly, colour: 0xffe070 },
+    urchin: { key: 'thornwood-glint-urchin', colour: 0xff90b8, alpha: REEF_OBJECTS.glints.urchin.alpha },
+    jelly: { key: 'thornwood-glint-jelly', colour: 0xffe070, alpha: REEF_OBJECTS.glints.jelly.alpha },
   },
   text: {
     slowedBy: 'SLOWED BY MUD',
@@ -70,7 +71,7 @@ export const THORNWOOD_OBJECTS: ObjectSkin = {
 export function registerThornwoodObjects(scene: Phaser.Scene): void {
   drawSheets(
     scene,
-    [...ITEM_ART_SHEETS, ...ATTACK_ART_SHEETS, ...THORN_PICKUP_SHEETS, ...THORN_ENEMY_SHEETS],
+    [...ITEM_ART_SHEETS, ...ATTACK_ART_SHEETS, ...THORN_PICKUP_SHEETS, ...THORN_ENEMY_SHEETS, THORN_MARK_SHEET],
     THORNWOOD_ART_OWNER,
   );
 }
