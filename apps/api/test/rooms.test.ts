@@ -88,6 +88,14 @@ test('a different build is closed version', async () => {
   expect(await other.closed).toMatchObject({ code: CLOSE.version, opened: true });
 });
 
+test('a malformed build id is closed version', async () => {
+  const code = await createRoom(service);
+
+  const odd = openSocket(service, code, { build: 'Build With Spaces' });
+
+  expect(await odd.closed).toMatchObject({ code: CLOSE.version, opened: true });
+});
+
 test('a wrong protocol version is closed version', async () => {
   const code = await createRoom(service);
 
