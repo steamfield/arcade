@@ -4,6 +4,7 @@
  */
 import type Phaser from 'phaser';
 import type { Course, ThemeId } from '../../logic/courses/types.ts';
+import { FOREST_THEME } from './forest.ts';
 import { OCEAN_THEME } from './ocean.ts';
 import type { Theme } from './types.ts';
 
@@ -12,6 +13,7 @@ export { defineTheme } from './define.ts';
 /** Every theme by id. */
 export const THEMES: Readonly<Record<ThemeId, Theme>> = {
   ocean: OCEAN_THEME,
+  forest: FOREST_THEME,
 };
 
 /**

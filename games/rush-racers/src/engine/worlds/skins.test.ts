@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { COURSES } from '../../logic/courses/index.ts';
 import { CHARACTER_IDS } from '../../logic/types.ts';
-import { assertSkinAssets, SKINS, skinFor } from './index.ts';
+import { assertSkinAssets, assertSkinTextures, SKINS, skinFor, type TextureLookup } from './index.ts';
 import { REEF_SKIN } from './reef.ts';
 import type { WorldSkin } from './types.ts';
 
@@ -48,6 +48,34 @@ describe('world skins', () => {
   it('names the course and world when a course has no skin', () => {
     expect(() => skinFor({ id: 'nowhere', world: 'moon' })).toThrow(
       "Course 'nowhere' names world 'moon', which the engine has no skin for",
+    );
+  });
+});
+
+/** A texture manager that has every texture and frame except those listed. */
+function texturesWithout(missing: { texture?: string; frame?: string }): TextureLookup {
+  return {
+    exists: (key) => key !== missing.texture,
+    get: () => ({ has: (frame) => frame !== missing.frame }),
+  };
+}
+
+describe('the boot texture check', () => {
+  it.each(Object.values(SKINS))('$id passes when everything it names was built', (skin) => {
+    expect(() => assertSkinTextures(texturesWithout({}), skin)).not.toThrow();
+  });
+
+  it('names the world and the texture a skin names but never built', () => {
+    const texture = REEF_SKIN.objects.pickups.pearl;
+    expect(() => assertSkinTextures(texturesWithout({ texture }), REEF_SKIN)).toThrow(
+      `World 'reef' skin names texture '${texture}', which was never built`,
+    );
+  });
+
+  it('names the world, the frame and its texture when a frame is missing', () => {
+    const { clam } = REEF_SKIN.objects.pickups;
+    expect(() => assertSkinTextures(texturesWithout({ frame: 'open' }), REEF_SKIN)).toThrow(
+      `World 'reef' skin names frame 'open' of '${clam}', which was never built`,
     );
   });
 });

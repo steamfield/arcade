@@ -9,7 +9,7 @@ import { buildTextures } from '../art/index.ts';
 import { buildUiTextures } from '../art/ui/index.ts';
 import type { Runtime } from '../runtime.ts';
 import { registerThemeTextures } from '../themes/index.ts';
-import { registerSkinTextures } from '../worlds/index.ts';
+import { assertSkinTextures, registerSkinTextures, SKINS } from '../worlds/index.ts';
 
 /** `?scene=` values that skip the title. */
 const RACE_SCENE_PARAMS: readonly (string | null)[] = ['race', 'play'];
@@ -28,6 +28,7 @@ export class BootScene extends Phaser.Scene {
     buildUiTextures(this);
     registerThemeTextures(this);
     registerSkinTextures(this);
+    for (const skin of Object.values(SKINS)) assertSkinTextures(this.textures, skin);
     if (RACE_SCENE_PARAMS.includes(this.rt.ctx.params.scene)) this.rt.startRace();
     else this.rt.goTo('title');
   }

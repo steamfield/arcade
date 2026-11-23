@@ -1,11 +1,12 @@
 /**
  * The world skin registry: every shipped world's skin by world id, the lookup views go through for a
- * course, boot registration of skin textures, and the completeness check boot and tests run.
+ * course, boot registration of skin textures, and the completeness checks boot and tests run.
  */
 import type Phaser from 'phaser';
 import type { Course } from '../../logic/courses/types.ts';
 import { CHARACTER_IDS, ENEMY_KINDS, POWER_UP_KINDS } from '../../logic/types.ts';
 import type { ShippedWorldId } from '../../logic/worlds/types.ts';
+import { Frame } from '../art/keys.ts';
 import { REEF_SKIN } from './reef.ts';
 import { THORNWOOD_SKIN } from './thornwood.ts';
 import type { WorldSkin } from './types.ts';
@@ -60,4 +61,48 @@ export function assertSkinAssets(skin: WorldSkin): void {
   for (const [what, key] of Object.entries(skin.objects.pickups)) if (!key) missing('pickup', what);
   for (const [what, key] of Object.entries(skin.objects.attack)) if (!key) missing('attack art', what);
   for (const hazard of ['urchin', 'jelly'] as const) if (!skin.objects.glints[hazard]?.key) missing('glint', hazard);
+}
+
+/** What `assertSkinTextures` asks of Phaser's texture manager: whether a texture, and a frame in it, exist. */
+export interface TextureLookup {
+  exists(key: string): boolean;
+  get(key: string): { has(frame: string): boolean };
+}
+
+/**
+ * Throws unless every texture and frame `skin` names was built: the racers with both stride frames,
+ * portraits, heads, item icons and sprites, attack art, the pearl and the clam's open and shut
+ * frames, enemy bodies and marks. Boot runs it for every skin once textures are registered, so a key
+ * a skin names but never draws fails at boot rather than as a missing-texture square mid-race.
+ *
+ * @throws {Error} Naming the world and the first missing texture or frame, e.g.
+ *   "World 'thornwood' skin names texture 'thornwood-acorn', which was never built".
+ */
+export function assertSkinTextures(textures: TextureLookup, skin: WorldSkin): void {
+  const need = (texture: string, frame?: string): void => {
+    if (!textures.exists(texture)) {
+      throw new Error(`World '${skin.id}' skin names texture '${texture}', which was never built`);
+    }
+    if (frame !== undefined && !textures.get(texture).has(frame)) {
+      throw new Error(`World '${skin.id}' skin names frame '${frame}' of '${texture}', which was never built`);
+    }
+  };
+  const { cast, objects } = skin;
+  for (const id of CHARACTER_IDS) {
+    need(cast.racers[id], Frame.a);
+    need(cast.racers[id], Frame.b);
+    need(cast.portraits[id].texture, cast.portraits[id].frame);
+    need(cast.heads[id].texture, cast.heads[id].frame);
+  }
+  for (const kind of POWER_UP_KINDS) {
+    need(objects.itemIcons[kind].texture, objects.itemIcons[kind].frame);
+    need(objects.itemTextures[kind]);
+  }
+  for (const texture of Object.values(objects.attack)) need(texture);
+  need(objects.pickups.pearl);
+  need(objects.pickups.clam, Frame.clamClosed);
+  need(objects.pickups.clam, Frame.clamOpen);
+  for (const kind of ENEMY_KINDS) need(objects.enemies.bodies[kind]);
+  need(objects.enemies.eelBody);
+  need(objects.enemies.marks);
 }

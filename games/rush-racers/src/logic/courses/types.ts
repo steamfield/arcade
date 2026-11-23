@@ -12,9 +12,9 @@ export type ShippedCourseId = 'sunlit-shallows' | 'run-test';
 /** Shipped movement styles. Grows: 'run', later 'flight' or 'space'. */
 export type ShippedMediumId = 'swim' | 'run';
 /** Looks the engine draws a course with. */
-export type ThemeId = 'ocean';
+export type ThemeId = 'ocean' | 'forest';
 /** Songs the engine can play for a race, by the soundtrack's names. */
-export type SongId = 'race';
+export type SongId = 'race' | 'thornwood';
 
 export interface Course {
   /** Stable id: saves, `?course=` and the registry key. */

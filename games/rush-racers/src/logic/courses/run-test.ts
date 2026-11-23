@@ -50,8 +50,8 @@ export const RUN_TEST: Course = {
   name: 'Run Test',
   level: LEVEL,
   world: 'thornwood',
-  theme: 'ocean',
-  song: 'race',
+  theme: 'forest',
+  song: 'thornwood',
   listed: false,
   parTicks: PAR_TICKS,
 };

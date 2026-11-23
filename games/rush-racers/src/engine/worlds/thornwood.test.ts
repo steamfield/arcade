@@ -7,9 +7,7 @@ import { THORNWOOD_SKIN } from './thornwood.ts';
 const longest = (strings: readonly string[]) => Math.max(...strings.map((text) => text.length));
 
 describe('the Thornwood skin', () => {
-  it('draws with Reef art and passes the skin asset check', () => {
-    expect(THORNWOOD_SKIN.cast.racers).toBe(REEF_SKIN.cast.racers);
-    expect(THORNWOOD_SKIN.objects.itemTextures).toBe(REEF_SKIN.objects.itemTextures);
+  it('passes the skin asset check', () => {
     expect(() => assertSkinAssets(THORNWOOD_SKIN)).not.toThrow();
   });
 
