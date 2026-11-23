@@ -9,6 +9,7 @@ import { hashWorld } from '../logic/hash.ts';
 import type { RacerId, TickInput, World } from '../logic/types.ts';
 import { stepRace } from '../logic/world.ts';
 import { decode, encodeHash, encodeInputs, IDLE_INPUT } from './codec.ts';
+import { createHashLedger, type HashLedger } from './hash-ledger.ts';
 
 /** A world hash that differed between two peers. */
 export interface Desync {
@@ -68,8 +69,29 @@ const MIN_DELAY = 1;
 const MAX_DELAY = 12;
 /** Stepped ticks between hash checks. */
 const HASH_EVERY = 60;
-/** How long a hash is kept waiting for the other side of its tick: ten seconds of ticks. */
-const HASH_KEEP_TICKS = 600;
+
+/** Everything a session tracks between pumps, RFC 5.3's state. `simTick` is `world.tick`. */
+interface Lockstep {
+  options: SessionOptions;
+  /** The humans other than this peer. */
+  remotes: readonly RacerId[];
+  /** Every input held per slot, by tick; a tick's entries are deleted once it is stepped. */
+  buffer: Map<RacerId, Map<number, TickInput>>;
+  /** The last tick each slot has an input for; ticks up to `delay` need none. */
+  lastInput: Map<RacerId, number>;
+  /** The first tick each departed slot is driven by the AI. */
+  goneFrom: Map<RacerId, number>;
+  hashes: HashLedger;
+  /** The stall time at which a kick was last asked for each slot, since the last step. */
+  kickedAt: Map<RacerId, number>;
+  /** Input read but not yet scheduled. */
+  pending: TickInput;
+  targetTick: number;
+  /** The next tick this peer's input will be scheduled for. */
+  inputTick: number;
+  stalledMs: number;
+  state: Session['state'];
+}
 
 /**
  * A session for `options.local` in a race among `options.humans`.
@@ -78,176 +100,63 @@ const HASH_KEEP_TICKS = 600;
  */
 export function createSession(options: SessionOptions): Session {
   requireValidOptions(options);
-  const { world, local, humans, delay } = options;
-  const remotes = humans.filter((slot) => slot !== local);
-  /** Every input held per slot, by tick; a tick's entries are deleted once it is stepped. */
-  const buffer = new Map<RacerId, Map<number, TickInput>>(humans.map((slot) => [slot, new Map()]));
-  /** The last tick each slot has an input for; ticks up to `delay` need none. */
-  const lastInput = new Map<RacerId, number>(humans.map((slot) => [slot, delay]));
-  /** The first tick each departed slot is driven by the AI. */
-  const goneFrom = new Map<RacerId, number>();
-  const hashes = createHashLedger((desync) => {
-    state = 'desynced';
-    options.onDesync(desync);
-  });
-  /** The stall time at which a kick was last asked for each slot, since the last step. */
-  const kickedAt = new Map<RacerId, number>();
-  let pending: TickInput = IDLE_INPUT;
-  let targetTick = world.tick;
-  let inputTick = world.tick + delay + 1;
-  let stalledMs = 0;
-  let state: Session['state'] = 'running';
-
-  const racingAt = (slot: RacerId, tick: number) => tick < (goneFrom.get(slot) ?? Number.POSITIVE_INFINITY);
-
-  /** Each racing human's input for `tick`, or the slots still missing one. */
-  function inputsFor(tick: number): { inputs: Partial<Record<RacerId, TickInput>>; missing: RacerId[] } {
-    const inputs: Partial<Record<RacerId, TickInput>> = {};
-    const missing: RacerId[] = [];
-    for (const slot of humans) {
-      if (!racingAt(slot, tick)) continue;
-      const input = tick <= delay ? IDLE_INPUT : buffer.get(slot)?.get(tick);
-      if (input) inputs[slot] = input;
-      else missing.push(slot);
-    }
-    return { inputs, missing };
-  }
-
-  /** Schedules the pending input for `inputTick` and sends it; presses are cleared once scheduled. */
-  function scheduleLocalInput(): void {
-    const bytes = encodeInputs(inputTick, pending);
-    // Kept as the others will decode it, so every peer steps from identical values.
-    const sent = decode(bytes);
-    if (sent?.kind !== 'inputs') throw new Error(`codec could not decode its own input for tick ${inputTick}`);
-    buffer.get(local)?.set(inputTick, sent.input);
-    lastInput.set(local, inputTick);
-    options.send(bytes);
-    pending = { ...pending, kick: false, use: false, cycle: 0 };
-    inputTick++;
-  }
-
-  /** Steps the next tick if every input for it is held; returns whether it stepped. */
-  function tryStep(): boolean {
-    if (world.tick >= targetTick) return false;
-    const tick = world.tick + 1;
-    const { inputs, missing } = inputsFor(tick);
-    if (missing.length > 0) return false;
-    stepRace(world, inputs, TICK_DT);
-    for (const slotInputs of buffer.values()) slotInputs.delete(tick);
-    stalledMs = 0;
-    kickedAt.clear();
-    if (tick % HASH_EVERY === 0) sendHash(tick);
-    return true;
-  }
-
-  function sendHash(tick: number): void {
-    const hash = hashWorld(world);
-    options.send(encodeHash(tick, hash));
-    hashes.recordLocal(tick, hash);
-  }
-
-  function receiveInput(slot: RacerId, tick: number, input: TickInput): boolean {
-    if (goneFrom.has(slot) || tick <= (lastInput.get(slot) ?? delay)) return false;
-    buffer.get(slot)?.set(tick, input);
-    lastInput.set(slot, tick);
-    return true;
-  }
-
-  function requestKicksIfStalled(): void {
-    const { kickAfterMs } = options;
-    if (kickAfterMs === null || stalledMs < kickAfterMs) return;
-    for (const slot of session.waitingOn) {
-      const last = kickedAt.get(slot);
-      if (last !== undefined && stalledMs - last < kickAfterMs) continue;
-      kickedAt.set(slot, stalledMs);
-      options.requestKick(slot);
-    }
-  }
-
-  const session: Session = {
-    pump(input, elapsedMs) {
-      if (state === 'desynced' || world.race.phase === 'finished') return 0;
-      pending = mergeInput(pending, input);
-      if (world.tick === targetTick) targetTick++;
-      if (inputTick <= targetTick + delay) scheduleLocalInput();
-      if (tryStep()) return 1;
-      stalledMs += elapsedMs;
-      requestKicksIfStalled();
-      return 0;
-    },
-    receive(slot, bytes) {
-      const message = decode(bytes);
-      if (!message || !remotes.includes(slot)) return false;
-      if (message.kind === 'hash') return hashes.receiveRemote(slot, message.tick, message.hash, world.tick);
-      return receiveInput(slot, message.tick, message.input);
-    },
-    peerLeft(slot) {
-      if (!remotes.includes(slot) || goneFrom.has(slot)) return;
-      goneFrom.set(slot, (lastInput.get(slot) ?? delay) + 1);
-    },
+  const lockstep = createLockstep(options);
+  const { world } = options;
+  return {
+    pump: (input, elapsedMs) => pump(lockstep, input, elapsedMs),
+    receive: (slot, bytes) => receive(lockstep, slot, bytes),
+    peerLeft: (slot) => peerLeft(lockstep, slot),
     get simTick() {
       return world.tick;
     },
     get targetTick() {
-      return targetTick;
+      return lockstep.targetTick;
     },
     get stalledMs() {
-      return stalledMs;
+      return lockstep.stalledMs;
     },
     get waitingOn() {
-      return world.tick < targetTick ? inputsFor(world.tick + 1).missing : [];
+      return waitingOn(lockstep);
     },
     get state() {
-      return state;
+      return lockstep.state;
     },
   };
-  return session;
 }
 
-/** The hashes kept for comparison between this peer and the others. */
-interface HashLedger {
-  /** Keeps this peer's hash at `tick` and compares it with any remote hash already held for that tick. */
-  recordLocal(tick: number, hash: number): void;
-  /** Compares a remote hash now, or keeps it until this peer reaches `tick`; false when `tick` has passed beyond checking. */
-  receiveRemote(slot: RacerId, tick: number, hash: number, simTick: number): boolean;
-}
-
-/** A ledger that calls `onMismatch` for the first hash pair that differs, and never again after. */
-function createHashLedger(onMismatch: (desync: Desync) => void): HashLedger {
-  const localHashes = new Map<number, number>();
-  const remoteHashes = new Map<number, { slot: RacerId; hash: number }[]>();
-  let mismatched = false;
-
-  function compare(tick: number, slot: RacerId, remote: number): void {
-    const local = localHashes.get(tick);
-    if (mismatched || local === undefined || local === remote) return;
-    mismatched = true;
-    onMismatch({ tick, local, remote, slot });
-  }
-
-  function forgetBefore(oldest: number): void {
-    for (const tick of localHashes.keys()) if (tick < oldest) localHashes.delete(tick);
-    for (const tick of remoteHashes.keys()) if (tick < oldest) remoteHashes.delete(tick);
-  }
-
-  return {
-    recordLocal(tick, hash) {
-      localHashes.set(tick, hash);
-      for (const remote of remoteHashes.get(tick) ?? []) compare(tick, remote.slot, remote.hash);
-      remoteHashes.delete(tick);
-      forgetBefore(tick - HASH_KEEP_TICKS);
-    },
-    receiveRemote(slot, tick, hash, simTick) {
-      if (localHashes.has(tick)) {
-        compare(tick, slot, hash);
-        return true;
-      }
-      // A hash for a tick already passed and forgotten can no longer be checked.
-      if (tick <= simTick) return false;
-      remoteHashes.set(tick, [...(remoteHashes.get(tick) ?? []), { slot, hash }]);
-      return true;
-    },
+function createLockstep(options: SessionOptions): Lockstep {
+  const { world, local, humans, delay } = options;
+  const lockstep: Lockstep = {
+    options,
+    remotes: humans.filter((slot) => slot !== local),
+    buffer: new Map(humans.map((slot) => [slot, new Map()])),
+    lastInput: new Map(humans.map((slot) => [slot, delay])),
+    goneFrom: new Map(),
+    hashes: createHashLedger((mismatch) => {
+      lockstep.state = 'desynced';
+      options.onDesync(mismatch);
+    }),
+    kickedAt: new Map(),
+    pending: IDLE_INPUT,
+    targetTick: world.tick,
+    inputTick: world.tick + delay + 1,
+    stalledMs: 0,
+    state: 'running',
   };
+  return lockstep;
+}
+
+/** RFC 5.3's pump, steps 1 to 5. */
+function pump(lockstep: Lockstep, input: TickInput, elapsedMs: number): number {
+  const { world, delay } = lockstep.options;
+  if (lockstep.state === 'desynced' || world.race.phase === 'finished') return 0;
+  lockstep.pending = mergeInput(lockstep.pending, input);
+  if (world.tick === lockstep.targetTick) lockstep.targetTick++;
+  if (lockstep.inputTick <= lockstep.targetTick + delay) scheduleLocalInput(lockstep);
+  if (tryStep(lockstep)) return 1;
+  lockstep.stalledMs += elapsedMs;
+  requestKicksIfStalled(lockstep);
+  return 0;
 }
 
 /**
@@ -262,6 +171,98 @@ function mergeInput(pending: TickInput, next: TickInput): TickInput {
     use: pending.use || next.use,
     cycle: next.cycle !== 0 ? next.cycle : pending.cycle,
   };
+}
+
+/** Schedules the pending input for `inputTick` and sends it; presses are cleared once scheduled. */
+function scheduleLocalInput(lockstep: Lockstep): void {
+  const { local, send } = lockstep.options;
+  const tick = lockstep.inputTick;
+  const bytes = encodeInputs(tick, lockstep.pending);
+  // Kept as the others will decode it, so every peer steps from identical values.
+  const sent = decode(bytes);
+  if (sent?.kind !== 'inputs') throw new Error(`codec could not decode its own input for tick ${tick}`);
+  lockstep.buffer.get(local)?.set(tick, sent.input);
+  lockstep.lastInput.set(local, tick);
+  send(bytes);
+  lockstep.pending = { ...lockstep.pending, kick: false, use: false, cycle: 0 };
+  lockstep.inputTick++;
+}
+
+/** Each human still racing at `tick` with its input, and the slots whose input is missing. */
+function inputsFor(lockstep: Lockstep, tick: number) {
+  const { humans, delay } = lockstep.options;
+  const inputs: Partial<Record<RacerId, TickInput>> = {};
+  const missing: RacerId[] = [];
+  for (const slot of humans) {
+    if (tick >= (lockstep.goneFrom.get(slot) ?? Number.POSITIVE_INFINITY)) continue;
+    const input = tick <= delay ? IDLE_INPUT : lockstep.buffer.get(slot)?.get(tick);
+    if (input) inputs[slot] = input;
+    else missing.push(slot);
+  }
+  return { inputs, missing };
+}
+
+/** Steps the next tick if the world is behind its clock and every input for it is held; returns whether it stepped. */
+function tryStep(lockstep: Lockstep): boolean {
+  const { world } = lockstep.options;
+  if (world.tick >= lockstep.targetTick) return false;
+  const tick = world.tick + 1;
+  const { inputs, missing } = inputsFor(lockstep, tick);
+  if (missing.length > 0) return false;
+  stepRace(world, inputs, TICK_DT);
+  for (const slotInputs of lockstep.buffer.values()) slotInputs.delete(tick);
+  lockstep.stalledMs = 0;
+  lockstep.kickedAt.clear();
+  if (tick % HASH_EVERY === 0) sendHash(lockstep, tick);
+  return true;
+}
+
+function sendHash(lockstep: Lockstep, tick: number): void {
+  const hash = hashWorld(lockstep.options.world);
+  lockstep.options.send(encodeHash(tick, hash));
+  lockstep.hashes.recordLocal(tick, hash);
+}
+
+function waitingOn(lockstep: Lockstep): RacerId[] {
+  const { world } = lockstep.options;
+  return world.tick < lockstep.targetTick ? inputsFor(lockstep, world.tick + 1).missing : [];
+}
+
+/** Asks for a kick of each slot waited on once the stall passes `kickAfterMs`, again every `kickAfterMs` after. */
+function requestKicksIfStalled(lockstep: Lockstep): void {
+  const { kickAfterMs, requestKick } = lockstep.options;
+  const { stalledMs, kickedAt } = lockstep;
+  if (kickAfterMs === null || stalledMs < kickAfterMs) return;
+  for (const slot of waitingOn(lockstep)) {
+    const last = kickedAt.get(slot);
+    if (last !== undefined && stalledMs - last < kickAfterMs) continue;
+    kickedAt.set(slot, stalledMs);
+    requestKick(slot);
+  }
+}
+
+function receive(lockstep: Lockstep, slot: RacerId, bytes: Uint8Array): boolean {
+  const message = decode(bytes);
+  if (!message || !lockstep.remotes.includes(slot)) return false;
+  if (message.kind === 'hash') {
+    return lockstep.hashes.receiveRemote(slot, message.tick, message.hash, lockstep.options.world.tick);
+  }
+  return receiveInput(lockstep, slot, message.tick, message.input);
+}
+
+/** Holds a remote input, unless its slot is gone or it is not newer than the last one held. */
+function receiveInput(lockstep: Lockstep, slot: RacerId, tick: number, input: TickInput): boolean {
+  const { goneFrom, lastInput, buffer } = lockstep;
+  if (goneFrom.has(slot) || tick <= (lastInput.get(slot) ?? lockstep.options.delay)) return false;
+  buffer.get(slot)?.set(tick, input);
+  lastInput.set(slot, tick);
+  return true;
+}
+
+/** Hands a departed slot to the AI from the tick after its last input, never before `delay + 1`. */
+function peerLeft(lockstep: Lockstep, slot: RacerId): void {
+  if (!lockstep.remotes.includes(slot) || lockstep.goneFrom.has(slot)) return;
+  lockstep.goneFrom.set(slot, (lockstep.lastInput.get(slot) ?? lockstep.options.delay) + 1);
 }
 
 function requireValidOptions({ local, humans, delay }: SessionOptions): void {

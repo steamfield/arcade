@@ -317,6 +317,27 @@ describe('hash checks', () => {
     roundsUntil(race, () => host.session.simTick >= 60);
     expect(host.desyncs.map((desync) => desync.tick)).toEqual([60]);
   });
+
+  it('compare a remote hash that arrives after this peer has stepped past its tick', () => {
+    const race = createRace({ peers: 2, delay: 12 });
+    const [host, guest] = race.peers as [Peer, Peer];
+    nudge(guest);
+    roundsUntil(race, () => host.session.simTick >= 58);
+    roundsUntil(
+      race,
+      () => host.session.simTick >= 70,
+      (peer) => peer === guest,
+    );
+    const guestOnly = (peer: Peer) => peer === host;
+    roundsUntil(race, () => guest.session.simTick >= 60, guestOnly);
+    race.round(guestOnly);
+
+    handleArrivals(host);
+    expect(host.session.simTick).toBe(70);
+    expect(host.desyncs.map((desync) => ({ tick: desync.tick, slot: desync.slot }))).toEqual([
+      { tick: 60, slot: 'tess' },
+    ]);
+  });
 });
 
 /** Moves `peer`'s own racer one pixel, a change no input made, so its world no longer matches the others'. */
