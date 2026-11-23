@@ -24,6 +24,12 @@ export const SWIM_TUNING = {
   extra: { sink: 14, currentForce: 160, kelpDragMul: 2.2, airGravity: 450, airDrag: 0.4, airSteer: 0.15 },
 } as const satisfies MediumTuning;
 
+/**
+ * How far below a surface, in px, a racer's centre must sink after a breach before it counts as back
+ * in the water (`racer.splashed`), so a racer bobbing on the surface doesn't splash every few ticks.
+ */
+export const SPLASH_DEPTH = 4;
+
 /** Water holds a dash, knockback or decoy on both axes, and floats trapped racers and loose power-ups up. */
 export const SWIM_EFFECTS: MediumEffects = {
   dashAxes: 'both',

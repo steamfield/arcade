@@ -13,11 +13,11 @@
 import { TICK_DT } from '@arcade/core';
 import { hasClearSweep } from '../../ai/steer.ts';
 import { tuningOf } from '../../difficulty-level.ts';
-import { bodyTiles, cellAt } from '../../level/query.ts';
+import { boxTouchesAir } from '../../level/query.ts';
 import { length } from '../../num.ts';
 import { centreOf } from '../../racers.ts';
 import { isDowned, isInvulnerable } from '../../status.ts';
-import { type Box, type Enemy, type EnemyMode, type Racer, TILE, type Vec, type World } from '../../types.ts';
+import { type Enemy, type EnemyMode, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { enemyBox } from './contact.ts';
 import { SHARK } from './tuning.ts';
 
@@ -164,26 +164,34 @@ function spot(world: World, shark: Enemy, racers: readonly Racer[]): Racer | nul
 }
 
 /**
- * Moves the shark one tick along its velocity unless that sweeps it into rock or puts its box over
- * air above a surface (sharks never leave the water); true when it moved.
+ * Moves the shark one tick along its velocity; true when it moved. A step that sweeps into rock is
+ * refused. Sharks never leave the water, so a step that would put its box over air is retried
+ * level (`vel.y` clamped to 0), sliding along the surface, and refused only if that fails too.
  */
 function move(world: World, shark: Enemy): boolean {
-  const next = { x: shark.at.x + shark.vel.x * TICK_DT, y: shark.at.y + shark.vel.y * TICK_DT };
+  const next = stepAlong(shark, shark.vel);
   if (!hasClearSweep(world.level, world.broken, enemyBox(shark), next)) return false;
-  if (touchesAir(world, enemyBox({ ...shark, at: next }))) return false;
+  if (!boxTouchesAir(world.level, enemyBox({ ...shark, at: next }))) {
+    shark.at = next;
+    return true;
+  }
+  return slideAlongSurface(world, shark);
+}
+
+/** Moves the shark one tick along its velocity with the vertical part dropped; true when it moved. */
+function slideAlongSurface(world: World, shark: Enemy): boolean {
+  const level = { x: shark.vel.x, y: 0 };
+  const next = stepAlong(shark, level);
+  if (level.x === 0 || !hasClearSweep(world.level, world.broken, enemyBox(shark), next)) return false;
+  if (boxTouchesAir(world.level, enemyBox({ ...shark, at: next }))) return false;
+  shark.vel = level;
   shark.at = next;
   return true;
 }
 
-/** True when any tile the box overlaps is air. */
-function touchesAir(world: World, box: Box): boolean {
-  const { left, right, top, bottom } = bodyTiles(box);
-  for (let ty = top; ty <= bottom; ty++) {
-    for (let tx = left; tx <= right; tx++) {
-      if (cellAt(world.level, tx, ty) === 'air') return true;
-    }
-  }
-  return false;
+/** Where the shark would be after one tick at `vel`. */
+function stepAlong(shark: Enemy, vel: Vec): Vec {
+  return { x: shark.at.x + vel.x * TICK_DT, y: shark.at.y + vel.y * TICK_DT };
 }
 
 function enter(shark: Enemy, mode: EnemyMode): void {

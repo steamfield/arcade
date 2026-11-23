@@ -3,14 +3,17 @@
  * at first, and go to the first eligible racer that touches them. A pickup whose
  * ttl runs out on a tick is removed before anyone can grab it that tick. Drift
  * ignores rock (a pickup may rise into it and fade there) but stops at a surface: a pickup never
- * drifts into air.
+ * drifts from the water into air, and one knocked loose in the air falls back to the water.
  */
-import { cellAt } from '../level/query.ts';
+import { isAirAt } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { gainItem, holds, inventoryFull } from '../powerups/inventory.ts';
 import { LOOSE } from '../powerups/tuning.ts';
 import { hitbox } from '../racers.ts';
-import { type Box, type LoosePowerUp, type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
+import type { Box, LoosePowerUp, PowerUpKind, Racer, Vec, World } from '../types.ts';
+
+/** How fast a loose power-up in the air falls back toward the water, px/s. */
+const AIR_FALL_SPEED = 120;
 
 /**
  * Adds a loose `kind` carrying `charges` uses, centred at `at` (world px) with `grabDelay =
@@ -23,28 +26,37 @@ export function spawnLoose(world: World, kind: PowerUpKind, charges: number, at:
 }
 
 /**
- * The pickups slot for loose power-ups. Each call, every loose pickup moves the medium's
- * `effects.looseDrift * dt` vertically (water: up at LOOSE.riseSpeed) unless that would put it in
- * air, and loses one `ttl` tick (removed at 0). One with `grabDelay > 0` counts it down instead of
- * being grabbed; otherwise the first racer in `racers` whose hitbox overlaps its LOOSE.size box, who has
- * an empty slot and who doesn't hold that kind grabs it: removed, `loose.grabbed {id, kind, charges}`,
- * then `gainItem` with its charges. A pickup nobody can take stays loose.
+ * The pickups slot for loose power-ups. Each call, every loose pickup moves vertically
+ * (`verticalStep`; in water, the medium's `effects.looseDrift`, up at LOOSE.riseSpeed) and loses
+ * one `ttl` tick (removed at 0). One with `grabDelay > 0` counts it down instead of being grabbed;
+ * otherwise the first racer in `racers` whose hitbox overlaps its LOOSE.size box, who has an empty
+ * slot and who doesn't hold that kind grabs it: removed, `loose.grabbed {id, kind, charges}`, then
+ * `gainItem` with its charges. A pickup nobody can take stays loose.
  *
  * @param dt Tick length in seconds.
  * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
 export function updateLoose(world: World, racers: readonly Racer[], dt: number): void {
   const remaining: LoosePowerUp[] = [];
-  const drift = mediumOf(world).effects.looseDrift;
+  const driftPx = mediumOf(world).effects.looseDrift * dt;
   for (const loose of world.loose) {
-    if (!driftAndGrab(world, loose, racers, drift * dt)) remaining.push(loose);
+    loose.y += verticalStep(world, loose, driftPx, AIR_FALL_SPEED * dt);
+    if (!expireOrGrab(world, loose, racers)) remaining.push(loose);
   }
   world.loose = remaining;
 }
 
-/** One loose pickup's tick, moving `driftPx` down (negative is up). Returns true when it is gone: expired or grabbed. */
-function driftAndGrab(world: World, loose: LoosePowerUp, racers: readonly Racer[], driftPx: number): boolean {
-  if (!isAirAt(world, loose.x, loose.y + driftPx)) loose.y += driftPx;
+/**
+ * How far a loose pickup moves down this tick (negative is up): `fallPx` while it is in the air, so
+ * it falls back to the water; otherwise `driftPx`, or nothing when that would carry it into air.
+ */
+function verticalStep(world: World, loose: LoosePowerUp, driftPx: number, fallPx: number): number {
+  if (isAirAt(world.level, loose.x, loose.y)) return fallPx;
+  return isAirAt(world.level, loose.x, loose.y + driftPx) ? 0 : driftPx;
+}
+
+/** One loose pickup's ttl and grab for the tick. Returns true when it is gone: expired or grabbed. */
+function expireOrGrab(world: World, loose: LoosePowerUp, racers: readonly Racer[]): boolean {
   loose.ttl -= 1;
   if (loose.ttl <= 0) return true;
   if (loose.grabDelay > 0) {
@@ -59,10 +71,6 @@ function driftAndGrab(world: World, loose: LoosePowerUp, racers: readonly Racer[
   world.events.emit({ type: 'loose.grabbed', id: grabber.id, kind: loose.kind, charges: loose.charges });
   gainItem(world, grabber, loose.kind, loose.charges);
   return true;
-}
-
-function isAirAt(world: World, x: number, y: number): boolean {
-  return cellAt(world.level, Math.floor(x / TILE), Math.floor(y / TILE)) === 'air';
 }
 
 /** True when two boxes share some positive area; edge-only contact doesn't count. */

@@ -2,7 +2,7 @@
  * Sharks through `stepWorld`: a patrol around home, a telegraphed wind-up on a racer it sees, a charge
  * at where that racer was, and two dash bonks (or one Homing Squid) to beat it.
  */
-import { EventLog } from '@arcade/core';
+import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { DIFFICULTY } from '../../difficulty-level.ts';
 import type { GameEvent } from '../../events.ts';
@@ -271,14 +271,20 @@ describe('a shark under the surface', () => {
     surface: [{ from: 1, to: 8, row: 2 }],
   };
 
-  it('cuts a charge short at the surface rather than leaving the water', () => {
+  /** A race on OPEN_SEA with its shark just starting a charge at `vel`. */
+  function charging(vel: Vec) {
     const log = new EventLog<GameEvent>(10_000);
     const world = createWorld(courseFromLevel(OPEN_SEA), log, { seed: 1 });
     world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
     const shark = enemyAt(world);
     shark.mode = 'charge';
     shark.modeTicks = 0;
-    shark.vel = { x: 0, y: -SHARK.chargeSpeed };
+    shark.vel = vel;
+    return { world, log, shark };
+  }
+
+  it('cuts a straight-up charge short at the surface rather than leaving the water', () => {
+    const { world, log, shark } = charging({ x: 0, y: -SHARK.chargeSpeed });
     const highestTops: number[] = [];
     for (let tick = 0; tick < 12; tick++) {
       step(world, log);
@@ -288,5 +294,18 @@ describe('a shark under the surface', () => {
     expect(Math.min(...highestTops)).toBeGreaterThanOrEqual(2 * TILE);
     expect(Math.min(...highestTops)).toBeLessThan(2 * TILE + 3);
     expect(shark.mode).toBe('recover');
+  });
+
+  it('slides along the surface when a charge from the top water row aims up and across', () => {
+    const { world, log, shark } = charging({ x: SHARK.chargeSpeed * 0.6, y: -SHARK.chargeSpeed * 0.8 });
+    shark.at = { x: 3.5 * TILE, y: 2.5 * TILE };
+    const startX = shark.at.x;
+
+    step(world, log, 6);
+
+    expect(shark.mode).toBe('charge');
+    expect(shark.at.y).toBe(2.5 * TILE);
+    expect(shark.at.x).toBeCloseTo(startX + 6 * SHARK.chargeSpeed * 0.6 * TICK_DT, 6);
+    expect(enemyBox(shark).y).toBeGreaterThanOrEqual(2 * TILE);
   });
 });

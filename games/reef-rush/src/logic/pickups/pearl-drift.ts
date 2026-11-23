@@ -1,12 +1,16 @@
 /**
  * How a loose pearl moves: scattered from a hit racer at a fixed fan of directions, then slowed by
- * drag each tick. It never enters a solid tile or air: an axis whose next step would land in rock,
- * unbroken coral or the air above a surface loses its speed instead. No randomness, so a drop never
- * shifts any rng stream.
+ * drag each tick. It never enters a solid tile, and never leaves the water for the air above a
+ * surface: an axis whose next step would do either loses its speed instead. A pearl scattered in the
+ * air falls under gravity until it is back in the water. No randomness, so a drop never shifts any
+ * rng stream.
  */
-import { cellAt, isSolid } from '../level/query.ts';
+import { isAirAt, isSolid } from '../level/query.ts';
 import { PEARL } from '../powerups/tuning.ts';
 import { type LoosePearl, type RacerId, TILE, type Vec, type World } from '../types.ts';
+
+/** Downward acceleration on a pearl in the air, px/s². */
+const AIR_GRAVITY = 450;
 
 /**
  * Unit scatter directions for a racer facing right, in the order pearls take them: straight back,
@@ -39,25 +43,26 @@ export function scatterPearls(at: Vec, facing: 1 | -1, count: number, droppedBy:
 }
 
 /**
- * Moves `pearl` one tick: its velocity keeps PEARL.dragPerTick, then each axis moves by `vel * dt`
- * unless that would put its centre in a solid or air tile, in which case that axis stops.
+ * Moves `pearl` one tick: its velocity keeps PEARL.dragPerTick (and gains AIR_GRAVITY while it is in
+ * the air), then each axis moves by `vel * dt` unless that would put its centre in a solid tile or
+ * carry it from water into air, in which case that axis stops.
  *
  * @param dt Tick length in seconds.
  */
 export function driftPearl(world: World, pearl: LoosePearl, dt: number): void {
   pearl.vel.x *= PEARL.dragPerTick;
   pearl.vel.y *= PEARL.dragPerTick;
+  if (isAirAt(world.level, pearl.at.x, pearl.at.y)) pearl.vel.y += AIR_GRAVITY * dt;
   const nextX = pearl.at.x + pearl.vel.x * dt;
-  if (blockedAt(world, nextX, pearl.at.y)) pearl.vel.x = 0;
+  if (blocked(world, pearl.at, { x: nextX, y: pearl.at.y })) pearl.vel.x = 0;
   else pearl.at.x = nextX;
   const nextY = pearl.at.y + pearl.vel.y * dt;
-  if (blockedAt(world, pearl.at.x, nextY)) pearl.vel.y = 0;
+  if (blocked(world, pearl.at, { x: pearl.at.x, y: nextY })) pearl.vel.y = 0;
   else pearl.at.y = nextY;
 }
 
-/** True where a pearl may not go: a solid tile, or air above a surface (pearls stay in the water). */
-function blockedAt(world: World, x: number, y: number): boolean {
-  const tx = Math.floor(x / TILE);
-  const ty = Math.floor(y / TILE);
-  return isSolid(world.level, world.broken, tx, ty) || cellAt(world.level, tx, ty) === 'air';
+/** True when a pearl may not step from `from` to `to`: into a solid tile, or out of the water into air. */
+function blocked(world: World, from: Vec, to: Vec): boolean {
+  if (isSolid(world.level, world.broken, Math.floor(to.x / TILE), Math.floor(to.y / TILE))) return true;
+  return isAirAt(world.level, to.x, to.y) && !isAirAt(world.level, from.x, from.y);
 }

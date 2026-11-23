@@ -55,7 +55,7 @@ export function applyIntent(
 ): void {
   const extras = swimExtras(tuning);
   const surroundings = swimEnv(env);
-  noteSurfaceCrossing(racer, surroundings.inAir, events);
+  noteSurfaceCrossing(racer, surroundings, events);
   const direction = unit(intent.move);
   updateFacing(racer, intent.move.x);
 
@@ -70,12 +70,17 @@ export function applyIntent(
   capSpeed(racer.body, tuning.maxSpeed);
 }
 
-/** Records whether the racer is in the air, emitting `racer.breached` or `racer.splashed` when that changes. */
-function noteSurfaceCrossing(racer: Racer, inAir: boolean, events: EventSink<GameEvent>): void {
+/**
+ * Records whether the racer is airborne, emitting `racer.breached` or `racer.splashed` when that
+ * changes. It becomes airborne when its centre is in air, and stays so until its centre is
+ * SPLASH_DEPTH below the surface (`nearSurface` false), so bobbing on the surface doesn't flicker.
+ */
+function noteSurfaceCrossing(racer: Racer, env: SwimEnv, events: EventSink<GameEvent>): void {
   const motion = swimMotion(racer.motion);
-  if (motion.airborne === inAir) return;
-  motion.airborne = inAir;
-  events.emit({ type: inAir ? 'racer.breached' : 'racer.splashed', id: racer.id });
+  const airborne = env.inAir || (motion.airborne && env.nearSurface);
+  if (motion.airborne === airborne) return;
+  motion.airborne = airborne;
+  events.emit({ type: airborne ? 'racer.breached' : 'racer.splashed', id: racer.id });
 }
 
 /** One tick underwater: the stick's force, an idle sink, the current, and drag (more of it in kelp). */
