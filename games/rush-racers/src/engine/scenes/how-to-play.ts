@@ -8,7 +8,7 @@
  * `rt.howToPage`, restarting the page's animation each time it changes.
  */
 import Phaser from 'phaser';
-import { DEFAULT_COURSE, levelOf } from '../../logic/courses/index.ts';
+import { levelOf } from '../../logic/courses/index.ts';
 import { mediumIdOf } from '../../logic/worlds/index.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
@@ -53,8 +53,7 @@ export class HowToPlayScene extends Phaser.Scene {
   create(): void {
     centreOnStage(this);
     const rt = this.rt;
-    // How to Play shows swimming, so it stays on the ocean course whatever course is picked.
-    this.backdrop = createBackdrop(this, levelOf(DEFAULT_COURSE), themeFor(DEFAULT_COURSE), {
+    this.backdrop = createBackdrop(this, levelOf(rt.course), themeFor(rt.course), {
       get reducedMotion() {
         return rt.settings.reducedMotion;
       },

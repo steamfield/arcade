@@ -282,6 +282,17 @@ describe('a squid on its way', () => {
     expect(world.squids[0]?.target).toEqual({ kind: 'racer', id: 'squib' });
   });
 
+  it('drops a target that falls out of the level and locks onto the next one in reach', () => {
+    const { world, log, fire, fly } = scene({ player: [3, 2], tess: [10, 2], squib: [10, 3] });
+    fire('player');
+    racerOf(world, 'tess').status.fallen = 30;
+
+    fly(1);
+
+    expect(events(log, 'squid.locked').at(-1)).toEqual({ type: 'squid.locked', owner: 'player', target: 'squib' });
+    expect(world.squids[0]?.target).toEqual({ kind: 'racer', id: 'squib' });
+  });
+
   it('steers round a wall to reach a target it cannot see', () => {
     const { world, log, fire, fly } = scene({ player: [7, 1], tess: [14, 1] }, WALL);
     fire('player');

@@ -13,6 +13,9 @@ import { BackdropPalette, WATER_BANDS, WaterLight } from './ocean/palettes.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import type { ContrastBand } from './types.ts';
 
+/** The ledge's index in the tileset, after `OceanTile`'s rock and coral (the frame order in `ocean/sprites/terrain.ts`). */
+const LEDGE_TILE = 2;
+
 /** Kelp sways, currents flow and jellies pulse on Phaser's clock, never on logic ticks. */
 const OCEAN_LOOPS = [
   { key: OceanAnim.kelpSway, texture: OceanTex.kelp, frameRate: 2 },
@@ -39,7 +42,7 @@ export const OCEAN_THEME = defineTheme({
   },
   terrain: {
     tileset: OceanTex.tiles,
-    tiles: { rock: OceanTile.rock, coral: OceanTile.coral },
+    tiles: { rock: OceanTile.rock, coral: OceanTile.coral, ledge: LEDGE_TILE },
     flowing: {
       kelp: { texture: OceanTex.kelp, anim: OceanAnim.kelpSway },
       'current-right': { texture: OceanTex.currentRight, anim: OceanAnim.currentRight },

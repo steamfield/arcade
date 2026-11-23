@@ -115,11 +115,11 @@ function insideInk(world: World, squid: Squid): boolean {
   return world.inks.some((ink) => (squid.x - ink.x) ** 2 + (squid.y - ink.y) ** 2 <= ink.radius ** 2);
 }
 
-/** Where a target is, in world px; null when it is gone (finished racer, popped or expired decoy). */
+/** Where a target is, in world px; null when it is gone (finished or fallen racer, popped or expired decoy). */
 function pointOf(world: World, target: SquidTarget): Vec | null {
   if (target.kind === 'decoy') return world.decoys.find((decoy) => decoy.owner === target.owner) ?? null;
   const racer = world.racers.find((candidate) => candidate.id === target.id);
-  return racer && !racer.finished ? centreOf(racer) : null;
+  return racer && !racer.finished && racer.status.fallen === 0 ? centreOf(racer) : null;
 }
 
 function lockedName(target: SquidTarget): RacerId | 'decoy' {

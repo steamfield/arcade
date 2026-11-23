@@ -111,6 +111,20 @@ describe('a bubble hit', () => {
   });
 });
 
+describe('a hit on a fallen racer', () => {
+  it('misses while the racer waits to respawn, so it keeps its pearls and comes back unstunned', () => {
+    const { log, player, hit } = setup();
+    player.status.fallen = 30;
+    player.pearls = 5;
+
+    expect(hit()).toBeNull();
+
+    expect(player.status.stunned).toBe(0);
+    expect(player.pearls).toBe(5);
+    expect(eventsIn(log)).toEqual([]);
+  });
+});
+
 describe('a hit during a dash', () => {
   it('ends the dash, so the racer moves away from the source on the next tick', () => {
     const { world, log, player, offset, hit } = setup();

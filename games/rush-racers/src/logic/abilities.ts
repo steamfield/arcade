@@ -7,7 +7,7 @@
  * | Character | Ability | Effect |
  * | --- | --- | --- |
  * | Rudy | Shake it off | stuns and bubble traps last 40% as long |
- * | Gil | Spring kick | kicks push harder upward |
+ * | Gil | Spring kick | kicks push harder upward; jumps higher in media that jump |
  * | Streak | Wind-up | top speed rises the longer it swims without turning hard or being hit |
  * | Onyx | Ambush | bumping a racer from behind takes some of its speed |
  * | Nib | Deep pockets | has 4 item slots instead of 3 |
@@ -29,11 +29,11 @@ import { activeRacers, centreOf } from './racers.ts';
 import { type HitCause, type MoveModifiers, type Racer, TILE, type Vec, type World } from './types.ts';
 
 /**
- * How much higher `racer` jumps than the medium's jump speed: Gil (Spring jump) jumps higher in media
- * that jump. Scaffold stub, 1 for everyone; phase 2 lane a sets Gil's number.
+ * The multiplier on a jumping medium's jump speed for `racer`: Gil (Spring jump) leaves the ground
+ * `springJump.speedMul` times as fast, everyone else 1. Media that don't jump (swim) never call it.
  */
-export function jumpMulFor(_racer: Pick<Racer, 'character'>): number {
-  return 1;
+export function jumpMulFor(racer: Pick<Racer, 'character'>): number {
+  return racer.character === 'gil' ? ABILITY.springJump.speedMul : 1;
 }
 
 /** Every ability's numbers. Durations are ticks, speeds px/s. */
@@ -46,6 +46,8 @@ export const ABILITY = {
    * climbs without flinging him off a level line.
    */
   springKick: { upMul: 1.8, minUp: 0.7 },
+  /** Gil in media that jump: jump speed times `speedMul`, so a held jump rises about 25 % higher. */
+  springJump: { speedMul: 1.12 },
   /**
    * Streak: forceMul rises linearly to `maxBonus` over `rampTicks` of straight swimming. Straight
    * means at least `minSpeed` and heading within 45 degrees of its facing (forward at least as fast

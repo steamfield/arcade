@@ -1,5 +1,5 @@
 /**
- * The solid and decorative course tiles: the rock and coral tileset, coral
+ * The solid and decorative course tiles: the rock, coral and ledge tileset, coral
  * debris, swaying kelp and the finish banner. Tiles are 16x16 and seamless,
  * since the same tile repeats across whole walls and kelp beds.
  */
@@ -8,7 +8,19 @@ import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { OceanTex, type OceanTexKey } from '../keys.ts';
 import { TerrainPalette } from '../palettes.ts';
 
-/** Terrain sheets. The tileset frames sit in `OceanTile` order: rock first, then coral. */
+/** Branch strip for ledges: dark underside, bark, lit top. Wood, so it reads apart from rock and coral. */
+const BRANCH_PALETTE = [0x3a2414, 0x6b4423, 0x9a6a38] as const;
+
+/** A ledge tile: a four-pixel branch along the top of an otherwise empty tile, so racers can jump up through it. */
+const LEDGE_ROWS = [
+  '2222122222221222',
+  '1111111211111112',
+  '1011111111101111',
+  '0000000000000000',
+  ...Array.from({ length: 12 }, () => '................'),
+];
+
+/** Terrain sheets. The tileset frames sit in tile index order: rock, coral, then ledge. */
 export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
   {
     key: OceanTex.tiles,
@@ -57,6 +69,7 @@ export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
           '1122110011221100',
         ],
       },
+      { name: 'ledge', palette: BRANCH_PALETTE, rows: LEDGE_ROWS },
     ],
   },
   sheet(OceanTex.coralDebris, TerrainPalette.coral, {
