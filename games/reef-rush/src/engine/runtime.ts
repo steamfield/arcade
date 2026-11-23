@@ -9,7 +9,8 @@
  * then select (pick a character; fire races, dash goes back), then race and results. Race again
  * skips both selects and races the same course and pick; Character on the results screen opens them again
  * (select only while one course is listed), with the cursor on the current pick. The title also opens How to Play, a few
- * pages the player turns with the move and action buttons.
+ * pages the player turns with the move and action buttons. Dash on a select screen opened from results goes
+ * back to results with Character selected, with the finished race still in hand; opened from the title it goes to the title.
  */
 import { createLogger, EventLog, FixedStep, type Stamped } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
@@ -174,6 +175,8 @@ export class Runtime {
   private readonly search: string;
   private readonly listeners = new Set<EventListener>();
   private cursor = 0;
+  /** Which screen opened the select screens, so dash goes back there. Set each time the results or title menu opens them. */
+  private selectOpenedFrom: 'title' | 'results' = 'title';
   /** Ticks left before the results screen, or null when no race has finished. */
   private resultsIn: number | null = null;
   /** Ticks left before the current menu or the select screen accepts fire. */
@@ -363,8 +366,10 @@ export class Runtime {
     else if (option === 'Difficulty') this.changeSettings({ difficulty: nextDifficulty(this.settings.difficulty) });
     else if (option === 'How to play') this.goTo('howToPlay');
     else if (option === 'Title') this.goTo('title');
-    else if (option === 'Race' || option === 'Character') this.goTo(this.courseSelectShown ? 'course' : 'select');
-    else this.startRace();
+    else if (option === 'Race' || option === 'Character') {
+      this.selectOpenedFrom = option === 'Character' ? 'results' : 'title';
+      this.goTo(this.courseSelectShown ? 'course' : 'select');
+    } else this.startRace();
   }
 
   /** Moves the course cursor up and down, wrapping; after the arming ticks fire picks the course and dash goes back. */
@@ -376,7 +381,7 @@ export class Runtime {
       this.menuArmIn--;
       return;
     }
-    if (input.justPressed('dash')) this.goTo('title');
+    if (input.justPressed('dash')) this.leaveSelects();
     else if (input.justPressed('fire')) {
       this.course = this.listedCourses[this.courseCursor] ?? this.course;
       this.goTo('select');
@@ -393,8 +398,18 @@ export class Runtime {
       this.menuArmIn--;
       return;
     }
-    if (input.justPressed('dash')) this.goTo(this.courseSelectShown ? 'course' : 'title');
-    else if (input.justPressed('fire')) this.pickCharacter();
+    if (input.justPressed('dash')) {
+      if (this.courseSelectShown) this.goTo('course');
+      else this.leaveSelects();
+    } else if (input.justPressed('fire')) this.pickCharacter();
+  }
+
+  /** Backs out of the first select screen to where it was opened from: results (on Character) or the title. */
+  private leaveSelects(): void {
+    if (this.selectOpenedFrom === 'results') {
+      this.returnTo = 'Character';
+      this.goTo('results');
+    } else this.goTo('title');
   }
 
   /**

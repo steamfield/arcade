@@ -220,13 +220,13 @@ The card, preview and footer stay in the safe column (x 108-228) below the grid,
 | 1st plinth | 140, 44, 40, 32 | `accent`; portrait at (152, 27); medal at (154, 47) |
 | 2nd plinth | 96, 50, 40, 26 | `raised`; portrait at (108, 33); medal at (110, 53) |
 | 3rd plinth | 184, 56, 40, 20 | `raised`; portrait at (196, 39); medal at (198, 59) |
-| Standing rows | 120, 78, 107, 7, pitch 9 | 18 characters, place in 4, name in 7, time or TIME UP right-aligned in 7: "4TH BARON  0:24.46", "2ND STREAK 3:06.30"; rivals in foam, the player in sun, all outlined; the player's character's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 111 (112 with its outline); outlines of neighbouring rows touch, which stays readable |
-| Ribbon | 114, 115, 92, 15 | `inset`, so it reads as a readout and never as a selected button; "NEW BEST" (this course and level) in sun or "BEST NOT SAVED" in coral, otherwise hidden; an unlisted course never shows NEW BEST |
-| Race again | 122, 132, 76, 15 | button |
-| Character | 122, 147, 76, 15 | button; opens course select while it is shown, else character select, with the cursor on the current pick |
-| Title | 122, 162, 76, 15 | button; cursor fin at x 111-119 |
+| Standing rows | 120, 77, 107, 7, pitch 9 | 18 characters, place in 4, name in 7, time or TIME UP right-aligned in 7: "4TH BARON  0:24.46", "2ND STREAK 3:06.30"; rivals in foam, the player in sun, all outlined; the player's character's 7x7 head at (111, row y) on the player's row once it settles, never moving. The only cursor fin on screen is the menu's. The last row ends at y 110 (111 with its outline); outlines of neighbouring rows touch, which stays readable |
+| Ribbon | 114, 113, 92, 15 | `inset`, so it reads as a readout and never as a selected button; "NEW BEST" (this course and level) in sun or "BEST NOT SAVED" in coral, otherwise hidden; an unlisted course never shows NEW BEST |
+| Race again | 122, 129, 76, 15 | button |
+| Character | 122, 144, 76, 15 | button; opens course select while it is shown, else character select, with the cursor on the current pick |
+| Title | 122, 159, 76, 15 | button; cursor fin at x 111-119 |
 
-The three buttons sit at pitch 15, frames touching, and end at y 177; the ribbon ends at y 130, 2 px above them.
+The three buttons sit at pitch 15, frames touching, and end at y 173, inside the 6 px outer margin; the ribbon ends at y 127, with a 1 px gap above them.
 
 ```
                   RESULTS                    (back link)
@@ -257,7 +257,7 @@ The three buttons sit at pitch 15, frames touching, and end at y 177; the ribbon
 | Select card text | drops 2 px into place over 6 ticks on each cursor move (not when the screen opens) | appears |
 | Select preview | swaps swim strokes every 8 ticks | still |
 | Dark-zone light pools | shrink by 0-2 px in a fixed shuffle, changing at most every 20 ticks | still, full radius |
-| Ribbon | drops 2 px in over 10 ticks after the last row, from y 113 so it never covers the last row's outline | appears |
+| Ribbon | drops 1 px in over 10 ticks after the last row, from y 112 so it never covers the last row's outline | appears |
 | How to Play pages | each page loops its own picture from the tick it opened (periods 120-360 ticks; see "How to Play") | one still frame |
 | Hint glyph | the gold frame blinks every 15 ticks | steady |
 | Guide arrow | bobs 3 px outward every 40 ticks | holds still, appears and disappears without fading |

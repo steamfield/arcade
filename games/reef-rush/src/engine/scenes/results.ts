@@ -40,19 +40,19 @@ const PLINTHS: readonly Plinth[] = [
 const PORTRAIT_RISE = 17;
 const PORTRAIT_INSET_X = 12;
 const MEDAL_INSET = { x: 14, y: 3 } as const;
-const ROWS = { x: 120, y: 78, pitch: 9 } as const;
+const ROWS = { x: 120, y: 77, pitch: 9 } as const;
 /** The player's 7x7 head on its row, clear of the d-pad zone (x < 108). */
 const ROW_HEAD_X = 111;
-const RIBBON = { x: 114, y: 115, w: 92, h: 15 } as const;
-const MENU = { centreX: 160, top: 132, width: 76, pitch: 15 } as const;
+const RIBBON = { x: 114, y: 113, w: 92, h: 15 } as const;
+const MENU = { centreX: 160, top: 129, width: 76, pitch: 15 } as const;
 
 /**
- * UI.md "Motion": a row every 20 ticks, sliding 8 px in from the left over 6; then the ribbon drops 2 px over
- * 10, from y 113 so it never covers the last row's outline (which ends at y 112).
+ * UI.md "Motion": a row every 20 ticks, sliding 8 px in from the left over 6; then the ribbon drops 1 px over
+ * 10, from y 112 so it never covers the last row's outline (which ends at y 111).
  */
 const ROW_EVERY_TICKS = 20;
 const ROW_SLIDE = { px: 8, ticks: 6 } as const;
-const RIBBON_DROP = { px: 2, ticks: 10 } as const;
+const RIBBON_DROP = { px: 1, ticks: 10 } as const;
 
 /** Results scene. Reads the finished world and `Runtime.lastResult`; the runtime handles its menu input. */
 export class ResultsScene extends Phaser.Scene {
@@ -191,7 +191,7 @@ interface Ribbon {
 
 /**
  * One label that drops with `setOffset`. Kit panels are placed when created, so the drop keeps a
- * panel per offset it reaches (three at most) and shows only the current one.
+ * panel per offset it reaches (two at most) and shows only the current one.
  */
 function createRibbon(scene: Phaser.Scene): Ribbon {
   const { x, y, w, h } = RIBBON;

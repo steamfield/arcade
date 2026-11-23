@@ -5,7 +5,8 @@ import { IDLE_TO_RESULTS, scenario, tap, wait } from './kit.ts';
 export default scenario({
   description: 'choosing Title on the results screen shows a title with no race left over',
   start: { scene: 'race' },
-  input: [wait(IDLE_TO_RESULTS), tap('down'), wait(2), tap('down'), tap('fire'), wait(5)],
+  // The wait releases the down button, so the second down is a new press rather than a held one.
+  input: [wait(IDLE_TO_RESULTS), tap('down'), wait(1), tap('down'), tap('fire'), wait(5)],
   expect({ summary, events }) {
     expect(summary).toMatchObject({
       scene: 'title',
