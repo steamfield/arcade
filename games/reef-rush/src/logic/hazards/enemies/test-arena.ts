@@ -50,7 +50,9 @@ export function swimUntilNear(world: World, log: EventLog<GameEvent>, enemy: Ene
   const player = racerOf(world, 'player');
   for (let tick = 0; tick < 300; tick++) {
     const centre = centreOf(player);
-    if ((centre.x - enemy.at.x) ** 2 + (centre.y - enemy.at.y) ** 2 <= px * px) return;
+    const dx = centre.x - enemy.at.x;
+    const dy = centre.y - enemy.at.y;
+    if (dx * dx + dy * dy <= px * px) return;
     step(world, log, 1, hold(towardEnemy(world, enemy)));
   }
   throw new Error(

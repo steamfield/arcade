@@ -4,7 +4,7 @@
  * definition. Also the one definition of a racer's empty item state.
  */
 import { INFLATE } from './powerups/tuning.ts';
-import { type Box, RACER_IDS, type Racer, type Vec, type World } from './types.ts';
+import { type Box, RACER_IDS, type Racer, type RacerId, type Vec, type World } from './types.ts';
 
 /**
  * The player's racer.
@@ -19,6 +19,27 @@ export function playerOf(world: World): Racer {
     throw new Error(`World has no player racer (racers: ${ids}); build worlds with createWorld`);
   }
   return player;
+}
+
+/** Whether a person started the race in this slot. Never changes during a race. */
+export function isHuman(world: World, id: RacerId): boolean {
+  return world.humans.includes(id);
+}
+
+/**
+ * Whether the game treats this slot as an AI opponent: not a human slot, or a human slot the AI
+ * took over. A test bot driving a human slot is not a rival.
+ */
+export function isRival(world: World, id: RacerId): boolean {
+  if (!isHuman(world, id)) return true;
+  return world.racers.some((racer) => racer.id === id && racer.tookOverAt !== undefined);
+}
+
+/** Humans the AI has not taken over, in RACER_IDS order. */
+export function activeHumans(world: World): Racer[] {
+  return world.racers
+    .filter((racer) => isHuman(world, racer.id) && racer.tookOverAt === undefined)
+    .sort((a, b) => RACER_IDS.indexOf(a.id) - RACER_IDS.indexOf(b.id));
 }
 
 /** Racers still in play (not yet finished), in RACER_IDS order. Finished racers don't swim, move or bump. */

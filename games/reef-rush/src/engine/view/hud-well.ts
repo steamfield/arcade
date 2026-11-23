@@ -9,13 +9,13 @@
 import type Phaser from 'phaser';
 import { DASH_METER, dashCharges } from '../../logic/powerups/dash-meter.ts';
 import { selectedItem, selectedSlot, slotItems } from '../../logic/powerups/inventory.ts';
-import { playerOf } from '../../logic/racers.ts';
 import type { HeldItem, PowerUpKind, World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
 import { Frame, Tex } from '../art/keys.ts';
 import { IconFrame, type IconFrameKey, UiTex } from '../art/ui/keys.ts';
 import { UiColour, UiRamp } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
+import { localOf } from '../local-racer.ts';
 import { Layer } from './layers.ts';
 
 /** HUD icons are 9x9. */
@@ -89,7 +89,7 @@ interface SlotView {
   charges: Label;
 }
 
-/** The well, sized for the race from `slots`; `sync` redraws it from the player each frame. */
+/** The well, sized for the race from `slots`; `sync` redraws it from the local racer each frame. */
 export function createWell(scene: Phaser.Scene, slots: number): { sync(world: World): void } {
   const layout = wellLayout(slots);
   createPanel(scene, WELL.x, WELL.y, layout.width, WELL.h, 'inset', { fixed: true, depth: Layer.hud });
@@ -100,11 +100,11 @@ export function createWell(scene: Phaser.Scene, slots: number): { sync(world: Wo
 
   return {
     sync(world) {
-      const player = playerOf(world);
-      dash.setAlpha(player.kickCooldown === 0 ? 1 : NOT_READY_ALPHA);
-      const items = slotItems(player);
+      const local = localOf(world);
+      dash.setAlpha(local.kickCooldown === 0 ? 1 : NOT_READY_ALPHA);
+      const items = slotItems(local);
       for (const [slot, view] of views.entries()) syncSlot(view, items[slot] ?? null);
-      const selected = selectedItem(player) ? selectedSlot(player) : -1;
+      const selected = selectedItem(local) ? selectedSlot(local) : -1;
       if (selected !== framedSlot) drawSelectedFrame(frame, layout.slotX[selected]);
       framedSlot = selected;
     },
@@ -202,7 +202,7 @@ export function createDashMeter(
   return {
     right: x + METER_WIDTH,
     sync(world) {
-      const charges = dashCharges(playerOf(world));
+      const charges = dashCharges(localOf(world));
       trackDashCharges(track, charges, world.tick);
       dashPipFrames(charges).forEach((frame, pip) => {
         pips[pip]

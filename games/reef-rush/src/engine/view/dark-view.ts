@@ -2,12 +2,12 @@
  * Darkness over the course's dark zones (`level.dark`, inclusive tile-column
  * ranges, merged once): a veil in the course theme's dark tint across each zone's columns on
  * screen, faded in at its ends, with a pool of light cut around every racer.
- * The player's pool is the widest and leans ahead along their velocity, and a
+ * The local racer's pool (the slot the screen follows) is the widest and leans ahead along their velocity, and a
  * racer with a Glow Lantern selected has a bigger one still. Urchins and jellies inside a zone
  * show a faint glint above the veil, so a hazard reads before it is lit. A Mimic decoy carries the
  * rival's pool (it is meant to pass for the racer), and a Homing Squid a small one (`SQUID_LIGHT_RADIUS`),
  * so the thing hunting the player can be seen coming. A
- * player who sees in the dark (`racerSeesInDark`, Selene's Moonlight) gets
+ * local racer who sees in the dark (`racerSeesInDark`, Selene's Moonlight) gets
  * only a light tint that says "this is a dark zone".
  *
  * Cheap on phones by design: one screen-sized render texture, redrawn only
@@ -25,8 +25,8 @@ import Phaser from 'phaser';
 import { racerSeesInDark } from '../../logic/abilities.ts';
 import { playerHasLanternLight } from '../../logic/difficulty-level.ts';
 import { selectedItem } from '../../logic/powerups/inventory.ts';
-import { playerOf } from '../../logic/racers.ts';
 import { TILE, type Vec, type World } from '../../logic/types.ts';
+import { localIdOf, localOf } from '../local-racer.ts';
 import type { DarkTint } from '../themes/types.ts';
 import {
   FADE,
@@ -79,7 +79,8 @@ export function createDarkView(scene: Phaser.Scene, world: World, tint: DarkTint
     .setScrollFactor(0)
     .setDepth(VEIL_DEPTH)
     .setVisible(false);
-  const seesThrough = racerSeesInDark(playerOf(world));
+  const local = localIdOf(world);
+  const seesThrough = racerSeesInDark(localOf(world));
   const veilTint: DarkTint = { colour: tint.colour, alpha: seesThrough ? SEE_THROUGH_ALPHA : tint.alpha };
   const spans: Span[] = [];
   const drawn = { tick: -1, left: Number.NaN, top: Number.NaN };
@@ -106,15 +107,15 @@ export function createDarkView(scene: Phaser.Scene, world: World, tint: DarkTint
         for (let index = 0; index < current.racers.length; index++) {
           const racer = current.racers[index];
           if (!racer) continue;
-          const isPlayer = racer.id === 'player';
+          const isLocal = racer.id === local;
           const lantern = selectedItem(racer)?.kind === 'glowLantern' || playerHasLanternLight(current, racer);
-          const reach = lightRadius(isPlayer, lantern);
+          const reach = lightRadius(isLocal, lantern);
           const key = lightKeys.get(reach - flicker(current.tick, index, reducedMotion));
           if (!key) continue;
           const { x, y, w, h, vx, vy } = racer.body;
-          // Only the player's pool leans ahead: it's what they steer by.
-          const cx = Math.round(x + w / 2) + (isPlayer ? leadOffset(vx) : 0) - left;
-          const cy = Math.round(y + h / 2) + (isPlayer ? leadOffset(vy) : 0) - top;
+          // Only the local racer's pool leans ahead: it's what the player steers by.
+          const cx = Math.round(x + w / 2) + (isLocal ? leadOffset(vx) : 0) - left;
+          const cy = Math.round(y + h / 2) + (isLocal ? leadOffset(vy) : 0) - top;
           veil.stamp(key, undefined, cx, cy, ERASE_STAMP);
         }
       }

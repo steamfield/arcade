@@ -19,7 +19,7 @@ Where everything is, so you can open the right file instead of searching. Every 
 | Change the `game.json` schema | `packages/config/src/manifest.ts` |
 | Change the landing page | `apps/site/` |
 | Record a game's landing-page footage and cover | `pnpm arcade attract <slug>`, settings in its package.json `arcade.attract` |
-| Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans |
+| Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans and `tools/biome/no-inexact-math.grit` for reef-rush's bit-exact math |
 | Change CI or deploys | `.github/workflows/ci.yml`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts`, `cf:build` in `package.json` |
 
 `<game>` is `games/<slug>` or `templates/<name>`.
@@ -140,6 +140,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/new-game.ts` | `newGame`: copies a template, renames, registers it in `.claude/launch.json`, installs. |
 | `tools/arcade/src/repo-map.test.ts` | Keeps this map in sync with the files on disk. |
 | `tools/biome/no-nondeterminism.grit` | Biome plugin banning `Math.random`, `Date.now`, `new Date` in logic folders. |
+| `tools/biome/no-inexact-math.grit` | Biome plugin banning `**`, `**=` and `Math.pow` in reef-rush logic and allowing only the exactly specified `Math` members it lists, so lockstep races match bit for bit. |
 
 ## Landing page (`apps/site/`)
 

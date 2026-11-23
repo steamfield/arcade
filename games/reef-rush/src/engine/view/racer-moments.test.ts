@@ -8,7 +8,7 @@ const STEP_TICK = 5000;
 describe('createRacerMoments', () => {
   it('flashes the player white for a few ticks after gaining a place, then stops', () => {
     const moments = createRacerMoments('player', 3);
-    moments.onEvents([{ type: 'player.place', place: 2, tick: STEP_TICK, seq: 0 }], 100);
+    moments.onEvents([{ type: 'player.place', id: 'player', place: 2, tick: STEP_TICK, seq: 0 }], 100);
 
     expect(moments.look(100, false).flashing).toBe(true);
     expect(moments.look(100 + PLACE_FLASH_TICKS - 1, false).flashing).toBe(true);
@@ -18,15 +18,15 @@ describe('createRacerMoments', () => {
 
   it('does not flash on losing a place, for a rival, or under reduced motion', () => {
     const lost = createRacerMoments('player', 2);
-    lost.onEvents([{ type: 'player.place', place: 3, tick: STEP_TICK, seq: 0 }], 100);
+    lost.onEvents([{ type: 'player.place', id: 'player', place: 3, tick: STEP_TICK, seq: 0 }], 100);
     expect(lost.look(100, false).flashing).toBe(false);
 
     const rival = createRacerMoments('tess', 3);
-    rival.onEvents([{ type: 'player.place', place: 2, tick: STEP_TICK, seq: 0 }], 100);
+    rival.onEvents([{ type: 'player.place', id: 'player', place: 2, tick: STEP_TICK, seq: 0 }], 100);
     expect(rival.look(100, false).flashing).toBe(false);
 
     const calm = createRacerMoments('player', 3);
-    calm.onEvents([{ type: 'player.place', place: 2, tick: STEP_TICK, seq: 0 }], 100);
+    calm.onEvents([{ type: 'player.place', id: 'player', place: 2, tick: STEP_TICK, seq: 0 }], 100);
     expect(calm.look(100, true).flashing).toBe(false);
   });
 
