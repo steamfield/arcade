@@ -14,7 +14,8 @@
  * counts world ticks, so captures repeat. No Phaser here, so it runs under Node in tests.
  */
 import { type Enemy, TILE, type Vec } from '../../logic/types.ts';
-import { Frame, type FrameKey, Tex, type TexKey } from '../art/keys.ts';
+import { Frame, type FrameKey } from '../art/keys.ts';
+import type { EnemyArt } from '../worlds/object-skin.ts';
 
 /** The world ticks on which an enemy was last bonked and defeated, or null. */
 export interface EnemyMoments {
@@ -24,7 +25,7 @@ export interface EnemyMoments {
 
 /** The enemy's own sprite. `fill` turns it solid white for a flash; `tint` multiplies it. */
 export interface BodyLook {
-  texture: TexKey;
+  texture: string;
   frame: FrameKey;
   x: number;
   y: number;
@@ -103,16 +104,26 @@ export const BUBBLE_COUNT = 2;
 /** Under reduced motion the bubbles stand still at these distances out of the hole. */
 const STILL_BUBBLES_PX = [5, 12] as const;
 
-/** What to draw for `enemy` on world tick `tick`; `moments` are its last bonk and defeat. */
-export function enemyLook(enemy: Enemy, moments: EnemyMoments, tick: number, reducedMotion: boolean): EnemyLook {
+/**
+ * What to draw for `enemy` on world tick `tick`; `moments` are its last bonk and defeat. `bodies` is
+ * the world skin's body texture per enemy kind.
+ */
+export function enemyLook(
+  enemy: Enemy,
+  moments: EnemyMoments,
+  tick: number,
+  reducedMotion: boolean,
+  bodies: EnemyArt['bodies'],
+): EnemyLook {
   const look: EnemyLook = { body: null, alert: null, hole: null, eelBody: null, bubbles: [], dizzy: null };
+  const texture = bodies[enemy.kind];
   if (enemy.mode === 'defeated') {
-    look.body = flattened(enemy, moments.defeatedAt, tick, reducedMotion);
+    look.body = flattened(enemy, texture, moments.defeatedAt, tick, reducedMotion);
     return look;
   }
-  if (enemy.kind === 'shark') sharkLook(look, enemy, tick, reducedMotion);
-  else if (enemy.kind === 'crab') crabLook(look, enemy, tick, reducedMotion);
-  else eelLook(look, enemy, reducedMotion);
+  if (enemy.kind === 'shark') sharkLook(look, enemy, texture, tick, reducedMotion);
+  else if (enemy.kind === 'crab') crabLook(look, enemy, texture, tick, reducedMotion);
+  else eelLook(look, enemy, texture, reducedMotion);
   if (look.body) squash(look.body, moments.bonkedAt, tick, reducedMotion);
   if (enemy.mode === 'stagger') look.dizzy = dizzyStar(enemy.at, tick, reducedMotion);
   return look;
@@ -150,9 +161,9 @@ export function defeatBurst(at: Vec, pearls: number, age: number, reducedMotion:
   return { ring, pearls: flying };
 }
 
-function sharkLook(look: EnemyLook, enemy: Enemy, tick: number, reducedMotion: boolean): void {
+function sharkLook(look: EnemyLook, enemy: Enemy, texture: string, tick: number, reducedMotion: boolean): void {
   const at = enemy.at;
-  const body = baseBody(Tex.shark, stroke(tick, SHARK_STROKE_TICKS, reducedMotion), at, enemy.facing);
+  const body = baseBody(texture, stroke(tick, SHARK_STROKE_TICKS, reducedMotion), at, enemy.facing);
   if (enemy.mode === 'windup') {
     body.frame = Frame.enemyBite;
     if (reducedMotion) body.tint = TELL_TINT;
@@ -175,10 +186,10 @@ function sharkLook(look: EnemyLook, enemy: Enemy, tick: number, reducedMotion: b
   look.body = body;
 }
 
-function crabLook(look: EnemyLook, enemy: Enemy, tick: number, reducedMotion: boolean): void {
+function crabLook(look: EnemyLook, enemy: Enemy, texture: string, tick: number, reducedMotion: boolean): void {
   const walking = enemy.vel.x !== 0 && !reducedMotion;
   const frame = enemy.mode === 'stagger' ? Frame.enemyStagger : stroke(tick, CRAB_STROKE_TICKS, !walking);
-  const body = baseBody(Tex.crab, frame, enemy.at, enemy.facing);
+  const body = baseBody(texture, frame, enemy.at, enemy.facing);
   body.y += CRAB_FOOT_PX;
   look.body = body;
 }
@@ -187,7 +198,7 @@ function crabLook(look: EnemyLook, enemy: Enemy, tick: number, reducedMotion: bo
  * The eel's hole always, in the wall behind its lunge direction `enemy.out`; eyes and bubbles while
  * it warns (`windup`); head and body while it is out.
  */
-function eelLook(look: EnemyLook, enemy: Enemy, reducedMotion: boolean): void {
+function eelLook(look: EnemyLook, enemy: Enemy, texture: string, reducedMotion: boolean): void {
   const { out } = enemy;
   const home = { x: (enemy.home.x + 0.5) * TILE, y: (enemy.home.y + 0.5) * TILE };
   const mouth = { x: home.x - (out.x * TILE) / 2, y: home.y - (out.y * TILE) / 2 };
@@ -201,7 +212,7 @@ function eelLook(look: EnemyLook, enemy: Enemy, reducedMotion: boolean): void {
   if (enemy.mode !== 'lunge' && enemy.mode !== 'stagger') return;
 
   const rotation = facingRotation(out);
-  const head = baseBody(Tex.eelHead, enemy.mode === 'lunge' ? Frame.b : Frame.a, enemy.at, 1);
+  const head = baseBody(texture, enemy.mode === 'lunge' ? Frame.b : Frame.a, enemy.at, 1);
   head.flipX = out.x < 0;
   head.rotation = rotation;
   look.body = head;
@@ -232,9 +243,14 @@ function warningBubbles(mouth: Vec, out: Vec, modeTicks: number, reducedMotion: 
 }
 
 /** A defeated enemy squashed flat for its first ticks, then gone (at once under reduced motion). */
-function flattened(enemy: Enemy, defeatedAt: number | null, tick: number, reducedMotion: boolean): BodyLook | null {
+function flattened(
+  enemy: Enemy,
+  texture: string,
+  defeatedAt: number | null,
+  tick: number,
+  reducedMotion: boolean,
+): BodyLook | null {
   if (reducedMotion || defeatedAt === null || tick - defeatedAt >= DEFEAT_SQUASH_TICKS) return null;
-  const texture = enemy.kind === 'shark' ? Tex.shark : enemy.kind === 'crab' ? Tex.crab : Tex.eelHead;
   const body = baseBody(texture, Frame.a, enemy.at, enemy.facing);
   body.scaleX = 1 + DEFEAT_FLAT / 2;
   body.scaleY = DEFEAT_FLAT;
@@ -259,7 +275,7 @@ function dizzyStar(at: Vec, tick: number, reducedMotion: boolean): Vec {
   };
 }
 
-function baseBody(texture: TexKey, frame: FrameKey, at: Vec, facing: 1 | -1): BodyLook {
+function baseBody(texture: string, frame: FrameKey, at: Vec, facing: 1 | -1): BodyLook {
   return {
     texture,
     frame,

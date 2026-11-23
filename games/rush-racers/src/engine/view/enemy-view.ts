@@ -6,9 +6,12 @@
  */
 import type { Stamped } from '@arcade/core';
 import Phaser from 'phaser';
-import type { Vec, World } from '../../logic/types.ts';
-import { Frame, type FrameKey, Tex } from '../art/keys.ts';
+import { courseOf } from '../../logic/courses/index.ts';
+import type { EnemyKind, Vec, World } from '../../logic/types.ts';
+import { Frame, type FrameKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import { skinFor } from '../worlds/index.ts';
+import type { ObjectSkin } from '../worlds/object-skin.ts';
 import { BUBBLE_COUNT, defeatBurst, EEL_BODY_PX, type EnemyLook, type EnemyMoments, enemyLook } from './enemy-look.ts';
 import { Layer } from './layers.ts';
 
@@ -35,9 +38,10 @@ interface Burst {
   tick: number;
 }
 
-/** Adds sprites for every enemy in `world` to `scene`. */
+/** Adds sprites for every enemy in `world` to `scene`, drawn with the art of the course's world skin. */
 export function createEnemyView(scene: Phaser.Scene, world: World, reducedMotion: boolean): EnemyView {
-  const sprites = world.enemies.map(() => addEnemySprites(scene));
+  const { objects } = skinFor(courseOf(world));
+  const sprites = world.enemies.map((enemy) => addEnemySprites(scene, objects, enemy.kind));
   const moments: EnemyMoments[] = world.enemies.map(() => ({ bonkedAt: null, defeatedAt: null }));
   const bursts: Burst[] = [];
   const rings: Phaser.GameObjects.Image[] = [];
@@ -68,26 +72,26 @@ export function createEnemyView(scene: Phaser.Scene, world: World, reducedMotion
         const set = sprites[index];
         const moment = moments[index];
         if (!set || !moment) return;
-        showEnemy(set, enemyLook(enemy, moment, next.tick, reducedMotion));
+        showEnemy(set, enemyLook(enemy, moment, next.tick, reducedMotion, objects.enemies.bodies));
       });
-      showBursts(scene, bursts, rings, pearls, next.tick, reducedMotion);
+      showBursts(scene, objects, bursts, rings, pearls, next.tick, reducedMotion);
     },
   };
 }
 
-function addEnemySprites(scene: Phaser.Scene): EnemySprites {
+function addEnemySprites(scene: Phaser.Scene, objects: ObjectSkin, kind: EnemyKind): EnemySprites {
   const mark = (frame: FrameKey, depth: number) =>
-    scene.add.image(0, 0, Tex.enemyMark, frame).setDepth(depth).setVisible(false);
+    scene.add.image(0, 0, objects.enemies.marks, frame).setDepth(depth).setVisible(false);
   return {
     body: scene.add
-      .sprite(0, 0, Tex.shark, Frame.a)
+      .sprite(0, 0, objects.enemies.bodies[kind], Frame.a)
       .setDepth(Layer.objects + 0.3)
       .setVisible(false),
     alert: mark(Frame.markAlert, Layer.racers + 0.6),
     // Over the rock tiles, under everything that swims.
     hole: mark(Frame.markHole, Layer.tiles + 0.5),
     eelBody: scene.add
-      .tileSprite(0, 0, 1, EEL_BODY_PX, Tex.eelBody, Frame.a)
+      .tileSprite(0, 0, 1, EEL_BODY_PX, objects.enemies.eelBody, Frame.a)
       .setDepth(Layer.objects + 0.2)
       .setVisible(false),
     bubbles: Array.from({ length: BUBBLE_COUNT }, () => mark(Frame.markBubble, Layer.objects + 0.1)),
@@ -134,6 +138,7 @@ function place(image: Phaser.GameObjects.Image, at: Vec | null): void {
 /** Draws every burst still playing from the pools, growing them only past their largest ever, and drops finished ones. */
 function showBursts(
   scene: Phaser.Scene,
+  objects: ObjectSkin,
   bursts: Burst[],
   rings: Phaser.GameObjects.Image[],
   pearls: Phaser.GameObjects.Image[],
@@ -150,7 +155,7 @@ function showBursts(
       continue;
     }
     if (look.ring) {
-      rings[ringCount] ??= scene.add.image(0, 0, Tex.enemyMark, Frame.markPop).setDepth(Layer.racers + 0.5);
+      rings[ringCount] ??= scene.add.image(0, 0, objects.enemies.marks, Frame.markPop).setDepth(Layer.racers + 0.5);
       rings[ringCount]
         ?.setVisible(true)
         .setPosition(look.ring.x, look.ring.y)
@@ -159,7 +164,7 @@ function showBursts(
       ringCount++;
     }
     for (const pearl of look.pearls) {
-      pearls[pearlCount] ??= scene.add.image(0, 0, Tex.pearl, Frame.a).setDepth(Layer.racers + 0.5);
+      pearls[pearlCount] ??= scene.add.image(0, 0, objects.pickups.pearl, Frame.a).setDepth(Layer.racers + 0.5);
       pearls[pearlCount]?.setVisible(true).setPosition(pearl.x, pearl.y).setAlpha(pearl.alpha);
       pearlCount++;
     }

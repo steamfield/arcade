@@ -5,9 +5,10 @@
  * other two to its right in the safe column, so nothing enters the d-pad zone (x < 108, y 76+) or
  * the A/B zone (x 228+, y 118+).
  */
-import { Frame, Tex } from '../../art/keys.ts';
-import { IconFrame, type IconFrameKey } from '../../art/ui/keys.ts';
+import { Frame } from '../../art/keys.ts';
+import { IconFrame } from '../../art/ui/keys.ts';
 import { measureText, TEXT_FACE } from '../../art/ui/typeface.ts';
+import type { ArtRef } from '../../worlds/art-ref.ts';
 import { easeOut, type PageBuilder, type PageKit, stroke } from './kit.ts';
 
 /** Scene centres: the wide scenes across the top, the narrow ones under them in the safe column. */
@@ -36,22 +37,24 @@ function wave(tick: number, period: number): number {
 }
 
 /** The icon and name under a scene, centred on `x` as one group. */
-function addCaption(kit: PageKit, x: number, centreY: number, icon: IconFrameKey, name: string): void {
+function addCaption(kit: PageKit, x: number, centreY: number, icon: ArtRef, name: string): void {
   const nameWidth = measureText(TEXT_FACE, name).width;
   const left = Math.round(x - (ICON_PX + CAPTION_ICON_GAP + nameWidth) / 2);
-  kit.icon(left + ICON_PX / 2, centreY, icon);
+  kit.sprite(left + ICON_PX / 2, centreY, icon.texture, icon.frame);
   kit.words(left + ICON_PX + CAPTION_ICON_GAP + nameWidth / 2, centreY, name);
 }
 
 export const buildAttacksPage: PageBuilder = (kit) => {
-  addCaption(kit, SQUID_AT.x, SQUID_AT.y + CAPTION_DY, IconFrame.homingSquid, 'SQUID');
-  addCaption(kit, RIPTIDE_AT.x, RIPTIDE_AT.y + CAPTION_DY, IconFrame.riptide, 'RIPTIDE');
-  addCaption(kit, UNDERTOW_AT.x, UNDERTOW_AT.y + CAPTION_DY, IconFrame.undertow, 'UNDERTOW');
-  addCaption(kit, MIMIC_AT.x, MIMIC_AT.y + CAPTION_DY, IconFrame.mimic, 'MIMIC');
+  const { attack, itemIcons, text } = kit.skin.objects;
+  const { attackCaptions } = text;
+  addCaption(kit, SQUID_AT.x, SQUID_AT.y + CAPTION_DY, itemIcons.homingSquid, attackCaptions.homingSquid);
+  addCaption(kit, RIPTIDE_AT.x, RIPTIDE_AT.y + CAPTION_DY, itemIcons.riptide, attackCaptions.riptide);
+  addCaption(kit, UNDERTOW_AT.x, UNDERTOW_AT.y + CAPTION_DY, itemIcons.undertow, attackCaptions.undertow);
+  addCaption(kit, MIMIC_AT.x, MIMIC_AT.y + CAPTION_DY, itemIcons.mimic, attackCaptions.mimic);
 
   // Squid: it follows a racer that keeps ahead of it.
   const chased = kit.sprite(SQUID_AT.x + 22, SQUID_AT.y, kit.racer, Frame.a, 2);
-  const chaser = kit.sprite(SQUID_AT.x - 24, SQUID_AT.y, Tex.squid, Frame.a, 2);
+  const chaser = kit.sprite(SQUID_AT.x - 24, SQUID_AT.y, attack.homer, Frame.a, 2);
 
   // Riptide: a green lane with streaks, and a racer riding it.
   kit.bar(RIPTIDE_AT.x, RIPTIDE_AT.y, LANE.w, LANE.h, LANE_WASH).setAlpha(LANE_ALPHA);
@@ -60,18 +63,18 @@ export const buildAttacksPage: PageBuilder = (kit) => {
     RIPTIDE_AT.y - LANE.h / 2,
     LANE.w,
     LANE.h,
-    Tex.riptideStreak,
+    attack.riptideStreak,
     Frame.a,
   );
   const rider = kit.sprite(RIPTIDE_AT.x, RIPTIDE_AT.y, kit.racer, Frame.a, 2);
 
   // Undertow: a racer slides back with violet lines behind it.
   const pulled = kit.sprite(UNDERTOW_AT.x, UNDERTOW_AT.y, kit.racer, Frame.a, 2);
-  const pullLines = kit.sprite(UNDERTOW_AT.x - PULL_LINE_BEHIND, UNDERTOW_AT.y, Tex.undertowStreak, Frame.a);
+  const pullLines = kit.sprite(UNDERTOW_AT.x - PULL_LINE_BEHIND, UNDERTOW_AT.y, attack.undertowStreak, Frame.a);
 
   // Mimic: the squid heads for the see-through copy, an arrow says so, and the real racer swims off the other way.
   const decoy = kit.sprite(MIMIC_AT.x + 20, MIMIC_AT.y, kit.racer, Frame.a, 2).setTint(DECOY_TINT);
-  const hunter = kit.sprite(MIMIC_AT.x - 24, MIMIC_AT.y, Tex.squid, Frame.a, 2);
+  const hunter = kit.sprite(MIMIC_AT.x - 24, MIMIC_AT.y, attack.homer, Frame.a, 2);
   kit.icon(MIMIC_AT.x - 1, MIMIC_AT.y, IconFrame.arrowUp).setAngle(90);
   const real = kit.sprite(MIMIC_AT.x - 18, MIMIC_AT.y + 13, kit.racer, Frame.a).setFlipX(true);
 

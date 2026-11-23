@@ -7,9 +7,9 @@
  */
 import type Phaser from 'phaser';
 import type { PowerUpKind } from '../../logic/types.ts';
-import { UiTex } from '../art/ui/keys.ts';
 import { fireButton } from '../touch.ts';
-import { POWER_UP_ICON } from './hud-well.ts';
+import type { ArtRef } from '../worlds/art-ref.ts';
+import type { ObjectSkin } from '../worlds/object-skin.ts';
 
 /** The A button's icon; `sync` follows the player's selected item and `destroy` restores the button. */
 export interface FireButtonIcon {
@@ -24,8 +24,11 @@ const ICON_CSS_PX = 36;
 /** A button that does nothing, for screens without touch controls. */
 const NO_ICON: FireButtonIcon = { sync() {}, destroy() {} };
 
-/** Adds the icon to the A button if the touch controls are up; the returned icon is inert otherwise. */
-export function createFireButtonIcon(scene: Phaser.Scene): FireButtonIcon {
+/**
+ * Adds the icon to the A button if the touch controls are up, cut from `itemIcons`; the returned
+ * icon is inert otherwise.
+ */
+export function createFireButtonIcon(scene: Phaser.Scene, itemIcons: ObjectSkin['itemIcons']): FireButtonIcon {
   const button = fireButton();
   if (!button) return NO_ICON;
   const urls = new Map<PowerUpKind, string>();
@@ -37,7 +40,7 @@ export function createFireButtonIcon(scene: Phaser.Scene): FireButtonIcon {
   const show = (kind: PowerUpKind) => {
     let url = urls.get(kind);
     if (url === undefined) {
-      url = iconUrl(scene, kind);
+      url = iconUrl(scene, itemIcons[kind]);
       urls.set(kind, url);
     }
     image.src = url;
@@ -70,9 +73,9 @@ function toCssName(property: string): string {
   return property.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
-/** `kind`'s HUD icon as a PNG data URL, cut out of the icon sheet at its own size. */
-function iconUrl(scene: Phaser.Scene, kind: PowerUpKind): string {
-  const frame = scene.textures.getFrame(UiTex.icons, POWER_UP_ICON[kind]);
+/** The HUD icon `icon` as a PNG data URL, cut out of its sheet at its own size. */
+function iconUrl(scene: Phaser.Scene, icon: ArtRef): string {
+  const frame = scene.textures.getFrame(icon.texture, icon.frame);
   const canvas = document.createElement('canvas');
   canvas.width = frame.cutWidth;
   canvas.height = frame.cutHeight;

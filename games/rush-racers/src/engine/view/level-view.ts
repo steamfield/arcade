@@ -9,9 +9,11 @@ import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
 import type { Level } from '../../logic/types.ts';
 import { TILE, type Vec } from '../../logic/types.ts';
-import { Frame, type FrameKey, Tex, type TexKey } from '../art/keys.ts';
+import { Frame, type FrameKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { HazardSkin, TerrainArt, Theme } from '../themes/types.ts';
+import type { ObjectSkin } from '../worlds/object-skin.ts';
+import type { WorldSkin } from '../worlds/types.ts';
 import { addHazardSprite } from './hazard-view.ts';
 import { Layer } from './layers.ts';
 import { type Legend, tileAt } from './terrain-tile.ts';
@@ -34,16 +36,22 @@ export interface LevelView {
 const TILESET_NAME = 'reef';
 
 /**
- * Builds every course object for `level` in `scene`, drawn with `theme`. `legend` is the course's
- * own glyph legend, so its glyphs can draw with their own art.
+ * Builds every course object for `level` in `scene`, drawn with `theme` and the world's `skin`
+ * (its pearl and clam stand-ins). `legend` is the course's own glyph legend, so its glyphs can draw with their own art.
  *
  * @throws {Error} When Phaser rejects the generated tileset or layer, which means the theme's textures were not registered.
  */
-export function createLevelView(scene: Phaser.Scene, level: Level, theme: Theme, legend: Legend = {}): LevelView {
+export function createLevelView(
+  scene: Phaser.Scene,
+  level: Level,
+  theme: Theme,
+  skin: WorldSkin,
+  legend: Legend = {},
+): LevelView {
   const layer = createTileLayer(scene, level, theme.terrain, legend);
   addFlowingCells(scene, level, theme.terrain);
   addFinishGate(scene, level, theme.terrain);
-  const placeholders = addPlaceholders(scene, level, theme.hazards);
+  const placeholders = addPlaceholders(scene, level, theme.hazards, skin.objects.pickups);
   return {
     placeholders,
     onEvents(events) {
@@ -97,14 +105,19 @@ function addFinishGate(scene: Phaser.Scene, level: Level, terrain: TerrainArt): 
   });
 }
 
-function addPlaceholders(scene: Phaser.Scene, level: Level, hazards: Theme['hazards']): LevelPlaceholders {
-  const imagesAt = (tiles: Vec[], texture: TexKey, frame?: FrameKey) =>
+function addPlaceholders(
+  scene: Phaser.Scene,
+  level: Level,
+  hazards: Theme['hazards'],
+  pickups: ObjectSkin['pickups'],
+): LevelPlaceholders {
+  const imagesAt = (tiles: Vec[], texture: string, frame?: FrameKey) =>
     tiles.map((tile) => scene.add.image(centre(tile.x), centre(tile.y), texture, frame).setDepth(Layer.objects));
   const hazardsAt = (tiles: Vec[], skin: HazardSkin) =>
     tiles.map((tile) => addHazardSprite(scene, centre(tile.x), centre(tile.y), skin));
   return {
-    pearls: imagesAt(level.pearls, Tex.pearl),
-    clams: imagesAt(level.clams, Tex.clam, Frame.clamClosed),
+    pearls: imagesAt(level.pearls, pickups.pearl),
+    clams: imagesAt(level.clams, pickups.clam, Frame.clamClosed),
     urchins: hazardsAt(level.urchins, hazards.urchin),
     jellies: hazardsAt(level.jellies, hazards.jelly),
   };

@@ -6,9 +6,10 @@
  */
 import type Phaser from 'phaser';
 import { type Level, TILE, type World } from '../../logic/types.ts';
-import { Frame, Tex } from '../art/keys.ts';
+import { Frame } from '../art/keys.ts';
+import type { ObjectSkin } from '../worlds/object-skin.ts';
+import type { WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
-import { POWER_UP_TEX } from './powerup-view.ts';
 
 /** The course's pickups; `sync` redraws them from the world. */
 export interface PickupView {
@@ -28,13 +29,23 @@ interface LooseSprite {
   icon: Phaser.GameObjects.Image;
 }
 
-/** Adds clam, pearl and loose-pickup sprites for `level` to `scene`. Under `reducedMotion` loose pickups sit still and glow steadily. */
-export function createPickupView(scene: Phaser.Scene, level: Level, reducedMotion: boolean): PickupView {
+/**
+ * Adds clam, pearl and loose-pickup sprites for `level` to `scene`, drawn with `skin`. Under
+ * `reducedMotion` loose pickups sit still and glow steadily.
+ */
+export function createPickupView(
+  scene: Phaser.Scene,
+  level: Level,
+  skin: WorldSkin,
+  reducedMotion: boolean,
+): PickupView {
+  const { objects } = skin;
+  const { pickups: pickupArt, itemTextures } = objects;
   const clams = level.clams.map((tile) =>
-    scene.add.image(centre(tile.x), centre(tile.y), Tex.clam, Frame.clamOpen).setDepth(Layer.objects),
+    scene.add.image(centre(tile.x), centre(tile.y), pickupArt.clam, Frame.clamOpen).setDepth(Layer.objects),
   );
   const pearls = level.pearls.map((tile) =>
-    scene.add.image(centre(tile.x), centre(tile.y), Tex.pearl, Frame.a).setDepth(Layer.objects),
+    scene.add.image(centre(tile.x), centre(tile.y), pickupArt.pearl, Frame.a).setDepth(Layer.objects),
   );
   const loose: LooseSprite[] = [];
   const loosePearls: Phaser.GameObjects.Image[] = [];
@@ -48,12 +59,12 @@ export function createPickupView(scene: Phaser.Scene, level: Level, reducedMotio
         pearl.setVisible(!world.pearlsTaken.has(index));
       });
       world.loose.forEach((pickup, index) => {
-        loose[index] ??= addLooseSprite(scene);
-        showLoose(loose[index], pickup, tick, reducedMotion);
+        loose[index] ??= addLooseSprite(scene, objects);
+        showLoose(loose[index], pickup, itemTextures, tick, reducedMotion);
       });
       for (let index = world.loose.length; index < loose.length; index++) hideLoose(loose[index] as LooseSprite);
       world.loosePearls.forEach((pearl, index) => {
-        loosePearls[index] ??= scene.add.image(0, 0, Tex.pearl, Frame.a).setDepth(Layer.objects);
+        loosePearls[index] ??= scene.add.image(0, 0, pickupArt.pearl, Frame.a).setDepth(Layer.objects);
         loosePearls[index].setPosition(Math.round(pearl.at.x), Math.round(pearl.at.y)).setVisible(true);
       });
       for (let index = world.loosePearls.length; index < loosePearls.length; index++)
@@ -62,16 +73,18 @@ export function createPickupView(scene: Phaser.Scene, level: Level, reducedMotio
   };
 }
 
-function addLooseSprite(scene: Phaser.Scene): LooseSprite {
+function addLooseSprite(scene: Phaser.Scene, objects: ObjectSkin): LooseSprite {
   return {
-    glow: scene.add.image(0, 0, Tex.looseGlow, Frame.a).setDepth(Layer.objects),
-    icon: scene.add.image(0, 0, Tex.jetFin, Frame.a).setDepth(Layer.objects),
+    glow: scene.add.image(0, 0, objects.attack.looseGlow, Frame.a).setDepth(Layer.objects),
+    // Any item texture will do: `showLoose` sets the real one before the sprite is shown.
+    icon: scene.add.image(0, 0, objects.itemTextures.jetFin, Frame.a).setDepth(Layer.objects),
   };
 }
 
 function showLoose(
   { glow, icon }: LooseSprite,
   pickup: World['loose'][number],
+  itemTextures: ObjectSkin['itemTextures'],
   tick: number,
   reducedMotion: boolean,
 ): void {
@@ -81,7 +94,7 @@ function showLoose(
   const y = Math.round(pickup.y) + bob;
   const blinkedOut = pickup.ttl < BLINK_TICKS && pickup.ttl % BLINK_PERIOD < BLINK_PERIOD / 2;
   const alpha = pickup.grabDelay > 0 ? UNGRABBABLE_ALPHA : 1;
-  icon.setTexture(POWER_UP_TEX[pickup.kind], Frame.a).setPosition(x, y).setAlpha(alpha).setVisible(!blinkedOut);
+  icon.setTexture(itemTextures[pickup.kind], Frame.a).setPosition(x, y).setAlpha(alpha).setVisible(!blinkedOut);
   glow
     .setPosition(x, y)
     .setScale(LOOSE_GLOW_SCALE)

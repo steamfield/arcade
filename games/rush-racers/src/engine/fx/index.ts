@@ -11,10 +11,12 @@
  */
 import { createRng, type Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
+import { courseOf } from '../../logic/courses/index.ts';
 import type { World } from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { Theme } from '../themes/types.ts';
 import { Layer } from '../view/layers.ts';
+import { skinFor } from '../worlds/index.ts';
 import { createBubbleTracker } from './bubble-tracker.ts';
 import { createBursts } from './bursts.ts';
 import { createCameraNudge } from './camera-nudge.ts';
@@ -51,7 +53,14 @@ export function createFx(scene: Phaser.Scene, world: World, theme: Theme, reduce
     createParticleLayer(scene, back, Layer.racers - 0.75),
     createParticleLayer(scene, front, Layer.player + 0.75),
   ];
-  const bursts = createBursts(back, front, createRng(COSMETIC_SEED), theme, reducedMotion);
+  const bursts = createBursts(
+    back,
+    front,
+    createRng(COSMETIC_SEED),
+    theme,
+    reducedMotion,
+    skinFor(courseOf(world)).objects.itemTextures,
+  );
   const trail = trailFor(theme, world.racers.length, reducedMotion);
   const shake = createShake();
   const nudge = createCameraNudge(scene.cameras.main);

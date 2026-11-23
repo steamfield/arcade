@@ -6,11 +6,9 @@
 import { CHARGES } from '../../../logic/powerups/charges.ts';
 
 import type { PowerUpKind } from '../../../logic/types.ts';
-import { Frame, Tex } from '../../art/keys.ts';
+import { Frame } from '../../art/keys.ts';
 import { IconFrame } from '../../art/ui/keys.ts';
 import { UiRamp } from '../../art/ui/palette.ts';
-import { POWER_UP_ICON } from '../hud-well.ts';
-import { POWER_UP_TEX } from '../powerup-view.ts';
 import { easeOut, type PageBuilder, stroke } from './kit.ts';
 
 /** What the clam hands out, in the order the well fills. */
@@ -30,11 +28,12 @@ const CLAM_SHUT_TICKS = 30;
 const FLY_TICKS = 20;
 
 export const buildClamsPage: PageBuilder = (kit) => {
+  const { itemIcons, itemTextures, pickups } = kit.skin.objects;
   const racer = kit.sprite(TOP_ROW.racerX, TOP_ROW.centreY, kit.racer, Frame.a, 2);
   kit.icon(TOP_ROW.racerX + 40, TOP_ROW.centreY, IconFrame.arrowUp).setAngle(90);
-  const clam = kit.sprite(TOP_ROW.clamX, TOP_ROW.centreY, Tex.clam, Frame.clamOpen, 2);
+  const clam = kit.sprite(TOP_ROW.clamX, TOP_ROW.centreY, pickups.clam, Frame.clamOpen, 2);
   kit.icon(TOP_ROW.clamX + 40, TOP_ROW.centreY, IconFrame.arrowUp).setAngle(90);
-  const item = kit.sprite(TOP_ROW.itemX, TOP_ROW.centreY, Tex.jetFin, Frame.a, 2);
+  const item = kit.sprite(TOP_ROW.itemX, TOP_ROW.centreY, itemTextures.jetFin, Frame.a, 2);
 
   kit.words(WELL.x + WELL.w / 2, WELL_TITLE_TOP, 'HOLD 3', { size: 'display', tone: 'sun' });
   kit.well(WELL.x, WELL.y, WELL.w, WELL.h);
@@ -42,7 +41,7 @@ export const buildClamsPage: PageBuilder = (kit) => {
     const x = WELL.slotX + index * WELL.pitch;
     return {
       socket: kit.bar(x, WELL.centreY, 5, 5, UiRamp.dim),
-      icon: kit.icon(x, WELL.centreY, IconFrame.jetFin, 2),
+      icon: kit.sprite(x, WELL.centreY, itemIcons.jetFin.texture, itemIcons.jetFin.frame, 2),
       charges: kit.words(x + DIGIT.right, WELL.centreY + DIGIT.top, '', { align: 'right', scale: 2 }),
     };
   });
@@ -59,7 +58,7 @@ export const buildClamsPage: PageBuilder = (kit) => {
     const flown = reducedMotion ? 0 : easeOut((t - (ROUND_TICKS - FLY_TICKS)) / FLY_TICKS);
     const slotX = WELL.slotX + popping * WELL.pitch;
     item
-      .setTexture(POWER_UP_TEX[kind], Frame.a)
+      .setTexture(itemTextures[kind], Frame.a)
       .setVisible(shown)
       .setPosition(
         Math.round(TOP_ROW.itemX + (slotX - TOP_ROW.itemX) * flown),
@@ -69,7 +68,7 @@ export const buildClamsPage: PageBuilder = (kit) => {
     const held = reducedMotion ? KINDS.length : round;
     slots.forEach((slot, index) => {
       const slotKind = KINDS[index] ?? 'jetFin';
-      slot.icon.setFrame(POWER_UP_ICON[slotKind]).setVisible(index < held);
+      slot.icon.setTexture(itemIcons[slotKind].texture, itemIcons[slotKind].frame).setVisible(index < held);
       slot.socket.setVisible(index >= held);
       slot.charges.setText(String(CHARGES[slotKind])).setVisible(index < held);
     });

@@ -5,6 +5,7 @@ import type { GameEvent } from '../../logic/events.ts';
 import { createWorld } from '../../logic/world.ts';
 import { OCEAN_THEME } from '../themes/ocean.ts';
 import type { Theme } from '../themes/types.ts';
+import { REEF_OBJECTS } from '../worlds/reef/objects.ts';
 import { createBursts } from './bursts.ts';
 import { createParticleField } from './particles.ts';
 import { trailFor } from './trail.ts';
@@ -17,7 +18,7 @@ function trailAfter(theme: Theme, ticks: number) {
   const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1 });
   for (const racer of world.racers) racer.body.vx = 240;
   const back = createParticleField(64);
-  const bursts = createBursts(back, createParticleField(8), createRng(1), theme, false);
+  const bursts = createBursts(back, createParticleField(8), createRng(1), theme, false, REEF_OBJECTS.itemTextures);
   const trail = trailFor(theme, world.racers.length, false);
   for (let tick = 0; tick < ticks; tick++) trail?.step(world, bursts);
   return { shed: back.particles.filter((particle) => particle.live), racers: world.racers.length };

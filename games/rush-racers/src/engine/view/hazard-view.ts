@@ -7,8 +7,9 @@
 import type Phaser from 'phaser';
 import { JELLY } from '../../logic/hazards/tuning.ts';
 import { type Level, RACER_IDS, TILE, type World } from '../../logic/types.ts';
-import { Frame, Tex } from '../art/keys.ts';
+import { Frame } from '../art/keys.ts';
 import type { HazardSkin, Theme } from '../themes/types.ts';
+import type { WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
 
 /** The course's hazards; `sync` redraws them from the world. */
@@ -29,21 +30,23 @@ const TRAP_WOBBLE_PERIOD_TICKS = 24;
 
 /**
  * Adds urchin and jelly sprites for `level` in the skins of `hazards` (the course theme's), and the
- * pools for transient hazards, to `scene`.
+ * pools for transient hazards (ink and bubbles drawn with `skin`'s attack art), to `scene`.
  */
 export function createHazardView(
   scene: Phaser.Scene,
   level: Level,
   hazards: Theme['hazards'],
+  skin: WorldSkin,
   reducedMotion: boolean,
 ): HazardView {
+  const { inkCloud, bubble: bubbleTexture } = skin.objects.attack;
   for (const tile of level.urchins) addHazardSprite(scene, centre(tile.x), centre(tile.y), hazards.urchin);
   const jellies = level.jellies.map((tile) => addHazardSprite(scene, centre(tile.x), centre(tile.y), hazards.jelly));
   const inks: Phaser.GameObjects.Image[] = [];
   const bubbles: Phaser.GameObjects.Image[] = [];
   const trapBubbles = RACER_IDS.map(() =>
     scene.add
-      .image(0, 0, Tex.bubble, Frame.a)
+      .image(0, 0, bubbleTexture, Frame.a)
       .setDepth(Layer.player + 0.5)
       .setScale(TRAP_BUBBLE_SCALE)
       .setVisible(false),
@@ -60,7 +63,7 @@ export function createHazardView(
         else sprite.clearTint().anims.resume();
       });
       world.inks.forEach((ink, index) => {
-        inks[index] ??= scene.add.image(0, 0, Tex.inkCloud, Frame.a).setDepth(Layer.objects);
+        inks[index] ??= scene.add.image(0, 0, inkCloud, Frame.a).setDepth(Layer.objects);
         const fade = Math.min(1, ink.ttl / INK_FADE_TICKS);
         inks[index]
           .setPosition(Math.round(ink.x), Math.round(ink.y))
@@ -70,7 +73,7 @@ export function createHazardView(
       });
       hideFrom(inks, world.inks.length);
       world.bubbles.forEach((bubble, index) => {
-        bubbles[index] ??= scene.add.image(0, 0, Tex.bubble, Frame.a).setDepth(Layer.player + 0.5);
+        bubbles[index] ??= scene.add.image(0, 0, bubbleTexture, Frame.a).setDepth(Layer.player + 0.5);
         bubbles[index].setPosition(Math.round(bubble.x), Math.round(bubble.y)).setScale(1.2).setVisible(true);
       });
       hideFrom(bubbles, world.bubbles.length);

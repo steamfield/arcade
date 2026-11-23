@@ -10,7 +10,7 @@ import type { Rng } from '@arcade/core';
 import type { PowerUpKind } from '../../logic/types.ts';
 import { Frame } from '../art/keys.ts';
 import type { ParticleMotion, Theme, TrailLook } from '../themes/types.ts';
-import { POWER_UP_TEX } from '../view/powerup-view.ts';
+import type { ObjectSkin } from '../worlds/object-skin.ts';
 import type { Particle, ParticleField } from './particles.ts';
 import { FX_TEXTURE, FxFrame } from './textures.ts';
 
@@ -113,7 +113,8 @@ const ICON_RISE_FROM = 12;
 /**
  * Builds the recipes for a race drawn in `theme`. `back` draws behind the racers (trails, kick
  * puffs and coral debris, which would otherwise bury a racer smashing a gate), `front` above them
- * (everything else that marks an event).
+ * (everything else that marks an event). A popped power-up icon is `itemTextures`' sprite for its
+ * kind, from the world skin.
  */
 export function createBursts(
   back: ParticleField,
@@ -121,6 +122,7 @@ export function createBursts(
   rng: Rng,
   theme: Pick<Theme, 'particles' | 'terrain'>,
   reducedMotion: boolean,
+  itemTextures: ObjectSkin['itemTextures'],
 ): Bursts {
   const styles = stylesFor(theme);
   const jitter = (spread: number) => (rng.next() * 2 - 1) * spread;
@@ -183,7 +185,7 @@ export function createBursts(
       ring(front, x, y, reducedMotion ? PEARL_STILL : PEARL);
     },
     pickupPop(x, y, kind) {
-      const icon = front.spawn(x, y - ICON_RISE_FROM, 34, POWER_UP_TEX[kind], Frame.a);
+      const icon = front.spawn(x, y - ICON_RISE_FROM, 34, itemTextures[kind], Frame.a);
       icon.vy = reducedMotion ? 0 : -0.9;
       applyStyle(icon, styles.icon, rng);
       if (!reducedMotion) ring(front, x, y - ICON_RISE_FROM, PICKUP);

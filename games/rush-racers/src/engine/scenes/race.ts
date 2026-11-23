@@ -64,18 +64,19 @@ export class RaceScene extends Phaser.Scene {
     const course = courseOf(world);
     const theme = themeFor(course);
     const backdrop = createBackdrop(this, world.level, theme, this.rt.settings);
-    const level = createLevelView(this, world.level, theme, course.level.legend);
+    const skin = skinFor(course);
+    const level = createLevelView(this, world.level, theme, skin, course.level.legend);
     // The pickup and hazard views draw the course objects from world state, so the level's inert stand-ins go.
     for (const stand of Object.values(level.placeholders).flat()) stand.destroy();
     const { reducedMotion } = this.rt.settings;
-    const pickups = createPickupView(this, world.level, reducedMotion);
-    const hazards = createHazardView(this, world.level, theme.hazards, reducedMotion);
+    const pickups = createPickupView(this, world.level, skin, reducedMotion);
+    const hazards = createHazardView(this, world.level, theme.hazards, skin, reducedMotion);
     const enemies = createEnemyView(this, world, reducedMotion);
-    const attacks = createAttackView(this, reducedMotion);
+    const attacks = createAttackView(this, skin, reducedMotion);
     const racers = world.racers.map((racer) => ({
       racer,
-      view: createRacerView(this, racer, reducedMotion, skinFor(course).cast),
-      effects: createPowerupView(this, racer.id, reducedMotion),
+      view: createRacerView(this, racer, reducedMotion, skin.cast),
+      effects: createPowerupView(this, racer.id, skin, reducedMotion),
     }));
     const themeLayers = theme.extraLayers(this, world);
     const dark = createDarkView(this, world, theme.dark, reducedMotion);
@@ -89,7 +90,7 @@ export class RaceScene extends Phaser.Scene {
       layout,
     );
     const guide = createGuideView(this, reducedMotion, layout);
-    const fireIcon = createFireButtonIcon(this);
+    const fireIcon = createFireButtonIcon(this, skin.objects.itemIcons);
     const fx = createFx(this, world, theme, reducedMotion);
     const camera = followRacer(this.cameras.main, playerOf(world).body, world.level);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;

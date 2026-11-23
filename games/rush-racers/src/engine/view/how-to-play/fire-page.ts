@@ -10,8 +10,6 @@ import type { PowerUpKind } from '../../../logic/types.ts';
 import { Frame } from '../../art/keys.ts';
 import { IconFrame } from '../../art/ui/keys.ts';
 import { UiColour } from '../../art/ui/palette.ts';
-import { POWER_UP_ICON } from '../hud-well.ts';
-import { POWER_UP_TEX } from '../powerup-view.ts';
 import { easeOut, type PageBuilder, stroke } from './kit.ts';
 
 /** The three held items, fired one per shot from left to right. */
@@ -45,9 +43,12 @@ const PRESS_TICKS = 12;
 const CAPTION_TOP = 122;
 
 export const buildFirePage: PageBuilder = (kit) => {
+  const { itemIcons, itemTextures } = kit.skin.objects;
   kit.well(WELL.x, WELL.y, WELL.w, WELL.h);
   const slotX = (index: number) => WELL.slotX + index * WELL.pitch;
-  for (const [index, kind] of HELD.entries()) kit.icon(slotX(index), ROW_Y, POWER_UP_ICON[kind], 2);
+  for (const [index, kind] of HELD.entries()) {
+    kit.sprite(slotX(index), ROW_Y, itemIcons[kind].texture, itemIcons[kind].frame, 2);
+  }
   const digits = HELD.map((_, index) =>
     kit.words(slotX(index) + DIGIT.right, ROW_Y + DIGIT.top, '', { align: 'right', scale: 2 }),
   );
@@ -58,7 +59,7 @@ export const buildFirePage: PageBuilder = (kit) => {
   kit.icon(ARROW_X, ROW_Y, IconFrame.arrowUp).setAngle(90);
   const starburst = kit.icon(RACER_X, ROW_Y, IconFrame.fire, STARBURST_SCALE);
   const racer = kit.sprite(RACER_X, ROW_Y, kit.racer, Frame.a, 2);
-  const effects = HELD.map((kind) => kit.sprite(RACER_X, ROW_Y, POWER_UP_TEX[kind], Frame.a, 2));
+  const effects = HELD.map((kind) => kit.sprite(RACER_X, ROW_Y, itemTextures[kind], Frame.a, 2));
   const trail = Array.from({ length: TRAIL_DOTS }, () => kit.bar(0, 0, 2, 2, UiColour.foam));
   const swap = kit.action('next', 2);
   swap.setPosition(SWAP_ROW.glyphX, SWAP_ROW.centreY - swap.height / 2);

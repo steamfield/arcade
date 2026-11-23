@@ -20,9 +20,12 @@ import { buildPearlsPage } from './pearls-page.ts';
 
 export type { Page } from './kit.ts';
 
-/** A page's heading (at most four short words, naming the fire control as the player's screen does) and builder. */
+/**
+ * A page's heading (at most four short words, naming the fire control as the player's screen does,
+ * and the world's own words for clams and pearls) and builder.
+ */
 interface PageSpec {
-  heading: (touch: boolean) => string;
+  heading: (touch: boolean, skin: WorldSkin) => string;
   build: PageBuilder;
 }
 
@@ -42,9 +45,9 @@ const FALLBACK_MEDIUM: ShippedMediumId = 'swim';
 
 /** The pages after the move page, the same in every medium. */
 const SHARED_PAGES: readonly PageSpec[] = [
-  { heading: () => 'OPEN CLAMS', build: buildClamsPage },
+  { heading: (_touch, skin) => skin.objects.text.cratesHeading, build: buildClamsPage },
   { heading: (touch) => `${controlName('fire', touch)} FIRES ONE`, build: buildFirePage },
-  { heading: () => 'GRAB PEARLS', build: buildPearlsPage },
+  { heading: (_touch, skin) => skin.objects.text.pearlsHeading, build: buildPearlsPage },
   { heading: () => 'DASH TO BONK', build: buildEnemiesPage },
   { heading: () => 'ATTACKS', build: buildAttacksPage },
   { heading: () => 'DASH TO DODGE', build: buildDodgePage },
@@ -76,5 +79,5 @@ export function createPages(
   if (pages.length !== HOW_TO_PLAY_PAGES) {
     throw new Error(`How to Play has ${pages.length} pages built but paging expects ${HOW_TO_PLAY_PAGES}`);
   }
-  return pages.map(({ heading, build }) => createPage(scene, touch, character, skin, heading(touch), build));
+  return pages.map(({ heading, build }) => createPage(scene, touch, character, skin, heading(touch, skin), build));
 }
