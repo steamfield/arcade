@@ -4,10 +4,10 @@
  * online flow feeds it presses; `scenes/room.ts` draws it beside the list of players.
  */
 
-import type { CharacterId } from '../../logic/types.ts';
+import { CHARACTER_IDS, type CharacterId } from '../../logic/types.ts';
 import type { LobbyView } from '../../net/lobby.ts';
-import type { OnlineDifficulty } from '../../net/messages.ts';
-import type { ScreenPress } from './friends-screen.ts';
+import { ONLINE_DIFFICULTIES, type OnlineDifficulty } from '../../net/messages.ts';
+import { type ScreenPress, wrapIndex } from './friends-screen.ts';
 
 /** A row of the room screen. */
 export type RoomRow = 'Character' | 'Course' | 'Level' | 'Start' | 'Copy link' | 'Leave';
@@ -26,14 +26,17 @@ export type RoomAction =
   | { kind: 'copy' }
   | { kind: 'leave' };
 
+const HOST_ROWS: readonly RoomRow[] = ['Character', 'Course', 'Level', 'Start', 'Copy link', 'Leave'];
+const GUEST_ROWS: readonly RoomRow[] = ['Character', 'Copy link', 'Leave'];
+
 /** The screen as it opens, with the cursor on Character. */
 export function createRoomScreen(): RoomScreen {
-  throw new Error('not implemented');
+  return { row: 0 };
 }
 
 /** The rows `lobby` offers this peer, top to bottom: the host's has Course, Level and Start after Character. */
-export function roomRows(_lobby: LobbyView): readonly RoomRow[] {
-  throw new Error('not implemented');
+export function roomRows(lobby: LobbyView): readonly RoomRow[] {
+  return lobby.you !== null && lobby.you === lobby.host ? HOST_ROWS : GUEST_ROWS;
 }
 
 /**
@@ -48,11 +51,58 @@ export function roomRows(_lobby: LobbyView): readonly RoomRow[] {
  * @param courses - The ids of the courses a host may choose, in menu order.
  */
 export function pressRoom(
-  _screen: RoomScreen,
-  _lobby: LobbyView,
-  _character: CharacterId,
-  _courses: readonly string[],
-  _press: ScreenPress,
+  screen: RoomScreen,
+  lobby: LobbyView,
+  character: CharacterId,
+  courses: readonly string[],
+  press: ScreenPress,
 ): RoomAction | null {
-  throw new Error('not implemented');
+  const rows = roomRows(lobby);
+  screen.row = Math.min(Math.max(0, screen.row), rows.length - 1);
+  const row = rows[screen.row] as RoomRow;
+  switch (press) {
+    case 'up':
+    case 'down':
+      screen.row = wrapIndex(screen.row, press === 'up' ? -1 : 1, rows.length);
+      return null;
+    case 'left':
+    case 'right':
+      return stepValue(row, lobby, character, courses, press === 'left' ? -1 : 1);
+    case 'fire':
+      return fireOn(row, lobby);
+    case 'dash':
+      return { kind: 'leave' };
+  }
+}
+
+/** The value `row` takes one `step` along, or null for a row without a value to step. */
+function stepValue(
+  row: RoomRow,
+  lobby: LobbyView,
+  character: CharacterId,
+  courses: readonly string[],
+  step: number,
+): RoomAction | null {
+  switch (row) {
+    case 'Character':
+      return { kind: 'character', character: stepThrough(CHARACTER_IDS, character, step) };
+    case 'Course':
+      return courses.length > 1 ? { kind: 'course', course: stepThrough(courses, lobby.course, step) } : null;
+    case 'Level':
+      return { kind: 'difficulty', difficulty: stepThrough(ONLINE_DIFFICULTIES, lobby.difficulty, step) };
+    default:
+      return null;
+  }
+}
+
+/** The entry of `values` `step` places from `current`, wrapping; a `current` not in `values` counts as the first. */
+function stepThrough<T>(values: readonly T[], current: T, step: number): T {
+  return values[wrapIndex(Math.max(0, values.indexOf(current)), step, values.length)] as T;
+}
+
+function fireOn(row: RoomRow, lobby: LobbyView): RoomAction | null {
+  if (row === 'Start') return lobby.canStart ? { kind: 'start' } : null;
+  if (row === 'Copy link') return { kind: 'copy' };
+  if (row === 'Leave') return { kind: 'leave' };
+  return null;
 }

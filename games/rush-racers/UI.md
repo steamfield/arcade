@@ -259,6 +259,59 @@ The three buttons sit at pitch 15, frames touching, and end at y 173, inside the
             [    TITLE     ]                    (A/B)
 ```
 
+## Friends
+
+Create a room or join one by its code, over the title's backdrop. Drawn by `view/friends-view.ts` from `online.friends` (`online/friends-screen.ts` holds the cursor logic). A link (`?room=<code>`) is the usual way in; the cells are for typing a code a friend read out.
+
+| Element | Rect | Notes |
+| --- | --- | --- |
+| Heading | centred on (160, 12) | "FRIENDS", display, sun, outlined |
+| Menu buttons | 120, 62, 80, 15; pitch 17 | CREATE ROOM, JOIN, BACK; fin at x 109-117 as on the title. Hidden while the cells show |
+| Hint | centred on (160, 28) | UP AND DOWN CHANGE A LETTER, text, foam, outlined; wider than the safe column, so it stays above y 76 |
+| Code cells | from 101, 44; 18x20, 2 px apart | six `raised` cells (x 101-219), each one display character centred; the cursor's cell `accent` with its character in sun. `arrowUp` and `arrowDown` 1 px above and below the cursor's cell (y 34 and 65); the block ends at y 73, above the d-pad zone. A cell with no character draws empty |
+| Footer | 114, 159, 92, 15 | as on course select: PICK / BACK on the menu, NEXT / BACK in the cells, JOIN / BACK on the last cell |
+
+Menu: up and down wrap, A picks, B goes back. Cells: up and down step the cursor's character through the room-code alphabet, right or A moves on (A on the last cell joins), left or B steps back, and B from the first cell returns to the menu keeping the code.
+
+```
+                    FRIENDS                  (back link)
+           UP AND DOWN CHANGE A LETTER
+                        ^
+              [7][K][Q][2][2][2]
+ (d-pad)                v                        (A/B)
+                  [>> NEXT  <> BACK]
+```
+
+## Room
+
+The room before and between races, over the title's backdrop. Drawn by `view/room-view.ts` from `OnlineState` (`online/room-screen.ts` holds the rows and cursor logic). Until the room has welcomed this peer, and once the connection has closed, only `online.notice` shows, centred on (160, 90).
+
+| Element | Rect | Notes |
+| --- | --- | --- |
+| Code | from 6, 6 | the room code, display at 2x, sun, outlined (at most 106 wide) |
+| Race card | 146, 6, 100, 24 | `raised`: the course's name in foam at (150, 10), the level in sun at (150, 19). Everyone sees it; only the host can change it. Ends at x 246, clear of the back link |
+| Players | 6, 32, 240, 42 | `raised`, one text row per peer in join order at y 36 + 9n: label (x 10), character's short name (x 26; `-` before their first lobby message), ping right-aligned at x 160 (`45MS`, or `-`), HOST in sun (x 168), YOU (x 196), AWAY in coral (x 218) while not ready. This peer's label and name are in sun. Ends at y 74, above the d-pad zone |
+| Rows | 120, 76, 106, 15; pitch 15 | one button per row this peer has, frames touching: Character (the pick's short name), and for the host Course (its name), Level (NORMAL or HARD) and Start (START, or RACE IN PROGRESS while the room is racing), then COPY LINK and LEAVE. Fin at x 109-117; the right edge (x 226) stays out of the A/B zone. Six rows end at y 166 |
+| Hints | 232, 76, 64, 38 | `inset`, above the A/B zone: fire PICK, dash LEAVE, `<>` CHANGE (left and right step a value); on touch the letters A and B in sun |
+| Status | centred on (168, 170) | `online.notice` ("LINK COPIED"), text, foam, outlined, at most 20 characters so it stays in the safe column |
+
+Up and down move over the rows and wrap; left and right step Character, Course and Level; A on Start (while it can start), Copy link and Leave acts; B leaves from any row.
+
+```
+ 7KQ2MX (2x)           [SUNLIT SHALLOWS ]    (back link)
+                       [HARD            ]
+ [P1 BARON          120MS HOST           ]
+ [P2 SELENE          18MS      YOU       ]
+ [P3 NIB                -           AWAY ]
+ (d-pad)        >[    SELENE    ] [>> PICK  ]
+                 [SUNLIT SHALLOWS] [>> LEAVE ]
+                 [     HARD     ] [<> CHANGE]
+                 [    START     ]
+                 [  COPY LINK   ]
+                 [    LEAVE     ]            (A/B)
+                    LINK COPIED
+```
+
 ## Motion (ticks at 60/s)
 
 | Motion | Normal | Reduced motion |
