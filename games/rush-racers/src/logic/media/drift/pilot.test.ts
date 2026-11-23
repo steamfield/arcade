@@ -63,7 +63,9 @@ const KEEN: AiDraws = { ...STEADY, kick: 0 };
  */
 function tessOn(ascii: string, at: { x: number; y: number }, profile: { kickSkill?: number; wobble?: number } = {}) {
   const log = new EventLog<GameEvent>(100_000);
-  const world = createWorld(courseFromLevel(ascii, 'drift'), log, { seed: 1, endsWhen: 'everyone' });
+  // Catch-up is switched off: it scales a leader's forceMul, and with it the cruise these tests measure against.
+  const course = courseFromLevel(ascii, 'drift', { catchUp: { hard: { min: 1, max: 1 } } });
+  const world = createWorld(course, log, { seed: 1, endsWhen: 'everyone' });
   world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'everyone' };
   const tess = racerOf(world, 'tess');
   tess.profile = { ...tess.profile, kickSkill: 0, wobble: 0, reactionTicks: 1, ...profile };
@@ -125,6 +127,19 @@ describe('the drift pilot', () => {
 
     expect(kicksIn10Calls(8)).toBeGreaterThan(0);
     expect(kicksIn10Calls(32)).toBe(0);
+  });
+
+  it('points the stick along its aim on the tick it dashes, since a dash fires along the stick', () => {
+    const { world, tess } = tessOn(STRAIGHT_THEN_UP, { x: 8, y: 6 }, { kickSkill: 1 });
+    tess.body.vx = cruise - 1;
+    tess.body.vy = 3;
+    const mods = effectiveTuning(world).base;
+    const dashes = Array.from({ length: 10 }, () => DRIFT_MEDIUM.steer(world, tess, mods, KEEN, false)).filter(
+      (steering) => steering.kick,
+    );
+
+    expect(dashes.length).toBeGreaterThan(0);
+    for (const { move } of dashes) expect(move.x).toBeGreaterThan(0.95);
   });
 
   it('goes round a racer parked in its way without losing much time', () => {
