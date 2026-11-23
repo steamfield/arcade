@@ -19,7 +19,7 @@ import {
   step,
   tileCentre,
 } from './test-world.ts';
-import { type RacerId, RNG_SALTS, type RngStream, type TickInput, type Vec } from './types.ts';
+import { type RacerId, RNG_SALTS, type RngStream, TILE, type TickInput, type Vec } from './types.ts';
 import { createWorld, stepWorld, summarize, toAscii } from './world.ts';
 
 const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
@@ -63,18 +63,18 @@ describe('determinism', () => {
 });
 
 describe('enemies on the ocean course', () => {
-  it('places two sharks, three eels and four crabs, all past column 60, and draws each in toAscii', () => {
+  it('places three sharks, seventeen eels and four crabs, all past column 60, and draws each in toAscii', () => {
     const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1 });
     const placed = world.enemies.map(({ kind, home }) => ({ kind, x: home.x, y: home.y }));
     const rows = toAscii(world).split('\n');
 
-    expect(placed.filter((e) => e.kind === 'shark')).toHaveLength(2);
-    expect(placed.filter((e) => e.kind === 'eel')).toHaveLength(3);
+    expect(placed.filter((e) => e.kind === 'shark')).toHaveLength(3);
+    expect(placed.filter((e) => e.kind === 'eel')).toHaveLength(17);
     expect(placed.filter((e) => e.kind === 'crab')).toHaveLength(4);
     expect(placed.every((e) => e.x > 60)).toBe(true);
-    expect(placed.map(({ kind, x, y }) => [kind, rows[y]?.[x]])).toEqual(
-      placed.map(({ kind }) => [kind, { shark: 'S', eel: 'E', crab: 'K' }[kind]]),
-    );
+    // Drawn where each one is now: eels start out of step, so some begin mid-lunge, away from home.
+    const drawn = world.enemies.map(({ kind, at }) => [kind, rows[Math.floor(at.y / TILE)]?.[Math.floor(at.x / TILE)]]);
+    expect(drawn).toEqual(placed.map(({ kind }) => [kind, { shark: 'S', eel: 'E', crab: 'K' }[kind]]));
   });
 });
 

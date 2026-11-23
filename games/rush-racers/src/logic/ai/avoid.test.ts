@@ -4,8 +4,11 @@
  * small courses with an idle player, checked through hit events and where the rival ends up.
  */
 import { describe, expect, it } from 'vitest';
+import { enemyBox } from '../hazards/enemies/contact.ts';
+import { SHARK } from '../hazards/enemies/tuning.ts';
 import { eventsIn, raceOn, racerOf, step } from '../test-world.ts';
 import { type HitCause, type RacerId, TILE, type World } from '../types.ts';
+import { enemyDanger } from './avoid.ts';
 
 /** Tess's 5-tall lane has an urchin dead ahead on her start row. */
 const URCHIN_AHEAD = `
@@ -192,6 +195,35 @@ describe('rivals and enemies', () => {
 
     expect(tess.finished).not.toBeNull();
     expect(hits.length).toBeLessThanOrEqual(charges.length);
+  });
+
+  it.each([1, 2, 5])('meets a shark charging at it with a dash, staggering it before it lands (seed %i)', (seed) => {
+    const { world, log } = raceOn(SHARK_AHEAD, { seed });
+    const tess = racerOf(world, 'tess');
+    for (let tick = 0; tick < 1200 && tess.finished === null; tick++) step(world, log);
+    const answers = log
+      .all()
+      .filter(
+        (e) =>
+          (e.type === 'enemy.charged' && e.target === 'tess') ||
+          (e.type === 'enemy.bonked' && e.by === 'tess') ||
+          (e.type === 'racer.hit' && e.id === 'tess'),
+      )
+      .map((e) => e.type);
+
+    expect(answers.slice(0, 2)).toEqual(['enemy.charged', 'enemy.bonked']);
+  });
+
+  it('keeps out of the lane a winding-up shark is about to charge down, not just its body', () => {
+    const { world } = raceOn(SHARK_AHEAD);
+    const shark = world.enemies[0];
+    if (!shark) throw new Error('SHARK_AHEAD has a shark');
+    shark.mode = 'windup';
+    shark.facing = -1;
+    const body = enemyBox(shark);
+    const danger = enemyDanger(shark);
+
+    expect(danger).toEqual({ ...body, x: body.x - SHARK.chargeSpeed * 0.4, w: body.w + SHARK.chargeSpeed * 0.4 });
   });
 
   it('dashes into a crab it cannot swim round, beating it instead of taking the hit', () => {

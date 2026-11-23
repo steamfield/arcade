@@ -9,23 +9,21 @@ export const ENEMY = {
   bonkTicks: 12,
 } as const;
 
-/** A shark patrols a lane, winds up on a racer it sees and charges at it. Two bonks or one squid beat it. */
+/**
+ * A shark patrols a lane, winds up on a racer it sees and charges at it. Two bonks or one squid beat it.
+ * How far it sees and patrols, its rest after a charge and its turn mid-charge depend on the level
+ * (`SharkTuning` in `difficulty-level.ts`).
+ */
 export const SHARK = {
   hp: 2,
   /** Side of its square hitbox, centred on it. */
   size: 14,
-  /** How far either side of its home tile centre it patrols, in tiles. */
-  patrolTiles: 3,
   patrolSpeed: 24,
-  /** How far ahead (in its facing) it spots a racer, in tiles; the racer must sit within 45 degrees of level. */
-  sightTiles: 6,
   /** The tell before a charge: 0.5 s, matching the engine's flash and `!`. */
   windupTicks: 30,
   /** Twice cruise, so a racer that ignores the tell is caught, and one that moves off the line is not. */
   chargeSpeed: 140,
   chargeTicks: 36,
-  /** Sitting still after a charge (or after hitting rock) before it patrols again. */
-  recoverTicks: 40,
   /** Harmless and knocked back after a bonk. */
   staggerTicks: 36,
   staggerSpeed: 100,

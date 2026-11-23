@@ -1,13 +1,14 @@
 /**
  * Draws the course in its theme's look: solid tiles through a Phaser Tilemap built from the parsed
- * level (a legend glyph with its own art gets its own tile), flowing cells such as kelp and
- * currents as animated sprites, the finish gate, and inert placeholders for pearls, clams, urchins
+ * level (a legend glyph with its own art gets its own tile, and air draws as the theme's sky),
+ * flowing cells such as kelp and currents as animated sprites, the theme's wave crest along the
+ * top of the water under open sky, the finish gate, and inert placeholders for pearls, clams, urchins
  * and jellies. The pickup and hazard views take over those placeholders. Broken coral is removed
  * when its `coral.broken` event arrives.
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
-import type { Level } from '../../logic/types.ts';
+import type { Cell, Level } from '../../logic/types.ts';
 import { TILE, type Vec } from '../../logic/types.ts';
 import { Frame, type FrameKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
@@ -50,6 +51,7 @@ export function createLevelView(
 ): LevelView {
   const layer = createTileLayer(scene, level, theme.terrain, legend);
   addFlowingCells(scene, level, theme.terrain);
+  addWaterline(scene, level, theme.terrain);
   addFinishGate(scene, level, theme.terrain);
   const placeholders = addPlaceholders(scene, level, theme.hazards, skin.objects.pickups);
   return {
@@ -93,6 +95,36 @@ function addFlowingCells(scene: Phaser.Scene, level: Level, terrain: TerrainArt)
         .play(flow.anim);
     });
   });
+}
+
+/** Cells the sea's surface can't sit on: air above it and the solid cells. */
+const NOT_OPEN_WATER: ReadonlySet<Cell> = new Set<Cell>(['air', 'rock', 'coral']);
+
+/**
+ * The tiles the waterline is drawn on: every open water tile (water, kelp or a current) whose tile
+ * above is air, in reading order. A level without a surface has none.
+ */
+export function waterlineTiles(level: Pick<Level, 'cells'>): Vec[] {
+  const tiles: Vec[] = [];
+  level.cells.forEach((row, y) => {
+    row.forEach((cell, x) => {
+      if (NOT_OPEN_WATER.has(cell)) return;
+      if (level.cells[y - 1]?.[x] === 'air') tiles.push({ x, y });
+    });
+  });
+  return tiles;
+}
+
+function addWaterline(scene: Phaser.Scene, level: Level, terrain: TerrainArt): void {
+  const crest = terrain.surface;
+  if (!crest) return;
+  for (const tile of waterlineTiles(level)) {
+    scene.add
+      .sprite(tile.x * TILE, tile.y * TILE, crest.texture)
+      .setOrigin(0)
+      .setDepth(Layer.water)
+      .play(crest.anim);
+  }
 }
 
 function addFinishGate(scene: Phaser.Scene, level: Level, terrain: TerrainArt): void {

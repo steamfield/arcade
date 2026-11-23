@@ -5,8 +5,10 @@
 import type { ArtSheet } from '../../../art/sprites/sheet.ts';
 import type { OceanTexKey } from '../keys.ts';
 import { BACKDROP_SHEETS } from './backdrop.ts';
+import { CAVE_SHEETS } from './cave.ts';
 import { CURRENT_SHEETS } from './currents.ts';
 import { HAZARD_SHEETS } from './hazards.ts';
+import { SURFACE_SHEETS } from './surface.ts';
 import { TERRAIN_SHEETS } from './terrain.ts';
 
 /** All ocean art, one entry per texture key in `OceanTex`. */
@@ -15,4 +17,6 @@ export const OCEAN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
   ...CURRENT_SHEETS,
   ...HAZARD_SHEETS,
   ...BACKDROP_SHEETS,
+  ...SURFACE_SHEETS,
+  ...CAVE_SHEETS,
 ];

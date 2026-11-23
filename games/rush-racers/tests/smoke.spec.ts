@@ -108,7 +108,7 @@ test('on Bramble Run the on-screen Up button jumps @touch', async ({ game, page 
  * same simulation on each player's browser and compare this hash, so the engines must agree on it.
  * It differs from the pin in `src/logic/top-route.test.ts`, whose replay stops on the finish tick.
  */
-const TOP_ROUTE_BROWSER_HASH = 873020956;
+const TOP_ROUTE_BROWSER_HASH = 3893755221;
 
 test('a finished race is saved and its best time shows on the title after a reload', async ({ game }) => {
   // TOP_ROUTE was recorded on Hard; a fresh save races on Easy.

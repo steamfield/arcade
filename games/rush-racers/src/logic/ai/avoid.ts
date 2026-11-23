@@ -9,6 +9,7 @@
 import { ignoresHazard } from '../abilities.ts';
 import { enemyBox, isHarmful } from '../hazards/enemies/contact.ts';
 import { eelReachBox } from '../hazards/enemies/eel.ts';
+import { SHARK } from '../hazards/enemies/tuning.ts';
 import { jellyCentre } from '../hazards/jellies.ts';
 import { JELLY } from '../hazards/tuning.ts';
 import { isSolid } from '../level/query.ts';
@@ -107,27 +108,52 @@ function hazardsNear(world: World, body: Box, hurts: { urchins: boolean; jellies
   return found;
 }
 
+/** Seconds of a winding-up or charging shark's path a rival keeps out of, since a hunting shark turns after it. */
+const SHARK_CHARGE_LOOKAHEAD_S = 0.4;
+
 /**
- * The box a rival keeps out of for `enemy`, or null when it can't hurt: a shark or crab that is
- * harmful, at its box; an eel from the start of its warning to the end of its lunge, along its whole
- * reach, since it comes out faster than a rival turns.
+ * The box a rival keeps out of for `enemy`, or null when it can't hurt: a crab, or a shark that is
+ * neither winding up nor charging, at its box; a winding-up or charging shark along the next SHARK_CHARGE_LOOKAHEAD_S of its path; an eel
+ * from the start of its warning to the end of its lunge, along its whole reach, since it comes out
+ * faster than a rival turns.
  */
 export function enemyDanger(enemy: Enemy): Box | null {
   if (enemy.kind === 'eel') {
     return enemy.mode === 'windup' || enemy.mode === 'lunge' ? eelReachBox(enemy) : null;
   }
-  return isHarmful(enemy) ? enemyBox(enemy) : null;
+  if (!isHarmful(enemy)) return null;
+  const box = enemyBox(enemy);
+  if (enemy.kind !== 'shark') return box;
+  if (enemy.mode === 'charge') return sweptAlong(box, enemy.vel, SHARK_CHARGE_LOOKAHEAD_S);
+  // A winding-up shark is about to charge out along its facing; keep out of that lane before it goes.
+  if (enemy.mode === 'windup')
+    return sweptAlong(box, { x: enemy.facing * SHARK.chargeSpeed, y: 0 }, SHARK_CHARGE_LOOKAHEAD_S);
+  return box;
 }
 
+/** `box` stretched to cover where it will be after moving at `vel` px/s for `seconds`. */
+function sweptAlong(box: Box, vel: Vec, seconds: number): Box {
+  const dx = vel.x * seconds;
+  const dy = vel.y * seconds;
+  return { x: box.x + Math.min(0, dx), y: box.y + Math.min(0, dy), w: box.w + Math.abs(dx), h: box.h + Math.abs(dy) };
+}
+
+/** Seconds of a charging shark's path a rival with a charge treats as about to touch it. */
+const SHARK_BONK_LEAD_S = 0.15;
+
 /**
- * True when `racer`'s body, slid up to BONK_LOOKAHEAD_PX along `dir`, touches a live crab or an eel
- * that is out of its hole: one dash bonk beats either, so a rival with a charge dashes into it.
+ * True when `racer`'s body, slid up to BONK_LOOKAHEAD_PX along `dir`, touches a live crab, an eel
+ * that is out of its hole or a charging shark about to reach it: a dash bonk beats the first two and
+ * staggers the shark, so a rival with a charge dashes into it.
  */
 export function aboutToBonk(world: World, racer: Racer, dir: Vec): boolean {
   if (dir.x === 0 && dir.y === 0) return false;
   const targets = world.enemies
-    .filter((enemy) => enemy.kind !== 'shark' && isHarmful(enemy))
-    .map((enemy) => enemyBox(enemy));
+    .filter((enemy) => isHarmful(enemy) && (enemy.kind !== 'shark' || enemy.mode === 'charge'))
+    .map((enemy) =>
+      // A charging shark closes faster than a rival turns: meet it with a dash just before it lands.
+      enemy.kind === 'shark' ? sweptAlong(enemyBox(enemy), enemy.vel, SHARK_BONK_LEAD_S) : enemyBox(enemy),
+    );
   if (targets.length === 0) return false;
   const { body } = racer;
   for (let travelled = 0; travelled <= BONK_LOOKAHEAD_PX; travelled += HAZARD_AVOID.stepPx) {

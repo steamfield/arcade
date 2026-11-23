@@ -93,7 +93,8 @@ export type Cell =
   | 'current-left'
   | 'current-up'
   | 'current-down'
-  | 'ledge';
+  | 'ledge'
+  | 'air';
 
 /**
  * What one tick of movement through the tiles ran into (`moveBody`). Tiles only: racers and enemies
@@ -129,8 +130,20 @@ export interface LevelDef {
   name: string;
   ascii: string;
   dark?: readonly (readonly [from: number, to: number])[];
+  /**
+   * Stretches open to the sky: in columns `from..to` (inclusive) every water tile above row `row`
+   * becomes air, so the surface of the sea is the top of row `row`. Objects placed there float in air.
+   */
+  surface?: readonly SurfaceDef[];
   /** Extra glyphs this level uses, each behaving as a base cell but drawn its own way. */
   legend?: Readonly<Record<string, LegendEntry>>;
+}
+
+/** One stretch of open sky over the water: columns `from..to` inclusive, surface at the top of row `row`. */
+export interface SurfaceDef {
+  from: number;
+  to: number;
+  row: number;
 }
 
 /** A parsed course. Positions are tile coordinates; `cells[y][x]`. */
@@ -152,6 +165,8 @@ export interface Level {
   /** Enemies placed by glyph (`S` shark, `E` eel, `K` crab), in reading order. The tile underneath is water. */
   enemies: { kind: EnemyKind; tile: Vec }[];
   dark: [from: number, to: number][];
+  /** Stretches open to the sky (`LevelDef.surface`); their water above `row` parsed as 'air'. */
+  surface: SurfaceDef[];
 }
 
 /** An axis-aligned box in world pixels: top-left corner and size. */
@@ -173,6 +188,8 @@ export interface Environment {
   /** Unit direction of the current, or null outside currents. */
   current: Vec | null;
   inKelp: boolean;
+  /** True when the body's centre is in an air tile above a surface. */
+  inAir: boolean;
 }
 
 /** Multipliers and overrides on a racer's swimming. Profiles set them; power-ups change them in phase 3. */

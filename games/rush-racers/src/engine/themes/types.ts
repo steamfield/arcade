@@ -18,7 +18,10 @@ export interface FlowingArt {
 export interface TerrainArt {
   /** The tileset texture the tilemap cuts 16x16 tiles from. */
   tileset: string;
-  /** Tile index in `tileset` for each solid cell; cells not listed draw no tile. */
+  /**
+   * Tile index in `tileset` for each cell drawn as a tile: the solid cells, and `air` as sky when the
+   * theme has open sky. Cells not listed draw no tile.
+   */
   tiles: Readonly<Partial<Record<Cell, number>>>;
   /**
    * Tile index for a legend glyph, keyed by the legend entry's `art` name, so a shipwreck hull that
@@ -33,6 +36,8 @@ export interface TerrainArt {
   buriedTiles?: Readonly<Partial<Record<Cell, number>>>;
   /** Animated sprites over non-solid cells, such as kelp and currents. */
   flowing: Readonly<Partial<Record<Cell, FlowingArt>>>;
+  /** A looping wave crest drawn on every open water tile with air above it; leave out for no waterline. */
+  surface?: FlowingArt;
   /** Drawn on every open tile of the finish column. */
   finishGate: string;
   /** Frame `a` of this texture is the chunk a broken breakable tile scatters. */
@@ -60,6 +65,8 @@ export interface BackdropSpec {
   caustics: number | null;
   /** Slanted shafts of light from the top of the level, in this colour; null for none. */
   rays: number | null;
+  /** A cave wall tiled behind the terrain across every dark column range; leave out for none. */
+  cave?: { texture: string };
 }
 
 /** Small moving things in front of the backdrop. */

@@ -404,6 +404,19 @@ describe('the level check', () => {
     expect(problems.map(({ row, col }) => ({ row, col }))).toEqual([1, 2, 3, 4].map((col) => ({ row: 6, col })));
   });
 
+  it('rejects a surface (sea air), since open ground is already air on foot, at its first air tile', () => {
+    const level = parseLevel({ name: 'nav', ascii: pitLevel(3), surface: [{ from: 9, to: 11, row: 3 }] });
+    const problems = run.validateLevel(level, run.buildNav(level, NOTHING_BROKEN, run.tuning));
+
+    expect(problems).toEqual([
+      {
+        message: 'Surface air at row 1, col 9: the run medium has no sea surface; leave out LevelDef.surface',
+        row: 1,
+        col: 9,
+      },
+    ]);
+  });
+
   it('rebuilds around broken coral so a start can pass', () => {
     const level = levelOf(`
       ##########

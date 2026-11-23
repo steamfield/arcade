@@ -126,14 +126,14 @@ describe('environment sampling', () => {
   it('reports kelp with no current', () => {
     const env = sampleEnvironment(reef(), bodyCentredOn(2, 0));
 
-    expect(env).toEqual({ current: null, inKelp: true });
+    expect(env).toEqual({ current: null, inKelp: true, inAir: false });
   });
 
   it('samples only the tile under the centre, not tiles the body edge overlaps', () => {
     const body = bodyCentredOn(7, 0);
     body.x -= 5;
 
-    expect(sampleEnvironment(reef(), body)).toEqual({ current: null, inKelp: false });
+    expect(sampleEnvironment(reef(), body)).toEqual({ current: null, inKelp: false, inAir: false });
   });
 });
 

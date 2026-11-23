@@ -4,11 +4,12 @@ import type { SaveResult, SaveStore } from '@arcade/save';
 import { createSaveStore } from '@arcade/save';
 import type { GameContext } from '@arcade/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TOP_ROUTE } from '../../scenarios/kit.ts';
 import { DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
 import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../logic/race/standings.ts';
 import { playerOf } from '../logic/racers.ts';
-import { migrations, NEW_GAME, SAVE_VERSION, type SaveData, SaveSchema } from '../logic/save.ts';
+import { migrations, NEW_GAME, NO_BESTS, SAVE_VERSION, type SaveData, SaveSchema } from '../logic/save.ts';
 import { courseFromLevel, giveItems } from '../logic/test-world.ts';
 import { type Action, input } from './input.ts';
 import { selectedOption } from './menu.ts';
@@ -40,11 +41,16 @@ interface Harness {
  */
 function titleRuntime(
   saves: SaveStore<SaveData>,
-  { search = '', listedCourses }: { search?: string; listedCourses?: readonly Course[] } = {},
+  {
+    search = '',
+    listedCourses,
+    save = null,
+    debug = false,
+  }: { search?: string; listedCourses?: readonly Course[]; save?: SaveData | null; debug?: boolean } = {},
 ): Harness {
   const gameErrors: string[] = [];
   const ctx = {
-    params: { seed: 1, scene: null, debug: false, testMode: true },
+    params: { seed: 1, scene: null, debug, testMode: true },
     reportError: (source: string) => {
       if (source !== 'audio') gameErrors.push(source);
     },
@@ -54,7 +60,7 @@ function titleRuntime(
   const rt: Runtime = new Runtime({
     ctx,
     saves,
-    save: null,
+    save,
     prefersReducedMotion: false,
     startScene: (scene) => rt.entered(scene),
     search,
@@ -218,6 +224,40 @@ describe('the course a session races', () => {
     expect(rt.save).toMatchObject({ races: 1, bests: {}, lastCourse: null });
     // The title still draws the default course behind it: an unlisted course is never the last course.
     expect(rt.menuCourse).toBe(DEFAULT_COURSE);
+    expect(gameErrors).toEqual([]);
+  });
+});
+
+describe('a ?debug=1&local= race', () => {
+  /** Hard, with a best on the default course at the race limit, which any finish beats. */
+  const slowBest: SaveData = {
+    ...NEW_GAME,
+    settings: { ...NEW_GAME.settings, difficulty: 'hard' },
+    bests: { [DEFAULT_COURSE.id]: { ...NO_BESTS, hard: { ticks: RACE_LIMIT_TICKS, place: 4 } } },
+  };
+
+  /** Starts a race from the title and swims `TOP_ROUTE` (recorded on seed 1, Hard) until the results are in. */
+  async function raceTopRoute(options: { search?: string; debug?: boolean }) {
+    const store = await realStore();
+    const { rt, gameErrors } = titleRuntime(store, { ...options, save: slowBest });
+    rt.startRace();
+    for (const step of TOP_ROUTE) {
+      for (const action of step.actions) input.inject(action, true);
+      for (let tick = 0; tick < step.ticks && !rt.lastResult; tick++) rt.step.advance(1);
+      for (const action of step.actions) input.inject(action, false);
+    }
+    await settled(rt);
+    return { rt, gameErrors };
+  }
+
+  it('finishes faster than the saved best, yet shows no NEW BEST and saves nothing', async () => {
+    const { rt, gameErrors } = await raceTopRoute({ search: '?local=player', debug: true });
+
+    expect(rt.localSlot).toBe('player');
+    expect(rt.lastResult?.result.playerTicks).toBeLessThan(RACE_LIMIT_TICKS);
+    expect(rt.lastResult).toMatchObject({ newBest: false, saveFailed: false });
+    expect(rt.save).toEqual(slowBest);
+    expect(rt.events.all().filter((e) => e.type === 'save.written' || e.type === 'save.failed')).toEqual([]);
     expect(gameErrors).toEqual([]);
   });
 });

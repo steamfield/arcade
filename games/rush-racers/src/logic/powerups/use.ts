@@ -21,7 +21,7 @@
  */
 import { flashAround } from '../hazards/contacts.ts';
 import { launchSquid } from '../hazards/squids.ts';
-import { bodyTiles } from '../level/query.ts';
+import { bodyTiles, isAirAt } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
 import { breakCoral } from '../race/coral.ts';
@@ -117,15 +117,18 @@ function applyEffect(world: World, racer: Racer, kind: PowerUpKind, aim: Vec): v
 /**
  * Holds a dashing racer's velocity at `dashSpeed` along `dashDir`, overriding swimming and drag, on
  * both axes or, where the medium says so (`effects.dashAxes`), horizontally only so its gravity
- * keeps working. Called in `stepWorld` after swimming and before the body moves. Leaves velocity
- * alone when not dashing (the dash ran out or a hit ended it).
+ * keeps working. A racer whose centre is in the air above a surface dashes horizontally only too, so
+ * the air's gravity brings it back down. Called in `stepWorld` after swimming and before the body
+ * moves. Leaves velocity alone when not dashing (the dash ran out or a hit ended it).
  *
  * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
 export function driveDash(world: World, racer: Racer): void {
   if (racer.status.dashing === 0) return;
   racer.body.vx = racer.dashDir.x * racer.dashSpeed;
-  if (mediumOf(world).effects.dashAxes === 'both') racer.body.vy = racer.dashDir.y * racer.dashSpeed;
+  const centre = centreOf(racer);
+  const holdsBothAxes = mediumOf(world).effects.dashAxes === 'both' && !isAirAt(world.level, centre.x, centre.y);
+  if (holdsBothAxes) racer.body.vy = racer.dashDir.y * racer.dashSpeed;
 }
 
 /** The per-tick side of items, run right after `useItems`: inflated racers break the coral their hitbox touches. */

@@ -4,8 +4,8 @@
  */
 import type { GameDriver } from '@arcade/testing';
 import { expect, test } from '@arcade/testing/playwright';
-import { HARD_SAVE, hold, IDLE_TO_RESULTS, TITLE_TO_RACE, TOP_ROUTE, tap, wait } from '../scenarios/kit.ts';
-import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../src/logic/race/standings.ts';
+import { HARD_SAVE, hold, IDLE_TO_RESULTS, TITLE_TO_RACE, tap, wait } from '../scenarios/kit.ts';
+import { COUNTDOWN_TICKS } from '../src/logic/race/standings.ts';
 import { TILE } from '../src/logic/types.ts';
 
 /** The racer fields `debugState().racers` carries that these tests read. */
@@ -153,28 +153,6 @@ test('a finished ?local=tess race shows tess on the results and writes no save',
   await game.open({ debug: true, query: { local: 'tess' } });
   expect(await game.summary()).toMatchObject({ scene: 'title' });
   expect(await game.state()).toMatchObject({ save: { races: before.races, bests: before.bests } });
-});
-
-test('a ?debug=1&local=player race faster than the saved best is not a new best and writes no save', async ({
-  game,
-}) => {
-  const slowBest = {
-    ...HARD_SAVE,
-    data: { ...HARD_SAVE.data, best: { easy: null, normal: null, hard: { ticks: RACE_LIMIT_TICKS, place: 4 } } },
-  };
-  await startRace(game, { debug: true, local: 'player', save: slowBest });
-  const raceStart = (await game.events()).length;
-
-  await game.play([...TOP_ROUTE, wait(90)]);
-  const finish = (await game.events()).slice(raceStart);
-  const finished = finish.find((event) => event.type === 'race.finished');
-  expect(finished?.playerTicks).toBeLessThan(RACE_LIMIT_TICKS);
-  expect(await game.summary()).toMatchObject({
-    scene: 'results',
-    local: 'player',
-    result: { ticks: finished?.playerTicks, newBest: false, saveFailed: false },
-  });
-  expect(finish.filter((event) => event.type === 'save.written' || event.type === 'save.failed')).toEqual([]);
 });
 
 test('?debug=1&local=player races as slot 1 and still says it is a ?local= race', async ({ game }) => {

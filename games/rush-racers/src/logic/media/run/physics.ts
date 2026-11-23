@@ -70,11 +70,11 @@ export function applyRunIntent(
   advanceJumpTimers(motion, surroundings.grounded, pressed, extra);
   updateFacing(racer, intent.move.x);
 
-  run(racer.body, motion, intent.move.x, surroundings, tuning, extra, mods, dt);
+  stepRunSpeed(racer.body, motion, intent.move.x, surroundings, tuning, extra, mods, dt);
   if (jumpNow) jump(racer, motion, extra.jumpSpeed * jumpMulFor(racer), events);
   dashOrCoolDown(racer, motion, intent.kick, surroundings.grounded, tuning, mods, events);
   racer.body.vx = clamp(racer.body.vx, -tuning.maxSpeed, tuning.maxSpeed);
-  fall(racer.body, motion.jumping && !upHeld, surroundings, extra, dt);
+  stepFall(racer.body, motion.jumping && !upHeld, surroundings, extra, dt);
 }
 
 /** The extras run reads from `tuning.extra`. */
@@ -97,7 +97,7 @@ const RUN_EXTRAS = [
 ] as const;
 
 /** Run's extras from the tuning, by name. */
-type RunExtra = Record<(typeof RUN_EXTRAS)[number], number>;
+export type RunExtra = Record<(typeof RUN_EXTRAS)[number], number>;
 
 /**
  * Reads run's extras from `tuning`.
@@ -128,7 +128,7 @@ export function jumpPeak(tuning: MediumTuning, holdTicks: number, dt: number): n
   const body: Body = { x: 0, y: 0, w: 0, h: 0, vx: 0, vy: -extra.jumpSpeed };
   let peak = 0;
   for (let tick = 0; body.vy < 0; tick++) {
-    fall(body, tick >= holdTicks, stillAir, extra, dt);
+    stepFall(body, tick >= holdTicks, stillAir, extra, dt);
     body.y += body.vy * dt;
     peak = Math.max(peak, -body.y);
   }
@@ -149,7 +149,7 @@ export function jumpAirTicks(tuning: MediumTuning, holdTicks: number, dt: number
   const body: Body = { x: 0, y: 0, w: 0, h: 0, vx: 0, vy: -extra.jumpSpeed };
   let ticks = 0;
   do {
-    fall(body, ticks >= holdTicks, stillAir, extra, dt);
+    stepFall(body, ticks >= holdTicks, stillAir, extra, dt);
     body.y += body.vy * dt;
     ticks++;
   } while (body.y < 0);
@@ -191,17 +191,25 @@ function forceScale(mods: MoveModifiers): number {
   return 1 + (mods.forceMul - 1) * FORCE_SHARE;
 }
 
+/** A runner's running pace, px/s, on open ground with no gust: `runSpeed` scaled by its share of forceMul. */
+function runPace(extra: { runSpeed: number }, mods: MoveModifiers): number {
+  return extra.runSpeed * forceScale(mods);
+}
+
 /**
  * Moves `vx` toward the held direction's top speed plus any gust. Over that speed while still
  * steering that way, the part above running pace (`runSpeed` times the force share, before mud and
  * gusts) that a dash still carries (`motion.dashGlide`) bleeds at `dashDrag`, on the ground or in
  * the air; everything else (mud's lower top speed, a gust that dropped, a hit) slows at full
  * friction, as does letting go of the stick, which slows to the gust's drift. The glide itself
- * falls by `dashDrag` every tick.
+ * falls by `dashDrag` every tick. `applyRunIntent`'s horizontal step, shared with the pilot's
+ * landing prediction (`landing.ts`) so the two can't drift apart.
+ *
+ * @param dt Tick length in seconds.
  */
-function run(
-  body: Body,
-  motion: RunMotion,
+export function stepRunSpeed(
+  body: Pick<Body, 'vx'>,
+  motion: Pick<RunMotion, 'dashGlide'>,
   wanted: number,
   env: RunEnv,
   tuning: MediumTuning,
@@ -210,7 +218,7 @@ function run(
   dt: number,
 ): void {
   const scale = forceScale(mods);
-  const pace = extra.runSpeed * scale;
+  const pace = runPace(extra, mods);
   const top = pace * (env.inMud ? extra.mudSpeedMul : 1);
   const drift = (env.wind?.x ?? 0) * extra.windSpeed;
   const accel = (env.grounded ? tuning.force * scale : extra.airAccel) * dt;
@@ -246,8 +254,11 @@ function jump(racer: Racer, motion: RunMotion, speed: number, events: EventSink<
 /**
  * Gravity, stronger while a jump rises with Up released (the short hop), plus any updraft or
  * downdraft. Only falling speed is capped, so a jump or a stomp bounce keeps its full rise.
+ * `applyRunIntent`'s vertical step, shared with the pilot's landing prediction (`landing.ts`).
+ *
+ * @param dt Tick length in seconds.
  */
-function fall(body: Body, cutShort: boolean, env: RunEnv, extra: RunExtra, dt: number): void {
+export function stepFall(body: Pick<Body, 'vy'>, cutShort: boolean, env: RunEnv, extra: RunExtra, dt: number): void {
   const draft = (env.wind?.y ?? 0) * extra.draftForce;
   body.vy = stepFallSpeed(body.vy, cutShort, draft, extra, dt);
 }

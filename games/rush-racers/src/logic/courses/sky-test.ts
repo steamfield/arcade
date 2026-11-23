@@ -3,7 +3,7 @@
  * format is documented in `level/parse.ts`. Only `courses/index.ts` imports this file.
  */
 import type { LevelDef } from '../types.ts';
-import type { Course } from './types.ts';
+import type { ShippedCourse } from './types.ts';
 
 /**
  * A sunset sky over a thunderhead floor, flown left to right. Rows 0 and 23 are the ceiling and the
@@ -60,7 +60,7 @@ const LEVEL: LevelDef = {
 const PAR_TICKS = 1106;
 
 /** Sky Test: the flight medium's test course in Cloudreach, reachable only by `?course=sky-test` and tests. */
-export const SKY_TEST: Course = {
+export const SKY_TEST: ShippedCourse = {
   id: 'sky-test',
   name: 'Sky Test',
   level: LEVEL,

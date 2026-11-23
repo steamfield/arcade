@@ -12,9 +12,14 @@ export interface SwimNav extends MediumNav, FlowFields {
   readonly kind: 'swim';
 }
 
-/** What the water does to a racer this tick: the tile's current (or a Riptide's) and kelp. */
+/**
+ * What the water does to a racer this tick: the tile's current (or a Riptide's) and kelp, whether
+ * its centre is in the air, and whether the surface is within SPLASH_DEPTH above its centre.
+ */
 export interface SwimEnv extends MediumEnv, Environment {
   readonly kind: 'swim';
+  /** True when the point SPLASH_DEPTH px above the body's centre is in air: it is just under a surface, or above one. */
+  nearSurface: boolean;
 }
 
 /** A swim rival's memory: wobble, speed-based stuck count, recovery, aim and replan timer. */
@@ -33,9 +38,11 @@ export interface SwimPilot extends PilotMemory {
   replanIn: number;
 }
 
-/** Swim keeps no per-racer movement state beyond its kind. */
+/** A swimmer's movement state: whether it was in the air above a surface when last sampled. */
 export interface SwimMotion extends RacerMotion {
   readonly kind: 'swim';
+  /** True from the tick its sampled environment reads air until its centre is `SPLASH_DEPTH` px back under the surface. */
+  airborne: boolean;
 }
 
 /**
@@ -66,6 +73,16 @@ export function swimEnv(env: MediumEnv): SwimEnv {
 export function swimPilot(memory: PilotMemory): SwimPilot {
   if (memory.kind !== 'swim') throw wrongKind('pilot memory', memory.kind);
   return memory as SwimPilot;
+}
+
+/**
+ * A racer's motion as swim's.
+ *
+ * @throws {Error} When the motion was created by another medium.
+ */
+export function swimMotion(motion: RacerMotion): SwimMotion {
+  if (motion.kind !== 'swim') throw wrongKind('motion', motion.kind);
+  return motion as SwimMotion;
 }
 
 function wrongKind(what: string, kind: string): Error {
