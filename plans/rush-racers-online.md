@@ -142,11 +142,12 @@ Tag: rush-racers-online-phase-1
 Demo: `pnpm arcade test rush-racers src/net/client.test.ts src/engine/online` (two to four clients on the in-memory room go lobby, race, results, lobby; the friends and room screens move as plain state)
 Depends on: phase 1
 Scaffold: 83e7a3e
+Tag: rush-racers-online-phase-2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/net/client.ts, games/rush-racers/src/net/client.test.ts, games/rush-racers/src/net/transport/websocket.ts | | | opus | running | deliver/reef-net-2a | client tests pass |
-| b | M | games/rush-racers/src/engine/online/friends-screen.ts, games/rush-racers/src/engine/online/friends-screen.test.ts, games/rush-racers/src/engine/online/room-screen.ts, games/rush-racers/src/engine/online/room-screen.test.ts, games/rush-racers/src/engine/scenes/friends.ts, games/rush-racers/src/engine/scenes/room.ts, games/rush-racers/src/engine/view/friends-view.ts, games/rush-racers/src/engine/view/room-view.ts, games/rush-racers/UI.md | | | opus | running | deliver/reef-net-2b | screen-state tests pass |
+| a | M | games/rush-racers/src/net/client.ts, games/rush-racers/src/net/client.test.ts, games/rush-racers/src/net/transport/websocket.ts | | | opus | merged | worktree-agent-a1c106b6c3f2a1fee | client tests pass |
+| b | M | games/rush-racers/src/engine/online/friends-screen.ts, games/rush-racers/src/engine/online/friends-screen.test.ts, games/rush-racers/src/engine/online/room-screen.ts, games/rush-racers/src/engine/online/room-screen.test.ts, games/rush-racers/src/engine/scenes/friends.ts, games/rush-racers/src/engine/scenes/room.ts, games/rush-racers/src/engine/view/friends-view.ts, games/rush-racers/src/engine/view/room-view.ts, games/rush-racers/UI.md | | | opus | merged | worktree-agent-abfc095c51739c9f1 | screen-state tests pass |
 
 The phase 2 scaffold adds: `src/net/client.ts` and `src/net/transport/websocket.ts` stubs, `src/engine/online/{friends-screen,room-screen,state}.ts` stubs, scene keys `friends` and `room` in `runtime.ts` with a `Runtime.online: OnlineState` the scenes read, both scenes registered in `game.ts` as stubs, and `?scene=friends` reachable for captures.
 
@@ -181,7 +182,7 @@ Depends on: phase 2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/engine/online/flow.ts, games/rush-racers/src/engine/online/flow.test.ts, games/rush-racers/src/engine/online/state.ts, games/rush-racers/src/engine/build-id.ts, games/rush-racers/src/engine/runtime.ts, games/rush-racers/src/engine/runtime.test.ts, games/rush-racers/src/engine/debug.ts, games/rush-racers/src/engine/game.ts, games/rush-racers/src/engine/menu.ts, games/rush-racers/src/engine/scenes/boot.ts, games/rush-racers/src/engine/scenes/results.ts, games/rush-racers/tests/online.spec.ts, games/rush-racers/tests/online-kit.ts, games/rush-racers/DESIGN.md | | | opus | pending | | flow tests and the two-browser race pass |
+| a | L | games/rush-racers/src/engine/online/flow.ts, games/rush-racers/src/engine/online/flow.test.ts, games/rush-racers/src/engine/online/state.ts, games/rush-racers/src/engine/build-id.ts, games/rush-racers/src/engine/runtime.ts, games/rush-racers/src/engine/runtime.test.ts, games/rush-racers/src/engine/debug.ts, games/rush-racers/src/engine/game.ts, games/rush-racers/src/engine/menu.ts, games/rush-racers/src/engine/scenes/boot.ts, games/rush-racers/src/engine/scenes/results.ts, games/rush-racers/tests/online.spec.ts, games/rush-racers/tests/online-kit.ts, games/rush-racers/DESIGN.md | | | opus | running | | flow tests and the two-browser race pass |
 
 #### Lane a brief
 
