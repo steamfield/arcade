@@ -98,6 +98,7 @@ describe('the sound of a race on Sunlit Shallows', () => {
       'sfx:go': 3,
       'sfx:item.use': 4,
       'sfx:kick': 310,
+      'sfx:pearl': 18,
       'sfx:place.down': 24,
       'sfx:place.up': 32,
       'sfx:riptide': 6,

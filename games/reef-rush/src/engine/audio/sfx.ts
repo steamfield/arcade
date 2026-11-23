@@ -33,6 +33,7 @@ export type SfxKey =
   | 'hit'
   | 'stun'
   | 'pearl'
+  | 'pearl.drop'
   | 'menu.move'
   | 'menu.confirm';
 
@@ -165,6 +166,14 @@ const SFX: Record<SfxKey, readonly Part[]> = {
   hit: [hiss('lowpass', 2000, 0, 0.08, 0.5), pulse(64, 0, 0.12, 0.35, { slide: -7 })],
   stun: [pulse(76, 0, 0.35, 0.25, { duty: 0.25, vibrato: true }), pulse(71, 0, 0.35, 0.15, { duty: 0.25 })],
   pearl: [pulse(84, 0, 0.05, 0.3, { duty: 0.125 }), pulse(91, 0.04, 0.1, 0.3, { duty: 0.125 })],
+  // Pearls knocked loose: a quick falling run of five ticks, like beads hitting a floor.
+  'pearl.drop': [
+    pulse(91, 0, 0.04, 0.25, { duty: 0.125 }),
+    pulse(86, 0.04, 0.04, 0.25, { duty: 0.125 }),
+    pulse(88, 0.08, 0.04, 0.22, { duty: 0.125 }),
+    pulse(81, 0.12, 0.04, 0.2, { duty: 0.125 }),
+    pulse(84, 0.16, 0.06, 0.18, { duty: 0.125 }),
+  ],
   'menu.move': [pulse(81, 0, 0.03, 0.25, { duty: 0.125 })],
   'menu.confirm': [pulse(76, 0, 0.05, 0.3, { duty: 0.25 }), pulse(83, 0.05, 0.1, 0.3, { duty: 0.25 })],
 };

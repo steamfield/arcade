@@ -18,12 +18,13 @@ import { stackMaxFor } from '../../logic/abilities.ts';
 import { playerOf } from '../../logic/racers.ts';
 import { type CharacterId, type RacePhase, TILE, type World } from '../../logic/types.ts';
 import { createLabel, type Label } from '../art/font.ts';
+import { Frame, Tex } from '../art/keys.ts';
 import { IconFrame, PortraitFrame, UiTex } from '../art/ui/keys.ts';
 import type { UiToneName } from '../art/ui/palette.ts';
 import { createPanel } from '../art/ui/panel.ts';
 import { spreadHeads } from '../race-progress.ts';
 import { besidePlayerY } from './beside-player.ts';
-import { addHudIcon as addIcon, createWell } from './hud-well.ts';
+import { addHudIcon as addIcon, createDashMeter, createWell } from './hud-well.ts';
 import { Layer } from './layers.ts';
 import { createRaceSplash, formatRaceTime, ordinal, slideRemaining, TONE_CSS } from './race-text.ts';
 import { createThreatHud } from './threat-hud.ts';
@@ -31,6 +32,8 @@ import { squidHuntingPlayer } from './threat-math.ts';
 
 /** The race HUD; `sync` redraws it from the world. */
 export interface Hud {
+  /** The right edge in px of the HUD's last top-left piece, the pearl counter. */
+  readonly right: number;
   sync(world: World): void;
 }
 
@@ -44,6 +47,12 @@ const STRIP = { x: 122, y: 6, w: 112, h: 15, headY: 10, headFrom: 126, headTo: 2
 /** Heads are 7 px wide; bunched racers are drawn this far apart, so each shows more than half its face. */
 const HEAD_MIN_GAP = 5;
 const FLAG_AT = { x: 236, y: 9 } as const;
+/** UI.md: HUD pieces sit 4 px apart. */
+const HUD_GAP = 4;
+/** The pearl counter: an `inset` panel level with the well; the 7x7 pearl, then up to two 5 px digits on a 6 px pitch. */
+const PEARLS = { y: 23, h: 17, pad: 4, iconY: 28, textTop: 28, textGap: 3, maxShown: 99 } as const;
+const PEARL_SIZE = 7;
+const PEARLS_WIDTH = PEARLS.pad * 2 + PEARL_SIZE + PEARLS.textGap + 11;
 const CAPTION_CENTRE = { x: 160, y: 45 } as const;
 
 /** UI.md "Motion": a place arrow slides 4 px in over 8 ticks; the arrow and the numeral's tone last 30. */
@@ -55,7 +64,10 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
   const place = createPlacePanel(scene, playerOf(world).character, reducedMotion);
   const timer = createTimer(scene);
   let shownTime = -1;
-  const well = createWell(scene, stackMaxFor(playerOf(world)));
+  const slots = stackMaxFor(playerOf(world));
+  const well = createWell(scene, slots);
+  const meter = createDashMeter(scene, slots, reducedMotion);
+  const pearls = createPearlCounter(scene, meter.right + HUD_GAP);
   const strip = createProgressStrip(scene, world);
   const splash = createRaceSplash(scene, reducedMotion);
   const threat = createThreatHud(scene, reducedMotion, besidePlayerY);
@@ -68,6 +80,7 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
   });
 
   return {
+    right: pearls.right,
     sync(world) {
       place.sync(world);
       const time = raceTime(world);
@@ -75,11 +88,42 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
       if (time !== shownTime) timer.setText(formatRaceTime(time));
       shownTime = time;
       well.sync(world);
+      meter.sync(world);
+      pearls.sync(world);
       strip.sync(world);
       const splashShowing = splash.sync(world);
       const view = scene.cameras.main.worldView;
       threat.sync(world, view, splashShowing);
       caption.setText(captionText(world, view));
+    },
+  };
+}
+
+/** The count the pearl counter shows: the racer's pearls, never more than two digits. */
+export function pearlText(pearls: number): string {
+  return String(Math.min(pearls, PEARLS.maxShown));
+}
+
+/** The pearl counter: the pearl sprite and the player's count, under the progress strip and clear of the back link. */
+function createPearlCounter(scene: Phaser.Scene, x: number): WorldView & { right: number } {
+  createPanel(scene, x, PEARLS.y, PEARLS_WIDTH, PEARLS.h, 'inset', { fixed: true, depth: Layer.hud });
+  scene.add
+    .image(x + PEARLS.pad, PEARLS.iconY, Tex.pearl, Frame.a)
+    .setOrigin(0, 0)
+    .setScrollFactor(0)
+    .setDepth(Layer.hud);
+  const count = createLabel(scene, x + PEARLS.pad + PEARL_SIZE + PEARLS.textGap, PEARLS.textTop, '0', {
+    fixed: true,
+    depth: Layer.hud,
+  });
+  let shown = 0;
+  return {
+    right: x + PEARLS_WIDTH,
+    sync(world) {
+      const pearls = playerOf(world).pearls;
+      if (pearls === shown) return;
+      shown = pearls;
+      count.setText(pearlText(pearls));
     },
   };
 }

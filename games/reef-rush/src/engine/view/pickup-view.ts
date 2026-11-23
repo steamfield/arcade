@@ -1,7 +1,7 @@
 /**
  * Things racers pick up, drawn from world state each frame: clams (open and ready,
- * or shut while recharging), pearls (hidden once taken) and loose power-ups that
- * glow, drift and blink out before they expire. Loose sprites come from a pool
+ * or shut while recharging), pearls (hidden once taken), pearls a hit knocked loose
+ * (drawn where logic has them) and loose power-ups that glow, drift and blink out before they expire. Loose sprites come from a pool
  * that grows only when more are in play than ever before, so steady play allocates nothing.
  */
 import type Phaser from 'phaser';
@@ -37,6 +37,7 @@ export function createPickupView(scene: Phaser.Scene, level: Level, reducedMotio
     scene.add.image(centre(tile.x), centre(tile.y), Tex.pearl, Frame.a).setDepth(Layer.objects),
   );
   const loose: LooseSprite[] = [];
+  const loosePearls: Phaser.GameObjects.Image[] = [];
 
   return {
     sync(world, tick) {
@@ -51,6 +52,12 @@ export function createPickupView(scene: Phaser.Scene, level: Level, reducedMotio
         showLoose(loose[index], pickup, tick, reducedMotion);
       });
       for (let index = world.loose.length; index < loose.length; index++) hideLoose(loose[index] as LooseSprite);
+      world.loosePearls.forEach((pearl, index) => {
+        loosePearls[index] ??= scene.add.image(0, 0, Tex.pearl, Frame.a).setDepth(Layer.objects);
+        loosePearls[index].setPosition(Math.round(pearl.at.x), Math.round(pearl.at.y)).setVisible(true);
+      });
+      for (let index = world.loosePearls.length; index < loosePearls.length; index++)
+        loosePearls[index]?.setVisible(false);
     },
   };
 }

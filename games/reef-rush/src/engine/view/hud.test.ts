@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { raceOn, racerOf } from '../../logic/test-world.ts';
 import { POWER_UP_KINDS } from '../../logic/types.ts';
+import { Frame } from '../art/keys.ts';
 import { ICON_SHEETS } from '../art/ui/icons.ts';
 import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { PanelPalette } from '../art/ui/palette.ts';
 import { besidePlayerY } from './beside-player.ts';
-import { captionText, isPlacePopping, type PlaceTrack, trackPlace } from './hud.ts';
-import { chargeText, NOT_READY_ALPHA, POWER_UP_ICON, wellLayout } from './hud-well.ts';
+import { captionText, isPlacePopping, type PlaceTrack, pearlText, trackPlace } from './hud.ts';
+import {
+  type ChargeTrack,
+  chargeText,
+  dashPipFrames,
+  NOT_READY_ALPHA,
+  POWER_UP_ICON,
+  pipScale,
+  trackDashCharges,
+  wellLayout,
+} from './hud-well.ts';
 import { promptText } from './threat-hud.ts';
 
 describe('the place panel', () => {
@@ -84,6 +94,48 @@ describe('the dash and item well', () => {
 
   it('shows a held item\u2019s charges as one digit and nothing for an empty slot', () => {
     expect([chargeText({ kind: 'jetFin', charges: 3 }), chargeText(null)]).toEqual(['3', '']);
+  });
+});
+
+describe('the dash meter', () => {
+  it('shows a filled pip per charge held and a hollow one per charge spent', () => {
+    expect([2, 1, 0].map((charges) => dashPipFrames(charges))).toEqual([
+      [Frame.pipReady, Frame.pipReady],
+      [Frame.pipReady, Frame.pipCooling],
+      [Frame.pipCooling, Frame.pipCooling],
+    ]);
+  });
+
+  it('swells the pip that comes back, over 12 ticks, and not at the first frame or when one is spent', () => {
+    const track: ChargeTrack = { shown: null, refilled: null };
+    trackDashCharges(track, 2, 100);
+    expect(pipScale(track, 1, 100, false)).toBe(1);
+    trackDashCharges(track, 1, 110);
+    expect(pipScale(track, 1, 110, false)).toBe(1);
+    trackDashCharges(track, 2, 200);
+    const scales = [200, 206, 211, 212].map((tick) => pipScale(track, 1, tick, false));
+    expect(scales[0]).toBeCloseTo(1.6);
+    expect(scales[1]).toBeCloseTo(1.3);
+    expect(scales[2]).toBeGreaterThan(1);
+    expect(scales[3]).toBe(1);
+    // Only the pip that came back swells.
+    expect(pipScale(track, 0, 200, false)).toBe(1);
+    // Spending it mid-swell ends the swell.
+    trackDashCharges(track, 1, 203);
+    expect(pipScale(track, 1, 203, false)).toBe(1);
+  });
+
+  it('holds still under reduced motion', () => {
+    const track: ChargeTrack = { shown: 0, refilled: null };
+    trackDashCharges(track, 1, 50);
+    expect(pipScale(track, 0, 50, true)).toBe(1);
+    expect(pipScale(track, 0, 50, false)).toBeGreaterThan(1);
+  });
+});
+
+describe('the pearl counter', () => {
+  it('shows the count, and stops at 99', () => {
+    expect([0, 7, 99, 100, 250].map(pearlText)).toEqual(['0', '7', '99', '99', '99']);
   });
 });
 

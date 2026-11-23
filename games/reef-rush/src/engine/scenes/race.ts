@@ -8,7 +8,6 @@
  */
 import { TICK_HZ } from '@arcade/core';
 import Phaser from 'phaser';
-import { stackMaxFor } from '../../logic/abilities.ts';
 import { courseOf } from '../../logic/courses/index.ts';
 import { selectedItem } from '../../logic/powerups/inventory.ts';
 import { playerOf } from '../../logic/racers.ts';
@@ -27,7 +26,6 @@ import { createGuideView } from '../view/guide-view.ts';
 import { createHazardView } from '../view/hazard-view.ts';
 import { createHintView } from '../view/hint-view.ts';
 import { createHud } from '../view/hud.ts';
-import { wellLayout } from '../view/hud-well.ts';
 import { createLevelView } from '../view/level-view.ts';
 import { createPickupView } from '../view/pickup-view.ts';
 import { createPowerupView } from '../view/powerup-view.ts';
@@ -78,8 +76,7 @@ export class RaceScene extends Phaser.Scene {
     const themeLayers = theme.extraLayers(this, world);
     const dark = createDarkView(this, world, theme.dark, reducedMotion);
     const hud = createHud(this, world, reducedMotion);
-    const wellWidth = wellLayout(stackMaxFor(playerOf(world))).width;
-    const hints = createHintView(this, reducedMotion, wellWidth, besidePlayerY);
+    const hints = createHintView(this, reducedMotion, hud.right, besidePlayerY);
     const guide = createGuideView(this, reducedMotion);
     const fireIcon = createFireButtonIcon(this);
     const fx = createFx(this, world, theme, reducedMotion);
