@@ -1,11 +1,13 @@
 /**
  * Drift's navigation: what a drifter pays to enter each tile, the three flow fields built from those
  * prices (steer, smash and ram, see `DriftNav`), and the level check that every start can reach the
- * finish. Walking the fields lives in `way.ts`.
+ * finish. A black hole closes the tiles inside its horizon and makes the tiles in its reach dear, so
+ * every field keeps clear of it where there is room. Walking the fields lives in `way.ts`.
  */
 import { isSolid } from '../../level/query.ts';
+import { length } from '../../num.ts';
 import { distancesToFinish, type EntryCost, fieldAt, NEIGHBOURS } from '../../race/flowfield.ts';
-import type { Cell, Level, Vec } from '../../types.ts';
+import { type Cell, type Level, TILE, type Vec, type Well } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
 import { type DriftNav, driftNav } from './way-data.ts';
 
@@ -23,6 +25,10 @@ const RAM_ICE_COST = 3;
  * the way keeps a tile off the walls wherever the space is wide enough to.
  */
 const BESIDE_WALL_COST = 0.5;
+/** Extra price of any tile whose centre is inside a black hole's reach, enough to fly round the reach's edge. */
+const HOLE_REACH_COST = 2;
+/** Further price at the horizon, falling to nothing at the reach's edge, so the way keeps as far out as it can. */
+const HOLE_DEPTH_COST = 8;
 
 const WIND_DIRECTION: Partial<Record<Cell, Vec>> = {
   'current-right': { x: 1, y: 0 },
@@ -61,39 +67,59 @@ const ramCost = (cell: Cell, isBroken: boolean, move: Vec): number =>
 
 /**
  * Drift's nav for `level` with `broken` ice open: the steer, smash and ram fields, each searched
- * from the finish column with tiles beside a wall a little dearer than open ones.
+ * from the finish column with a surcharge on tiles beside a wall and on tiles near a black hole.
  */
 export function buildDriftNav(level: Level, broken: ReadonlySet<number>, _tuning: MediumTuning): DriftNav {
-  const besideWall = tilesBesideWalls(level, broken);
-  const offWalls =
+  const surcharges = tileSurcharges(level, broken);
+  const withSurcharge =
     (cost: (cell: Cell, isBroken: boolean, move: Vec) => number): EntryCost =>
     (cell, isBroken, move, tile) =>
-      cost(cell, isBroken, move) + (besideWall[tile.y * level.width + tile.x] ? BESIDE_WALL_COST : 0);
+      cost(cell, isBroken, move) + (surcharges[tile.y * level.width + tile.x] ?? 0);
   return {
     kind: 'drift',
     width: level.width,
     height: level.height,
-    steer: distancesToFinish(level, broken, offWalls(driftCost)),
-    smash: distancesToFinish(level, broken, offWalls(smashCost)),
-    ram: distancesToFinish(level, broken, offWalls(ramCost)),
+    steer: distancesToFinish(level, broken, withSurcharge(driftCost)),
+    smash: distancesToFinish(level, broken, withSurcharge(smashCost)),
+    ram: distancesToFinish(level, broken, withSurcharge(ramCost)),
   };
 }
 
-/** One flag per tile, indexed `y * width + x`: 1 where any of its eight neighbours is solid. */
-function tilesBesideWalls(level: Level, broken: ReadonlySet<number>): Uint8Array {
-  const flags = new Uint8Array(level.width * level.height);
+/**
+ * The price added to entering each tile, indexed `y * width + x`: BESIDE_WALL_COST where any of its
+ * eight neighbours is solid, plus what every black hole charges for it (`holeCost`).
+ */
+function tileSurcharges(level: Level, broken: ReadonlySet<number>): Float64Array {
+  const holes = level.wells.filter((well) => well.horizon !== null);
+  const surcharges = new Float64Array(level.width * level.height);
   for (let ty = 0; ty < level.height; ty++) {
     for (let tx = 0; tx < level.width; tx++) {
-      const touches = NEIGHBOURS.some((offset) => isSolid(level, broken, tx + offset.x, ty + offset.y));
-      flags[ty * level.width + tx] = touches ? 1 : 0;
+      const besideWall = NEIGHBOURS.some((offset) => isSolid(level, broken, tx + offset.x, ty + offset.y));
+      const centre = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
+      const nearHoles = holes.reduce((sum, hole) => sum + holeCost(hole, centre), 0);
+      surcharges[ty * level.width + tx] = (besideWall ? BESIDE_WALL_COST : 0) + nearHoles;
     }
   }
-  return flags;
+  return surcharges;
+}
+
+/**
+ * What a black hole adds to the price of a tile centred on `point`: Infinity inside its horizon,
+ * nothing from its reach outward, and between them HOLE_REACH_COST plus a share of HOLE_DEPTH_COST
+ * that grows from nothing at the reach's edge to all of it at the horizon.
+ */
+function holeCost(hole: Well, point: Vec): number {
+  const horizon = hole.horizon ?? 0;
+  const distance = length(point.x - hole.centre.x, point.y - hole.centre.y);
+  if (distance < horizon) return Number.POSITIVE_INFINITY;
+  if (distance >= hole.reach) return 0;
+  const depth = (hole.reach - distance) / (hole.reach - horizon);
+  return HOLE_REACH_COST + HOLE_DEPTH_COST * depth;
 }
 
 /**
  * Why `level` can't be drifted: one problem for each start that can't reach the finish without
- * breaking ice, located at that start.
+ * breaking ice or crossing a black hole's horizon, located at that start.
  *
  * @throws {Error} When `nav` was built by another medium.
  */
@@ -102,6 +128,12 @@ export function validateDriftLevel(level: Level, nav: MediumNav): LevelProblem[]
   return level.starts.flatMap((start, index) =>
     Number.isFinite(fieldAt(drift.steer, drift, start))
       ? []
-      : [{ message: `Start ${index + 1} cannot reach the finish without breaking ice`, row: start.y, col: start.x }],
+      : [
+          {
+            message: `Start ${index + 1} cannot reach the finish without breaking ice or crossing a black hole's horizon`,
+            row: start.y,
+            col: start.x,
+          },
+        ],
   );
 }
