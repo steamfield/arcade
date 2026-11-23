@@ -28,6 +28,14 @@ import { STACK_MAX } from './powerups/tuning.ts';
 import { activeRacers, centreOf } from './racers.ts';
 import { type HitCause, type MoveModifiers, type Racer, TILE, type Vec, type World } from './types.ts';
 
+/**
+ * How much higher `racer` jumps than the medium's jump speed: Gil (Spring jump) jumps higher in media
+ * that jump. Scaffold stub, 1 for everyone; phase 2 lane a sets Gil's number.
+ */
+export function jumpMulFor(_racer: Pick<Racer, 'character'>): number {
+  return 1;
+}
+
 /** Every ability's numbers. Durations are ticks, speeds px/s. */
 export const ABILITY = {
   /** Rudy: stuns and traps last this fraction of their time. */

@@ -10,7 +10,7 @@ import type { Difficulty, LevelDef } from '../types.ts';
 /** Shipped courses. Grows with each course: 'kelp-forest', 'sky-test', ... */
 export type ShippedCourseId = 'sunlit-shallows';
 /** Shipped movement styles. Grows: 'run', later 'flight' or 'space'. */
-export type ShippedMediumId = 'swim';
+export type ShippedMediumId = 'swim' | 'run';
 /** Looks the engine draws a course with. */
 export type ThemeId = 'ocean';
 /** Songs the engine can play for a race, by the soundtrack's names. */

@@ -8,12 +8,14 @@
 import { courseOf } from '../courses/index.ts';
 import type { Course, ShippedMediumId } from '../courses/types.ts';
 import type { World } from '../types.ts';
+import { RUN_MEDIUM } from './run/index.ts';
 import { SWIM_MEDIUM } from './swim/index.ts';
 import type { Medium, MediumTuning } from './types.ts';
 
 /** Every shipped medium by id. */
 export const MEDIA: Readonly<Record<ShippedMediumId, Medium>> = {
   swim: SWIM_MEDIUM,
+  run: RUN_MEDIUM,
 };
 
 const registered = new Map<string, Medium>();

@@ -7,7 +7,7 @@
 import type { CharacterId, EnemyKind, PowerUpKind } from '../types.ts';
 
 /** Shipped worlds. Grows with each world: 'thornwood', then air or space. */
-export type ShippedWorldId = 'reef';
+export type ShippedWorldId = 'reef' | 'thornwood';
 
 /** Hazards the course format places (`*` and `j`), by their logic names. */
 export type HazardKind = 'urchin' | 'jelly';

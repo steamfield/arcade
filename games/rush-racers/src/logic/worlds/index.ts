@@ -7,11 +7,13 @@
 import type { Course } from '../courses/types.ts';
 import type { CharacterId } from '../types.ts';
 import { REEF } from './reef.ts';
+import { THORNWOOD } from './thornwood.ts';
 import type { ShippedWorldId, WorldDef } from './types.ts';
 
 /** Every shipped world by id, in course-select order. */
 export const WORLDS: Readonly<Record<ShippedWorldId, WorldDef>> = {
   reef: REEF,
+  thornwood: THORNWOOD,
 };
 
 const registered = new Map<string, WorldDef>();

@@ -7,11 +7,13 @@ import type { Course } from '../../logic/courses/types.ts';
 import { CHARACTER_IDS, ENEMY_KINDS, POWER_UP_KINDS } from '../../logic/types.ts';
 import type { ShippedWorldId } from '../../logic/worlds/types.ts';
 import { REEF_SKIN } from './reef.ts';
+import { THORNWOOD_SKIN } from './thornwood.ts';
 import type { WorldSkin } from './types.ts';
 
 /** Every shipped world's skin, keyed by world id, so shipping a world without a skin fails to compile. */
 export const SKINS: Readonly<Record<ShippedWorldId, WorldSkin>> = {
   reef: REEF_SKIN,
+  thornwood: THORNWOOD_SKIN,
 };
 
 /**

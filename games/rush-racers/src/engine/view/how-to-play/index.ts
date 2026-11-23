@@ -38,6 +38,8 @@ export interface MovePage {
 /** Page 1 for each shipped medium, so shipping a medium without a move page fails to compile. */
 export const MOVE_PAGES: Readonly<Record<ShippedMediumId, MovePage>> = {
   swim: { heading: 'SWIM AND DASH', build: buildMovePage },
+  // Scaffold placeholder until phase 2 lane c adds run's own pages.
+  run: { heading: 'SWIM AND DASH', build: buildMovePage },
 };
 
 /** The medium whose move page stands in for one How to Play has no page for. */
