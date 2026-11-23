@@ -7,7 +7,7 @@
 import { TICK_DT } from '@arcade/core';
 import { type Level, RACER_SIZE, TILE } from '../../types.ts';
 import type { MediumTuning } from '../types.ts';
-import { arcsFor, type Flight, SAMPLE_TICKS, traceJump } from './arc.ts';
+import { arcsFor, type Flight, SAMPLE_TICKS, traceJump, traceReachPx } from './arc.ts';
 import { runExtra } from './physics.ts';
 import { holdsRunner, isSolidTile, isStandTile, standIndices, type Terrain, terrainOf } from './terrain.ts';
 import type { RunLink } from './way-data.ts';
@@ -113,26 +113,74 @@ function jumpLinks(flight: Flight, from: number, alreadyLinked: Set<number>): Ru
   return links;
 }
 
+/** Every link out of stand tile `from`: walks and drops left and right, then jumps to tiles they don't reach. */
+function linksFrom(flight: Flight, from: number): RunLink[] {
+  const onFoot = DIRECTIONS.flatMap((dir) => [walkLink(flight, from, dir) ?? dropLink(flight, from, dir)]);
+  const known = onFoot.filter((link): link is RunLink => link !== null);
+  const taken = new Set([from, ...known.map((link) => link.to)]);
+  return [...known, ...jumpLinks(flight, from, taken)];
+}
+
+/** The links last built for a level, so breaking coral re-traces only the stand tiles near it. */
+interface Built {
+  tuning: string;
+  broken: ReadonlySet<number>;
+  links: ReadonlyMap<number, RunLink[]>;
+}
+
+const lastBuilt = new WeakMap<Level, Built>();
+
+/**
+ * The columns whose stand tiles' links may differ between `before` and `after` broken coral: every
+ * column a trace from it could read a changed tile from (`traceReachPx`), plus one for walks and drops.
+ *
+ * @returns One flag per column of `level`.
+ */
+function staleColumns(level: Level, before: ReadonlySet<number>, after: ReadonlySet<number>, flight: Flight) {
+  const stale = new Uint8Array(level.width);
+  const reach = Math.ceil(traceReachPx(flight) / TILE) + 1;
+  const changed = [...before].filter((tile) => !after.has(tile));
+  for (const tile of after) if (!before.has(tile)) changed.push(tile);
+  for (const tile of changed) {
+    const col = tile % level.width;
+    stale.fill(1, Math.max(0, col - reach), Math.min(level.width, col + reach + 1));
+  }
+  return stale;
+}
+
 /**
  * Every link out of every stand tile of `level` with `broken` coral gone: walks and drops left and
  * right, and jumps to each stand tile a held jump reaches. A 3-tile pit is jumped, a 5-tile one isn't.
  *
- * @returns Links by stand tile index; a stand tile with no way out maps to an empty list.
+ * Coral breaks mid-race and the whole table used to be re-traced each time, which is most of a run
+ * race's cost. So the last table built for `level` is kept, and only stand tiles within a jump's
+ * reach of a tile that broke (or mended) since are traced again; the result is the same table a
+ * full build gives.
+ *
+ * @returns Links by stand tile index, in reading order; a stand tile with no way out maps to an
+ *   empty list. Read-only: the next build for the level may share it.
  * @throws {Error} When `tuning` lacks run's extras (see `runExtra`).
  */
-export function buildLinks(level: Level, broken: ReadonlySet<number>, tuning: MediumTuning): Map<number, RunLink[]> {
+export function buildLinks(
+  level: Level,
+  broken: ReadonlySet<number>,
+  tuning: MediumTuning,
+): ReadonlyMap<number, readonly RunLink[]> {
   const terrain = terrainOf(level, broken);
   const flight: Flight = {
     terrain,
     arcs: arcsFor(tuning, level.height * TILE),
     stepPx: plannedSpeed(tuning) * TICK_DT * SAMPLE_TICKS,
   };
+  const key = JSON.stringify(tuning);
+  const last = lastBuilt.get(level);
+  const reuse = last?.tuning === key ? last : undefined;
+  const stale = reuse ? staleColumns(level, reuse.broken, broken, flight) : null;
   const links = new Map<number, RunLink[]>();
   for (const from of standIndices(terrain)) {
-    const onFoot = DIRECTIONS.flatMap((dir) => [walkLink(flight, from, dir) ?? dropLink(flight, from, dir)]);
-    const known = onFoot.filter((link): link is RunLink => link !== null);
-    const taken = new Set([from, ...known.map((link) => link.to)]);
-    links.set(from, [...known, ...jumpLinks(flight, from, taken)]);
+    const kept = stale?.[from % level.width] === 0 ? reuse?.links.get(from) : undefined;
+    links.set(from, kept ?? linksFrom(flight, from));
   }
+  lastBuilt.set(level, { tuning: key, broken: new Set(broken), links });
   return links;
 }
