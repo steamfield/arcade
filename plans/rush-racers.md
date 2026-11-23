@@ -69,6 +69,7 @@ Engine:
 ### Phase 1: Rush Racers with world seams (MVP)
 
 Scaffold: f40b824
+Tag: rush-racers-phase-1
 Demo: `pnpm arcade dev rush-racers`, open `/games/rush-racers/`: the title says RUSH RACERS and Reef plays exactly as before. `pnpm arcade test rush-racers @behavior @courses @media @seams` green with the sfx pin unchanged.
 Test cases:
 - Rename: `game.json` id and slug `rush-racers`, title `Rush Racers`; smoke loads `/games/rush-racers/`; the unknown-course warning is tagged `[rush-racers]`; the title draws the new logo frame.
