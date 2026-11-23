@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "savedAt": "2026-11-22T00:00:00.000Z",
+  "data": {
+    "best": { "ticks": 2712, "place": 2 },
+    "races": 3,
+    "settings": { "muted": false, "reducedMotion": null },
+    "character": "selene"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "extends": "@arcade/config/tsconfig.logic.json",
+  "include": ["src/logic"],
+  "exclude": ["src/logic/**/*.test.ts"]
+}

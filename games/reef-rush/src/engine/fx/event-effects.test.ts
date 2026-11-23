@@ -1,0 +1,114 @@
+import { EventLog, type Stamped } from '@arcade/core';
+import { describe, expect, it } from 'vitest';
+import type { GameEvent } from '../../logic/events.ts';
+import { OCEAN_LEVEL } from '../../logic/level/levels.ts';
+import { parseLevel } from '../../logic/level/parse.ts';
+import { createWorld } from '../../logic/world.ts';
+import type { RuntimeEvent } from '../runtime.ts';
+import { createBubbleTracker } from './bubble-tracker.ts';
+import type { Bursts } from './bursts.ts';
+import { createEventEffects } from './event-effects.ts';
+
+const NO_BURSTS: Bursts = {
+  kickPuff() {},
+  trailBubble() {},
+  coralDebris() {},
+  hitSparks() {},
+  pearlSparkle() {},
+  pickupPop() {},
+  inkPuff() {},
+  bubblePop() {},
+  finishBurst() {},
+  placeUp() {},
+};
+
+/** Total shake trauma the effects ask for when one tick's `events` arrive. */
+function traumaFor(events: GameEvent[]): number {
+  const world = createWorld(parseLevel(OCEAN_LEVEL), new EventLog<GameEvent>(), { seed: 1 });
+  let trauma = 0;
+  const effects = createEventEffects(world, NO_BURSTS, createBubbleTracker(), (amount) => {
+    trauma += amount;
+  });
+  const stamped: Stamped<RuntimeEvent>[] = events.map((event, seq) => ({ ...event, tick: 300, seq }));
+  effects.onTick(stamped);
+  return trauma;
+}
+
+describe('event effects shake', () => {
+  it('shakes the screen when a hit lands on the player', () => {
+    expect(traumaFor([{ type: 'racer.hit', id: 'player', cause: 'urchin', by: null }])).toBeGreaterThan(0);
+  });
+
+  it("doesn't shake for a hit on a rival", () => {
+    expect(traumaFor([{ type: 'racer.hit', id: 'tess', cause: 'urchin', by: null }])).toBe(0);
+  });
+
+  it('shakes less when a Bubble Shield soaks up the hit than when it lands bare', () => {
+    const bare = traumaFor([{ type: 'racer.hit', id: 'player', cause: 'urchin', by: null }]);
+    const shielded = traumaFor([
+      { type: 'racer.hit', id: 'player', cause: 'urchin', by: null },
+      { type: 'shield.popped', id: 'player' },
+    ]);
+    expect(shielded).toBeGreaterThan(0);
+    expect(shielded).toBeLessThan(bare);
+  });
+});
+
+describe('event effects for the attack power-ups', () => {
+  /** Effects over a fresh world with every burst recorded as `name x,y`. */
+  function setup() {
+    const world = createWorld(parseLevel(OCEAN_LEVEL), new EventLog<GameEvent>(), { seed: 1 });
+    const seen: string[] = [];
+    const record = (name: string) => (x: number, y: number) => seen.push(`${name} ${x},${y}`);
+    const bursts: Bursts = {
+      ...NO_BURSTS,
+      inkPuff: record('ink'),
+      bubblePop: record('pop'),
+      trailBubble: record('trail'),
+    };
+    const effects = createEventEffects(world, bursts, createBubbleTracker(), () => {});
+    const drain = (events: GameEvent[]) =>
+      effects.onTick(events.map((event, seq) => ({ ...event, tick: 300, seq }) as Stamped<RuntimeEvent>));
+    return { world, seen, drain };
+  }
+
+  it('puffs ink where a squid was when it fizzles, picking the right one when two are out', () => {
+    const { world, seen, drain } = setup();
+    const squid = (x: number, owner: 'tess' | 'bo') => ({ x, y: 50, vx: 0, vy: 0, ttl: 9, owner, target: null });
+    const first = squid(100, 'tess');
+    const second = squid(200, 'bo');
+    world.squids.push(first, second);
+    drain([]);
+    // Both move on, then tess's squid is gone.
+    first.x = 110;
+    second.x = 210;
+    drain([]);
+    world.squids.splice(0, 1);
+    drain([{ type: 'squid.lost', owner: 'tess' }]);
+    expect(seen).toEqual(['ink 110,50']);
+  });
+
+  it('pops a bubble burst where a decoy was when it is popped', () => {
+    const { world, seen, drain } = setup();
+    world.decoys.push({ x: 300, y: 60, vx: 0, vy: 0, ttl: 5, owner: 'squib' });
+    drain([]);
+    world.decoys.length = 0;
+    drain([{ type: 'decoy.popped', owner: 'squib', by: 'player', trapped: null }]);
+    expect(seen).toEqual(['pop 300,60']);
+  });
+
+  it('strings bubbles from a popped bubbleDecoy to the racer it trapped, ending on them', () => {
+    const { world, seen, drain } = setup();
+    const victim = world.racers.find((racer) => racer.id === 'tess');
+    if (!victim) throw new Error('no tess');
+    const at = { x: victim.body.x + victim.body.w / 2, y: victim.body.y + victim.body.h / 2 };
+    world.decoys.push({ x: 300, y: 60, vx: 0, vy: 0, ttl: 5, owner: 'squib', bubbled: true });
+    drain([]);
+    world.decoys.length = 0;
+    drain([{ type: 'decoy.popped', owner: 'squib', by: 'tess', trapped: 'tess' }]);
+    const trail = seen.filter((entry) => entry.startsWith('trail'));
+    expect(seen[0]).toBe('pop 300,60');
+    expect(trail.length).toBeGreaterThan(5);
+    expect(trail.at(-1)).toBe(`trail ${at.x},${at.y}`);
+  });
+});

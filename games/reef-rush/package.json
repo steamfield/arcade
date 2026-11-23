@@ -1,0 +1,30 @@
+{
+  "name": "game-reef-rush",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.logic.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@arcade/core": "workspace:*",
+    "@arcade/input": "workspace:*",
+    "@arcade/save": "workspace:*",
+    "@arcade/shell": "workspace:*",
+    "phaser": "4.2.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@arcade/config": "workspace:*",
+    "@arcade/testing": "workspace:*",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "fake-indexeddb": "catalog:"
+  }
+}

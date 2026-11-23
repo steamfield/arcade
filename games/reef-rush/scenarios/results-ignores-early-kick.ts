@@ -1,0 +1,19 @@
+import { expect } from '@playwright/test';
+import { HARD_SAVE, scenario, TITLE_TO_RACE, TOP_ROUTE, tap, wait } from './kit.ts';
+
+/**
+ * The results screen comes up about 60 ticks after TOP_ROUTE ends. A kick a few ticks
+ * later, as a player still mashing kick from the race would press it, must not pick a
+ * menu option before the results have been seen.
+ */
+export default scenario({
+  description: 'a kick in the first moments of the results screen is ignored',
+  start: { save: HARD_SAVE },
+  input: [...TITLE_TO_RACE, ...TOP_ROUTE, wait(64), tap('kick'), wait(3)],
+  expect({ summary, events }) {
+    expect(summary).toMatchObject({ scene: 'results', menu: { options: ['Race again', 'Title'], selected: 0 } });
+    // The title and select kicks before the race are menu picks too; only the results screen counts.
+    const finished = events.find((e) => e.type === 'race.finished')?.tick ?? 0;
+    expect(events.filter((e) => e.tick >= finished).map((e) => e.type)).not.toContain('menu.selected');
+  },
+});

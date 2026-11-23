@@ -1,0 +1,10 @@
+{
+  "version": 5,
+  "savedAt": "2026-11-22T00:00:00.000Z",
+  "data": {
+    "best": { "easy": { "ticks": 3100, "place": 3 }, "normal": null, "hard": { "ticks": 2650, "place": 1 } },
+    "races": 7,
+    "settings": { "muted": true, "reducedMotion": true, "difficulty": "hard" },
+    "character": "baron"
+  }
+}

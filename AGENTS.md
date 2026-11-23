@@ -14,6 +14,7 @@ Browser games, one per folder, each deployed at `/games/<slug>/` on one static C
 | `docs/product-vision.md`, `docs/problem-statement.md` | Deciding what a game or feature should be. |
 | `.claude/skills/` | `verify-game` (check, see, smoke), `phaser-game`, `threejs-game`, `game-feel`. |
 | `<game>/DESIGN.md` | Working on that game. |
+| `plans/<game>.md` | A game's phased build plan while it is being built: lanes, contracts and briefs. DESIGN.md is the source of truth for how the game works. |
 
 ## Commands
 
