@@ -1,9 +1,11 @@
 /**
- * Page 3, FIRE ONE. A well holding three items like the HUD's, the selected one in a gold frame,
- * and the fire control beside it. Each time the control lights, only the framed item's effect comes
- * out of the racer, with a bubble trail from that slot to it ("this one made that"), and then the
+ * Page 3, FIRE ONE. A well holding three items like the HUD's, each with its charge digit, the
+ * selected one in a gold frame, and the fire control beside it. Each time the control lights, only
+ * the framed item's effect comes out of the racer, with a bubble trail from that slot to it ("this
+ * one made that"), and its digit drops by one. Then the next-item control under them lights and the
  * frame moves on to the next item for the next press: you pick one item and fire it.
  */
+import { CHARGES } from '../../../logic/powerups/charges.ts';
 import type { PowerUpKind } from '../../../logic/types.ts';
 import { Frame } from '../../art/keys.ts';
 import { IconFrame } from '../../art/ui/keys.ts';
@@ -33,12 +35,22 @@ const OUT_TICKS = 12;
 const EFFECT_TICKS = 50;
 const TRAIL_TICKS = 30;
 const TRAIL_DOTS = 4;
-const CAPTION_TOP = 100;
+/** A slot's charge digit at 2x, tucked against its icon's lower right as on the HUD. */
+const DIGIT = { right: 12, top: -2 } as const;
+/** The next-item control at 2x and SWAP beside it, in the safe column under the row. */
+const SWAP_ROW = { glyphX: 112, centreY: 98, wordGap: 6 } as const;
+/** The next-item control lights this far into a shot, moving the frame on, and stays lit this long. */
+const SWAP_AT = 72;
+const PRESS_TICKS = 12;
+const CAPTION_TOP = 122;
 
 export const buildFirePage: PageBuilder = (kit) => {
   kit.well(WELL.x, WELL.y, WELL.w, WELL.h);
   const slotX = (index: number) => WELL.slotX + index * WELL.pitch;
   for (const [index, kind] of HELD.entries()) kit.icon(slotX(index), ROW_Y, POWER_UP_ICON[kind], 2);
+  const digits = HELD.map((_, index) =>
+    kit.words(slotX(index) + DIGIT.right, ROW_Y + DIGIT.top, '', { align: 'right', scale: 2 }),
+  );
   const frame = kit.bar(slotX(0), ROW_Y, FRAME.size, FRAME.size, UiColour.sun);
   frame.setFillStyle().setStrokeStyle(FRAME.line, UiColour.sun);
   const glyph = kit.action('fire', 2);
@@ -48,14 +60,29 @@ export const buildFirePage: PageBuilder = (kit) => {
   const racer = kit.sprite(RACER_X, ROW_Y, kit.racer, Frame.a, 2);
   const effects = HELD.map((kind) => kit.sprite(RACER_X, ROW_Y, POWER_UP_TEX[kind], Frame.a, 2));
   const trail = Array.from({ length: TRAIL_DOTS }, () => kit.bar(0, 0, 2, 2, UiColour.foam));
+  const swap = kit.action('next', 2);
+  swap.setPosition(SWAP_ROW.glyphX, SWAP_ROW.centreY - swap.height / 2);
+  kit.words(SWAP_ROW.glyphX + swap.width + SWAP_ROW.wordGap, SWAP_ROW.centreY - 6, 'SWAP', {
+    size: 'display',
+    tone: 'sun',
+    align: 'left',
+  });
   kit.words(160, CAPTION_TOP, 'ONE AT A TIME!', { size: 'display', tone: 'sun' });
 
   return (tick, reducedMotion) => {
     // Reduced motion holds the first shot just after the press: effect out, trail drawn.
     const shot = reducedMotion ? 0 : Math.floor(tick / SHOT_TICKS) % HELD.length;
-    const since = reducedMotion ? OUT_TICKS : (tick % SHOT_TICKS) - FIRE_AT;
+    const t = reducedMotion ? FIRE_AT + OUT_TICKS : tick % SHOT_TICKS;
+    const since = t - FIRE_AT;
     const fired = since >= 0;
-    frame.setPosition(slotX(shot), ROW_Y);
+    const swapped = t >= SWAP_AT;
+    frame.setPosition(slotX(swapped ? (shot + 1) % HELD.length : shot), ROW_Y);
+    swap.setHighlighted(swapped && t < SWAP_AT + PRESS_TICKS);
+    // Each slot fires once per round of three shots, then the charges are back for the next round.
+    digits.forEach((digit, index) => {
+      const spent = index < shot || (index === shot && fired) ? 1 : 0;
+      digit.setText(String(CHARGES[HELD[index] ?? 'jetFin'] - spent));
+    });
     glyph.setHighlighted(fired && since < OUT_TICKS * 2);
     racer.setFrame(stroke(tick, reducedMotion));
     starburst.setVisible(fired && since < OUT_TICKS * 2);

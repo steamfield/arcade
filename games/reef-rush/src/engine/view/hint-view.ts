@@ -1,6 +1,7 @@
 /**
  * Draws the in-race hints that `hints.ts` decides on: a short line beside the player ("PRESS [A]!"
- * with the fire control's glyph, "[B] DASH!" with the dash control's) and the fire glyph pulsing
+ * with the fire control's glyph, "[B] DASH!" with the dash control's, "[⇄] SWAP!" with the
+ * next-item control's) and the fire glyph pulsing
  * next to the HUD's item well while items sit unused. Text over the water is sun, outlined, and
  * sits beside the player (`besidePlayerY`), so it never covers them.
  * Glyphs are key caps on a keyboard and round buttons on a touch screen. Under reduced motion the
@@ -65,6 +66,13 @@ export function createHintView(
   const touch = isTouchScreen();
   const pressFire = createLine(scene, touch, 'PRESS', 'fire', '!');
   const kick = createLine(scene, touch, '', 'dash', 'DASH!');
+  const swap = createLine(scene, touch, '', 'next', 'SWAP!');
+  // `hints.ts` turns on at most one of these at a time.
+  const lines: readonly [HintLine, (hints: HintState) => boolean][] = [
+    [pressFire, (hints) => hints.pressFire],
+    [kick, (hints) => hints.kick],
+    [swap, (hints) => hints.swap],
+  ];
   const pulse = createActionGlyph(scene, 'fire', touch, { fixed: true, depth: Layer.hud });
   const pulseX = hudRight + PULSE_GAP;
   pulse.setPosition(pulseX, pulseTop(pulseX, pulse.width));
@@ -75,15 +83,13 @@ export function createHintView(
       const body = playerOf(world).body;
       const playerY = body.y + body.h / 2 - view.y;
       const centreY = clearOfSplash(anchorY(playerY, GLYPH_SIZE), playerY);
-      // A dash hint outranks PRESS FIRE: a squid on the way is the more urgent thing to do.
       const lit = !reducedMotion && Math.floor(world.tick / PULSE_TICKS) % 2 === 1;
-      const showPressFire = hints.pressFire && !hints.kick;
-      pressFire.setVisible(showPressFire);
-      kick.setVisible(hints.kick);
-      pressFire.setHighlighted(lit);
-      kick.setHighlighted(lit);
-      if (showPressFire) pressFire.place(centreY);
-      if (hints.kick) kick.place(centreY);
+      for (const [line, shows] of lines) {
+        const shown = shows(hints);
+        line.setVisible(shown);
+        line.setHighlighted(lit);
+        if (shown) line.place(centreY);
+      }
       pulse.setVisible(hints.pulseItems);
       pulse.setHighlighted(reducedMotion || lit);
     },

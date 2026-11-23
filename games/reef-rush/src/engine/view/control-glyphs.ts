@@ -46,8 +46,8 @@ export interface MoveGlyph {
 /** The four directions of the arrows. */
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
-/** The two action buttons: fire (A, uses the selected item) and dash (B). */
-export type ActionName = 'fire' | 'dash';
+/** The action buttons: fire (A, uses the selected item), dash (B) and next (selects the next held item). */
+export type ActionName = 'fire' | 'dash' | 'next';
 
 /** Height of a key cap and the diameter of a round button, so the two line up in a row. */
 export const GLYPH_SIZE = 15;
@@ -61,7 +61,11 @@ const CAP_PADDING = 4;
 const KEY_NAMES: Record<ActionName, { keyboard: string; touch: string }> = {
   fire: { keyboard: 'SPACE', touch: 'A' },
   dash: { keyboard: 'X', touch: 'B' },
+  next: { keyboard: 'E', touch: '⇄' },
 };
+
+/** Actions whose touch button is drawn as a picture rather than a letter: the pixel font has no `⇄`. */
+const DRAWN_ON_TOUCH: ReadonlySet<ActionName> = new Set(['next']);
 
 /** The text on `action`'s control: the key on a keyboard, the button's letter on touch. */
 export function controlName(action: ActionName, touch: boolean): string {
@@ -96,7 +100,8 @@ export function createActionGlyph(
   const width = baseWidth * scale;
   const height = GLYPH_SIZE * scale;
   const shape = createShape(scene, options).setScale(scale);
-  const label = createLabel(scene, Math.floor(width / 2), Math.floor(height / 2), name, {
+  const drawnSwap = touch && DRAWN_ON_TOUCH.has(action);
+  const label = createLabel(scene, Math.floor(width / 2), Math.floor(height / 2), drawnSwap ? '' : name, {
     align: 'center',
     scale,
     fixed: options.fixed,
@@ -107,6 +112,7 @@ export function createActionGlyph(
     shape.clear();
     if (touch) drawDisc(shape, GLYPH_SIZE, highlighted);
     else drawCap(shape, baseWidth, GLYPH_SIZE, highlighted);
+    if (drawnSwap) drawSwapArrows(shape, highlighted);
     label.setColor(toneCss(highlighted ? 'sun' : 'foam'));
   };
   draw();
@@ -239,6 +245,18 @@ function drawDisc(shape: Phaser.GameObjects.Graphics, size: number, highlighted:
       shape.fillRect(inset + left, inset + row, diameter - left * 2, 1);
     }
   }
+}
+
+/**
+ * The touch swap button's `⇄` inside a round button: a right arrow over a left arrow, in foam (sun
+ * when highlighted), matching the on-screen button's label.
+ */
+function drawSwapArrows(shape: Phaser.GameObjects.Graphics, highlighted: boolean): void {
+  shape.fillStyle(highlighted ? UiColour.sun : UiColour.foam);
+  // Right-pointing arrow on row 5: shaft x 3-9, head column x 9 rows 4-6, tip at x 10.
+  shape.fillRect(3, 5, 7, 1).fillRect(9, 4, 1, 3).fillRect(10, 5, 1, 1);
+  // Left-pointing arrow on row 9: shaft x 5-11, head column x 5 rows 8-10, tip at x 4.
+  shape.fillRect(5, 9, 7, 1).fillRect(5, 8, 1, 3).fillRect(4, 9, 1, 1);
 }
 
 /** A 5x5 solid arrowhead pointing `direction`, centred on (cx, cy), in foam (sun when pressed). */
