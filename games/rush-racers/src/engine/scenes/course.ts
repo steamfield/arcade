@@ -55,7 +55,7 @@ export class CourseScene extends Phaser.Scene {
 }
 
 /** A course's row: its name, and its best time at `difficulty` or a dash. */
-function rowText(course: Course, save: SaveData, difficulty: Difficulty): CourseRowText {
+export function rowText(course: Course, save: SaveData, difficulty: Difficulty): CourseRowText {
   const best = bestFor(save, course.id, difficulty);
   return { name: course.name, best: best ? formatRaceTime(best.ticks) : NO_BEST };
 }

@@ -5,13 +5,15 @@
 import type { SaveStatus } from '@arcade/save';
 import { hashWorld } from '../logic/hash.ts';
 import { bestFor } from '../logic/records.ts';
+import { NEW_GAME } from '../logic/save.ts';
 import type { World } from '../logic/types.ts';
 import { summarize, toAscii } from '../logic/world.ts';
 import { mediumIdOf } from '../logic/worlds/index.ts';
 import { HOW_TO_PLAY_PAGES } from './how-to-play.ts';
 import { localOf } from './local-racer.ts';
 import type { Runtime } from './runtime.ts';
-import { formatBest, formatRaceTime, levelBanner, racerName } from './view/race-text.ts';
+import { rowText } from './scenes/course.ts';
+import { formatBest, levelBanner, racerName } from './view/race-text.ts';
 import { squidHuntingLocal } from './view/threat-math.ts';
 
 /**
@@ -56,9 +58,6 @@ function threatOf(world: World) {
   return { lockedOn: squidHuntingLocal(world) !== null, latched: localOf(world).status.latched > 0 };
 }
 
-/** What course select's row shows in place of a time on a course with no best yet, as `scenes/course.ts` draws it. */
-const NO_BEST = '-:--.--';
-
 function sceneDetails(rt: Runtime): Record<string, unknown> {
   const best = rt.save ? bestFor(rt.save, rt.course.id, rt.settings.difficulty) : null;
   if (rt.scene === 'title') return { best: best ? formatBest(best) : null };
@@ -72,10 +71,8 @@ function sceneDetails(rt: Runtime): Record<string, unknown> {
 
 /** Course select's rows as the screen shows them, and the index of the cursor's row. */
 function courseSelectOf(rt: Runtime) {
-  const rows = rt.listedCourses.map((course) => {
-    const courseBest = rt.save ? bestFor(rt.save, course.id, rt.settings.difficulty) : null;
-    return { id: course.id, name: course.name, best: courseBest ? formatRaceTime(courseBest.ticks) : NO_BEST };
-  });
+  const save = rt.save ?? NEW_GAME;
+  const rows = rt.listedCourses.map((course) => ({ id: course.id, ...rowText(course, save, rt.settings.difficulty) }));
   return { rows, selected: rt.courseCursor };
 }
 

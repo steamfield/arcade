@@ -1,5 +1,6 @@
 /**
- * Thornwood's pickups: the `?` crate (shut with a `?` on its face, then popped open on its prize)
+ * Thornwood's pickups: the `?` crate (a `?` block while it is ready, an emptied box with its lid up
+ * while it is shut, matching Reef's open and closed clam)
  * and the acorn. They are the same size as Reef's clam (16x10) and pearl (7x7), and the acorn's body
  * is as bright as the pearl so it reads on the dark forest bands.
  */
@@ -8,7 +9,7 @@ import type { Palette } from '../../../art/pixel.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { ThornTex } from '../keys.ts';
 
-/** Crate: dark outline, wood, lit wood edge, the pale `?` and the gold prize. */
+/** Crate: dark outline, wood, lit wood edge and the pale `?`. */
 export const CratePalette: Palette = [0x2a1408, 0xb8803c, 0xf0c070, 0xfff4b0];
 
 /** Acorn: dark outline, pale gold nut (as bright as the pearl), its shine and a brown cap. */
@@ -20,8 +21,21 @@ export const THORN_PICKUP_SHEETS: readonly ArtSheet<string>[] = [
     [Frame.a]: ['..000..', '.03330.', '0333330', '0121110', '0111110', '.01110.', '..000..'],
   }),
   sheet(ThornTex.crate, CratePalette, {
-    // A shut block, a bold `?` on its face.
+    // Shut (`clamClosed`) after a racer took its prize: the lid knocked up over an empty box.
     [Frame.clamClosed]: [
+      '..000000000000..',
+      '.02222222222220.',
+      '.01111111111110.',
+      '0000000000000000',
+      '.00000000000000.',
+      '.01110000001110.',
+      '.01110000001110.',
+      '.01111000011110.',
+      '.01111111111110.',
+      '..000000000000..',
+    ],
+    // Ready (`clamOpen`, as Reef's open clam is): a block with a bold `?` on its face.
+    [Frame.clamOpen]: [
       '0000000000000000',
       '0222222222222220',
       '0211113333111110',
@@ -32,19 +46,6 @@ export const THORN_PICKUP_SHEETS: readonly ArtSheet<string>[] = [
       '0211111331111110',
       '0111111111111110',
       '0000000000000000',
-    ],
-    // The lid knocked up, a gold prize shining out of the dark box.
-    [Frame.clamOpen]: [
-      '..000000000000..',
-      '.02222222222220.',
-      '.01111111111110.',
-      '0000000000000000',
-      '.00000033000000.',
-      '.01110333301110.',
-      '.01110033001110.',
-      '.01111000011110.',
-      '.01111111111110.',
-      '..000000000000..',
     ],
   }),
 ];
