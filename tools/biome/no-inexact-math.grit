@@ -1,0 +1,28 @@
+// Lockstep multiplayer needs every JavaScript engine to compute the same race bit for bit.
+// Exponentiation and the transcendental Math functions are not required to round identically
+// across engines, so logic uses multiplication and the exact helpers in src/logic/num.ts.
+or {
+  `$base ** $exponent` as $power where {
+    register_diagnostic(span=$power, message="Exponentiation may round differently between JavaScript engines, and a lockstep race must match bit for bit. Multiply instead.", severity="error")
+  },
+  // Grit cannot bind an assignment's operator token, so match the assignment that contains `**=`.
+  JsAssignmentExpression() as $power where {
+    $power <: contains `**=`,
+    register_diagnostic(span=$power, message="Exponentiation may round differently between JavaScript engines, and a lockstep race must match bit for bit. Multiply instead.", severity="error")
+  },
+  `Math.pow($args)` as $call where {
+    register_diagnostic(span=$call, message="Exponentiation may round differently between JavaScript engines, and a lockstep race must match bit for bit. Multiply instead.", severity="error")
+  },
+  `Math.$name($args)` as $call where {
+    $name <: or {
+      `sin`,
+      `cos`,
+      `tan`,
+      `atan2`,
+      `hypot`,
+      `exp`,
+      `log`
+    },
+    register_diagnostic(span=$call, message="This Math function may round differently between JavaScript engines. Use src/logic/num.ts.", severity="error")
+  }
+}

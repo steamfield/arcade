@@ -179,7 +179,9 @@ function othersNear(world: World, racer: Racer, tiles: number): Racer[] {
 
 function withinTiles(from: Vec, to: Vec, tiles: number): boolean {
   const reach = tiles * TILE;
-  return (to.x - from.x) ** 2 + (to.y - from.y) ** 2 <= reach * reach;
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  return dx * dx + dy * dy <= reach * reach;
 }
 
 function inAimCone(racer: Racer, aim: Vec, other: Racer): boolean {
