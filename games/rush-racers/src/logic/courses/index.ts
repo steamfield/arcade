@@ -5,12 +5,14 @@
  */
 import { parseLevel } from '../level/parse.ts';
 import type { Level, World } from '../types.ts';
+import { RUN_TEST } from './run-test.ts';
 import { SUNLIT_SHALLOWS } from './sunlit-shallows.ts';
 import type { Course, ShippedCourseId } from './types.ts';
 
 /** Every shipped course by id, in menu order: course select lists the `listed` ones in this order. */
 export const COURSES: Readonly<Record<ShippedCourseId, Course>> = {
   'sunlit-shallows': SUNLIT_SHALLOWS,
+  'run-test': RUN_TEST,
 };
 
 /**

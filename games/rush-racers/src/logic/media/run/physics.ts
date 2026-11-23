@@ -110,6 +110,28 @@ export function runExtra(tuning: MediumTuning): RunExtra {
   return Object.fromEntries(entries) as RunExtra;
 }
 
+/**
+ * How high, px, a jump from standing lifts a runner that holds Up for `holdTicks` ticks counting the
+ * press, with no wind and `jumpMulFor` 1: `jumpSpeed` up, then each tick `fall` exactly as
+ * `applyRunIntent` applies it, and the body moved by its new `vy`. Holding past the top of the jump
+ * adds nothing.
+ *
+ * @param dt Tick length in seconds.
+ * @throws {Error} When `tuning` lacks one of run's extras.
+ */
+export function jumpPeak(tuning: MediumTuning, holdTicks: number, dt: number): number {
+  const extra = runExtra(tuning);
+  const stillAir: RunEnv = { kind: 'run', grounded: false, wind: null, inMud: false };
+  const body: Body = { x: 0, y: 0, w: 0, h: 0, vx: 0, vy: -extra.jumpSpeed };
+  let peak = 0;
+  for (let tick = 0; body.vy < 0; tick++) {
+    fall(body, tick >= holdTicks, stillAir, extra, dt);
+    body.y += body.vy * dt;
+    peak = Math.max(peak, -body.y);
+  }
+  return peak;
+}
+
 /** Fallen racers wait out of sight: no velocity, so no gravity carries them further. */
 function park(body: Body): void {
   body.vx = 0;

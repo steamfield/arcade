@@ -8,10 +8,16 @@ import type { GridSize } from '../../types.ts';
 import type { MediumNav, PilotMemory } from '../types.ts';
 import { wrongKind } from './data.ts';
 
-/** Run's navigation: a distance to the finish per tile, indexed `y * width + x`, in tiles. */
+/** Run's navigation: a distance to the finish per tile, and how long to hold Up for each jump height. */
 export interface RunNav extends MediumNav, GridSize {
   readonly kind: 'run';
+  /** Distance to the finish in tiles, indexed `y * width + x`. */
   distance: Float32Array;
+  /**
+   * Ticks Up must be held for a jump that lifts the feet onto ground `index` tiles higher, worked out
+   * from the world's tuning. The last index is the highest ground a full jump reaches.
+   */
+  jumpHoldTicks: readonly number[];
 }
 
 /** A run rival's memory between ticks. */
@@ -19,9 +25,11 @@ export interface RunPilot extends PilotMemory {
   readonly kind: 'run';
   /** Ticks left to keep holding Up for the jump in progress; 0 when not jumping. */
   holdUpTicks: number;
+  /** Up was pressed last tick, so a new jump has to let go of it first. */
+  upHeld: boolean;
   /** Ticks left of a stuck recovery; 0 when not recovering. */
   recoverTicks: number;
-  /** Which way a recovery runs: -1 left, 1 right. */
+  /** Which way the finish lay when the recovery started: it backs off the other way, then jumps this way. */
   recoverDir: -1 | 1;
 }
 

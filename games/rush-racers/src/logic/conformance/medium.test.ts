@@ -1,11 +1,12 @@
 /**
  * Medium conformance: what every medium must do for the race to work, checked on every shipped
  * medium and on the test-only glide medium. Each is raced through `createWorld` and `stepWorld` on
- * small inline courses (`geometries.ts`): it is deterministic, caps speed, honours its kick
- * cooldown, shows every MoveModifiers field, makes progress in open space in each direction its
- * own spec allows, sends a rival the progress backstop catches into its own recovery, and gets every rival through an overhang, a 1-tile gap, a shaft with a lip and a
- * drop without stalling. A new medium joins by being in `MEDIA` (or registered here) and listing its
- * open-space directions below.
+ * the small inline courses `geometries.ts` lists for it: it is deterministic, caps speed (only
+ * horizontal speed for media whose cases say so), honours its kick cooldown, shows every MoveModifiers
+ * field, makes progress through its arena in each direction its own spec allows, sends a rival the
+ * progress backstop catches into its own recovery, and gets every rival through each of its
+ * geometries without stalling. A new medium joins by being in `MEDIA` (or registered here) and
+ * listing its cases in `CASES_BY_MEDIUM`.
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
@@ -20,29 +21,23 @@ import { centreOf, playerOf } from '../racers.ts';
 import { hold, placeOnTile, racerOf, ticksOf } from '../test-world.ts';
 import type { Intent, MoveModifiers, RivalProfile, Vec, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
-import { ARENA_CENTRE, courseIn, GEOMETRIES, OPEN_ARENA } from './geometries.ts';
+import { type Arena, CASES_BY_MEDIUM, courseIn, type MediumCases } from './geometries.ts';
 import { GLIDE_MEDIUM } from './glide.ts';
 
 registerMedium(GLIDE_MEDIUM);
 
 const MEDIA_UNDER_TEST: readonly Medium[] = [...Object.values(MEDIA), GLIDE_MEDIUM];
 
-const EIGHT_WAYS: readonly Vec[] = [
-  { x: 1, y: 0 },
-  { x: -1, y: 0 },
-  { x: 0, y: -1 },
-  { x: 0, y: 1 },
-  { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
-  { x: Math.SQRT1_2, y: Math.SQRT1_2 },
-  { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
-  { x: -Math.SQRT1_2, y: Math.SQRT1_2 },
-];
-
-/** The directions each medium's own spec says a racer moves freely in through open space. */
-const OPEN_SPACE_DIRECTIONS: Readonly<Record<string, readonly Vec[]>> = {
-  swim: EIGHT_WAYS,
-  glide: EIGHT_WAYS,
-};
+/**
+ * The cases `medium` is raced on.
+ *
+ * @throws {Error} When the medium has no entry in `CASES_BY_MEDIUM`.
+ */
+function casesFor(medium: Medium): MediumCases {
+  const cases = CASES_BY_MEDIUM[medium.id];
+  if (!cases) throw new Error(`Medium '${medium.id}' has no conformance cases; add it to CASES_BY_MEDIUM`);
+  return cases;
+}
 
 /** Ticks a racer holds a direction in open space; it should cover at least half its cruise speed times that. */
 const OPEN_SPACE_TICKS = 90;
@@ -63,20 +58,37 @@ function racingWorld(medium: Medium, ascii: string, options: { seed?: number; pl
   return { world, log };
 }
 
-/** Every racer's body and the event stream after `ticks` of a bot-driven race on the first geometry. */
+/** Every racer's body and the event stream after `ticks` of a bot-driven race on the medium's first geometry. */
 function botRace(medium: Medium, ticks: number) {
-  const { world, log } = racingWorld(medium, GEOMETRIES[0]?.ascii ?? '', { playerBot: BOT_PROFILES.expert });
+  const first = casesFor(medium).geometries[0];
+  if (!first) throw new Error(`Medium '${medium.id}' lists no geometries in CASES_BY_MEDIUM`);
+  const { world, log } = racingWorld(medium, first.ascii, { playerBot: BOT_PROFILES.expert });
   for (let i = 0; i < ticks; i++) stepWorld(world, hold({ x: 0, y: 0 }), TICK_DT);
   return { bodies: world.racers.map((racer) => ({ ...racer.body })), events: log.all() };
 }
 
-/** The player's speed after each of `ticks` steps holding `input`. */
-function speedsHolding(world: World, input: Intent, ticks: number): number[] {
+/**
+ * The player's speed after each of `ticks` steps holding `input`, on the axes the medium's
+ * `speedCapAxes` says `maxSpeed` caps: only |vx| for media that fall under gravity, else the full speed.
+ */
+function speedsHolding(medium: Medium, world: World, input: Intent, ticks: number): number[] {
   const player = playerOf(world);
+  const horizontalOnly = casesFor(medium).speedCapAxes === 'horizontal';
   return Array.from({ length: ticks }, () => {
     stepWorld(world, input, TICK_DT);
-    return length(player.body.vx, player.body.vy);
+    return horizontalOnly ? Math.abs(player.body.vx) : length(player.body.vx, player.body.vy);
   });
+}
+
+/** A racing world on the medium's arena with the player put on `tile` and settled there. */
+function playerInArena(medium: Medium, tile: (arena: Arena) => Vec) {
+  const { arena } = casesFor(medium);
+  const { world, log } = racingWorld(medium, arena.ascii);
+  const player = playerOf(world);
+  const at = tile(arena);
+  placeOnTile(player, at.x, at.y);
+  for (let i = 0; i < arena.settleTicks; i++) stepWorld(world, hold({ x: 0, y: 0 }), TICK_DT);
+  return { world, log, player };
 }
 
 /** What one MoveModifiers field changes, read off the player after the medium moves it under `mods`. */
@@ -95,9 +107,7 @@ function moveInOpen(
   intent: Intent,
   prepare = (_world: World) => {},
 ) {
-  const { world, log } = racingWorld(medium, OPEN_ARENA);
-  const player = playerOf(world);
-  placeOnTile(player, ARENA_CENTRE.x, ARENA_CENTRE.y);
+  const { world, log, player } = playerInArena(medium, (arena) => arena.centre);
   prepare(world);
   const tuning = effectiveTuning(world);
   for (let i = 0; i < ticks; i++) {
@@ -130,7 +140,7 @@ const MODIFIER_CASES: readonly ModifierCase[] = [
     field: 'dragMul',
     changed: (base) => base.dragMul * 2,
     measure: (medium, mods) => {
-      const { body } = moveInOpen(medium, mods, 30, hold({ x: 0, y: 0 }), (world) => {
+      const { body } = moveInOpen(medium, mods, casesFor(medium).arena.coastTicks, hold({ x: 0, y: 0 }), (world) => {
         playerOf(world).body.vx = 100;
       }).player;
       return body.vx;
@@ -165,11 +175,9 @@ describe.each(MEDIA_UNDER_TEST.map((medium) => [medium.id, medium] as const))('t
   });
 
   it('never goes faster than its speed cap, even pushed far past it', () => {
-    const { world } = racingWorld(medium, OPEN_ARENA);
-    const player = playerOf(world);
-    placeOnTile(player, 2, 6);
+    const { world, player } = playerInArena(medium, (arena) => arena.runway);
     player.profile = { ...player.profile, forceMul: 6 };
-    const top = Math.max(...speedsHolding(world, hold({ x: 1, y: 0 }, { kick: true }), 90));
+    const top = Math.max(...speedsHolding(medium, world, hold({ x: 1, y: 0 }, { kick: true }), 90));
     const { maxSpeed } = effectiveTuning(world);
 
     expect(top).toBeLessThanOrEqual(maxSpeed + 1e-9);
@@ -177,8 +185,7 @@ describe.each(MEDIA_UNDER_TEST.map((medium) => [medium.id, medium] as const))('t
   });
 
   it('waits out its kick cooldown between kicks', () => {
-    const { world, log } = racingWorld(medium, OPEN_ARENA);
-    placeOnTile(playerOf(world), 2, 6);
+    const { world, log } = playerInArena(medium, (arena) => arena.runway);
     for (let i = 0; i < 200; i++) {
       log.tick = world.tick + 1;
       stepWorld(world, hold({ x: 1, y: 0 }, { kick: true }), TICK_DT);
@@ -203,17 +210,15 @@ describe.each(MEDIA_UNDER_TEST.map((medium) => [medium.id, medium] as const))('t
     },
   );
 
-  const directions = OPEN_SPACE_DIRECTIONS[id] ?? [];
+  const { directions, geometries } = CASES_BY_MEDIUM[id] ?? { directions: [], geometries: [] };
   it('lists the directions it moves in through open space', () => {
-    expect(directions.length, `add '${id}' to OPEN_SPACE_DIRECTIONS`).toBeGreaterThan(0);
+    expect(directions.length, `add '${id}' to CASES_BY_MEDIUM`).toBeGreaterThan(0);
   });
 
   it.each(directions.map((dir) => [dir.x.toFixed(2), dir.y.toFixed(2), dir] as const))(
     'makes progress through open space toward (%s, %s)',
     (_x, _y, dir) => {
-      const { world } = racingWorld(medium, OPEN_ARENA);
-      const player = playerOf(world);
-      placeOnTile(player, ARENA_CENTRE.x, ARENA_CENTRE.y);
+      const { world, player } = playerInArena(medium, (arena) => arena.centre);
       const from = centreOf(player);
       for (let i = 0; i < OPEN_SPACE_TICKS; i++) stepWorld(world, hold(dir), TICK_DT);
       const to = centreOf(player);
@@ -225,10 +230,11 @@ describe.each(MEDIA_UNDER_TEST.map((medium) => [medium.id, medium] as const))('t
   );
 
   it('sends a rival the progress backstop catches into its own recovery, on that tick', () => {
-    const { world } = racingWorld(medium, OPEN_ARENA);
+    const { arena } = casesFor(medium);
+    const { world } = racingWorld(medium, arena.ascii);
     const tess = racerOf(world, 'tess');
     const moves = Array.from({ length: PROGRESS_BACKSTOP_TICKS + 20 }, () => {
-      placeOnTile(tess, 5, ARENA_CENTRE.y);
+      placeOnTile(tess, 5, arena.centre.y);
       tess.body.vx = 60;
       tess.body.vy = 0;
       return rivalIntent(world, tess, world.rngs['ai.tess']).move;
@@ -239,7 +245,7 @@ describe.each(MEDIA_UNDER_TEST.map((medium) => [medium.id, medium] as const))('t
     expect(offCourse).toBe(PROGRESS_BACKSTOP_TICKS);
   });
 
-  it.each(GEOMETRIES.map((geometry) => [geometry.name, geometry] as const))(
+  it.each(geometries.map((geometry) => [geometry.name, geometry] as const))(
     'gets every rival through %s without stalling',
     (_name, geometry) => {
       const racers = raceThrough(medium, geometry.ascii);

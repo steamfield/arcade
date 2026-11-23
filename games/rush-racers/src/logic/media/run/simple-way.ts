@@ -1,15 +1,24 @@
 /**
  * Run's navigation for phase 2: one uniform-cost distance to the finish over every open tile (rock
- * and unbroken coral closed, ledges open), a one-tile-ahead way over it, a horizontal-only aim, and a
- * level check. It ignores gravity, so it is a stand-in until the jump-link nav (phase 4).
- *
- * Scaffold baseline; phase 2 lane b owns this file.
+ * and unbroken coral closed, ledges open), a one-tile-ahead way over it, a horizontal-only aim, how
+ * long to hold Up for each jump height, and the level checks. The distance ignores gravity, so it is
+ * a stand-in until the jump-link nav (phase 4); the pilot reads the ground itself to jump.
  */
-import { isSolid } from '../../level/query.ts';
+import { TICK_DT } from '@arcade/core';
+import { FINISH } from '../../level/parse.ts';
+import { isLedge, isSolid } from '../../level/query.ts';
 import { cornerIsClear, distancesToFinish, type EntryCost, fieldAt, NEIGHBOURS } from '../../race/flowfield.ts';
 import { type Box, type Level, TILE, type Vec, type World } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
+import { jumpPeak, runExtra } from './physics.ts';
 import { type RunNav, runNav } from './way-data.ts';
+
+/** How far below a start or a finish tile, in rows, a runner must find ground to stand on. */
+export const GROUND_REACH_ROWS = 4;
+/** Feet clear the top of what a jump lands on by this much, px, so they don't catch its corner. */
+export const JUMP_CLEARANCE_PX = 2;
+/** Level checks judge the level as written, before any coral is broken. */
+const NOTHING_BROKEN: ReadonlySet<number> = new Set();
 
 /** Every open tile costs the same; rock and unbroken coral are closed. */
 export const runCost: EntryCost = (cell, isBroken) => {
@@ -18,9 +27,36 @@ export const runCost: EntryCost = (cell, isBroken) => {
   return 1;
 };
 
-/** Run's nav for `level` with `broken` coral open. */
-export function buildRunNav(level: Level, broken: ReadonlySet<number>, _tuning: MediumTuning): RunNav {
-  return { kind: 'run', width: level.width, height: level.height, distance: distancesToFinish(level, broken, runCost) };
+/** Run's nav for `level` with `broken` coral open; jump heights come from `tuning`. */
+export function buildRunNav(level: Level, broken: ReadonlySet<number>, tuning: MediumTuning): RunNav {
+  return {
+    kind: 'run',
+    width: level.width,
+    height: level.height,
+    distance: distancesToFinish(level, broken, runCost),
+    jumpHoldTicks: jumpHoldTable(tuning),
+  };
+}
+
+/**
+ * The ticks of Up a jump needs to land on ground 0, 1, 2... tiles higher, up to the highest a full
+ * jump reaches, from the physics' own `jumpPeak`. Each entry is the shortest hold that gets there,
+ * except the last: a full jump, held to its top, so the highest jump also carries furthest.
+ *
+ * @throws {Error} When `tuning` lacks run's extras (see `runExtra`).
+ */
+function jumpHoldTable(tuning: MediumTuning): number[] {
+  const extra = runExtra(tuning);
+  const fullHold = Math.ceil(extra.jumpSpeed / extra.gravity / TICK_DT);
+  const reaches = (rise: number, hold: number) => rise * TILE + JUMP_CLEARANCE_PX <= jumpPeak(tuning, hold, TICK_DT);
+  const table = [0];
+  for (let rise = 1; reaches(rise, fullHold); rise++) {
+    let hold = 1;
+    while (!reaches(rise, hold)) hold++;
+    table.push(hold);
+  }
+  if (table.length > 1) table[table.length - 1] = fullHold;
+  return table;
 }
 
 /**
@@ -68,16 +104,54 @@ export function runAimFrom(world: World, body: Box, _lookaheadTiles: number): Ve
   return { x: Math.sign(step.x), y: 0 };
 }
 
+/** True when a runner on `tile` would land on rock, coral or a ledge within GROUND_REACH_ROWS rows below it. */
+function hasGroundBelow(level: Level, tile: Vec): boolean {
+  for (let row = tile.y + 1; row <= tile.y + GROUND_REACH_ROWS; row++) {
+    if (isSolid(level, NOTHING_BROKEN, tile.x, row) || isLedge(level, tile.x, row)) return true;
+  }
+  return false;
+}
+
 /**
- * One problem for each start that can't reach the finish, located at that start.
+ * Why `level` can't be raced on foot: a start that can't reach the finish, a start with no ground
+ * close below it, and a finish column with no tile a runner could stand near. Starts are located at
+ * the start; the finish problem at its column.
  *
  * @throws {Error} When `nav` was built by another medium.
  */
 export function validateRunLevel(level: Level, nav: MediumNav): LevelProblem[] {
-  const run = runNav(nav);
-  return level.starts.flatMap((start, index) =>
-    Number.isFinite(fieldAt(run.distance, run, start))
-      ? []
-      : [{ message: `Start ${index + 1} cannot reach the finish running`, row: start.y, col: start.x }],
-  );
+  return [...startProblems(level, runNav(nav)), ...finishProblems(level)];
+}
+
+/** One problem per start that can't reach the finish, and one per start with no ground close below it. */
+function startProblems(level: Level, nav: RunNav): LevelProblem[] {
+  return level.starts.flatMap((start, index) => {
+    const at = { row: start.y, col: start.x };
+    const problems: LevelProblem[] = [];
+    if (!Number.isFinite(fieldAt(nav.distance, nav, start))) {
+      problems.push({ message: `Start ${index + 1} cannot reach the finish running`, ...at });
+    }
+    if (!hasGroundBelow(level, start)) {
+      problems.push({
+        message: `Start ${index + 1} has no ground within ${GROUND_REACH_ROWS} rows below it; put a floor under it`,
+        ...at,
+      });
+    }
+    return problems;
+  });
+}
+
+/** A problem when no finish tile (`F`) has ground close below it, so no runner reaches the line. */
+function finishProblems(level: Level): LevelProblem[] {
+  const column = level.finishX;
+  for (let row = 0; row < level.height; row++) {
+    if (level.glyphs[row]?.[column] === FINISH && hasGroundBelow(level, { x: column, y: row })) return [];
+  }
+  return [
+    {
+      message: `No finish tile in col ${column} has ground within ${GROUND_REACH_ROWS} rows below it; a runner can't reach the line`,
+      row: null,
+      col: column,
+    },
+  ];
 }
