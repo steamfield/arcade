@@ -22,18 +22,19 @@ const BUMP = { px: 3, ticks: 4 } as const;
 export const buildRunCratesPage: PageBuilder = (kit) => {
   const { itemTextures, pickups } = kit.skin.objects;
   addFloor(kit);
-  const crate = kit.sprite(CRATE.x, CRATE.y, pickups.clam, Frame.clamClosed, 2);
+  // A ready crate is the `clamOpen` frame, as a ready clam is open; a bumped one shuts (`clamClosed`).
+  const crate = kit.sprite(CRATE.x, CRATE.y, pickups.clam, Frame.clamOpen, 2);
   const item = kit.sprite(CRATE.x, CRATE.y, itemTextures.jetFin, Frame.a, 2);
   const racer = kit.sprite(CRATE.x, racerCentreY(0), kit.racer, Frame.a, 2);
   kit.words(CRATE.x, FLOOR_Y + 12, 'BUMP IT FROM BELOW');
 
   return (tick, reducedMotion) => {
-    // Reduced motion shows the moment after the bump: the crate open, its power-up out.
+    // Reduced motion shows the moment after the bump: the crate emptied, its power-up out.
     const t = reducedMotion ? OPENS_AT + ITEM.ticks : tick % PERIOD;
     const opened = t >= OPENS_AT;
     racer.setY(racerCentreY(liftAt(JUMP, t))).setFrame(stroke(tick, reducedMotion));
     const bump = opened && t < OPENS_AT + BUMP.ticks ? BUMP.px : 0;
-    crate.setFrame(opened ? Frame.clamOpen : Frame.clamClosed).setY(CRATE.y - bump);
+    crate.setFrame(opened ? Frame.clamClosed : Frame.clamOpen).setY(CRATE.y - bump);
     const rise = easeOut((t - OPENS_AT) / ITEM.ticks);
     item.setVisible(opened).setY(CRATE.y - Math.round(ITEM.risePx * rise));
   };
