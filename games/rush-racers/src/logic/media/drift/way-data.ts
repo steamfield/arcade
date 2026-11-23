@@ -7,11 +7,18 @@ import type { GridSize, Vec } from '../../types.ts';
 import type { MediumNav, PilotMemory } from '../types.ts';
 import { wrongKind } from './data.ts';
 
-/** Drift's navigation: distances to the finish, indexed `y * width + x`, in tiles. */
+/**
+ * Drift's navigation: three distance fields to the finish, indexed `y * width + x`, in tiles. They
+ * differ only in what unbroken ice costs.
+ */
 export interface DriftNav extends MediumNav, GridSize {
   readonly kind: 'drift';
   /** The way for a racer that steers round ice. */
   steer: Float32Array;
+  /** The way for a racer able to break ice now (a Shock Bubble or Comet ready): through it at a price. */
+  smash: Float32Array;
+  /** The way for a racer that rams through ice as it flies: through it cheaply. */
+  ram: Float32Array;
 }
 
 /** A drift rival's memory. */
@@ -19,6 +26,12 @@ export interface DriftPilot extends PilotMemory {
   readonly kind: 'drift';
   /** Unit aim along the way from the last replan. */
   aim: Vec;
+  /** Ticks until it reads the way again. */
+  replanIn: number;
+  /** The angle, in radians, its bounded random walk puts on the aim. */
+  wobble: number;
+  /** Racing ticks in a row it has moved slower than the stuck speed. */
+  stuckTicks: number;
   /** Ticks left of the sideways push; 0 when not recovering. */
   recoverTicks: number;
   recoverDir: Vec;
