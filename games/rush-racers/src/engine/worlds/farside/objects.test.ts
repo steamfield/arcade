@@ -1,6 +1,6 @@
 /**
  * Farside's object art: every key `keys.ts` names is built with the frames the views ask for, at
- * Reef's sizes, and the enemies and the acorn stand out from the space's canopy.
+ * Reef's sizes, and the enemies and the stardust stand out from the space's canopy.
  */
 import { describe, expect, it } from 'vitest';
 import { ENEMY_KINDS, POWER_UP_KINDS } from '../../../logic/types.ts';
@@ -22,7 +22,7 @@ import { ATTACK_ART_SHEETS } from './sprites/attack.ts';
 import { FAR_ENEMY_SHEETS, FarEnemyPalette } from './sprites/enemies.ts';
 import { ITEM_ART_SHEETS } from './sprites/items.ts';
 import { FAR_MARK_SHEET, FAR_MARK_SIZE } from './sprites/marks.ts';
-import { AcornPalette, FAR_PICKUP_SHEETS } from './sprites/pickups.ts';
+import { FAR_PICKUP_SHEETS, StardustPalette } from './sprites/pickups.ts';
 
 const FAR_SHEETS: readonly ArtSheet<string>[] = [
   ...ITEM_ART_SHEETS,
@@ -150,14 +150,14 @@ describe('Farside object colours', () => {
   it.each(ENEMY_KINDS.map((kind) => [kind, FARSIDE_OBJECTS.enemies.bodies[kind]] as const))(
     'the %s body colour stands 3:1 off the space bands',
     (kind) => {
-      const palette = { shark: 'boar', eel: 'snake', crab: 'beetle' } as const;
+      const palette = { shark: 'ray', eel: 'worm', crab: 'mite' } as const;
       expect(weakest(FarEnemyPalette[palette[kind]][1])).toBeGreaterThanOrEqual(3);
     },
   );
 
-  it('keeps the acorn body at least as bright as the pearl and 3:1 off the space bands', () => {
+  it('keeps the stardust body at least as bright as the pearl and 3:1 off the space bands', () => {
     const pearlBody = reefSheet(REEF_OBJECTS.pickups.pearl)?.frames[0]?.palette[1] ?? 0;
-    expect(luminance(AcornPalette[1] ?? 0)).toBeGreaterThanOrEqual(luminance(pearlBody));
-    expect(weakest(AcornPalette[1] ?? 0)).toBeGreaterThanOrEqual(3);
+    expect(luminance(StardustPalette[1] ?? 0)).toBeGreaterThanOrEqual(luminance(pearlBody));
+    expect(weakest(StardustPalette[1] ?? 0)).toBeGreaterThanOrEqual(3);
   });
 });

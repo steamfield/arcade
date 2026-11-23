@@ -1,5 +1,5 @@
 /**
- * Farside's object skin: items, attacks, the `?` crate and acorn, space enemies, hazard glints and
+ * Farside's object skin: items, attacks, the `?` pod and stardust, space enemies, hazard glints and
  * the words for them, plus `registerFarsideObjects`, which draws every texture the skin names.
  */
 import type Phaser from 'phaser';
@@ -34,17 +34,17 @@ export const FARSIDE_OBJECTS: ObjectSkin = {
   },
   itemTextures: FarItemTex,
   attack: {
-    homer: FarTex.bee,
-    riptideStreak: FarTex.tailwindStreak,
-    undertowStreak: FarTex.snareStreak,
-    inkCloud: FarTex.mudCloud,
-    bubble: FarTex.sapBubble,
+    homer: FarTex.probe,
+    riptideStreak: FarTex.ionStreak,
+    undertowStreak: FarTex.tractorStreak,
+    inkCloud: FarTex.gasCloud,
+    bubble: FarTex.fieldBubble,
     looseGlow: FarTex.looseGlow,
   },
-  pickups: { pearl: FarTex.acorn, clam: FarTex.crate },
+  pickups: { pearl: FarTex.stardust, clam: FarTex.pod },
   enemies: {
-    bodies: { shark: FarTex.boar, eel: FarTex.snakeHead, crab: FarTex.beetle },
-    eelBody: FarTex.snakeBody,
+    bodies: { shark: FarTex.ray, eel: FarTex.wormHead, crab: FarTex.mite },
+    eelBody: FarTex.wormBody,
     marks: FarTex.marks,
   },
   glints: {

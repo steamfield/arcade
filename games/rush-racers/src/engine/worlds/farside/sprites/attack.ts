@@ -1,5 +1,5 @@
 /**
- * Farside's attack art that lives in the world rather than the HUD: the homing bee (flight strokes
+ * Farside's attack art that lives in the world rather than the HUD: the homing probe (flight strokes
  * and a latched pose), one tile of a tailwind lane, the snare vine's speed streaks, the mud cloud,
  * the sap bubble and the glow under a loose item. Each matches the size of its Reef counterpart so
  * the views place it the same way.
@@ -25,7 +25,7 @@ const SAP_BUBBLE_PALETTE: Palette = [0xffd060, 0xffffff];
 /** Loose glow: two dithered rings, a warm green-gold. */
 const LOOSE_GLOW_PALETTE: Palette = [0xf0f0a0, 0xffffff];
 
-const BEE_SHEET = sheet(FarTex.bee, FarItemPalette.homingSquid, {
+const BEE_SHEET = sheet(FarTex.probe, FarItemPalette.homingSquid, {
   // Pointing right: wings up, striped body, stinger trailing left.
   [Frame.a]: [
     '................',
@@ -73,7 +73,7 @@ const BEE_SHEET = sheet(FarTex.bee, FarItemPalette.homingSquid, {
   ],
 });
 
-const TAILWIND_SHEET = sheet(FarTex.tailwindStreak, TAILWIND_TILE_PALETTE, {
+const TAILWIND_SHEET = sheet(FarTex.ionStreak, TAILWIND_TILE_PALETTE, {
   [Frame.a]: [
     '................',
     '................',
@@ -94,7 +94,7 @@ const TAILWIND_SHEET = sheet(FarTex.tailwindStreak, TAILWIND_TILE_PALETTE, {
   ],
 });
 
-const SNARE_SHEET = sheet(FarTex.snareStreak, SNARE_LINE_PALETTE, {
+const SNARE_SHEET = sheet(FarTex.tractorStreak, SNARE_LINE_PALETTE, {
   [Frame.a]: [
     '................',
     '2221111111......',
@@ -121,7 +121,7 @@ const SNARE_SHEET = sheet(FarTex.snareStreak, SNARE_LINE_PALETTE, {
   ],
 });
 
-const MUD_SHEET = sheet(FarTex.mudCloud, MUD_CLOUD_PALETTE, {
+const MUD_SHEET = sheet(FarTex.gasCloud, MUD_CLOUD_PALETTE, {
   [Frame.a]: [
     '........................',
     '...........1.1.1........',
@@ -142,7 +142,7 @@ const MUD_SHEET = sheet(FarTex.mudCloud, MUD_CLOUD_PALETTE, {
   ],
 });
 
-const SAP_BUBBLE_SHEET = sheet(FarTex.sapBubble, SAP_BUBBLE_PALETTE, {
+const SAP_BUBBLE_SHEET = sheet(FarTex.fieldBubble, SAP_BUBBLE_PALETTE, {
   [Frame.a]: [
     '...0000...',
     '.00....00.',
@@ -178,7 +178,7 @@ const LOOSE_GLOW_SHEET = sheet(FarTex.looseGlow, LOOSE_GLOW_PALETTE, {
   ],
 });
 
-/** World sheets for the bee, tailwind, snare vine, mud cloud, sap bubble and loose glow. */
+/** World sheets for the probe, tailwind, snare vine, mud cloud, sap bubble and loose glow. */
 export const ATTACK_ART_SHEETS: readonly ArtSheet<string>[] = [
   BEE_SHEET,
   TAILWIND_SHEET,

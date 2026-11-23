@@ -4,19 +4,19 @@
  * views get them through the theme.
  */
 
-/** Space texture keys: the tileset, mud, wind, finish banner, hazards and backdrop layers. */
+/** Space texture keys: the tileset, dust, wind, finish banner, hazards and backdrop layers. */
 export const SpaceTex = {
   /** Tileset for the tilemap: one frame per entry in `SpaceTile`. */
   tiles: 'space-tiles',
-  stoneDebris: 'space-stone-debris',
-  mud: 'space-mud',
+  iceDebris: 'space-ice-debris',
+  dust: 'space-dust',
   windRight: 'space-wind-right',
   windLeft: 'space-wind-left',
   windUp: 'space-wind-up',
   windDown: 'space-wind-down',
   finishGate: 'space-finish-gate',
-  thornBush: 'space-thorn-bush',
-  wasp: 'space-wasp',
+  mine: 'space-mine',
+  orb: 'space-orb',
   backdropFar: 'space-backdrop-far',
   backdropNear: 'space-backdrop-near',
 } as const;
@@ -36,12 +36,12 @@ export const SpaceTile = {
   rockBuried: 3,
 } as const;
 
-/** Space animation keys: mud bubbles, the four wind flows and the wasp's wings. */
+/** Space animation keys: dust bubbles, the four wind flows and the orb's wings. */
 export const SpaceAnim = {
-  mudBubble: 'space-mud-bubble',
+  dustSwirl: 'space-dust-swirl',
   windRight: 'space-wind-right-flow',
   windLeft: 'space-wind-left-flow',
   windUp: 'space-wind-up-flow',
   windDown: 'space-wind-down-flow',
-  waspBuzz: 'space-wasp-buzz',
+  orbPulse: 'space-orb-pulse',
 } as const;

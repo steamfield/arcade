@@ -26,7 +26,7 @@ export const FarItemPalette = {
   glowLantern: [0x10242a, 0x5ca8a0, 0xc8f0e8, 0xffe860],
   /** Boulder: near-black outline, grey stone, pale stone, a moss patch. */
   cannonball: [0x16161e, 0x7a7a8a, 0xc0c0d0, 0x4a9a3a],
-  /** Homing Bee: dark outline and stripes, orange body, yellow light, white wings. */
+  /** Homing Probe: dark outline and stripes, orange body, yellow light, white wings. */
   homingSquid: [0x1a1206, 0xff9a20, 0xffe070, 0xffffff],
   /** Tailwind: deep green outline, leaf green, pale green, white gust. */
   riptide: [0x0a3a28, 0x58d8a0, 0xd0fff0, 0xffffff],
@@ -110,7 +110,7 @@ const ITEM_ROWS = {
     '.0111110.',
     '..00000..',
   ],
-  // A bee seen from the side, wings up.
+  // A probe seen from the side, wings up.
   homingSquid: [
     '.33...33.',
     '.3333333.',

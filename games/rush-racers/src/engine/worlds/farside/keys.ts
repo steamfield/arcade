@@ -7,14 +7,14 @@ import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
 
 /** Racer texture per slot: 16x12, facing right, run-stride frames `Frame.a` and `Frame.b`. */
 export const FarRacerTex: Readonly<Record<CharacterId, string>> = {
-  rudy: 'farside-racer-grit',
-  gil: 'farside-racer-skip',
-  streak: 'farside-racer-blaze',
-  onyx: 'farside-racer-shade',
-  nib: 'farside-racer-cheeks',
-  baron: 'farside-racer-duke',
-  selene: 'farside-racer-dusk',
-  rook: 'farside-racer-fang',
+  rudy: 'farside-racer-bolt',
+  gil: 'farside-racer-zib',
+  streak: 'farside-racer-flare',
+  onyx: 'farside-racer-umbra',
+  nib: 'farside-racer-widget',
+  baron: 'farside-racer-crater',
+  selene: 'farside-racer-nova',
+  rook: 'farside-racer-krag',
 };
 
 /** Farside texture keys other than the racers. */
@@ -25,39 +25,39 @@ export const FarTex = {
   heads: 'farside-heads',
   /** 9x9 HUD item icons, one frame per item named by `FarIconFrame`. */
   icons: 'farside-icons',
-  /** The bee in flight: frames `Frame.a`, `Frame.b` and `Frame.squidLatched`. */
-  bee: 'farside-bee',
-  tailwindStreak: 'farside-tailwind-streak',
-  snareStreak: 'farside-snare-streak',
-  mudCloud: 'farside-mud-cloud',
-  sapBubble: 'farside-sap-bubble',
+  /** The probe in flight: frames `Frame.a`, `Frame.b` and `Frame.squidLatched`. */
+  probe: 'farside-probe',
+  ionStreak: 'farside-ion-streak',
+  tractorStreak: 'farside-tractor-streak',
+  gasCloud: 'farside-gas-cloud',
+  fieldBubble: 'farside-field-bubble',
   looseGlow: 'farside-loose-glow',
-  acorn: 'farside-acorn',
-  /** The `?` crate: frames `Frame.clamClosed` and `Frame.clamOpen`. */
-  crate: 'farside-crate',
-  /** The beetle (the crab's slot): frames `a`, `b`, `stagger`. */
-  beetle: 'farside-beetle',
-  /** The boar (the shark's slot): frames `a`, `b`, `bite`, `stagger`. */
-  boar: 'farside-boar',
-  /** The snake's head (the eel's slot): frames as the eel head's. */
-  snakeHead: 'farside-snake-head',
-  snakeBody: 'farside-snake-body',
+  stardust: 'farside-stardust',
+  /** The `?` pod: frames `Frame.clamClosed` and `Frame.clamOpen`. */
+  pod: 'farside-pod',
+  /** The mite (the crab's slot): frames `a`, `b`, `stagger`. */
+  mite: 'farside-probetle',
+  /** The ray (the shark's slot): frames `a`, `b`, `bite`, `stagger`. */
+  ray: 'farside-ray',
+  /** The worm's head (the eel's slot): frames as the eel head's. */
+  wormHead: 'farside-worm-head',
+  wormBody: 'farside-worm-body',
   /** Enemy marks: frames `markHole`, `markEyes`, `markAlert`, `markBubble`, `markStar`, `markPop`. */
   marks: 'farside-marks',
 } as const;
 
 /** In-world item sprite per item, as Reef's `Tex.<item>` sprites are. */
 export const FarItemTex: Readonly<Record<PowerUpKind, string>> = {
-  jetFin: 'farside-item-rocket-boots',
-  bubbleShield: 'farside-item-sap-shield',
-  puffer: 'farside-item-burr-ball',
-  inkSac: 'farside-item-mud-pie',
-  glowLantern: 'farside-item-firefly-jar',
-  homingSquid: 'farside-item-homing-bee',
-  riptide: 'farside-item-tailwind',
-  undertow: 'farside-item-snare-vine',
-  mimic: 'farside-item-copycat',
-  cannonball: 'farside-item-boulder',
+  jetFin: 'farside-item-ion-thrusters',
+  bubbleShield: 'farside-item-force-field',
+  puffer: 'farside-item-shock-bubble',
+  inkSac: 'farside-item-gas-bomb',
+  glowLantern: 'farside-item-star-flare',
+  homingSquid: 'farside-item-homing-probe',
+  riptide: 'farside-item-ion-stream',
+  undertow: 'farside-item-tractor-beam',
+  mimic: 'farside-item-hologram',
+  cannonball: 'farside-item-comet',
 };
 
 /** Frame names in `FarTex.portraits` and `FarTex.heads`: the slot id. */

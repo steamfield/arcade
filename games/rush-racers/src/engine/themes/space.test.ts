@@ -55,7 +55,7 @@ describe('the space theme', () => {
   });
 
   it('gives every looping texture the two frames its animation asks for', () => {
-    const loops = [SpaceTex.mud, SpaceTex.wasp, SpaceTex.windRight, SpaceTex.windLeft];
+    const loops = [SpaceTex.dust, SpaceTex.orb, SpaceTex.windRight, SpaceTex.windLeft];
     for (const key of [...loops, SpaceTex.windUp, SpaceTex.windDown]) expect(frameNames(key), key).toEqual(['a', 'b']);
   });
 
@@ -88,14 +88,14 @@ describe('the space theme', () => {
     expect(sizeOf(near?.texture ?? '').height).toBe(near?.height);
   });
 
-  it('animates the wasp and leaves the thorn bush still, in the hazard slots the views read', () => {
-    expect(SPACE_THEME.hazards.urchin).toEqual({ texture: SpaceTex.thornBush, frame: 'a', anim: null });
-    expect(SPACE_THEME.hazards.jelly).toMatchObject({ texture: SpaceTex.wasp, anim: SpaceAnim.waspBuzz });
+  it('animates the orb and leaves the thorn bush still, in the hazard slots the views read', () => {
+    expect(SPACE_THEME.hazards.urchin).toEqual({ texture: SpaceTex.mine, frame: 'a', anim: null });
+    expect(SPACE_THEME.hazards.jelly).toMatchObject({ texture: SpaceTex.orb, anim: SpaceAnim.orbPulse });
   });
 
   it("keeps the thorn bush's body 3:1 off every space contrast band, so it reads in the darkest and lightest canopy", () => {
     const weakest = Math.min(
-      ...SPACE_THEME.contrastBands.map((band) => contrast(SpaceHazardPalette.thornBush[1], band.colour)),
+      ...SPACE_THEME.contrastBands.map((band) => contrast(SpaceHazardPalette.mine[1], band.colour)),
     );
     expect(weakest).toBeGreaterThanOrEqual(3);
   });

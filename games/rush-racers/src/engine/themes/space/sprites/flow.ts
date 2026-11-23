@@ -1,5 +1,5 @@
 /**
- * The flowing cells: mud with slow bubbles and the four winds (gust streaks left and right, rising
+ * The flowing cells: dust with slow bubbles and the four winds (gust streaks left and right, rising
  * and falling leaves). Each is two frames drawn over open cells, so they are sparse and the racer
  * stays visible through them. Every sprite is 16x16 and seamless in both axes; frame `b` is frame
  * `a` moved along the flow, and the left and down winds are the mirror images of right and up.
@@ -11,7 +11,7 @@ import { SpaceTex, type SpaceTexKey } from '../keys.ts';
 import { SpaceTerrainPalette } from '../palettes.ts';
 import { flipRows, mirrorRows, shiftRows } from './rows.ts';
 
-/** Mud: sparse dark blotches with a few wet-shine rings, which rise a row in the next frame. */
+/** Dust: sparse dark blotches with a few wet-shine rings, which rise a row in the next frame. */
 const MUD_ROWS = [
   '..1.....1.......',
   '.101...101..2...',
@@ -81,7 +81,7 @@ function flowFrames(rows: PixelRows, dx: number, dy: number): Record<string, Pix
 
 /** Flowing-cell sheets. */
 export const FLOW_SHEETS: readonly ArtSheet<SpaceTexKey>[] = [
-  sheet(SpaceTex.mud, SpaceTerrainPalette.mud, flowFrames(MUD_ROWS, 0, -1)),
+  sheet(SpaceTex.dust, SpaceTerrainPalette.dust, flowFrames(MUD_ROWS, 0, -1)),
   sheet(SpaceTex.windRight, SpaceTerrainPalette.wind, flowFrames(GUST_ROWS, GUST_STEP, 0)),
   sheet(SpaceTex.windLeft, SpaceTerrainPalette.wind, {
     [Frame.a]: mirrorRows(GUST_ROWS),

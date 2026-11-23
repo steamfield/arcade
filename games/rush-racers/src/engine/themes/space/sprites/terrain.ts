@@ -86,12 +86,12 @@ export const TERRAIN_SHEETS: readonly ArtSheet<SpaceTexKey>[] = [
     key: SpaceTex.tiles,
     frames: [
       { name: 'rock', palette: SpaceTerrainPalette.earth, rows: EARTH_ROWS },
-      { name: 'coral', palette: SpaceTerrainPalette.crackedStone, rows: STONE_ROWS },
+      { name: 'coral', palette: SpaceTerrainPalette.crackedIce, rows: STONE_ROWS },
       { name: 'ledge', palette: SpaceTerrainPalette.branch, rows: BRANCH_ROWS },
       { name: 'rockBuried', palette: SpaceTerrainPalette.earth, rows: BURIED_EARTH_ROWS },
     ],
   },
-  sheet(SpaceTex.stoneDebris, SpaceTerrainPalette.crackedStone, {
+  sheet(SpaceTex.iceDebris, SpaceTerrainPalette.crackedIce, {
     [Frame.a]: ['.....00.', '....0120', '.00.010.', '0110.0..', '12110...', '0110..0.', '.00..030', '......0.'],
   }),
   sheet(SpaceTex.finishGate, SpaceTerrainPalette.finish, { [Frame.a]: FINISH_ROWS }),

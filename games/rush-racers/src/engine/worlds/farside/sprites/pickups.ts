@@ -1,7 +1,7 @@
 /**
- * Farside's pickups: the `?` crate (a `?` block while it is ready, an emptied box with its lid up
+ * Farside's pickups: the `?` pod (a `?` block while it is ready, an emptied box with its lid up
  * while it is shut, matching Reef's open and closed clam)
- * and the acorn. They are the same size as Reef's clam (16x10) and pearl (7x7), and the acorn's body
+ * and the stardust. They are the same size as Reef's clam (16x10) and pearl (7x7), and the stardust's body
  * is as bright as the pearl so it reads on the dark space bands.
  */
 import { Frame } from '../../../art/keys.ts';
@@ -9,18 +9,18 @@ import type { Palette } from '../../../art/pixel.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { FarTex } from '../keys.ts';
 
-/** Crate: dark outline, wood, lit wood edge and the pale `?`. */
-export const CratePalette: Palette = [0x2a1408, 0xb8803c, 0xf0c070, 0xfff4b0];
+/** Pod: dark outline, wood, lit wood edge and the pale `?`. */
+export const PodPalette: Palette = [0x2a1408, 0xb8803c, 0xf0c070, 0xfff4b0];
 
-/** Acorn: dark outline, pale gold nut (as bright as the pearl), its shine and a brown cap. */
-export const AcornPalette: Palette = [0x3a2008, 0xfff0b0, 0xffffff, 0x9a5a20];
+/** Stardust: dark outline, pale gold nut (as bright as the pearl), its shine and a brown cap. */
+export const StardustPalette: Palette = [0x3a2008, 0xfff0b0, 0xffffff, 0x9a5a20];
 
-/** Pickup sheets: the crate and the acorn. */
+/** Pickup sheets: the pod and the stardust. */
 export const FAR_PICKUP_SHEETS: readonly ArtSheet<string>[] = [
-  sheet(FarTex.acorn, AcornPalette, {
+  sheet(FarTex.stardust, StardustPalette, {
     [Frame.a]: ['..000..', '.03330.', '0333330', '0121110', '0111110', '.01110.', '..000..'],
   }),
-  sheet(FarTex.crate, CratePalette, {
+  sheet(FarTex.pod, PodPalette, {
     // Shut (`clamClosed`) after a racer took its prize: the lid knocked up over an empty box.
     [Frame.clamClosed]: [
       '..000000000000..',

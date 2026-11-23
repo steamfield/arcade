@@ -1,5 +1,5 @@
 /**
- * Farside's enemies drawn from code: a beetle that walks the floor, a boar that charges, a snake
+ * Farside's enemies drawn from code: a mite that walks the floor, a ray that charges, a worm
  * that lunges from a hole in the wall (head and repeating body tile). Each sits in its Reef
  * counterpart's slot (crab, shark, eel) at the same size and with
  * the same frame names, and holds its main colour 3:1 off the space's canopy bands.
@@ -11,12 +11,12 @@ import { FarTex } from '../keys.ts';
 
 /** One palette per enemy: outline, body, light, accent. */
 export const FarEnemyPalette = {
-  /** Beetle: dark brown outline, bright orange shell, peach shine, white eyes. */
-  beetle: [0x2a1004, 0xff9a40, 0xffd090, 0xffffff],
-  /** Boar: dark brown outline, tan hide, cream belly and tusk, red eye and gums. */
-  boar: [0x2a140a, 0xe0a070, 0xffe8c0, 0xff4a3a],
-  /** Snake: deep green outline, lime body, pale belly, red tongue and eye. */
-  snake: [0x14280a, 0xc8e840, 0xf8ffa0, 0xff4a5a],
+  /** Mite: dark brown outline, bright orange shell, peach shine, white eyes. */
+  mite: [0x2a1004, 0xff9a40, 0xffd090, 0xffffff],
+  /** Ray: dark brown outline, tan hide, cream belly and tusk, red eye and gums. */
+  ray: [0x2a140a, 0xe0a070, 0xffe8c0, 0xff4a3a],
+  /** Worm: deep green outline, lime body, pale belly, red tongue and eye. */
+  worm: [0x14280a, 0xc8e840, 0xf8ffa0, 0xff4a5a],
 } as const satisfies Record<string, Palette>;
 
 /** A row of `half` followed by its mirror image, so a symmetric sprite is drawn once. */
@@ -24,7 +24,7 @@ function mirrored(halves: PixelRows): PixelRows {
   return halves.map((half) => half + [...half].reverse().join(''));
 }
 
-const BEETLE_SHEET = sheet(FarTex.beetle, FarEnemyPalette.beetle, {
+const BEETLE_SHEET = sheet(FarTex.mite, FarEnemyPalette.mite, {
   // Feelers up, legs out.
   [Frame.a]: mirrored([
     '..0..0..',
@@ -72,7 +72,7 @@ const BEETLE_SHEET = sheet(FarTex.beetle, FarEnemyPalette.beetle, {
   ]),
 });
 
-const BOAR_SHEET = sheet(FarTex.boar, FarEnemyPalette.boar, {
+const BOAR_SHEET = sheet(FarTex.ray, FarEnemyPalette.ray, {
   // Legs reaching out.
   [Frame.a]: [
     '........................',
@@ -144,7 +144,7 @@ const BOAR_SHEET = sheet(FarTex.boar, FarEnemyPalette.boar, {
 });
 
 // Neck on the left joins the body tile row for row.
-const SNAKE_HEAD_SHEET = sheet(FarTex.snakeHead, FarEnemyPalette.snake, {
+const SNAKE_HEAD_SHEET = sheet(FarTex.wormHead, FarEnemyPalette.worm, {
   // Mouth shut, a red eye.
   [Frame.a]: [
     '................',
@@ -173,7 +173,7 @@ const SNAKE_HEAD_SHEET = sheet(FarTex.snakeHead, FarEnemyPalette.snake, {
   ],
 });
 
-const SNAKE_BODY_SHEET = sheet(FarTex.snakeBody, FarEnemyPalette.snake, {
+const SNAKE_BODY_SHEET = sheet(FarTex.wormBody, FarEnemyPalette.worm, {
   [Frame.a]: [
     '........',
     '........',
@@ -188,7 +188,7 @@ const SNAKE_BODY_SHEET = sheet(FarTex.snakeBody, FarEnemyPalette.snake, {
   ],
 });
 
-/** World sheets for the beetle, boar and snake. */
+/** World sheets for the mite, ray and worm. */
 export const FAR_ENEMY_SHEETS: readonly ArtSheet<string>[] = [
   BEETLE_SHEET,
   BOAR_SHEET,

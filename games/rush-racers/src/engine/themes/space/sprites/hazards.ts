@@ -1,5 +1,5 @@
 /**
- * Hazards: a thorn bush and a buzzing wasp. Both are dark-outlined with sharp, stinging shapes, so
+ * Hazards: a thorn bush and a buzzing orb. Both are dark-outlined with sharp, stinging shapes, so
  * they read as dangerous by silhouette and not by colour alone.
  */
 import { Frame } from '../../../art/keys.ts';
@@ -7,9 +7,9 @@ import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { SpaceTex, type SpaceTexKey } from '../keys.ts';
 import { SpaceHazardPalette } from '../palettes.ts';
 
-/** Hazard sheets. The wasp's `a` frame has its wings up, `b` has them down. */
+/** Hazard sheets. The orb's `a` frame has its wings up, `b` has them down. */
 export const HAZARD_SHEETS: readonly ArtSheet<SpaceTexKey>[] = [
-  sheet(SpaceTex.thornBush, SpaceHazardPalette.thornBush, {
+  sheet(SpaceTex.mine, SpaceHazardPalette.mine, {
     [Frame.a]: [
       '.2...2..2...',
       '.0..0.0.0.2.',
@@ -25,7 +25,7 @@ export const HAZARD_SHEETS: readonly ArtSheet<SpaceTexKey>[] = [
       '.....22.....',
     ],
   }),
-  sheet(SpaceTex.wasp, SpaceHazardPalette.wasp, {
+  sheet(SpaceTex.orb, SpaceHazardPalette.orb, {
     [Frame.a]: [
       '...3....3...',
       '..33....33..',

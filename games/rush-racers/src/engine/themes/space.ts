@@ -13,14 +13,14 @@ import { SpaceBackdropPalette, StarLight, VOID_BANDS } from './space/palettes.ts
 import { SPACE_SHEETS } from './space/sprites/index.ts';
 import type { ContrastBand } from './types.ts';
 
-/** Mud bubbles, wind and wasp wings animate on Phaser's clock, never on logic ticks. */
+/** Dust bubbles, wind and orb wings animate on Phaser's clock, never on logic ticks. */
 const SPACE_LOOPS = [
-  { key: SpaceAnim.mudBubble, texture: SpaceTex.mud, frameRate: 2 },
+  { key: SpaceAnim.dustSwirl, texture: SpaceTex.dust, frameRate: 2 },
   { key: SpaceAnim.windRight, texture: SpaceTex.windRight, frameRate: 4 },
   { key: SpaceAnim.windLeft, texture: SpaceTex.windLeft, frameRate: 4 },
   { key: SpaceAnim.windUp, texture: SpaceTex.windUp, frameRate: 4 },
   { key: SpaceAnim.windDown, texture: SpaceTex.windDown, frameRate: 4 },
-  { key: SpaceAnim.waspBuzz, texture: SpaceTex.wasp, frameRate: 12 },
+  { key: SpaceAnim.orbPulse, texture: SpaceTex.orb, frameRate: 12 },
 ] as const;
 
 /** Every canopy band and backdrop layer colour: everything a racer or off-panel text can sit in front of. */
@@ -42,14 +42,14 @@ export const SPACE_THEME = defineTheme({
     tiles: { rock: SpaceTile.rock, coral: SpaceTile.coral, ledge: SpaceTile.ledge },
     buriedTiles: { rock: SpaceTile.rockBuried },
     flowing: {
-      kelp: { texture: SpaceTex.mud, anim: SpaceAnim.mudBubble },
+      kelp: { texture: SpaceTex.dust, anim: SpaceAnim.dustSwirl },
       'current-right': { texture: SpaceTex.windRight, anim: SpaceAnim.windRight },
       'current-left': { texture: SpaceTex.windLeft, anim: SpaceAnim.windLeft },
       'current-up': { texture: SpaceTex.windUp, anim: SpaceAnim.windUp },
       'current-down': { texture: SpaceTex.windDown, anim: SpaceAnim.windDown },
     },
     finishGate: SpaceTex.finishGate,
-    debris: SpaceTex.stoneDebris,
+    debris: SpaceTex.iceDebris,
   },
   backdrop: {
     bands: VOID_BANDS,
@@ -70,8 +70,8 @@ export const SPACE_THEME = defineTheme({
     splash: { drag: 0.9, ay: 0.02, wobble: 0 },
   },
   hazards: {
-    urchin: { texture: SpaceTex.thornBush, frame: Frame.a, anim: null },
-    jelly: { texture: SpaceTex.wasp, frame: Frame.a, anim: SpaceAnim.waspBuzz },
+    urchin: { texture: SpaceTex.mine, frame: Frame.a, anim: null },
+    jelly: { texture: SpaceTex.orb, frame: Frame.a, anim: SpaceAnim.orbPulse },
   },
   // The root cave's own green taken almost to black.
   dark: { colour: 0x020a06, alpha: 0.9 },
