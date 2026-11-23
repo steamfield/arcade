@@ -352,6 +352,7 @@ const CELL_CHAR = {
   'current-left': '<',
   'current-up': '^',
   'current-down': 'v',
+  air: ' ',
 } as const;
 
 const RACER_CHAR: Record<RacerId, string> = { player: '@', tess: 'T', squib: 'S', bo: 'B' };

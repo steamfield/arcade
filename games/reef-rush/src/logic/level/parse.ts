@@ -110,6 +110,8 @@ export function parseLevel(def: LevelDef): Level {
     jellies: markers.jellies,
     enemies: markers.enemies,
     dark: requireDarkZonesOnMap(def.dark ?? [], width),
+    // Scaffold: phase 2 lane a validates the ranges and turns water above each row into air.
+    surface: (def.surface ?? []).map((s) => ({ ...s })),
   };
 }
 

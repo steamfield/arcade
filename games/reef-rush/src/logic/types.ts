@@ -92,7 +92,8 @@ export type Cell =
   | 'current-right'
   | 'current-left'
   | 'current-up'
-  | 'current-down';
+  | 'current-down'
+  | 'air';
 
 /** An extra level glyph: the base cell it behaves as, and the art key a theme draws it with. */
 export interface LegendEntry {
@@ -105,8 +106,20 @@ export interface LevelDef {
   name: string;
   ascii: string;
   dark?: readonly (readonly [from: number, to: number])[];
+  /**
+   * Stretches open to the sky: in columns `from..to` (inclusive) every water tile above row `row`
+   * becomes air, so the surface of the sea is the top of row `row`. Objects placed there float in air.
+   */
+  surface?: readonly SurfaceDef[];
   /** Extra glyphs this level uses, each behaving as a base cell but drawn its own way. */
   legend?: Readonly<Record<string, LegendEntry>>;
+}
+
+/** One stretch of open sky over the water: columns `from..to` inclusive, surface at the top of row `row`. */
+export interface SurfaceDef {
+  from: number;
+  to: number;
+  row: number;
 }
 
 /** A parsed course. Positions are tile coordinates; `cells[y][x]`. */
@@ -128,6 +141,8 @@ export interface Level {
   /** Enemies placed by glyph (`S` shark, `E` eel, `K` crab), in reading order. The tile underneath is water. */
   enemies: { kind: EnemyKind; tile: Vec }[];
   dark: [from: number, to: number][];
+  /** Stretches open to the sky (`LevelDef.surface`); their water above `row` parsed as 'air'. */
+  surface: SurfaceDef[];
 }
 
 /** An axis-aligned box in world pixels: top-left corner and size. */

@@ -37,6 +37,18 @@ export interface GuideTuning {
   showTicks: number;
 }
 
+/** How hard a shark hunts at a level. The shared shark numbers stay in `hazards/enemies/tuning.ts` (`SHARK`). */
+export interface SharkTuning {
+  /** How far ahead (in its facing) it spots a racer, in tiles. */
+  sightTiles: number;
+  /** How far either side of its home tile centre it patrols, in tiles. */
+  patrolTiles: number;
+  /** Ticks it sits still after a charge before patrolling again. */
+  recoverTicks: number;
+  /** How much of the unit direction to its target is blended into its heading each charge tick; 0 charges straight. */
+  chargeTurn: number;
+}
+
 /** Everything a difficulty level changes. */
 export interface DifficultyTuning {
   /** Multiplies every rival's swim force, on top of its profile and catch-up. */
@@ -67,7 +79,12 @@ export interface DifficultyTuning {
   playerClamWeightMul: Partial<Record<PowerUpKind, number>>;
   /** The Easy way-finding guide and steering assist. */
   guide: GuideTuning;
+  /** How hard sharks hunt. */
+  shark: SharkTuning;
 }
+
+/** Today's shark (scaffold: every level uses it until phase 1 lane a sets Normal and Hard). */
+const PATIENT_SHARK: SharkTuning = { sightTiles: 6, patrolTiles: 3, recoverTicks: 40, chargeTurn: 0 };
 
 /** The guide off: Normal and Hard leave the player's input and the screen alone. */
 const NO_GUIDE: GuideTuning = { enabled: false, assistGraceTicks: 0, assistHoldTicks: 0, assistBlend: 0, showTicks: 0 };
@@ -94,6 +111,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     playerCatchUp: { startTiles: 6, perTile: 0, maxBoost: 0 },
     playerClamWeightMul: {},
     guide: NO_GUIDE,
+    shark: PATIENT_SHARK,
   },
   normal: {
     rivalForceMul: 0.95,
@@ -107,6 +125,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     playerCatchUp: { startTiles: 5, perTile: 0.02, maxBoost: 0.2 },
     playerClamWeightMul: {},
     guide: NO_GUIDE,
+    shark: PATIENT_SHARK,
   },
   easy: {
     rivalForceMul: 0.85,
@@ -120,6 +139,7 @@ export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
     playerCatchUp: { startTiles: 3, perTile: 0.05, maxBoost: 0.6 },
     playerClamWeightMul: { jetFin: 3, bubbleShield: 2 },
     guide: { enabled: true, assistGraceTicks: 30, assistHoldTicks: 90, assistBlend: 1, showTicks: 90 },
+    shark: PATIENT_SHARK,
   },
 };
 
