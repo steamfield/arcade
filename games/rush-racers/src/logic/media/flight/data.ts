@@ -17,6 +17,13 @@ export interface FlightMotion extends RacerMotion {
   diving: boolean;
   /** Ticks left in which the last dash pops puff clouds it touches (`flightRamsCoral`); 0 with none. */
   dashWindow: number;
+  /**
+   * Top-left of the last spot the flyer was at with rock below it, under its own columns and every
+   * column within 2 tiles either side (`fall.ts`); a fall brings it back here.
+   */
+  lastSafe: Vec;
+  /** Top-left of where a fallen flyer waits, out of the level, until it respawns (`../fall-out.ts`). */
+  parkedAt: Vec;
 }
 
 /** What the surroundings do to a flyer this tick. */
