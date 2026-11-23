@@ -1,28 +1,58 @@
 /**
  * Enemies: creatures on the course a racer beats with a dash bonk. This file builds them from the
- * level and dispatches each tick to the kind's own module (shark, eel, crab).
- *
- * Phase 3 scaffold: `createEnemies` is final; `stepEnemies` is a no-op until lane a fills it in.
+ * level and dispatches each tick to the kind's own module (shark, eel, crab), then resolves touches
+ * through the shared rule in `contact.ts`.
  */
-import { type Enemy, type Level, type Racer, TILE, type World } from '../../types.ts';
+import { type Enemy, type EnemyKind, type Level, type Racer, TILE, type World } from '../../types.ts';
+import { touchEnemies } from './contact.ts';
+import { requireCrabFloor, stepCrab } from './crab.ts';
+import { eelOutward, stepEel } from './eel.ts';
+import { staggerShark, stepShark } from './shark.ts';
+import { CRAB, EEL, SHARK } from './tuning.ts';
 
-/** One enemy per `level.enemies` entry, in order, at its tile centre, patrolling, unhurt, facing left. */
+/** How each kind starts: its hp and first mode. */
+const START: Record<EnemyKind, Pick<Enemy, 'hp' | 'mode'>> = {
+  shark: { hp: SHARK.hp, mode: 'patrol' },
+  eel: { hp: EEL.hp, mode: 'hidden' },
+  crab: { hp: CRAB.hp, mode: 'patrol' },
+};
+
+/**
+ * One enemy per `level.enemies` entry, in order, at its tile centre, unhurt, facing left: sharks and
+ * crabs patrolling, eels hidden.
+ *
+ * @throws {LevelError} With row and col for an eel with no rock beside it, or a crab with no rock below it.
+ */
 export function createEnemies(level: Level): Enemy[] {
-  return level.enemies.map(({ kind, tile }) => ({
-    kind,
-    home: { ...tile },
-    at: { x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE },
-    vel: { x: 0, y: 0 },
-    facing: -1,
-    mode: 'patrol',
-    modeTicks: 0,
-    hp: 1,
-    target: null,
-  }));
+  return level.enemies.map(({ kind, tile }) => {
+    if (kind === 'eel') eelOutward(level, tile);
+    if (kind === 'crab') requireCrabFloor(level, tile);
+    return {
+      kind,
+      home: { ...tile },
+      at: { x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE },
+      vel: { x: 0, y: 0 },
+      facing: -1,
+      ...START[kind],
+      modeTicks: 0,
+      target: null,
+      bonkedBy: [],
+    };
+  });
 }
 
 /**
- * The enemies slot of `stepWorld`, after the jellies: moves each enemy, and resolves its contacts
- * with `racers` (a hit on the racer, or a bonk when the racer's `status.bonking` is above 0).
+ * The enemies slot of `stepWorld`, after the jellies: moves each enemy that isn't defeated by its
+ * kind's rules, then resolves its contacts with `racers` (`touchEnemies`: a bonk, or a hit).
  */
-export function stepEnemies(_world: World, _racers: readonly Racer[]): void {}
+export function stepEnemies(world: World, racers: readonly Racer[]): void {
+  world.enemies.forEach((enemy, index) => {
+    if (enemy.mode === 'defeated') return;
+    if (enemy.kind === 'shark') stepShark(world, enemy, index, racers);
+    else if (enemy.kind === 'eel') stepEel(world, enemy, index);
+    else stepCrab(world, enemy);
+  });
+  touchEnemies(world, racers, (enemy, racer) => {
+    if (enemy.kind === 'shark') staggerShark(enemy, racer);
+  });
+}

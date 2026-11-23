@@ -474,7 +474,11 @@ export interface Decoy {
   owner: RacerId;
 }
 
-/** What an enemy is doing. Each kind uses its own subset; lane briefs in the v2 plan say which. */
+/**
+ * What an enemy is doing. Each kind uses its own subset: a shark patrols, winds up, charges (then sits
+ * out its recovery still in 'charge' with zero velocity) and staggers; an eel is hidden, shows its
+ * warning in 'windup' and lunges; a crab only patrols. Any of them can end 'defeated'.
+ */
 export type EnemyMode = 'patrol' | 'windup' | 'charge' | 'stagger' | 'hidden' | 'lunge' | 'defeated';
 
 /** One enemy on the course, made from a `level.enemies` entry. */
@@ -494,6 +498,8 @@ export interface Enemy {
   hp: number;
   /** The racer a shark is winding up for or charging, else null. */
   target: RacerId | null;
+  /** Racers that bonked it and are still touching it: each gets one bonk per contact. */
+  bonkedBy: RacerId[];
 }
 
 /** A jellyfish bobbing around its home tile. */

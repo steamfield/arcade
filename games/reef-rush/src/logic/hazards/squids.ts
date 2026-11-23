@@ -11,7 +11,8 @@
  * 4. a wall under its centre ends it (`squid.lost`);
  * 5. when the medium lets a kick dodge (`kickRules.dodgesSquid`) and its racer target kicked this tick from
  *    within `dodgeTicks(world)` of contact (SQUID.dodgeTicks on Hard; distance at squid speed), it misses: `squid.dodged`, no lock, flying on straight, never locking that racer again;
- * 6. a decoy it touches pops (`popDecoy`) and the squid is spent; the first racer it touches (not its
+ * 6. a decoy it touches pops (`popDecoy`) and the squid is spent; a live shark it touches is defeated
+ *    outright (`defeatEnemy`, by its owner) and the squid is spent (`squid.lost`); the first racer it touches (not its
  *    owner or the one that dodged) is hit with cause 'squid': a held Bubble Shield absorbs it
  *    (`squid.lost`), a landed hit latches the racer (`squid.latched`, `status.latched`, shortened by
  *    `statusTicks`), and an invulnerable racer is flown through: the squid drops its lock and
@@ -39,6 +40,7 @@ import {
   type World,
 } from '../types.ts';
 import { overlaps, squareAt } from './boxes.ts';
+import { canTouch, defeatEnemy, enemyBox } from './enemies/contact.ts';
 import { applyHit } from './hits.ts';
 import { shakeOffLatches } from './latch.ts';
 import { pickSquidTarget } from './squid-target.ts';
@@ -214,6 +216,13 @@ function touchSomething(world: World, racers: readonly Racer[], squid: Squid): b
   );
   if (decoy) {
     popDecoy(world, decoy, squid.owner);
+    return lose(world, squid);
+  }
+  const shark = world.enemies.findIndex(
+    (enemy) => enemy.kind === 'shark' && canTouch(enemy) && overlaps(box, enemyBox(enemy)),
+  );
+  if (shark >= 0) {
+    defeatEnemy(world, shark, squid.owner, squid.vx < 0 ? -1 : 1);
     return lose(world, squid);
   }
   const victim = racers.find(

@@ -335,6 +335,45 @@ function squidClosingOnPlayer(within: number) {
   return { world, log };
 }
 
+/** ARENA with a shark at (8, 2), between the player's row-2 spot and a target further on. */
+const SHARK_IN_LINE = `
+  ###############################
+  #1...........................F#
+  #2......S....................F#
+  #3...........................F#
+  #4...........................F#
+  ###############################
+`;
+
+describe('squids and sharks', () => {
+  it('knocks a live shark out in one touch, bursting its pearls, and is spent on it', () => {
+    const { world, log, fire, fly } = scene({ player: [3, 2], tess: [12, 2] }, SHARK_IN_LINE);
+    fire('player');
+
+    fly(40);
+
+    expect(events(log, 'enemy.defeated', 'pearls.burst', 'squid.lost', 'squid.latched')).toEqual([
+      { type: 'enemy.defeated', index: 0, kind: 'shark', by: 'player' },
+      { type: 'pearls.burst', index: 0, count: 5 },
+      { type: 'squid.lost', owner: 'player' },
+    ]);
+    expect(world.enemies[0]).toMatchObject({ mode: 'defeated', hp: 0 });
+    expect(world.squids).toEqual([]);
+  });
+
+  it('flies on past a defeated shark to its target', () => {
+    const { world, log, fire, fly } = scene({ player: [3, 2], tess: [12, 2] }, SHARK_IN_LINE);
+    Object.assign(world.enemies[0] ?? fail('no shark'), { mode: 'defeated', hp: 0 });
+    fire('player');
+
+    fly(80);
+
+    expect(events(log, 'enemy.defeated', 'squid.latched')).toEqual([
+      { type: 'squid.latched', id: 'tess', by: 'player' },
+    ]);
+  });
+});
+
 describe('dodging', () => {
   it('a kick in the last 12 ticks before contact makes it miss and fly on', () => {
     const { world, log } = squidClosingOnPlayer(30);
@@ -390,6 +429,8 @@ describe('on the ocean course', () => {
     const level = levelOf(DEFAULT_COURSE);
     const { world, log } = raceOn(DEFAULT_COURSE.level.ascii);
     const [player, tess] = [racerOf(world, 'player'), racerOf(world, 'tess')];
+    // A shark in the way takes the squid; this is about finding a way round rock.
+    world.enemies = [];
     const start = level.starts[0] ?? fail('the ocean course has no first start');
     const nav = swimNav(world.nav);
     const path = downhillPath(nav.steer, nav, openTiles(level, world.broken, false), start, 2000);
