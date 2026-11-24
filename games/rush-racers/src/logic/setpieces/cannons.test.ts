@@ -60,16 +60,16 @@ describe('parsing cloud cannons', () => {
   const invalid: { name: string; patch: Partial<CannonDef>; message: RegExp }[] = [
     { name: 'off the map', patch: { col: 20 }, message: /off the map/ },
     { name: 'on a solid tile', patch: { row: 6 }, message: /open tile/ },
-    { name: 'a zero aim', patch: { dir: [0, 0] }, message: /direction/ },
+    { name: 'a zero aim', patch: { dir: [0, 0] }, message: /direction.*, not \[0,0\]/ },
     // Runtime course data can disagree with its TypeScript definition.
-    { name: 'aim outside -1..1', patch: JSON.parse('{"dir":[2,0]}'), message: /direction/ },
-    { name: 'missing aim components', patch: JSON.parse('{"dir":null}'), message: /direction/ },
-    { name: 'extra aim components', patch: JSON.parse('{"dir":[1,0,2]}'), message: /direction/ },
-    { name: 'speed below range', patch: { speed: 0 }, message: /speed/ },
-    { name: 'speed above range', patch: { speed: 1201 }, message: /speed/ },
-    { name: 'flight below range', patch: { flightTicks: 0 }, message: /flightTicks/ },
-    { name: 'flight above range', patch: { flightTicks: 121 }, message: /flightTicks/ },
-    { name: 'fractional flight', patch: { flightTicks: 1.5 }, message: /flightTicks/ },
+    { name: 'aim outside -1..1', patch: JSON.parse('{"dir":[2,0]}'), message: /direction.*, not \[2,0\]/ },
+    { name: 'missing aim components', patch: JSON.parse('{"dir":null}'), message: /direction.*, not null/ },
+    { name: 'extra aim components', patch: JSON.parse('{"dir":[1,0,2]}'), message: /direction.*, not \[1,0,2\]/ },
+    { name: 'speed below range', patch: { speed: 0 }, message: /speed.*, not 0/ },
+    { name: 'speed above range', patch: { speed: 1201 }, message: /speed.*, not 1201/ },
+    { name: 'flight below range', patch: { flightTicks: 0 }, message: /flightTicks.*, not 0/ },
+    { name: 'flight above range', patch: { flightTicks: 121 }, message: /flightTicks.*, not 121/ },
+    { name: 'fractional flight', patch: { flightTicks: 1.5 }, message: /flightTicks.*, not 1\.5/ },
   ];
   it.each(invalid)('rejects $name at its tile', ({ patch, message }) => {
     const cannon = { ...CANNON_TILE, ...patch };

@@ -25,7 +25,8 @@ import type { ShippedCourse } from './types.ts';
  * - Cols 84-88: an updraft column up the face of a floor tower that is open above row 6.
  * - Cols 89-117: the run home: a line of four boost rings stepping down from the tower top (cols
  *   91-100, rows 5-8), then a balloon, a static wisp and feathers, and the storm cell, a lightning
- *   zone over cols 107-111 around a spark cloud.
+ *   zone over cols 107-111 around a spark cloud. A thunderhead shelf at row 10 (cols 107-114)
+ *   splits the crossing into an upper and a lower route.
  * - Cols 112-116: a shifting wind zone on the far side of the storm cell, blowing toward the
  *   finish for 2 s and back against it for 2 s, with a warning before each turn.
  * - Cols 124-146: a cloud cannon at row 12 aims up and right over the thunderhead wall at cols
@@ -45,7 +46,7 @@ const LEVEL: LevelDef = {
     #.........................###...........#############....############....~~~~~~.....^^###........@..........*.....................................F#
     #.........................###...........#############....############....~~~~~~.....^^###...........@.............................###.............F#
     #.........................###...........#############....############....~~~~~~.....^^###.........................................###.............F#
-    #.........................###...........#############....############....~~~~~~.....^^###.........................................###.............F#
+    #.........................###...........#############....############....~~~~~~.....^^###..................########...............###.............F#
     #.................###.....###...........#############....############....~~~~~~.....^^###.........................................###.............F#
     #.................###.....###...........#############....############....~~~~~~.....^^###...........j.............................###.............F#
     #.................###.....###...........#############....############....~~~~~~.....^^###.........................................###.............F#
@@ -68,10 +69,10 @@ const LEVEL: LevelDef = {
 };
 
 /**
- * The expert bot's mean Hard finish (1032 ticks over seeds 1-40 and all eight characters) plus 30 %,
+ * The expert bot's mean Hard finish (1040 ticks over seeds 1-40 and all eight characters) plus 30 %,
  * the slack a test course keeps since no difficulty bars run on it.
  */
-const PAR_TICKS = 1342;
+const PAR_TICKS = 1352;
 
 /** Sky Test: the flight medium's test course in Cloudreach, reachable only by `?course=sky-test` and tests. */
 export const SKY_TEST: ShippedCourse = {

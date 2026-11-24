@@ -22,6 +22,7 @@ import {
   type Racer,
   type RacerId,
   TILE,
+  type Vec,
   type World,
 } from '../types.ts';
 
@@ -65,13 +66,21 @@ export function parseCannons(defs: readonly CannonDef[], cells: readonly (readon
       ![-1, 0, 1].includes(dir[1]) ||
       (dir[0] === 0 && dir[1] === 0)
     ) {
-      throw errorAt('A cloud cannon direction needs two steps from -1 to 1 and cannot be zero', row, col);
+      throw errorAt(
+        `A cloud cannon direction needs two steps from -1 to 1 and cannot be zero, not ${JSON.stringify(dir)},`,
+        row,
+        col,
+      );
     }
     if (!(speed >= CANNON.minSpeed && speed <= CANNON.maxSpeed)) {
-      throw errorAt(`A cloud cannon speed must be ${CANNON.minSpeed}–${CANNON.maxSpeed} px/s`, row, col);
+      throw errorAt(`A cloud cannon speed must be ${CANNON.minSpeed}–${CANNON.maxSpeed} px/s, not ${speed},`, row, col);
     }
     if (!Number.isInteger(flightTicks) || flightTicks < 1 || flightTicks > CANNON.maxFlightTicks) {
-      throw errorAt(`A cloud cannon flightTicks must be a whole number from 1 to ${CANNON.maxFlightTicks}`, row, col);
+      throw errorAt(
+        `A cloud cannon flightTicks must be a whole number from 1 to ${CANNON.maxFlightTicks}, not ${flightTicks},`,
+        row,
+        col,
+      );
     }
     const tile = row * (cells[0]?.length ?? 0) + col;
     if (occupied.has(tile)) throw errorAt('Two cloud cannons share the same tile', row, col);
@@ -141,20 +150,24 @@ function moveCannonShot(
   return moveBody(body, level, broken, dt, rules);
 }
 
-/** Trace a shot through the current terrain with a racer-sized body and no other racers. */
+/**
+ * Trace a shot through the current terrain with a racer-sized body and no other racers.
+ *
+ * @returns The exit tile and ticks flown when the shot runs out, hits a solid, crosses the finish
+ *   column, or falls below the level. The race records a finish on crossing, so nav only prices
+ *   the ticks up to that point.
+ */
 export function traceCannonShot(
   cannon: CannonDef,
   level: Level,
   broken: ReadonlySet<number>,
   rules: MoveRules,
-  maxTicks = cannon.flightTicks,
-) {
+): { exit: Vec; ticks: number } {
   const centre = tileCentre({ x: cannon.col, y: cannon.row });
   const { width: w, height: h } = RACER_SIZE;
   const body = { x: centre.x - w / 2, y: centre.y - h / 2, w, h, vx: 0, vy: 0 };
   let ticks = 0;
-  const limit = Math.min(cannon.flightTicks, maxTicks);
-  while (ticks < limit) {
+  while (ticks < cannon.flightTicks) {
     ticks++;
     const { lost } = moveCannonShot(body, cannon, level, broken, TICK_DT, rules);
     if (lost.x !== 0 || lost.y !== 0 || body.x + w / 2 >= level.finishX * TILE || body.y >= level.height * TILE) break;

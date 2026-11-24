@@ -39,7 +39,7 @@ export function cannonLook(
       puff = Math.max(puff, 1 - elapsed / PUFF_TICKS);
     } else if (ride.reload > CANNON.reloadTicks - PUFF_TICKS) {
       // A short or blocked shot may already be reloading when the frame first sees it.
-      shortFlight ??= traceCannonShot(def, world.level, world.broken, moveRulesFor(world), PUFF_TICKS + 1).ticks;
+      shortFlight ??= traceCannonShot(def, world.level, world.broken, moveRulesFor(world)).ticks;
       const elapsed = shortFlight - 1 + (CANNON.reloadTicks - ride.reload);
       puff = Math.max(puff, 1 - elapsed / PUFF_TICKS);
     }
