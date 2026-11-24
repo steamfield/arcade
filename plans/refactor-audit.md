@@ -113,6 +113,7 @@ Inline (me): `.github/workflows/ci.yml` concurrency, `.claude/hooks/check-on-sto
 ### Phase 2: logic copy-paste removed, balance folder named for what it is
 
 Scaffold: de34f7deeef4 (no contracts: lanes refactor behind unchanged interfaces)
+Tag: refactor-audit/phase-2
 
 Demo: `pnpm arcade test rush-racers @media @courses src/logic/balance/sanity` passes; `pnpm arcade test rush-racers src/logic/top-route.test.ts` keeps the pinned hash; `ls src/logic/balance` shows one naming scheme.
 Depends on: phase 1
@@ -303,3 +304,4 @@ Depends on: phase 6, phase 8
 - 2026-11-23: user approved push after merge: "When this is production ready, merge to main, clean up, push to deploy".
 - 2026-11-23: phase tags namespaced `refactor-audit/phase-N`; the bare `phase-1` tag belongs to an older plan and was restored to 8628f05.
 - 2c review triage: accepted the toddler measurement note, `fileURLToPath` in files.test.ts, unused `Wording.burst`; rejected moving easy helpers into normal-bars.ts (the brief allowed `easy-bars.ts`); stale `difficulty/` comments and four outside imports fixed at landing.
+- phase 2 landed: check --all green, difficulty 109 files / 273 tests passed (197 s).
