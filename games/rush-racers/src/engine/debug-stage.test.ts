@@ -149,6 +149,27 @@ describe('applying a stage', () => {
     ]);
   });
 
+  it('moves an enemy-modes enemy ahead rather than behind when columns either side of its own both have a floor', () => {
+    // A one-column hole in the floor at column 10: the crab staged 9 tiles ahead of the player in
+    // column 1 stands in column 11, ahead, where column 9 behind is just as near.
+    const { world } = raceOn(`
+      ####################
+      #.................F#
+      #.................F#
+      #1................F#
+      #2................F#
+      #3................F#
+      #4................F#
+      ####################
+    `);
+    world.level.cells[7] = world.level.cells[7]?.map((cell, x) => (x === 10 ? 'bounce' : cell)) ?? [];
+    applyStage(world, 'enemy-modes');
+    expect(world.enemies.filter((enemy) => enemy.kind === 'crab').map(({ home, mode }) => ({ home, mode }))).toEqual([
+      { home: { x: 8, y: 6 }, mode: 'patrol' },
+      { home: { x: 11, y: 6 }, mode: 'stagger' },
+    ]);
+  });
+
   it('stages enemy-modes on Sky Test, whose floor has a bounce cloud in it', () => {
     const skyTest = courseById('sky-test');
     if (!skyTest) throw new Error('Sky Test is not registered');

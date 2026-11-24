@@ -122,7 +122,7 @@ test('Thunderhead Pass, third on course select, races in flight with the Cloudre
   // Fire picks it: select shows Cloudreach's cast, the cursor on the saved pick's slot (rudy is Bumper there).
   await game.play([wait(20), tap('fire'), wait(2)]);
   expect(await game.summary()).toMatchObject({ scene: 'select', course: 'thunderhead-pass', selectName: 'BUMPER' });
-  // Race as the saved pick, in flight, and hang in the sky to a DNF.
+  // Race as the saved pick, in flight, and idle to a DNF.
   await game.play([wait(25), tap('fire'), wait(2)]);
   expect(await game.summary()).toMatchObject({ scene: 'race', course: 'thunderhead-pass', medium: 'flight' });
   await game.play([wait(IDLE_TO_RESULTS)]);

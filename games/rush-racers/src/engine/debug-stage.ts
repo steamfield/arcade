@@ -274,7 +274,7 @@ function nearestFloor(level: Level, x: number, fromY: number): Vec {
     }
   }
   throw new Error(
-    `The enemy stages need a floor below row ${fromY} in column ${x} or a column near it, and there is none`,
+    `The enemy stages need a floor below row ${fromY} in column ${x}, and no column has a floor at or below that row`,
   );
 }
 

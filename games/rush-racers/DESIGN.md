@@ -132,7 +132,7 @@ Cloudreach's names: clam = `?` balloon, pearl = feather, urchin = spark cloud, j
 - Falling out of the bottom of the sky (`racer.fell`) takes you out for 1 s, then you come back (`racer.respawned`) at the last safe spot: where you last had thunderhead (never puff cloud, which can break) under you and for 2 columns either side, so a flyer who does nothing there falls onto cloud, never back into the gap. You get 1 s of invulnerability; the lost time is the penalty.
 - Flyers bump each other, balloons open on touch, trapped racers and loose power-ups sink slowly, and there are no ledges or stomps.
 - Easy flies every racer under lighter gravity (0.75x) with stronger flaps (1.15x) (`FLIGHT_TUNING.byDifficulty`). The Easy steering assist only slides the horizontal stick, so it never flaps or ends a glide for you, and the guide arrow points up or down at the way on.
-- Rivals fly a flow field that prices low sky over open gaps dear, so their way climbs clear of a fall; they flap on rhythm to hold altitude, pass slower flyers, wait out a lightning strike, take a bounce cloud only when it saves at least 0.1 s over flapping, and take a ring line within 8 columns of their way.
+- Rivals fly a flow field that prices low sky over open gaps dear, so their way climbs clear of a fall; they flap on rhythm to hold altitude, pass slower flyers, wait out a lightning strike, take a bounce cloud only when it saves at least 0.1 s over flapping, and head for a ring only when it is 1-8 columns ahead, on their way with at most 1 tile of detour, reachable at no more than 0.8 rows up or 2 down per column, in clear sight, and their wobble roll lets them.
 
 ### Sky set pieces
 
