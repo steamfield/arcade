@@ -7,11 +7,13 @@ import { scenarioKit } from '@arcade/testing';
 import type { Action } from '../src/engine/input.ts';
 import { SAVE_VERSION, type SaveData } from '../src/logic/save.ts';
 
+/** Scenario builders typed against the game's actions, so a misspelt action fails typecheck. */
 export const { scenario, hold, tap, wait } = scenarioKit<Action>();
 
 /**
- * From the title to the level's first tick of play: confirm the selected row (Continue when the
- * save has progress, else New game), then let two ticks pass so the confirm press is released.
+ * From the title into play: confirm the selected row (Continue when the save has progress, else
+ * New game), then wait two ticks, which run in play (`world.tick` is 2 afterwards). The first of
+ * them reads jump as released, so a `jump` step straight after this preset counts as a fresh press.
  */
 export const TITLE_TO_PLAY = [tap('jump'), wait(2)];
 

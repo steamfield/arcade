@@ -10,7 +10,6 @@ const freshStore = () =>
   createSaveStore({ gameId: `fixture-${store++}`, version: SAVE_VERSION, schema: SaveSchema, migrate: migrations });
 
 describe('save compatibility', () => {
-  // Every committed fixture, including ones added later without their own rows here, must still load.
   it('has a fixture for every save version, and each loads migrated to the current one', async () => {
     const report = await checkSaveFixtures({ dir: fixturesDir, currentVersion: SAVE_VERSION, openStore: freshStore });
     expect(report).toEqual({ missingVersions: [], failures: [] });
