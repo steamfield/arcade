@@ -16,7 +16,7 @@ import { gridD } from './grid.ts';
 import { NO_INPUT, stepRacer } from './racer.ts';
 import type { SaveData } from './save.ts';
 import { placeOf } from './standings.ts';
-import { DASH, RACE, RIVAL } from './tuning.ts';
+import { DASH, ITEMS, RACE, RIVAL } from './tuning.ts';
 import type { CharacterId, Racer, RacerId, TickInputs, World, WorldOptions } from './types.ts';
 
 /**
@@ -49,6 +49,13 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
     safeS: course.startS,
     safeD: d,
     finishTicks: null,
+    slots: Array.from({ length: ITEMS.slots }, () => null),
+    selected: 0,
+    itemCooldown: 0,
+    stunTicks: 0,
+    trappedTicks: 0,
+    burrTicks: 0,
+    bootsTicks: 0,
   });
   const draw = options.rivals ? drawRivals(options.seed, options.character) : null;
   const racers = [racer('player', options.character, draw ? gridD(course, 'player') : 0)];
@@ -69,6 +76,9 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
     racers,
     rngState: draw?.rngState ?? options.seed >>> 0,
     endTick: null,
+    crates: course.features.filter((f) => f.kind === 'crate').map(() => ({ shutTicks: 0 })),
+    shots: [],
+    splats: [],
     events,
   };
 }

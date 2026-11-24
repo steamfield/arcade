@@ -16,6 +16,7 @@ import { CameraRig } from './camera-rig.ts';
 import { stageFor } from './capture-stages.ts';
 import { Hud } from './hud.ts';
 import { input } from './input.ts';
+import { createItemView } from './item-view.ts';
 import { createPedestal } from './pedestal.ts';
 import { RacerView } from './racer-view.ts';
 import { Runtime, type Scene } from './runtime.ts';
@@ -103,6 +104,8 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const hud = new Hud(ctx.container);
   const screens = createScreens(ctx.container);
   scene.add(trail.root);
+  const items = createItemView(course, frames);
+  scene.add(items.root);
   const pedestal = createPedestal(scene, frames, course);
 
   let drawnWorld: World | undefined;
@@ -164,6 +167,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const render = () => {
     const { world, scene: screen, bests } = runtime;
     trail.tick(world.tick);
+    items.sync(world);
     hud.sync(world, screen, bests, screen === 'race' && world.tick < goUntil, newBest);
     screens.sync({ scene: screen, cursor: runtime.cursor, character: runtime.character });
     renderer.render(scene, rig.camera);

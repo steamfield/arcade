@@ -22,6 +22,7 @@ export const input = createInput<Action, 'move'>({
       { action: 'jump', label: 'A' },
       { action: 'dash', label: 'B' },
       { action: 'fire', label: '★' },
+      { action: 'next', label: '⇄' },
     ],
   },
 });

@@ -69,3 +69,39 @@ export const RIVAL = {
   /** A rival dashes only with no pit or log within this many meters ahead, m. */
   dashClearance: 30,
 } as const;
+
+/** Items and crates. Lane 3a tunes these. */
+export const ITEMS = {
+  /** Inventory places per racer. */
+  slots: 3,
+  /** Uses each kind comes with. */
+  charges: { boots: 3, shield: 1, burr: 2, pie: 3 },
+  /** Ticks a crate stays shut after it opens, for everyone. */
+  crateShutTicks: 90,
+  /** Ticks after firing before the same racer can fire again. */
+  cooldownTicks: 20,
+  /** Rocket Boots: forward speed a boost sets at least, m/s, and how long it lasts. */
+  bootsSpeed: 22,
+  bootsTicks: 40,
+  /** Burr Ball: how long a racer stays puffed up. */
+  burrTicks: 60,
+  /** Mud Pie: throw speeds added to the thrower's, m/s, and the patch it leaves, m and ticks. */
+  pieThrowSpeed: 10,
+  pieThrowUp: 8,
+  splatLength: 6,
+  splatWidth: 4,
+  splatTicks: 300,
+  /** Sap glob: speed along `s`, m/s, how far it flies, m, and how long it traps. */
+  sapSpeed: 30,
+  sapRange: 40,
+  sapTrapTicks: 60,
+  /** A hit with nothing held stuns for this long. */
+  stunTicks: 60,
+} as const;
+
+export const CRATE = {
+  /** Height of a crate's centre above the ground, m. */
+  height: 1.2,
+  /** How close a racer's centre must come to a crate's centre to open it, m. */
+  touchRadius: 1.2,
+} as const;

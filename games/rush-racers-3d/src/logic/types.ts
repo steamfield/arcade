@@ -22,7 +22,8 @@ export interface Span {
  * Something on the course. A `pit` has no ground inside its span. `mud` scales running speed by
  * `RUN.mudSpeedMul`. A `gust` pushes sideways at `push` m/s (+ pushes right) while a racer is inside
  * it. A `log` is a solid box from `s` to `s + RUN.logDepth`, across `d0..d1`, `height` meters tall
- * above the ground at `s`. A `crate` is a `?` crate (inert until phase 3).
+ * above the ground at `s`. A `crate` is a `?` crate floating `CRATE.height` above the ground; touching
+ * it opens it for an item.
  */
 export type Feature =
   | ({ kind: 'pit' } & Span)
@@ -81,6 +82,32 @@ export const CHARACTER_IDS: readonly CharacterId[] = [
   'fang',
 ];
 
+/** The four items a crate can give. */
+export type ItemKind = 'boots' | 'shield' | 'burr' | 'pie';
+
+export const ITEM_KINDS: readonly ItemKind[] = ['boots', 'shield', 'burr', 'pie'];
+
+/** An item in an inventory slot, with the uses it has left. */
+export interface HeldItem {
+  kind: ItemKind;
+  charges: number;
+}
+
+/**
+ * Something fired and still flying, in track space. A `pie` flies in an arc and splats where it
+ * lands. A `sap` glob flies straight along `s` and traps the first other racer it touches;
+ * `travelled` counts its meters so it can vanish after `ITEMS.sapRange`.
+ */
+export type Shot =
+  | { kind: 'pie'; owner: RacerId; s: number; d: number; y: number; vs: number; vd: number; vy: number }
+  | { kind: 'sap'; owner: RacerId; s: number; d: number; y: number; vs: number; travelled: number };
+
+/** A mud patch left by a Mud Pie: mud for every racer but `owner` until `ticksLeft` runs out. */
+export interface Splat extends Span {
+  owner: RacerId;
+  ticksLeft: number;
+}
+
 export interface Racer {
   id: RacerId;
   character: CharacterId;
@@ -113,6 +140,20 @@ export interface Racer {
   safeD: number;
   /** Race ticks at the finish line, null until then. */
   finishTicks: number | null;
+  /** The inventory: `ITEMS.slots` places, null when empty. Never two of a kind. */
+  slots: (HeldItem | null)[];
+  /** The index in `slots` that fire uses. */
+  selected: number;
+  /** Ticks until this racer can fire again. */
+  itemCooldown: number;
+  /** Ticks left stunned by a hit with nothing held: no moving, dashing or firing. */
+  stunTicks: number;
+  /** Ticks left stuck in sap: no moving, dashing or firing. */
+  trappedTicks: number;
+  /** Ticks left puffed up by a Burr Ball: bumping another racer hits them. */
+  burrTicks: number;
+  /** Ticks left of a Rocket Boots boost. */
+  bootsTicks: number;
 }
 
 export interface World {
@@ -130,6 +171,12 @@ export interface World {
   rngState: number;
   /** The tick the race will end on once every rival has finished (the grace period), else null. */
   endTick: number | null;
+  /** One per `crate` feature, in feature order: ticks until it can be opened again, 0 when ready. */
+  crates: { shutTicks: number }[];
+  /** Fired items still flying. */
+  shots: Shot[];
+  /** Mud patches from Mud Pies. */
+  splats: Splat[];
   /** Not state; not hashed. */
   events: EventSink<GameEvent>;
 }
