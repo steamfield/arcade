@@ -1,7 +1,7 @@
 /**
- * Wiring between the shell and Phaser: loads the save, builds the Runtime and
- * the Phaser game with its scenes, fits the canvas at integer zoom, reports
- * WebGL context loss, and returns the GameHandle
+ * Wiring between the shell and Phaser: loads the save, builds the Runtime (with
+ * the page's online ports) and the Phaser game with its scenes, fits the canvas
+ * at integer zoom, reports WebGL context loss, and returns the GameHandle
  * the shell and tests drive. No game rules or scene logic live here.
  */
 import type { SaveStore } from '@arcade/save';
@@ -9,6 +9,7 @@ import type { GameContext, GameHandle } from '@arcade/shell';
 import Phaser from 'phaser';
 import type { SaveData } from '../logic/save.ts';
 import { debugState, debugSummary } from './debug.ts';
+import { pagePorts } from './online/page-ports.ts';
 import { Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
 import { BootScene } from './scenes/boot.ts';
 import { CourseScene } from './scenes/course.ts';
@@ -38,6 +39,7 @@ export async function startPhaser(ctx: GameContext, saves: SaveStore<SaveData>):
     startScene: (scene) => {
       if (game) switchScene(game, scene);
     },
+    online: pagePorts(ctx),
   });
   game = createPhaserGame(ctx, rt);
   watchGame(ctx, game, rt);
@@ -126,7 +128,7 @@ function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
 }
 
 function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>): GameHandle {
-  const idle = () => game.isBooted && !rt.loading && !rt.saving;
+  const idle = () => game.isBooted && !rt.loading && !rt.saving && !rt.onlineBusy;
   return {
     events: rt.events,
     idle,

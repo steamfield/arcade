@@ -11,6 +11,7 @@ import { summarize, toAscii } from '../logic/world.ts';
 import { mediumIdOf } from '../logic/worlds/index.ts';
 import { HOW_TO_PLAY_PAGES } from './how-to-play.ts';
 import { localOf } from './local-racer.ts';
+import { friendsSummary, netSummary } from './online/net-summary.ts';
 import type { Runtime } from './runtime.ts';
 import { rowText } from './scenes/course.ts';
 import { formatBest, levelBanner, racerName } from './view/race-text.ts';
@@ -23,14 +24,16 @@ import { squidHuntingLocal } from './view/threat-math.ts';
  * menu screens, the best line as shown on the title (for the level now selected), on course select each row as
  * shown (`courseSelect.rows`: id, name and best time on the level in force) and the cursor's row
  * (`courseSelect.selected`), on select the highlighted racer's name as the card shows it in the course's
- * world (`selectName`), the 1-based page on How to Play, and the race outcome on results. `local` names the slot the screen follows, and is present only when
- * a `?local=` was accepted (a debug race, never saved).
+ * world (`selectName`), the 1-based page on How to Play, the friends screen (`friends`) on Friends, and the race outcome on results. `local` names the slot the screen follows, and is present only when
+ * a `?local=` was accepted (a debug race, never saved). `net` describes the online room and race
+ * whenever a room has been opened (see `netSummary`).
  *
  * @param sceneRunning Whether Phaser is actually running `rt.scene`. When it isn't, the
  * scene reads 'none', so a runtime that believes in a scene Phaser stopped is visible.
  */
 export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: boolean): Record<string, unknown> {
   const { menu, world } = rt;
+  const net = netSummary(rt.flow);
   return {
     scene: sceneRunning ? rt.scene : 'none',
     save: saveStatus,
@@ -49,6 +52,7 @@ export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: 
       : {}),
     ...(rt.localSlot === null ? {} : { local: rt.localSlot }),
     ...(menu ? { menu: { options: menu.options, selected: menu.selected } } : {}),
+    ...(net ? { net } : {}),
     ...sceneDetails(rt),
   };
 }
@@ -63,6 +67,7 @@ function sceneDetails(rt: Runtime): Record<string, unknown> {
   if (rt.scene === 'title') return { best: best ? formatBest(best) : null };
   if (rt.scene === 'course') return { courseSelect: courseSelectOf(rt) };
   if (rt.scene === 'select') return { selectName: racerName(rt.selectedCharacter, rt.course).toUpperCase() };
+  if (rt.scene === 'friends') return { friends: friendsSummary(rt.online) };
   if (rt.scene === 'howToPlay') return { howToPlay: { page: rt.howToPage + 1, pages: HOW_TO_PLAY_PAGES } };
   if (rt.scene !== 'results' || !rt.lastResult) return {};
   const { result, newBest, saveFailed } = rt.lastResult;

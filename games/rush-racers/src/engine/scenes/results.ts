@@ -3,7 +3,7 @@
  * the top three's portraits and medals, the standings revealed one row every
  * 20 ticks (place, character name, time or TIME UP; the local racer's row in sun with
  * its character's head beside it), then the NEW BEST or BEST NOT SAVED ribbon, and the Race again / Character / Title
- * buttons, over the course's own backdrop. While course select is shown (more than one listed
+ * buttons (Race again / Title after an online race), over the course's own backdrop. While course select is shown (more than one listed
  * course) the course's name sits top left. Motion is timed from the runtime's tick since this
  * screen came up, and holds still under reduced motion (rows still arrive in sequence).
  */
@@ -16,7 +16,6 @@ import { MedalFrame, type MedalFrameKey, UiTex } from '../art/ui/keys.ts';
 import type { PanelStyle, UiToneName } from '../art/ui/palette.ts';
 import { createPanel, type Panel } from '../art/ui/panel.ts';
 import { centreOnStage } from '../centre-on-stage.ts';
-import { MENU_OPTIONS } from '../menu.ts';
 import type { RaceOutcome, Runtime } from '../runtime.ts';
 import { themeFor } from '../themes/index.ts';
 import { type Backdrop, createBackdrop } from '../view/backdrop.ts';
@@ -99,7 +98,7 @@ export class ResultsScene extends Phaser.Scene {
     this.standings = createStandings(this, world, standings, course, cast, this.rt.localRacer);
     this.rowsSettleAt = (standings.length - 1) * ROW_EVERY_TICKS + ROW_SLIDE.ticks;
     this.ribbon = createRibbon(this);
-    this.menuView = createMenuView(this, MENU, MENU_OPTIONS.results);
+    this.menuView = createMenuView(this, MENU, this.rt.resultsOptions);
     this.enteredAt = this.rt.step.tick;
     this.rt.entered('results');
     this.update();

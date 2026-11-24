@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { configureLogging, type LogEntry } from '@arcade/core';
+import { configureLogging, EventLog, type LogEntry } from '@arcade/core';
 import type { SaveResult, SaveStore } from '@arcade/save';
 import { createSaveStore } from '@arcade/save';
 import type { GameContext } from '@arcade/shell';
@@ -7,18 +7,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOP_ROUTE } from '../../scenarios/kit.ts';
 import { DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
+import { hashWorld } from '../logic/hash.ts';
 import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../logic/race/standings.ts';
 import { playerOf } from '../logic/racers.ts';
 import { migrations, NEW_GAME, NO_BESTS, SAVE_VERSION, type SaveData, SaveSchema } from '../logic/save.ts';
 import { courseFromLevel, giveItems } from '../logic/test-world.ts';
+import type { TickInput, World } from '../logic/types.ts';
+import { createClient, type OnlineClient } from '../net/client.ts';
+import { IDLE_INPUT } from '../net/codec.ts';
+import { createMemoryRoom, type MemoryRoom } from '../net/transport/memory.ts';
 import { type Action, input } from './input.ts';
 import { selectedOption } from './menu.ts';
+import type { OnlinePorts } from './online/flow.ts';
+import { createOnlineWorld } from './online/race-world.ts';
 import { Runtime } from './runtime.ts';
 
 /** Title rows: Race, How to play, Level, Sound, Motion. Sound is three down. */
 const SOUND_ROW = 3;
 /** The title ignores fire for its first 20 ticks. */
 const ARMED = 21;
+/** The code every room in these tests has. */
+const ROOM_CODE = 'ABCDEF';
 
 let storeCount = 0;
 const realStore = () =>
@@ -46,7 +55,14 @@ function titleRuntime(
     listedCourses,
     save = null,
     debug = false,
-  }: { search?: string; listedCourses?: readonly Course[]; save?: SaveData | null; debug?: boolean } = {},
+    online = roomPorts(createMemoryRoom()),
+  }: {
+    search?: string;
+    listedCourses?: readonly Course[];
+    save?: SaveData | null;
+    debug?: boolean;
+    online?: OnlinePorts;
+  } = {},
 ): Harness {
   const gameErrors: string[] = [];
   const ctx = {
@@ -65,10 +81,22 @@ function titleRuntime(
     startScene: (scene) => rt.entered(scene),
     search,
     listedCourses,
+    online,
   });
   rt.entered('title');
   rt.step.advance(ARMED);
   return { rt, gameErrors };
+}
+
+/** Ports onto an in-memory room: every code connects to it, and a created room is always `ROOM_CODE`. */
+function roomPorts(room: MemoryRoom): OnlinePorts {
+  return {
+    connect: () => room.connect(),
+    createRoom: () => Promise.resolve({ ok: true, code: ROOM_CODE }),
+    copyLink: () => Promise.resolve(true),
+    seed: () => 7,
+    kickAfterMs: null,
+  };
 }
 
 /** Presses `action` for one tick, then lets a tick pass so the next press registers. */
@@ -476,5 +504,129 @@ describe('race controls', () => {
 
     expect(rt.events.all().filter((event) => event.type === 'racer.kicked')).toHaveLength(1);
     expect(itemEvents(rt)).toEqual([]);
+  });
+});
+
+describe('an online race', () => {
+  /** Logic ticks a test may run before a condition counts as stuck. */
+  const TICK_LIMIT = 6000;
+  /** Run right, jumping on a cycle, as the client tests' racers do; the runtime's own racer stays idle. */
+  const runAndJump = (tick: number): TickInput => {
+    const jumping = tick % 40 < 25;
+    return { ...IDLE_INPUT, move: jumping ? { x: Math.SQRT1_2, y: -Math.SQRT1_2 } : { x: 1, y: 0 } };
+  };
+  const hashOf = (world: World | null | undefined) => (world ? hashWorld(world) : null);
+  const savesOf = (rt: Runtime) => rt.events.all().filter((event) => event.type.startsWith('save.'));
+
+  /**
+   * A runtime that opened a `?room=` link, as boot does, to a room whose host is a bare client on
+   * Run Test. Each round ticks the host, then the runtime, then the room delivers.
+   */
+  async function joinedRoom() {
+    const room = createMemoryRoom();
+    const host = createClient({
+      connection: room.connect(),
+      lobby: { character: 'gil', course: 'run-test', difficulty: 'normal' },
+      createRace: (start) => createOnlineWorld(start, new EventLog(10_000)),
+      kickAfterMs: null,
+      warn: (message) => {
+        throw new Error(`the host warned: ${message}`);
+      },
+    });
+    const { rt, gameErrors } = titleRuntime(await realStore(), {
+      search: `?room=${ROOM_CODE}`,
+      online: roomPorts(room),
+    });
+    expect(rt.openRoomLink()).toBe(true);
+    const until = (done: () => boolean) => {
+      for (let ticks = 0; ticks < TICK_LIMIT && !done(); ticks++) {
+        host.tick(runAndJump(host.view.race?.targetTick ?? 0), 16);
+        rt.step.advance(1);
+        room.deliver();
+      }
+      if (!done()) throw new Error(`not reached within ${TICK_LIMIT} ticks`);
+    };
+    until(() => host.view.lobby.canStart);
+    return { rt, host, until, gameErrors };
+  }
+
+  it('races the world the client built, in the slot the start gave, and saves nothing', async () => {
+    const { rt, host, until, gameErrors } = await joinedRoom();
+    expect(rt.scene).toBe('room');
+
+    host.start(9);
+    until(() => rt.scene === 'race');
+    expect(rt.world).toBe((rt.flow.client as OnlineClient).world);
+    expect(rt.localRacer).toBe('tess');
+    expect(rt.world?.humans).toEqual(['player', 'tess']);
+
+    until(() => rt.scene === 'results');
+    expect(hashOf(rt.world)).toBe(hashOf(host.world));
+    expect(rt.world?.race.result?.standings).toEqual(host.world?.race.result?.standings);
+    expect(rt.lastResult).toMatchObject({ newBest: false, saveFailed: false });
+    expect(rt.menu?.options).toEqual(['Race again', 'Title']);
+    // A write would be queued by now; let any run to its end before looking for it.
+    expect(rt.saving).toBe(false);
+    await settled(rt);
+    expect(savesOf(rt)).toEqual([]);
+    expect(rt.save).toBeNull();
+    expect(gameErrors).toEqual([]);
+  });
+
+  it('goes back to the room on Race again, and into the next race the host starts', async () => {
+    const { rt, host, until } = await joinedRoom();
+    host.start(9);
+    until(() => rt.scene === 'results');
+    const firstWorld = rt.world;
+    rt.step.advance(ARMED);
+    press(rt, 'fire');
+    expect(rt.scene).toBe('room');
+    expect(rt.world).toBeNull();
+
+    host.returnToLobby();
+    until(() => host.view.lobby.canStart);
+    host.start(10);
+    until(() => rt.scene === 'race');
+    expect(rt.world).not.toBe(firstWorld);
+    expect(rt.world).toBe(rt.flow.client?.world);
+  });
+
+  it('takes a player still on results into the next race the host starts', async () => {
+    const { rt, host, until } = await joinedRoom();
+    host.start(9);
+    until(() => rt.scene === 'results');
+    const firstWorld = rt.world;
+    host.returnToLobby();
+    until(() => host.view.lobby.canStart);
+
+    host.start(10);
+    until(() => rt.scene === 'race');
+    expect(rt.world).not.toBe(firstWorld);
+    expect(rt.localRacer).toBe('tess');
+  });
+
+  it('leaves the room for the title on Title', async () => {
+    const { rt, host, until } = await joinedRoom();
+    host.start(9);
+    until(() => rt.scene === 'results');
+    rt.step.advance(ARMED);
+    press(rt, 'down');
+    press(rt, 'fire');
+
+    expect(rt.scene).toBe('title');
+    expect(rt.world).toBeNull();
+    expect(rt.flow.client?.view).toMatchObject({ status: 'closed', reason: 'left' });
+    until(() => host.view.lobby.peers.length === 1);
+  });
+
+  it('ignores a ?room= that is not a room code, with one warning', async () => {
+    const { rt } = titleRuntime(await realStore(), { search: '?room=nope' });
+
+    expect(rt.openRoomLink()).toBe(false);
+    expect(rt.scene).toBe('title');
+    expect(rt.flow.client).toBeNull();
+    expect(logged.filter((entry) => entry.level === 'warn').map((entry) => entry.message)).toEqual([
+      '?room=nope is not a room code, so no room was joined',
+    ]);
   });
 });
