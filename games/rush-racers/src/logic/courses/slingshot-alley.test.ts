@@ -57,6 +57,13 @@ describe('Slingshot Alley', () => {
     expect(level.jellies.length).toBeGreaterThan(0);
   });
 
+  it('leaves the Debris Storm dust channel clear for racers to pass the shield', () => {
+    const orbs = level.jellies.filter(({ x }) => x >= 603 && x <= 846);
+
+    expect(orbs.length).toBeGreaterThan(0);
+    expect(orbs.filter(({ x, y }) => x >= 737 && x <= 743 && y >= 21 && y <= 25)).toEqual([]);
+  });
+
   it('has drifting asteroids out of step in the opening, dust field and debris corridor', () => {
     const { asteroids } = level;
     const inCols = (from: number, to: number) =>

@@ -229,7 +229,17 @@ describe('drag', () => {
 describe('nebula dust', () => {
   const DUST: DriftEnv = { ...VACUUM, inDust: true };
 
-  it('lowers cruise to dustCruiseMul of it', () => {
+  // Slingshot Alley's Easy catch-up floor, Baron's ramp, inflation and a latch can reach about 0.057.
+  it.each([0.6, 0.057])('lets a drifter with forceMul %s move from rest under thrust', (forceMul) => {
+    const racer = bareDrifter();
+    const start = racer.body.x;
+    drift(racer, ticksIn(1), hold(RIGHT), { env: DUST, mods: { ...BASE, forceMul } });
+
+    expect(racer.body.x - start).toBeGreaterThan(0);
+    expect(racer.body.vx).toBeGreaterThan(0);
+  });
+
+  it('settles at the dust cruise with full thrust', () => {
     const { samples } = drift(bareDrifter(), ticksIn(2), hold(RIGHT), { env: DUST });
     const top = Math.max(...samples.map((sample) => sample.speed));
 
