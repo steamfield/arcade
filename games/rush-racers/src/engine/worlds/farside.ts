@@ -12,6 +12,8 @@ export const FARSIDE_SKIN: WorldSkin = {
   cast: FARSIDE_CAST,
   objects: FARSIDE_OBJECTS,
   moveSound: 'burns',
+  moveMoments: ['thrust'],
+  fireFlavour: { semitones: 0, noiseScale: 1, squareTones: true },
   registerTextures(scene) {
     registerFarsideCast(scene);
     registerFarsideObjects(scene);

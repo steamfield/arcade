@@ -15,22 +15,19 @@ import type { EventSink, Rng, Stamped } from '@arcade/core';
 import { courseOf } from '../../logic/courses/index.ts';
 import { ENEMY_KINDS, type EnemyKind, type HitCause, type RacerId, type World } from '../../logic/types.ts';
 import { localOf } from '../local-racer.ts';
-import { FINAL_STRETCH_AT } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { createAttackSfx, HEARING_PX } from './attack-sfx.ts';
 import { type EffectKey, playEffect } from './effects.ts';
 import type { AudioPort } from './index.ts';
 import { isItemSfx, itemSfxKey } from './item-sfx.ts';
 import { createMoveCues } from './move-cues.ts';
-import type { Song } from './notation.ts';
+import { createMusicCues } from './music-cues.ts';
 import type { Sequencer } from './sequencer.ts';
 import { setPieceCue } from './setpiece-cues.ts';
 import type { SfxKey } from './sfx.ts';
-import { type SongName, songs } from './songs/index.ts';
+import type { SongName } from './songs/index.ts';
 import type { Synth } from './synth.ts';
 import { flavourFor, NEUTRAL_FLAVOUR, type WorldFlavour } from './world-flavour.ts';
-
-/** Every piece of music the game plays. */
 
 /** What the adapter drives. */
 export interface AdapterOptions {
@@ -64,8 +61,6 @@ export interface AdapterOptions {
   raceWorld?(): World | null;
 }
 
-/** Final-stretch tempo, as a multiple of the race theme's own. */
-const LIFT_TEMPO = 1.1;
 /** Random pitch spread for effects: ±5%. */
 const PITCH_SPREAD = 0.05;
 /** Musical cues that must stay in tune with each other, so they skip the random pitch. */
@@ -98,31 +93,18 @@ function isEnemy(cause: HitCause): cause is EnemyKind {
 
 /** The flavour item fires take in `world`'s world, the neutral one off the race screen. */
 function flavourOf(world: World | null): WorldFlavour {
-  return world ? flavourFor(courseOf(world).world) : NEUTRAL_FLAVOUR;
-}
-
-/** The song for `name`. The single place songs are chosen. */
-export function songFor(name: SongName): Song {
-  return songs[name];
+  return world ? flavourFor(courseOf(world)) : NEUTRAL_FLAVOUR;
 }
 
 /** Builds the event-to-sound half of the `AudioPort`. */
 export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvents' | 'onRaceProgress'> {
   const { synth, sequencer, events } = options;
   const running = () => synth.context.state === 'running';
-  /** The music the current screen wants, or null for silence. */
-  let wanted: SongName | null = null;
-  /** The music actually started, which lags `wanted` while the context is suspended. */
-  let started: SongName | null = null;
-  let lifted = false;
   /**
    * The local racer's last announced place. Null until the race's first announcement, which only
    * replaces the grid order at GO, so it sets the baseline silently instead of sounding a drop.
    */
   let place: number | null = null;
-  let won: boolean | null = null;
-  /** Whether the local racer crossed the line this race; `race.finished` only says whether slot 1 did. */
-  let localFinished = false;
   /** Whether a strike has sounded in the drain being heard, so zones striking together sound once. */
   let strikeHeard = false;
 
@@ -133,6 +115,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
   const enemyAudible = options.enemyAudible ?? (() => true);
   const stormAudible = options.stormAudible ?? (() => true);
   const announce = (key: string, kind: 'sfx' | 'song') => events.emit({ type: 'audio.played', key, kind });
+  const music = createMusicCues({ sequencer, running, announce, localRacer: local, raceSong: options.raceSong });
 
   const sfx = (key: EffectKey) => {
     if (!running()) return;
@@ -153,43 +136,15 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
     if (cue) sfx(cue);
   };
 
-  const syncMusic = () => {
-    if (!running() || wanted === started) return;
-    started = wanted;
-    if (wanted === null) {
-      sequencer.stop();
-      return;
-    }
-    sequencer.play(songFor(wanted));
-    announce(wanted, 'song');
-  };
-
-  const followSequencer = () => {
-    if (!running() || started === null) return;
-    const news = sequencer.poll();
-    for (const section of news.sections) announce(`${started}:${section}`, 'song');
-    if (news.ended && (started === 'win' || started === 'lose')) {
-      wanted = 'results';
-      syncMusic();
-    }
-  };
-
   const onEvent = (event: RuntimeEvent, tick: number) => {
+    music.onEvent(event);
     switch (event.type) {
       case 'scene.started':
-        if (event.scene === 'title') wanted = 'title';
-        else if (event.scene === 'race') {
-          wanted = null;
-          lifted = false;
-          place = null;
-          won = null;
-          localFinished = false;
-        } else if (event.scene === 'results') wanted = won === null ? 'results' : won ? 'win' : 'lose';
+        if (event.scene === 'race') place = null;
         return;
       case 'race.countdown':
         return sfx('countdown');
       case 'race.started':
-        wanted = options.raceSong();
         return sfx('go');
       case 'racer.kicked':
         if (event.id === local()) sfx('kick');
@@ -233,11 +188,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
         return;
       case 'racer.finished':
         if (event.id !== local()) return;
-        localFinished = true;
         return sfx('finish');
-      case 'race.finished':
-        won = event.standings[0] === local() && localFinished;
-        return;
       case 'coral.broken':
         return sfx('coral');
       case 'enemy.telegraphed': {
@@ -271,14 +222,8 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       strikeHeard = false;
       for (const event of drained) onEvent(event, event.tick);
       hearLocalMotion();
-      syncMusic();
-      followSequencer();
+      music.sync();
     },
-    onRaceProgress(fraction: number) {
-      if (lifted || fraction < FINAL_STRETCH_AT || started !== options.raceSong() || !running()) return;
-      lifted = true;
-      sequencer.setTempoScale(LIFT_TEMPO);
-      announce(`${started}:lift`, 'song');
-    },
+    onRaceProgress: music.onRaceProgress,
   };
 }

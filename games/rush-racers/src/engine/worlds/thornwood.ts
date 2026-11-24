@@ -12,6 +12,8 @@ export const THORNWOOD_SKIN: WorldSkin = {
   cast: THORNWOOD_CAST,
   objects: THORNWOOD_OBJECTS,
   moveSound: 'steps',
+  moveMoments: ['land', 'skid'],
+  fireFlavour: { semitones: -3, noiseScale: 0.55, squareTones: false },
   registerTextures(scene) {
     registerThornwoodCast(scene);
     registerThornwoodObjects(scene);
