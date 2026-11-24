@@ -12,14 +12,13 @@ import { jumpMulFor } from '../../abilities.ts';
 import type { GameEvent } from '../../events.ts';
 import type { Body, Intent, MoveModifiers, Racer } from '../../types.ts';
 import type { MediumEnv, MediumTuning } from '../types.ts';
+import { cruiseSpeed, forceScale, windDrift } from './cruise.ts';
 import { type FlightEnv, type FlightMotion, flightEnv, flightMotion } from './data.ts';
 
 /** Up counts as held past this far up the stick. */
 const UP_THRESHOLD = -0.5;
 /** Down counts as held past this far down the stick. */
 const DOWN_THRESHOLD = 0.5;
-/** How much of forceMul's deviation from 1 reaches horizontal acceleration and cruise: 1.4 flies 20 % faster. */
-const FORCE_SHARE = 0.5;
 
 /** Fresh motion state for a flyer at its start, which is its first safe spot. */
 export function createFlightMotion(body: Body): FlightMotion {
@@ -37,9 +36,12 @@ export function createFlightMotion(body: Body): FlightMotion {
 /**
  * One tick of flight. A flap fires on a fresh Up press with the flap cooldown run out, sets
  * `vy` to at most `-flapLift * jumpMulFor(racer)` and emits `racer.flapped` (never `racer.kicked`,
- * so it spends no dash charge). The dash sets `vx` to `kick * kickMul` along facing, leaves `vy`,
- * opens the puff-popping window and emits `racer.kicked`. Horizontal speed never passes
- * `tuning.maxSpeed`. A fallen racer (`status.fallen`) is held still with no gravity.
+ * so it spends no dash charge). The dash sets `vx` to `kick * kickMul` times the racer's share of
+ * `forceMul` (`forceScale`) along facing, leaves `vy`, opens the puff-popping window and emits
+ * `racer.kicked`. A dive's carry is scaled by the same share, so `forceMul` reaches every horizontal
+ * speed a flyer has as it reaches cruise. A stunned or trapped flyer's dive ends with no carry.
+ * Horizontal speed never passes `tuning.maxSpeed`. A fallen racer (`status.fallen`) is held still
+ * with no gravity.
  *
  * @param dt Tick length in seconds.
  * @throws {Error} When the racer's motion or `env` isn't flight's, or `tuning` lacks one of flight's extras.
@@ -67,7 +69,10 @@ export function applyFlightIntent(
   const downHeld = intent.move.y > DOWN_THRESHOLD;
   const pressed = upHeld && !motion.upWasHeld;
   motion.upWasHeld = upHeld;
-  const carry = diveCarryOnRelease(motion, body.vy, downHeld, extra);
+  // Stunned or trapped, the stick reads as let go; a dive it ends that way pays no carry, so a hit's
+  // knockback stays a knockback.
+  const knockedOut = racer.status.stunned > 0 || racer.status.trapped > 0;
+  const carry = knockedOut ? 0 : diveCarryOnRelease(motion, body.vy, downHeld, extra) * forceScale(mods);
   motion.diving = downHeld;
   updateFacing(racer, intent.move.x);
 
@@ -177,9 +182,8 @@ function cruise(
   mods: MoveModifiers,
   dt: number,
 ): void {
-  const scale = 1 + (mods.forceMul - 1) * FORCE_SHARE;
-  const top = extra.cruise * scale * (air.inFog ? extra.fogCruiseMul : 1);
-  const drift = (air.wind?.x ?? 0) * extra.windSpeed;
+  const top = cruiseSpeed(extra, mods, air);
+  const drift = windDrift(extra, air);
   const friction = tuning.drag * mods.dragMul * dt;
   if (wanted === 0) {
     body.vx = approach(body.vx, drift, friction);
@@ -188,7 +192,7 @@ function cruise(
   const target = Math.sign(wanted) * top + drift;
   const over = Math.sign(body.vx) === Math.sign(target) && Math.abs(body.vx) > Math.abs(target);
   if (over) body.vx = Math.sign(body.vx) * Math.max(Math.abs(body.vx) - friction, Math.abs(target));
-  else body.vx = approach(body.vx, target, tuning.force * scale * dt);
+  else body.vx = approach(body.vx, target, tuning.force * forceScale(mods) * dt);
 }
 
 /**
@@ -232,9 +236,9 @@ function dashOrCoolDown(
   coolDownKick(racer);
 }
 
-/** Horizontal speed, px/s, a dash sets along facing. */
+/** Horizontal speed, px/s, a dash sets along facing: `kick` times `kickMul` and the racer's share of `forceMul`. */
 function dashSpeed(tuning: MediumTuning, mods: MoveModifiers): number {
-  return tuning.kick * mods.kickMul;
+  return tuning.kick * mods.kickMul * forceScale(mods);
 }
 
 /** Takes a tick off the kick cooldown, stopping at 0. */

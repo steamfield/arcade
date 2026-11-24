@@ -6,7 +6,7 @@ import { scenario, tap, wait } from './kit.ts';
 const press = (action: 'fire' | 'dash' | 'left' | 'right' | 'down') => [tap(action), wait(3)];
 
 /**
- * From the title, How to Play is one row below Race. After the screen's 20 arming ticks:
+ * From the title, How to Play is two rows below Race, under Friends. After the screen's 20 arming ticks:
  * A, A, B, B walks to page 3, 2, 1; left on the first page stays put; B on the first page leaves.
  * The title comes back with HOW TO PLAY still selected, so A reopens it: A walks to the last page,
  * right on the last page stays put, and A there leaves again.
@@ -15,6 +15,7 @@ export default scenario({
   description: 'How to Play pages forward and back, stops at the ends, and returns to the title with it selected',
   input: [
     wait(25),
+    ...press('down'),
     ...press('down'),
     tap('fire'),
     wait(25),
@@ -47,6 +48,6 @@ export default scenario({
       'howToPlay',
       'title',
     ]);
-    expect(summary).toMatchObject({ scene: 'title', menu: { selected: 1 } });
+    expect(summary).toMatchObject({ scene: 'title', menu: { selected: 2 } });
   },
 });

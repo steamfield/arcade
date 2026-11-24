@@ -1,7 +1,7 @@
 /**
- * Wiring between the shell and Phaser: loads the save, builds the Runtime and
- * the Phaser game with its scenes, fits the canvas at integer zoom, reports
- * WebGL context loss, and returns the GameHandle
+ * Wiring between the shell and Phaser: loads the save, builds the Runtime (with
+ * the page's online ports) and the Phaser game with its scenes, fits the canvas
+ * at integer zoom, reports WebGL context loss, and returns the GameHandle
  * the shell and tests drive. No game rules or scene logic live here.
  */
 import type { SaveStore } from '@arcade/save';
@@ -9,12 +9,15 @@ import type { GameContext, GameHandle } from '@arcade/shell';
 import Phaser from 'phaser';
 import type { SaveData } from '../logic/save.ts';
 import { debugState, debugSummary } from './debug.ts';
+import { pagePorts } from './online/page-ports.ts';
 import { Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
 import { BootScene } from './scenes/boot.ts';
 import { CourseScene } from './scenes/course.ts';
+import { FriendsScene } from './scenes/friends.ts';
 import { HowToPlayScene } from './scenes/how-to-play.ts';
 import { RaceScene } from './scenes/race.ts';
 import { ResultsScene } from './scenes/results.ts';
+import { RoomScene } from './scenes/room.ts';
 import { SelectScene } from './scenes/select.ts';
 import { TitleScene } from './scenes/title.ts';
 import { type Stage, stageFor } from './stage.ts';
@@ -36,6 +39,7 @@ export async function startPhaser(ctx: GameContext, saves: SaveStore<SaveData>):
     startScene: (scene) => {
       if (game) switchScene(game, scene);
     },
+    online: pagePorts(ctx),
   });
   game = createPhaserGame(ctx, rt);
   watchGame(ctx, game, rt);
@@ -74,6 +78,8 @@ function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
       new SelectScene(rt),
       new RaceScene(rt),
       new ResultsScene(rt),
+      new FriendsScene(rt),
+      new RoomScene(rt),
     ],
   });
 }
@@ -100,8 +106,8 @@ function containerStage(container: HTMLElement): Stage {
 /**
  * A view that fills the container at integer zoom and follows its size (a new view size restarts
  * the screens showing so they lay out again), the logic clock fed once per game step (not per
- * scene, so a scene switch mid-step can't tick twice), plus the context-loss hookup once
- * Phaser is ready.
+ * scene, so a scene switch mid-step can't tick twice), the tab showing again, plus the
+ * context-loss hookup once Phaser is ready.
  */
 function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
   game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => rt.frame(deltaMs));
@@ -115,6 +121,11 @@ function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
     game.scale.setZoom(stage.zoom);
   };
   new ResizeObserver(fitToContainer).observe(ctx.container);
+  // The shell's `onHide` fires in test mode too, but it skips `resume` there; listening here keeps
+  // a player who hid in the room from staying away for good.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) rt.show();
+  });
   game.events.once(Phaser.Core.Events.READY, () => {
     fitToContainer();
     game.canvas.addEventListener('webglcontextlost', () => ctx.reportError('webgl', 'WebGL context lost'));
@@ -122,7 +133,7 @@ function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
 }
 
 function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>): GameHandle {
-  const idle = () => game.isBooted && !rt.loading && !rt.saving;
+  const idle = () => game.isBooted && !rt.loading && !rt.saving && !rt.onlineBusy;
   return {
     events: rt.events,
     idle,
@@ -146,5 +157,6 @@ function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>
     },
     pause: () => game.loop.sleep(),
     resume: () => game.loop.wake(),
+    onHide: () => rt.hide(),
   };
 }

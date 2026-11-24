@@ -3,12 +3,17 @@
  *
  *   #  rock          C  coral (breakable)   ~  kelp            .  open water
  *   =  ledge (one-way platform: holds a body landing on it from above, open from below and the sides)
+ *   B  bounce cloud (solid from every side like rock; springs a body landing on it from above
+ *      back up, in a medium with `effects.bounceSpeed`; `createWorld` rejects it in any other)
  *   >  <  ^  v       currents pushing in that direction
  *   1  2  3  4       start tiles in RACER_IDS order (player first)
  *   F  finish line (every F sits in one column)
  *   o  pearl         ?  clam                *  urchin          j  jellyfish
+ *   @  boost ring (`Level.rings`; reusable, each racer boosted once per ring per race)
  *
- * Start, finish and object tiles are open water. Every row must be the same width. A level's
+ * Storm zones (`LevelDef.lightning`) are column ranges, not glyphs (`lightning-zones.ts`).
+ *
+ * Start, finish, object and ring tiles are open water. Every row must be the same width. A level's
  * `surface` ranges then turn the water above each surface row to air (`surface.ts`); objects there
  * stay recorded and float in the air, but enemies and starts may not sit in it.
  *
@@ -23,6 +28,7 @@
  */
 import { type Cell, type EnemyKind, type Level, type LevelDef, RACER_IDS, type Vec } from '../types.ts';
 import { errorAt, LevelError } from './level-error.ts';
+import { requireLightningZones } from './lightning-zones.ts';
 import { openToAir, requireSurfacesOnMap, requireUnderwater } from './surface.ts';
 import { parseWells } from './wells.ts';
 
@@ -38,15 +44,17 @@ const TERRAIN: ReadonlyMap<string, Cell> = new Map([
   ['v', 'current-down'],
   ['.', 'water'],
   ['=', 'ledge'],
+  ['B', 'bounce'],
 ]);
 
-type ObjectList = 'pearls' | 'clams' | 'urchins' | 'jellies';
+type ObjectList = 'pearls' | 'clams' | 'urchins' | 'jellies' | 'rings';
 
 const OBJECTS: ReadonlyMap<string, ObjectList> = new Map([
   ['o', 'pearls'],
   ['?', 'clams'],
   ['*', 'urchins'],
   ['j', 'jellies'],
+  ['@', 'rings'],
 ]);
 
 /** Enemy glyphs; the tile under one is water. */
@@ -76,6 +84,7 @@ interface Markers {
   clams: Vec[];
   urchins: Vec[];
   jellies: Vec[];
+  rings: Vec[];
   enemies: { kind: EnemyKind; tile: Vec }[];
 }
 
@@ -86,13 +95,23 @@ interface Markers {
  *   names an unknown cell; ragged rows, unknown characters, missing or duplicate start digits,
  *   no finish tile, finish tiles in more than one column, a dark zone outside the map or reversed, a
  *   surface range reversed, off the map or with its row outside 1..height-1, an enemy or start tile
- *   in the air above a surface, or a bad gravity well (`parseWells`).
+ *   in the air above a surface, a bad gravity well (`parseWells`), or a storm zone reversed, off the map,
+ *   overlapping another or with a period too short to warn before it strikes (`requireLightningZones`).
  */
 export function parseLevel(def: LevelDef): Level {
   const legend = readLegend(def.legend ?? {});
   const rows = readRows(def.ascii);
   const width = requireEqualWidths(rows);
-  const markers: Markers = { starts: [], finishX: null, pearls: [], clams: [], urchins: [], jellies: [], enemies: [] };
+  const markers: Markers = {
+    starts: [],
+    finishX: null,
+    pearls: [],
+    clams: [],
+    urchins: [],
+    jellies: [],
+    rings: [],
+    enemies: [],
+  };
   const water = rows.map((row, y) => [...row].map((ch, x) => readTile(ch, x, y, markers, legend)));
   const surface = requireSurfacesOnMap(def.surface ?? [], width, rows.length);
   const cells = openToAir(water, surface);
@@ -111,10 +130,12 @@ export function parseLevel(def: LevelDef): Level {
     clams: markers.clams,
     urchins: markers.urchins,
     jellies: markers.jellies,
+    rings: markers.rings,
     enemies: markers.enemies,
     dark: requireDarkZonesOnMap(def.dark ?? [], width),
     surface,
     wells: parseWells(def.wells ?? [], width, rows.length),
+    lightning: requireLightningZones(def.lightning ?? [], width),
   };
 }
 

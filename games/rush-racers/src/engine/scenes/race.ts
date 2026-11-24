@@ -1,7 +1,8 @@
 /**
  * The race screen. It assembles the views, drawn in the course's theme (backdrop, course, pickups, hazards, enemies,
  * the attack power-ups in the water, racers and their power-up effects, the darkness
- * over dark zones, HUD, the hints for young players, camera, debug overlay, and any layers the theme adds) over the
+ * over dark zones, HUD, the hints for young players, an online race's player tags and waiting line, camera, debug overlay,
+ * and any layers the theme adds) over the
  * runtime's world and syncs them every rendered frame.
  * Event-driven visuals arrive through the runtime's per-tick listener.
  * Ticking, input and the move to results all happen in the runtime.
@@ -28,9 +29,12 @@ import { createHazardView } from '../view/hazard-view.ts';
 import { createHintView } from '../view/hint-view.ts';
 import { createHud } from '../view/hud.ts';
 import { createLevelView } from '../view/level-view.ts';
+import { createLightningView } from '../view/lightning-view.ts';
+import { createOnlineRaceView } from '../view/online-race-view.ts';
 import { createPickupView } from '../view/pickup-view.ts';
 import { createPowerupView } from '../view/powerup-view.ts';
 import { createRacerView } from '../view/racer-view.ts';
+import { createRingView } from '../view/ring-view.ts';
 import { screenLayout } from '../view/screen-layout.ts';
 import { createWellView } from '../view/well-view.ts';
 import { skinFor } from '../worlds/index.ts';
@@ -73,6 +77,8 @@ export class RaceScene extends Phaser.Scene {
     createWellView(this, world.level, reducedMotion);
     const pickups = createPickupView(this, world.level, skin, reducedMotion);
     const hazards = createHazardView(this, world.level, theme.hazards, skin, reducedMotion);
+    const rings = createRingView(this, world, reducedMotion);
+    const lightning = createLightningView(this, world, reducedMotion);
     const enemies = createEnemyView(this, world, reducedMotion);
     const attacks = createAttackView(this, skin, reducedMotion);
     const racers = world.racers.map((racer) => ({
@@ -94,13 +100,17 @@ export class RaceScene extends Phaser.Scene {
     const guide = createGuideView(this, reducedMotion, layout);
     const fireIcon = createFireButtonIcon(this, skin.objects.itemIcons);
     const fx = createFx(this, world, theme, reducedMotion);
-    const camera = followRacer(this.cameras.main, localOf(world).body, world.level);
+    const camera = followRacer(this.cameras.main, localOf(world).body, world.level, theme.hudOverSky ? hud.bottom : 0);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
+    // Lobby tags and the waiting line belong to online races only.
+    const online = this.rt.onlineRace ? createOnlineRaceView(this, layout) : null;
 
     const stopListening = this.rt.listen((events) => {
       const tick = this.rt.world?.tick ?? 0;
       level.onEvents(events);
       enemies.onEvents(events, tick);
+      rings.onEvents(events, tick);
+      lightning.onEvents(events, tick);
       for (const { view, effects } of racers) {
         view.onEvents(events, tick);
         effects.onEvents(events, tick);
@@ -119,6 +129,8 @@ export class RaceScene extends Phaser.Scene {
       backdrop.update(current.tick);
       pickups.sync(current, current.tick);
       hazards.sync(current, current.tick);
+      rings.sync(current, current.tick);
+      lightning.sync(current, current.tick);
       enemies.sync(current);
       attacks.sync(current, current.tick);
       for (const layer of themeLayers) layer.sync(current);
@@ -133,6 +145,7 @@ export class RaceScene extends Phaser.Scene {
       fx.sync(current);
       // After the camera moved, so the darkness lines up with this frame's scroll.
       dark.sync(current);
+      online?.sync(current, this.rt.online.view?.race ?? null);
       debug?.sync(current);
     };
     sync(world);

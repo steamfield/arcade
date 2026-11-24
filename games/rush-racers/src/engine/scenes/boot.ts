@@ -1,7 +1,7 @@
 /**
  * The first scene: builds every texture and animation once (the global art, the UI kit and every
  * theme's own), then routes to the title, or straight into a race when launched with `?scene=race`
- * (or the older `?scene=play`).
+ * (or the older `?scene=play`), into the room a `?room=<code>` link names, or to Friends with `?scene=friends`.
  */
 
 import Phaser from 'phaser';
@@ -30,6 +30,7 @@ export class BootScene extends Phaser.Scene {
     registerSkinTextures(this);
     for (const skin of Object.values(SKINS)) assertSkinTextures(this.textures, skin);
     if (RACE_SCENE_PARAMS.includes(this.rt.ctx.params.scene)) this.rt.startRace();
-    else this.rt.goTo('title');
+    // A room link joins its room at once; otherwise Friends when asked for, else the title.
+    else if (!this.rt.openRoomLink()) this.rt.goTo(this.rt.ctx.params.scene === 'friends' ? 'friends' : 'title');
   }
 }

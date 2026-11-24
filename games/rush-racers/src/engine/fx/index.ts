@@ -16,6 +16,7 @@ import type { World } from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { Theme } from '../themes/types.ts';
 import { Layer } from '../view/layers.ts';
+import { cameraSpan } from '../view/storm-reach.ts';
 import { skinFor } from '../worlds/index.ts';
 import { createBubbleTracker } from './bubble-tracker.ts';
 import { createBursts } from './bursts.ts';
@@ -64,9 +65,15 @@ export function createFx(scene: Phaser.Scene, world: World, theme: Theme, reduce
   const trail = trailFor(theme, world.racers.length, reducedMotion);
   const shake = createShake();
   const nudge = createCameraNudge(scene.cameras.main);
-  const effects = createEventEffects(world, bursts, createBubbleTracker(), (trauma) => {
-    if (!reducedMotion) shake.add(trauma);
-  });
+  const effects = createEventEffects(
+    world,
+    bursts,
+    createBubbleTracker(),
+    (trauma) => {
+      if (!reducedMotion) shake.add(trauma);
+    },
+    () => cameraSpan(scene.cameras.main),
+  );
 
   return {
     onEvents(events) {

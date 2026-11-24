@@ -4,7 +4,7 @@
  * finish. A black hole closes the tiles inside its horizon and makes the tiles in its reach dear, so
  * every field keeps clear of it where there is room. Walking the fields lives in `way.ts`.
  */
-import { isSolid } from '../../level/query.ts';
+import { isRockLike, isSolid } from '../../level/query.ts';
 import { length } from '../../num.ts';
 import { distancesToFinish, type EntryCost, fieldAt, NEIGHBOURS } from '../../race/flowfield.ts';
 import { type Cell, type Level, TILE, type Vec, type Well } from '../../types.ts';
@@ -42,7 +42,7 @@ const WIND_DIRECTION: Partial<Record<Cell, Vec>> = {
  * solar wind is cheap along its arrow and dear against it. Drift's `enterCost`.
  */
 export const driftCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
-  if (cell === 'rock') return Number.POSITIVE_INFINITY;
+  if (isRockLike(cell)) return Number.POSITIVE_INFINITY;
   if (cell === 'coral') return isBroken ? 1 : Number.POSITIVE_INFINITY;
   if (cell === 'kelp') return DUST_COST;
   const wind = WIND_DIRECTION[cell];

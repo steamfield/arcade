@@ -25,17 +25,23 @@ const LOOKAHEAD_MAX = { x: 56, y: 28 } as const;
 /** Fraction of the remaining distance closed per second is 1 - e^(-rate). */
 const SMOOTHING_RATE = 6;
 
-/** Points `camera` at `body` now and returns the rig that keeps following it. `body` is read live each update. */
-export function followRacer(camera: Phaser.Cameras.Scene2D.Camera, body: Body, level: Level): CameraRig {
+/**
+ * Points `camera` at `body` now and returns the rig that keeps following it. `body` is read live each update.
+ *
+ * @param headroom Px the camera may show above the level's top edge, so a HUD row of that height covers
+ *   sky beyond the level rather than the top rows racers move in. 0 keeps the view inside the level.
+ */
+export function followRacer(camera: Phaser.Cameras.Scene2D.Camera, body: Body, level: Level, headroom = 0): CameraRig {
   const half = { x: camera.width / 2, y: camera.height / 2 };
+  const least = { x: half.x, y: half.y - headroom };
   const limit = { x: level.width * TILE - half.x, y: level.height * TILE - half.y };
-  const centre = clampToLevel(lookTarget(body), half, limit);
+  const centre = clampToLevel(lookTarget(body), least, limit);
   applyScroll(camera, centre, half);
 
   return {
     update(seconds) {
       if (seconds <= 0) return;
-      const wanted = clampToLevel(outOfDeadzone(centre, lookTarget(body)), half, limit);
+      const wanted = clampToLevel(outOfDeadzone(centre, lookTarget(body)), least, limit);
       const blend = 1 - Math.exp(-SMOOTHING_RATE * seconds);
       centre.x += (wanted.x - centre.x) * blend;
       centre.y += (wanted.y - centre.y) * blend;
@@ -60,11 +66,11 @@ function outOfDeadzone(centre: Vec, target: Vec) {
   };
 }
 
-function clampToLevel(point: Vec, half: Vec, limit: Vec) {
+function clampToLevel(point: Vec, least: Vec, limit: Vec) {
   // A level smaller than the screen centres on its own middle instead of clamping past itself.
   return {
-    x: limit.x < half.x ? (limit.x + half.x) / 2 : clamp(point.x, half.x, limit.x),
-    y: limit.y < half.y ? (limit.y + half.y) / 2 : clamp(point.y, half.y, limit.y),
+    x: limit.x < least.x ? (limit.x + least.x) / 2 : clamp(point.x, least.x, limit.x),
+    y: limit.y < least.y ? (limit.y + least.y) / 2 : clamp(point.y, least.y, limit.y),
   };
 }
 

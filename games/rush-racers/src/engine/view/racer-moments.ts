@@ -50,7 +50,7 @@ export interface RacerLook {
 /** Tracks one racer's kick, flap, bounce and place-up moments. */
 export interface RacerMoments {
   /**
-   * Records a `racer.kicked`, `racer.flapped` or `racer.bounced` for this racer and its own `player.place` that gains a
+   * Records a `racer.kicked`, `racer.flapped` or `racer.rebounded` for this racer and its own `player.place` that gains a
    * place, at world tick `tick`.
    */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
@@ -75,7 +75,7 @@ export function createRacerMoments(id: RacerId, place: number, local: RacerId = 
       for (const event of events) {
         if (event.type === 'racer.kicked' && event.id === id) kickedAt = tick;
         if (event.type === 'racer.flapped' && event.id === id) flappedAt = tick;
-        if (event.type === 'racer.bounced' && event.id === id) {
+        if (event.type === 'racer.rebounded' && event.id === id) {
           bouncedAt = tick;
           bounceAxis = event.axis;
         }

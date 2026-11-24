@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { CHARACTER_IDS, POWER_UP_KINDS } from '../../../logic/types.ts';
 import { THEMES } from '../../themes/index.ts';
+import { CloudreachPalette } from '../../worlds/cloudreach/sprites/palette.ts';
+import { CLOUDREACH_RACER_SHEETS } from '../../worlds/cloudreach/sprites/racers.ts';
 import { FarsidePalette } from '../../worlds/farside/sprites/palette.ts';
 import { FARSIDE_RACER_SHEETS } from '../../worlds/farside/sprites/racers.ts';
 import { REEF_SKIN } from '../../worlds/reef.ts';
@@ -120,7 +122,12 @@ describe('world art palettes', () => {
   const behind = Object.values(THEMES).flatMap((theme) => theme.contrastBands.map((band) => band.colour));
   const readable = (colour: number) => Math.min(...behind.map((water) => contrast(colour, water))) >= 3;
   // Each world's cast is drawn on every course, so every skin's racers stand off every theme.
-  const castPalettes = { reef: CharacterPalette, thornwood: ThornwoodPalette, farside: FarsidePalette };
+  const castPalettes = {
+    reef: CharacterPalette,
+    thornwood: ThornwoodPalette,
+    cloudreach: CloudreachPalette,
+    farside: FarsidePalette,
+  };
   const mainColours = [
     ...Object.entries(castPalettes).flatMap(([world, palettes]) =>
       CHARACTER_IDS.map((character) => [`${world} ${character}`, palettes[character][1]] as const),
@@ -136,9 +143,12 @@ describe('world art palettes', () => {
     expect(weakest).toBeGreaterThanOrEqual(3);
   });
 
-  const racerFrames = [...RACER_SHEETS, ...THORNWOOD_RACER_SHEETS, ...FARSIDE_RACER_SHEETS].flatMap((sheet) =>
-    sheet.frames.map((frame) => [sheet.key, frame.name, frame] as const),
-  );
+  const racerFrames = [
+    ...RACER_SHEETS,
+    ...THORNWOOD_RACER_SHEETS,
+    ...CLOUDREACH_RACER_SHEETS,
+    ...FARSIDE_RACER_SHEETS,
+  ].flatMap((sheet) => sheet.frames.map((frame) => [sheet.key, frame.name, frame] as const));
   const isBright = (frame: NamedFrame, pixel: string) => pixel !== '.' && readable(frame.palette[Number(pixel)] ?? 0);
 
   it.each(racerFrames)(

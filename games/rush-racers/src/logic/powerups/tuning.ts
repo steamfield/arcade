@@ -121,6 +121,8 @@ export const PASSIVE = {
   pufferMassMul: 2,
   /** A racer with a Glow Lantern selected collects pearls whose tile centre is within this many tiles of its centre. */
   lanternPearlTiles: 3,
+  /** Boost ring (`status.ringBoost`); in flight it raises cruise with the force. */
+  ringBoostForceMul: 1.35,
 } as const;
 
 /**
@@ -192,6 +194,14 @@ export const PEARL = {
   scatterSpeed: 300,
   dragPerTick: 0.92,
   size: 8,
+} as const;
+
+/**
+ * Boost rings are never used up: passing one (`@`) the first time in a race gives that racer
+ * `status.ringBoost` for `boostTicks`, and the next ring in a line refreshes it to full.
+ */
+export const RING = {
+  boostTicks: 45,
 } as const;
 
 /** A power-up knocked off by a hit, floating at the racer's centre. */

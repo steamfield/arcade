@@ -128,6 +128,11 @@ export interface MediumEffects {
   assistAxes: 'both' | 'horizontal';
   /** True: the medium's levels may have gravity wells (`LevelDef.wells`), and it says what they do to a racer. */
   gravityWells: boolean;
+  /**
+   * Upward speed, px/s, a racer leaves with after coming down onto a bounce cloud (`race/bounce.ts`).
+   * Null: the medium has no bounce clouds, and `createWorld` rejects a level with one.
+   */
+  bounceSpeed: number | null;
 }
 
 /** How the generic counters read a kick in this medium. */
@@ -176,8 +181,13 @@ export interface Medium {
    * rival's pilot memory. `forceRecover` starts a stuck recovery now (the generic progress backstop).
    */
   steer(world: World, racer: Racer, mods: MoveModifiers, draws: AiDraws, forceRecover: boolean): Steering;
-  /** Cost of entering `cell` along `move` for flow-field media; the progress field stays uniform. */
-  enterCost(cell: Cell, isBroken: boolean, move: Vec): number;
+  /**
+   * What the medium's nav charges to enter `cell` at `tile` of `level` along `move` (an `EntryCost`
+   * in `race/flowfield.ts`, given the level it reads); Infinity means closed. `tile` and `level` are
+   * for a medium that prices tiles by position, as flight keeps flyers off the bottom rows over open
+   * sky; costs that ignore them declare fewer parameters. The progress field stays uniform.
+   */
+  enterCost(cell: Cell, isBroken: boolean, move: Vec, tile: Vec, level: Level): number;
   /** Unit aim toward the finish along the medium's way from `body`; zero at the finish. */
   aimFrom(world: World, body: Box, lookaheadTiles: number): Vec;
   /** Offset (each of x and y in -1..1) of the neighbour nearer the finish; null at the finish or boxed in. */

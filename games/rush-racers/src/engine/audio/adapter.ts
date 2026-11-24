@@ -3,7 +3,10 @@
  * (the slot this screen follows), and the music each screen wants (title theme, race theme from GO with
  * a tempo lift on the final stretch, a win or lose jingle into the results
  * loop). Enemies are heard when they are within about a screen of the local racer: a shark's
- * wind-up and an eel's warning, a bonk and a defeat; an enemy getting the local racer always is. Every sound that actually starts is announced once as `audio.played`,
+ * wind-up and an eel's warning, a bonk and a defeat; an enemy getting the local racer always is.
+ * The sky set pieces sound too: the local racer's flaps, bounces and rings, a storm zone's warning
+ * when the zone is near the camera, and its strike from a little farther (one strike per drain, so
+ * zones striking together don't stack). Every sound that actually starts is announced once as `audio.played`,
  * on the game's tick, so tests can hear the game. Nothing plays or is announced
  * while the AudioContext is not running (before the first gesture).
  */
@@ -17,6 +20,7 @@ import type { AudioPort } from './index.ts';
 import type { Song } from './notation.ts';
 import type { Sequencer } from './sequencer.ts';
 import { playSfx, type SfxKey } from './sfx.ts';
+import { isSkySfx, playSkySfx, type SkySfxKey } from './sky-sfx.ts';
 import { type SongName, songs } from './songs/index.ts';
 import type { Synth } from './synth.ts';
 
@@ -41,6 +45,8 @@ export interface AdapterOptions {
   audibleFromLocal?(id: RacerId): boolean;
   /** Whether enemy `index` (in `world.enemies`) is near enough the local racer to hear; every enemy is when omitted. */
   enemyAudible?(index: number): boolean;
+  /** Whether storm zone `zone` (in `level.lightning`) is within `reachPx` across of the local racer; every zone is when omitted. */
+  stormAudible?(zone: number, reachPx: number): boolean;
   /** The slot the screen follows, whose own moments sound; 'player' when omitted. */
   localRacer?(): RacerId;
   /** The song the current race plays: the course's own (`Course.song`). Read when each race starts. */
@@ -53,6 +59,14 @@ const LIFT_TEMPO = 1.1;
 const PITCH_SPREAD = 0.05;
 /** Musical cues that must stay in tune with each other, so they skip the random pitch. */
 const STEADY: ReadonlySet<SfxKey> = new Set(['countdown', 'go']);
+
+/** A storm zone's warning is heard within about a screen, like a rival's attack. */
+export const STORM_WARN_REACH_PX = HEARING_PX;
+/** A strike's thunder carries twice as far as its warning. */
+export const STORM_STRIKE_REACH_PX = 2 * HEARING_PX;
+
+/** The sound each of the local racer's own sky moments makes. */
+const OWN_SKY_SFX = { 'racer.flapped': 'flap', 'racer.bounced': 'bounce', 'ring.passed': 'ring' } as const;
 
 /** The warning each enemy kind sounds when it telegraphs; a crab gives none. */
 const TELL_SFX: Record<EnemyKind, SfxKey | null> = { shark: 'shark.windup', eel: 'eel.warn', crab: null };
@@ -93,17 +107,23 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
   let won: boolean | null = null;
   /** Whether the local racer crossed the line this race; `race.finished` only says whether slot 1 did. */
   let localFinished = false;
+  /** Whether a strike has sounded in the drain being heard, so zones striking together sound once. */
+  let strikeHeard = false;
 
   const local = options.localRacer ?? (() => 'player');
   const attacks = createAttackSfx(options.audibleFromLocal, local);
   const enemyAudible = options.enemyAudible ?? (() => true);
+  const stormAudible = options.stormAudible ?? (() => true);
   const announce = (key: string, kind: 'sfx' | 'song') => events.emit({ type: 'audio.played', key, kind });
 
-  const sfx = (key: SfxKey) => {
+  const sfx = (key: SfxKey | SkySfxKey) => {
     if (!running()) return;
-    const pitch = STEADY.has(key) ? 1 : 1 + (options.rng.next() * 2 - 1) * PITCH_SPREAD;
+    const steady = !isSkySfx(key) && STEADY.has(key);
+    const pitch = steady ? 1 : 1 + (options.rng.next() * 2 - 1) * PITCH_SPREAD;
+    const at = synth.context.currentTime;
     try {
-      playSfx(synth, options.sfxBus, key, synth.context.currentTime, { pitch });
+      if (isSkySfx(key)) playSkySfx(synth, options.sfxBus, key, at, { pitch });
+      else playSfx(synth, options.sfxBus, key, at, { pitch });
     } catch (error) {
       options.onError(new Error(`Sound effect "${key}" could not be scheduled`, { cause: error }));
       return;
@@ -152,6 +172,18 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       case 'racer.kicked':
         if (event.id === local()) sfx('kick');
         return;
+      case 'racer.flapped':
+      case 'racer.bounced':
+      case 'ring.passed':
+        if (event.id === local()) sfx(OWN_SKY_SFX[event.type]);
+        return;
+      case 'lightning.warned':
+        if (stormAudible(event.zone, STORM_WARN_REACH_PX)) sfx('lightning.warn');
+        return;
+      case 'lightning.struck':
+        if (strikeHeard || !stormAudible(event.zone, STORM_STRIKE_REACH_PX)) return;
+        strikeHeard = true;
+        return sfx('lightning.strike');
       case 'pearl.collected':
       case 'loosePearl.collected':
         if (event.id === local()) sfx('pearl');
@@ -165,8 +197,8 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       case 'racer.bumped':
         if (event.a === local() || event.b === local()) sfx('bump');
         return;
-      case 'racer.bounced':
-        if (event.id === local()) sfx('bounce');
+      case 'racer.rebounded':
+        if (event.id === local()) sfx('rebound');
         return;
       // Shared by every medium that takes racers out of play (Cloudreach's pits, Farside's black holes).
       case 'racer.fell':
@@ -217,6 +249,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
 
   return {
     onEvents(drained: readonly Stamped<RuntimeEvent>[]) {
+      strikeHeard = false;
       for (const event of drained) onEvent(event, event.tick);
       syncMusic();
       followSequencer();

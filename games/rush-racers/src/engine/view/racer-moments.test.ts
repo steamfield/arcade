@@ -59,9 +59,9 @@ describe('a flap', () => {
 describe('a bounce', () => {
   it('squashes the racer along the axis the wall stopped it on, settles back, and a later kick takes the look over', () => {
     const moments = createRacerMoments('player', 1);
-    moments.onEvents([{ type: 'racer.bounced', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
+    moments.onEvents([{ type: 'racer.rebounded', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
     const floor = createRacerMoments('player', 1);
-    floor.onEvents([{ type: 'racer.bounced', id: 'player', speed: 120, axis: 'y', tick: STEP_TICK, seq: 0 }], 100);
+    floor.onEvents([{ type: 'racer.rebounded', id: 'player', speed: 120, axis: 'y', tick: STEP_TICK, seq: 0 }], 100);
 
     expect(moments.look(100, false).stretch).toBeLessThan(0);
     expect(moments.look(100, false).axis).toBe('x');
@@ -78,7 +78,7 @@ describe('a bounce', () => {
     moments.onEvents(
       [
         { type: 'racer.kicked', id: 'player', tick: STEP_TICK, seq: 0 },
-        { type: 'racer.bounced', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 1 },
+        { type: 'racer.rebounded', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 1 },
       ],
       100,
     );
@@ -89,9 +89,9 @@ describe('a bounce', () => {
 
   it("does nothing under reduced motion or for another racer's bounce", () => {
     const moments = createRacerMoments('tess', 2);
-    moments.onEvents([{ type: 'racer.bounced', id: 'tess', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
+    moments.onEvents([{ type: 'racer.rebounded', id: 'tess', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
     const other = createRacerMoments('tess', 2);
-    other.onEvents([{ type: 'racer.bounced', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
+    other.onEvents([{ type: 'racer.rebounded', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
 
     expect(moments.look(100, true)).toEqual({ stretch: 0, axis: null, flashing: false });
     expect(other.look(100, false).stretch).toBe(0);

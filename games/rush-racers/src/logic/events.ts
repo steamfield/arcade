@@ -33,11 +33,19 @@ export type GameEvent =
   | { type: 'racer.jumped'; id: RacerId }
   /** A racer flapped on a fresh Up press (a flying medium only; never spends a dash charge). */
   | { type: 'racer.flapped'; id: RacerId }
+  /** A racer came down onto a bounce cloud and was sprung upward (`race/bounce.ts`). */
+  | { type: 'racer.bounced'; id: RacerId }
+  /** A racer passed boost ring `ring` (an index into `level.rings`) for the first time this race. */
+  | { type: 'ring.passed'; id: RacerId; ring: number }
+  /** Storm zone `zone` (an index into `level.lightning`) began its warning this cycle. */
+  | { type: 'lightning.warned'; zone: number }
+  /** Storm zone `zone` began its strike this cycle. */
+  | { type: 'lightning.struck'; zone: number }
   /**
-   * A racer bounced off a tile hard enough to notice (a bouncing medium only); `speed` is how fast it
+   * A racer rebounded off a tile hard enough to notice (a bouncing medium only); `speed` is how fast it
    * went in (px/s) and `axis` the axis the tile stopped it on (the harder one in a corner).
    */
-  | { type: 'racer.bounced'; id: RacerId; speed: number; axis: 'x' | 'y' }
+  | { type: 'racer.rebounded'; id: RacerId; speed: number; axis: 'x' | 'y' }
   /** A racer fell out of play: through a pit, or into a black hole. */
   | { type: 'racer.fell'; id: RacerId }
   /** A racer that fell is back on the last safe ground it stood on. */

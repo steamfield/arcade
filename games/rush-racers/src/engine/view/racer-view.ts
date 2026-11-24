@@ -20,7 +20,7 @@ import { createRacerMoments } from './racer-moments.ts';
 /** One racer's sprite, kept in step with its logic state. */
 export interface RacerView {
   /**
-   * Starts the kick squash on this racer's `racer.kicked`, the bounce squash on its `racer.bounced` and, for the local racer, the flash on its
+   * Starts the kick squash on this racer's `racer.kicked`, the bounce squash on its `racer.rebounded` and, for the local racer, the flash on its
    * `player.place` that gains a place, from world tick `tick` (the drain's world tick).
    */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;

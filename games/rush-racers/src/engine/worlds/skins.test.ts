@@ -5,10 +5,16 @@
 import { describe, expect, it } from 'vitest';
 import { COURSES } from '../../logic/courses/index.ts';
 import { CHARACTER_IDS } from '../../logic/types.ts';
+import { Tex } from '../art/keys.ts';
+import { UiTex } from '../art/ui/keys.ts';
+import { ForestTex } from '../themes/forest/keys.ts';
+import { OceanTex } from '../themes/ocean/keys.ts';
+import { SkyItemTex, SkyRacerTex, SkyTex } from './cloudreach/keys.ts';
 import { CLOUDREACH_SKIN } from './cloudreach.ts';
 import { FARSIDE_SKIN } from './farside.ts';
 import { assertSkinAssets, assertSkinTextures, SKINS, skinFor, type TextureLookup } from './index.ts';
 import { REEF_SKIN } from './reef.ts';
+import { ThornItemTex, ThornRacerTex, ThornTex } from './thornwood/keys.ts';
 import type { WorldSkin } from './types.ts';
 
 describe('world skins', () => {
@@ -71,6 +77,13 @@ describe('the boot texture check', () => {
     const texture = REEF_SKIN.objects.pickups.pearl;
     expect(() => assertSkinTextures(texturesWithout({ texture }), REEF_SKIN)).toThrow(
       `World 'reef' skin names texture '${texture}', which was never built`,
+    );
+  });
+
+  it('checks the Cloudreach skin too, naming it when a texture it names was never built', () => {
+    const texture = CLOUDREACH_SKIN.cast.racers.gil;
+    expect(() => assertSkinTextures(texturesWithout({ texture }), CLOUDREACH_SKIN)).toThrow(
+      `World 'cloudreach' skin names texture '${texture}', which was never built`,
     );
   });
 
@@ -138,6 +151,26 @@ describe('the Cloudreach skin', () => {
     for (const group of groups) {
       expect(longest(group(CLOUDREACH_SKIN))).toBeLessThanOrEqual(longest(group(REEF_SKIN)));
     }
+  });
+
+  it("names every Cloudreach texture once under cloudreach-, apart from the global art, the UI kit, the themes', Reef's and Thornwood's", () => {
+    const cloudreach: string[] = [
+      ...Object.values(SkyRacerTex),
+      ...Object.values(SkyTex),
+      ...Object.values(SkyItemTex),
+    ];
+    const others: string[] = [
+      ...Object.values(Tex),
+      ...Object.values(UiTex),
+      ...Object.values(OceanTex),
+      ...Object.values(ForestTex),
+      ...Object.values(ThornRacerTex),
+      ...Object.values(ThornTex),
+      ...Object.values(ThornItemTex),
+    ];
+    expect(cloudreach.filter((key) => !key.startsWith('cloudreach-'))).toEqual([]);
+    expect(new Set(cloudreach).size).toBe(cloudreach.length);
+    expect(cloudreach.filter((key) => others.includes(key))).toEqual([]);
   });
 });
 

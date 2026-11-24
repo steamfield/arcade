@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { scenario, tap, wait } from './kit.ts';
 
-/** Moves the title menu down `count` rows, a tick apart so each press registers: Sound is three below Race, Motion one more. */
+/** Moves the title menu down `count` rows, a tick apart so each press registers: Sound is four below Race, Motion one more. */
 const down = (count: number) => Array.from({ length: count }, () => [tap('down'), wait(2)]).flat();
 
 /**
@@ -10,7 +10,7 @@ const down = (count: number) => Array.from({ length: count }, () => [tap('down')
  */
 export default scenario({
   description: 'the title menu toggles sound and motion and saves both',
-  input: [wait(25), ...down(3), tap('fire'), wait(5), tap('down'), tap('fire'), wait(5)],
+  input: [wait(25), ...down(4), tap('fire'), wait(5), tap('down'), tap('fire'), wait(5)],
   expect({ state, events }) {
     expect(events.filter((e) => e.type === 'settings.changed')).toMatchObject([
       { muted: true, reducedMotion: false },

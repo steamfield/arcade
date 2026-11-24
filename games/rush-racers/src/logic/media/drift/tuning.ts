@@ -15,7 +15,7 @@ import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
  * (px/s); `overDrag` (px/s²), added to drag while the racer is over its cruise, so a dash's speed
  * lasts a second or two and no longer; `idleBrake` (px/s²), added to drag while the stick is idle; `bounce`, the share of the
  * speed into a wall that comes back; `bounceMinSpeed` (px/s), the slowest impact that emits
- * `racer.bounced`; `dustCruiseMul`, cruise's multiplier in nebula dust, and `dustDrag` (px/s²),
+ * `racer.rebounded`; `dustCruiseMul`, cruise's multiplier in nebula dust, and `dustDrag` (px/s²),
  * added to drag there; `windForce` (px/s²), a solar wind cell's push; `wellPull`, the multiplier on
  * every gravity well's pull; `respawnTicks`, how long a racer a black hole swallowed is out, and
  * `respawnInvulnTicks`, how long it can't be hit once it is back.
@@ -78,7 +78,7 @@ export function driftCruise(extras: DriftExtras, forceMul: number, inDust: boole
 /**
  * A dash, knockback or decoy holds velocity on both axes; a trapped racer floats still and a loose
  * power-up stays where it dropped; enemies can't be stomped; pods open on touch; the level is walled
- * all round; no ledges; levels may have gravity wells. The Easy assist slides both stick axes.
+ * all round; no ledges or bounce clouds; levels may have gravity wells. The Easy assist slides both stick axes.
  */
 export const DRIFT_EFFECTS: MediumEffects = {
   dashAxes: 'both',
@@ -90,6 +90,7 @@ export const DRIFT_EFFECTS: MediumEffects = {
   allowsLedges: false,
   assistAxes: 'both',
   gravityWells: true,
+  bounceSpeed: null,
 };
 
 /**

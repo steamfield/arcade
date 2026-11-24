@@ -14,7 +14,7 @@ export const CLOUDREACH: WorldDef = {
     streak: 'Dart',
     onyx: 'Nox',
     nib: 'Pip',
-    baron: 'Commodore Pouch',
+    baron: 'Admiral Pouch',
     selene: 'Luna',
     rook: 'Talon',
   },

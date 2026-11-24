@@ -5,16 +5,16 @@
  * Its nav is a `GlideNav` (`glide-data.ts`). Test-only.
  */
 
-import { isSolid } from '../level/query.ts';
+import { isRockLike, isSolid } from '../level/query.ts';
 import type { LevelProblem, MediumNav } from '../media/types.ts';
 import { length } from '../num.ts';
 import { cornerIsClear, distancesToFinish, fieldAt, NEIGHBOURS } from '../race/flowfield.ts';
 import { type Box, type Cell, type Level, TILE, type Vec, type World } from '../types.ts';
 import { type GlideNav, glideNav } from './glide-data.ts';
 
-/** Every open tile costs the same; rock and unbroken coral are closed. */
+/** Every open tile costs the same; rock, bounce clouds and unbroken coral are closed. */
 export const glideCost = (cell: Cell, isBroken: boolean): number => {
-  if (cell === 'rock') return Number.POSITIVE_INFINITY;
+  if (isRockLike(cell)) return Number.POSITIVE_INFINITY;
   if (cell === 'coral' && !isBroken) return Number.POSITIVE_INFINITY;
   return 1;
 };

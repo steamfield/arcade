@@ -44,6 +44,7 @@ export const GLIDE_EFFECTS: MediumEffects = {
   allowsLedges: false,
   assistAxes: 'both',
   gravityWells: false,
+  bounceSpeed: null,
 };
 
 /** No kick counter works in the air; Gil's spring kick needs a kick aimed straight up. */

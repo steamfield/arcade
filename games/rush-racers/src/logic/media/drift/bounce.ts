@@ -1,7 +1,7 @@
 /**
  * The wall bounce: a tile that
  * stopped a drifter sends it back the way it came with part of its speed, and a hard enough impact emits
- * `racer.bounced`.
+ * `racer.rebounded`.
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../../events.ts';
@@ -12,7 +12,7 @@ import { driftExtras } from './tuning.ts';
 
 /**
  * Bounces a drifter off the tiles that stopped it. Sets each component a tile stopped to `-lost * bounce`, keeping the other,
- * and emits `racer.bounced` with the impact speed and the axis of its larger component when that
+ * and emits `racer.rebounded` with the impact speed and the axis of its larger component when that
  * speed is at least `bounceMinSpeed`. A racer an item dash drives is left as `moveBody` stopped it,
  * since the dash rewrites its velocity every tick and would bounce it on each of them.
  *
@@ -28,5 +28,5 @@ export function bounceDrifter(world: World, racer: Racer, contacts: MoveContacts
   const speed = length(lost.x, lost.y);
   if (speed < bounceMinSpeed) return;
   const axis = Math.abs(lost.x) >= Math.abs(lost.y) ? 'x' : 'y';
-  events.emit({ type: 'racer.bounced', id: racer.id, speed, axis });
+  events.emit({ type: 'racer.rebounded', id: racer.id, speed, axis });
 }

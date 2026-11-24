@@ -343,6 +343,7 @@ describe('the drift medium', () => {
       allowsLedges: false,
       assistAxes: 'both',
       gravityWells: true,
+      bounceSpeed: null,
     });
     expect(medium.kickRules).toMatchObject({ dodgesSquid: true, shakesLatch: true, countersUndertow: true });
   });

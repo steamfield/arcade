@@ -1,9 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // Assets-only Worker: no script, so every request is a free static asset request.
-  // Add "main" and run_worker_first: ["/api/*"] only when a game needs a backend (see docs/architecture.md).
+  // Static assets, plus a one-line script that only /api/* reaches (run_worker_first below): it forwards
+  // to the arcade-api Worker (apps/api, the room service for online races) through the service binding.
+  // Every other request is still a free static asset request, unmatched paths included.
+  // arcade-api must be deployed (`pnpm deploy:api`) before a deploy of this Worker can bind to it.
   // Cloudflare Workers Builds (the Git connector) runs `pnpm cf:build` then `npx wrangler deploy`.
   "name": "arcade",
+  "main": "apps/api/src/forward.ts",
+  "services": [{ "binding": "API", "service": "arcade-api" }],
   "compatibility_date": "2026-11-01",
   // Custom domain: the first deploy creates the DNS record and certificate in the steamfield.io zone.
   // Saves live in IndexedDB scoped to this origin, so don't change it once players have saves.
@@ -11,6 +15,7 @@
   "assets": {
     "directory": "./dist",
     "not_found_handling": "404-page",
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": ["/api/*"]
   }
 }

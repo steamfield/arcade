@@ -31,7 +31,7 @@ export default scenario({
     wait(100),
   ],
   expect({ events, state }) {
-    const bounces = events.filter((e) => e.type === 'racer.bounced' && e.id === 'player');
+    const bounces = events.filter((e) => e.type === 'racer.rebounded' && e.id === 'player');
     expect(bounces).toHaveLength(1);
     expect(bounces[0]?.axis).toBe('x');
     expect(Math.round(playerBody(state).vx)).toBeLessThan(-10);

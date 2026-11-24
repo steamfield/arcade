@@ -56,6 +56,7 @@ export const FLIGHT_TUNING = {
  * Gravity keeps vertical speed through a dash or knockback; trapped racers and loose power-ups sink
  * slowly (px/s); enemies can't be stomped; balloons open on touch; the sky has no floor below the last
  * row; no ledges. The Easy assist slides only the horizontal stick, so it never flaps or ends a glide.
+ * A bounce cloud springs a flyer coming down onto it up at `bounceSpeed` px/s, double a flap's lift.
  */
 export const FLIGHT_EFFECTS: MediumEffects = {
   dashAxes: 'horizontal',
@@ -67,6 +68,7 @@ export const FLIGHT_EFFECTS: MediumEffects = {
   allowsLedges: false,
   assistAxes: 'horizontal',
   gravityWells: false,
+  bounceSpeed: 300,
 };
 
 /** A dash dodges a Homing Gull, shakes a latch and counters a Headwind; Gil's slot flaps harder (`jumpMulFor`) instead of a spring kick. */

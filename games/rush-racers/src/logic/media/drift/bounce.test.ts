@@ -1,6 +1,6 @@
 /**
  * Drift's bounce: a tile that stops a drifter sends it back with part of its speed, on the axis it
- * was stopped on, and a hard enough impact emits `racer.bounced`. Raced through `createWorld` and
+ * was stopped on, and a hard enough impact emits `racer.rebounded`. Raced through `createWorld` and
  * `stepWorld` on a small inline course with a wall and a floor.
  */
 import { describe, expect, it } from 'vitest';
@@ -24,7 +24,7 @@ function playerAt(tx: number, row: number, vx: number, vy: number) {
 }
 
 const bounces = (events: readonly GameEvent[]) =>
-  events.filter((event): event is Extract<GameEvent, { type: 'racer.bounced' }> => event.type === 'racer.bounced');
+  events.filter((event): event is Extract<GameEvent, { type: 'racer.rebounded' }> => event.type === 'racer.rebounded');
 
 describe('a bounce', () => {
   it('sends a drifter back off a wall with `bounce` of its speed and says how hard it hit', () => {

@@ -25,3 +25,12 @@ export const JELLY = {
 
 /** A trapped racer rises at this speed, px/s, ignoring input, drag and currents. */
 export const TRAPPED_RISE_SPEED = 30;
+
+/**
+ * A storm zone's cycle (`LevelDef.lightning`): it warns for `warnTicks`, then strikes for
+ * `strikeTicks`, at the end of each period. A zone's period must be at least the two together.
+ */
+export const LIGHTNING = {
+  warnTicks: 45,
+  strikeTicks: 12,
+} as const;

@@ -12,16 +12,17 @@ import type { ShippedWorldId } from '../worlds/types.ts';
 export type ShippedCourseId =
   | 'sunlit-shallows'
   | 'bramble-run'
+  | 'thunderhead-pass'
+  | 'slingshot-alley'
   | 'run-test'
   | 'sky-test'
-  | 'drift-test'
-  | 'slingshot-alley';
+  | 'drift-test';
 /** Shipped movement styles. */
 export type ShippedMediumId = 'swim' | 'run' | 'flight' | 'drift';
 /** Looks the engine draws a course with. */
-export type ThemeId = 'ocean' | 'forest' | 'space';
+export type ThemeId = 'ocean' | 'forest' | 'sky' | 'space';
 /** Songs the engine can play for a race, by the soundtrack's names. */
-export type SongId = 'race' | 'thornwood' | 'farside';
+export type SongId = 'race' | 'thornwood' | 'cloudreach' | 'farside';
 
 /**
  * A course as data. `World` is the type of its world id: any string by default, so tests and previews
