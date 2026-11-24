@@ -18,6 +18,7 @@ import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { bounceStillPlanned } from './bounce-plan.ts';
 import { dashAtPuff, dashReady, holdTowardPuff, leaveRam, puffStillDashedAt, wantsStraightDash } from './dashes.ts';
+import { flightMotion } from './data.ts';
 import { sampleFlightEnvironment } from './env.ts';
 import { replan } from './replan.ts';
 import {
@@ -70,7 +71,9 @@ export function createFlightPilot(): FlightPilot {
 }
 
 /**
- * A flight rival's steering this tick. Mutates only its pilot memory.
+ * A flight rival's steering this tick. Mutates only its pilot memory. It starts from whether physics
+ * last saw Up held, and while stunned, trapped or fallen it keeps reading the way but lets go of the
+ * stick (`letGo`).
  *
  * @throws {Error} When `racer.ai` is null (a human drives it), or its memory, motion or the world's nav isn't flight's.
  */
@@ -84,6 +87,8 @@ export function steerFlyer(
   const ai = racer.ai;
   if (!ai) throw new Error(`flight.steer needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
   const memory = flightPilot(ai.pilot);
+  // Physics saw the stick that reached it, which a stun or trap zeroes: a press must start from that.
+  memory.upHeld = flightMotion(racer.motion).upWasHeld;
   const numbers = flightPilotNumbers(effectiveTuning(world), mods, sampleFlightEnvironment(world, racer));
   if (memory.ramRestTicks > 0) memory.ramRestTicks--;
   if (memory.bounceRestTicks > 0) memory.bounceRestTicks--;
@@ -94,6 +99,7 @@ export function steerFlyer(
     memory.recoverTicks = RECOVER_TICKS;
     memory.recoverDir = memory.aim.x > 0 ? -1 : 1;
   }
+  if (cannotAct(racer)) return letGo(memory);
   if (memory.recoverTicks > 0) return recoveryStep(racer, memory, numbers);
   return flyToTarget(world, racer, memory, numbers, draws.kick);
 }
@@ -116,6 +122,20 @@ function followWay(world: World, racer: Racer, memory: FlightPilot, numbers: Fli
   if (!bouncing && due) replan(world, racer, memory, numbers, draws, lost);
   else memory.replanIn--;
   memory.aim = unitToward(centre, memory.target);
+}
+
+/** True while the racer is stunned, trapped or fallen, when its stick reaches no one (`controlledIntent`). */
+function cannotAct(racer: Racer): boolean {
+  const { stunned, trapped, fallen } = racer.status;
+  return stunned > 0 || trapped > 0 || fallen > 0;
+}
+
+/**
+ * The stick let go and no dash, for a tick it can't act: nothing it would choose (a dash at a puff
+ * cloud, leaving the ram way) happens on a tick its input is thrown away, and a recovery waits.
+ */
+function letGo(memory: FlightPilot): Steering {
+  return { move: { x: 0, y: 0 }, kick: false, kickHeld: false, aim: memory.aim, recovering: false };
 }
 
 /** One tick of a stuck recovery: back off along `recoverDir` and flap up toward a point a tile above. */

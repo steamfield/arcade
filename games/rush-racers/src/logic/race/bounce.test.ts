@@ -6,8 +6,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
+import { applyHit } from '../hazards/hits.ts';
 import { flightWorld, RIVAL_LANE_ROWS, ticksOfRacer } from '../media/flight/test-kit.ts';
 import { FLIGHT_EFFECTS } from '../media/flight/tuning.ts';
+import { centreOf } from '../racers.ts';
 import { eventsIn, hold, IDLE, placeOnTile, step } from '../test-world.ts';
 import { TILE } from '../types.ts';
 
@@ -101,6 +103,26 @@ describe('meeting a bounce cloud any other way', () => {
     expect(headAfterBump).toBe((RIVAL_LANE_ROWS + 1) * TILE);
     expect(eventsIn(log, 'racer.bounced')).toEqual([]);
     expect(player.body.y + player.body.h).toBe((RIVAL_LANE_ROWS + 3) * TILE);
+  });
+});
+
+describe('a trapped racer', () => {
+  it('rests on a bounce cloud without springing until the trap ends, then springs once', () => {
+    const race = flightWorld(BOUNCE_FLOOR);
+    const { world, log, player } = race;
+    placeOnTile(player, 5, FLOOR_ROW - 1);
+    const rival = world.racers.find((racer) => racer.id !== 'player');
+    applyHit(world, player, 'bubble', rival?.id ?? 'player', centreOf(player));
+    const trappedFor = player.status.trapped;
+    for (let tick = 0; tick < 300 && player.status.trapped > 0; tick++) step(world, log, 1, IDLE);
+    const bouncedWhileTrapped = eventsIn(log, 'racer.bounced');
+    const bottomAtRelease = player.body.y + player.body.h;
+    step(world, log, 30, IDLE);
+
+    expect(trappedFor).toBeGreaterThan(0);
+    expect(bottomAtRelease).toBe(FLOOR_ROW * TILE);
+    expect(bouncedWhileTrapped).toEqual([]);
+    expect(eventsIn(log, 'racer.bounced')).toEqual([BOUNCED]);
   });
 });
 
