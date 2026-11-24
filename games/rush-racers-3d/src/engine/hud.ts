@@ -1,5 +1,6 @@
 import { TICK_HZ } from '@arcade/core';
 import { CAST } from '../logic/characters.ts';
+import type { GameEvent } from '../logic/events.ts';
 import type { SaveData } from '../logic/save.ts';
 import { placeOf, places } from '../logic/standings.ts';
 import { DASH, RACE } from '../logic/tuning.ts';
@@ -8,7 +9,7 @@ import { playerOf } from '../logic/world.ts';
 import { HUD_CSS } from './hud-style.ts';
 import { InventoryHud } from './inventory-hud.ts';
 import { RACER_COLORS } from './racer-geometry.ts';
-import type { Scene } from './runtime.ts';
+import type { EngineEvent, Scene } from './runtime.ts';
 
 const ORDINAL = ['1st', '2nd', '3rd', '4th'];
 type Hint = 'countdown' | 'items' | null;
@@ -44,6 +45,9 @@ export class Hud {
   private readonly standings = document.createElement('ol');
   private readonly bestTime = document.createElement('span');
   private readonly badge = document.createElement('strong');
+  private eventWorld: World | undefined;
+  private goUntil = -1;
+  private newBest = false;
   private raceWorld: World | undefined;
   private resultsWorld: World | undefined;
   private raceTick = -1;
@@ -98,25 +102,32 @@ export class Hud {
     container.append(root);
   }
 
-  /** Flashes the slot awarded by a drained pickup event using the previous tick's slots. */
-  flashPickup(world: World): void {
-    this.inventory.flashPickup(world);
+  /** Updates banners and pickup flashes from events drained after each tick. */
+  onEvent(event: GameEvent | EngineEvent, world: World): void {
+    this.useWorld(world);
+    if (event.type === 'race.started') this.goUntil = world.tick + 45;
+    if (event.type === 'best.new' && event.course === world.course.id) this.newBest = true;
+    if (event.type === 'crate.opened' && event.id === 'player') this.inventory.flashPickup(event.slot, world.tick);
   }
 
-  /** Call once per logic tick after draining and handling its events. `flashPickup` needs the previous tick's slots. */
-  observeInventory(world: World): void {
-    this.inventory.observeInventory(world);
+  private useWorld(world: World): void {
+    if (this.eventWorld === world) return;
+    this.eventWorld = world;
+    this.goUntil = -1;
+    this.newBest = false;
+    this.inventory.resetFlashes();
   }
 
   /** Syncs the current screen. Race-only values may change while the clock is ticking. */
-  sync(world: World, scene: Scene, bests: SaveData['bests'], go: boolean, newBest: boolean): void {
+  sync(world: World, scene: Scene, bests: SaveData['bests']): void {
+    this.useWorld(world);
     show(this.race, scene === 'race');
     show(this.results, scene === 'results');
     if (scene === 'race') {
       this.syncRace(world);
-      this.syncCountdown(world, go);
+      this.syncCountdown(world);
     } else if (scene === 'results') {
-      this.syncResults(world, bests[world.course.id], newBest);
+      this.syncResults(world, bests[world.course.id]);
     }
   }
 
@@ -126,7 +137,7 @@ export class Hud {
     this.raceWorld = world;
     this.raceTick = world.tick;
     const player = playerOf(world);
-    const hasItems = this.inventory.sync(world, player);
+    const hasItems = this.inventory.sync(world.tick, player);
     this.syncHint(world.phase === 'countdown' ? 'countdown' : hasItems ? 'items' : null);
     const time = tenths(world.raceTicks);
     if (time !== this.time) {
@@ -196,11 +207,11 @@ export class Hud {
     }
   }
 
-  private syncCountdown(world: World, go: boolean): void {
+  private syncCountdown(world: World): void {
     const second =
       world.phase === 'countdown'
         ? Math.max(1, Math.ceil((RACE.countdownTicks - world.tick) / TICK_HZ))
-        : go
+        : world.tick < this.goUntil
           ? 0
           : null;
     if (second !== this.countSecond) {
@@ -210,7 +221,7 @@ export class Hud {
     show(this.count, second !== null);
   }
 
-  private syncResults(world: World, best: number | undefined, newBest: boolean): void {
+  private syncResults(world: World, best: number | undefined): void {
     if (world !== this.resultsWorld) {
       this.resultsWorld = world;
       this.standings.replaceChildren();
@@ -233,6 +244,6 @@ export class Hud {
       this.bestTicks = best;
       this.bestTime.textContent = best === undefined ? '—' : formatTime(tenths(best));
     }
-    show(this.badge, newBest);
+    show(this.badge, this.newBest);
   }
 }

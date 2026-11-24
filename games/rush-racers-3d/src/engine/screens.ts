@@ -17,6 +17,7 @@ export interface ScreenState {
   character: CharacterId;
 }
 
+/** The title and character-select overlays. */
 export interface Screens {
   /** Shows the screen for `state.scene`, updating the DOM only when something changed. */
   sync(state: ScreenState): void;

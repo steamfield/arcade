@@ -1,5 +1,6 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { expect, it } from 'vitest';
+import { groundY } from './course.ts';
 import { THORNWOOD_TRAIL } from './courses/thornwood-trail.ts';
 import type { GameEvent } from './events.ts';
 import { NO_INPUT } from './racer.ts';
@@ -288,6 +289,30 @@ it.each([
   expect(events.all().filter((event) => event.type === 'item.fired')).toMatchObject(
     fires ? [{ id: 'r1', kind, tick: RACE.countdownTicks }] : [],
   );
+});
+
+it('fires sap at a racer 10 m uphill', () => {
+  const course = {
+    ...straight,
+    hills: [
+      { s: 0, y: 0 },
+      { s: 20, y: 0 },
+      { s: 80, y: 6 },
+    ],
+  };
+  const { player, rival, events, step } = start(course);
+  rival.s = 30;
+  player.s = 40;
+  player.d = rival.d;
+  rival.y = groundY(course, rival.s);
+  player.y = groundY(course, player.s);
+  rival.slots[0] = { kind: 'shield', charges: 1 };
+
+  step();
+
+  expect(events.all().filter((event) => event.type === 'item.fired')).toMatchObject([
+    { id: 'r1', kind: 'shield', tick: RACE.countdownTicks },
+  ]);
 });
 
 it('uses Rocket Boots on a clear straight without spending a dash on the same tick', () => {

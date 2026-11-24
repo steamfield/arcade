@@ -11,7 +11,7 @@
 import type { Logger } from '@arcade/core';
 import { groundY } from '../logic/course.ts';
 import { RACE } from '../logic/tuning.ts';
-import type { Course, World } from '../logic/types.ts';
+import { CHARACTER_IDS, type CharacterId, type Course, type World } from '../logic/types.ts';
 
 /** Every stage name `applyStage` knows. */
 export const STAGES = ['mid-course', 'near-finish', 'before-pit', 'before-log'] as const;
@@ -36,6 +36,15 @@ export function stageFor(gate: StageGate, search: string, log: Logger): StageNam
   const stage = STAGES.find((candidate) => candidate === name);
   if (name !== null && !stage) log.warn(`unknown ?stage=${name}; valid stages: ${STAGES.join(', ')}`);
   return stage ?? null;
+}
+
+/** The character override from `?character=`, or null to use the save. Unknown ids log a warning. */
+export function characterFor(search: string, log: Logger): CharacterId | null {
+  const name = new URLSearchParams(search).get('character');
+  if (name === null) return null;
+  const character = CHARACTER_IDS.find((id) => id === name);
+  if (!character) log.warn(`unknown ?character=${name}; valid characters: ${CHARACTER_IDS.join(', ')}`);
+  return character ?? null;
 }
 
 /** Where `stage` puts the player along `s` on `course`. */

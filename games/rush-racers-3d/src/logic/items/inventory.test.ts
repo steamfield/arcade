@@ -76,6 +76,9 @@ it('leaves a crate open on a full inventory or a duplicate and spends just one r
   player.d = 0;
   advance();
   expect(player.slots[1]).toEqual({ kind: 'shield', charges: 1 });
+  expect(events.all().filter((event) => event.type === 'crate.opened')).toMatchObject([
+    { id: 'player', crate: 0, kind: 'shield', slot: 1 },
+  ]);
 });
 
 it.each([

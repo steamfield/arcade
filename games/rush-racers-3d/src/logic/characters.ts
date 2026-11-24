@@ -12,6 +12,7 @@ export interface CastMember {
   species: string;
 }
 
+/** Thornwood's character names and species for menus and standings. */
 export const CAST: Readonly<Record<CharacterId, CastMember>> = {
   grit: { name: 'Grit', species: 'badger' },
   skip: { name: 'Skip', species: 'hare' },
@@ -38,6 +39,7 @@ export interface RivalProfile {
   dashAtSpeed: number;
 }
 
+/** How each character steers, jumps and dashes when driven by the rival AI. */
 export const RIVAL_PROFILES: Readonly<Record<CharacterId, RivalProfile>> = {
   grit: { steerWobble: 0.035, jumpJitterTicks: 1, lineBias: -0.1, dashAtSpeed: 0.82 },
   skip: { steerWobble: 0.045, jumpJitterTicks: 2, lineBias: 0.15, dashAtSpeed: 0.73 },

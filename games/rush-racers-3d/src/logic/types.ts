@@ -59,18 +59,19 @@ export interface TickInput {
   /** True on every tick the jump button is down. */
   jumpHeld: boolean;
   dashPressed: boolean;
-  /** Phase 3: fire the selected item, select the next or previous held item. */
+  /** True on the tick the fire button is pressed to use the selected item. */
   firePressed: boolean;
   nextPressed: boolean;
   prevPressed: boolean;
 }
 
-/** The four fixed race slots. `player` is the human; the rest are rivals from phase 2. */
+/** The fixed slots for the player and up to three rivals. */
 export type RacerId = 'player' | 'r1' | 'r2' | 'r3';
 
 /** Thornwood's cast, slot by slot. */
 export type CharacterId = 'grit' | 'skip' | 'blaze' | 'shade' | 'cheeks' | 'duke' | 'dusk' | 'fang';
 
+/** The playable cast in character-select order. */
 export const CHARACTER_IDS: readonly CharacterId[] = [
   'grit',
   'skip',
@@ -85,6 +86,7 @@ export const CHARACTER_IDS: readonly CharacterId[] = [
 /** The four items a crate can give. */
 export type ItemKind = 'boots' | 'shield' | 'burr' | 'pie';
 
+/** All item kinds available from crates. */
 export const ITEM_KINDS: readonly ItemKind[] = ['boots', 'shield', 'burr', 'pie'];
 
 /** An item in an inventory slot, with the uses it has left. */
@@ -95,12 +97,12 @@ export interface HeldItem {
 
 /**
  * Something fired and still flying, in track space. A `pie` flies in an arc and splats where it
- * lands. A `sap` glob flies straight along `s` and traps the first other racer it touches;
- * `travelled` counts its meters so it can vanish after `ITEMS.sapRange`.
+ * lands. A `sap` glob keeps its `height` above the ground as it travels along `s` and traps the
+ * first other racer it touches. `travelled` counts its meters up to `ITEMS.sapRange`.
  */
 export type Shot =
   | { kind: 'pie'; owner: RacerId; s: number; d: number; y: number; vs: number; vd: number; vy: number }
-  | { kind: 'sap'; owner: RacerId; s: number; d: number; y: number; vs: number; travelled: number };
+  | { kind: 'sap'; owner: RacerId; s: number; d: number; height: number; vs: number; travelled: number };
 
 /** A mud patch left by a Mud Pie: mud for every racer but `owner` until `ticksLeft` runs out. */
 export interface Splat extends Span {
@@ -108,6 +110,7 @@ export interface Splat extends Span {
   ticksLeft: number;
 }
 
+/** A competitor's movement, inventory and race status. */
 export interface Racer {
   id: RacerId;
   character: CharacterId;
@@ -129,8 +132,6 @@ export interface Racer {
   dashCharges: number;
   /** Ticks until the next charge comes back, 0 while the meter is full. */
   dashRecharge: number;
-  /** Ticks left of the current dash's burst, 0 when not dashing. */
-  dashTicks: number;
   state: 'racing' | 'fallen' | 'finished';
   /** Ticks left out of the race after a fall, while `state` is `fallen`. */
   outTicks: number;
@@ -156,6 +157,7 @@ export interface Racer {
   bootsTicks: number;
 }
 
+/** The state of one race from the starting grid through the finish. */
 export interface World {
   seed: number;
   /** Constant data; not hashed. */

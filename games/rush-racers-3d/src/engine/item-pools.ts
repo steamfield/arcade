@@ -7,7 +7,9 @@ import { createSplatView } from './splat-view.ts';
 import type { TrackFrames } from './track-geometry.ts';
 
 const RACER_COUNT = 4;
+/** Spikes drawn around each racer using a Burr Ball. */
 export const SPIKE_COUNT = 10;
+/** Stars circling each stunned racer. */
 export const STAR_COUNT = 3;
 // Matches the rendered pit depth in track-terrain.ts.
 const PIT_DEPTH = 8;

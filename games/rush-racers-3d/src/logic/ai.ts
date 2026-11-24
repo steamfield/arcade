@@ -109,14 +109,17 @@ function shouldFire(world: World, racer: Racer, kind: ItemKind, dashClear: boole
     if (other === racer || other.state !== 'racing') return false;
     const ds = other.s - racer.s;
     const dd = other.d - racer.d;
-    const dy = other.y - racer.y;
     if (kind === 'burr') {
+      const dy = other.y - racer.y;
       return canBeHit(other) && ds * ds + dd * dd + dy * dy <= RIVAL.burrRange * RIVAL.burrRange;
     }
     if (ds < RIVAL.throwMinRange) return false;
     if (kind === 'pie') {
       return ds <= RIVAL.pieRange && other.grounded && pieCanReach(world.course, racer, other, ds, dd);
     }
+    const height = racer.y - groundY(world.course, racer.s);
+    const otherHeight = other.y - groundY(world.course, other.s);
+    const dy = otherHeight - height;
     const reachSq = RUN.radius * RUN.radius - dd * dd - dy * dy;
     const sapFlight = ITEMS.sapRange / ITEMS.sapSpeed;
     return (

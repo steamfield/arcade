@@ -1,13 +1,15 @@
 /** Sap Shield's fired glob, its flight, and traps on contact. */
+import { groundY } from '../course.ts';
 import { ITEMS, RUN } from '../tuning.ts';
 import type { Racer, Shot, World } from '../types.ts';
 import { canBeHit, stopRacer } from './hits.ts';
 
 type Sap = Extract<Shot, { kind: 'sap' }>;
 
-/** Throws a sap glob straight forward from the racer's centre. */
+/** Throws a sap glob forward from the racer's centre, following the ground. */
 export function fireShield(world: World, { id, s, d, y }: Racer): void {
-  world.shots.push({ kind: 'sap', owner: id, s, d, y: y + RUN.radius, vs: ITEMS.sapSpeed, travelled: 0 });
+  const height = y - groundY(world.course, s) + RUN.radius;
+  world.shots.push({ kind: 'sap', owner: id, s, d, height, vs: ITEMS.sapSpeed, travelled: 0 });
 }
 
 /** Advances the glob and traps the first eligible racer it touches. Returns whether it stays in flight. */
@@ -19,7 +21,8 @@ export function stepSap(world: World, shot: Sap, dt: number): boolean {
   for (const racer of world.racers) {
     if (racer.id === shot.owner || !canBeHit(racer)) continue;
     const dd = shot.d - racer.d;
-    const dy = shot.y - (racer.y + RUN.radius);
+    const height = racer.y - groundY(world.course, racer.s) + RUN.radius;
+    const dy = shot.height - height;
     const reachSq = RUN.radius * RUN.radius - dd * dd - dy * dy;
     if (reachSq < 0) continue;
     const reach = Math.sqrt(reachSq);

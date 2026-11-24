@@ -7,13 +7,19 @@ import type { Course, Feature, TickInput } from '../types.ts';
 import { createWorld, playerOf, stepWorld } from '../world.ts';
 
 /** Builds a straight course and advances the world through the countdown. */
-export function start(features: Feature[] = [], withRival = false, seed = 4, finishS = 200) {
+export function start(
+  features: Feature[] = [],
+  withRival = false,
+  seed = 4,
+  finishS = 200,
+  hills: Course['hills'] = [],
+) {
   const course: Course = {
     id: 'item-straight',
     name: 'Item Straight',
     path: [{ kind: 'straight', length: 200 }],
     halfWidth: 6,
-    hills: [],
+    hills,
     startS: 0,
     finishS,
     parTicks: 900,
@@ -32,8 +38,8 @@ export function start(features: Feature[] = [], withRival = false, seed = 4, fin
 }
 
 /** Starts a race with the player and one rival. */
-export function startPair(features: Feature[] = []) {
-  const race = start(features, true);
+export function startPair(features: Feature[] = [], hills: Course['hills'] = []) {
+  const race = start(features, true, 4, 200, hills);
   race.world.racers.splice(2);
   const rival = race.world.racers[1];
   if (!rival) throw new Error('expected a rival');

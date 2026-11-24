@@ -119,11 +119,9 @@ function rechargeDash(racer: Racer, ctx: RacerContext): void {
 }
 
 function run(racer: Racer, input: TickInput, ctx: RacerContext, top: number, mud: boolean, dt: number): void {
-  racer.dashTicks = Math.max(0, racer.dashTicks - 1);
   if (input.dashPressed && racer.dashCharges > 0) {
     racer.dashCharges--;
     if (racer.dashRecharge === 0) racer.dashRecharge = DASH.rechargeTicks;
-    racer.dashTicks = DASH.burstTicks;
     racer.vs = Math.max(racer.vs, DASH.speed, bootsSpeedFloor(racer));
     ctx.events.emit({ type: 'racer.dashed', id: racer.id, charges: racer.dashCharges });
     return;
@@ -219,7 +217,6 @@ function updateSafeSpot(racer: Racer, course: Course, onLog: boolean): void {
 function fall(racer: Racer, ctx: RacerContext): void {
   racer.state = 'fallen';
   racer.outTicks = RUN.respawnTicks;
-  racer.dashTicks = 0;
   racer.coyoteTicks = 0;
   racer.bufferTicks = 0;
   racer.vs = 0;
