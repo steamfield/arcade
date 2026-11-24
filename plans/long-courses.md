@@ -276,7 +276,7 @@ Scaffold: ada5b28
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/logic/courses/sunlit-shallows.ts, games/rush-racers/src/logic/top-route.test.ts, games/rush-racers/src/logic/race/flowfield.test.ts, games/rush-racers/scenarios/kit.ts, games/rush-racers/src/engine/themes/ocean.ts, games/rush-racers/src/engine/themes/ocean/ | contracts | | sol 6.2 | pending | | all sunlit-shallows bars pass, par still in band |
+| a | M | games/rush-racers/src/logic/courses/sunlit-shallows.ts, games/rush-racers/src/logic/top-route.test.ts, games/rush-racers/src/logic/race/flowfield.test.ts, games/rush-racers/scenarios/kit.ts, games/rush-racers/src/engine/themes/ocean.ts, games/rush-racers/src/engine/themes/ocean/ | contracts | | sol 6.2 | merged | | all sunlit-shallows bars pass, par still in band |
 | b | M | games/rush-racers/src/logic/courses/bramble-run.ts, games/rush-racers/src/engine/themes/forest.ts, games/rush-racers/src/engine/themes/forest/ | contracts | | sol 6.2 | merged | | all bramble-run bars pass, par still in band |
 | c | M | games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/engine/themes/sky.ts, games/rush-racers/src/engine/themes/sky/ | contracts | | sol 6.2 | pending | | all thunderhead-pass bars pass, par still in band |
 | d | M | games/rush-racers/src/logic/courses/slingshot-alley.ts, games/rush-racers/src/logic/courses/slingshot-alley.test.ts, games/rush-racers/src/engine/themes/space.ts, games/rush-racers/src/engine/themes/space/ | contracts | | sol 6.2 | merged | | all slingshot-alley bars pass, par still in band |
