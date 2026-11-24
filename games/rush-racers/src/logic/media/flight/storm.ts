@@ -5,7 +5,7 @@
  * profile's wobble, so a loose flyer misjudges the crossing more often.
  */
 import { TICK_HZ } from '@arcade/core';
-import { lightningPhase } from '../../hazards/lightning.ts';
+import { lightningPhase, racerInZone } from '../../hazards/lightning.ts';
 import { hitbox } from '../../racers.ts';
 import { type LightningZone, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import type { FlightPilotNumbers } from './stick.ts';
@@ -39,7 +39,7 @@ export function stormWait(
 ): StormHold | null {
   if (world.race.phase !== 'racing') return null;
   const ahead = zoneAhead(world, tile, route);
-  if (!ahead || overlapsColumns(racer, ahead.zone)) return null;
+  if (!ahead || racerInZone(world, racer, ahead.zone)) return null;
   const strikeIn = ticksUntilStrike(ahead.zone, world.race.raceTick);
   if (ticksToClear(racer, ahead.zone, ahead.travel, numbers) < strikeIn) return null;
   return { x: waitX(racer, ahead.zone, ahead.travel), travel: ahead.travel };
@@ -52,12 +52,6 @@ function zoneAhead(world: World, tile: Vec, route: FlightRoute): { zone: Lightni
     if (zone) return { zone, travel: step.x > tile.x ? 1 : -1 };
   }
   return null;
-}
-
-/** Whether the racer's hitbox, which a strike hits, overlaps the zone's columns. */
-function overlapsColumns(racer: Racer, zone: LightningZone): boolean {
-  const box = hitbox(racer);
-  return box.x < (zone.cols[1] + 1) * TILE && box.x + box.w > zone.cols[0] * TILE;
 }
 
 /** Ticks from `raceTick` until the zone next strikes: 0 while it is striking. */

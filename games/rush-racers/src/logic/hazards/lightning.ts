@@ -64,12 +64,19 @@ function announcePhase(world: World, zone: number, phase: LightningPhase): void 
   if (phase === 'strike') world.events.emit({ type: 'lightning.struck', zone });
 }
 
-/** Hits every racer whose hitbox overlaps the zone's columns. */
+/** Hits every racer in the zone (`racerInZone`). */
 function strikeZone(world: World, zone: LightningZone, racers: readonly Racer[]): void {
-  const column = zoneBox(world, zone);
   for (const racer of racers) {
-    if (overlaps(hitbox(racer), column)) applyHit(world, racer, 'lightning', null, boltOrigin(racer));
+    if (racerInZone(world, racer, zone)) applyHit(world, racer, 'lightning', null, boltOrigin(racer));
   }
+}
+
+/**
+ * True when a strike of `zone` hits `racer`: its hitbox overlaps the zone's columns over the level's
+ * full height by some positive area (touching the zone's edge doesn't count).
+ */
+export function racerInZone(world: World, racer: Racer, zone: LightningZone): boolean {
+  return overlaps(hitbox(racer), zoneBox(world, zone));
 }
 
 /** The zone's columns over the level's full height, in world px. */

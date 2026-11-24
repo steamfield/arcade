@@ -39,8 +39,9 @@ export function createFlightMotion(body: Body): FlightMotion {
  * so it spends no dash charge). The dash sets `vx` to `kick * kickMul` times the racer's share of
  * `forceMul` (`forceScale`) along facing, leaves `vy`, opens the puff-popping window and emits
  * `racer.kicked`. A dive's carry is scaled by the same share, so `forceMul` reaches every horizontal
- * speed a flyer has as it reaches cruise. Horizontal speed never passes `tuning.maxSpeed`. A fallen
- * racer (`status.fallen`) is held still with no gravity.
+ * speed a flyer has as it reaches cruise. A stunned or trapped flyer's dive ends with no carry.
+ * Horizontal speed never passes `tuning.maxSpeed`. A fallen racer (`status.fallen`) is held still
+ * with no gravity.
  *
  * @param dt Tick length in seconds.
  * @throws {Error} When the racer's motion or `env` isn't flight's, or `tuning` lacks one of flight's extras.
@@ -68,7 +69,10 @@ export function applyFlightIntent(
   const downHeld = intent.move.y > DOWN_THRESHOLD;
   const pressed = upHeld && !motion.upWasHeld;
   motion.upWasHeld = upHeld;
-  const carry = diveCarryOnRelease(motion, body.vy, downHeld, extra) * forceScale(mods);
+  // Stunned or trapped, the stick reads as let go; a dive it ends that way pays no carry, so a hit's
+  // knockback stays a knockback.
+  const knockedOut = racer.status.stunned > 0 || racer.status.trapped > 0;
+  const carry = knockedOut ? 0 : diveCarryOnRelease(motion, body.vy, downHeld, extra) * forceScale(mods);
   motion.diving = downHeld;
   updateFacing(racer, intent.move.x);
 

@@ -1,12 +1,14 @@
 /**
  * Flight's physics: gravity, the flap, the glide, the dive and its carry, cruising with momentum, the
  * dash, the surroundings and Easy's lighter gravity. Speeds are measured on bare flyers through
- * `applyFlightIntent`; dash charges, the surroundings and Easy through `createWorld` on small inline
+ * `applyFlightIntent`; dash charges, a stun mid-dive, the surroundings and Easy through `createWorld` on small inline
  * courses. Every number is read from `FLIGHT_TUNING` or the world's effective tuning.
  */
 import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { jumpMulFor } from '../../abilities.ts';
+import { applyHit } from '../../hazards/hits.ts';
+import { centreOf } from '../../racers.ts';
 import { eventsIn, hold, IDLE, step } from '../../test-world.ts';
 import { CHARACTER_IDS, type Intent, TILE, type Vec } from '../../types.ts';
 import { effectiveTuning } from '../index.ts';
@@ -42,6 +44,9 @@ const OPEN = [
   '.1.................F',
   '####################',
 ];
+
+/** Open sky 24 tiles high over a floor, the player's start at the top: room for a 1 s dive. */
+const TALL = ['.1.................F', ...Array.from({ length: 23 }, () => '...................F'), '#'.repeat(20)];
 
 describe('gravity', () => {
   it('pulls a flyer with no input down by gravity * dt a tick, never past maxFall', () => {
@@ -157,6 +162,20 @@ describe('dive', () => {
 
     expect(carried(1)).toBeGreaterThan(0);
     expect(carried(0.6)).toBeCloseTo(0.8 * carried(1), 9);
+  });
+
+  it('pays no carry on a dive a stun ends: the knockback still points back against facing', () => {
+    const { world, log, player } = flightWorld(TALL);
+    step(world, log, ticksIn(1), hold(DOWN_RIGHT));
+    const diveSpeed = player.body.vy;
+    const ahead = { x: centreOf(player).x + player.facing * TILE, y: centreOf(player).y };
+    applyHit(world, player, 'lightning', null, ahead);
+    step(world, log, 1, hold(DOWN_RIGHT));
+
+    expect(diveSpeed).toBe(diveMaxFall);
+    expect(player.status.stunned).toBeGreaterThan(0);
+    expect(player.facing).toBe(1);
+    expect(player.body.vx).toBeLessThan(0);
   });
 });
 

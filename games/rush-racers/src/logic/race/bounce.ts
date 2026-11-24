@@ -11,14 +11,17 @@ import { type Body, type Level, type MoveContacts, type Racer, TILE, type World 
  * Springs `racer` up off a bounce cloud it came down onto this tick: with a floor contact and a
  * bounce tile under either bottom corner after the move, it leaves with `vy = -bounceSpeed` and
  * `racer.bounced {id}` is emitted. Does nothing when the world's medium has no bounce clouds
- * (`effects.bounceSpeed` null) or the racer is fallen. `stepRace` calls it for each unfinished racer
- * right after the medium's `afterMove`, with the contacts of that racer's move.
+ * (`effects.bounceSpeed` null), or the racer is fallen or trapped: a trapped racer drifts at the
+ * medium's `trappedDrift` every tick, so one resting on a cloud would otherwise spring off it each
+ * tick until the trap ends. `stepRace` calls it for each unfinished racer right after the medium's
+ * `afterMove`, with the contacts of that racer's move.
  *
  * @throws {Error} When the world names a medium that is neither shipped nor registered.
  */
 export function bounceOffClouds(world: World, racer: Racer, contacts: MoveContacts): void {
   const { bounceSpeed } = mediumOf(world).effects;
-  if (bounceSpeed === null || racer.status.fallen > 0 || !contacts.floor) return;
+  const { fallen, trapped } = racer.status;
+  if (bounceSpeed === null || fallen > 0 || trapped > 0 || !contacts.floor) return;
   if (!standsOnBounceCloud(world.level, racer.body)) return;
   racer.body.vy = -bounceSpeed;
   world.events.emit({ type: 'racer.bounced', id: racer.id });

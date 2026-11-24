@@ -227,7 +227,6 @@ function problemsAt(level: Level, cell: Cell, message: (row: number, col: number
 }
 
 /** Throws a LevelError at the first problem, naming the rest after it; does nothing for none. */
-
 function throwOnProblems(problems: readonly LevelProblem[]): void {
   const [first, ...rest] = problems;
   if (!first) return;
