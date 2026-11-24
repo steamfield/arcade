@@ -100,13 +100,14 @@ describe('the sound of a race on Sunlit Shallows', () => {
     // Re-pinned when Sunlit Shallows gained the Maelstrom, adding pearls and changing how the races play
     // out: all three races now win, so there is no `song:lose`.
     // Re-pinned after the Jelly Field steering fix changed bumps, item use and finishing places.
+    // Ending Sunlit's dark zone at column 837 changes the race timing and adds two eel warnings.
     expect(counts).toEqual({
       'sfx:bump': 117,
       'sfx:coral': 2,
       'sfx:countdown': 9,
       'sfx:decoy.pop': 3,
       'sfx:decoy.spawn': 3,
-      'sfx:eel.warn': 3303,
+      'sfx:eel.warn': 3305,
       'sfx:enemy.bite': 1,
       'sfx:enemy.bonk': 5,
       'sfx:enemy.defeat': 7,
