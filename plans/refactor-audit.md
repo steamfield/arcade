@@ -231,7 +231,7 @@ Depends on: phase 4
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/engine/worlds/, games/rush-racers/src/engine/themes/ | | | opus | running | deliver/refactor-audit-5a | |
+| a | M | games/rush-racers/src/engine/worlds/, games/rush-racers/src/engine/themes/, games/rush-racers/COURSES.md, games/rush-racers/DESIGN.md, games/rush-racers/src/engine/art/index.test.ts, games/rush-racers/src/engine/art/sprites/sprites.test.ts, games/rush-racers/src/engine/view/hazard-view.test.ts | | | opus | running | deliver/refactor-audit-5a | |
 
 Each world and theme keeps its synchronous data (keys, frame names, ability and item words, glints, terrain, backdrop specs) in its wiring module, and moves everything that draws (sheet imports, `registerTextures`) into `worlds/<id>/art.ts` and `themes/<id>/art.ts`, each exporting one `registerArt(scene)`. Boot still calls all of them, so behaviour is unchanged.
 
