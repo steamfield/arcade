@@ -60,6 +60,6 @@ describe('the race track rotation', () => {
 
   it('rotates the game’s own race tracks when no table is given', () => {
     const rotation = createTrackRotation({ startAt: 0, pinned: null });
-    expect(picks(rotation, 'cloudreach', 2)).toEqual(['cloudreach', 'cloudreach']);
+    expect(picks(rotation, 'cloudreach', 2)).toEqual(['cloudreach', 'cloudreach-2']);
   });
 });

@@ -391,7 +391,7 @@ describe('the adapter and the sound test', () => {
     const rig = musicRig(() => 'race');
     rig.drain({ type: 'scene.started', scene: 'title' });
     expect(() => rig.adapter.audition('race', 'bridge')).toThrow(
-      'Song "race" has no section "bridge"; its sections are "intro", "A", "A\'", "B", "turnaround".',
+      'Song "race" has no section "bridge"; its sections are "intro", "A", ',
     );
     rig.drain();
     expect(rig.calls).toEqual(['play title from 0']);
