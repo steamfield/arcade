@@ -1,5 +1,5 @@
 /**
- * Farside's cast skin: the land critters' racer textures, portraits, heads and ability wording.
+ * Farside's cast skin: the space racers' textures, portraits, heads and ability wording.
  * `registerFarsideCast` draws the textures `keys.ts` names for the cast at boot, and
  * `FARSIDE_CAST` points the skin at them.
  */
