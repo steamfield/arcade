@@ -95,6 +95,13 @@ describe('parseVents', () => {
     expect(ventErrorFrom(vent).message).toMatch(/^Vent 0 at col -?\d+, row -?\d+ is off the map/);
   });
 
+  it('rejects a vent whose column reaches above the map, and takes one reaching the top row', () => {
+    expect(ventErrorFrom({ ...VENT_6, height: VENT_6.row + 1 }).message).toBe(
+      `Vent 0 reaches row -1, above the map; lower its height to at most ${VENT_6.row}`,
+    );
+    expect(parseLevel(pool([{ ...VENT_6, height: VENT_6.row }])).vents).toHaveLength(1);
+  });
+
   it('rejects a vent that reaches less than a tile up', () => {
     expect(ventErrorFrom({ ...VENT_6, height: 0 }).message).toBe(
       'Vent 0 has height 0; it must reach at least 1 tile up',
@@ -109,7 +116,7 @@ describe('parseVents', () => {
   });
 
   it('rejects two vents sharing a column, and takes two side by side', () => {
-    const error = ventErrorFrom(VENT_6, { ...VENT_6, col: 7, row: 5 });
+    const error = ventErrorFrom(VENT_6, { ...VENT_6, col: 7, row: 5, height: 4 });
 
     expect(error.message).toBe(
       'Vent 1 at col 7 shares a column with vent 0 at col 6; space vents at least 2 columns apart',

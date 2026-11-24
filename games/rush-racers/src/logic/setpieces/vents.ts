@@ -59,8 +59,8 @@ export function ventColumn(vent: VentDef): Box {
 /**
  * Checks a level's vents and returns copies of them in the order written.
  *
- * @throws {LevelError} For a vent whose column leaves a map `width` by `height` tiles, a `height`
- *   below 1, a `periodTicks` shorter than `VENT_MIN_PERIOD_TICKS`, or two vents whose columns
+ * @throws {LevelError} For a vent whose column leaves a map `width` by `height` tiles (its foot or
+ *   its top), a `height` below 1, a `periodTicks` shorter than `VENT_MIN_PERIOD_TICKS`, or two vents whose columns
  *   share a map column, naming the vent by its index.
  */
 export function parseVents(defs: readonly VentDef[], width: number, height: number): VentDef[] {
@@ -83,6 +83,13 @@ function requireVent(def: VentDef, index: number, width: number, height: number)
   }
   if (!(def.height >= 1)) {
     throw new LevelError(`Vent ${index} has height ${def.height}; it must reach at least 1 tile up`, row, col);
+  }
+  if (row - def.height < 0) {
+    throw new LevelError(
+      `Vent ${index} reaches row ${row - def.height}, above the map; lower its height to at most ${row}`,
+      row,
+      col,
+    );
   }
   if (!(def.periodTicks >= VENT_MIN_PERIOD_TICKS)) {
     throw new LevelError(
