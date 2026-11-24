@@ -92,6 +92,8 @@ describe('the sound of a race on Sunlit Shallows', () => {
     for (const race of RACES) listen(race, counts);
     // Re-pinned when the course gained its surface section, cave, 17 eels and a third shark. This
     // harness hears every enemy; the game's own `enemyAudible` keeps far-off eels quiet.
+    // Re-pinned again when each item kind got its own fire sound: the nine `item.use` fires are now
+    // two Bubble Shields, an Ink Sac, three Jet Fins and three Mimics.
     expect(counts).toEqual({
       'sfx:bump': 70,
       'sfx:coral': 2,
@@ -102,8 +104,11 @@ describe('the sound of a race on Sunlit Shallows', () => {
       'sfx:enemy.bonk': 4,
       'sfx:enemy.defeat': 6,
       'sfx:finish': 3,
+      'sfx:fire.bubbleShield': 2,
+      'sfx:fire.inkSac': 1,
+      'sfx:fire.jetFin': 3,
+      'sfx:fire.mimic': 3,
       'sfx:go': 3,
-      'sfx:item.use': 9,
       'sfx:kick': 192,
       'sfx:pearl': 21,
       'sfx:pearl.drop': 2,

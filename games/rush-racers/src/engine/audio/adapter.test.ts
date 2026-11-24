@@ -154,13 +154,14 @@ describe('the adapter and a racer leaving the course', () => {
         ],
         true,
       ),
-    ).toEqual(['rebound', 'fall', 'respawn']);
+    ).toEqual(['clank', 'fall', 'respawn']);
   });
 
-  it('stays silent when it is a rival that bounces, falls or returns, even nearby', () => {
+  it('stays silent when it is a rival that jumps, bounces, falls or returns, even nearby', () => {
     expect(
       heard(
         [
+          { type: 'racer.jumped', id: 'tess' },
           { type: 'racer.rebounded', id: 'tess', speed: 120, axis: 'y' },
           { type: 'racer.fell', id: 'tess' },
           { type: 'racer.respawned', id: 'tess', x: 40, y: 40 },
