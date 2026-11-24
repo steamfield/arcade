@@ -95,6 +95,62 @@ const BOUNCE_CLOUD_ROWS = [
   '0000000000000000',
 ];
 
+/** Sunbreak's illuminated cloud edge fades back into the thunderhead below. */
+const SUNLIT_BANK_ROWS = [
+  '2233333333322222',
+  '2223333333333222',
+  '2222222333322222',
+  '1222222222222221',
+  '1122222222222211',
+  '1111122222211111',
+  '1111111111111111',
+  '1111111111111111',
+  '0111111111111110',
+  '0001111111110000',
+  '0000011111100000',
+  ...Array.from({ length: 5 }, () => '0000000000000000'),
+];
+
+/** Interlaced twigs and pale quills along the tops of the crows' perches. */
+const CROW_ROOST_ROWS = [
+  '2322212222223232',
+  '2123322233322122',
+  '3211122222111123',
+  '2322211331122232',
+  '1123322222332111',
+  '1111132222311111',
+  '2222222222222222',
+  '1111111111111111',
+  '1111111111111111',
+  '1111100111111111',
+  '1111111111111111',
+  '1111111111111111',
+  '1101111111100111',
+  '1111111111111111',
+  '1111111111111111',
+  '1111111111111111',
+];
+
+/** Riveted cross-braces hold the cannon decks against the clouds. */
+const CANNON_RIGGING_ROWS = [
+  '2222222222222222',
+  '2232222222222322',
+  '0000000000000000',
+  '2211000000112200',
+  '1221100001122100',
+  '1122110011221100',
+  '0112211112211000',
+  '0011221122110000',
+  '0001123321100000',
+  '0001123321100000',
+  '0011221122110000',
+  '0112211112211000',
+  '1122110011221100',
+  '1221100001122100',
+  '2232222222222322',
+  '2222222222222222',
+];
+
 /** One puff of a popped cloud: a small round tuft. */
 const PUFF_DEBRIS_ROWS = [
   '..0000..',
@@ -125,6 +181,9 @@ export const TERRAIN_SHEETS: readonly ArtSheet<SkyThemeTexKey>[] = [
       { name: 'ledge', palette: SkyTerrainPalette.puffCloud, rows: CLOUD_LEDGE_ROWS },
       { name: 'rockBuried', palette: SkyTerrainPalette.thunderhead, rows: BURIED_THUNDERHEAD_ROWS },
       { name: 'bounce', palette: SkyTerrainPalette.bounceCloud, rows: BOUNCE_CLOUD_ROWS },
+      { name: 'sunlitBank', palette: SkyTerrainPalette.sunlitBank, rows: SUNLIT_BANK_ROWS },
+      { name: 'crowRoost', palette: SkyTerrainPalette.crowRoost, rows: CROW_ROOST_ROWS },
+      { name: 'cannonRigging', palette: SkyTerrainPalette.cannonRigging, rows: CANNON_RIGGING_ROWS },
     ],
   },
   sheet(SkyThemeTex.puffDebris, SkyTerrainPalette.puffCloud, { [Frame.a]: PUFF_DEBRIS_ROWS }),
