@@ -5,7 +5,9 @@
  * so everything here comes from the body alone. A body standing on a floor has its vertical speed
  * zeroed by the move every tick, which is what tells ground from air.
  */
+import { courseOf } from '../../logic/courses/index.ts';
 import type { Racer, World } from '../../logic/types.ts';
+import { findSkin } from '../worlds/index.ts';
 
 /** A movement moment one racer had this tick. */
 export type SensedMoment = 'land' | 'skid' | 'dive' | 'thrust';
@@ -64,16 +66,9 @@ export function burnDirection(before: BodyBefore, racer: Racer): { x: number; y:
   return { x: vx / speed, y: vy / speed };
 }
 
-/** Which moments a racer moving in `medium` can have; swimmers have none here (they keep their trail). */
-const MOMENTS_BY_MEDIUM: Readonly<Record<string, readonly SensedMoment[]>> = {
-  run: ['land', 'skid'],
-  flight: ['dive'],
-  drift: ['thrust'],
-};
-
-/** The moments racers in `medium` are watched for. */
-export function momentsFor(medium: string): readonly SensedMoment[] {
-  return MOMENTS_BY_MEDIUM[medium] ?? [];
+/** The moments racers in `world` are watched for: its skin's (`WorldSkin.moveMoments`), none for a world without one. */
+export function momentsFor(world: Pick<World, 'course'>): readonly SensedMoment[] {
+  return findSkin(courseOf(world))?.moveMoments ?? [];
 }
 
 /** True when `racer` is moving under its own power this tick: in play, not finished, not held in a bubble. */
@@ -95,7 +90,7 @@ export function createMovementSense(): MovementSense {
   const before = new Map<Racer, BodyBefore>();
   return {
     sense(world, visit) {
-      const watched = momentsFor(world.medium);
+      const watched = momentsFor(world);
       for (const racer of world.racers) {
         const seen = before.get(racer);
         if (seen && isMovingFreely(racer)) for (const moment of watched) report(moment, seen, racer, visit);
