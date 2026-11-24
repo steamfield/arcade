@@ -185,6 +185,7 @@ Test cases (lane a writes these; every line needs a test):
 Demo: open `?` crates, hold up to three items, cycle and fire them; rivals fire back.
 Depends on: phase 2
 Scaffold: f36d1a60c09138c439db156cc6897790fbda5f21
+Tag: rr3d-phase-3
 
 Scaffold (orchestrator, before dispatch): `types.ts` gains `ItemKind` (`'boots' | 'shield' | 'burr' | 'pie'`), `HeldItem { kind; charges }`, on `Racer` `slots: (HeldItem | null)[]` (three), `selected: number`, `itemCooldown`, `stunTicks`, `trappedTicks`, `burrTicks`, `bootsTicks`, and on `World` `crates: { shutTicks: number }[]` (one per `crate` feature, in feature order), `shots: Shot[]` (flying pies and sap globs in track space) and `splats: Splat[]` (mud patches with `ticksLeft` and `owner`); `events.ts` gains `crate.opened` (by, kind), `item.selected`, `item.fired` (id, kind), `racer.hit` (id, by, kind, outcome `'shielded' | 'dropped' | 'stunned'`), `racer.trapped` and `pie.splatted`; `tuning.ts` gains `ITEMS` (charges per kind, crate shut ticks, cooldown, boots speed and ticks, burr ticks, pie throw and splat size and ticks, sap trap ticks, stun ticks) and `CRATE` (height above ground, touch radius); stubs `src/logic/items/index.ts` (`stepItems(world, inputs)`, `rollItem(rng, place)`), `src/engine/item-view.ts` (`createItemView(course, frames)` returning `{ root, sync(world) }`, wired in `game.ts`); `input.ts` adds a touch `⇄` button for `next`. Scenarios get one `crate-and-fire` scenario at landing.
 
