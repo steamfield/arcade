@@ -4,6 +4,10 @@
  * `register` functions build every one at boot, and `assertSkinTextures` checks they exist.
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
+import { worldArtOwner } from '../../art/index.ts';
+
+/** The art owner name Thornwood's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
+export const THORNWOOD_ART_OWNER = worldArtOwner('thornwood');
 
 /** Racer texture per slot: 16x12, facing right, run-stride frames `Frame.a` and `Frame.b`. */
 export const ThornRacerTex: Readonly<Record<CharacterId, string>> = {

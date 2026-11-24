@@ -6,10 +6,8 @@ import type Phaser from 'phaser';
 import type { PowerUpKind } from '../../../logic/types.ts';
 import { drawSheets } from '../../art/index.ts';
 import type { ArtRef } from '../art-ref.ts';
-import type { ObjectSkin } from '../object-skin.ts';
-import { REEF_OBJECTS } from '../reef/objects.ts';
-import { ThornIconFrame, ThornItemTex, ThornTex } from './keys.ts';
-import { THORNWOOD_ART_OWNER } from './owner.ts';
+import { GLINT_ALPHA, type ObjectSkin } from '../object-skin.ts';
+import { THORNWOOD_ART_OWNER, ThornIconFrame, ThornItemTex, ThornTex } from './keys.ts';
 import { ATTACK_ART_SHEETS } from './sprites/attack.ts';
 import { THORN_ENEMY_SHEETS } from './sprites/enemies.ts';
 import { ITEM_ART_SHEETS } from './sprites/items.ts';
@@ -48,8 +46,8 @@ export const THORNWOOD_OBJECTS: ObjectSkin = {
     marks: ThornTex.marks,
   },
   glints: {
-    urchin: { key: 'thornwood-glint-urchin', colour: 0xff90b8, alpha: REEF_OBJECTS.glints.urchin.alpha },
-    jelly: { key: 'thornwood-glint-jelly', colour: 0xffe070, alpha: REEF_OBJECTS.glints.jelly.alpha },
+    urchin: { key: 'thornwood-glint-urchin', colour: 0xff90b8, alpha: GLINT_ALPHA.urchin },
+    jelly: { key: 'thornwood-glint-jelly', colour: 0xffe070, alpha: GLINT_ALPHA.jelly },
   },
   text: {
     slowedBy: 'SLOWED BY MUD',

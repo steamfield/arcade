@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Tex } from '../art/keys.ts';
 import { measureFrames } from '../art/pixel.ts';
+import { ReefItemTex, ReefRacerTex, ReefTex } from '../worlds/reef/keys.ts';
 import { ThornItemTex, ThornRacerTex, ThornTex } from '../worlds/thornwood/keys.ts';
 import { ForestAnim, ForestTex, ForestTile } from './forest/keys.ts';
 import { ForestHazardPalette } from './forest/palettes.ts';
@@ -39,6 +40,9 @@ describe('the forest theme', () => {
     const otherTextures = [
       ...OCEAN_SHEETS.map((sheet) => sheet.key),
       ...Object.values(Tex),
+      ...Object.values(ReefTex),
+      ...Object.values(ReefRacerTex),
+      ...Object.values(ReefItemTex),
       ...Object.values(ThornTex),
       ...Object.values(ThornRacerTex),
       ...Object.values(ThornItemTex),

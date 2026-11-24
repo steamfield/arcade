@@ -1,32 +1,26 @@
 /**
- * Reef's cast skin: the sea creatures' racer textures, portraits, heads and ability wording, all the
- * global art and words the game has always had.
+ * Reef's cast skin: the sea creatures' racer textures, portraits, heads and ability wording.
+ * `registerReefCast` draws the textures `keys.ts` names for the cast at boot, and `REEF_CAST`
+ * points the skin at them.
  */
-
+import type Phaser from 'phaser';
 import type { CharacterId } from '../../../logic/types.ts';
-import { Tex } from '../../art/keys.ts';
-import { PortraitFrame, UiTex } from '../../art/ui/keys.ts';
+import { drawSheets } from '../../art/index.ts';
 import type { ArtRef } from '../art-ref.ts';
 import type { CastSkin } from '../cast-skin.ts';
+import { REEF_ART_OWNER, ReefCastFrame, ReefRacerTex, ReefTex } from './keys.ts';
+import { REEF_FACE_SHEETS } from './sprites/portraits.ts';
+import { REEF_RACER_SHEETS } from './sprites/racers.ts';
 
 const frameIn =
   (texture: string) =>
-  (character: CharacterId): ArtRef => ({ texture, frame: PortraitFrame[character] });
-const portrait = frameIn(UiTex.portraits);
-const head = frameIn(UiTex.heads);
+  (character: CharacterId): ArtRef => ({ texture, frame: ReefCastFrame[character] });
+const portrait = frameIn(ReefTex.portraits);
+const head = frameIn(ReefTex.heads);
 
 /** Reef's cast, keyed by character slot. */
 export const REEF_CAST: CastSkin = {
-  racers: {
-    rudy: Tex.rudy,
-    gil: Tex.gil,
-    streak: Tex.streak,
-    onyx: Tex.onyx,
-    nib: Tex.nib,
-    baron: Tex.baron,
-    selene: Tex.selene,
-    rook: Tex.rook,
-  },
+  racers: ReefRacerTex,
   portraits: {
     rudy: portrait('rudy'),
     gil: portrait('gil'),
@@ -58,3 +52,13 @@ export const REEF_CAST: CastSkin = {
     rook: { name: 'FRENZY', blurb: 'SURGES AS RIVALS GET HIT' },
   },
 };
+
+/**
+ * Draws the cast's racer, portrait and head textures; calling it again changes nothing.
+ *
+ * @throws {Error} When a sprite's pixel text is malformed (see `drawFrames`), naming the key, frame and row.
+ * @throws {Error} When another owner already has one of the keys.
+ */
+export function registerReefCast(scene: Phaser.Scene): void {
+  drawSheets(scene, [...REEF_RACER_SHEETS, ...REEF_FACE_SHEETS], REEF_ART_OWNER);
+}

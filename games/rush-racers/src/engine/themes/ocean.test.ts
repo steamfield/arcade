@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { Tex } from '../art/keys.ts';
 import { measureFrames } from '../art/pixel.ts';
+import { ART_SHEETS } from '../art/sprites/index.ts';
+import { REEF_OBJECT_SHEETS } from '../worlds/reef/objects.ts';
+import { REEF_RACER_SHEETS } from '../worlds/reef/sprites/racers.ts';
 import { OceanTex, OceanTile } from './ocean/keys.ts';
 import { HazardPalette } from './ocean/palettes.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
@@ -9,7 +11,7 @@ import { OCEAN_THEME } from './ocean.ts';
 /**
  * Every texture key the game built at the end of phase 7, before the ocean art moved into its theme,
  * plus the Cannonball item's icon (v2 phase 1), the enemies (v2 phase 3), and the waterline and
- * cave wall (difficulty sprint phase 2).
+ * cave wall (difficulty sprint phase 2), less the unused HUD marker sheet.
  */
 const PHASE_7_KEYS = [
   'tiles',
@@ -53,7 +55,6 @@ const PHASE_7_KEYS = [
   'ink-cloud',
   'bubble',
   'loose-glow',
-  'hud-marker',
   'kick-pip',
   'backdrop-far',
   'backdrop-near',
@@ -79,8 +80,10 @@ const sheetFor = (key: string) => OCEAN_SHEETS.find((sheet) => sheet.key === key
 const frameNames = (key: string) => sheetFor(key)?.frames.map((frame) => frame.name);
 
 describe('the ocean theme', () => {
-  it('registers, with the global art, exactly the texture keys phase 7 built plus the later additions', () => {
-    const keys = [...Object.values(Tex), ...OCEAN_SHEETS.map((sheet) => sheet.key)];
+  it("registers, with the global art and Reef's world art, exactly the texture keys phase 7 built plus the later additions", () => {
+    const keys = [...ART_SHEETS, ...REEF_RACER_SHEETS, ...REEF_OBJECT_SHEETS, ...OCEAN_SHEETS].map(
+      (sheet) => sheet.key,
+    );
     expect(keys.sort()).toEqual([...PHASE_7_KEYS].sort());
   });
 

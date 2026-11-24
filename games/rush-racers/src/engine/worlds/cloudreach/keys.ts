@@ -5,6 +5,10 @@
  * they exist.
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
+import { worldArtOwner } from '../../art/index.ts';
+
+/** The art owner name Cloudreach's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
+export const CLOUDREACH_ART_OWNER = worldArtOwner('cloudreach');
 
 /** Racer texture per slot: 16x12, facing right, wing-beat frames `Frame.a` (wings up) and `Frame.b` (wings down). */
 export const SkyRacerTex: Readonly<Record<CharacterId, string>> = {

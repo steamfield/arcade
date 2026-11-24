@@ -12,6 +12,6 @@ export interface WorldSkin {
   id: string;
   cast: CastSkin;
   objects: ObjectSkin;
-  /** Builds the world's own textures at boot. Reef's art is the global art `art/index.ts` builds, so its is empty. */
+  /** Builds the world's own cast and object textures at boot; calling it again changes nothing. */
   registerTextures(scene: Phaser.Scene): void;
 }

@@ -15,6 +15,7 @@ import { FxFrame } from '../fx/textures.ts';
 import { STORM_TEXTURE } from '../view/lightning-view.ts';
 import { RING_TEXTURE } from '../view/ring-view.ts';
 import { SkyItemTex, SkyRacerTex, SkyTex } from '../worlds/cloudreach/keys.ts';
+import { ReefItemTex, ReefRacerTex, ReefTex } from '../worlds/reef/keys.ts';
 import { ThornItemTex, ThornRacerTex, ThornTex } from '../worlds/thornwood/keys.ts';
 import { assertCourseAssets } from './course-assets.ts';
 import { FOREST_SHEETS } from './forest/sprites/index.ts';
@@ -140,6 +141,9 @@ describe('the sky art', () => {
       ...OCEAN_SHEETS.map((sheet) => sheet.key),
       ...FOREST_SHEETS.map((sheet) => sheet.key),
       ...Object.values(Tex),
+      ...Object.values(ReefTex),
+      ...Object.values(ReefRacerTex),
+      ...Object.values(ReefItemTex),
       ...Object.values(ThornTex),
       ...Object.values(ThornRacerTex),
       ...Object.values(ThornItemTex),

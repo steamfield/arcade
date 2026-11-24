@@ -5,9 +5,10 @@ import { courseFromLevel, raceOn, racerOf } from '../../logic/test-world.ts';
 import { POWER_UP_KINDS } from '../../logic/types.ts';
 import { createWorld } from '../../logic/world.ts';
 import { Frame } from '../art/keys.ts';
-import { ICON_SHEETS } from '../art/ui/icons.ts';
+import { iconSheets } from '../art/ui/icons.ts';
 import { IconFrame, UiTex } from '../art/ui/keys.ts';
 import { PanelPalette } from '../art/ui/palette.ts';
+import { REEF_ITEM_ICON_FRAMES } from '../worlds/reef/sprites/icons.ts';
 import { REEF_SKIN } from '../worlds/reef.ts';
 import { besidePlayerY } from './beside-player.ts';
 import { captionText, isPlacePopping, type PlaceTrack, pearlText, trackPlace } from './hud.ts';
@@ -163,7 +164,7 @@ describe('a dimmed well icon', () => {
       return sum | (Math.round(c * alpha + u * (1 - alpha)) << shift);
     }, 0);
   const well = PanelPalette.inset[2];
-  const frames = ICON_SHEETS.find((sheet) => sheet.key === UiTex.icons)?.frames ?? [];
+  const frames = iconSheets(REEF_ITEM_ICON_FRAMES).find((sheet) => sheet.key === UiTex.icons)?.frames ?? [];
 
   // The silhouette of each icon that dims: its rim (index 0) and main fill (index 1).
   it.each([IconFrame.dash])('%s keeps 3:1 against the well when not ready', (name) => {
@@ -177,7 +178,7 @@ describe('a dimmed well icon', () => {
 });
 
 describe('the well\u2019s power-up icons', () => {
-  const frames = ICON_SHEETS.find((sheet) => sheet.key === UiTex.icons)?.frames ?? [];
+  const frames = iconSheets(REEF_ITEM_ICON_FRAMES).find((sheet) => sheet.key === UiTex.icons)?.frames ?? [];
 
   it('draws an icon for every kind, and no two kinds share one', () => {
     const drawn = new Set(frames.map((frame) => frame.name));

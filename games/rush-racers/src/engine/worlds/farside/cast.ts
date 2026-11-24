@@ -8,8 +8,7 @@ import type { CharacterId } from '../../../logic/types.ts';
 import { drawSheets } from '../../art/index.ts';
 import type { ArtRef } from '../art-ref.ts';
 import type { CastSkin } from '../cast-skin.ts';
-import { FarCastFrame, FarRacerTex, FarTex } from './keys.ts';
-import { FARSIDE_ART_OWNER } from './owner.ts';
+import { FARSIDE_ART_OWNER, FarCastFrame, FarRacerTex, FarTex } from './keys.ts';
 import { FARSIDE_FACE_SHEETS } from './sprites/portraits.ts';
 import { FARSIDE_RACER_SHEETS } from './sprites/racers.ts';
 

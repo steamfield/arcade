@@ -1,19 +1,19 @@
 /**
- * The racers' faces in each character's own palette (`CharacterPalette` in
- * `sprites/racers.ts`): 16x16 portraits for the place panel, the select grid
- * and the podium, and 7x7 heads for the progress strip and the standings
- * (pixel art never scales by fractions, so the small size is drawn on its own).
+ * Reef's faces in each slot's own palette (`ReefPalette` in `palette.ts`): 16x16 portraits for
+ * the place panel, the select grid and the podium, and 7x7 heads for the progress strip and the
+ * standings (pixel art never scales by fractions, so the small size is drawn on its own).
  *
- * The heads ride side by side on the strip, so each has its own outline shape
- * and still tells apart in grayscale: a round helmet, a coronet and snout, a
- * sail and bill, a jaw wedge, goggles under antennae, a crown, a dome over
- * tentacles and a hammer bar. Light comes from the top left, as in the world art.
+ * The heads ride side by side on the strip, so each has its own outline shape and still tells
+ * apart in grayscale: a round helmet, a coronet and snout, a sail and bill, a jaw wedge, goggles
+ * under antennae, a crown, a dome over tentacles and a hammer bar. Light comes from the top left,
+ * as in the world art.
  */
-import type { CharacterId } from '../../../logic/types.ts';
-import { CHARACTER_IDS } from '../../../logic/types.ts';
-import type { PixelRows } from '../pixel.ts';
-import { CharacterPalette } from '../sprites/racers.ts';
-import { PortraitFrame, type UiSheet, UiTex } from './keys.ts';
+import type { CharacterId } from '../../../../logic/types.ts';
+import { CHARACTER_IDS } from '../../../../logic/types.ts';
+import type { NamedFrame, PixelRows } from '../../../art/pixel.ts';
+import type { ArtSheet } from '../../../art/sprites/sheet.ts';
+import { ReefCastFrame, ReefTex } from '../keys.ts';
+import { ReefPalette } from './palette.ts';
 
 /** One character's face at both sizes. */
 interface Face {
@@ -200,17 +200,17 @@ const FACES: Record<CharacterId, Face> = {
   },
 };
 
-/** One sheet frame per character, named by `PortraitFrame`, drawn in that character's palette. */
-function framesOf(size: keyof Face) {
+/** One sheet frame per slot, named by `ReefCastFrame`, drawn in that slot's palette. */
+function framesOf(size: keyof Face): NamedFrame[] {
   return CHARACTER_IDS.map((character) => ({
-    name: PortraitFrame[character],
-    palette: CharacterPalette[character],
+    name: ReefCastFrame[character],
+    palette: ReefPalette[character],
     rows: FACES[character][size],
   }));
 }
 
-/** The portrait and head sheets, one frame per character in each, named by `PortraitFrame`. */
-export const PORTRAIT_SHEETS: readonly UiSheet[] = [
-  { key: UiTex.heads, frames: framesOf('head') },
-  { key: UiTex.portraits, frames: framesOf('portrait') },
+/** The portrait and head sheets, one frame per slot in each, named by `ReefCastFrame`. */
+export const REEF_FACE_SHEETS: readonly ArtSheet<string>[] = [
+  { key: ReefTex.heads, frames: framesOf('head') },
+  { key: ReefTex.portraits, frames: framesOf('portrait') },
 ];

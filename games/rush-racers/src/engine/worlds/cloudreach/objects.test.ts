@@ -7,12 +7,12 @@ import { describe, expect, it } from 'vitest';
 import { ENEMY_KINDS, POWER_UP_KINDS } from '../../../logic/types.ts';
 import { Frame } from '../../art/keys.ts';
 import { measureFrames } from '../../art/pixel.ts';
-import { ART_SHEETS } from '../../art/sprites/index.ts';
 import type { ArtSheet } from '../../art/sprites/sheet.ts';
-import { ICON_SHEETS } from '../../art/ui/icons.ts';
+import { iconSheets } from '../../art/ui/icons.ts';
 import { UiTex } from '../../art/ui/keys.ts';
 import { SKY_BANDS, SkyBackdropPalette } from '../../themes/sky/palettes.ts';
-import { REEF_OBJECTS } from '../reef/objects.ts';
+import { REEF_OBJECT_SHEETS, REEF_OBJECTS } from '../reef/objects.ts';
+import { REEF_ITEM_ICON_FRAMES } from '../reef/sprites/icons.ts';
 import { THORNWOOD_OBJECTS } from '../thornwood/objects.ts';
 import { SkyIconFrame, SkyItemTex, SkyTex } from './keys.ts';
 import { CLOUDREACH_OBJECTS } from './objects.ts';
@@ -34,7 +34,7 @@ const SKY_SHEETS: readonly ArtSheet<string>[] = [
 const MIN_ICON_PIXELS = 30;
 
 const skySheet = (key: string) => SKY_SHEETS.find((sheet) => sheet.key === key);
-const reefSheet = (key: string) => ART_SHEETS.find((sheet) => sheet.key === key);
+const reefSheet = (key: string) => REEF_OBJECT_SHEETS.find((sheet) => sheet.key === key);
 const sizeOf = (sheet: ArtSheet<string> | undefined) => measureFrames(sheet?.key ?? 'missing', sheet?.frames ?? []);
 const frameNames = (sheet: ArtSheet<string> | undefined) => sheet?.frames.map((frame) => frame.name);
 const drawnPixels = (rows: readonly string[]) => [...rows.join('')].filter((pixel) => pixel !== '.').length;
@@ -72,7 +72,7 @@ describe('Cloudreach object art', () => {
   it('gives the icon sheet one 9x9 frame per item, named as keys.ts says', () => {
     const icons = skySheet(SkyTex.icons);
     expect(frameNames(icons)?.sort()).toEqual(POWER_UP_KINDS.map((kind) => SkyIconFrame[kind]).sort());
-    const reefIcons = ICON_SHEETS.find((sheet) => sheet.key === UiTex.icons);
+    const reefIcons = iconSheets(REEF_ITEM_ICON_FRAMES).find((sheet) => sheet.key === UiTex.icons);
     expect(sizeOf(icons)).toEqual(measureFrames('reef icons', reefIcons?.frames ?? []));
   });
 
