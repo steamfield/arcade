@@ -3,7 +3,7 @@
  * shell and tests drive. Gameplay lives in `Runtime`; this file reads input, renders its state and
  * nothing else.
  */
-import { createLogger, type Logger } from '@arcade/core';
+import { createLogger, type Logger, TICK_DT } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import { type GameContext, type GameHandle, renderPixelRatio } from '@arcade/shell';
 import * as THREE from 'three';
@@ -16,8 +16,9 @@ import { CameraRig } from './camera-rig.ts';
 import { stageFor } from './capture-stages.ts';
 import { Hud } from './hud.ts';
 import { input } from './input.ts';
+import { createPedestal } from './pedestal.ts';
 import { RacerView } from './racer-view.ts';
-import { Runtime } from './runtime.ts';
+import { Runtime, type Scene } from './runtime.ts';
 import { createScreens } from './screens.ts';
 import { buildTrackFrames } from './track-geometry.ts';
 import { createTrackView } from './track-view.ts';
@@ -98,24 +99,27 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const frames = buildTrackFrames(course);
   const trail = createTrackView(course, frames, seed);
   const rig = new CameraRig(frames);
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const hud = new Hud(ctx.container);
   const screens = createScreens(ctx.container);
   scene.add(trail.root);
+  const pedestal = createPedestal(scene, frames, course);
 
   let drawnWorld: World | undefined;
   const racers = new Map<RacerId, RacerView>();
   let cursor = 0;
   let goUntil = -1;
   let newBest = false;
-  syncViews = () => {
-    const world = runtime.world;
-    let snap = world !== drawnWorld;
-    if (snap) {
+  const syncRaceViews = (world: World, screen: Scene, screenChanged: boolean): boolean => {
+    const racing = screen === 'race' || screen === 'results';
+    const newWorld = racing && world !== drawnWorld;
+    if (newWorld) {
       reconcileRacerViews(scene, racers, world.racers);
       drawnWorld = world;
       goUntil = -1;
       newBest = false;
     }
+    let snap = newWorld || (screenChanged && screen === 'race');
     const batch = runtime.events.drain(cursor);
     cursor = batch.cursor;
     for (const event of batch.events) {
@@ -123,8 +127,37 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
       if (event.type === 'race.started') goUntil = world.tick + 45;
       if (event.type === 'best.new' && event.course === world.course.id) newBest = true;
     }
-    for (const racer of world.racers) racers.get(racer.id)?.tick(racer, frames, course);
-    rig.tick(playerOf(world), snap);
+    if (racing) {
+      for (const racer of world.racers) racers.get(racer.id)?.tick(racer, frames, course);
+    } else if (screenChanged) {
+      for (const view of racers.values()) view.root.visible = false;
+    }
+    return snap;
+  };
+
+  let drawnScreen: Scene | undefined;
+  let screenTicks = 0;
+  syncViews = () => {
+    const { world, scene: screen } = runtime;
+    const screenChanged = screen !== drawnScreen;
+    screenTicks = screenChanged ? 0 : screenTicks + 1;
+    drawnScreen = screen;
+
+    const selected = screen === 'select' ? (CHARACTER_IDS[runtime.cursor] ?? runtime.character) : null;
+    pedestal.sync(selected, screenTicks);
+    const snap = syncRaceViews(world, screen, screenChanged);
+    switch (screen) {
+      case 'title':
+        rig.title(motion.matches ? 0 : screenTicks * TICK_DT);
+        break;
+      case 'select':
+        if (screenChanged) rig.select(pedestal.top);
+        break;
+      case 'race':
+      case 'results':
+        rig.tick(playerOf(world), snap);
+        break;
+    }
   };
   syncViews();
 
@@ -140,6 +173,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     if (width === 0 || height === 0) return;
     renderer.setSize(width, height);
     rig.resize(width, height);
+    if (runtime.scene === 'select') rig.select(pedestal.top);
     render();
   };
   resize();

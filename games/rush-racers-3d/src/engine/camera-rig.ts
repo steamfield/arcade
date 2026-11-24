@@ -41,6 +41,22 @@ export class CameraRig {
     this.camera.lookAt(this.look);
   }
 
+  /** Glide above the first bend on a continuous path while the title is up. */
+  title(seconds: number): void {
+    const s = 119 + 37 * Math.sin(seconds * 0.08);
+    const { x, y, z, rx, rz } = this.track.frameAt(s, this.frame);
+    this.camera.position.set(x + 3 * rx, y + 5.6, z + 3 * rz);
+    const ahead = this.track.frameAt(s + 26, this.frame);
+    this.camera.lookAt(ahead.x, ahead.y + 0.9, ahead.z);
+  }
+
+  /** Frame the pedestal to the right of the card grid. */
+  select(pedestal: THREE.Vector3): void {
+    const offset = this.camera.aspect * 1.25;
+    this.camera.position.set(pedestal.x + offset, pedestal.y + 2.55, pedestal.z - 6.2);
+    this.camera.lookAt(pedestal.x + offset, pedestal.y + 0.95, pedestal.z);
+  }
+
   /** Updates the projection when the game viewport changes size. */
   resize(width: number, height: number): void {
     this.camera.aspect = width / height;

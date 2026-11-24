@@ -1,114 +1,15 @@
 import { TICK_HZ } from '@arcade/core';
+import { CAST } from '../logic/characters.ts';
 import type { SaveData } from '../logic/save.ts';
+import { placeOf, places } from '../logic/standings.ts';
 import { DASH, RACE } from '../logic/tuning.ts';
 import type { World } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
+import { HUD_CSS } from './hud-style.ts';
+import { RACER_COLORS } from './racer-geometry.ts';
 import type { Scene } from './runtime.ts';
 
-const CSS = `
-.rr3d-hud {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  color: #fff7e5;
-  pointer-events: none;
-  font: 600 16px/1.2 system-ui, sans-serif;
-}
-.rr3d-hud [hidden] { display: none; }
-.rr3d-clock, .rr3d-dash, .rr3d-results {
-  background: #231d17f5;
-  border: 1px solid #f7dcad5c;
-  box-shadow: 0 3px 10px #19130f44;
-}
-.rr3d-clock {
-  position: absolute;
-  top: calc(14px + env(safe-area-inset-top));
-  left: calc(16px + env(safe-area-inset-left));
-  padding: 7px 12px;
-  border-radius: 8px;
-  font-size: 23px;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-}
-.rr3d-dash {
-  position: absolute;
-  left: calc(16px + env(safe-area-inset-left));
-  bottom: calc(18px + env(safe-area-inset-bottom));
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border-radius: 8px;
-}
-.arcade-container:has(.arcade-touch) .rr3d-dash {
-  left: calc(164px + env(safe-area-inset-left));
-  bottom: calc(32px + env(safe-area-inset-bottom));
-}
-.rr3d-dash i {
-  width: 15px;
-  height: 12px;
-  border: 1px solid #d8b478;
-  border-radius: 2px;
-  transform: skewX(-14deg);
-}
-.rr3d-dash i[data-charged] { background: #ffce73; }
-.rr3d-count {
-  position: absolute;
-  top: 44%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: #fff1c7;
-  font-size: clamp(68px, 18vmin, 116px);
-  font-weight: 950;
-  line-height: 1;
-  paint-order: stroke fill;
-  -webkit-text-stroke: 5px #35251a;
-  text-shadow: 0 6px 10px #2a201d99;
-}
-.rr3d-results {
-  position: absolute;
-  top: 46%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  box-sizing: border-box;
-  width: min(312px, calc(100% - 32px));
-  padding: 20px;
-  border-radius: 14px;
-}
-.arcade-container:has(.arcade-touch) .rr3d-results {
-  /* Keep the panel between the 212px left and 194px right control areas. */
-  left: calc(50% + 9px + (env(safe-area-inset-left) - env(safe-area-inset-right)) / 2);
-  max-width: calc(100% - 422px - env(safe-area-inset-left) - env(safe-area-inset-right));
-  padding: clamp(12px, 2.5vw, 20px);
-}
-.rr3d-results h2 { margin: 0 0 14px; font-size: 25px; }
-.arcade-container:has(.arcade-touch) .rr3d-results h2 { font-size: clamp(19px, 3.7vw, 25px); }
-.rr3d-results p { margin: 0; }
-.rr3d-results dl {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: baseline;
-  gap: 5px 12px;
-  margin: 0 0 15px;
-  font-variant-numeric: tabular-nums;
-}
-.rr3d-results dd { margin: 0; text-align: right; font-size: 22px; }
-.rr3d-results .rr3d-best { color: #ffce73; margin-bottom: 10px; }
-@media (max-width: 640px) {
-  .arcade-container:has(.arcade-touch) .rr3d-results {
-    left: calc(16px + env(safe-area-inset-left));
-    right: calc(128px + env(safe-area-inset-right));
-    width: auto;
-    max-width: 312px;
-    margin-inline: auto;
-    transform: translateY(-50%);
-  }
-  .arcade-container:has(.arcade-touch .dpad):has(.rr3d-results:not([hidden])) .rr3d-clock,
-  .arcade-container:has(.rr3d-results:not([hidden])) .arcade-touch :is(.dpad, button:not([data-action="fire"])) {
-    visibility: hidden;
-  }
-}
-`;
+const ORDINAL = ['1st', '2nd', '3rd', '4th'];
 
 function show(node: HTMLElement, visible: boolean): void {
   if (node.hidden === visible) node.hidden = !visible;
@@ -123,58 +24,94 @@ function formatTime(time: number): string {
   return `${Math.floor(time / 600)}:${seconds}.${time % 10}`;
 }
 
-/** DOM overlay for the countdown, race clock, dash charges, and results. */
+/** DOM overlay for race status and results. */
 export class Hud {
-  private readonly clock = document.createElement('div');
+  private readonly race = document.createElement('div');
+  private readonly clock = document.createElement('span');
+  private readonly place = document.createElement('span');
+  private readonly progress = document.createElement('div');
+  private readonly markers: { node: HTMLSpanElement; label: string; offset: number }[] = [];
   private readonly dash = document.createElement('div');
   private readonly pips = Array.from({ length: DASH.charges }, () => document.createElement('i'));
   private readonly count = document.createElement('div');
+  private readonly hint = document.createElement('p');
   private readonly results = document.createElement('section');
-  private readonly heading = document.createElement('h2');
-  private readonly finishTime = document.createElement('dd');
-  private readonly bestTime = document.createElement('dd');
-  private readonly badge = document.createElement('p');
+  private readonly standings = document.createElement('ol');
+  private readonly bestTime = document.createElement('span');
+  private readonly badge = document.createElement('strong');
+  private raceWorld: World | undefined;
+  private resultsWorld: World | undefined;
+  private raceTick = -1;
   private time = -1;
+  private playerPlace = -1;
   private charges = -1;
   private countSecond: number | null = null;
-  private finishTicks: number | undefined;
   private bestTicks: number | undefined;
-  private finished: boolean | undefined;
 
   constructor(container: HTMLElement) {
     const root = document.createElement('div');
     root.className = 'rr3d-hud';
     const style = document.createElement('style');
-    style.textContent = CSS;
-    this.clock.className = 'rr3d-clock';
+    style.textContent = HUD_CSS;
+    const info = document.createElement('div');
+    info.className = 'rr3d-race-info';
+    this.place.className = 'rr3d-place';
+    this.progress.className = 'rr3d-progress';
+    this.progress.setAttribute('role', 'img');
+    info.append(this.clock, this.place, this.progress);
     this.count.className = 'rr3d-count';
     this.count.setAttribute('aria-live', 'polite');
     this.dash.className = 'rr3d-dash';
     this.dash.setAttribute('role', 'img');
     this.dash.append('Dash', ...this.pips);
+    this.hint.className = 'rr3d-race-hint';
+    const keyboard = document.createElement('span');
+    keyboard.className = 'rr3d-keyboard-keys';
+    keyboard.textContent = '↑ Run · ← → Steer · Space Jump · X Dash';
+    const touch = document.createElement('span');
+    touch.className = 'rr3d-touch-keys';
+    touch.textContent = '↑\u00a0Run · ←\u00a0→\u00a0Steer · A\u00a0Jump · B\u00a0Dash';
+    this.hint.append(keyboard, touch);
+    this.race.append(info, this.dash, this.count, this.hint);
+    this.race.hidden = true;
+
     this.results.className = 'rr3d-results';
+    this.results.hidden = true;
     this.results.setAttribute('aria-live', 'polite');
-    const times = document.createElement('dl');
-    const timeLabel = document.createElement('dt');
-    timeLabel.textContent = 'Time';
-    const bestLabel = document.createElement('dt');
-    bestLabel.textContent = 'Best';
+    const heading = document.createElement('h2');
+    heading.textContent = 'Race results';
+    const best = document.createElement('p');
+    best.className = 'rr3d-best';
     this.bestTime.textContent = '—';
-    times.append(timeLabel, this.finishTime, bestLabel, this.bestTime);
-    this.badge.className = 'rr3d-best';
+    this.badge.className = 'rr3d-badge';
     this.badge.textContent = 'NEW BEST';
-    const hint = document.createElement('p');
-    hint.textContent = 'Press Enter or ★ to race again';
-    this.results.append(this.heading, times, this.badge, hint);
-    root.append(style, this.clock, this.dash, this.count, this.results);
+    best.append('Best ', this.bestTime, this.badge);
+    const retry = document.createElement('p');
+    retry.textContent = 'Press Enter or ★ to race again';
+    const choose = document.createElement('p');
+    choose.textContent = 'X or B: choose another racer';
+    this.results.append(heading, this.standings, best, retry, choose);
+    root.append(style, this.race, this.results);
     container.append(root);
   }
 
-  /**
-   * Syncs the visible race or results values. `go` is true during the short GO banner after
-   * the countdown, and `newBest` records whether this race emitted `best.new`.
-   */
+  /** Syncs the current screen. Race-only values may change while the clock is ticking. */
   sync(world: World, scene: Scene, bests: SaveData['bests'], go: boolean, newBest: boolean): void {
+    show(this.race, scene === 'race');
+    show(this.results, scene === 'results');
+    if (scene === 'race') {
+      this.syncRace(world);
+      this.syncCountdown(world, go);
+    } else if (scene === 'results') {
+      this.syncResults(world, bests[world.course.id], newBest);
+    }
+  }
+
+  private syncRace(world: World): void {
+    const newWorld = this.raceWorld !== world;
+    if (!newWorld && world.tick === this.raceTick) return;
+    this.raceWorld = world;
+    this.raceTick = world.tick;
     const player = playerOf(world);
     const time = tenths(world.raceTicks);
     if (time !== this.time) {
@@ -186,12 +123,49 @@ export class Hud {
       for (const [index, pip] of this.pips.entries()) pip.toggleAttribute('data-charged', index < this.charges);
       this.dash.setAttribute('aria-label', `Dash charges: ${this.charges} of ${this.pips.length}`);
     }
+    const place = placeOf(world, player.id);
+    if (place !== this.playerPlace) {
+      this.playerPlace = place;
+      this.place.textContent = ORDINAL[place - 1] ?? String(place);
+    }
+    this.syncProgress(world, newWorld);
+  }
 
-    this.syncCountdown(world, go);
-    const showResults = scene === 'results';
-    show(this.dash, !showResults);
-    show(this.results, showResults);
-    if (showResults) this.syncResults(player.finishTicks, world.raceTicks, bests[world.course.id], newBest);
+  private syncProgress(world: World, newWorld: boolean): void {
+    if (newWorld) {
+      this.markers.length = 0;
+      this.progress.replaceChildren();
+      for (const racer of world.racers) {
+        const lane = document.createElement('div');
+        lane.className = 'rr3d-lane';
+        const node = document.createElement('span');
+        node.className = 'rr3d-marker';
+        const player = racer.id === 'player';
+        if (player) node.dataset.player = '';
+        else node.style.backgroundColor = `#${RACER_COLORS[racer.character].toString(16).padStart(6, '0')}`;
+        lane.append(node);
+        this.progress.append(lane);
+        this.markers.push({ node, label: CAST[racer.character].name + (player ? ' (you)' : ''), offset: -1 });
+      }
+    }
+    const { startS, finishS } = world.course;
+    let labelChanged = newWorld;
+    for (let slot = 0; slot < world.racers.length; slot++) {
+      const racer = world.racers[slot];
+      const marker = this.markers[slot];
+      if (!racer || !marker) continue;
+      const progress = Math.min(1, Math.max(0, (racer.s - startS) / (finishS - startS)));
+      const offset = Math.round(progress * 1000);
+      if (offset === marker.offset) continue;
+      labelChanged ||= Math.round(offset / 10) !== Math.round(marker.offset / 10);
+      marker.offset = offset;
+      marker.node.style.left = `${offset / 10}%`;
+    }
+    if (labelChanged) {
+      const racers = this.markers.map((marker) => `${marker.label} ${Math.round(marker.offset / 10)}%`);
+      const label = `Race progress. ${racers.join(', ')}.`;
+      if (label !== this.progress.getAttribute('aria-label')) this.progress.setAttribute('aria-label', label);
+    }
   }
 
   private syncCountdown(world: World, go: boolean): void {
@@ -206,18 +180,27 @@ export class Hud {
       this.count.textContent = second === null ? '' : second === 0 ? 'GO' : String(second);
     }
     show(this.count, second !== null);
+    show(this.hint, world.phase === 'countdown');
   }
 
-  private syncResults(finish: number | null, raceTicks: number, best: number | undefined, newBest: boolean): void {
-    const finished = finish !== null;
-    if (finished !== this.finished) {
-      this.finished = finished;
-      this.heading.textContent = finished ? 'Race complete' : 'Time limit reached';
-    }
-    const time = finish ?? raceTicks;
-    if (time !== this.finishTicks) {
-      this.finishTicks = time;
-      this.finishTime.textContent = formatTime(tenths(time));
+  private syncResults(world: World, best: number | undefined, newBest: boolean): void {
+    if (world !== this.resultsWorld) {
+      this.resultsWorld = world;
+      this.standings.replaceChildren();
+      for (const [index, id] of places(world).entries()) {
+        const racer = world.racers.find((entry) => entry.id === id);
+        if (!racer) continue;
+        const row = document.createElement('li');
+        if (id === 'player') row.dataset.player = '';
+        const place = document.createElement('span');
+        place.textContent = ORDINAL[index] ?? String(index + 1);
+        const name = document.createElement('span');
+        name.textContent = CAST[racer.character].name + (id === 'player' ? ' (You)' : '');
+        const time = document.createElement('span');
+        time.textContent = racer.finishTicks === null ? 'DNF' : formatTime(tenths(racer.finishTicks));
+        row.append(place, name, time);
+        this.standings.append(row);
+      }
     }
     if (best !== this.bestTicks) {
       this.bestTicks = best;

@@ -1,28 +1,10 @@
 import { TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { groundY } from '../logic/course.ts';
 import { RUN } from '../logic/tuning.ts';
 import type { CharacterId, Course, Racer } from '../logic/types.ts';
+import { geometryFor } from './racer-geometry.ts';
 import type { TrackFrame, TrackFrames } from './track-geometry.ts';
-
-// Okabe–Ito colors, with dark slate in place of black for visibility against the trail.
-const FUR: Record<CharacterId, number> = {
-  grit: 0x0072b2,
-  skip: 0xe69f00,
-  blaze: 0xd55e00,
-  shade: 0x55546d,
-  cheeks: 0xcc79a7,
-  duke: 0x009e73,
-  dusk: 0x56b4e9,
-  fang: 0xf0e442,
-};
-
-function tint(geometry: THREE.BufferGeometry, tint: THREE.Color): void {
-  const colors = new Float32Array(geometry.getAttribute('position').count * 3);
-  for (let i = 0; i < colors.length; i += 3) tint.toArray(colors, i);
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-}
 
 function shadowTexture(): THREE.DataTexture {
   const size = 32;
@@ -42,59 +24,19 @@ function shadowTexture(): THREE.DataTexture {
 
 const SHADOW_MAP = shadowTexture();
 const SHADOW_GEOMETRY = new THREE.PlaneGeometry(2, 1.65).rotateX(-Math.PI / 2);
+const FUR = new THREE.MeshLambertMaterial({ vertexColors: true });
+const FADING_FUR = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.58 });
 
-interface RacerGeometry {
-  body: THREE.BufferGeometry;
-  leg: THREE.BufferGeometry;
-}
-
-const geometries = new Map<CharacterId, RacerGeometry>();
-
-function buildRacerGeometry(character: CharacterId): RacerGeometry {
-  const fur = new THREE.Color(FUR[character]);
-  const bib = new THREE.Color(0xffe2af);
-  const dark = new THREE.Color(0x332627);
-  const sphere = new THREE.SphereGeometry(1, 14, 9);
-  const pieces: THREE.BufferGeometry[] = [];
-  const part = (color: THREE.Color, x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
-    const geometry = sphere.clone().scale(sx, sy, sz).translate(x, y, z);
-    tint(geometry, color);
-    pieces.push(geometry);
-  };
-  part(fur, 0, 0.86, 0, 0.51, 0.6, 0.4); // Body
-  part(bib, 0, 0.89, -0.31, 0.33, 0.43, 0.16);
-  part(fur, 0, 1.43, -0.14, 0.48, 0.4, 0.42); // Head
-  part(bib, 0, 1.32, -0.49, 0.27, 0.18, 0.18);
-  part(dark, 0, 1.39, -0.64, 0.1, 0.075, 0.065);
-  part(bib, 0, 0.73, 0.43, 0.26, 0.23, 0.27); // Tail
-  for (const side of [-1, 1]) {
-    part(fur, side * 0.34, 1.78, -0.13, 0.22, 0.27, 0.17);
-    part(bib, side * 0.35, 1.81, -0.24, 0.135, 0.17, 0.088);
-    part(dark, side * 0.27, 1.51, -0.48, 0.065, 0.085, 0.05);
-  }
-  const body = mergeGeometries(pieces);
-  for (const piece of pieces) piece.dispose();
-  const leg = sphere.scale(0.17, 0.3, 0.19).translate(0, -0.22, -0.05);
-  tint(leg, fur.clone().multiplyScalar(0.78));
-  return { body, leg };
-}
-
-function geometryFor(character: CharacterId): RacerGeometry {
-  const geometry = geometries.get(character) ?? buildRacerGeometry(character);
-  geometries.set(character, geometry);
-  return geometry;
-}
-
-/** A posed runner and blob shadow with view-owned materials and shared geometry. */
+/** A posed runner and blob shadow with shared character geometry and fur materials. */
 export class RacerView {
   readonly root = new THREE.Group();
   readonly character: CharacterId;
   private readonly runner = new THREE.Group();
   private readonly pose = new THREE.Group();
-  private readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true });
   private readonly motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private readonly frame: TrackFrame = { x: 0, y: 0, z: 0, tx: 0, tz: 0, rx: 0, rz: 0 };
-  private readonly legs: THREE.Mesh[];
+  private readonly body: THREE.Mesh;
+  private readonly legs: THREE.Mesh[] = [];
   private readonly shadow = new THREE.Mesh(
     SHADOW_GEOMETRY,
     new THREE.MeshBasicMaterial({ map: SHADOW_MAP, transparent: true, depthWrite: false }),
@@ -103,16 +45,17 @@ export class RacerView {
 
   constructor(character: CharacterId) {
     this.character = character;
-    const geometry = geometryFor(character);
-    this.legs = [];
+    const { body, leg, limbs } = geometryFor(character);
+    const { x, y, front, back } = limbs;
     for (const side of [-1, 1]) {
-      for (const z of [-0.23, 0.25]) {
-        const leg = new THREE.Mesh(geometry.leg, this.material);
-        leg.position.set(side * 0.29, 0.53, z);
-        this.legs.push(leg);
+      for (const z of back === undefined ? [front] : [front, back]) {
+        const foot = new THREE.Mesh(leg, FUR);
+        foot.position.set(side * x, y, z);
+        this.legs.push(foot);
       }
     }
-    this.pose.add(new THREE.Mesh(geometry.body, this.material), ...this.legs);
+    this.body = new THREE.Mesh(body, FUR);
+    this.pose.add(this.body, ...this.legs);
     this.runner.add(this.pose);
 
     this.shadow.rotation.order = 'YXZ';
@@ -122,6 +65,14 @@ export class RacerView {
   /** Restarts the stride cycle when this view is reused for a new race. */
   resetPose(): void {
     this.stride = 0;
+  }
+
+  /** Poses a dedicated select-screen model on the pedestal. */
+  preview(x: number, y: number, z: number, turn: number): void {
+    this.runner.position.set(x, y, z);
+    this.runner.rotation.y = this.motion.matches ? 0.45 : turn;
+    this.shadow.position.set(x, y + 0.012, z);
+    this.shadow.material.opacity = 0.45;
   }
 
   /** Updates the visual pose and shadow from the racer's current logic state. */
@@ -142,12 +93,15 @@ export class RacerView {
     const stride = Math.sin(this.stride);
     this.pose.position.y = this.motion.matches ? 0 : 0.12 * weight * Math.abs(stride);
     const swing = 0.7 * weight * stride;
+    const fade = racer.invulnTicks > 0 && (this.motion.matches || racer.invulnTicks % 24 >= 12);
+    const fur = fade ? FADING_FUR : FUR;
+    this.body.material = fur;
     let i = 0;
     for (const leg of this.legs) {
       leg.rotation.x = i === 0 || i === 3 ? swing : -swing;
+      leg.material = fur;
       i++;
     }
-    this.material.opacity = racer.invulnTicks > 0 ? 0.58 : 1;
     this.syncShadow(racer, course, y, heading);
   }
 
@@ -172,10 +126,9 @@ export class RacerView {
     this.shadow.material.opacity = 0.5 / (1 + rise * 0.65);
   }
 
-  /** Removes this view and disposes its own materials. */
+  /** Removes this view and disposes its blob shadow material. */
   dispose(): void {
     this.root.removeFromParent();
-    this.material.dispose();
     this.shadow.material.dispose();
   }
 }
