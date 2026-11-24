@@ -158,7 +158,7 @@ const FACES: Record<CharacterId, Face> = {
   },
   // Nova: a yellow star with a white-hot middle, two dark eyes and pink sparkles beside it.
   selene: {
-    head: ['...1...', '..121..', '1112111', '.10201.', '.11211.', '.11.11.', '.1...1.'],
+    head: ['...0...', '.00100.', '0111110', '.01210.', '.01110.', '0110110', '00...00'],
     portrait: [
       '.......00.......',
       '..3...0110......',
