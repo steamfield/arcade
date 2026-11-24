@@ -1,7 +1,7 @@
 import { createRng, EventLog, TICK_DT, TICK_HZ } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES, PLAYER_PROFILE } from './ai/profiles.ts';
-import { CHARACTERS, pickRivals } from './characters.ts';
+import { assignCharacters, CHARACTERS } from './characters.ts';
 import { DEFAULT_COURSE } from './courses/index.ts';
 import type { GameEvent } from './events.ts';
 import { RACE_LIMIT_TICKS } from './race/standings.ts';
@@ -24,10 +24,16 @@ const LANES = courseFromLevel({
 const worldAt = (seed: number, character?: CharacterId) =>
   createWorld(LANES, new EventLog<GameEvent>(), character ? { seed, character } : { seed });
 
+/** The characters `assignCharacters` puts in the three rival slots, in slot order, with only the player's fixed. */
+const rivalsFor = (seed: number, player: CharacterId): CharacterId[] => {
+  const cast = assignCharacters(createRng(seed), { player });
+  return RACER_IDS.filter((slot) => slot !== 'player').map((slot) => cast[slot]);
+};
+
 describe('picking rivals', () => {
   it.each(CHARACTER_IDS)('fields three different rivals, never the player, when %s is picked', (player) => {
     for (const seed of SEEDS) {
-      const rivals = pickRivals(createRng(seed), player);
+      const rivals = rivalsFor(seed, player);
 
       expect(rivals).toHaveLength(3);
       expect(new Set(rivals).size, `seed ${seed}: ${rivals.join(', ')}`).toBe(3);
@@ -36,14 +42,14 @@ describe('picking rivals', () => {
   });
 
   it('fields the same rivals for the same seed and different line-ups across seeds', () => {
-    const lineUps = SEEDS.map((seed) => pickRivals(createRng(seed), 'rudy').join(','));
+    const lineUps = SEEDS.map((seed) => rivalsFor(seed, 'rudy').join(','));
 
-    expect(SEEDS.map((seed) => pickRivals(createRng(seed), 'rudy').join(','))).toEqual(lineUps);
+    expect(SEEDS.map((seed) => rivalsFor(seed, 'rudy').join(','))).toEqual(lineUps);
     expect(new Set(lineUps).size).toBeGreaterThan(5);
   });
 
   it('draws every slot from one pool, so each other character races in each slot', () => {
-    const lineUps = SEEDS.map((seed) => pickRivals(createRng(seed), 'rudy'));
+    const lineUps = SEEDS.map((seed) => rivalsFor(seed, 'rudy'));
     const others = CHARACTER_IDS.filter((id) => id !== 'rudy').sort();
 
     for (const slot of [0, 1, 2]) {
@@ -52,7 +58,7 @@ describe('picking rivals', () => {
   });
 
   it('gives every other character a turn as a rival', () => {
-    const fielded = new Set(SEEDS.flatMap((seed) => pickRivals(createRng(seed), 'rudy')));
+    const fielded = new Set(SEEDS.flatMap((seed) => rivalsFor(seed, 'rudy')));
 
     expect([...fielded].sort()).toEqual(CHARACTER_IDS.filter((id) => id !== 'rudy').sort());
   });
@@ -104,7 +110,9 @@ describe('a race line-up', () => {
     // The documented stream derivation: the mixed seed XOR the stream's salt.
     const roster = createRng((Math.imul(seed, 0x9e3779b1) ^ RNG_SALTS.roster) >>> 0);
 
-    expect(worldAt(seed).racers.map((racer) => racer.character)).toEqual(['rudy', ...pickRivals(roster, 'rudy')]);
+    const cast = assignCharacters(roster, { player: 'rudy' });
+
+    expect(worldAt(seed).racers.map((racer) => racer.character)).toEqual(RACER_IDS.map((slot) => cast[slot]));
   });
 
   it('races the picked character and keeps it out of the rival slots', () => {

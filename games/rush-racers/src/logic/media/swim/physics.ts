@@ -6,6 +6,7 @@
 import type { EventSink } from '@arcade/core';
 import { kickImpulse } from '../../abilities.ts';
 import type { GameEvent } from '../../events.ts';
+import { unit } from '../../num.ts';
 import type { Body, Intent, MoveModifiers, Racer, Vec } from '../../types.ts';
 import type { MediumEnv, MediumTuning } from '../types.ts';
 import { type SwimEnv, swimEnv, swimMotion } from './data.ts';
@@ -120,12 +121,6 @@ function fly(
   accelerate(body, direction, tuning.force * mods.forceMul * extras.airSteer * dt);
   accelerate(body, DOWN, extras.airGravity * dt);
   applyDrag(body, extras.airDrag, dt);
-}
-
-/** The vector scaled to length 1, or zero when it has no length. */
-function unit(v: Vec): Vec {
-  const length = Math.sqrt(v.x * v.x + v.y * v.y);
-  return length === 0 ? { x: 0, y: 0 } : { x: v.x / length, y: v.y / length };
 }
 
 /** Faces the way the racer is steering horizontally; no horizontal input keeps the old facing. */

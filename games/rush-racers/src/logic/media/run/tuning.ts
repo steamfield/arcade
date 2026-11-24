@@ -48,7 +48,7 @@ export const RUN_TUNING = {
 } as const satisfies MediumTuning;
 
 /** Upward speed after stomping an enemy, px/s: about two thirds of a full jump. */
-export const RUN_STOMP_BOUNCE = 220;
+const RUN_STOMP_BOUNCE = 220;
 
 /**
  * Gravity keeps vertical speed through a dash or knockback; trapped racers and loose power-ups fall
