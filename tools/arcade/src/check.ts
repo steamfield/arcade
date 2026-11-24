@@ -62,7 +62,10 @@ export async function check(
 
   if (failures.length === 0) {
     const what = options.skipTests ? 'typecheck and lint passed, tests skipped' : 'check passed';
-    console.log(`✓ ${what} (${scope}: ${inScope.length} packages) in ${elapsed(start)}`);
+    // Turbo replays cached task results, so a fast pass can mean nothing ran; say which it was.
+    const cached = /Cached:\s+(\d+) cached, (\d+) total/.exec(tasks.output);
+    const reuse = cached ? `, ${cached[1]} of ${cached[2]} tasks from cache` : '';
+    console.log(`✓ ${what} (${scope}: ${inScope.length} packages${reuse}) in ${elapsed(start)}`);
     return 0;
   }
   console.log(failures.join('\n\n'));

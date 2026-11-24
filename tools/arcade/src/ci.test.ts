@@ -13,3 +13,11 @@ it("runs CI smoke in the Playwright image that matches the catalog's @playwright
   expect(images).not.toHaveLength(0);
   expect(images.every((v) => v === version) ? version : images).toBe(version);
 });
+
+it('never cancels a CI run on main, since the next run only tests what changed after it', () => {
+  const ci = readFileSync(join(ROOT, '.github/workflows/ci.yml'), 'utf8');
+  const group = /concurrency:\s*\n\s*group:\s*(.+)/.exec(ci)?.[1] ?? '';
+  // BASE_SHA is the commit before this push, so a run that replaced an earlier push's run would
+  // skip that push's changes. Each push gets its own concurrency group; PRs still replace their own.
+  expect(group).toContain("github.event_name == 'push' && github.sha");
+});
