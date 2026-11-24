@@ -3,7 +3,7 @@
  * `level/parse.ts`. Only `courses/index.ts` imports this file.
  */
 import type { LevelDef } from '../types.ts';
-import type { ShippedCourse } from './types.ts';
+import type { CourseSection, ShippedCourse } from './types.ts';
 
 /**
  * An asteroid belt flown left to right. Drift reads `#` as asteroid rock, `C` as ice, `~` as nebula
@@ -100,6 +100,19 @@ const NORMAL_LAG_TILES = 3;
  */
 const EASY_CATCH_UP_MIN = 0.3;
 
+/**
+ * The zones the race screen calls out. The S-bend and the run home belong to the zones before them,
+ * so a callout comes every 50-170 columns.
+ */
+const SECTIONS: readonly CourseSection[] = [
+  { fromCol: 0, name: 'LAUNCH LANE' },
+  { fromCol: 170, name: 'THE ICE GATE' },
+  { fromCol: 217, name: 'THE DUST FIELD' },
+  { fromCol: 279, name: 'SOLAR WIND LANE' },
+  { fromCol: 339, name: 'MOON SHADOW' },
+  { fromCol: 419, name: 'BLACK HOLE SPLIT' },
+];
+
 /** Slingshot Alley: a flight through an asteroid belt, the listed course of Farside. */
 export const SLINGSHOT_ALLEY: ShippedCourse = {
   id: 'slingshot-alley',
@@ -110,5 +123,6 @@ export const SLINGSHOT_ALLEY: ShippedCourse = {
   song: 'farside',
   listed: true,
   parTicks: PAR_TICKS,
+  sections: SECTIONS,
   catchUp: { normal: { lagTiles: NORMAL_LAG_TILES }, easy: { min: EASY_CATCH_UP_MIN } },
 };

@@ -3,7 +3,7 @@
  * Only `courses/index.ts` imports this file.
  */
 import type { LevelDef } from '../types.ts';
-import type { ShippedCourse } from './types.ts';
+import type { CourseSection, ShippedCourse } from './types.ts';
 
 /**
  * Thunderhead Pass, flown left to right. Rows 0 and 25 are the ceiling and the floor; flight reads
@@ -102,6 +102,14 @@ const HARD_LAG_TILES = -1;
  */
 const EASY_MIN = 0.3;
 
+/** The zones the race screen calls out, one per part of the list above. */
+const SECTIONS: readonly CourseSection[] = [
+  { fromCol: 0, name: 'THE CLOUD BANK' },
+  { fromCol: 192, name: 'THE TWO ROADS' },
+  { fromCol: 412, name: 'THE STORM CELL' },
+  { fromCol: 616, name: 'CLEAR SKIES' },
+];
+
 /** Thunderhead Pass: Cloudreach's listed course, flown through a storm-front sky. */
 export const THUNDERHEAD_PASS: ShippedCourse = {
   id: 'thunderhead-pass',
@@ -112,5 +120,6 @@ export const THUNDERHEAD_PASS: ShippedCourse = {
   song: 'cloudreach',
   listed: true,
   parTicks: PAR_TICKS,
+  sections: SECTIONS,
   catchUp: { hard: { lagTiles: HARD_LAG_TILES }, easy: { min: EASY_MIN } },
 };

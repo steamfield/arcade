@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_COURSE } from '../../logic/courses/index.ts';
 import {
+  countdownRects,
   levelBanner,
   noteSplashMoments,
   type SplashClock,
@@ -129,5 +130,32 @@ describe('the countdown level banner', () => {
 
   it('is gone once the race is running', () => {
     expect(levelBanner(world('hard', 'racing'))).toBeNull();
+  });
+});
+
+describe('where the countdown draws', () => {
+  /** Whether `rect` covers the span x0-x1, y0-y1 (inclusive pixel edges, as UI.md gives them). */
+  const covers = (
+    rect: { x: number; y: number; w: number; h: number },
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+  ) => rect.x <= x0 && rect.y <= y0 && rect.x + rect.w >= x1 && rect.y + rect.h >= y1;
+
+  it('covers the numeral from the top of its drop to rest, the level word and the pips (UI.md, base view)', () => {
+    const [numeral, word, pips] = countdownRects(160);
+
+    // The numeral centres on y 62 at 2x (50-74) and drops 6 px in.
+    expect(numeral && covers(numeral, 152, 44, 168, 74)).toBe(true);
+    // NORMAL, the widest level word, centred on (160, 88).
+    expect(word && covers(word, 135, 82, 185, 94)).toBe(true);
+    expect(pips && covers(pips, 147, 98, 173, 104)).toBe(true);
+  });
+
+  it('follows the view centre on a wider view', () => {
+    const shift = 50;
+    const moved = countdownRects(160 + shift);
+    expect(moved).toEqual(countdownRects(160).map((rect) => ({ ...rect, x: rect.x + shift })));
   });
 });
