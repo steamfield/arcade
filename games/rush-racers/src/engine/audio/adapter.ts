@@ -24,6 +24,7 @@ import { isItemSfx, itemSfxKey } from './item-sfx.ts';
 import { createMoveCues } from './move-cues.ts';
 import type { Song } from './notation.ts';
 import type { Sequencer } from './sequencer.ts';
+import { setPieceCue } from './setpiece-cues.ts';
 import type { SfxKey } from './sfx.ts';
 import { type SongName, songs } from './songs/index.ts';
 import type { Synth } from './synth.ts';
@@ -259,7 +260,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       case 'howToPlay.page':
         return sfx('menu.move');
       default: {
-        const cue = attacks.forEvent(event, tick) ?? moves.forEvent(event);
+        const cue = attacks.forEvent(event, tick) ?? moves.forEvent(event) ?? setPieceCue(event, raceWorld(), local());
         if (cue) sfx(cue);
       }
     }
