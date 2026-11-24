@@ -1,8 +1,11 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import type { GameEvent } from '../events.ts';
 import { applyHit } from '../hazards/hits.ts';
 import { centreOf, hitbox } from '../racers.ts';
-import { eventsIn, giveItems, hold, IDLE, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
+import { courseFromLevel, eventsIn, giveItems, hold, IDLE, placeOnTile, raceOn, racerOf, step } from '../test-world.ts';
 import type { HeldItem, PowerUpKind, TickInput, Vec } from '../types.ts';
+import { createWorld } from '../world.ts';
 import { driveDash, fireItem } from './use.ts';
 
 /** The player's lane is two rows tall with coral right in front of the start and a way round below. */
@@ -244,6 +247,26 @@ describe('dashing kinds during a dash', () => {
       expect(player.items[0]?.charges, kind).toBe(kind === 'jetFin' ? 3 : 1);
       expect(eventsIn(log), kind).toEqual([]);
     }
+  });
+
+  it.each([
+    ['thornwood', 'run', true],
+    ['cloudreach', 'flight', true],
+    ['farside', 'drift', true],
+    ['reef', 'swim', false],
+  ] as const)('on %s (%s) a Jet Fin dasher with its cooldown spent fires a Cannonball: %s', (world, medium, fires) => {
+    const log = new EventLog<GameEvent>(100_000);
+    const course = courseFromLevel(OPEN, medium, { world });
+    const race = createWorld(course, log, { seed: 1 });
+    race.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+    const player = racerOf(race, 'player');
+    giveItems(player, ['jetFin', 'cannonball']);
+    expect(fireItem(race, player, 0, RIGHT)).toBe(true);
+    // The use cooldown (20 ticks) ends before the 24-tick dash does.
+    player.useCooldown = 0;
+    expect(player.status.dashing).toBeGreaterThan(0);
+
+    expect(fireItem(race, player, 1, RIGHT)).toBe(fires);
   });
 
   it('lets a Puffer fire mid-dash, lengthening inflation but never shortening it', () => {

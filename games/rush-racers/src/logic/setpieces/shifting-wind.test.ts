@@ -8,9 +8,13 @@ import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
 import { LevelError } from '../level/level-error.ts';
 import { parseLevel } from '../level/parse.ts';
+import { flightEnv } from '../media/flight/data.ts';
+import { mediumOf } from '../media/index.ts';
+import { RIPTIDE } from '../powerups/tuning.ts';
 import { COUNTDOWN_TICKS } from '../race/standings.ts';
+import { centreOf } from '../racers.ts';
 import { courseFromLevel, eventsIn, placeOnTile, racerOf, step, ticksOf } from '../test-world.ts';
-import type { LevelDef, ShiftingWindDef } from '../types.ts';
+import { type LevelDef, type ShiftingWindDef, TILE } from '../types.ts';
 import { createWorld } from '../world.ts';
 import { parseShiftingWind, SHIFTING_WIND, windDirection } from './shifting-wind.ts';
 
@@ -188,5 +192,30 @@ describe('pushing flyers', () => {
     expect(flyer.body.vx).toBeGreaterThan(0);
     step(world, log, 30);
     expect(flyer.body.vx).toBeLessThan(0);
+  });
+});
+
+describe('a Jet Stream over a shifting wind zone', () => {
+  it('replaces the zone gust in the flyer env', () => {
+    const { world } = windRace(windySky([ZONE]));
+    const flyer = racerOf(world, 'player');
+    placeOnTile(flyer, 12, 4);
+    const sample = () => mediumOf(world).sampleEnvironment(world, flyer);
+    const gust = sample();
+    expect(gust).toMatchObject({ kind: 'flight', wind: { y: 0 } });
+    expect(flightEnv(gust).wind?.x).toBeGreaterThan(0);
+
+    const centre = centreOf(flyer);
+    const down = { x: 0, y: 1 };
+    world.riptides.push({
+      x: centre.x - TILE,
+      y: centre.y - 2 * TILE,
+      w: 2 * TILE,
+      h: 4 * TILE,
+      dir: down,
+      ttl: 100,
+      owner: 'tess',
+    });
+    expect(sample()).toEqual({ kind: 'flight', wind: { x: 0, y: RIPTIDE.currentForceMul }, inFog: false });
   });
 });

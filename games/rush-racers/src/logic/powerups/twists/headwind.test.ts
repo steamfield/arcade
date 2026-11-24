@@ -12,6 +12,7 @@ import { centreOf } from '../../racers.ts';
 import { courseFromLevel, eventsIn, giveItems, hold, IDLE, placeOnTile, racerOf } from '../../test-world.ts';
 import { type Difficulty, RACER_IDS, type RacerId, TILE, type TickInput } from '../../types.ts';
 import { createWorld, stepRace } from '../../world.ts';
+import { RIPTIDE } from '../tuning.ts';
 import { HEADWIND, HEADWIND_SWEEP_TICKS, HEADWIND_TUNING, headwindAt } from './headwind.ts';
 
 /**
@@ -146,6 +147,29 @@ describe('who a Headwind front holds back', () => {
     fire();
     const env = mediumOf(world).sampleEnvironment(world, racerOf(world, 'tess'));
     expect(env).toEqual({ kind: 'flight', wind: { x: HEADWIND_TUNING.gust, y: -1 }, inFog: false });
+  });
+
+  it('lets a Jet Stream lane over a flyer in the front replace the gust', () => {
+    const { world, at, fire } = headwindRace();
+    at('player', 9);
+    at('tess', 10);
+    fire();
+    const tess = racerOf(world, 'tess');
+    const sample = () => mediumOf(world).sampleEnvironment(world, tess);
+    expect(sample()).toEqual({ kind: 'flight', wind: { x: HEADWIND_TUNING.gust, y: 0 }, inFog: false });
+
+    const centre = centreOf(tess);
+    const up = { x: 0, y: -1 };
+    world.riptides.push({
+      x: centre.x - TILE,
+      y: centre.y - 2 * TILE,
+      w: 2 * TILE,
+      h: 4 * TILE,
+      dir: up,
+      ttl: 100,
+      owner: 'bo',
+    });
+    expect(sample()).toEqual({ kind: 'flight', wind: { x: 0, y: -RIPTIDE.currentForceMul }, inFog: false });
   });
 
   it('passes over a racer that is invulnerable, fallen out or finished', () => {
