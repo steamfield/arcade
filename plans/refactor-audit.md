@@ -171,7 +171,7 @@ Depends on: phase 1
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/engine/worlds/reef/, games/rush-racers/src/engine/worlds/reef.ts, games/rush-racers/src/engine/worlds/object-skin.ts, games/rush-racers/src/engine/worlds/thornwood/, games/rush-racers/src/engine/worlds/farside/, games/rush-racers/src/engine/worlds/cloudreach/, games/rush-racers/src/engine/art/, games/rush-racers/src/engine/themes/ocean.test.ts | | | opus | running | deliver/refactor-audit-3a | |
+| a | L | games/rush-racers/src/engine/worlds/reef/, games/rush-racers/src/engine/worlds/reef.ts, games/rush-racers/src/engine/worlds/object-skin.ts, games/rush-racers/src/engine/worlds/thornwood/, games/rush-racers/src/engine/worlds/farside/, games/rush-racers/src/engine/worlds/cloudreach/, games/rush-racers/src/engine/art/, games/rush-racers/src/engine/themes/ocean.test.ts | | | opus | merged | deliver/refactor-audit-3a | |
 
 Test cases: texture key strings unchanged (`themes/ocean.test.ts` pins them); `skins.test.ts` and `assertSkinTextures` pass for Reef with art registered by `REEF_SKIN.registerTextures`; `art/` builds no Reef cast, item, pickup or enemy texture; no world folder imports another world's folder (Thornwood, Cloudreach and Farside stop importing `reef/objects.ts`); a reef race capture matches the baseline.
 
@@ -307,3 +307,4 @@ Depends on: phase 6, phase 8
 - phase 2 landed: check --all green, difficulty 109 files / 273 tests passed (197 s).
 - landing fix: race camera eased per frame, so `see --compare` differed 30% between identical runs; it now eases per logic tick (HUD tweens still use real time, allowed for visuals).
 - 7b accepted: package.json/lockfile edit (vitest devDependency for config tests); build id keeps codec, messages, race-world, race, session, hash-ledger, lobby.
+- 3a accepted: widened owns for review fixes (boot.ts, enemy-look/hud tests, theme tests, skins.test, types.ts, cloudreach.ts, DESIGN.md, UI.md). Phase 3 demo: race-to-finish frames at 200/400/600 identical to the pre-3a capture.
