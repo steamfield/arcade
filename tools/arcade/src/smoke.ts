@@ -38,6 +38,17 @@ export async function smoke(slug: string | undefined): Promise<number> {
   wrangler.stderr.on('data', (d) => {
     wranglerLog += d;
   });
+  const stopWrangler = () => killProcessGroup(wrangler.pid);
+  const onSigint = () => {
+    stopWrangler();
+    process.exit(130);
+  };
+  const onSigterm = () => {
+    stopWrangler();
+    process.exit(143);
+  };
+  process.once('SIGINT', onSigint);
+  process.once('SIGTERM', onSigterm);
   const base = `http://127.0.0.1:${port}`;
   let failed = 0;
   try {
@@ -67,14 +78,21 @@ export async function smoke(slug: string | undefined): Promise<number> {
       }
     }
   } finally {
-    try {
-      if (wrangler.pid) process.kill(-wrangler.pid, 'SIGTERM');
-    } catch {
-      // wrangler already exited (it failed to start); the error that says why is the one to show.
-    }
+    process.off('SIGINT', onSigint);
+    process.off('SIGTERM', onSigterm);
+    stopWrangler();
   }
   console.log(failed ? `\n✗ smoke failed in ${elapsed(start)}` : `\n✓ smoke passed in ${elapsed(start)}`);
   return failed ? 1 : 0;
+}
+
+/** Sends SIGTERM to a detached child's whole process group, so wrangler's workers go with it. */
+function killProcessGroup(pid: number | undefined): void {
+  try {
+    if (pid) process.kill(-pid, 'SIGTERM');
+  } catch {
+    // The process already exited (it failed to start); the error that says why is the one to show.
+  }
 }
 
 /** Playwright's failure blocks, minus attachment and trace boilerplate. */

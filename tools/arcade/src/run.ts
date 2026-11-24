@@ -21,6 +21,8 @@ export function run(cmd: string, args: string[], options: { cwd?: string; env?: 
       output += d;
     });
     child.on('close', (code) => resolve({ code: code ?? 1, output }));
+    // A missing binary emits 'error' and may never emit 'close'. A promise settles once, so both firing is safe.
+    child.on('error', (err) => resolve({ code: 1, output: `${output}${cmd}: ${err.message}` }));
   });
 }
 

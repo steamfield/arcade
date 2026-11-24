@@ -154,13 +154,7 @@ export class GameDriver {
 
   /** Everything that went wrong without throwing. Tests fail when this is non-empty. */
   async problems(): Promise<Problem[]> {
-    const gameErrors = await this.page
-      .evaluate(() => window.__arcade?.errors ?? [])
-      .catch(() => [] as { source: string; message: string }[]);
-    const all: Problem[] = [
-      ...gameErrors.map((e) => ({ kind: 'game-error' as const, message: `${e.source}: ${e.message}` })),
-      ...this.found,
-    ];
+    const all: Problem[] = [...(await this.readGameErrors()), ...this.found];
     // One exception surfaces as a game error, a page error and a console error. Report it once.
     const seen: string[] = [];
     return all.filter((p) => {
@@ -171,6 +165,18 @@ export class GameDriver {
       seen.push(key);
       return true;
     });
+  }
+
+  /** Errors the game reported in the page. A closed page has none to read; a failed read is itself a problem. */
+  private async readGameErrors(): Promise<Problem[]> {
+    if (this.page.isClosed()) return [];
+    try {
+      const errors = await this.page.evaluate(() => window.__arcade?.errors ?? []);
+      return errors.map((e) => ({ kind: 'game-error' as const, message: `${e.source}: ${e.message}` }));
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      return [{ kind: 'game-error', message: `could not read window.__arcade.errors: ${reason}` }];
+    }
   }
 
   private async assertNoGameErrors(during: string): Promise<void> {
