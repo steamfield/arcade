@@ -46,7 +46,7 @@ export type SfxKey =
   | 'respawn';
 
 /** A pitched part. `note` is a MIDI number; `slide` is semitones reached by the end. Times in seconds. */
-export interface TonePart {
+interface TonePart {
   wave: 'pulse' | 'triangle';
   note: number;
   offset: number;
@@ -59,7 +59,7 @@ export interface TonePart {
 }
 
 /** A filtered noise part; `frequency` and `sweepTo` are the filter's, in Hz. */
-export interface NoisePart {
+interface NoisePart {
   wave: 'noise';
   offset: number;
   length: number;

@@ -6,7 +6,7 @@ import { raceOn } from '../../logic/test-world.ts';
 import { RACER_SIZE } from '../../logic/types.ts';
 import { createWorld } from '../../logic/world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import type { CameraSpan } from '../view/storm-reach.ts';
+import type { CameraSpan } from '../view/set-pieces/storm-reach.ts';
 import { createBubbleTracker } from './bubble-tracker.ts';
 import type { Bursts } from './bursts.ts';
 import { createEventEffects } from './event-effects.ts';

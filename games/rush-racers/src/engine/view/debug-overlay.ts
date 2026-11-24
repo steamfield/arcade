@@ -11,7 +11,7 @@ import { localIdOf } from '../local-racer.ts';
 import { Layer } from './layers.ts';
 
 /** The debug overlay; `sync` redraws hitboxes and the readout from the world. */
-export interface DebugOverlay {
+interface DebugOverlay {
   sync(world: World): void;
 }
 

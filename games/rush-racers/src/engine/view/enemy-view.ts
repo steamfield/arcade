@@ -16,7 +16,7 @@ import { BUBBLE_COUNT, defeatBurst, EEL_BODY_PX, type EnemyLook, type EnemyMomen
 import { Layer } from './layers.ts';
 
 /** Draws the enemies; `onEvents` hears their bonks, defeats and pearl bursts drained on world tick `tick`. */
-export interface EnemyView {
+interface EnemyView {
   sync(world: World): void;
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
 }

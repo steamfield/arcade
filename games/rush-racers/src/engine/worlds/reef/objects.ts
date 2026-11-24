@@ -1,17 +1,18 @@
 /**
- * Reef's object skin: the item icons and art, attack art, clams, pearls, sea enemies, hazard glints
- * and item and enemy words the game has always had.
+ * Reef's object skin: items, attacks, clams and pearls, sea enemies, urchins and jellies with their
+ * glints, and the words for them. `art.ts` draws every texture the skin names except the HUD item
+ * icons, which are frames of the UI kit's `ui-icons`.
  */
-
 import type { PowerUpKind } from '../../../logic/types.ts';
-import { Tex } from '../../art/keys.ts';
+import { Frame } from '../../art/keys.ts';
 import { IconFrame, UiTex } from '../../art/ui/keys.ts';
 import type { ArtRef } from '../art-ref.ts';
-import type { ObjectSkin } from '../object-skin.ts';
+import { GLINT_ALPHA, type ObjectSkin } from '../object-skin.ts';
+import { ReefHazardAnim, ReefHazardTex, ReefItemTex, ReefTex } from './keys.ts';
 
 const icon = (kind: PowerUpKind): ArtRef => ({ texture: UiTex.icons, frame: IconFrame[kind] });
 
-/** Reef's objects. */
+/** Reef's objects: its item, attack, pickup, enemy and hazard art and words. */
 export const REEF_OBJECTS: ObjectSkin = {
   itemIcons: {
     jetFin: icon('jetFin'),
@@ -25,35 +26,28 @@ export const REEF_OBJECTS: ObjectSkin = {
     mimic: icon('mimic'),
     cannonball: icon('cannonball'),
   },
-  itemTextures: {
-    jetFin: Tex.jetFin,
-    bubbleShield: Tex.bubbleShield,
-    puffer: Tex.puffer,
-    inkSac: Tex.inkSac,
-    glowLantern: Tex.glowLantern,
-    homingSquid: Tex.homingSquid,
-    riptide: Tex.riptide,
-    undertow: Tex.undertow,
-    mimic: Tex.mimic,
-    cannonball: Tex.cannonball,
-  },
+  itemTextures: ReefItemTex,
   attack: {
-    homer: Tex.squid,
-    riptideStreak: Tex.riptideStreak,
-    undertowStreak: Tex.undertowStreak,
-    inkCloud: Tex.inkCloud,
-    bubble: Tex.bubble,
-    looseGlow: Tex.looseGlow,
+    homer: ReefTex.squid,
+    riptideStreak: ReefTex.riptideStreak,
+    undertowStreak: ReefTex.undertowStreak,
+    inkCloud: ReefTex.inkCloud,
+    bubble: ReefTex.bubble,
+    looseGlow: ReefTex.looseGlow,
   },
-  pickups: { pearl: Tex.pearl, clam: Tex.clam },
+  pickups: { pearl: ReefTex.pearl, clam: ReefTex.clam },
   enemies: {
-    bodies: { shark: Tex.shark, eel: Tex.eelHead, crab: Tex.crab },
-    eelBody: Tex.eelBody,
-    marks: Tex.enemyMark,
+    bodies: { shark: ReefTex.shark, eel: ReefTex.eelHead, crab: ReefTex.crab },
+    eelBody: ReefTex.eelBody,
+    marks: ReefTex.marks,
+  },
+  hazards: {
+    urchin: { texture: ReefHazardTex.urchin, frame: Frame.a, anim: null },
+    jelly: { texture: ReefHazardTex.jelly, frame: Frame.a, anim: ReefHazardAnim.jellyPulse },
   },
   glints: {
-    urchin: { key: 'dark-glint-urchin', colour: 0xff8a7a, alpha: 0.55 },
-    jelly: { key: 'dark-glint-jelly', colour: 0xe0b8ff, alpha: 0.6 },
+    urchin: { key: 'dark-glint-urchin', colour: 0xff8a7a, alpha: GLINT_ALPHA.urchin },
+    jelly: { key: 'dark-glint-jelly', colour: 0xe0b8ff, alpha: GLINT_ALPHA.jelly },
   },
   text: {
     slowedBy: 'SLOWED BY INK',

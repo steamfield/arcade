@@ -67,9 +67,9 @@ const PITCH_SPREAD = 0.05;
 const STEADY: ReadonlySet<EffectKey> = new Set<SfxKey>(['countdown', 'go']);
 
 /** A storm zone's warning is heard within about a screen, like a rival's attack. */
-export const STORM_WARN_REACH_PX = HEARING_PX;
+const STORM_WARN_REACH_PX = HEARING_PX;
 /** A strike's thunder carries twice as far as its warning. */
-export const STORM_STRIKE_REACH_PX = 2 * HEARING_PX;
+const STORM_STRIKE_REACH_PX = 2 * HEARING_PX;
 
 /** The sound each of the local racer's own sky moments makes. */
 const OWN_SKY_SFX = { 'racer.flapped': 'flap', 'racer.bounced': 'bounce', 'ring.passed': 'ring' } as const;

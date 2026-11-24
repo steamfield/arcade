@@ -1,17 +1,12 @@
 /**
  * Thornwood's cast skin: the land critters' racer textures, portraits, heads and ability wording.
- * `registerThornwoodCast` draws the textures `keys.ts` names for the cast at boot, and
- * `THORNWOOD_CAST` points the skin at them.
+ * `THORNWOOD_CAST` points the skin at the textures `keys.ts` names for the cast, which `art.ts`
+ * draws.
  */
-import type Phaser from 'phaser';
 import type { CharacterId } from '../../../logic/types.ts';
-import { drawSheets } from '../../art/index.ts';
 import type { ArtRef } from '../art-ref.ts';
 import type { CastSkin } from '../cast-skin.ts';
 import { ThornCastFrame, ThornRacerTex, ThornTex } from './keys.ts';
-import { THORNWOOD_ART_OWNER } from './owner.ts';
-import { THORNWOOD_FACE_SHEETS } from './sprites/portraits.ts';
-import { THORNWOOD_RACER_SHEETS } from './sprites/racers.ts';
 
 const frameIn =
   (texture: string) =>
@@ -53,13 +48,3 @@ export const THORNWOOD_CAST: CastSkin = {
     rook: { name: 'FRENZY', blurb: 'SURGES AS RIVALS GET HIT' },
   },
 };
-
-/**
- * Draws the cast's racer, portrait and head textures; calling it again changes nothing.
- *
- * @throws {Error} When a sprite's pixel text is malformed (see `drawFrames`), naming the key, frame and row.
- * @throws {Error} When another owner already has one of the keys.
- */
-export function registerThornwoodCast(scene: Phaser.Scene): void {
-  drawSheets(scene, [...THORNWOOD_RACER_SHEETS, ...THORNWOOD_FACE_SHEETS], THORNWOOD_ART_OWNER);
-}

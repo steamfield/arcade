@@ -73,7 +73,7 @@ export const ALL_FACES: readonly Typeface[] = [TEXT_FACE, DISPLAY_FACE, TEXT_SHA
 const FALLBACK = '?';
 
 /** One glyph's entry in Phaser's bitmap-font data (Phaser's type omits `xAdvance`, which its renderer reads). */
-export interface GlyphData {
+interface GlyphData {
   x: number;
   y: number;
   width: number;
@@ -92,7 +92,7 @@ export interface GlyphData {
 }
 
 /** Bitmap-font data in the shape `scene.cache.bitmapFont` expects. */
-export interface FontData {
+interface FontData {
   font: string;
   size: number;
   lineHeight: number;
@@ -101,13 +101,13 @@ export interface FontData {
 }
 
 /** Width and height of a piece of text, in px at the given scale. */
-export interface TextSize {
+interface TextSize {
   width: number;
   height: number;
 }
 
 /** The widest glyph: the face's cell width on the glyph sheet. */
-export function cellWidth(face: Typeface): number {
+function cellWidth(face: Typeface): number {
   return Math.max(...Object.values(face.glyphs).map((rows) => rows[0]?.length ?? 0));
 }
 

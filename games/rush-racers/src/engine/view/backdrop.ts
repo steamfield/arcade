@@ -32,7 +32,7 @@ export interface Backdrop {
 }
 
 /** How the backdrop may move. */
-export interface BackdropOptions {
+interface BackdropOptions {
   /** Hold rays, caustics, haze and motes still. */
   reducedMotion: boolean;
 }
@@ -70,7 +70,7 @@ const ADDITIVE = 'ADD';
 const SURFACE_Y = TILE;
 
 /** One part of the backdrop that moves with time or the camera, and what the theme draws it with. */
-export type MovingPart = { kind: 'caustics' | 'rays' | 'motes'; colour: number } | { kind: 'haze'; haze: HazeSpec };
+type MovingPart = { kind: 'caustics' | 'rays' | 'motes'; colour: number } | { kind: 'haze'; haze: HazeSpec };
 
 /** The moving parts `theme`'s backdrop has, back to front: only those the theme gives a colour or haze for. */
 export function movingParts(theme: Pick<Theme, 'backdrop' | 'ambient'>): MovingPart[] {
@@ -199,7 +199,7 @@ function floorTop(level: Level): number {
 }
 
 /** A world-space rectangle in px. */
-export interface CaveSpan {
+interface CaveSpan {
   x: number;
   y: number;
   width: number;

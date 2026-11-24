@@ -39,7 +39,7 @@ function backLinkCorner(layout: ScreenLayout): { left: number; bottom: number } 
 const PULSE_TICKS = 15;
 
 /** The hint views; `sync` redraws them from the world and the hints now showing. */
-export interface HintView {
+interface HintView {
   /** `view` is the camera's world rectangle, to turn the player's position into a screen one. */
   sync(world: World, hints: HintState, view: Phaser.Geom.Rectangle): void;
 }

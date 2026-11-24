@@ -1,8 +1,8 @@
 /**
- * The forest theme's colours: Thornwood's earth and cracked stone, branches, mud, thorn bushes and
- * wasps, the painted tree layers, the canopy's depth bands and the light through it. As in the ocean,
- * terrain is mid-value and the air and backdrop dark, green and low in saturation, so racers, hazards
- * and pickups read in front. Every racer's main colour and the thorn bush's body hold 3:1 off every
+ * The forest theme's colours: Thornwood's earth and cracked stone, branches, mud, the painted tree
+ * layers, the canopy's depth bands and the light through it. As in the ocean, terrain is mid-value
+ * and the air and backdrop dark, green and low in saturation, so racers, hazards and pickups read in
+ * front. Every racer's main colour and each hazard's body hold 3:1 off every
  * canopy band and backdrop colour (the forest theme's contrast bands), so the canopy is kept as dark
  * as the ocean's water. Lanes may tune these only while every contrast test still passes.
  */
@@ -27,14 +27,6 @@ export const ForestTerrainPalette = {
   wind: [0x6a9a6a, 0xd8f0c0],
   /** Finish banner: post, dark check, light check, flag cloth. */
   finish: [0x16161e, 0x2a2a3a, 0xf2f2f2, 0xffcc33],
-} as const satisfies Record<string, Palette>;
-
-/** Hazard palettes: dark bodies with hot accents, so danger reads by shape and value, not hue alone. */
-export const ForestHazardPalette = {
-  /** Thorn bush: near-black stems, a lit pink body that holds 3:1 off the lightest canopy band, thorn tips. */
-  thornBush: [0x140810, 0xe888b0, 0xffd0a0],
-  /** Wasp: outline, yellow body, black stripes and wing shine. */
-  wasp: [0x1a1206, 0xffd23a, 0x2a2010, 0xe8f4ff],
 } as const satisfies Record<string, Palette>;
 
 /** Backdrop palettes: dark, desaturated greens a step away from the canopy behind them. */

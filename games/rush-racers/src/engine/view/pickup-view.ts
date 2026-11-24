@@ -12,7 +12,7 @@ import type { WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
 
 /** The course's pickups; `sync` redraws them from the world. */
-export interface PickupView {
+interface PickupView {
   sync(world: World, tick: number): void;
 }
 

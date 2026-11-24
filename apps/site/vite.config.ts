@@ -1,6 +1,7 @@
-import { createReadStream, existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
-import { type GameManifest, parseManifest } from '@arcade/config/manifest';
+import type { GameManifest } from '@arcade/config/manifest';
+import { readManifestsIn } from '@arcade/config/manifest-file';
 import { defineConfig, type Plugin } from 'vite';
 import { pixelIcon, pixelLogo } from './src/pixel.ts';
 
@@ -15,12 +16,8 @@ function listedStatuses(): GameManifest['status'][] {
 }
 
 function readGames(): GameManifest[] {
-  const dir = join(ROOT, 'games');
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .map((name) => join(dir, name, 'game.json'))
-    .filter((p) => existsSync(p))
-    .map((p) => parseManifest(JSON.parse(readFileSync(p, 'utf8')), p))
+  return readManifestsIn(join(ROOT, 'games'))
+    .map((entry) => entry.manifest)
     .filter((g) => listedStatuses().includes(g.status))
     .sort((a, b) => a.title.localeCompare(b.title));
 }

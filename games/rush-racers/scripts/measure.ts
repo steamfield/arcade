@@ -12,8 +12,8 @@
  */
 import { parseArgs } from 'node:util';
 import { BOT_PROFILES } from '../src/logic/ai/profiles.ts';
+import { meanPlayerFinish, parBand, type Run, race, seconds } from '../src/logic/balance/race-bots.ts';
 import { courseById } from '../src/logic/courses/index.ts';
-import { meanPlayerFinish, parBand, type Run, race, seconds } from '../src/logic/difficulty/race-bots.ts';
 import { CHARACTER_IDS, type CharacterId, DIFFICULTIES, type Difficulty } from '../src/logic/types.ts';
 
 const USAGE =

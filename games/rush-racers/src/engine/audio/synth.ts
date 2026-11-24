@@ -9,7 +9,7 @@ import { createRng } from '@arcade/core';
 import type { Duty, Envelope } from './notation.ts';
 
 /** A pitched note on a pulse or triangle voice. Times are AudioContext seconds. */
-export interface ToneSpec {
+interface ToneSpec {
   wave: 'pulse' | 'triangle';
   /** Pulse duty; ignored by the triangle. Defaults to 50%. */
   duty?: Duty;
@@ -26,7 +26,7 @@ export interface ToneSpec {
 }
 
 /** A burst of filtered white noise, for drums and whooshes. */
-export interface NoiseSpec {
+interface NoiseSpec {
   at: number;
   length: number;
   envelope: Envelope;
@@ -39,7 +39,7 @@ export interface NoiseSpec {
 }
 
 /** The three noise-channel drums songs can call for. */
-export type Drum = 'kick' | 'snare' | 'hat';
+type Drum = 'kick' | 'snare' | 'hat';
 
 /** The synthesizer. Every play method schedules nodes into `out`, which should lead to `master`. */
 export interface Synth {

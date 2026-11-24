@@ -20,7 +20,7 @@ import { Layer } from './layers.ts';
 import { createRacerMoments } from './racer-moments.ts';
 
 /** One racer's sprite, kept in step with its logic state. */
-export interface RacerView {
+interface RacerView {
   /**
    * Starts the kick squash on this racer's `racer.kicked`, the bounce squash on its `racer.rebounded`,
    * the jump stretch on its `racer.jumped`, the landing squat when its body came to rest on the ground

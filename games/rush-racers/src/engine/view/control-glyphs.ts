@@ -15,7 +15,7 @@ import { toneCss, UiColour, UiRamp } from '../art/ui/palette.ts';
 import { measureText, TEXT_FACE } from '../art/ui/typeface.ts';
 
 /** Where a glyph draws; both optional. */
-export interface GlyphOptions {
+interface GlyphOptions {
   /** Pinned to the screen instead of scrolling with the world. */
   fixed?: boolean;
   depth?: number;
@@ -79,7 +79,7 @@ export function actionGlyphWidth(action: ActionName, touch: boolean): number {
 }
 
 /** Where and how big an action glyph draws. */
-export interface ActionGlyphOptions extends GlyphOptions {
+interface ActionGlyphOptions extends GlyphOptions {
   /** Whole-number zoom, for a page that wants the control large. Defaults to 1. */
   scale?: 1 | 2;
 }
@@ -146,7 +146,7 @@ export function createActionGlyph(
 }
 
 /** Width and height of the arrows glyph: two rows of caps on a keyboard, three on touch (a plus). */
-export function moveGlyphSize(touch: boolean): { width: number; height: number } {
+function moveGlyphSize(touch: boolean): { width: number; height: number } {
   const step = ARROW_CAP + ARROW_GAP;
   return { width: step * 3 - ARROW_GAP, height: step * (touch ? 3 : 2) - ARROW_GAP };
 }

@@ -1,10 +1,15 @@
 /**
  * Cloudreach's own texture and frame keys, as typed consts, prefixed `cloudreach-` so they can't
  * collide with the global art, the UI kit, a theme, Reef's or Thornwood's. The cast and object skins
- * name these; their `register` functions build every one at boot, and `assertSkinTextures` checks
+ * name these; `art.ts` builds every one at boot, and `assertSkinTextures` checks
  * they exist.
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
+import { worldArtOwner } from '../../art/index.ts';
+import { byItem, bySlot } from '../../art/keys.ts';
+
+/** The art owner name Cloudreach's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
+export const CLOUDREACH_ART_OWNER = worldArtOwner('cloudreach');
 
 /** Racer texture per slot: 16x12, facing right, wing-beat frames `Frame.a` (wings up) and `Frame.b` (wings down). */
 export const SkyRacerTex: Readonly<Record<CharacterId, string>> = {
@@ -63,27 +68,19 @@ export const SkyItemTex: Readonly<Record<PowerUpKind, string>> = {
 };
 
 /** Frame names in `SkyTex.portraits` and `SkyTex.heads`: the slot id. */
-export const SkyPortraitFrame: Readonly<Record<CharacterId, string>> = {
-  rudy: 'rudy',
-  gil: 'gil',
-  streak: 'streak',
-  onyx: 'onyx',
-  nib: 'nib',
-  baron: 'baron',
-  selene: 'selene',
-  rook: 'rook',
-};
+export const SkyPortraitFrame: Readonly<Record<CharacterId, string>> = bySlot();
 
 /** Frame names in `SkyTex.icons`: the item kind. */
-export const SkyIconFrame: Readonly<Record<PowerUpKind, string>> = {
-  jetFin: 'jetFin',
-  bubbleShield: 'bubbleShield',
-  puffer: 'puffer',
-  inkSac: 'inkSac',
-  glowLantern: 'glowLantern',
-  homingSquid: 'homingSquid',
-  riptide: 'riptide',
-  undertow: 'undertow',
-  mimic: 'mimic',
-  cannonball: 'cannonball',
-};
+export const SkyIconFrame: Readonly<Record<PowerUpKind, string>> = byItem();
+
+/** Cloudreach hazard texture keys; each has frames `a` and `b`, looped by `SkyHazardAnim`. */
+export const SkyHazardTex = {
+  sparkCloud: 'sky-theme-spark-cloud',
+  staticWisp: 'sky-theme-static-wisp',
+} as const;
+
+/** Cloudreach hazard animation keys. */
+export const SkyHazardAnim = {
+  sparkCrackle: 'sky-theme-spark-crackle',
+  wispFlicker: 'sky-theme-wisp-flicker',
+} as const;

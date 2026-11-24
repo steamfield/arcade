@@ -10,7 +10,7 @@ import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { FarTex } from '../keys.ts';
 
 /** Pod: dark rust outline, empty inside and `?` (well over 3:1 on the shell), orange shell, pale orange shine, a cream glint. */
-export const PodPalette: Palette = [0x2a1004, 0xff8a30, 0xffc880, 0xfff4d0];
+const PodPalette: Palette = [0x2a1004, 0xff8a30, 0xffc880, 0xfff4d0];
 
 /** Stardust: dark gold outline, pale gold body (as bright as the pearl), white shine, a warm gold core. */
 export const StardustPalette: Palette = [0x5a3a10, 0xfff2c4, 0xffffff, 0xffd060];

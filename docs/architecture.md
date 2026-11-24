@@ -1,6 +1,6 @@
-# Architecture Plan
+# Architecture
 
-Status: revised after devil's-advocate review. Versions verified against npm on 2026-11-22. Agent tooling is covered in [agent-experience.md](agent-experience.md).
+How the repo is built and why. Versions verified against npm on 2026-11-22. Agent tooling is covered in [agent-experience.md](agent-experience.md).
 
 ## TL;DR
 
@@ -8,17 +8,18 @@ This is a pnpm and Turborepo monorepo. Each game is its own Vite app with its ow
 
 Two templates cover the target genres. Phaser 4 handles 2D (tile RPG, platformer). Plain three.js with Rapier, loaded lazily, handles 3D.
 
-Shared code is limited to five small packages that every game needs and no engine provides well:
+Shared code is limited to six small packages that every game needs and no engine provides well:
 
-- `core`: logger, events, rng, timestep
+- `core`: logger, events, rng, timestep, state hash
 - `save`
 - `input`
 - `shell`
+- `testing`: scenario kit, game driver, Playwright preset
 - `config`
 
 There is no shared game engine. The landing page is a small Vite app generated from each game's `game.json`. Each game's own page gets its share-preview tags from the same file.
 
-Each game proves itself in CI in two ways: unit tests on its pure logic, and a Playwright smoke test against the assembled production build. Nothing runs on a server until a game needs one. When one does, a separate Cloudflare Worker using the free tier (D1, Durable Objects) sits behind `/api/*`, and static files remain free and uncapped.
+Each game proves itself in CI in two ways: unit tests on its pure logic, and a Playwright smoke test against the assembled production build. The site itself is static. Online races run through a separate Cloudflare Worker on the free tier, `arcade-api` in `apps/api`, behind `/api/*`; static files stay free and uncapped.
 
 ## Goals and non-goals
 
@@ -27,9 +28,9 @@ Goals, from the [product vision](product-vision.md) and [problem statement](prob
 - Any game builds, runs, tests and deploys on its own. A broken game cannot break another game's build, download size or saves.
 - An AI agent can create a new game from a template and verify it without a human opening a browser.
 - Players get a fast load on phones, real touch support, and saves that survive restarts, bad deploys and rollbacks.
-- Static hosting only, free at any traffic level for static files.
+- The site is static, free at any traffic level for static files. Anything that needs shared state (online races) lives in the separate API Worker, so a game without it never depends on a server.
 
-Non-goals for now: a shared engine abstraction, accounts, cloud saves, multiplayer, native wrappers, offline/PWA.
+Non-goals for now: a shared engine abstraction, accounts, cloud saves, public leaderboards or matchmaking, native wrappers, offline/PWA.
 
 ## Prerequisites before the first public deploy
 
@@ -60,7 +61,7 @@ Two decisions can't be reversed once players have saves:
 | Hosting                   | Cloudflare Workers static assets via Wrangler    | 4.166                        | Static requests free and unlimited; Cloudflare now points new projects to Workers                              |
 | Production telemetry      | Cloudflare Web Analytics                         |                              | Free, cookieless, real-user load metrics with no backend                                                       |
 | Real-time multiplayer     | Lockstep over a relay Durable Object (`apps/api`, one SQLite `Room` per room code, reached through the site's `/api/*` service binding) | | Every browser steps the same deterministic simulation from the players' inputs, so the room only relays inputs and world hashes and never runs the game: no server tick, no game code on the server, and a desync shows as a hash mismatch. Rush Racers races up to four friends this way |
-| CI / deploy               | GitHub Actions checks; Cloudflare Workers Builds deploys the site; `arcade-api` by hand |                       | Actions runs check and smoke; the Git connector runs `pnpm cf:build`, then `wrangler deploy` on main and `wrangler versions upload` (preview URLs) on other branches. Workers Builds never deploys `arcade-api` (`apps/api`): deploy it by hand with `pnpm deploy:api` when the owner asks for it, before the site, since the site's service binding needs it to exist |
+| CI / deploy               | GitHub Actions checks; Cloudflare Workers Builds deploys the site; `arcade-api` by hand |                       | Actions runs check and smoke; the Git connector runs `pnpm cf:build`, then `wrangler deploy` on main and `wrangler versions upload` (preview URLs) on other branches. Workers Builds never deploys `arcade-api` (`apps/api`): it deploys by hand, when the owner asks, in the order "Shipping a protocol change" gives |
 
 Considered and not chosen:
 
@@ -85,6 +86,7 @@ games/<slug>/               one Vite app per game
   src/
     main.ts                 boot via @arcade/shell
     logic/                  pure TS, own tsconfig with no DOM lib; rules, state, save schema + migrations
+    net/                    online play (Rush Racers): lockstep session, messages, codec; held to logic's rules
     engine/                 Phaser scenes or three.js world
     assets/                 imported by URL, so hashed and build-checked
   scenarios/                start state + input script + expectations (tests and `arcade see`)
@@ -95,14 +97,16 @@ packages/
   save/                     @arcade/save
   input/                    @arcade/input
   shell/                    @arcade/shell
-  config/                   @arcade/config: tsconfig bases, Vite preset, Playwright preset
+  testing/                  @arcade/testing: scenario kit, GameDriver, Playwright preset, see/attract sessions
+  config/                   @arcade/config: tsconfig bases, Vite preset, game.json schema
 apps/site/                  landing page
+apps/api/                   arcade-api Worker: the room service for online races
 tools/arcade/               the agent/dev CLI (see agent-experience.md)
 wrangler.jsonc              Worker serving dist/ as static assets; only /api/* runs its script, forwarding to arcade-api
 AGENTS.md                   conventions; CLAUDE.md imports it
 ```
 
-Dependencies point one way. `games/* → packages/*`. `logic/` may import only `@arcade/core` and Zod. `apps/site` reads `game.json` files and never imports game code. Games never import other games. Packages never import games or engines, which is why they work with both Phaser and three.js.
+Dependencies point one way. `games/* → packages/*`, and a game with online play also imports the wire protocol from `@arcade/api/protocol`. `logic/` may import only `@arcade/core` and Zod. `apps/site` reads `game.json` files and never imports game code. Games never import other games. Packages never import games or engines, which is why they work with both Phaser and three.js.
 
 Packages are source-only (Turborepo's "just-in-time" packages). Their `exports` point at `.ts` files, and each game's Vite build compiles them. Packages have no build step and no `dist/`.
 
@@ -111,21 +115,20 @@ Packages are source-only (Turborepo's "just-in-time" packages). Their `exports` 
 ```mermaid
 flowchart LR
   subgraph repo
-    G1[games/rpg] --> P[packages]
-    G2[games/platformer] --> P
-    G3[games/3d-*] --> P
-    S[apps/site] -. reads game.json .-> G1 & G2 & G3
+    G1[games/rush-racers] --> P[packages]
+    G2[templates/phaser-2d, templates/three-3d] --> P
+    S[apps/site] -. reads game.json .-> G1 & G2
   end
-  G1 -- vite build --> D1[rpg/dist]
-  G2 -- vite build --> D2[platformer/dist]
+  G1 -- vite build --> D1[rush-racers/dist]
+  G2 -- vite build --> D2[template dist]
   S -- vite build --> DS[site/dist]
   D1 & D2 & DS --> A[assemble] --> OUT[dist/]
-  OUT --> SM[smoke: one wrangler dev, Playwright project per game] --> CF[wrangler deploy]
+  OUT --> SM[smoke: one wrangler dev with apps/api, one Playwright run per game] --> CF[wrangler deploy]
 ```
 
 Each game builds into its own `dist/` so Turborepo can cache it, and a root-level `assemble` task copies every build into `dist/games/<slug>/`. Smoke tests run against that assembled output served by a single `wrangler dev`, the same asset handling production uses. A wrong `base` path or missing file only shows up there.
 
-`assemble` and `smoke` are root tasks, not per-game tasks, so there is only one server and one Playwright run, with a project per game. `--filter <slug>` lets an agent assemble and smoke just its own game.
+`assemble` and `smoke` are root tasks, not per-game tasks. `smoke` starts one `wrangler dev` with the site Worker and the API Worker behind `/api/*`, then runs each game's Playwright suite against it in turn. `pnpm arcade smoke <slug>` assembles and smokes just that game.
 
 The site's Turbo task declares `$TURBO_ROOT$/games/*/game.json` and cover images as inputs, so publishing a game or editing a pitch invalidates the landing page cache.
 
@@ -147,11 +150,13 @@ The 2D template ships:
 
 - scene flow (title → continue/new → play)
 - a pixel-art scaling setup
-- a dialogue box
+- tile physics in `src/logic/`
+
+Both also start with a Phaser- or three-free `src/engine/runtime.ts` tested in Vitest, a `worldHash` in `debugState()` that smoke pins across browsers, and `?stage=` capture stages (AGENTS.md, "Inside a game").
 
 When two games need the same piece of template code, it moves into a package. It does not move before that.
 
-As built, the 2D template keeps tile physics in `src/logic/` rather than using Phaser arcade physics, so there is exactly one clock. A game that adopts arcade physics sets `arcade.customUpdate: true` and calls `physics.world.singleStep()` once per logic tick (see `.claude/skills/phaser-game`).
+The 2D template keeps tile physics in `src/logic/` rather than using Phaser arcade physics, so there is exactly one clock. A game that adopts arcade physics sets `arcade.customUpdate: true` and calls `physics.world.singleStep()` once per logic tick (see `.claude/skills/phaser-game`).
 
 ### 2. Logic separated from engine inside each game
 
@@ -159,7 +164,7 @@ As built, the 2D template keeps tile physics in `src/logic/` rather than using P
 
 `logic/` compiles under its own tsconfig with no DOM types, so `window`, `document`, `localStorage` and `performance` are type errors there. Biome blocks engine imports, and a GritQL rule blocks `Math.random` and `Date.now`.
 
-The split lets an agent unit test the parts most likely to be wrong in milliseconds, and it keeps games deterministic (see the AX plan). Real-time feel, like jump arcs, stays in `engine/`, because it gets tuned by playing.
+The split lets an agent unit test the parts most likely to be wrong in milliseconds, and it keeps games deterministic (see [agent-experience.md](agent-experience.md)). Real-time feel, like jump arcs, stays in `engine/`, because it gets tuned by playing.
 
 ### 3. Single origin, path per game
 
@@ -248,15 +253,17 @@ Its scope is limited to what the first two games prove they need:
 - pause and save on hide
 - a back-to-arcade link
 - the storage warning
-- error capture and the `__arcade` test hook (see the AX plan)
+- error capture and the `__arcade` test hook (see [agent-experience.md](agent-experience.md))
 
 iPhone Safari supports neither orientation lock nor element fullscreen, so the shell doesn't try to use them.
 
 `@arcade/config` holds:
 
 - the tsconfig bases: game, logic (no DOM), tooling
-- `defineGameConfig`: base path from the slug, `_v` assets dir, HTML meta injection
-- the shared Playwright config, with Chromium and WebKit projects
+- `defineGameConfig`: base path from the slug, `_v` assets dir, HTML meta injection, and an optional `slowTests` split into a `unit` and a slow Vitest project
+- the `game.json` schema and the Node readers for it (`@arcade/config/manifest-file`)
+
+`@arcade/testing` holds the scenario kit, `GameDriver`, the shared Playwright config (desktop Chromium, phone and WebKit projects) and the browser session `see` and `attract` open.
 
 ## Version policy
 
@@ -274,17 +281,27 @@ The agent-facing loop is in [agent-experience.md](agent-experience.md). The smok
 4. Save, reload, and assert that "continue" is offered.
 5. Repeat in a mobile viewport with touch, in Chromium for every game and in WebKit for 2D games.
 
-Headless WebGL on GitHub runners needs a spike before we build the 3D smoke test on it. Chrome no longer falls back to SwiftShader automatically, so it may need `--enable-unsafe-swiftshader`.
+Headless Chromium renders WebGL with SwiftShader. Chrome no longer falls back to it automatically, so the Playwright projects, `see` and `attract` all pass `CHROMIUM_ARGS` (`--enable-unsafe-swiftshader`, `--ignore-gpu-blocklist`) from `packages/testing/src/chromium-args.ts`.
 
 Chromium emulation doesn't reproduce real iOS behaviour. Moving a game from `draft` to `published` therefore requires a check on a real iPhone and a real Android phone through the PR preview URL.
 
 In production, Cloudflare Web Analytics reports real-user load times. That is how the load-time metric gets measured. The lab target uses Lighthouse's mobile throttling profile (150 ms RTT, 1.6 Mbps).
 
-## Backend later, on Cloudflare
+## Backend on Cloudflare
 
-Shared state lives in a separate Worker, `arcade-api` under `apps/api` (today the room service for online races), reached through a service binding from `run_worker_first: ["/api/*"]` on the assets Worker. Keeping it separate protects PR preview URLs: Cloudflare has said preview URLs aren't generated for Workers that contain Durable Objects, and we should verify that this still holds.
+Shared state lives in a separate Worker, `arcade-api` under `apps/api` (the room service for online races), reached through a service binding from `run_worker_first: ["/api/*"]` on the assets Worker. Keeping it separate protects PR preview URLs: Cloudflare has said preview URLs aren't generated for Workers that contain Durable Objects, and we should verify that this still holds.
 
 Before adding any script, check how `not_found_handling` routes unmatched paths. Bots probing random URLs must not consume the Worker request cap.
+
+### Shipping a protocol change
+
+The site and the API deploy separately. Cloudflare Workers Builds deploys the site on every push to `main`; `arcade-api` deploys only by hand, with `pnpm deploy:api`. A client joins a room with its protocol version and build id on the WebSocket URL. The room refuses a join whose version differs from its `PROTOCOL_VERSION` (`apps/api/src/protocol.ts`) or whose build id differs from the peers already in the room, and the game shows "Game versions differ: everyone reload" instead of desyncing. A change to the wire protocol therefore:
+
+1. bumps `PROTOCOL_VERSION` when an old and a new client would misread each other;
+2. deploys the API first with `pnpm deploy:api`, since the site's service binding needs the Worker to exist;
+3. then pushes `main`, which deploys the site. Between the two steps, tabs on the old site get the version notice and recover on reload once the site is out.
+
+A change only to what peers simulate changes the game's build id (Rush Racers' `simulationBuildId` in `games/rush-racers/vite.config.ts`) and needs no API deploy.
 
 | Feature                         | Product                                              | Free-tier reality                                                                                                                                                          |
 | ------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -319,9 +336,9 @@ Cross-device cloud saves need accounts and stay out of scope until there is a re
 
 ## Success metrics
 
-- `pnpm new-game` to a deployed, smoke-tested draft in one agent session.
+- `pnpm arcade new` to a deployed, smoke-tested draft in one agent session.
 - 100% of published games pass smoke on every deploy that touches them.
-- `arcade check <slug>` under 10 seconds.
+- `arcade test <slug> <paths>` and `arcade check <slug> --skip-tests` in seconds, so agents run them on every change; the full `check` runs once per merge.
 - Real-user load to interactive (Web Analytics, mobile): under 5 s for 2D and under 10 s for 3D.
 - Zero lost saves across deploys and rollbacks, verified by the fixture tests.
 

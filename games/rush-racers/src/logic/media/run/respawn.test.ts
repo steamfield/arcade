@@ -3,37 +3,22 @@
  * pit and coming back. Raced through `createWorld` on small inline courses, where the rivals start in
  * their own lane walled off above the player's.
  */
-import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import type { GameEvent } from '../../events.ts';
 import { breakCoral } from '../../race/coral.ts';
-import { courseFromLevel, eventsIn, hold, IDLE, placeOnTile, racerOf, step } from '../../test-world.ts';
+import { eventsIn, hold, IDLE, placeOnTile, racerOf, step } from '../../test-world.ts';
 import { type MoveContacts, TILE, type Vec } from '../../types.ts';
-import { createWorld } from '../../world.ts';
+import { laneWorld } from '../test-kit.ts';
 import { runMotion } from './data.ts';
 import { afterRunMove } from './respawn.ts';
 import { RUN_TUNING } from './tuning.ts';
+
+/** A racing run world on `playerRows`; the rivals start in their own lane walled off above. */
+const runWorld = (playerRows: readonly string[]) => laneWorld('run', playerRows);
 
 const RIGHT: Vec = { x: 1, y: 0 };
 const { respawnTicks, respawnInvulnTicks } = RUN_TUNING.extra;
 /** Ticks for a racer at its start to settle onto what's under it. */
 const SETTLE = 10;
-
-/**
- * A racing world on `playerRows` (the player's lane, with start 1 and the finish column) under a
- * three-row lane where the rivals start, so they never touch the player.
- */
-function runWorld(playerRows: readonly string[]) {
-  const width = playerRows[0]?.length ?? 0;
-  const rivalLane = [`${'.'.repeat(width - 1)}F`, `.234${'.'.repeat(width - 5)}F`, '#'.repeat(width)];
-  const log = new EventLog<GameEvent>(100_000);
-  const world = createWorld(courseFromLevel([...rivalLane, ...playerRows].join('\n'), 'run'), log, {
-    seed: 1,
-    endsWhen: 'everyone',
-  });
-  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'everyone' };
-  return { world, log, player: racerOf(world, 'player') };
-}
 
 /** A lane with a pit 2 tiles wide (a jump crosses it under the low ceiling, holding right alone falls in) from PIT_COLUMN; `beforePit` is the floor tile just left of it. */
 function pitLane(beforePit: '#' | '?') {

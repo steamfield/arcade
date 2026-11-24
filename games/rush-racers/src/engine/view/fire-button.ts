@@ -12,7 +12,7 @@ import type { ArtRef } from '../worlds/art-ref.ts';
 import type { ObjectSkin } from '../worlds/object-skin.ts';
 
 /** The A button's icon; `sync` follows the player's selected item and `destroy` restores the button. */
-export interface FireButtonIcon {
+interface FireButtonIcon {
   /** `selected` is the kind in the player's selected slot, or null when nothing is held. */
   sync(selected: PowerUpKind | null): void;
   destroy(): void;

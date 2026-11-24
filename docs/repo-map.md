@@ -20,6 +20,8 @@ Where everything is, so you can open the right file instead of searching. Every 
 | Change the landing page | `apps/site/` |
 | Record a game's landing-page footage and cover | `pnpm arcade attract <slug>`, settings in its package.json `arcade.attract` |
 | Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans and `tools/biome/no-inexact-math.grit` for rush-racers' bit-exact math |
+| Add a world to Rush Racers | Logic: `games/rush-racers/src/logic/worlds/<id>.ts`. Art: `games/rush-racers/src/engine/worlds/<id>.ts` plus `<id>/{keys,cast,objects,art}.ts`, `<id>/palettes.ts` when views read its colours, and `<id>/sprites/`; register in `games/rush-racers/src/engine/worlds/index.ts` (`SKINS`, `WORLD_ART`). `games/rush-racers/src/engine/worlds/load.ts` loads its art on demand. Steps: "Add a world" in `games/rush-racers/COURSES.md` |
+| Add a theme (a course's look) to Rush Racers | `games/rush-racers/src/engine/themes/<id>.ts` plus `<id>/{keys,palettes,art}.ts` and `<id>/sprites/`; register in `games/rush-racers/src/engine/themes/index.ts` (`THEMES`, `THEME_ART`) and add the id to `ThemeId` in `games/rush-racers/src/logic/courses/types.ts`. Loaded on demand by `games/rush-racers/src/engine/worlds/load.ts` |
 | Change online rooms or races | Room service: `apps/api/src/` (`protocol.ts` is the wire contract). Rush Racers: `games/rush-racers/src/net/` (client, lobby, lockstep, transports), `src/engine/online/` (flow, screens), `tests/online*.spec.ts` |
 | Change CI or deploys | `.github/workflows/ci.yml`, `tools/arcade/src/affected.ts`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts`, `cf:build` in `package.json` |
 
@@ -37,7 +39,7 @@ Where everything is, so you can open the right file instead of searching. Every 
 | `biome.json` | Lint and format, with per-folder overrides (test files, game `src/`, logic folders). |
 | `tsconfig.json` | Editor-level config. Each package has its own. |
 | `wrangler.jsonc` | Cloudflare Workers static assets config. Serves `dist/` at the `arcade.steamfield.io` custom domain. |
-| `.github/workflows/ci.yml` | CI: `arcade check --all`, `arcade smoke`. Deploys run in Cloudflare Workers Builds, not here. |
+| `.github/workflows/ci.yml` | CI: a `plan` job runs `arcade affected --base`, then one `arcade check --base` job, one `arcade smoke` job per affected game, and each affected game's sharded slow suite. Deploys run in Cloudflare Workers Builds, not here. |
 | `.nvmrc` | Node 24. |
 
 Generated and ignored, never worth searching: `node_modules/`, `dist/` (assembled site), `.arcade/runs/` (`arcade see` output, `latest` symlink), `test-results/`, `.turbo/`, `.wrangler/`.
@@ -48,7 +50,7 @@ Generated and ignored, never worth searching: `node_modules/`, `dist/` (assemble
 | --- | --- |
 | `docs/repo-map.md` | This file. |
 | `docs/architecture.md` | Stack, key decisions and why, shared packages, hosting, risks. |
-| `docs/agent-experience.md` | The agent tooling design: inner loop, determinism, `see`, guardrails, tests. "As built" at the end lists what differs from the plan and what isn't built. |
+| `docs/agent-experience.md` | The `arcade` CLI, test harness and guardrails as built: inner loop, determinism, `see`, lint and type rules, tests, hooks, and a short "Not built yet" list. |
 | `docs/product-vision.md` | Who the arcade is for and what success looks like. |
 | `docs/problem-statement.md` | The problem the repo solves. |
 | `docs/research/stack-research-2026-11.md` | The stack research behind the architecture. Background only. |
@@ -66,7 +68,7 @@ Generated and ignored, never worth searching: `node_modules/`, `dist/` (assemble
 | `.claude/rules/game-engine.md` | Loaded when touching `src/engine/` or `src/main.ts`. |
 | `.claude/rules/game-tests.md` | Loaded when touching `scenarios/` or `tests/`. |
 | `.claude/hooks/format.ts` | PostToolUse hook: Biome-formats the edited file. Inactive until registered as a hook in a `settings.json` (see the hooks note in `AGENTS.md`). |
-| `.claude/hooks/check-on-stop.ts` | Stop hook: runs `pnpm arcade check` when code changed. Needs registering too. |
+| `.claude/hooks/check-on-stop.ts` | Stop hook: runs `pnpm arcade check --skip-tests` when code changed. Needs registering too. |
 | `.claude/launch.json` | Dev servers for the in-app browser preview. `arcade new` adds each game. |
 
 ## Shared packages (`packages/`)
@@ -82,6 +84,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `packages/core/src/timestep.ts` | `TICK_HZ` (60), `TICK_DT`, `FixedStep` (`frame(realDelta)`, `advance(n)`, `tick`, `alpha`). |
 | `packages/core/src/events.ts` | `EventLog` ring buffer (`emit`, `drain(cursor)` with dropped count, `all`, `tick`), `EventSink`. |
 | `packages/core/src/logger.ts` | `createLogger(ns)`, `configureLogging(sink, filter)`. Use instead of `console`. |
+| `packages/core/src/hash.ts` | `hashState(value, { skipKeys })`: tagged 32-bit FNV-1a over any plain state, the same bytes on every engine. Games hash their world with it for lockstep and cross-browser checks. |
 | `packages/core/src/save-types.ts` | `SaveSchema`, `Migration`, `Migrations` types shared by game `save.ts` files and `@arcade/save`. |
 
 ### `@arcade/save`
@@ -101,23 +104,31 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | Path | Exports |
 | --- | --- |
 | `packages/shell/src/index.ts` | `bootGame({ manifest, input, start, onFirstGesture })`, the `GameContext` passed to a game and the `GameHandle` it returns, `window.__arcade` (the test hook), URL launch params (`?seed`, `?scene`, `?debug`, `?test` via `readLaunchParams`; `?touch`, `?log` read at boot), back link (top right), rotate prompt, `integerScale`, `renderPixelRatio`. Starts the game on load; the start gate shows only in test mode, and `onFirstGesture` runs on the first tap or key press. |
+| `packages/shell/src/report-error.ts`, `packages/shell/src/report-error.test.ts` | `createErrorReporter`: records each game error in `window.__arcade.errors` and logs it; only a fatal report (the default) shows the red banner, so `reportError(source, error, { fatal: false })` is for errors the game recovers from. |
 
 ### `@arcade/testing`
 
 | Path | Exports |
 | --- | --- |
-| `packages/testing/src/index.ts` | Re-exports `scenario.ts` and `driver.ts`. Playwright pieces come from `@arcade/testing/playwright`. |
+| `packages/testing/src/index.ts` | Re-exports `scenario.ts`, `driver.ts`, `ports.ts`, `chromium-args.ts`, `game-session.ts` and `save-fixtures.ts`. Playwright pieces come from `@arcade/testing/playwright`. |
 | `packages/testing/src/scenario.ts` | `scenarioKit<Action>()` (`scenario`, `hold`, `tap`, `wait`), `parseInput("right*30 jump")`, `totalTicks`, `Scenario` and result types; `start` takes `save`, `scene`, `seed` and `query`. |
-| `packages/testing/src/driver.ts` | `GameDriver`: `open`, `advance`, `play`, `loadState`, `summary`, `state`, `events`, `screenshot`, `runScenario`, `problems`. Shared by Playwright and `arcade see`. |
-| `packages/testing/src/playwright.ts` | The `test` fixture (`game`, fails on console errors, failed requests, game errors, dropped events), `defineScenarioTests(dir)`, `gamePlaywrightConfig(url)` (desktop, phone, WebKit projects). |
+| `packages/testing/src/driver.ts` | `GameDriver`: `open`, `waitIdle`, `advance`, `play`, `touch` (hold an on-screen button by action name), `loadState`, `summary`, `state`, `events`, `screenshot`, `renderer`, `runScenario`, `problems`. Shared by Playwright and `arcade see`. |
+| `packages/testing/src/playwright.ts` | The `test` fixture (`game`, fails on console errors, failed requests, game errors, dropped events), `defineScenarioTests(dir)`, `gamePlaywrightConfig(url, { extraWebServers })` (desktop, phone, WebKit projects; extra servers such as an API Worker get free ports through an environment variable). |
+| `packages/testing/src/ports.ts` | `freePort()`: an unused local port for test and tool servers. |
+| `packages/testing/src/chromium-args.ts` | `CHROMIUM_ARGS`: the Chromium flags shared by Playwright projects, `see` and `attract`. |
+| `packages/testing/src/game-session.ts` | `openGameSession`: Vite test server, Chromium and an open `GameDriver` page for `see` and `attract`; `close()` stops all of it. |
+| `packages/testing/src/save-fixtures.ts` | `checkSaveFixtures`: every committed `save-v<N>.json` is present and loads at the current version. Games' `save.test.ts` call it. |
 
 ### `@arcade/config`
 
 | Path | Exports |
 | --- | --- |
 | `packages/config/src/index.ts` | Re-exports the manifest schema. |
+| `packages/config/src/game-html-plugin.ts` | Vite plugin that injects the title, description and Open Graph tags from `game.json`. |
+| `packages/config/src/test-config.ts` | `buildTestConfig`: Vitest defaults for a game, and the `slowTests` option that splits tests into `unit` and a slow project. |
+| `packages/config/src/manifest-file.ts` | `readManifest(dir)`, `readManifestsIn(parent)`: read `game.json` from disk for Node tools. Imported as `@arcade/config/manifest-file`. |
 | `packages/config/src/manifest.ts` | `gameManifestSchema`, `GameManifest`, `parseManifest`: the `game.json` format. |
-| `packages/config/src/vite.ts` | `defineGameConfig(import.meta.url)`: base path `/games/<slug>/`, hashed assets, dev server, share tags. `readManifest`. Imported as `@arcade/config/vite`. |
+| `packages/config/src/vite.ts` | `defineGameConfig(import.meta.url, overrides?, { slowTests }?)`: base path `/games/<slug>/`, hashed assets, dev server, share tags; every override key reaches the result. `readManifest`. Imported as `@arcade/config/vite`. |
 | `packages/config/tsconfig.base.json` | Strict base, `erasableSyntaxOnly`. |
 | `packages/config/tsconfig.game.json` | Game code: DOM plus `vite/client`. |
 | `packages/config/tsconfig.logic.json` | Logic code: ES2023 only, no DOM, which is how logic is kept engine-free. |
@@ -133,9 +144,10 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/affected.ts` | `affected`, `affectedSince`, `planFromChanges`: which packages, games and slow-suite shards a change since a base commit needs tested. CI's job matrices come from it. |
 | `tools/arcade/src/affected.test.ts` | Which games a change selects, the global files that select all, slow-suite shards. |
 | `tools/arcade/src/ci.test.ts` | CI's Playwright container tag matches the catalog's `@playwright/test`. |
-| `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/` (or `--out`); `--query` launch params, `--compare` pixel diff against an earlier run. |
-| `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths, `@group`s from the game's package.json, or `-t`; one line when green. |
-| `tools/arcade/src/test.test.ts` | `@group` expansion for `arcade test`. |
+| `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/` (or `--out`); `--viewport`, `--query` launch params, `--compare` pixel diff against an earlier run. |
+| `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths, `@group`s from the game's package.json (a path list or `{ project, paths }`), or `-t`; runs the fast project its `test` script names unless given test files or `--project`; one line when green. |
+| `tools/arcade/src/test.test.ts` | `@group` expansion and the Vitest arguments `arcade test` builds. |
+| `tools/arcade/src/guardrails.test.ts` | Each Biome import and nondeterminism ban fires (with a near miss that passes), and no game or template imports a relative path outside its own folder. |
 | `tools/arcade/src/smoke.ts` | `smoke`: assemble, `wrangler dev` (site Worker plus the API Worker behind `/api/*`), Playwright per game against the production build. |
 | `tools/arcade/src/assemble.ts` | `assemble`, `selectGames`, `includeForBranch`: builds site plus games into `dist/`, writes `_headers`, checks Cloudflare limits. |
 | `tools/arcade/src/assemble.test.ts` | Which games a Cloudflare build ships per branch. |
@@ -143,12 +155,13 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/attract.test.ts` | Which ticks `attract` records. |
 | `tools/arcade/src/new-game.ts` | `newGame`: copies a template, renames, registers it in `.claude/launch.json`, installs. |
 | `tools/arcade/src/repo-map.test.ts` | Keeps this map in sync with the files on disk. |
+| `tools/arcade/src/see-images.ts` | Image work for `arcade see`: the contact sheet of captured frames and pixel diffs against a baseline run. |
 | `tools/biome/no-nondeterminism.grit` | Biome plugin banning `Math.random`, `Date.now`, `new Date` in logic folders. |
 | `tools/biome/no-inexact-math.grit` | Biome plugin banning `**`, `**=` and `Math.pow` in rush-racers logic and allowing only the exactly specified `Math` members it lists, so lockstep races match bit for bit. |
 
 ## Room service (`apps/api/`)
 
-The relay for online races, a separate Worker (`arcade-api`) the site forwards `/api/*` to. Design: `plans/reef-rush-multiplayer.md` section 5.5 and `plans/rush-racers-online.md`. Tests are in `apps/api/test/` and run the Worker in-process (`pnpm --filter @arcade/api test`).
+The relay for online races, a separate Worker (`arcade-api`) the site forwards `/api/*` to. Design: `plans/reef-rush-multiplayer.md` section 5.5 and `plans/done/rush-racers-online.md`. Tests are in `apps/api/test/` and run the Worker in-process (`pnpm --filter @arcade/api test`).
 
 | File | What it is |
 | --- | --- |
@@ -208,14 +221,20 @@ Every game has the same shape. The 2D template is the reference; the 3D template
 | `templates/phaser-2d/src/logic/level.ts` | ASCII levels, `TILE`, `parseLevel`, `isSolid`, `LEVEL_1`. |
 | `templates/phaser-2d/src/logic/events.ts` | `GameEvent` union: everything observable that logic emits. |
 | `templates/phaser-2d/src/logic/save.ts` | `SAVE_VERSION`, `SaveSchema`, `migrations`, `NEW_GAME`. |
-| `templates/phaser-2d/src/engine/game.ts` | `startPhaser`: `Runtime` (owns `FixedStep`, scene changes, `idle`), Boot, Title and Play scenes, debug overlay, the `GameHandle`. |
+| `templates/phaser-2d/src/logic/hash.ts`, `templates/phaser-2d/src/logic/hash.test.ts` | `hashWorld`: the world hash without the level and event log. |
+| `templates/phaser-2d/src/engine/game.ts` | `startPhaser`: Boot, Title and Play scenes, the logic clock fed from Phaser's STEP event, the `GameHandle`. |
+| `templates/phaser-2d/src/engine/runtime.ts` | Phaser-free `Runtime`: scene flow, title menu, in-order save write queue, per-tick logic step; `idle()` is false while a scene loads or a save is written. |
+| `templates/phaser-2d/src/engine/runtime.test.ts` | Vitest test of the runtime: start, play to a coin, save order, restore, capture stage gate, loading guard, failed writes. |
+| `templates/phaser-2d/src/engine/debug.ts` | `debugSummary()` and `debugState()`, both with `worldHash`. |
+| `templates/phaser-2d/src/engine/capture-stages.ts` | `?stage=` capture stages (`near-goal`), only with `?debug=1` or in test mode; a staged run is never saved. |
 | `templates/phaser-2d/src/engine/input.ts` | Action names, key bindings, touch layout. |
 | `templates/phaser-2d/src/engine/textures.ts` | `Tex` keys and placeholder textures drawn at boot. |
-| `templates/phaser-2d/scenarios/kit.ts` | The game's typed `scenario`, `hold`, `tap`, `wait`. |
+| `templates/phaser-2d/scenarios/kit.ts` | The game's typed `scenario`, `hold`, `tap`, `wait`, and presets (`TITLE_TO_PLAY`, `TWO_COINS_SAVE`). |
 | `templates/phaser-2d/scenarios/collect-first-coin.ts` | Scenario: walk right and collect a coin. |
 | `templates/phaser-2d/scenarios/complete-level.ts` | Scenario: finish the level. |
 | `templates/phaser-2d/scenarios/restore-save.ts` | Scenario: start from a save fixture. |
-| `templates/phaser-2d/tests/smoke.spec.ts` | Loads, WebGL renderer, save survives reload, touch controls (`@touch`). |
+| `templates/phaser-2d/scenarios/near-goal-stage.ts` | Scenario: the `near-goal` capture stage, and that it writes no save. |
+| `templates/phaser-2d/tests/smoke.spec.ts` | Loads, WebGL renderer, save survives reload, touch controls (`@touch`), and a pinned `worldHash` every browser project agrees on. |
 | `templates/phaser-2d/tests/scenarios.spec.ts` | Turns every scenario into a Playwright test. |
 | `templates/phaser-2d/tests/save.test.ts`, `templates/phaser-2d/tests/fixtures/save-v1.json` | Every committed save version must still load. |
 
@@ -226,14 +245,20 @@ The 3D template (`templates/three-3d/`) has the same files with these difference
 | `templates/three-3d/src/main.ts` | Boot with `startThree`. |
 | `templates/three-3d/src/logic/world.ts` | Arena, orbs, player movement; `ARENA`, `ORB_COUNT`. No `toAscii`. |
 | `templates/three-3d/src/logic/events.ts` | `GameEvent` union. |
+| `templates/three-3d/src/logic/hash.ts`, `templates/three-3d/src/logic/hash.test.ts` | `hashWorld`: the world hash without the event log. |
 | `templates/three-3d/src/logic/save.ts` | Save shape (seed, collected orbs). |
-| `templates/three-3d/src/engine/game.ts` | `startThree`: renderer, scene, rAF loop (off in test mode), `FixedStep` tick, `GameHandle`. |
+| `templates/three-3d/src/engine/game.ts` | `startThree`: renderer, rAF loop (off in test mode), lazy physics, `GameHandle` (`idle()` waits for physics and save writes, `worldHash` in debug state). |
+| `templates/three-3d/src/engine/runtime.ts` | Three- and Rapier-free `Runtime`: `FixedStep` tick, orb autosave queue (`saving`, `settled()`, one `failWrite` that emits `save.failed`), `loadSave`. |
+| `templates/three-3d/src/engine/runtime.test.ts` | Vitest test of the runtime: collect, autosave, restore, staged runs never save, failed and thrown writes. |
+| `templates/three-3d/src/engine/world-view.ts` | `createWorldView`: meshes for arena, player, orbs and crates, synced from logic state. |
+| `templates/three-3d/src/engine/capture-stages.ts` | `?stage=` capture stages (`nearly-cleared`), only with `?debug=1` or in test mode; a staged run is never saved. |
 | `templates/three-3d/src/engine/physics.ts` | Lazy Rapier: `loadPhysics`, kinematic player, `CRATE_SPAWNS`. `idle()` is false until it loads. |
 | `templates/three-3d/src/engine/camera-rig.ts` | `CameraRig`: follow camera smoothed per tick. |
 | `templates/three-3d/src/engine/input.ts` | Actions, keys, touch layout. |
-| `templates/three-3d/scenarios/kit.ts` | Typed scenario kit. |
+| `templates/three-3d/scenarios/kit.ts` | Typed scenario kit and presets shared by scenarios. |
+| `templates/three-3d/scenarios/nearly-cleared.ts` | Scenario: the `nearly-cleared` capture stage, and that it writes no save. |
 | `templates/three-3d/scenarios/collect-first-orb.ts` | Scenario: walk to the first orb. |
 | `templates/three-3d/scenarios/push-crate.ts` | Scenario: Rapier pushes a crate. |
 | `templates/three-3d/scenarios/restore-save.ts` | Scenario: start from a save fixture. |
 
-Games in `games/` follow the same layout. Their own `DESIGN.md` is the map for anything game-specific.
+Games in `games/` follow the same layout. Their own `DESIGN.md` is the map for anything game-specific; Rush Racers also has a `MAP.md` of its folders.

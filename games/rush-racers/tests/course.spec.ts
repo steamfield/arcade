@@ -4,7 +4,7 @@
  * best line follows.
  */
 import { expect, test } from '@arcade/testing/playwright';
-import { IDLE_TO_RESULTS, TITLE_TO_RACE, tap, wait } from '../scenarios/kit.ts';
+import { IDLE_TO_RESULTS, TITLE_TO_RACE, TWO_COURSE_SAVE, tap, wait } from '../scenarios/kit.ts';
 
 test('?course=sunlit-shallows races Sunlit Shallows', async ({ game }) => {
   await game.open({ query: { course: 'sunlit-shallows' } });
@@ -30,22 +30,6 @@ test('an unknown ?course= warns once and races Sunlit Shallows', async ({ game }
     expect.stringMatching(/^\[warning\] \[rush-racers\] unknown course in \?course=, racing the default/),
   ]);
 });
-
-/** A v6 save on Hard with a best on each listed course and Sunlit Shallows as the last course raced. */
-const TWO_COURSE_SAVE = {
-  version: 6,
-  savedAt: '2026-11-23T00:00:00.000Z',
-  data: {
-    bests: {
-      'sunlit-shallows': { easy: null, normal: null, hard: { ticks: 5400, place: 1 } },
-      'bramble-run': { easy: null, normal: null, hard: { ticks: 6000, place: 2 } },
-    },
-    lastCourse: 'sunlit-shallows',
-    races: 0,
-    settings: { muted: false, reducedMotion: null, difficulty: 'hard' },
-    character: 'rudy',
-  },
-};
 
 /** The title's best line for each course in `TWO_COURSE_SAVE` on Hard. */
 const SUNLIT_BEST = 'Best 1:30.00 (1st)';

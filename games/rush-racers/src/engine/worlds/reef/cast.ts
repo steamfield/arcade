@@ -1,32 +1,21 @@
 /**
- * Reef's cast skin: the sea creatures' racer textures, portraits, heads and ability wording, all the
- * global art and words the game has always had.
+ * Reef's cast skin: the sea creatures' racer textures, portraits, heads and ability wording.
+ * `REEF_CAST` points the skin at the textures `keys.ts` names for the cast, which `art.ts` draws.
  */
-
 import type { CharacterId } from '../../../logic/types.ts';
-import { Tex } from '../../art/keys.ts';
-import { PortraitFrame, UiTex } from '../../art/ui/keys.ts';
 import type { ArtRef } from '../art-ref.ts';
 import type { CastSkin } from '../cast-skin.ts';
+import { ReefCastFrame, ReefRacerTex, ReefTex } from './keys.ts';
 
 const frameIn =
   (texture: string) =>
-  (character: CharacterId): ArtRef => ({ texture, frame: PortraitFrame[character] });
-const portrait = frameIn(UiTex.portraits);
-const head = frameIn(UiTex.heads);
+  (character: CharacterId): ArtRef => ({ texture, frame: ReefCastFrame[character] });
+const portrait = frameIn(ReefTex.portraits);
+const head = frameIn(ReefTex.heads);
 
 /** Reef's cast, keyed by character slot. */
 export const REEF_CAST: CastSkin = {
-  racers: {
-    rudy: Tex.rudy,
-    gil: Tex.gil,
-    streak: Tex.streak,
-    onyx: Tex.onyx,
-    nib: Tex.nib,
-    baron: Tex.baron,
-    selene: Tex.selene,
-    rook: Tex.rook,
-  },
+  racers: ReefRacerTex,
   portraits: {
     rudy: portrait('rudy'),
     gil: portrait('gil'),

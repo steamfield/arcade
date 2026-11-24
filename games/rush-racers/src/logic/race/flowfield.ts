@@ -3,9 +3,11 @@
  * generic progress field that ranks racers, and reading fields (a tile's value, how far along a body
  * is). Fields differ only in what it costs to enter a tile, so each one is an EntryCost run through
  * the same search over 8 neighbours from the finish column. Media price tiles their own way
- * (`Medium.enterCost`); the progress field's cost is uniform and medium-free.
+ * (`Medium.enterCost`), with `alongCost` for currents and winds; the progress field's cost is
+ * uniform and medium-free. `unreachableStarts` is the level check every open-field medium runs.
  */
 import { cellAt, isRockLike, tileIndex } from '../level/query.ts';
+import type { LevelProblem } from '../media/types.ts';
 import { length } from '../num.ts';
 import { type Box, type Cell, type GridSize, type Level, type ProgressField, TILE, type Vec } from '../types.ts';
 import { PriorityQueue } from './priority-queue.ts';
@@ -104,6 +106,38 @@ export function distancesToFinish(level: Level, broken: ReadonlySet<number>, cos
 export function fieldAt(field: Float32Array, size: GridSize, tile: Vec): number {
   if (tile.x < 0 || tile.y < 0 || tile.x >= size.width || tile.y >= size.height) return Number.POSITIVE_INFINITY;
   return field[tile.y * size.width + tile.x] ?? Number.POSITIVE_INFINITY;
+}
+
+/** What it costs to enter a flow cell (a current or a wind), as a multiplier on a plain step. */
+export interface FlowPrices {
+  /** A move with a positive component along the flow. */
+  withFlow: number;
+  /** A move with a negative component along the flow. */
+  againstFlow: number;
+}
+
+/**
+ * The price of entering a cell that flows along `flow` by `move`. A diagonal entry counts as with
+ * or against the flow by the sign of its component along it, the same as a straight one; only a
+ * move with no component along it is across, and costs 1 like open water or sky.
+ */
+export function alongCost(flow: Vec, move: Vec, prices: FlowPrices): number {
+  const along = flow.x * move.x + flow.y * move.y;
+  if (along > 0) return prices.withFlow;
+  if (along < 0) return prices.againstFlow;
+  return 1;
+}
+
+/**
+ * One problem for each of `level`'s starts whose tile is Infinity on `field`, located at that start.
+ * Each message reads `Start <n> <reason>`, numbering starts from 1.
+ */
+export function unreachableStarts(level: Level, field: Float32Array, size: GridSize, reason: string): LevelProblem[] {
+  return level.starts.flatMap((start, index) =>
+    Number.isFinite(fieldAt(field, size, start))
+      ? []
+      : [{ message: `Start ${index + 1} ${reason}`, row: start.y, col: start.x }],
+  );
 }
 
 /**

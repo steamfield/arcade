@@ -5,7 +5,7 @@
  * the floor under the vent's tile.
  */
 import type { NamedFrame, PixelRows } from '../../art/pixel.ts';
-import type { VentArt } from '../../view/vent-view.ts';
+import type { VentArt } from '../../view/set-pieces/vent-view.ts';
 import { TerrainPalette, WaterLight } from './palettes.ts';
 
 /** Empty rows above the fissure, so it sits at the bottom of the tile. */

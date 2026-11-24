@@ -29,7 +29,7 @@ const HINT = { x: 160, y: 28, text: 'UP AND DOWN CHANGE A LETTER' } as const;
  * apart, centred on x 160 (x 101-219), from y 44. The turned fins sit 1 px clear above and below,
  * so the whole block ends at y 73, above the d-pad zone.
  */
-export const CODE_CELLS = { y: 44, w: 18, h: 20, gap: 2 } as const;
+const CODE_CELLS = { y: 44, w: 18, h: 20, gap: 2 } as const;
 /** The cursor fin is 9x9 and sits 1 px clear of the cell. */
 const FIN_SIZE = 9;
 const FIN_GAP = 1;
@@ -42,7 +42,7 @@ const FOOTER_WORDS = {
 } as const;
 
 /** One code cell's frame, left edge first. */
-export function codeCellRect(index: number): { x: number; y: number; w: number; h: number } {
+function codeCellRect(index: number): { x: number; y: number; w: number; h: number } {
   const total = ROOM_CODE_LENGTH * CODE_CELLS.w + (ROOM_CODE_LENGTH - 1) * CODE_CELLS.gap;
   const left = HEADING.x - total / 2;
   return { x: left + index * (CODE_CELLS.w + CODE_CELLS.gap), y: CODE_CELLS.y, w: CODE_CELLS.w, h: CODE_CELLS.h };

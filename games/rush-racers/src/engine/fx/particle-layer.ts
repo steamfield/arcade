@@ -9,7 +9,7 @@ import { type ParticleField, particleAlpha, particleScreenX } from './particles.
 import { FX_TEXTURE, FxFrame } from './textures.ts';
 
 /** The images showing one particle field. */
-export interface ParticleLayer {
+interface ParticleLayer {
   /** Copies every particle onto its image; dead particles are hidden. */
   render(): void;
 }

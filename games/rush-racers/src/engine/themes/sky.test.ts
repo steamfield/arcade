@@ -1,6 +1,6 @@
 /**
  * The sky theme's contract: Sky Test is drawn with it, its colours (`sky/palettes.ts`) grade the way
- * the plan fixes and keep hazards and terrain readable, its art is well formed under keys of its own,
+ * the plan fixes and keep terrain readable, its art is well formed under keys of its own,
  * its tiles tell thunderhead, puff, bounce and fog apart by shape, and Cloudreach's song is its own.
  * Every racer and all global art holding 3:1 off its contrast bands is checked in
  * `art/sprites/sprites.test.ts`.
@@ -12,10 +12,14 @@ import { measureFrames, type NamedFrame } from '../art/pixel.ts';
 import type { NoteEvent, Song } from '../audio/notation.ts';
 import { songs } from '../audio/songs/index.ts';
 import { FxFrame } from '../fx/textures.ts';
-import { STORM_TEXTURE } from '../view/lightning-view.ts';
-import { RING_TEXTURE } from '../view/ring-view.ts';
+import { STORM_TEXTURE } from '../view/set-pieces/lightning-view.ts';
+import { RING_TEXTURE } from '../view/set-pieces/ring-view.ts';
 import { SkyItemTex, SkyRacerTex, SkyTex } from '../worlds/cloudreach/keys.ts';
+import { SKY_HAZARD_LOOPS, SKY_HAZARD_SHEETS } from '../worlds/cloudreach/sprites/hazards.ts';
+import { ReefItemTex, ReefRacerTex, ReefTex } from '../worlds/reef/keys.ts';
+import { REEF_HAZARD_LOOPS, REEF_HAZARD_SHEETS } from '../worlds/reef/sprites/hazards.ts';
 import { ThornItemTex, ThornRacerTex, ThornTex } from '../worlds/thornwood/keys.ts';
+import { THORN_HAZARD_LOOPS, THORN_HAZARD_SHEETS } from '../worlds/thornwood/sprites/hazards.ts';
 import { assertCourseAssets } from './course-assets.ts';
 import { FOREST_SHEETS } from './forest/sprites/index.ts';
 import { FOREST_THEME } from './forest.ts';
@@ -23,14 +27,7 @@ import { THEMES, themeFor } from './index.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import { OCEAN_THEME } from './ocean.ts';
 import { SkyThemeAnim, SkyThemeTex, SkyThemeTile } from './sky/keys.ts';
-import {
-  EVENING_HAZE,
-  SKY_BANDS,
-  SkyBackdropPalette,
-  SkyHazardPalette,
-  SkyTerrainPalette,
-  STORM_TINT,
-} from './sky/palettes.ts';
+import { EVENING_HAZE, SKY_BANDS, SkyBackdropPalette, SkyTerrainPalette, STORM_TINT } from './sky/palettes.ts';
 import { SKY_SHEETS } from './sky/sprites/index.ts';
 import { SKY_THEME } from './sky.ts';
 
@@ -94,14 +91,6 @@ describe('the sky theme', () => {
     ]);
   });
 
-  it.each([
-    ['spark cloud', SkyHazardPalette.sparkCloud[1]],
-    ['static wisp', SkyHazardPalette.staticWisp[1]],
-  ])("keeps the %s's body 3:1 off every sky contrast band", (_, body) => {
-    const weakest = Math.min(...SKY_THEME.contrastBands.map((band) => contrast(body, band.colour)));
-    expect(weakest).toBeGreaterThanOrEqual(3);
-  });
-
   it('makes a puff cloud tell apart from a thunderhead at a glance, and a bounce cloud warm where the puff is cool', () => {
     expect(contrast(SkyTerrainPalette.puffCloud[2], SkyTerrainPalette.thunderhead[1])).toBeGreaterThanOrEqual(3);
     const [puffR, , puffB] = channels(SkyTerrainPalette.puffCloud[1]);
@@ -140,33 +129,32 @@ describe('the sky art', () => {
       ...OCEAN_SHEETS.map((sheet) => sheet.key),
       ...FOREST_SHEETS.map((sheet) => sheet.key),
       ...Object.values(Tex),
+      ...Object.values(ReefTex),
+      ...Object.values(ReefRacerTex),
+      ...Object.values(ReefItemTex),
       ...Object.values(ThornTex),
       ...Object.values(ThornRacerTex),
       ...Object.values(ThornItemTex),
       ...Object.values(SkyTex),
       ...Object.values(SkyRacerTex),
       ...Object.values(SkyItemTex),
+      ...[...REEF_HAZARD_SHEETS, ...THORN_HAZARD_SHEETS, ...SKY_HAZARD_SHEETS].map((sheet) => sheet.key),
       RING_TEXTURE,
       STORM_TEXTURE,
     ];
-    const otherAnims = [OCEAN_THEME, FOREST_THEME].flatMap((theme) => [
-      ...Object.values(theme.terrain.flowing).map((art) => art.anim),
-      theme.hazards.urchin.anim,
-      theme.hazards.jelly.anim,
-    ]);
+    const otherAnims = [
+      ...[OCEAN_THEME, FOREST_THEME].flatMap((theme) => Object.values(theme.terrain.flowing).map((art) => art.anim)),
+      ...[...REEF_HAZARD_LOOPS, ...THORN_HAZARD_LOOPS, ...SKY_HAZARD_LOOPS].map((loop) => loop.key),
+    ];
     const skyTextures: string[] = Object.values(SkyThemeTex);
     const skyAnims: string[] = Object.values(SkyThemeAnim);
     expect(otherTextures.filter((key) => skyTextures.includes(key))).toEqual([]);
-    expect(otherAnims.filter((key) => key !== null && skyAnims.includes(key))).toEqual([]);
+    expect(otherAnims.filter((key) => skyAnims.includes(key))).toEqual([]);
   });
 
-  it('gives every flowing cell and both hazards the two frames their loops ask for', () => {
-    const looping = [
-      ...Object.values(SKY_THEME.terrain.flowing).map((art) => art.texture),
-      SKY_THEME.hazards.urchin.texture,
-      SKY_THEME.hazards.jelly.texture,
-    ];
-    expect(looping).toHaveLength(7);
+  it('gives every flowing cell the two frames its loop asks for', () => {
+    const looping = Object.values(SKY_THEME.terrain.flowing).map((art) => art.texture);
+    expect(looping).toHaveLength(5);
     for (const key of looping)
       expect(
         sheetFor(key)?.frames.map((frame) => frame.name),
@@ -224,19 +212,6 @@ describe('the sky art', () => {
     expect(SKY_THEME.backdrop).toMatchObject({ bands: SKY_BANDS, caustics: null, rays: null });
     expect(SKY_THEME.backdrop.haze).toBeDefined();
     expect(SKY_THEME.ambient.motes).toBeNull();
-  });
-
-  it('animates the spark cloud and the static wisp in the hazard slots the views read', () => {
-    expect(SKY_THEME.hazards.urchin).toEqual({
-      texture: SkyThemeTex.sparkCloud,
-      frame: 'a',
-      anim: SkyThemeAnim.sparkCrackle,
-    });
-    expect(SKY_THEME.hazards.jelly).toEqual({
-      texture: SkyThemeTex.staticWisp,
-      frame: 'a',
-      anim: SkyThemeAnim.wispFlicker,
-    });
   });
 
   it('veils a dark stretch in the storm tint, and sheds puffs of vapour rather than bubbles', () => {

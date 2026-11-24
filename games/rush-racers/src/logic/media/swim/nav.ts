@@ -4,14 +4,14 @@
  * fields lives in `way.ts` and `ai/steer.ts`.
  */
 import { isRockLike } from '../../level/query.ts';
-import { distancesToFinish, fieldAt } from '../../race/flowfield.ts';
+import { alongCost, distancesToFinish, type FlowPrices, unreachableStarts } from '../../race/flowfield.ts';
 import type { Cell, Level, Vec } from '../../types.ts';
 import type { LevelProblem, MediumNav } from '../types.ts';
 import { type SwimNav, swimNav } from './data.ts';
 
 const KELP_COST = 2.5;
-const WITH_CURRENT_COST = 0.4;
-const AGAINST_CURRENT_COST = 3;
+/** Swimming with a current is quick; against it is slow. */
+const CURRENT_PRICES: FlowPrices = { withFlow: 0.4, againstFlow: 3 };
 const SMASH_CORAL_COST = 6;
 const RAM_CORAL_COST = 3;
 /** Air above a surface: a swimmer can only arc through it, so it is a costly way round. */
@@ -35,19 +35,8 @@ export const steerCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
   if (cell === 'kelp') return KELP_COST;
   if (cell === 'air') return AIR_COST;
   const current = CURRENT_DIRECTION[cell];
-  return current ? currentCost(current, move) : 1;
+  return current ? alongCost(current, move, CURRENT_PRICES) : 1;
 };
-
-/**
- * A diagonal entry counts as with or against the current by the sign of its component along
- * the current, the same as a straight one; only a move with no component along it is across.
- */
-function currentCost(current: Vec, move: Vec): number {
-  const along = current.x * move.x + current.y * move.y;
-  if (along > 0) return WITH_CURRENT_COST;
-  if (along < 0) return AGAINST_CURRENT_COST;
-  return 1;
-}
 
 /** Like steer, but a racer able to break coral may plough through it at a price. */
 const smashCost = (cell: Cell, isBroken: boolean, move: Vec): number =>
@@ -77,9 +66,5 @@ export function buildSwimNav(level: Level, broken: ReadonlySet<number>): SwimNav
  */
 export function validateSwimLevel(level: Level, nav: MediumNav): LevelProblem[] {
   const fields = swimNav(nav);
-  return level.starts.flatMap((start, index) =>
-    Number.isFinite(fieldAt(fields.steer, fields, start))
-      ? []
-      : [{ message: `Start ${index + 1} cannot reach the finish without breaking coral`, row: start.y, col: start.x }],
-  );
+  return unreachableStarts(level, fields.steer, fields, 'cannot reach the finish without breaking coral');
 }

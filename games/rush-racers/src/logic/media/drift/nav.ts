@@ -6,7 +6,14 @@
  */
 import { isRockLike, isSolid } from '../../level/query.ts';
 import { length } from '../../num.ts';
-import { distancesToFinish, type EntryCost, fieldAt, NEIGHBOURS } from '../../race/flowfield.ts';
+import {
+  alongCost,
+  distancesToFinish,
+  type EntryCost,
+  type FlowPrices,
+  NEIGHBOURS,
+  unreachableStarts,
+} from '../../race/flowfield.ts';
 import { type Cell, type Level, TILE, type Vec, type Well } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
 import { type DriftNav, driftNav } from './way-data.ts';
@@ -14,8 +21,7 @@ import { type DriftNav, driftNav } from './way-data.ts';
 /** Nebula dust lowers cruise and drags, so a way through it is dear. */
 const DUST_COST = 2.5;
 /** Riding a solar wind lane along its arrow is cheap; flying against it is dear. */
-const WITH_WIND_COST = 0.4;
-const AGAINST_WIND_COST = 3;
+const WIND_PRICES: FlowPrices = { withFlow: 0.4, againstFlow: 3 };
 /** Price of ploughing through unbroken ice for a racer able to break it. */
 const SMASH_ICE_COST = 6;
 /** Price of unbroken ice for a racer that rams through it as it flies. */
@@ -46,16 +52,8 @@ export const driftCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
   if (cell === 'coral') return isBroken ? 1 : Number.POSITIVE_INFINITY;
   if (cell === 'kelp') return DUST_COST;
   const wind = WIND_DIRECTION[cell];
-  return wind ? windCost(wind, move) : 1;
+  return wind ? alongCost(wind, move, WIND_PRICES) : 1;
 };
-
-/** A move counts as with or against the wind by the sign of its component along the wind's arrow. */
-function windCost(wind: Vec, move: Vec): number {
-  const along = wind.x * move.x + wind.y * move.y;
-  if (along > 0) return WITH_WIND_COST;
-  if (along < 0) return AGAINST_WIND_COST;
-  return 1;
-}
 
 /** Like `driftCost`, but a racer able to break ice may plough through it at a price. */
 const smashCost = (cell: Cell, isBroken: boolean, move: Vec): number =>
@@ -125,15 +123,10 @@ function holeCost(hole: Well, point: Vec): number {
  */
 export function validateDriftLevel(level: Level, nav: MediumNav): LevelProblem[] {
   const drift = driftNav(nav);
-  return level.starts.flatMap((start, index) =>
-    Number.isFinite(fieldAt(drift.steer, drift, start))
-      ? []
-      : [
-          {
-            message: `Start ${index + 1} cannot reach the finish without breaking ice or crossing a black hole's horizon`,
-            row: start.y,
-            col: start.x,
-          },
-        ],
+  return unreachableStarts(
+    level,
+    drift.steer,
+    drift,
+    "cannot reach the finish without breaking ice or crossing a black hole's horizon",
   );
 }

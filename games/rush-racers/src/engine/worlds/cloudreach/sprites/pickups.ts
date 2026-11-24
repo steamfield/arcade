@@ -10,7 +10,7 @@ import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { SkyTex } from '../keys.ts';
 
 /** Balloon: dark outline, red rubber, its shine, and the cream `?`, ribbon and string. */
-export const BalloonPalette: Palette = [0x3a0a1a, 0xff4a62, 0xffb0bc, 0xfff4c8];
+const BalloonPalette: Palette = [0x3a0a1a, 0xff4a62, 0xffb0bc, 0xfff4c8];
 
 /** Feather: navy outline, warm white vane (brighter than the pearl), a white shine and a gold quill. */
 export const FeatherPalette: Palette = [0x1c2246, 0xfff4e0, 0xffffff, 0xffc040];

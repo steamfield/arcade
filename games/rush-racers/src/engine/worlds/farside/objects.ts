@@ -1,24 +1,17 @@
 /**
- * Farside's object skin: items, attacks, the `?` pod and stardust, space enemies, hazard glints and
- * the words for them, plus `registerFarsideObjects`, which draws every texture the skin names.
+ * Farside's object skin: items, attacks, the `?` pod and stardust, space enemies, space mines and
+ * plasma orbs with their glints, and the words for them. `art.ts` draws every texture the skin
+ * names.
  */
-import type Phaser from 'phaser';
 import type { PowerUpKind } from '../../../logic/types.ts';
-import { drawSheets } from '../../art/index.ts';
+import { Frame } from '../../art/keys.ts';
 import type { ArtRef } from '../art-ref.ts';
-import type { ObjectSkin } from '../object-skin.ts';
-import { REEF_OBJECTS } from '../reef/objects.ts';
-import { FarIconFrame, FarItemTex, FarTex } from './keys.ts';
-import { FARSIDE_ART_OWNER } from './owner.ts';
-import { ATTACK_ART_SHEETS } from './sprites/attack.ts';
-import { FAR_ENEMY_SHEETS } from './sprites/enemies.ts';
-import { ITEM_ART_SHEETS } from './sprites/items.ts';
-import { FAR_MARK_SHEET } from './sprites/marks.ts';
-import { FAR_PICKUP_SHEETS } from './sprites/pickups.ts';
+import { GLINT_ALPHA, type ObjectSkin } from '../object-skin.ts';
+import { FarHazardAnim, FarHazardTex, FarIconFrame, FarItemTex, FarTex } from './keys.ts';
 
 const icon = (kind: PowerUpKind): ArtRef => ({ texture: FarTex.icons, frame: FarIconFrame[kind] });
 
-/** Farside's objects: its own item, attack, pickup and enemy art and words. Glints have their own keys, because the dark view bakes a glint's colour into the texture under its key. */
+/** Farside's objects: its own item, attack, pickup, enemy and hazard art and words. Glints have their own keys, because the dark view bakes a glint's colour into the texture under its key. */
 export const FARSIDE_OBJECTS: ObjectSkin = {
   itemIcons: {
     jetFin: icon('jetFin'),
@@ -47,9 +40,13 @@ export const FARSIDE_OBJECTS: ObjectSkin = {
     eelBody: FarTex.wormBody,
     marks: FarTex.marks,
   },
+  hazards: {
+    urchin: { texture: FarHazardTex.mine, frame: Frame.a, anim: null },
+    jelly: { texture: FarHazardTex.orb, frame: Frame.a, anim: FarHazardAnim.orbPulse },
+  },
   glints: {
-    urchin: { key: 'farside-glint-urchin', colour: 0xff90b8, alpha: REEF_OBJECTS.glints.urchin.alpha },
-    jelly: { key: 'farside-glint-jelly', colour: 0xffe070, alpha: REEF_OBJECTS.glints.jelly.alpha },
+    urchin: { key: 'farside-glint-urchin', colour: 0xff90b8, alpha: GLINT_ALPHA.urchin },
+    jelly: { key: 'farside-glint-jelly', colour: 0xffe070, alpha: GLINT_ALPHA.jelly },
   },
   text: {
     slowedBy: 'SLOWED BY GAS',
@@ -60,16 +57,3 @@ export const FARSIDE_OBJECTS: ObjectSkin = {
     pearlsHeading: 'STARDUST',
   },
 };
-
-/**
- * Draws every object texture and frame the skin names, once; calling it again changes nothing.
- *
- * @throws {Error} When a sprite's pixel text is malformed or a key belongs to another owner (see `drawSheets`).
- */
-export function registerFarsideObjects(scene: Phaser.Scene): void {
-  drawSheets(
-    scene,
-    [...ITEM_ART_SHEETS, ...ATTACK_ART_SHEETS, ...FAR_PICKUP_SHEETS, ...FAR_ENEMY_SHEETS, FAR_MARK_SHEET],
-    FARSIDE_ART_OWNER,
-  );
-}

@@ -17,7 +17,7 @@ export const LOCK_CUE_GAP_TICKS = 90;
 export const HEARING_PX = 320;
 
 /** Decides each attack event's sound. `audibleFromLocal(id)` says whether racer `id` is near enough to hear. */
-export interface AttackSfx {
+interface AttackSfx {
   /** The sound for `event` drained on world tick `tick`, or null when it makes none. */
   forEvent(event: RuntimeEvent, tick: number): SfxKey | null;
 }

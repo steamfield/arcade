@@ -5,17 +5,21 @@
  * the finish without popping one. Its nav is a `FlightNav` (`way-data.ts`); `way.ts` reads it.
  */
 import { cellAt, isRockLike, isSolid } from '../../level/query.ts';
-import { distancesToFinish, type EntryCost, fieldAt } from '../../race/flowfield.ts';
+import {
+  alongCost,
+  distancesToFinish,
+  type EntryCost,
+  type FlowPrices,
+  unreachableStarts,
+} from '../../race/flowfield.ts';
 import type { Cell, Level, Vec } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
 import { type FlightNav, flightNav } from './way-data.ts';
 
 /** A fog bank slows a flyer to well under cruise. */
 const FOG_COST = 2.5;
-/** Flying with the wind (a gust, or up an updraft) is quick. */
-const WITH_WIND_COST = 0.5;
-/** Flying into the wind (against a gust, or up a downdraft) is slow. */
-const AGAINST_WIND_COST = 3;
+/** Flying with the wind (a gust, or up an updraft) is quick; into it (against a gust, or up a downdraft) is slow. */
+const WIND_PRICES: FlowPrices = { withFlow: 0.5, againstFlow: 3 };
 /** A puff cloud on the ram field, entered sideways: cheap, since a dash pops it, but dearer than open sky. */
 const RAM_PUFF_COST = 3;
 /** Rows at the bottom of a column open to the sky below where a flyer is near falling out. */
@@ -39,21 +43,13 @@ const WIND_DIRECTION: Partial<Record<Cell, Vec>> = {
  * are walls, fog is slow, wind helps or hinders. The steer field adds the low-sky price on top
  * (`flightEnterCost`).
  */
-export const flightCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
+const flightCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
   if (isRockLike(cell)) return Number.POSITIVE_INFINITY;
   if (cell === 'coral') return isBroken ? 1 : Number.POSITIVE_INFINITY;
   if (cell === 'kelp') return FOG_COST;
   const wind = WIND_DIRECTION[cell];
-  return wind ? windCost(wind, move) : 1;
+  return wind ? alongCost(wind, move, WIND_PRICES) : 1;
 };
-
-/** With or against the wind by the sign of the move's component along it; across it costs as open sky. */
-function windCost(wind: Vec, move: Vec): number {
-  const along = wind.x * move.x + wind.y * move.y;
-  if (along > 0) return WITH_WIND_COST;
-  if (along < 0) return AGAINST_WIND_COST;
-  return 1;
-}
 
 /**
  * Like flight's cost, but an unbroken puff cloud entered sideways (straight or diagonally) is open
@@ -125,15 +121,5 @@ function isLowSky(level: Level, tile: Vec): boolean {
  */
 export function validateFlightLevel(level: Level, nav: MediumNav): LevelProblem[] {
   const flight = flightNav(nav);
-  return level.starts.flatMap((start, index) =>
-    Number.isFinite(fieldAt(flight.steer, flight, start))
-      ? []
-      : [
-          {
-            message: `Start ${index + 1} cannot reach the finish flying without popping a puff cloud`,
-            row: start.y,
-            col: start.x,
-          },
-        ],
-  );
+  return unreachableStarts(level, flight.steer, flight, 'cannot reach the finish flying without popping a puff cloud');
 }

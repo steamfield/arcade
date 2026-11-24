@@ -1,8 +1,8 @@
 /**
  * What a world skin is: everything the engine draws or words differently per world, keyed by the
- * world's id. A world's cast and object art are split so each can be built on its own.
+ * world's id. A world's cast and object art are split so each can be built on its own. A skin is
+ * data only; the textures it names are drawn by its world's `art.ts`, through `WORLD_ART`.
  */
-import type Phaser from 'phaser';
 import type { WorldFlavour } from '../audio/world-flavour.ts';
 import type { SensedMoment } from '../fx/movement-sense.ts';
 import type { CastSkin } from './cast-skin.ts';
@@ -26,6 +26,4 @@ export interface WorldSkin {
   moveMoments?: readonly SensedMoment[];
   /** How item fire sounds are coloured in this world (`audio/world-flavour.ts`). The fire sounds as written when left out. */
   fireFlavour?: WorldFlavour;
-  /** Builds the world's own textures at boot. Reef's art is the global art `art/index.ts` builds, so its is empty. */
-  registerTextures(scene: Phaser.Scene): void;
 }

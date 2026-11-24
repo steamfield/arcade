@@ -1,11 +1,25 @@
+/**
+ * `arcade see`: runs a game headlessly to exact ticks and writes what an agent needs to judge it
+ * (frames, a contact sheet, summary, state, events, console, optional diffs against a baseline)
+ * to a run folder, then prints the summary.
+ */
 import { existsSync, mkdirSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { GameDriver, type InputStep, parseInput, type Scenario } from '@arcade/testing';
-import { chromium, devices } from '@playwright/test';
+import {
+  type GameDriver,
+  type GameSession,
+  type InputStep,
+  openGameSession,
+  type Problem,
+  parseInput,
+  type Scenario,
+  type ScenarioResult,
+} from '@arcade/testing';
 import { createServer } from 'vite';
 import { findGame, ROOT, UsageError } from './games.ts';
 import { elapsed } from './run.ts';
+import { type Comparison, compareFrames, contactSheet } from './see-images.ts';
 
 export interface SeeOptions {
   scenario?: string;
@@ -30,15 +44,99 @@ export interface SeeOptions {
   events?: string;
 }
 
+/** The input to play and the ticks to stop and capture at. */
+interface RunPlan {
+  steps: InputStep[];
+  /** Ticks to capture at, ascending and unique. */
+  captures: number[];
+  inputTicks: number;
+  /** Idle ticks added after the input to reach the last `--at`. */
+  padded: number;
+}
+
+interface Frame {
+  tick: number;
+  file: string;
+  summary: Record<string, unknown>;
+}
+
+/** Everything a finished run produced, for the summary. */
+interface RunRecord {
+  frames: Frame[];
+  comparisons: Comparison[];
+  state: unknown;
+  events: ScenarioResult['events'];
+  problems: Problem[];
+  renderer: string;
+  consoleLines: string[];
+  /** Empty when the run has no scenario expectations. */
+  scenarioResult: string;
+  scenarioFailed: boolean;
+}
+
 /**
  * Run a game headlessly to an exact state and capture what an agent needs to
  * judge it: screenshots, summary, state, events, console. Starts its own Vite
  * server from this worktree on a free port and shuts it down afterwards.
+ *
+ * @throws {UsageError} When an option is malformed or names a scenario or folder that doesn't exist.
+ * @throws {Error} When the dev server or browser can't start, the game fails to open, a Playwright
+ *   step fails during the run, or stopping the session fails. An AggregateError carries both causes
+ *   when opening fails and stopping what had started fails too.
  */
 export async function see(slug: string, opts: SeeOptions): Promise<number> {
   const start = performance.now();
   const game = findGame(slug);
   const scenario = opts.scenario ? await loadScenario(game.dir, opts.scenario) : undefined;
+  const plan = planRun(scenario, opts);
+  const compareDir = opts.compare ? resolve(opts.compare) : undefined;
+  if (compareDir && !existsSync(compareDir)) throw new UsageError(`--compare folder ${opts.compare} does not exist`);
+  if (opts.mobile && opts.viewport) throw new UsageError('--viewport sets a desktop window; drop it or --mobile');
+  const viewport = opts.viewport ? parseViewport(opts.viewport) : undefined;
+
+  const runDir = opts.out ? makeOutDir(opts.out) : makeRunDir(slug);
+  const seed = opts.seed ?? scenario?.start?.seed;
+  const scene = opts.scene ?? scenario?.start?.scene;
+  const session = await openGameSession({
+    game,
+    createServer,
+    mobile: opts.mobile,
+    ...(viewport && { viewport }),
+    open: {
+      query: { ...scenario?.start?.query, ...parseQuery(opts.query ?? []) },
+      ...(seed !== undefined && { seed: Number(seed) }),
+      ...(scene !== undefined && { scene }),
+      debug: opts.debug,
+    },
+  });
+  let record: RunRecord;
+  try {
+    if (scenario?.start?.save !== undefined) await session.driver.loadState(scenario.start.save);
+    const frames = await captureFrames(session, plan, runDir);
+    record = await recordRun(session, frames, { scenario, compareDir, runDir, crop: opts.crop });
+  } finally {
+    await session.close();
+  }
+  const lines = [
+    // Absolute, so an agent in a worktree or a subfolder reads this run, not another checkout's `latest`.
+    `run: ${runDir}  (${elapsed(start)})`,
+    `renderer: ${record.renderer}   ticks: ${plan.inputTicks + plan.padded}${plan.padded ? ` (input ${plan.inputTicks} + ${plan.padded} idle to reach --at)` : ''}   seed: ${seed ?? 1}${opts.mobile ? '   device: mobile' : ''}`,
+    ...(scenario ? [`scenario ${opts.scenario}: ${record.scenarioResult || 'ran (no expectations)'}`] : []),
+    ...summaryLines(record, opts, compareDir),
+  ];
+  const text = lines.join('\n');
+  writeFileSync(join(runDir, 'summary.txt'), text);
+  console.log(text);
+  return record.scenarioFailed || record.problems.length > 0 ? 1 : 0;
+}
+
+/**
+ * The scenario's input then `--input`, the `--at` capture ticks, and idle padding so a capture
+ * past the input waits for it with nothing pressed (idle scenes need no `_*N` padding).
+ *
+ * @throws {UsageError} When an `--at` tick isn't a non-negative integer or "end".
+ */
+function planRun(scenario: Scenario | undefined, opts: SeeOptions): RunPlan {
   const steps: InputStep[] = [...(scenario?.input ?? []), ...(opts.input ? parseInput(opts.input) : [])];
   const inputTicks = steps.reduce((n, s) => n + s.ticks, 0);
   const captureAt = opts.at
@@ -48,163 +146,155 @@ export async function see(slug: string, opts: SeeOptions): Promise<number> {
     throw new UsageError('--at ticks must be non-negative integers, or "end"');
   }
   const captures = [...new Set(captureAt)].sort((a, b) => a - b);
-  // A capture past the input waits for it with nothing pressed, so idle scenes need no `_*N` padding.
   const padded = Math.max(0, (captures.at(-1) ?? 0) - inputTicks);
   if (padded > 0) steps.push({ actions: [], ticks: padded });
-  const total = inputTicks + padded;
-  const compareDir = opts.compare ? resolve(opts.compare) : undefined;
-  if (compareDir && !existsSync(compareDir)) throw new UsageError(`--compare folder ${opts.compare} does not exist`);
-  if (opts.mobile && opts.viewport) throw new UsageError('--viewport sets a desktop window; drop it or --mobile');
+  return { steps, captures, inputTicks, padded };
+}
 
-  const runDir = opts.out ? makeOutDir(opts.out) : makeRunDir(slug);
-  process.env.ARCADE_TEST_SERVER = '1';
-  const server = await createServer({
-    configFile: join(game.dir, 'vite.config.ts'),
-    root: game.dir,
-    logLevel: 'error',
-    server: { port: 0, host: '127.0.0.1' },
-  });
-  const browser = await chromium.launch({ args: ['--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const lines: string[] = [];
-  let failed = false;
-  try {
-    await server.listen();
-    const address = server.httpServer?.address();
-    if (!address || typeof address === 'string') throw new Error('Vite did not report a port');
-    const phone = game.manifest.orientation === 'landscape' ? devices['Pixel 7 landscape'] : devices['Pixel 7'];
-    const context = await browser.newContext({
-      ...(opts.mobile ? phone : { viewport: parseViewport(opts.viewport ?? '960x540') }),
-      baseURL: `http://127.0.0.1:${address.port}`,
-    });
-    const page = await context.newPage();
-    const driver = new GameDriver(page, `/games/${slug}/`);
-    const seed = opts.seed ?? scenario?.start?.seed;
-    const scene = opts.scene ?? scenario?.start?.scene;
-    const query = { ...scenario?.start?.query, ...parseQuery(opts.query ?? []) };
-    await driver.open({
-      query,
-      ...(seed !== undefined && { seed: Number(seed) }),
-      ...(scene !== undefined && { scene }),
-      debug: opts.debug,
-      touch: opts.mobile,
-    });
-    if (scenario?.start?.save !== undefined) await driver.loadState(scenario.start.save);
-
-    // Play the input, pausing at each capture tick.
-    const frames: { tick: number; file: string; summary: Record<string, unknown> }[] = [];
-    let tick = 0;
-    const capture = async () => {
-      const file = join(runDir, `frame-${tick}.png`);
-      await driver.screenshot(file);
-      frames.push({ tick, file, summary: await driver.summary() });
-    };
-    for (const step of steps) {
-      await page.evaluate((a) => {
-        for (const x of a) window.__arcade?.inject(x, true);
-      }, step.actions);
-      let left = step.ticks;
-      while (left > 0) {
-        while (captures[0] === tick) {
-          captures.shift();
-          await capture();
-        }
-        const next = captures[0] !== undefined && captures[0] < tick + left ? captures[0] - tick : left;
-        await driver.advance(next);
-        tick += next;
-        left -= next;
+/** Plays the plan's input, stopping at each capture tick to screenshot and read the summary. */
+async function captureFrames(session: GameSession, plan: RunPlan, runDir: string): Promise<Frame[]> {
+  const { page, driver } = session;
+  const captures = [...plan.captures];
+  const frames: Frame[] = [];
+  let tick = 0;
+  const capture = async () => {
+    const file = join(runDir, `frame-${tick}.png`);
+    await driver.screenshot(file);
+    frames.push({ tick, file, summary: await driver.summary() });
+  };
+  for (const step of plan.steps) {
+    await page.evaluate((a) => {
+      for (const x of a) window.__arcade?.inject(x, true);
+    }, step.actions);
+    let left = step.ticks;
+    while (left > 0) {
+      while (captures[0] === tick) {
+        captures.shift();
+        await capture();
       }
-      await page.evaluate((a) => {
-        for (const x of a) window.__arcade?.inject(x, false);
-      }, step.actions);
+      const next = captures[0] !== undefined && captures[0] < tick + left ? captures[0] - tick : left;
+      await driver.advance(next);
+      tick += next;
+      left -= next;
     }
-    while (captures.length > 0) {
-      captures.shift();
-      await capture();
-    }
-    const comparisons = compareDir ? await compareFrames(page, frames, compareDir, runDir) : [];
-    if (frames.length > 1) await contactSheet(page, frames, join(runDir, 'frames.png'), opts.crop);
-    else if (opts.crop && frames[0]) await contactSheet(page, frames, frames[0].file, opts.crop);
-
-    const state = await driver.state();
-    const events = await driver.events();
-    const problems = await driver.problems();
-    const renderer = await driver.renderer();
-    writeFileSync(join(runDir, 'state.json'), JSON.stringify(state, null, 2));
-    writeFileSync(join(runDir, 'events.jsonl'), events.map((e) => JSON.stringify(e)).join('\n'));
-    writeFileSync(join(runDir, 'console.log'), driver.console.join('\n'));
-
-    let scenarioResult = '';
-    if (scenario?.expect) {
-      try {
-        await scenario.expect({ summary: await driver.summary(), state, events });
-        scenarioResult = scenario.todo ? 'PASSED, but it is marked todo: remove `todo` if the bug is fixed' : 'PASSED';
-      } catch (err) {
-        scenarioResult = scenario.todo
-          ? 'failed as expected (todo)'
-          : `FAILED\n${indent(String((err as Error).message))}`;
-        failed = !scenario.todo;
-      }
-    }
-
-    // Absolute, so an agent in a worktree or a subfolder reads this run, not another checkout's `latest`.
-    lines.push(`run: ${runDir}  (${elapsed(start)})`);
-    lines.push(
-      `renderer: ${renderer}   ticks: ${total}${padded ? ` (input ${inputTicks} + ${padded} idle to reach --at)` : ''}   seed: ${seed ?? 1}${opts.mobile ? '   device: mobile' : ''}`,
-    );
-    if (scenario) lines.push(`scenario ${opts.scenario}: ${scenarioResult || 'ran (no expectations)'}`);
-    for (const f of frames) lines.push(`tick ${f.tick}: ${JSON.stringify(f.summary)}`);
-    lines.push(`events: ${summarizeEvents(events)}`);
-    if (compareDir) {
-      lines.push(`compare with ${relative(ROOT, compareDir)}:`);
-      for (const c of comparisons) lines.push(`  tick ${c.tick}: ${c.result}`);
-      const differing = comparisons.filter((c) => c.differs).length;
-      lines.push(
-        differing
-          ? `  ${differing} of ${comparisons.length} frame(s) differ: see diff-<tick>.png (changes in red)`
-          : '  all frames identical',
-      );
-    }
-    if (opts.events) {
-      const shown = events.filter((e) => opts.events === 'all' || e.type.startsWith(opts.events ?? ''));
-      for (const e of shown.slice(0, 50)) {
-        const { type, tick, seq: _seq, ...data } = e as { type: string; tick: number; seq?: number };
-        lines.push(
-          `  tick ${String(tick).padStart(5)}  ${type}${Object.keys(data).length ? ` ${JSON.stringify(data)}` : ''}`,
-        );
-      }
-      if (shown.length > 50) lines.push(`  … ${shown.length - 50} more in events.jsonl`);
-    }
-    // GPU-stall notices come from our own screenshots (ReadPixels), not from the game.
-    const warnings = dedupe(
-      driver.console.filter(
-        (l) => l.startsWith('[warning]') && !/GL Driver Message|GPU stall due to ReadPixels/.test(l),
-      ),
-    );
-    if (warnings.length) lines.push(`console warnings:\n${warnings.map((w) => `  ${w}`).join('\n')}`);
-    if (problems.length) {
-      failed = true;
-      lines.push(`PROBLEMS:\n${problems.map((p) => `  ${p.kind}: ${p.message.split('\n')[0]}`).join('\n')}`);
-    }
-    if (opts.ascii) {
-      const ascii = (state as { ascii?: string } | null)?.ascii;
-      lines.push(ascii ? `ascii:\n${ascii}` : 'ascii: this game does not expose debugState().ascii');
-    }
-    if (opts.field) lines.push(`${opts.field}: ${JSON.stringify(pick(state, opts.field), null, 2)}`);
-    lines.push(
-      `files: ${frames.length > 1 ? 'frames.png, ' : ''}${frames.map((f) => `frame-${f.tick}.png`).join(', ')}, state.json, events.jsonl, console.log`,
-    );
-  } finally {
-    await browser.close();
-    await server.close();
+    await page.evaluate((a) => {
+      for (const x of a) window.__arcade?.inject(x, false);
+    }, step.actions);
   }
-  const text = lines.join('\n');
-  writeFileSync(join(runDir, 'summary.txt'), text);
-  console.log(text);
-  return failed ? 1 : 0;
+  while (captures.length > 0) {
+    captures.shift();
+    await capture();
+  }
+  return frames;
+}
+
+/**
+ * Builds the contact sheet and diffs, writes state.json, events.jsonl and console.log, and runs the
+ * scenario's expectations against the final state.
+ */
+async function recordRun(
+  session: GameSession,
+  frames: Frame[],
+  where: { scenario: Scenario | undefined; compareDir: string | undefined; runDir: string; crop: string | undefined },
+): Promise<RunRecord> {
+  const { page, driver } = session;
+  const comparisons = where.compareDir ? await compareFrames(page, frames, where.compareDir, where.runDir) : [];
+  if (frames.length > 1) await contactSheet(page, frames, join(where.runDir, 'frames.png'), where.crop);
+  else if (where.crop && frames[0]) await contactSheet(page, frames, frames[0].file, where.crop);
+
+  const state = await driver.state();
+  const events = await driver.events();
+  const problems = await driver.problems();
+  const renderer = await driver.renderer();
+  writeFileSync(join(where.runDir, 'state.json'), JSON.stringify(state, null, 2));
+  writeFileSync(join(where.runDir, 'events.jsonl'), events.map((e) => JSON.stringify(e)).join('\n'));
+  writeFileSync(join(where.runDir, 'console.log'), driver.console.join('\n'));
+  const verdict = where.scenario ? await judgeScenario(where.scenario, driver, state, events) : undefined;
+  return {
+    frames,
+    comparisons,
+    state,
+    events,
+    problems,
+    renderer,
+    consoleLines: [...driver.console],
+    scenarioResult: verdict?.text ?? '',
+    scenarioFailed: verdict?.failed ?? false,
+  };
+}
+
+/** Runs a scenario's expectations, reading a `todo` scenario's pass or failure the other way round. */
+async function judgeScenario(
+  scenario: Scenario,
+  driver: GameDriver,
+  state: unknown,
+  events: ScenarioResult['events'],
+): Promise<{ text: string; failed: boolean } | undefined> {
+  if (!scenario.expect) return undefined;
+  try {
+    await scenario.expect({ summary: await driver.summary(), state, events });
+    const text = scenario.todo ? 'PASSED, but it is marked todo: remove `todo` if the bug is fixed' : 'PASSED';
+    return { text, failed: false };
+  } catch (err) {
+    if (scenario.todo) return { text: 'failed as expected (todo)', failed: false };
+    return { text: `FAILED\n${indent(String((err as Error).message))}`, failed: true };
+  }
+}
+
+/** The summary lines after the run header: frames, events, diffs, warnings, problems and asked-for fields. */
+function summaryLines(record: RunRecord, opts: SeeOptions, compareDir: string | undefined): string[] {
+  const { frames, comparisons, events, problems, state } = record;
+  const lines: string[] = [];
+  for (const f of frames) lines.push(`tick ${f.tick}: ${JSON.stringify(f.summary)}`);
+  lines.push(`events: ${summarizeEvents(events)}`);
+  if (compareDir) lines.push(...comparisonLines(comparisons, compareDir));
+  if (opts.events) lines.push(...eventLines(events, opts.events));
+  // GPU-stall notices come from our own screenshots (ReadPixels), not from the game.
+  const warnings = dedupe(
+    record.consoleLines.filter(
+      (l) => l.startsWith('[warning]') && !/GL Driver Message|GPU stall due to ReadPixels/.test(l),
+    ),
+  );
+  if (warnings.length) lines.push(`console warnings:\n${warnings.map((w) => `  ${w}`).join('\n')}`);
+  if (problems.length) {
+    lines.push(`PROBLEMS:\n${problems.map((p) => `  ${p.kind}: ${p.message.split('\n')[0]}`).join('\n')}`);
+  }
+  if (opts.ascii) {
+    const ascii = (state as { ascii?: string } | null)?.ascii;
+    lines.push(ascii ? `ascii:\n${ascii}` : 'ascii: this game does not expose debugState().ascii');
+  }
+  if (opts.field) lines.push(`${opts.field}: ${JSON.stringify(pick(state, opts.field), null, 2)}`);
+  lines.push(
+    `files: ${frames.length > 1 ? 'frames.png, ' : ''}${frames.map((f) => `frame-${f.tick}.png`).join(', ')}, state.json, events.jsonl, console.log`,
+  );
+  return lines;
+}
+
+/** One line per compared frame, then a count of the ones that differ. */
+function comparisonLines(comparisons: Comparison[], compareDir: string): string[] {
+  const differing = comparisons.filter((c) => c.differs).length;
+  return [
+    `compare with ${relative(ROOT, compareDir)}:`,
+    ...comparisons.map((c) => `  tick ${c.tick}: ${c.result}`),
+    differing
+      ? `  ${differing} of ${comparisons.length} frame(s) differ: see diff-<tick>.png (changes in red)`
+      : '  all frames identical',
+  ];
+}
+
+/** Up to 50 events matching `--events` ('all' or a type prefix), each with its tick and data. */
+function eventLines(events: ScenarioResult['events'], filter: string): string[] {
+  const shown = events.filter((e) => filter === 'all' || e.type.startsWith(filter));
+  const lines = shown.slice(0, 50).map((e) => {
+    const { type, tick, seq: _seq, ...data } = e as { type: string; tick: number; seq?: number };
+    return `  tick ${String(tick).padStart(5)}  ${type}${Object.keys(data).length ? ` ${JSON.stringify(data)}` : ''}`;
+  });
+  if (shown.length > 50) lines.push(`  … ${shown.length - 50} more in events.jsonl`);
+  return lines;
 }
 
 /** `["stage=guide", "a=b"]` → `{ stage: 'guide', a: 'b' }`. */
-export function parseQuery(pairs: string[]): Record<string, string> {
+function parseQuery(pairs: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const pair of pairs) {
     const eq = pair.indexOf('=');
@@ -266,129 +356,6 @@ function makeRunDir(slug: string): string {
   for (const old of all.slice(0, Math.max(0, all.length - 50)))
     rmSync(join(runs, old), { recursive: true, force: true });
   return dir;
-}
-
-/** One image with every captured frame side by side, labeled by tick, capped so pixel art stays legible. */
-async function contactSheet(
-  page: import('@playwright/test').Page,
-  frames: { tick: number; file: string }[],
-  out: string,
-  crop?: string,
-): Promise<void> {
-  const { readFileSync } = await import('node:fs');
-  const images = frames.map((f) => ({
-    tick: f.tick,
-    src: `data:image/png;base64,${readFileSync(f.file).toString('base64')}`,
-  }));
-  const [cx, cy, cw, ch] = crop ? crop.split(',').map(Number) : [];
-  const sheet = await page.context().newPage();
-  const cell = crop ? `width:${cw}px;height:${ch}px;overflow:hidden;position:relative` : 'max-width:600px';
-  const img = crop ? `position:absolute;left:-${cx}px;top:-${cy}px` : 'max-width:600px;display:block';
-  await sheet.setContent(
-    `<body style="margin:0;background:#222"><div id="sheet" style="background:#222;color:#fff;font:14px monospace;display:flex;flex-wrap:wrap;gap:8px;padding:8px;width:max-content;max-width:1880px">${images
-      .map(
-        (i) =>
-          `<figure style="margin:0"><div style="${cell}"><img src="${i.src}" style="${img};image-rendering:pixelated"></div><figcaption>tick ${i.tick}</figcaption></figure>`,
-      )
-      .join('')}</div></body>`,
-  );
-  await sheet.locator('#sheet').screenshot({ path: out });
-  await sheet.close();
-}
-
-interface Comparison {
-  tick: number;
-  differs: boolean;
-  result: string;
-}
-
-/**
- * Diff each captured frame against `<dir>/frame-<tick>.png` in the browser (no image libraries), writing
- * `diff-<tick>.png` with changed pixels in red over a faded copy of the new frame. A channel must move by more
- * than 8 to count, which ignores encoder noise but not a moved sprite or a recoloured tile.
- */
-async function compareFrames(
-  page: import('@playwright/test').Page,
-  frames: { tick: number; file: string }[],
-  dir: string,
-  runDir: string,
-): Promise<Comparison[]> {
-  const { readFileSync } = await import('node:fs');
-  const out: Comparison[] = [];
-  const sheet = await page.context().newPage();
-  try {
-    for (const f of frames) {
-      const base = join(dir, `frame-${f.tick}.png`);
-      if (!existsSync(base)) {
-        out.push({ tick: f.tick, differs: true, result: `no baseline frame-${f.tick}.png` });
-        continue;
-      }
-      const toUrl = (file: string) => `data:image/png;base64,${readFileSync(file).toString('base64')}`;
-      const r = await sheet.evaluate(
-        async ([a, b]) => {
-          const load = (src: string) =>
-            new Promise<HTMLImageElement>((ok, fail) => {
-              const img = new Image();
-              img.onload = () => ok(img);
-              img.onerror = () => fail(new Error('could not decode a frame'));
-              img.src = src;
-            });
-          const [x, y] = await Promise.all([load(a as string), load(b as string)]);
-          if (x.width !== y.width || x.height !== y.height) {
-            return {
-              size: `${x.width}x${x.height} vs baseline ${y.width}x${y.height}`,
-              changed: -1,
-              total: 0,
-              png: '',
-            };
-          }
-          const read = (img: HTMLImageElement) => {
-            const c = document.createElement('canvas');
-            c.width = img.width;
-            c.height = img.height;
-            const g = c.getContext('2d') as CanvasRenderingContext2D;
-            g.drawImage(img, 0, 0);
-            return { c, g, d: g.getImageData(0, 0, img.width, img.height) };
-          };
-          const now = read(x);
-          const was = read(y).d.data;
-          const px = now.d.data;
-          let changed = 0;
-          for (let i = 0; i < px.length; i += 4) {
-            const moved =
-              Math.abs((px[i] ?? 0) - (was[i] ?? 0)) > 8 ||
-              Math.abs((px[i + 1] ?? 0) - (was[i + 1] ?? 0)) > 8 ||
-              Math.abs((px[i + 2] ?? 0) - (was[i + 2] ?? 0)) > 8;
-            if (moved) {
-              changed++;
-              px[i] = 255;
-              px[i + 1] = 0;
-              px[i + 2] = 0;
-            } else {
-              px[i] = ((px[i] ?? 0) + 510) / 3;
-              px[i + 1] = ((px[i + 1] ?? 0) + 510) / 3;
-              px[i + 2] = ((px[i + 2] ?? 0) + 510) / 3;
-            }
-          }
-          now.g.putImageData(now.d, 0, 0);
-          return { size: '', changed, total: px.length / 4, png: changed ? now.c.toDataURL('image/png') : '' };
-        },
-        [toUrl(f.file), toUrl(base)],
-      );
-      if (r.changed < 0) {
-        out.push({ tick: f.tick, differs: true, result: `size differs: ${r.size}` });
-      } else if (r.changed === 0) {
-        out.push({ tick: f.tick, differs: false, result: 'identical' });
-      } else {
-        writeFileSync(join(runDir, `diff-${f.tick}.png`), Buffer.from(r.png.split(',')[1] ?? '', 'base64'));
-        const pct = ((100 * r.changed) / r.total).toFixed(2);
-        out.push({ tick: f.tick, differs: true, result: `${r.changed} px differ (${pct}%), diff-${f.tick}.png` });
-      }
-    }
-  } finally {
-    await sheet.close();
-  }
-  return out;
 }
 
 function summarizeEvents(events: { type: string }[]): string {

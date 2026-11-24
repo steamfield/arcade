@@ -32,6 +32,9 @@ type ArcadeEvent = ScenarioResult['events'][number];
 
 const IDLE_TIMEOUT_MS = 15_000;
 
+/** The pointer a single finger reports, for touch-button presses. */
+const TOUCH_POINTER = { pointerId: 1, isPrimary: true } as const;
+
 export class GameDriver {
   private cursor = 0;
   private readonly collected: ArcadeEvent[] = [];
@@ -109,6 +112,24 @@ export class GameDriver {
     }
   }
 
+  /**
+   * Hold the on-screen touch button for `action` for `ticks` logic ticks, through the pointer
+   * events a finger sends. The touch controls must be showing (a touch device or `touch: true`).
+   * The finger is lifted even when advancing fails, so later steps don't run with it held.
+   *
+   * @throws {Error} When the overlay or the action's button isn't on the page (Playwright's
+   *   timeout error once the test's action timeout runs out), or advancing the game fails.
+   */
+  async touch(action: string, ticks: number): Promise<void> {
+    const button = this.page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
+    await button.dispatchEvent('pointerdown', TOUCH_POINTER);
+    try {
+      await this.advance(ticks);
+    } finally {
+      await button.dispatchEvent('pointerup', TOUCH_POINTER);
+    }
+  }
+
   async loadState(save: unknown): Promise<void> {
     await this.page.evaluate(async (s) => window.__arcade?.loadState(s), save);
     await this.waitIdle();
@@ -154,13 +175,7 @@ export class GameDriver {
 
   /** Everything that went wrong without throwing. Tests fail when this is non-empty. */
   async problems(): Promise<Problem[]> {
-    const gameErrors = await this.page
-      .evaluate(() => window.__arcade?.errors ?? [])
-      .catch(() => [] as { source: string; message: string }[]);
-    const all: Problem[] = [
-      ...gameErrors.map((e) => ({ kind: 'game-error' as const, message: `${e.source}: ${e.message}` })),
-      ...this.found,
-    ];
+    const all: Problem[] = [...(await this.readGameErrors()), ...this.found];
     // One exception surfaces as a game error, a page error and a console error. Report it once.
     const seen: string[] = [];
     return all.filter((p) => {
@@ -171,6 +186,18 @@ export class GameDriver {
       seen.push(key);
       return true;
     });
+  }
+
+  /** Errors the game reported in the page. A closed page has none to read; a failed read is itself a problem. */
+  private async readGameErrors(): Promise<Problem[]> {
+    if (this.page.isClosed()) return [];
+    try {
+      const errors = await this.page.evaluate(() => window.__arcade?.errors ?? []);
+      return errors.map((e) => ({ kind: 'game-error' as const, message: `${e.source}: ${e.message}` }));
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      return [{ kind: 'game-error', message: `could not read window.__arcade.errors: ${reason}` }];
+    }
   }
 
   private async assertNoGameErrors(during: string): Promise<void> {

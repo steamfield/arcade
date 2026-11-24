@@ -4,11 +4,10 @@
  */
 import type { Theme, ThemeSpec } from './types.ts';
 
-/** A theme from its spec: no legend glyph art and no extra layers unless the spec gives them. */
+/** A theme from its spec: no legend glyph art unless the spec gives it. */
 export function defineTheme(spec: ThemeSpec): Theme {
   return {
     ...spec,
     terrain: { ...spec.terrain, glyphTiles: spec.terrain.glyphTiles ?? {} },
-    extraLayers: spec.extraLayers ?? (() => []),
   };
 }

@@ -45,7 +45,7 @@ const LAND_SQUASH_AMOUNT = 0.25;
 export const PLACE_FLASH_TICKS = 4;
 
 /** What the sprite shows at a world tick. */
-export interface RacerLook {
+interface RacerLook {
   /** Stretch along the kick's axis: negative while squashed, positive while stretched, 0 at rest. */
   stretch: number;
   /**

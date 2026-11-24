@@ -20,7 +20,7 @@ export const PLAYER_PROFILE: RivalProfile = {
  * Bots that drive the player's racer in tests, to measure difficulty with the player's physics.
  * An expert kicks well, steers clean and uses items. The no-dash bot steers like the expert but
  * never dashes or fires: a player who holds forward and steers well (the difficulty harness strips
- * every dash from it, `difficulty/bot-driver.ts`). A novice steers loosely, reacts late, never
+ * every dash from it, `balance/bot-driver.ts`). A novice steers loosely, reacts late, never
  * uses items, and kicks now and then: about once every 2.3 s on the course, measured.
  */
 export const BOT_PROFILES = {

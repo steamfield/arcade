@@ -24,9 +24,11 @@ const HELP = `arcade: build, check and see games in this repo
       dependents, or everything when CI, the CLI or root config changed. --json adds each
       game's slow-suite shards (package.json "arcade": { "ci": { "slow": ... } }) for CI.
 
-  pnpm arcade test <slug> [paths... | @group...] [-t <name pattern>]
+  pnpm arcade test <slug> [paths... | @group...] [-t <name pattern>] [--project <name>]
       Only the game's Vitest tests, narrowed to files, folders, named groups or a test name. This
       is how an agent proves its change; the full check and smoke run once, before a merge.
+      Runs the game's fast project (the one its package.json "test" script names) unless you pass
+      explicit test files or --project <name> (e.g. a slow project).
       Paths may be repo- or game-relative; groups come from the game's package.json
       ("arcade": { "testGroups": { ... } }), and an unknown group lists the defined ones.
 
@@ -83,6 +85,7 @@ async function main(argv: string[]): Promise<number> {
       out: { type: 'string' },
       compare: { type: 'string' },
       'test-name': { type: 'string', short: 't' },
+      project: { type: 'string' },
       debug: { type: 'boolean', default: false },
       mobile: { type: 'boolean', default: false },
       viewport: { type: 'string' },
@@ -117,6 +120,7 @@ async function main(argv: string[]): Promise<number> {
       return testGame(requireSlug(), [
         ...positionals.slice(1),
         ...(values['test-name'] !== undefined ? ['-t', values['test-name']] : []),
+        ...(values.project !== undefined ? ['--project', values.project] : []),
       ]);
     case 'see':
       return see(requireSlug(), {

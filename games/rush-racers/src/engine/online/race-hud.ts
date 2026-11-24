@@ -12,7 +12,7 @@ import type { RaceView } from '../../net/client.ts';
 export const WAITING_AFTER_MS = 500;
 
 /** A label to draw over a racer. */
-export interface RacerTag {
+interface RacerTag {
   id: RacerId;
   label: string;
 }
@@ -48,7 +48,7 @@ const TAG_HEIGHT = 7;
 const OUTLINE = 1;
 
 /** A racer's sprite on screen: its top and bottom edges in screen px (bottom exclusive). */
-export interface SpriteRows {
+interface SpriteRows {
   top: number;
   bottom: number;
 }

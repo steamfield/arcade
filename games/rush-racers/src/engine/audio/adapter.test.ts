@@ -2,7 +2,7 @@ import { EventLog, type Stamped } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { raceOn } from '../../logic/test-world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import { stormWithinReach } from '../view/storm-reach.ts';
+import { stormWithinReach } from '../view/set-pieces/storm-reach.ts';
 import { type AdapterOptions, createAdapter, enemyWithinHearing } from './adapter.ts';
 import type { Sequencer } from './sequencer.ts';
 import type { Synth } from './synth.ts';

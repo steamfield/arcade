@@ -18,7 +18,7 @@ import type { World } from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { Theme } from '../themes/types.ts';
 import { Layer } from '../view/layers.ts';
-import { cameraSpan } from '../view/storm-reach.ts';
+import { cameraSpan } from '../view/set-pieces/storm-reach.ts';
 import { skinFor } from '../worlds/index.ts';
 import { createBubbleTracker } from './bubble-tracker.ts';
 import { createBursts } from './bursts.ts';
@@ -33,7 +33,7 @@ import { createShake } from './shake.ts';
 import { ensureFxTextures } from './textures.ts';
 import { trailFor } from './trail.ts';
 
-export interface Fx {
+interface Fx {
   /** Reacts to one tick's drained events; `tick` is the world tick they happened on. */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
   /** Called every rendered frame with the current world. */

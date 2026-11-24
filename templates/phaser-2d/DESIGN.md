@@ -21,14 +21,18 @@ Jump height depends on how long jump is held (released early = lower jump).
 - `title`: menu with Continue (only when a save has progress) and New game.
 - `play`: the level. `?scene=play` skips the title (continues the save if there is one).
 - `?debug=1` draws the player hitbox plus tick and tile in the HUD.
+- `?stage=<name>` (only with `?debug=1` or in test mode) puts the world in a known state right after it is built, for captures: `near-goal` stands the player two tiles left of the flag. A staged run is never saved. Add stages in `src/engine/capture-stages.ts`.
 
 ## Structure
 
 - `src/logic/level.ts`: ASCII level format (`#` solid, `o` coin, `P` spawn, `G` goal) and `LEVEL_1`.
 - `src/logic/world.ts`: tile physics, coins, goal; `toAscii()` for tests and `arcade see --ascii`.
-- `src/engine/game.ts`: Phaser scenes. `Runtime.tick()` is the only place logic advances.
+- `src/logic/hash.ts`: `hashWorld`, the `worldHash` in `debugState()` and `debugSummary()`. Smoke pins one hash across every browser project.
+- `src/engine/runtime.ts`: scene flow, the title menu, the save write queue and the per-tick logic step, with no Phaser import. `Runtime.tick()` is the only place logic advances; `runtime.test.ts` drives it in Vitest.
+- `src/engine/game.ts`: Phaser scenes that render runtime state, and the `GameHandle` the shell drives.
+- `src/engine/debug.ts`: what `debugSummary()` and `debugState()` report.
 - Placeholder textures are drawn at boot in `src/engine/textures.ts`.
 
 ## Scenarios
 
-`collect-first-coin`, `complete-level`, `restore-save`.
+`collect-first-coin`, `complete-level`, `restore-save`, `near-goal-stage`. `scenarios/kit.ts` holds the shared presets: `TITLE_TO_PLAY` and `TWO_COINS_SAVE`, built from the current `SAVE_VERSION`.

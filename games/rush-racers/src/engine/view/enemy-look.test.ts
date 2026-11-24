@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createEnemies } from '../../logic/hazards/enemies/index.ts';
 import { raceOn } from '../../logic/test-world.ts';
 import type { Enemy, EnemyMode, Vec } from '../../logic/types.ts';
-import { Frame, Tex } from '../art/keys.ts';
+import { Frame } from '../art/keys.ts';
 import { REEF_OBJECTS } from '../worlds/reef/objects.ts';
 import { defeatBurst, type EnemyLook, type EnemyMoments, enemyLook } from './enemy-look.ts';
 
@@ -37,7 +37,7 @@ describe('the shark', () => {
     const strokes = [0, 10].map((tick) => reefLook(shark, NONE, tick, false));
     expect(strokes.map((look) => look.body?.frame)).toEqual([Frame.a, Frame.b]);
     expect(strokes[0]).toMatchObject({
-      body: { texture: Tex.shark, x: 88, y: 40, flipX: false, fill: false, tint: null },
+      body: { texture: REEF_OBJECTS.enemies.bodies.shark, x: 88, y: 40, flipX: false, fill: false, tint: null },
       alert: null,
       dizzy: null,
     });
@@ -83,7 +83,11 @@ describe('the crab', () => {
   it('walks in two strokes standing on the floor, and stands still on one when not moving', () => {
     const walking = enemy('crab', 'patrol', { vel: { x: -20, y: 0 } });
     expect([0, 8].map((tick) => reefLook(walking, NONE, tick, false).body?.frame)).toEqual([Frame.a, Frame.b]);
-    expect(reefLook(walking, NONE, 0, false).body).toMatchObject({ texture: Tex.crab, x: 88, y: 74 });
+    expect(reefLook(walking, NONE, 0, false).body).toMatchObject({
+      texture: REEF_OBJECTS.enemies.bodies.crab,
+      x: 88,
+      y: 74,
+    });
     const resting = enemy('crab', 'patrol');
     expect(reefLook(resting, NONE, 8, false).body?.frame).toBe(Frame.a);
   });
@@ -128,7 +132,13 @@ describe('the eel', () => {
   it('lunges out of the wall as a head on a body reaching back to the hole', () => {
     // 24 px up out of the floor: the head's centre is 32 px from the hole, its neck 8 px back.
     const out = reefLook(enemy('eel', 'lunge', { at: { x: 200, y: 48 } }), NONE, 0, false);
-    expect(out.body).toMatchObject({ texture: Tex.eelHead, frame: Frame.b, x: 200, y: 48, rotation: -Math.PI / 2 });
+    expect(out.body).toMatchObject({
+      texture: REEF_OBJECTS.enemies.bodies.eel,
+      frame: Frame.b,
+      x: 200,
+      y: 48,
+      rotation: -Math.PI / 2,
+    });
     expect(out.eelBody).toEqual({ x: 200, y: 68, length: 24, rotation: -Math.PI / 2 });
     expect(out.hole?.eyes).toBe(false);
   });

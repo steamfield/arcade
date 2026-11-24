@@ -39,7 +39,7 @@ const TURNS: Readonly<
 };
 
 /** Where and how to draw the arrow, in screen px. */
-export interface ArrowPlacement {
+interface ArrowPlacement {
   x: number;
   y: number;
   frame: typeof Frame.guideStraight | typeof Frame.guideDiagonal;
@@ -85,7 +85,7 @@ function clamp(value: number, low: number, high: number): number {
 }
 
 /** The guide view; `sync` redraws it from the world and the arrow `hints.ts` wants. */
-export interface GuideView {
+interface GuideView {
   /** `way` is the hint's tile offset or null; `view` is the camera's world rectangle. */
   sync(world: World, way: Vec | null, view: Phaser.Geom.Rectangle): void;
 }

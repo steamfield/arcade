@@ -1,9 +1,14 @@
 /**
  * Farside's own texture and frame keys, as typed consts, prefixed `farside-` so they can't
- * collide with the global art, the UI kit or a theme. The cast and object skins name these; their
- * `register` functions build every one at boot, and `assertSkinTextures` checks they exist.
+ * collide with the global art, the UI kit or a theme. The cast and object skins name these;
+ * `art.ts` builds every one at boot, and `assertSkinTextures` checks they exist.
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
+import { worldArtOwner } from '../../art/index.ts';
+import { byItem, bySlot } from '../../art/keys.ts';
+
+/** The art owner name Farside's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
+export const FARSIDE_ART_OWNER = worldArtOwner('farside');
 
 /** Racer texture per slot: 16x12, facing right, run-stride frames `Frame.a` and `Frame.b`. */
 export const FarRacerTex: Readonly<Record<CharacterId, string>> = {
@@ -61,27 +66,19 @@ export const FarItemTex: Readonly<Record<PowerUpKind, string>> = {
 };
 
 /** Frame names in `FarTex.portraits` and `FarTex.heads`: the slot id. */
-export const FarCastFrame: Readonly<Record<CharacterId, string>> = {
-  rudy: 'rudy',
-  gil: 'gil',
-  streak: 'streak',
-  onyx: 'onyx',
-  nib: 'nib',
-  baron: 'baron',
-  selene: 'selene',
-  rook: 'rook',
-};
+export const FarCastFrame: Readonly<Record<CharacterId, string>> = bySlot();
 
 /** Frame names in `FarTex.icons`: the item kind. */
-export const FarIconFrame: Readonly<Record<PowerUpKind, string>> = {
-  jetFin: 'jetFin',
-  bubbleShield: 'bubbleShield',
-  puffer: 'puffer',
-  inkSac: 'inkSac',
-  glowLantern: 'glowLantern',
-  homingSquid: 'homingSquid',
-  riptide: 'riptide',
-  undertow: 'undertow',
-  mimic: 'mimic',
-  cannonball: 'cannonball',
-};
+export const FarIconFrame: Readonly<Record<PowerUpKind, string>> = byItem();
+
+/** Farside hazard texture keys. */
+export const FarHazardTex = {
+  mine: 'space-mine',
+  /** The plasma orb: frames `a` and `b`, looped by `FarHazardAnim.orbPulse`. */
+  orb: 'space-orb',
+} as const;
+
+/** Farside hazard animation keys. */
+export const FarHazardAnim = {
+  orbPulse: 'space-orb-pulse',
+} as const;

@@ -1,14 +1,23 @@
 /**
  * How a world draws and words the things every world shares: item icons and in-world item art, attack
- * art, pickups, enemies, the dark-zone glints of hazards, and the item and enemy words on the HUD and
- * How to Play. Mechanics and ids are shared; only the look and the words change per world. The
- * theme still draws a course's terrain, backdrop and hazard sprites.
+ * art, pickups, enemies, hazards and their dark-zone glints, and the item and enemy words on the HUD
+ * and How to Play. Mechanics and ids are shared; only the look and the words change per world. The
+ * theme draws a course's terrain and backdrop.
  */
 import type { EnemyKind, PowerUpKind } from '../../logic/types.ts';
 import type { ArtRef } from './art-ref.ts';
 
+/** How a hazard looks: a texture with a still frame, or a looping animation. */
+export interface HazardSkin {
+  texture: string;
+  /** The frame shown when `anim` is null. */
+  frame: string;
+  /** A looping animation the sprite plays; null for a still image. */
+  anim: string | null;
+}
+
 /** In-world art for the attack items and their effects. */
-export interface AttackArt {
+interface AttackArt {
   /** The Homing Squid (or a world's homing creature) in flight, frames `a`, `b` and `latched`. */
   homer: string;
   /** One 16x16 tile of a Riptide lane, streaks pointing right. */
@@ -40,8 +49,11 @@ export interface Glint {
   alpha: number;
 }
 
+/** How strongly each hazard's glint shows in a dark zone; every world uses these unless it has a reason not to. */
+export const GLINT_ALPHA: Readonly<Record<'urchin' | 'jelly', number>> = { urchin: 0.55, jelly: 0.6 };
+
 /** Words the HUD and How to Play show about shared things, in capitals. */
-export interface ObjectText {
+interface ObjectText {
   /** The HUD line under a racer slowed by an Ink Sac cloud, e.g. SLOWED BY INK. */
   slowedBy: string;
   /** The word on the arrows beside a trapped racer, e.g. BUBBLE. */
@@ -66,6 +78,8 @@ export interface ObjectSkin {
   /** The pearl (acorn) texture, and the clam (crate) texture with `closed` and `open` frames. */
   pickups: Readonly<{ pearl: string; clam: string }>;
   enemies: EnemyArt;
+  /** The art in the two hazard slots: urchins and jellies, whatever the world calls them. */
+  hazards: Readonly<{ urchin: HazardSkin; jelly: HazardSkin }>;
   glints: Readonly<{ urchin: Glint; jelly: Glint }>;
   text: ObjectText;
 }
