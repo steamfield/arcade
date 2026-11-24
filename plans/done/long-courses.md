@@ -2,6 +2,7 @@
 
 Skill: deliver. Profile: deliver. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.4/shared/scripts/plan_graph.py
+Status: done, merged to main 2026-11-24.
 Started: 2026-11-24. Timebox: none. Landing branch: deliver/long-courses.
 Gate: `pnpm arcade check rush-racers` (~20 s uncached) and `pnpm arcade smoke rush-racers` at every phase; each changed course's bars (`pnpm arcade test rush-racers src/logic/balance/<course>-*.test.ts`) from phase 3 on, since phase 2 lengthens courses the bars were measured on and phase 3 retunes them. Filtered tests: `pnpm arcade test rush-racers <paths or @group>`. Typecheck and lint: `pnpm arcade check rush-racers --skip-tests`.
 Runner: plain commands (`rr suite -- rush-racers` offloads the slow project when the machine is busy).
@@ -273,6 +274,7 @@ Rules every phase 2 lane follows (pasted into each contract):
 Demo: every `src/logic/balance/<course>-*.test.ts` file passes for all four listed courses.
 Depends on: phase 2
 Scaffold: ada5b28
+Tag: long-courses/phase-3
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
