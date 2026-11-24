@@ -310,12 +310,11 @@ const LEVEL: LevelDef = {
 
 /**
  * The expert bot's mean Hard finish (152.3 s) across all eight characters and seeds 1-200.
- * All 1600 races finished, with a slowest finish of 11143 ticks (Baron, seed 15).
- * The previous par of 9104 ticks included long stalls at the Debris Storm orb and in nebula dust.
- * Clearing the channel and capping drag removed those stalls. A lower dust cruise keeps the
- * course near its original pace.
+ * All 1600 races finished, with a slowest finish of 11266 ticks (Rook, seed 57).
+ * The previous par of 9139 ticks used capped drag even during counter-thrust. This course's 0.45
+ * dust cruise override sets the pace through its dust stretches.
  */
-const PAR_TICKS = 9139;
+const PAR_TICKS = 9140;
 
 /**
  * Normal rivals hover this many tiles behind the player here, not the table's 2. On the short layout,
@@ -359,5 +358,7 @@ export const SLINGSHOT_ALLEY: ShippedCourse = {
   listed: true,
   parTicks: PAR_TICKS,
   sections: SECTIONS,
+  // Dust slows this course enough to keep its par near 150 s after the stalls were fixed.
+  tuning: { extra: { dustCruiseMul: 0.45 } },
   catchUp: { normal: { lagTiles: NORMAL_LAG_TILES }, easy: { min: EASY_CATCH_UP_MIN } },
 };

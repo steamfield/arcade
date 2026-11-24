@@ -102,8 +102,8 @@ interface DragInputs {
 
 /**
  * The speed, px/s, drag takes off this tick, scaled by dragMul: thin dust, the idle brake, nebula
- * dust and `overDrag`. While thrusting in nebula dust, drag can shed excess speed but
- * takes at most `dustThrustShare` of thrust below dust cruise. Even weak thrust can start a drift.
+ * dust and `overDrag`. In nebula dust, thrust from rest or along the motion loses at most
+ * `dustThrustShare` of its push below dust cruise. Counter-thrust keeps full drag for braking.
  */
 function dragLoss(body: Body, inputs: DragInputs, dt: number): number {
   const { extras, tuning, mods, env, stick, cruise } = inputs;
@@ -113,8 +113,9 @@ function dragLoss(body: Body, inputs: DragInputs, dt: number): number {
   const steady = (tuning.drag + idle + dust) * mods.dragMul * dt;
   const overCruise = Math.max(0, length(body.vx, body.vy) - cruise);
   const loss = steady + Math.min(extras.overDrag * mods.dragMul * dt, overCruise);
+  if (!env.inDust || !burning || stick.x * body.vx + stick.y * body.vy < 0) return loss;
   const thrustBudget = tuning.force * mods.forceMul * dt * extras.dustThrustShare;
-  return env.inDust && burning ? Math.min(loss, overCruise + thrustBudget) : loss;
+  return Math.min(loss, overCruise + thrustBudget);
 }
 
 /** Takes `amount` px/s off the body's speed along its velocity, stopping at rest. */
