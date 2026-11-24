@@ -1,6 +1,6 @@
 /**
- * Reef's object art: every sheet is well-formed, and the items, attack art, pickups and enemies have
- * the frames and sizes their views ask for.
+ * Reef's object art: the items, attack art, pickups and enemies have the frames and sizes their views
+ * ask for. Every other world is held to Reef's by `worlds/skins.test.ts`, so these are the baseline.
  */
 import { describe, expect, it } from 'vitest';
 import { POWER_UP_KINDS } from '../../../logic/types.ts';
@@ -16,22 +16,17 @@ const frameNames = (key: string) => sheetFor(key)?.frames.map((frame) => frame.n
 const sizeOf = (key: string) => measureFrames(key, sheetFor(key)?.frames ?? []);
 
 describe('Reef object art', () => {
-  it('draws each texture once, as well-formed pixel text of at most four colours', () => {
+  it('lists each texture once, since drawing skips a key it already drew', () => {
     const keys = REEF_OBJECT_SHEETS.map((sheet) => sheet.key);
     expect(new Set(keys).size).toBe(keys.length);
-    for (const sheet of REEF_OBJECT_SHEETS) {
-      expect(() => measureFrames(sheet.key, sheet.frames)).not.toThrow();
-      for (const frame of sheet.frames) expect(frame.palette.length, sheet.key).toBeLessThanOrEqual(4);
-    }
   });
 
-  it('draws every held power-up as a 12x12 sprite, the attack kinds included, and no two alike', () => {
+  it('draws every held power-up as a 12x12 sprite, the attack kinds included', () => {
     const { itemTextures } = REEF_OBJECTS;
     for (const kind of POWER_UP_KINDS) {
       expect(frameNames(itemTextures[kind]), kind).toEqual([Frame.a]);
       expect(sizeOf(itemTextures[kind]), kind).toEqual({ width: 12, height: 12 });
     }
-    expect(new Set(POWER_UP_KINDS.map((kind) => itemTextures[kind])).size).toBe(POWER_UP_KINDS.length);
   });
 
   it('gives the clam, the squid and the attack streaks the frames their views ask for', () => {

@@ -1,44 +1,16 @@
 /**
- * Reef's cast art: every slot has a 16x12 racer with two stroke frames, a 16x16 portrait and a 7x7
- * head named by slot, and the heads still tell apart on the progress strip.
+ * Reef's own cast rows: its ability wording, and its heads still tell apart on the progress strip.
+ * What every world's cast shares is checked in `worlds/skins.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { CHARACTER_IDS } from '../../../logic/types.ts';
-import { Frame } from '../../art/keys.ts';
-import { measureFrames, type NamedFrame } from '../../art/pixel.ts';
+import type { NamedFrame } from '../../art/pixel.ts';
 import { REEF_CAST } from './cast.ts';
-import { ReefCastFrame, ReefRacerTex, ReefTex } from './keys.ts';
+import { ReefTex } from './keys.ts';
 import { REEF_FACE_SHEETS } from './sprites/portraits.ts';
-import { REEF_RACER_SHEETS } from './sprites/racers.ts';
 
-const SHEETS = [...REEF_RACER_SHEETS, ...REEF_FACE_SHEETS];
-const sheetFor = (key: string) => SHEETS.find((sheet) => sheet.key === key);
-const frameNames = (key: string) => sheetFor(key)?.frames.map((frame) => frame.name);
-const sizeOf = (key: string) => measureFrames(key, sheetFor(key)?.frames ?? []);
+const sheetFor = (key: string) => REEF_FACE_SHEETS.find((sheet) => sheet.key === key);
 
 describe('Reef cast art', () => {
-  it.each(CHARACTER_IDS)('draws %s as a 16x12 racer with swim-stroke frames a and b', (slot) => {
-    expect(frameNames(ReefRacerTex[slot])).toEqual([Frame.a, Frame.b]);
-    expect(sizeOf(ReefRacerTex[slot])).toEqual({ width: 16, height: 12 });
-  });
-
-  it('draws a 16x16 portrait and a 7x7 head for every slot, named by slot', () => {
-    const names = CHARACTER_IDS.map((slot) => ReefCastFrame[slot]);
-    expect(frameNames(ReefTex.portraits)).toEqual(names);
-    expect(frameNames(ReefTex.heads)).toEqual(names);
-    expect(sizeOf(ReefTex.portraits)).toEqual({ width: 16, height: 16 });
-    expect(sizeOf(ReefTex.heads)).toEqual({ width: 7, height: 7 });
-  });
-
-  it('points the cast skin at the sheets it draws', () => {
-    for (const slot of CHARACTER_IDS) {
-      expect(sheetFor(REEF_CAST.racers[slot]), slot).toBeDefined();
-      for (const ref of [REEF_CAST.portraits[slot], REEF_CAST.heads[slot]]) {
-        expect(frameNames(ref.texture), slot).toContain(ref.frame);
-      }
-    }
-  });
-
   it("keeps Reef's own ability wording for the Spring Kick seahorse", () => {
     expect(REEF_CAST.abilities.gil.name).toBe('SPRING KICK');
   });

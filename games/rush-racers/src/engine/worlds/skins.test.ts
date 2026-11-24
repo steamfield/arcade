@@ -1,22 +1,87 @@
 /**
  * Every shipped world's skin names art and words for every character slot, item, enemy and pickup,
- * and a course resolves to its world's skin.
+ * a course resolves to its world's skin, and each world's art passes the shared conformance suite.
  */
 import { describe, expect, it } from 'vitest';
 import { COURSES } from '../../logic/courses/index.ts';
 import { CHARACTER_IDS } from '../../logic/types.ts';
-import { Tex } from '../art/keys.ts';
-import { UiTex } from '../art/ui/keys.ts';
-import { ForestTex } from '../themes/forest/keys.ts';
-import { OceanTex } from '../themes/ocean/keys.ts';
-import { SkyItemTex, SkyRacerTex, SkyTex } from './cloudreach/keys.ts';
+import { ForestBackdropPalette, WOOD_BANDS } from '../themes/forest/palettes.ts';
+import { BackdropPalette, WATER_BANDS } from '../themes/ocean/palettes.ts';
+import { SKY_BANDS, SkyBackdropPalette } from '../themes/sky/palettes.ts';
+import { SpaceBackdropPalette, VOID_BANDS } from '../themes/space/palettes.ts';
+import { SkyEnemyPalette } from './cloudreach/sprites/enemies.ts';
+import { CloudreachPalette } from './cloudreach/sprites/palette.ts';
+import { FeatherPalette } from './cloudreach/sprites/pickups.ts';
 import { CLOUDREACH_SKIN } from './cloudreach.ts';
+import type { SkinFixture } from './drawn-skin.ts';
+import { FarEnemyPalette } from './farside/sprites/enemies.ts';
+import { FarsidePalette } from './farside/sprites/palette.ts';
+import { StardustPalette } from './farside/sprites/pickups.ts';
 import { FARSIDE_SKIN } from './farside.ts';
 import { assertSkinAssets, assertSkinTextures, SKINS, skinFor, type TextureLookup } from './index.ts';
-import { ReefItemTex, ReefRacerTex, ReefTex } from './reef/keys.ts';
+import { ReefEnemyPalette } from './reef/sprites/enemies.ts';
+import { ReefPalette } from './reef/sprites/palette.ts';
+import { PearlPalette } from './reef/sprites/pickups.ts';
 import { REEF_SKIN } from './reef.ts';
-import { ThornItemTex, ThornRacerTex, ThornTex } from './thornwood/keys.ts';
+import { describeSkinConformance } from './skin-conformance.ts';
+import { ThornEnemyPalette } from './thornwood/sprites/enemies.ts';
+import { ThornwoodPalette } from './thornwood/sprites/palette.ts';
+import { AcornPalette } from './thornwood/sprites/pickups.ts';
+import { THORNWOOD_SKIN } from './thornwood.ts';
 import type { WorldSkin } from './types.ts';
+
+/** What each world's art is held to beyond the checks every skin passes. */
+const FIXTURES: readonly SkinFixture[] = [
+  {
+    skin: REEF_SKIN,
+    castPalettes: ReefPalette,
+    contrast: {
+      backdrop: [...WATER_BANDS, ...Object.values(BackdropPalette).flat()],
+      enemyBodies: { shark: ReefEnemyPalette.shark[1], eel: ReefEnemyPalette.eel[1], crab: ReefEnemyPalette.crab[1] },
+      pickupBody: PearlPalette[1] ?? 0,
+    },
+  },
+  {
+    skin: THORNWOOD_SKIN,
+    castPalettes: ThornwoodPalette,
+    keyPrefix: 'thornwood-',
+    contrast: {
+      backdrop: [...WOOD_BANDS, ...Object.values(ForestBackdropPalette).flat()],
+      enemyBodies: {
+        shark: ThornEnemyPalette.boar[1],
+        eel: ThornEnemyPalette.snake[1],
+        crab: ThornEnemyPalette.beetle[1],
+      },
+      pickupBody: AcornPalette[1] ?? 0,
+    },
+  },
+  {
+    skin: CLOUDREACH_SKIN,
+    castPalettes: CloudreachPalette,
+    keyPrefix: 'cloudreach-',
+    contrast: {
+      backdrop: [...SKY_BANDS, ...Object.values(SkyBackdropPalette).flat()],
+      enemyBodies: {
+        shark: SkyEnemyPalette.stormCrow[1],
+        eel: SkyEnemyPalette.skyEel[1],
+        crab: SkyEnemyPalette.cloudCrab[1],
+      },
+      pickupBody: FeatherPalette[1] ?? 0,
+    },
+  },
+  {
+    skin: FARSIDE_SKIN,
+    castPalettes: FarsidePalette,
+    keyPrefix: 'farside-',
+    contrast: {
+      backdrop: [...VOID_BANDS, ...Object.values(SpaceBackdropPalette).flat()],
+      enemyBodies: { shark: FarEnemyPalette.ray[1], eel: FarEnemyPalette.worm[1], crab: FarEnemyPalette.mite[1] },
+      pickupBody: StardustPalette[1] ?? 0,
+    },
+  },
+];
+
+describeSkinConformance(FIXTURES);
 
 describe('world skins', () => {
   it.each(Object.values(SKINS))('$id covers every key', (skin) => {
@@ -93,146 +158,5 @@ describe('the boot texture check', () => {
     expect(() => assertSkinTextures(texturesWithout({ frame: 'open' }), REEF_SKIN)).toThrow(
       `World 'reef' skin names frame 'open' of '${clam}', which was never built`,
     );
-  });
-});
-
-describe('the Cloudreach skin', () => {
-  const { text } = CLOUDREACH_SKIN.objects;
-
-  it("words gil's ability, the items, enemies and pickups the Cloudreach way", () => {
-    expect(CLOUDREACH_SKIN.cast.abilities.gil.name).toBe('SPRING FLAP');
-    expect(text.attackCaptions).toEqual({
-      homingSquid: 'HOMING GULL',
-      riptide: 'JET STREAM',
-      undertow: 'HEADWIND',
-      mimic: 'MIRAGE',
-    });
-    expect(text.enemyCaptions).toEqual({
-      crab: expect.stringContaining('CLOUD CRAB'),
-      shark: 'CROW DIVES',
-      eel: 'EEL LUNGES',
-    });
-    expect([text.cratesHeading, text.pearlsHeading, text.slowedBy, text.trapped]).toEqual([
-      'BALLOON POP',
-      'FEATHERS',
-      'SLOWED BY FOG',
-      'CLOUD',
-    ]);
-  });
-
-  it("uses none of the Reef's words in its abilities or object text", () => {
-    const abilities = CHARACTER_IDS.flatMap((id) => [
-      CLOUDREACH_SKIN.cast.abilities[id].name,
-      CLOUDREACH_SKIN.cast.abilities[id].blurb,
-    ]);
-    const words = [
-      ...abilities,
-      text.slowedBy,
-      text.trapped,
-      text.cratesHeading,
-      text.pearlsHeading,
-      ...Object.values(text.attackCaptions),
-      ...Object.values(text.enemyCaptions),
-    ];
-
-    expect(words.filter((line) => /\b(CORAL|SQUID|CLAMS?|PEARLS?|INK|SHARK|KICKS?|BUBBLE|SWIM)\b/.test(line))).toEqual(
-      [],
-    );
-  });
-
-  it("keeps every ability line and the HUD and How to Play words within the longest of Reef's, so they fit", () => {
-    const longest = (strings: readonly string[]) => Math.max(...strings.map((line) => line.length));
-    const groups: ((skin: WorldSkin) => string[])[] = [
-      (skin) => CHARACTER_IDS.map((id) => skin.cast.abilities[id].name),
-      (skin) => CHARACTER_IDS.map((id) => skin.cast.abilities[id].blurb),
-      (skin) => [skin.objects.text.slowedBy, skin.objects.text.trapped],
-      (skin) => Object.values(skin.objects.text.enemyCaptions),
-      (skin) => [skin.objects.text.cratesHeading, skin.objects.text.pearlsHeading],
-    ];
-    for (const group of groups) {
-      expect(longest(group(CLOUDREACH_SKIN))).toBeLessThanOrEqual(longest(group(REEF_SKIN)));
-    }
-  });
-
-  it("names every Cloudreach texture once under cloudreach-, apart from the global art, the UI kit, the themes', Reef's and Thornwood's", () => {
-    const cloudreach: string[] = [
-      ...Object.values(SkyRacerTex),
-      ...Object.values(SkyTex),
-      ...Object.values(SkyItemTex),
-    ];
-    const others: string[] = [
-      ...Object.values(Tex),
-      ...Object.values(ReefTex),
-      ...Object.values(ReefRacerTex),
-      ...Object.values(ReefItemTex),
-      ...Object.values(UiTex),
-      ...Object.values(OceanTex),
-      ...Object.values(ForestTex),
-      ...Object.values(ThornRacerTex),
-      ...Object.values(ThornTex),
-      ...Object.values(ThornItemTex),
-    ];
-    expect(cloudreach.filter((key) => !key.startsWith('cloudreach-'))).toEqual([]);
-    expect(new Set(cloudreach).size).toBe(cloudreach.length);
-    expect(cloudreach.filter((key) => others.includes(key))).toEqual([]);
-  });
-});
-
-describe('the Farside skin', () => {
-  const { text } = FARSIDE_SKIN.objects;
-
-  it("words gil's ability, the items, enemies and pickups the Farside way", () => {
-    expect(FARSIDE_SKIN.id).toBe('farside');
-    expect(FARSIDE_SKIN.cast.abilities.gil.name).toBe('SPRING BURN');
-    expect(text.attackCaptions).toEqual({
-      homingSquid: 'PROBE',
-      riptide: 'ION STREAM',
-      undertow: 'TRACTOR',
-      mimic: 'HOLOGRAM',
-    });
-    expect(text.enemyCaptions).toEqual({ crab: 'MITE WALKS', shark: 'RAY CHARGES', eel: 'WORM LUNGES' });
-    expect([text.cratesHeading, text.pearlsHeading, text.slowedBy, text.trapped]).toEqual([
-      'SUPPLY PODS',
-      'STARDUST',
-      'SLOWED BY GAS',
-      'FIELD',
-    ]);
-  });
-
-  it("uses none of the Reef's or Cloudreach's words in its abilities or object text", () => {
-    const abilities = CHARACTER_IDS.flatMap((id) => [
-      FARSIDE_SKIN.cast.abilities[id].name,
-      FARSIDE_SKIN.cast.abilities[id].blurb,
-    ]);
-    const words = [
-      ...abilities,
-      text.slowedBy,
-      text.trapped,
-      text.cratesHeading,
-      text.pearlsHeading,
-      ...Object.values(text.attackCaptions),
-      ...Object.values(text.enemyCaptions),
-    ];
-
-    expect(
-      words.filter((line) =>
-        /\b(CORAL|SQUID|CLAMS?|PEARLS?|INK|SHARK|EEL|CRAB|KICKS?|BUBBLE|SWIM|FLAPS?|PUFFS?|STORMS?|ZAPS?)\b/.test(line),
-      ),
-    ).toEqual([]);
-  });
-
-  it("keeps every ability line and the HUD and How to Play words within the longest of Reef's, so they fit", () => {
-    const longest = (strings: readonly string[]) => Math.max(...strings.map((line) => line.length));
-    const groups: ((skin: WorldSkin) => string[])[] = [
-      (skin) => CHARACTER_IDS.map((id) => skin.cast.abilities[id].name),
-      (skin) => CHARACTER_IDS.map((id) => skin.cast.abilities[id].blurb),
-      (skin) => [skin.objects.text.slowedBy, skin.objects.text.trapped],
-      (skin) => Object.values(skin.objects.text.enemyCaptions),
-      (skin) => [skin.objects.text.cratesHeading, skin.objects.text.pearlsHeading],
-    ];
-    for (const group of groups) {
-      expect(longest(group(FARSIDE_SKIN))).toBeLessThanOrEqual(longest(group(REEF_SKIN)));
-    }
-    expect(longest(Object.values(text.attackCaptions))).toBeLessThanOrEqual(11);
   });
 });
