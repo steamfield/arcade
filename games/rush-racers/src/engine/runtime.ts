@@ -11,11 +11,15 @@
  * (select only while one course is listed), with the cursor on the current pick. The title also opens How to Play, a few
  * pages the player turns with the move and action buttons. Dash on a select screen opened from results goes
  * back to results with Character selected, with the finished race still in hand; opened from the title it goes to the title.
+ *
+ * Online, friends and room screens hand each tick to the online flow (`online/flow.ts`), which says
+ * where to go next. An online race is stepped by the flow's client, never by `stepRace` here, and
+ * like a debug race it saves nothing; its results offer Race again (back to the room) and Title.
  */
 import { createLogger, EventLog, FixedStep, type Stamped } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import type { GameContext } from '@arcade/shell';
-import { courseById, DEFAULT_COURSE, LISTED_COURSES } from '../logic/courses/index.ts';
+import { courseById, courseOf, DEFAULT_COURSE, LISTED_COURSES } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
 import type { GameEvent } from '../logic/events.ts';
 import { isNewBest, recordRace } from '../logic/records.ts';
@@ -40,6 +44,16 @@ import { type PagePress, turnPage } from './how-to-play.ts';
 import { input } from './input.ts';
 import { localOf, setLocalRacer } from './local-racer.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
+import {
+  createOnlineFlow,
+  type FlowNext,
+  type OnlineFlow,
+  type OnlinePorts,
+  type ResultsChoice,
+} from './online/flow.ts';
+import type { ScreenPress } from './online/friends-screen.ts';
+import { createOnlineWorld } from './online/race-world.ts';
+import { onlineCourses } from './online/room-courses.ts';
 import type { OnlineState } from './online/state.ts';
 import { raceProgress } from './race-progress.ts';
 import { assertCourseAssets } from './themes/course-assets.ts';
@@ -106,6 +120,8 @@ export interface RuntimeOptions {
   search?: string;
   /** The courses course select offers, in menu order. Defaults to `LISTED_COURSES`; tests pass their own. */
   listedCourses?: readonly Course[];
+  /** The network, clipboard and seed the online screens use; tests pass a memory room. */
+  online: OnlinePorts;
 }
 
 /** The one save slot Rush Racers uses. */
@@ -161,14 +177,12 @@ export class Runtime {
   howToSince = 0;
   /** The in-race hints showing now, refreshed each racing tick; none outside a race. */
   hints: HintState = NO_HINTS;
-  /** What the friends and room screens draw. */
-  readonly online: OnlineState = {
-    friends: { mode: 'menu', selected: 0, cells: [], cell: 0 },
-    room: { row: 0 },
-    code: null,
-    view: null,
-    notice: null,
-  };
+  /** Friends, the room and its races: the online flow, which the friends, room and online race screens tick. */
+  readonly flow: OnlineFlow;
+  /** True while the race in hand is an online one: the flow's client steps it, and it is never saved. */
+  onlineRace = false;
+  /** The slot this peer races in during an online race; null otherwise. */
+  private onlineLocal: RacerId | null = null;
   /** Save writes asked for and not yet settled. */
   private writesPending = 0;
   /** Where the write queue ends: each write starts once the one before it has settled. */
@@ -207,6 +221,8 @@ export class Runtime {
   private resultsIn: number | null = null;
   /** Ticks left before the current menu or the select screen accepts fire. */
   private menuArmIn = 0;
+  /** Set by a tick that sent the player into an online race: that tick's events go out on the race scene's first tick instead. */
+  private holdEvents = false;
 
   constructor(options: RuntimeOptions) {
     this.ctx = options.ctx;
@@ -232,8 +248,29 @@ export class Runtime {
         enemyAudible: (index) => (this.world ? enemyWithinHearing(this.world, index) : true),
         localRacer: () => this.localRacer,
       },
-      () => this.course.song,
+      () => this.raceCourse.song,
     );
+    this.flow = createOnlineFlow({
+      ...options.online,
+      createRace: (start) => createOnlineWorld(start, this.events),
+      courses: onlineCourses(this.listedCourses, this.course),
+      lobby: () => ({
+        character: this.savedCharacter,
+        course: this.course.id,
+        difficulty: this.settings.difficulty,
+      }),
+      warn: (message) => log.warn(message),
+    });
+  }
+
+  /** The course the race in hand runs on: an online race's may be the host's pick rather than this player's `course`. */
+  get raceCourse(): Course {
+    return this.onlineRace && this.world ? courseOf(this.world) : this.course;
+  }
+
+  /** What the friends and room screens draw. */
+  get online(): OnlineState {
+    return this.flow.state;
   }
 
   /** True while any save write is queued or running. The test harness waits on it through idle(). */
@@ -264,9 +301,14 @@ export class Runtime {
     return this.courseSelectShown && (this.course.listed || this.listedCourses.includes(this.course));
   }
 
-  /** The slot this screen follows. 'player' except in a `?local=` debug race. */
+  /** The slot this screen follows: this peer's slot in an online race, the `?local=` slot in that debug race, else 'player'. */
   get localRacer(): RacerId {
-    return this.localSlot ?? 'player';
+    return this.onlineLocal ?? this.localSlot ?? 'player';
+  }
+
+  /** The results menu's options: an online race's go back to the room instead of offering Character. */
+  get resultsOptions(): readonly MenuOption[] {
+    return this.onlineRace ? MENU_OPTIONS.onlineResults : MENU_OPTIONS.results;
   }
 
   /** The character picked last, from the save; Rudy when there is none. */
@@ -295,11 +337,12 @@ export class Runtime {
     if (scene === this.scene && !this.loading) return;
     this.scene = scene;
     this.loading = false;
-    if (scene === 'title') this.world = null;
+    if (scene === 'title' || scene === 'friends' || scene === 'room') this.dropRace();
+    if (scene === 'friends') this.flow.openFriends();
     if (scene === 'select') this.selectedCharacter = this.savedCharacter;
     if (scene === 'course') this.courseCursor = Math.max(0, this.listedCourses.indexOf(this.course));
     if (scene === 'howToPlay') this.showHowToPlayPage(0);
-    const options = MENUS[scene];
+    const options = scene === 'results' ? this.resultsOptions : MENUS[scene];
     this.menu = options ? createMenu(options) : null;
     if (this.menu && this.returnTo) {
       this.menu.selected = Math.max(0, this.menu.options.indexOf(this.returnTo));
@@ -326,17 +369,59 @@ export class Runtime {
         ? { humans: [this.localSlot], characters: { [this.localSlot]: this.selectedCharacter } }
         : { character: this.selectedCharacter }),
     });
+    this.onlineRace = false;
+    this.onlineLocal = null;
     setLocalRacer(this.world, this.localRacer);
-    this.hintMemory = newHintMemory();
-    this.hintConfig = hintConfig(this.save?.races ?? 0, difficulty);
-    this.hints = NO_HINTS;
     const stage = stageFor(this.ctx.params, this.search);
     if (stage) applyStage(this.world, stage);
     this.debugRace = stage !== null || this.localSlot !== null;
-    this.startProgress = localOf(this.world).progress;
+    this.beginRace(this.world);
+  }
+
+  /**
+   * Races `world`, which the online client built from the host's start and alone steps, following
+   * slot `local`. Like a debug race it is never saved.
+   */
+  private adoptOnlineRace(world: World, local: RacerId): void {
+    this.world = world;
+    this.onlineRace = true;
+    this.onlineLocal = local;
+    this.debugRace = false;
+    setLocalRacer(world, local);
+    this.beginRace(world);
+  }
+
+  /** Resets the per-race state for `world`, whose local racer is set, and shows the race from its countdown. */
+  private beginRace(world: World): void {
+    this.hintMemory = newHintMemory();
+    this.hintConfig = hintConfig(this.save?.races ?? 0, world.difficulty);
+    this.hints = NO_HINTS;
+    this.startProgress = localOf(world).progress;
     this.lastResult = null;
     this.resultsIn = null;
     this.goTo('race');
+  }
+
+  /** Lets go of the race in hand, offline or online, as the title and the online screens do. */
+  private dropRace(): void {
+    this.world = null;
+    this.onlineRace = false;
+    this.onlineLocal = null;
+  }
+
+  /**
+   * Boots into the room a `?room=` link names, connecting at once. Returns false, changing nothing,
+   * when there is no `?room=`; an invalid one is warned about and ignored the same way.
+   */
+  openRoomLink(): boolean {
+    if (!this.flow.openLink(this.search)) return false;
+    this.goTo('room');
+    return true;
+  }
+
+  /** True while the online flow waits on the outside (creating a room, copying its link); the game is not idle meanwhile. */
+  get onlineBusy(): boolean {
+    return this.flow.busy;
   }
 
   /** The saved difficulty, except that a `?local=` race for a slot other than 'player' runs Easy as Normal, with a warning. */
@@ -404,12 +489,62 @@ export class Runtime {
     if (this.loading) return;
     this.events.tick = this.step.tick;
     input.update();
-    if (this.menu) this.tickMenu(this.menu);
+    if (this.scene === 'friends') this.follow(this.flow.friends(this.readScreenPress()));
+    else if (this.scene === 'room') this.follow(this.flow.room(this.readScreenPress(), dt * 1000));
+    else if (this.scene === 'results' && this.onlineRace && this.menu) this.tickOnlineResults(this.menu, dt);
+    else if (this.menu) this.tickMenu(this.menu);
     else if (this.scene === 'course') this.tickCourse();
     else if (this.scene === 'select') this.tickSelect();
     else if (this.scene === 'howToPlay') this.tickHowToPlay();
     else if (this.scene === 'race') this.tickRace(dt);
-    this.dispatchEvents();
+    if (this.holdEvents) this.holdEvents = false;
+    else this.dispatchEvents();
+  }
+
+  /**
+   * Does what the online flow asked for: another screen, or an online race in the client's world.
+   * Going to the title leaves online play, so the flow lets go of its room. A race the client
+   * already stepped gets that step's per-step work here, and the tick's events wait for the race
+   * scene, so its countdown is never heard over the screen it replaces.
+   */
+  private follow(next: FlowNext): void {
+    if (next.kind === 'room') this.goTo('room');
+    else if (next.kind === 'title') {
+      this.flow.release();
+      this.goTo('title');
+    } else if (next.kind === 'race') {
+      this.adoptOnlineRace(next.world, next.local);
+      if (next.stepped > 0) this.afterRaceStep(next.world);
+      this.holdEvents = true;
+    }
+  }
+
+  /**
+   * This tick's press on the friends or room screen, if any. Fire and dash wait out the arming
+   * ticks, as on the menus, so a press still being mashed from the screen before can't act unseen.
+   */
+  private readScreenPress(): ScreenPress | null {
+    const armed = this.menuArmIn === 0;
+    if (!armed) this.menuArmIn--;
+    for (const press of SCREEN_PRESSES) {
+      if (!input.justPressed(press)) continue;
+      if (armed || (press !== 'fire' && press !== 'dash')) return press;
+    }
+    return null;
+  }
+
+  /** The online results menu: the cursor moves as on any menu, and the flow ticks every tick so the room keeps being heard. */
+  private tickOnlineResults(menu: Menu, dt: number): void {
+    if (input.justPressed('down')) moveSelection(menu, 1);
+    if (input.justPressed('up')) moveSelection(menu, -1);
+    let choice: ResultsChoice = null;
+    if (this.menuArmIn > 0) this.menuArmIn--;
+    else if (input.justPressed('fire')) {
+      const option = selectedOption(menu);
+      this.events.emit({ type: 'menu.selected', option });
+      choice = option === 'Title' ? 'title' : 'again';
+    }
+    this.follow(this.flow.results(choice, dt * 1000));
   }
 
   private tickMenu(menu: Menu): void {
@@ -533,12 +668,27 @@ export class Runtime {
   private tickRace(dt: number): void {
     const world = this.world;
     if (!world) throw new Error('The race scene is ticking without a world; start races with startRace()');
-    stepRace(world, { [this.localRacer]: readPlayerInput() }, dt);
-    this.hints = updateHints(this.hintMemory, world, this.hintConfig);
-    this.audio.onRaceProgress(this.raceFraction);
+    if (this.onlineRace) {
+      const { stepped, next } = this.flow.race(readPlayerInput(), dt * 1000);
+      if (next.kind !== 'stay') {
+        this.follow(next);
+        return;
+      }
+      if (stepped > 0) this.afterRaceStep(world);
+    } else {
+      stepRace(world, { [this.localRacer]: readPlayerInput() }, dt);
+      this.afterRaceStep(world);
+    }
+    // Counted every tick, stepped or not: an online world stops stepping once its race has ended.
     if (this.resultsIn === null) return;
     this.resultsIn--;
     if (this.resultsIn <= 0) this.goTo('results');
+  }
+
+  /** What follows each step of the race world: the hints and the music's sense of how far along the race is. */
+  private afterRaceStep(world: World): void {
+    this.hints = updateHints(this.hintMemory, world, this.hintConfig);
+    this.audio.onRaceProgress(this.raceFraction);
   }
 
   private dispatchEvents(): void {
@@ -565,11 +715,12 @@ export class Runtime {
     const before = this.save ?? NEW_GAME;
     const difficulty = this.world?.difficulty ?? this.settings.difficulty;
     const courseId = this.world?.course ?? this.course.id;
-    // A debug race saves nothing, so it never sets a best.
-    const newBest = !this.debugRace && isNewBest(before, courseId, difficulty, result);
+    // A debug or online race saves nothing, so it never sets a best.
+    const unsaved = this.debugRace || this.onlineRace;
+    const newBest = !unsaved && isNewBest(before, courseId, difficulty, result);
     this.lastResult = { result, newBest, saveFailed: false };
     this.resultsIn = RESULTS_DELAY_TICKS;
-    if (this.debugRace) return;
+    if (unsaved) return;
     void this.persist(recordRace(before, courseId, difficulty, result), 'Race result');
   }
 }
@@ -613,6 +764,9 @@ function nextDifficulty(current: Difficulty): Difficulty {
   const index = DIFFICULTIES.indexOf(current);
   return DIFFICULTIES[(index + 1) % DIFFICULTIES.length] ?? current;
 }
+
+/** The presses the friends and room screens take, in the order one is picked when several land on one tick. */
+const SCREEN_PRESSES: readonly ScreenPress[] = ['up', 'down', 'left', 'right', 'fire', 'dash'];
 
 /** The page button pressed this tick, if any. */
 function readPagePress(): PagePress | null {

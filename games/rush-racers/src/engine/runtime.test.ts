@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { configureLogging, type LogEntry } from '@arcade/core';
+import { configureLogging, EventLog, type LogEntry } from '@arcade/core';
 import type { SaveResult, SaveStore } from '@arcade/save';
 import { createSaveStore } from '@arcade/save';
 import type { GameContext } from '@arcade/shell';
@@ -7,18 +7,28 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOP_ROUTE } from '../../scenarios/kit.ts';
 import { DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
+import { hashWorld } from '../logic/hash.ts';
 import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../logic/race/standings.ts';
 import { playerOf } from '../logic/racers.ts';
 import { migrations, NEW_GAME, NO_BESTS, SAVE_VERSION, type SaveData, SaveSchema } from '../logic/save.ts';
 import { courseFromLevel, giveItems } from '../logic/test-world.ts';
+import type { TickInput, World } from '../logic/types.ts';
+import { createClient, type OnlineClient } from '../net/client.ts';
+import { IDLE_INPUT } from '../net/codec.ts';
+import { createMemoryRoom, type MemoryRoom } from '../net/transport/memory.ts';
 import { type Action, input } from './input.ts';
 import { selectedOption } from './menu.ts';
-import { Runtime } from './runtime.ts';
+import type { OnlinePorts } from './online/flow.ts';
+import { netSummary } from './online/net-summary.ts';
+import { createOnlineWorld } from './online/race-world.ts';
+import { Runtime, type SceneKey } from './runtime.ts';
 
 /** Title rows: Race, How to play, Level, Sound, Motion. Sound is three down. */
 const SOUND_ROW = 3;
 /** The title ignores fire for its first 20 ticks. */
 const ARMED = 21;
+/** The code every room in these tests has. */
+const ROOM_CODE = 'ABCDEF';
 
 let storeCount = 0;
 const realStore = () =>
@@ -35,9 +45,15 @@ interface Harness {
   gameErrors: string[];
 }
 
+interface TitleHarness extends Harness {
+  /** Brings up the scene the runtime last asked for, if it is still waiting (only with `deferScenes`). */
+  showScene(): void;
+}
+
 /**
  * A runtime on its title screen, as the shell hands it over, over `saves`, opened at `search` and
- * offering `listedCourses` on course select. Each scene it asks for comes up at once, as Phaser's would.
+ * offering `listedCourses` on course select. Each scene it asks for comes up at once, as Phaser's would,
+ * or with `deferScenes` only when the test calls `showScene`, as between two of Phaser's frames.
  */
 function titleRuntime(
   saves: SaveStore<SaveData>,
@@ -46,8 +62,23 @@ function titleRuntime(
     listedCourses,
     save = null,
     debug = false,
-  }: { search?: string; listedCourses?: readonly Course[]; save?: SaveData | null; debug?: boolean } = {},
-): Harness {
+    online = roomPorts(createMemoryRoom()),
+    deferScenes = false,
+  }: {
+    search?: string;
+    listedCourses?: readonly Course[];
+    save?: SaveData | null;
+    debug?: boolean;
+    online?: OnlinePorts;
+    deferScenes?: boolean;
+  } = {},
+): TitleHarness {
+  let asked: SceneKey | null = null;
+  const showScene = () => {
+    const scene = asked;
+    asked = null;
+    if (scene) rt.entered(scene);
+  };
   const gameErrors: string[] = [];
   const ctx = {
     params: { seed: 1, scene: null, debug, testMode: true },
@@ -62,13 +93,28 @@ function titleRuntime(
     saves,
     save,
     prefersReducedMotion: false,
-    startScene: (scene) => rt.entered(scene),
+    startScene: (scene) => {
+      asked = scene;
+      if (!deferScenes) showScene();
+    },
     search,
     listedCourses,
+    online,
   });
   rt.entered('title');
   rt.step.advance(ARMED);
-  return { rt, gameErrors };
+  return { rt, gameErrors, showScene };
+}
+
+/** Ports onto an in-memory room: every code connects to it, and a created room is always `ROOM_CODE`. */
+function roomPorts(room: MemoryRoom): OnlinePorts {
+  return {
+    connect: () => room.connect(),
+    createRoom: () => Promise.resolve({ ok: true, code: ROOM_CODE }),
+    copyLink: () => Promise.resolve(true),
+    seed: () => 7,
+    kickAfterMs: null,
+  };
 }
 
 /** Presses `action` for one tick, then lets a tick pass so the next press registers. */
@@ -476,5 +522,233 @@ describe('race controls', () => {
 
     expect(rt.events.all().filter((event) => event.type === 'racer.kicked')).toHaveLength(1);
     expect(itemEvents(rt)).toEqual([]);
+  });
+});
+
+describe('an online race', () => {
+  /** Logic ticks a test may run before a condition counts as stuck. */
+  const TICK_LIMIT = 6000;
+  /** Ticks from a race's end to its results screen. */
+  const RESULTS_DELAY = 90;
+  /** Run right, jumping on a cycle, as the client tests' racers do; the runtime's own racer stays idle. */
+  const runAndJump = (tick: number): TickInput => {
+    const jumping = tick % 40 < 25;
+    return { ...IDLE_INPUT, move: jumping ? { x: Math.SQRT1_2, y: -Math.SQRT1_2 } : { x: 1, y: 0 } };
+  };
+  const hashOf = (world: World | null | undefined) => (world ? hashWorld(world) : null);
+  const savesOf = (rt: Runtime) => rt.events.all().filter((event) => event.type.startsWith('save.'));
+  const scenesStarted = (rt: Runtime) =>
+    rt.events.all().flatMap((event) => (event.type === 'scene.started' ? [event.scene] : []));
+
+  /**
+   * A runtime that opened a `?room=` link, as boot does, to a room whose host is a bare client on
+   * Run Test. Scenes come up between ticks, as Phaser's do. Each round ticks the host, then the
+   * runtime, then brings up any scene the runtime asked for, then the room delivers.
+   */
+  async function joinedRoom() {
+    const room = createMemoryRoom();
+    const host = createClient({
+      connection: room.connect(),
+      lobby: { character: 'gil', course: 'run-test', difficulty: 'normal' },
+      createRace: (start) => createOnlineWorld(start, new EventLog(10_000)),
+      kickAfterMs: null,
+      warn: (message) => {
+        throw new Error(`the host warned: ${message}`);
+      },
+    });
+    const { rt, gameErrors, showScene } = titleRuntime(await realStore(), {
+      search: `?room=${ROOM_CODE}`,
+      listedCourses: [DEFAULT_COURSE],
+      online: roomPorts(room),
+      deferScenes: true,
+    });
+    expect(rt.openRoomLink()).toBe(true);
+    showScene();
+    const round = () => {
+      host.tick(runAndJump(host.view.race?.targetTick ?? 0), 16);
+      rt.step.advance(1);
+      showScene();
+      room.deliver();
+    };
+    const rounds = (count: number) => {
+      for (let done = 0; done < count; done++) round();
+    };
+    const until = (done: () => boolean) => {
+      for (let ticks = 0; ticks < TICK_LIMIT && !done(); ticks++) round();
+      if (!done()) throw new Error(`not reached within ${TICK_LIMIT} ticks`);
+    };
+    /** Presses `action` for one round, then lets one pass so the next press registers. */
+    const pressOnline = (action: Action) => {
+      input.inject(action, true);
+      round();
+      input.inject(action, false);
+      round();
+    };
+    until(() => host.view.lobby.canStart);
+    return { rt, host, room, rounds, until, pressOnline, showScene, gameErrors };
+  }
+
+  it('races the world the client built, in the slot the start gave, and saves nothing', async () => {
+    const { rt, host, until, gameErrors } = await joinedRoom();
+    expect(rt.scene).toBe('room');
+
+    host.start(9);
+    until(() => rt.scene === 'race');
+    expect(rt.world).toBe((rt.flow.client as OnlineClient).world);
+    expect(rt.localRacer).toBe('tess');
+    expect(rt.world?.humans).toEqual(['player', 'tess']);
+
+    until(() => rt.scene === 'results');
+    expect(hashOf(rt.world)).toBe(hashOf(host.world));
+    expect(rt.world?.race.result?.standings).toEqual(host.world?.race.result?.standings);
+    expect(rt.lastResult).toMatchObject({ newBest: false, saveFailed: false });
+    expect(rt.menu?.options).toEqual(['Race again', 'Title']);
+    // A write would be queued by now; let any run to its end before looking for it.
+    expect(rt.saving).toBe(false);
+    await settled(rt);
+    expect(savesOf(rt)).toEqual([]);
+    expect(rt.save).toBeNull();
+    expect(gameErrors).toEqual([]);
+  });
+
+  it('keeps the first step’s countdown beep for the race scene, which opens on the world’s next step', async () => {
+    const { rt, host, until } = await joinedRoom();
+    const heard: { scene: SceneKey; worldTick: number | null }[] = [];
+    rt.listen((events) => {
+      if (events.some((event) => event.type === 'race.countdown'))
+        heard.push({ scene: rt.scene, worldTick: rt.world?.tick ?? null });
+    });
+
+    host.start(9);
+    until(() => heard.length > 0);
+
+    expect(heard).toEqual([{ scene: 'race', worldTick: 2 }]);
+  });
+
+  it('goes back to the room on Race again, and into the next race the host starts', async () => {
+    const { rt, host, rounds, until, pressOnline } = await joinedRoom();
+    host.start(9);
+    until(() => rt.scene === 'results');
+    const firstWorld = rt.world;
+    rounds(ARMED);
+    pressOnline('fire');
+    expect(rt.scene).toBe('room');
+    expect(rt.world).toBeNull();
+
+    host.returnToLobby();
+    until(() => host.view.lobby.canStart);
+    host.start(10);
+    until(() => rt.scene === 'race');
+    expect(rt.world).not.toBe(firstWorld);
+    expect(rt.world).toBe(rt.flow.client?.world);
+  });
+
+  it('takes a player still on results into the next race the host starts', async () => {
+    const { rt, host, until } = await joinedRoom();
+    host.start(9);
+    until(() => rt.scene === 'results');
+    const firstWorld = rt.world;
+    host.returnToLobby();
+    until(() => host.view.lobby.canStart);
+
+    host.start(10);
+    until(() => rt.scene === 'race');
+    expect(rt.world).not.toBe(firstWorld);
+    expect(rt.localRacer).toBe('tess');
+  });
+
+  it('takes a player whose race has ended, before its results show, into the next race', async () => {
+    const { rt, host, rounds, until } = await joinedRoom();
+    host.start(9);
+    until(() => rt.lastResult !== null);
+    expect(rt.scene).toBe('race');
+    const firstWorld = rt.world;
+
+    host.returnToLobby();
+    until(() => host.view.lobby.canStart);
+    host.start(10);
+    until(() => rt.world !== firstWorld);
+    expect([rt.scene, rt.lastResult]).toEqual(['race', null]);
+
+    rounds(RESULTS_DELAY + 1);
+    expect(rt.scene).toBe('race');
+    expect(scenesStarted(rt)).not.toContain('results');
+  });
+
+  it('leaves the room for the title on Title, letting go of it', async () => {
+    const { rt, host, rounds, until, pressOnline } = await joinedRoom();
+    host.start(9);
+    until(() => rt.scene === 'results');
+    rounds(ARMED);
+    pressOnline('down');
+    pressOnline('fire');
+
+    expect([rt.scene, rt.world, rt.flow.client, rt.online.notice]).toEqual(['title', null, null, null]);
+    until(() => host.view.lobby.peers.length === 1);
+  });
+
+  it('races offline after Title from online results: as slot 1, with the offline results, saved', async () => {
+    const { rt, host, rounds, until, pressOnline, showScene } = await joinedRoom();
+    host.start(9);
+    until(() => rt.scene === 'results');
+    rounds(ARMED);
+    pressOnline('down');
+    pressOnline('fire');
+    rounds(ARMED);
+    pressOnline('fire');
+    rounds(ARMED);
+    pressOnline('fire');
+
+    expect([rt.scene, rt.onlineRace, rt.localRacer]).toEqual(['race', false, 'player']);
+    // The summary's `net` is this; null leaves it out.
+    expect(netSummary(rt.flow)).toBeNull();
+    rt.step.advance(COUNTDOWN_TICKS + RACE_LIMIT_TICKS + RESULTS_DELAY);
+    showScene();
+    expect(rt.scene).toBe('results');
+    expect(rt.menu?.options).toEqual(['Race again', 'Character', 'Title']);
+    await settled(rt);
+    expect(rt.save?.races).toBe(1);
+  });
+
+  it.each([
+    ['mid-race', (rt: Runtime) => rt.scene === 'race' && rt.world?.race.phase === 'racing'],
+    ['on results', (rt: Runtime) => rt.scene === 'results'],
+  ])('goes to the title with the reason when the room closes the connection %s', async (_when, reached) => {
+    const { rt, host, room, until, gameErrors } = await joinedRoom();
+    const you = rt.flow.client?.view.lobby.you ?? 0;
+    host.start(9);
+    until(() => reached(rt));
+
+    room.drop(you, 'kicked');
+    until(() => rt.scene === 'title');
+
+    expect([rt.world, rt.localRacer, rt.flow.client]).toEqual([null, 'player', null]);
+    expect(rt.online.notice).toBe('Disconnected: kicked');
+    expect(gameErrors).toEqual([]);
+  });
+
+  it('goes back to the room, out of the race, when it goes out of sync', async () => {
+    const { rt, host, until } = await joinedRoom();
+    host.start(9);
+    until(() => (rt.flow.client?.view.race?.simTick ?? 0) >= 70);
+    const racer = rt.world?.racers.find((each) => each.id === 'tess');
+    if (!racer) throw new Error('no tess racer in the guest world');
+    racer.body.x += 1;
+
+    until(() => rt.scene === 'room');
+
+    expect([rt.world, rt.onlineRace, rt.localRacer, rt.online.notice]).toEqual([null, false, 'player', 'Out of sync']);
+    expect(rt.flow.client?.view).toMatchObject({ status: 'lobby', race: null });
+  });
+
+  it('ignores a ?room= that is not a room code, with one warning', async () => {
+    const { rt } = titleRuntime(await realStore(), { search: '?room=nope' });
+
+    expect(rt.openRoomLink()).toBe(false);
+    expect(rt.scene).toBe('title');
+    expect(rt.flow.client).toBeNull();
+    expect(logged.filter((entry) => entry.level === 'warn').map((entry) => entry.message)).toEqual([
+      '?room=nope is not a room code, so no room was joined',
+    ]);
   });
 });
