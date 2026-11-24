@@ -59,7 +59,7 @@ Later phases add (stubbed in their own scaffold):
 ### Phase 1: guardrails that catch what they claim to
 
 Scaffold: 06d6153ed0f3
-Tag: phase-1
+Tag: refactor-audit/phase-1
 Demo: `pnpm --filter @arcade/cli exec vitest run src/guardrails.test.ts src/test.test.ts` passes, and the logic-internals probe fails against the `biome.json` on main; `pnpm arcade test rush-racers src/logic` reports no `[difficulty]` files.
 Test cases:
 - engine file importing `@arcade/core/src/rng` is flagged.
