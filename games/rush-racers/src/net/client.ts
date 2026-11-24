@@ -7,7 +7,7 @@
  */
 import { type RoomMessage, RoomMessageSchema } from '@arcade/api/protocol';
 import type { CharacterId, RacerId, TickInput, World } from '../logic/types.ts';
-import { createLobby, type LobbyOptions, type LobbyView } from './lobby.ts';
+import { createLobby, type LobbyOptions, type LobbyView, latencyTicks } from './lobby.ts';
 import {
   type OnlineDifficulty,
   type RelayedGameMessage,
@@ -99,9 +99,6 @@ function preview(message: unknown): string {
     return `a value of type ${typeof message}`;
   }
 }
-
-/** A ping change, in milliseconds, too small to be worth re-sending this peer's lobby entry for. */
-const PING_RESEND_MS = 5;
 
 /** What a client tracks between calls. */
 interface ClientState {
@@ -209,7 +206,9 @@ export function createClient(options: ClientOptions): OnlineClient {
   function handlePing(roundTripMs: number): void {
     lobby.setPing(roundTripMs / 2);
     const ping = lobby.mine().ping;
-    if (state.sentPing === null || Math.abs(ping - state.sentPing) >= PING_RESEND_MS) sendEntry();
+    // Only a change the start's delay would see is worth a message: each one wakes the room's
+    // Durable Object, and a ping every 2 s that always re-sent would keep it from hibernating.
+    if (state.sentPing === null || latencyTicks(ping) !== latencyTicks(state.sentPing)) sendEntry();
   }
 
   function handle(event: ConnectionEvent): void {

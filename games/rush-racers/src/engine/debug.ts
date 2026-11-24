@@ -66,7 +66,7 @@ function threatOf(world: World) {
 function sceneDetails(rt: Runtime): Record<string, unknown> {
   const best = rt.save ? bestFor(rt.save, rt.course.id, rt.settings.difficulty) : null;
   if (rt.scene === 'title') {
-    // Why online play ended, kept after the room is let go of (the title does not show it yet).
+    // Why online play ended, kept after the room is let go of, as the title shows it.
     const notice = rt.online.notice;
     return { best: best ? formatBest(best) : null, ...(notice ? { onlineNotice: notice } : {}) };
   }

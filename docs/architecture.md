@@ -60,7 +60,7 @@ Two decisions can't be reversed once players have saves:
 | Hosting                   | Cloudflare Workers static assets via Wrangler    | 4.166                        | Static requests free and unlimited; Cloudflare now points new projects to Workers                              |
 | Production telemetry      | Cloudflare Web Analytics                         |                              | Free, cookieless, real-user load metrics with no backend                                                       |
 | Real-time multiplayer     | Lockstep over a relay Durable Object (`apps/api`, one SQLite `Room` per room code, reached through the site's `/api/*` service binding) | | Every browser steps the same deterministic simulation from the players' inputs, so the room only relays inputs and world hashes and never runs the game: no server tick, no game code on the server, and a desync shows as a hash mismatch. Rush Racers races up to four friends this way |
-| CI / deploy               | GitHub Actions checks; Cloudflare Workers Builds deploys |                       | Actions runs check and smoke; the Git connector runs `pnpm cf:build`, then `wrangler deploy` on main and `wrangler versions upload` (preview URLs) on other branches |
+| CI / deploy               | GitHub Actions checks; Cloudflare Workers Builds deploys the site; `arcade-api` by hand |                       | Actions runs check and smoke; the Git connector runs `pnpm cf:build`, then `wrangler deploy` on main and `wrangler versions upload` (preview URLs) on other branches. Workers Builds never deploys `arcade-api` (`apps/api`): deploy it by hand with `pnpm deploy:api`, before the site, since the site's service binding needs it to exist |
 
 Considered and not chosen:
 
@@ -98,7 +98,7 @@ packages/
   config/                   @arcade/config: tsconfig bases, Vite preset, Playwright preset
 apps/site/                  landing page
 tools/arcade/               the agent/dev CLI (see agent-experience.md)
-wrangler.jsonc              assets-only Worker serving dist/
+wrangler.jsonc              Worker serving dist/ as static assets; only /api/* runs its script, forwarding to arcade-api
 AGENTS.md                   conventions; CLAUDE.md imports it
 ```
 
@@ -185,7 +185,7 @@ Only `published` games appear on the production site. `draft` games are assemble
 
 ### 6. Hosting on Workers static assets
 
-`wrangler.jsonc` declares an assets directory and no Worker script. Static asset requests are free and unlimited and never count toward the Worker request cap.
+`wrangler.jsonc` declares an assets directory and a one-line script, `apps/api/src/forward.ts`, that runs only for `/api/*` (`run_worker_first`) and forwards to the `arcade-api` Worker through a service binding. Every other request, unmatched paths included, is a static asset request: free, unlimited, and never counted toward the Worker request cap.
 
 The limits are 20,000 files per deployment, shared by all games, and 25 MiB per file. `arcade smoke` reports per-game file counts and fails as the total approaches the limit. Files over 25 MiB would mean R2 behind a custom domain, which adds an origin and CORS, so the policy is to compress or split them instead.
 
@@ -193,7 +193,7 @@ The limits are 20,000 files per deployment, shared by all games, and 25 MiB per 
 
 On pull requests, CI runs typecheck, lint, unit tests and builds for affected packages only (`turbo --affected`, with `fetch-depth: 0` on checkout). It then assembles everything and runs the full smoke suite on affected games. Unchanged games come from the Turbo cache and get a cheap check that their HTML and entry JS return 200.
 
-The merge gate is a green PR. Cloudflare Workers Builds deploys every push to `main` without waiting for Actions, so `main` needs branch protection that requires the `check` job. A failing game blocks the deploy only if that game changed, and Playwright retries twice to absorb flakes. We are not building a "ship last-good build" fallback until flakes prove it's needed.
+The merge gate is a green PR. Cloudflare Workers Builds deploys the site on every push to `main` without waiting for Actions, so `main` needs branch protection that requires the `check` job. A failing game blocks the deploy only if that game changed, and Playwright retries twice to absorb flakes. We are not building a "ship last-good build" fallback until flakes prove it's needed.
 
 Changes under `packages/` affect every game, so they go in their own PR. That PR runs every game's smoke test plus a screenshot diff of the touch overlay. `AGENTS.md` states this rule, and CODEOWNERS routes those PRs to the owner.
 
@@ -282,7 +282,7 @@ In production, Cloudflare Web Analytics reports real-user load times. That is ho
 
 ## Backend later, on Cloudflare
 
-The site stays assets-only until a game needs shared state. Then the API is a separate Worker under `apps/api`, reached through a service binding from `run_worker_first: ["/api/*"]` on the assets Worker. Keeping it separate protects PR preview URLs: Cloudflare has said preview URLs aren't generated for Workers that contain Durable Objects, and we should verify that this still holds.
+Shared state lives in a separate Worker, `arcade-api` under `apps/api` (today the room service for online races), reached through a service binding from `run_worker_first: ["/api/*"]` on the assets Worker. Keeping it separate protects PR preview URLs: Cloudflare has said preview URLs aren't generated for Workers that contain Durable Objects, and we should verify that this still holds.
 
 Before adding any script, check how `not_found_handling` routes unmatched paths. Bots probing random URLs must not consume the Worker request cap.
 
@@ -290,7 +290,7 @@ Before adding any script, check how `not_found_handling` routes unmatched paths.
 | ------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Leaderboards                    | D1                                                   | 100k rows written/day, and each indexed column a write touches counts as another row, so about 33k submissions/day with two indexes                                        |
 | Turn-based or async multiplayer | Durable Objects (SQLite) with hibernating WebSockets | Fits the free tier                                                                                                                                                         |
-| Real-time multiplayer           | Durable Objects                                      | Doesn't fit. 100k requests/day at 20:1 is about 2M incoming messages, roughly 28 player-hours/day at 20 msg/s, and a ticking room never hibernates. Paid plan from day one |
+| Real-time multiplayer           | Durable Objects (SQLite) with hibernating WebSockets | Fits light use. A lockstep relay room never ticks, so it hibernates whenever nobody is sending. A racer sends one input message per tick (60/s), and 100k requests/day at 20:1 is about 2M incoming messages, roughly 9 racer-hours a day. Past that, the paid plan |
 | Abuse protection                | Turnstile                                            | Free; stops bots, not fake client-side scores                                                                                                                              |
 | Config / flags                  | KV                                                   | 1,000 writes/day                                                                                                                                                           |
 

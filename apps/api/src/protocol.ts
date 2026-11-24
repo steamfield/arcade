@@ -26,6 +26,13 @@ export const ROOM_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 /** Characters in a room code. */
 export const ROOM_CODE_LENGTH = 6;
 
+const ROOM_CODE_PATTERN = new RegExp(`^[${ROOM_CODE_ALPHABET}]{${ROOM_CODE_LENGTH}}$`);
+
+/** Whether `text` could be a room code: `ROOM_CODE_LENGTH` characters, each from `ROOM_CODE_ALPHABET`. */
+export function isRoomCode(text: string): boolean {
+  return ROOM_CODE_PATTERN.test(text);
+}
+
 /** The largest message a peer may send, in bytes. */
 export const MAX_MESSAGE_BYTES = 1024;
 

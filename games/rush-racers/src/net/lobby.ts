@@ -119,15 +119,19 @@ function resolveCharacters(picks: readonly (CharacterId | null)[]): CharacterId[
   });
 }
 
+/** The whole logic ticks a latency of `ms` spans, rounded up: what it adds to a start's input delay. */
+export function latencyTicks(ms: number): number {
+  // Multiplying before dividing keeps whole-tick latencies exact, so ceil does not round them up.
+  return Math.ceil((ms * TICKS_PER_SECOND) / 1000);
+}
+
 /**
  * The input delay in ticks for racers with these one-way pings: enough to cover the slowest pair
  * (one peer's input travels to the room and on to the other), plus a margin, within the allowed range.
  */
 function inputDelay(pings: readonly number[]): number {
   const [slowest = 0, nextSlowest = 0] = [...pings].sort((a, b) => b - a);
-  const worstOneWayMs = slowest + nextSlowest;
-  // Multiplying before dividing keeps whole-tick latencies exact, so ceil does not round them up.
-  const ticks = Math.ceil((worstOneWayMs * TICKS_PER_SECOND) / 1000) + DELAY_MARGIN_TICKS;
+  const ticks = latencyTicks(slowest + nextSlowest) + DELAY_MARGIN_TICKS;
   return Math.min(MAX_INPUT_DELAY, Math.max(MIN_INPUT_DELAY, ticks));
 }
 

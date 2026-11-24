@@ -22,7 +22,7 @@ export const NOTICES = {
 const CLOSED_NOTICES: Readonly<Record<CloseReason, string | null>> = {
   left: null,
   full: 'That room is full',
-  version: 'Reload the page to update, then rejoin',
+  version: 'Game versions differ: everyone reload',
   'unknown-room': 'No room with that code',
   kicked: 'You were dropped from the race',
   unavailable: NOTICES.unavailable,

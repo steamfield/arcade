@@ -57,15 +57,24 @@ function scriptedInput(slot: RacerId, clockTick: number): TickInput {
   return { move: phase < 25 ? JUMP_RIGHT : RUN_RIGHT, kick: phase === 0, use: false, cycle: 0, kickHeld: false };
 }
 
-/** A real connection to the room whose `poll` also returns events the test forges, as a misbehaving room would send. */
+/**
+ * A real connection to the room whose `poll` also returns events the test forges, as a misbehaving
+ * room would send, and which keeps what the client sent.
+ */
 interface ForgingConnection extends RoomConnection {
   forge(event: ConnectionEvent): void;
+  sent: (object | Uint8Array)[];
 }
 
 function forging(connection: RoomConnection): ForgingConnection {
   const forged: ConnectionEvent[] = [];
+  const sent: (object | Uint8Array)[] = [];
   return {
-    send: (message) => connection.send(message),
+    sent,
+    send: (message) => {
+      sent.push(message);
+      connection.send(message);
+    },
     poll: () => [...connection.poll(), ...forged.splice(0)],
     close: () => connection.close(),
     forge: (event) => forged.push(event),
@@ -238,6 +247,31 @@ describe('the lobby', () => {
     expect(host.client.view.race?.inputDelay).toBe(8);
     table.settle();
     expect(guest.client.view.race?.inputDelay).toBe(8);
+  });
+
+  it('tells the room a new ping only when it changes the ticks of delay it stands for', () => {
+    // One-way pings of 52 and 58 ms both round up to 4 ticks; 68 ms is 5.
+    let guestRoundTripMs = 104;
+    const table = seated(2, { roundTripMs: (id) => (id === 2 ? guestRoundTripMs : 0) });
+    const [host, guest] = table.peers as [Peer, Peer];
+    const pingOf = (viewer: Peer) => viewer.client.view.lobby.peers.find((peer) => peer.id === 2)?.ping;
+    const lobbySends = () => guest.connection.sent.filter((message) => 'type' in message && message.type === 'lobby');
+    /** Runs until the guest has measured `oneWayMs`, then lets anything it sent arrive. */
+    const measure = (oneWayMs: number) => {
+      table.until(() => pingOf(guest) === oneWayMs);
+      table.settle();
+    };
+    measure(52);
+    table.until(() => pingOf(host) === 52);
+    const before = lobbySends().length;
+
+    guestRoundTripMs = 116;
+    measure(58);
+    expect([pingOf(host), lobbySends().length - before]).toEqual([52, 0]);
+
+    guestRoundTripMs = 136;
+    measure(68);
+    expect([pingOf(host), lobbySends().length - before]).toEqual([68, 1]);
   });
 });
 

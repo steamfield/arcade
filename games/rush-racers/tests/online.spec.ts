@@ -14,6 +14,7 @@ import {
   summaryOf,
   test,
   turnsUntil,
+  twoReady,
 } from './online-kit.ts';
 
 /** What `debugState()` holds that these tests compare. */
@@ -62,7 +63,10 @@ test.describe('an online race between two browsers', () => {
     await raceToResults([host, guest]);
 
     for (const game of [host, guest]) await press(game, 'fire');
-    await turnsUntil([host, guest], (summary) => summary.scene === 'room' && summary.net?.phase === 'lobby');
+    await turnsUntil(
+      [host, guest],
+      (summary) => summary.scene === 'room' && summary.net?.phase === 'lobby' && twoReady(summary),
+    );
     expect((await summaryOf(host)).net?.canStart).toBe(true);
     // The host's cursor is still on Start; the room ignores fire until it has been up 20 ticks.
     await host.advance(ARMED_TICKS);

@@ -15,12 +15,12 @@ import { courseFromLevel, giveItems } from '../logic/test-world.ts';
 import type { TickInput, World } from '../logic/types.ts';
 import { createClient, type OnlineClient } from '../net/client.ts';
 import { IDLE_INPUT } from '../net/codec.ts';
+import { createOnlineWorld } from '../net/race-world.ts';
 import { createMemoryRoom, type MemoryRoom } from '../net/transport/memory.ts';
 import { type Action, input } from './input.ts';
 import { selectedOption } from './menu.ts';
 import type { OnlinePorts } from './online/flow.ts';
 import { netSummary } from './online/net-summary.ts';
-import { createOnlineWorld } from './online/race-world.ts';
 import { Runtime, type SceneKey } from './runtime.ts';
 
 /** Title rows: Race, Friends, How to play, Level, Sound, Motion. Sound is four down. */
@@ -576,6 +576,8 @@ describe('an online race', () => {
   const TICK_LIMIT = 6000;
   /** Ticks from a race's end to its results screen. */
   const RESULTS_DELAY = 90;
+  /** Ticks an offline race on a four-tile course may take, with right held, before it counts as stuck. */
+  const OFFLINE_RACE_LIMIT = COUNTDOWN_TICKS + 600 + RESULTS_DELAY;
   /** Run right, jumping on a cycle, as the client tests' racers do; the runtime's own racer stays idle. */
   const runAndJump = (tick: number): TickInput => {
     const jumping = tick % 40 < 25;
@@ -589,9 +591,10 @@ describe('an online race', () => {
   /**
    * A runtime that opened a `?room=` link, as boot does, to a room whose host is a bare client on
    * Run Test. Scenes come up between ticks, as Phaser's do. Each round ticks the host, then the
-   * runtime, then brings up any scene the runtime asked for, then the room delivers.
+   * runtime, then brings up any scene the runtime asked for, then the room delivers. `listedCourses`
+   * are the courses an offline race may run on.
    */
-  async function joinedRoom() {
+  async function joinedRoom(listedCourses: readonly Course[] = [DEFAULT_COURSE]) {
     const room = createMemoryRoom();
     const host = createClient({
       connection: room.connect(),
@@ -604,7 +607,7 @@ describe('an online race', () => {
     });
     const { rt, gameErrors, showScene } = titleRuntime(await realStore(), {
       search: `?room=${ROOM_CODE}`,
-      listedCourses: [DEFAULT_COURSE],
+      listedCourses,
       online: roomPorts(room),
       deferScenes: true,
     });
@@ -734,7 +737,10 @@ describe('an online race', () => {
   });
 
   it('races offline after Title from online results: as slot 1, with the offline results, saved', async () => {
-    const { rt, host, rounds, until, pressOnline, showScene } = await joinedRoom();
+    // Four-tile courses, so the offline race is over in a few hundred ticks with right held. Two of
+    // them, so course select shows and the race runs on the first rather than the default course.
+    const short = ['Short', 'Shorter'].map((name) => courseFromLevel({ name, ascii: '#1234F#' }));
+    const { rt, host, rounds, until, pressOnline, showScene } = await joinedRoom(short);
     host.start(9);
     until(() => rt.scene === 'results');
     rounds(ARMED);
@@ -743,13 +749,20 @@ describe('an online race', () => {
     rounds(ARMED);
     pressOnline('fire');
     rounds(ARMED);
+    expect(rt.scene).toBe('course');
+    pressOnline('fire');
+    rounds(ARMED);
     pressOnline('fire');
 
     expect([rt.scene, rt.onlineRace, rt.localRacer]).toEqual(['race', false, 'player']);
     // The summary's `net` is this; null leaves it out.
     expect(netSummary(rt.flow)).toBeNull();
-    rt.step.advance(COUNTDOWN_TICKS + RACE_LIMIT_TICKS + RESULTS_DELAY);
-    showScene();
+    input.inject('right', true);
+    for (let ticks = 0; ticks < OFFLINE_RACE_LIMIT && rt.scene !== 'results'; ticks++) {
+      rt.step.advance(1);
+      showScene();
+    }
+    input.inject('right', false);
     expect(rt.scene).toBe('results');
     expect(rt.menu?.options).toEqual(['Race again', 'Character', 'Title']);
     await settled(rt);
