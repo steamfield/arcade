@@ -170,6 +170,21 @@ describe('a comet meeting racers', () => {
     expect(endOf(setup.log).x).toBeLessThan(9 * TILE);
   });
 
+  it('flies through an invulnerable racer and hits the next one, instead of ending on a hit that does nothing', () => {
+    const setup = farside(room());
+    const shielded = racerOf(setup.world, 'tess');
+    placeAt(shielded, tileCentre(8, 7));
+    shielded.status.invulnerable = 120;
+    placeAt(racerOf(setup.world, 'squib'), tileCentre(12, 7));
+    fireComet(setup);
+    stepUntilEnded(setup);
+
+    expect(eventsIn(setup.log, 'racer.hit')).toEqual([
+      { type: 'racer.hit', id: 'squib', cause: 'comet', by: 'player' },
+    ]);
+    expect(endOf(setup.log).x).toBeGreaterThan(8 * TILE + TILE);
+  });
+
   it('from a rival on Easy passes through the human it may not attack, where on Hard it hits', () => {
     const rivalFiresAtPlayer = (difficulty: Difficulty) => {
       const setup = farside(room(), { difficulty });

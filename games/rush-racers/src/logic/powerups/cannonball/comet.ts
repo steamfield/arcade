@@ -5,7 +5,7 @@
  * and `phase` 0. Each tick it gains `COMET_TUNING.pullMul` times the wells' pull at its centre
  * (`pullAt`), moves, and then ends (`shot.ended` where it stopped) on the first of: a black hole's
  * horizon holds it, it touches ice (which breaks, every ice tile it touches) or other solid tiles,
- * it touches a racer other than its owner that the owner may attack (who is hit), or its time runs out.
+ * it touches a racer other than its owner that the owner may attack and that a hit can land on (who is hit), or its time runs out.
  */
 import { mayAttack } from '../../difficulty-level.ts';
 import { overlaps, squareAt } from '../../hazards/boxes.ts';
@@ -16,6 +16,7 @@ import { mediumOf } from '../../media/index.ts';
 import { length } from '../../num.ts';
 import { breakCoral } from '../../race/coral.ts';
 import { activeRacers, centreOf, hitbox } from '../../racers.ts';
+import { isInvulnerable } from '../../status.ts';
 import { type Box, type Racer, type Shot, type ShotEndReason, TILE, type Vec, type World } from '../../types.ts';
 import type { CannonballShotRules } from './index.ts';
 
@@ -104,8 +105,9 @@ function strikesTiles(world: World, shot: Shot): boolean {
 }
 
 /**
- * Hits the first racer in `racing` (other than the owner, in play, and one the owner may attack)
- * whose hitbox the comet touches, and says whether there was one. A rival's comet on Easy passes
+ * Hits the first racer in `racing` (other than the owner, in play, not invulnerable, and one the
+ * owner may attack) whose hitbox the comet touches, and says whether there was one. Like the Boulder,
+ * it flies through an invulnerable racer, where a hit would do nothing. A rival's comet on Easy passes
  * through a human, who isn't a racer it may attack.
  */
 function strikesRacer(world: World, shot: Shot, racing: readonly Racer[]): boolean {
@@ -114,6 +116,7 @@ function strikesRacer(world: World, shot: Shot, racing: readonly Racer[]): boole
     (racer) =>
       racer.id !== shot.owner &&
       racer.status.fallen === 0 &&
+      !isInvulnerable(racer) &&
       mayAttack(world, shot.owner, racer.id) &&
       overlaps(box, hitbox(racer)),
   );

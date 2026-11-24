@@ -62,12 +62,17 @@ export const ITEM_USE = {
  * has a use. The slot is the first holding a Puffer or Cannonball when coral is just ahead
  * (`pufferHasCoral`), else the first held slot whose kind has a use. It fires only when `roll` is
  * under `fireChance` (`itemAggression` times the difficulty level's multiplier, over `reactionTicks`),
- * times ITEM_USE.jetChanceMul when that slot is Jet Fins or a Cannonball and no coral is ahead.
+ * times ITEM_USE.jetChanceMul when that slot is Jet Fins, or a dashing Cannonball (no shot style) with
+ * no coral ahead. A shot-style Cannonball is not a dash, so it never gets the multiplier. An item a
+ * twist style replaces (`twistRules`, e.g. the Headwind for Undertow) uses that style's `rivalWants`
+ * in place of the rules below, and a shot or twist style fires the item instead of dashing.
  *
  * Uses: inkSac, a racer behind (higher progress) within 4 tiles; bubbleShield, a racer ahead within
  * 6 tiles inside the aim cone; glowLantern, a racer ahead within 2 tiles; puffer, unbroken coral
  * within 3 tiles ahead (`Medium.coralAhead`); jetFin, a clear straight path of 5 tiles along the aim;
- * cannonball, either of the last two; homingSquid, a target in lock range (`pickSquidTarget`);
+ * cannonball, where it dashes (no shot style, as on Reef), either of the last two, and in a shot world
+ * (Boulder, Meteor, Comet) that style's `rivalWants` (`shotRules`); homingSquid, a target in lock
+ * range (`pickSquidTarget`);
  * riptide, 6 clear tiles along the aim with a racer within 5 tiles behind to draft it; undertow, in
  * 3rd or 4th with a racer 8 or more tiles ahead; mimic, a squid locked on it within 8 tiles, or, while
  * leading the race, a racer within 4 tiles behind. Ink Sac's own rule already covers a leader's chaser.
@@ -78,7 +83,7 @@ export const ITEM_USE = {
 export function chooseItemSlot(world: World, racer: Racer, aim: Vec, roll: number): number | null {
   if (racer.useCooldown > 0) return null;
   const coral = pufferHasCoral(world, racer);
-  const breaker = coral ? slotHolding(racer, coralBreakers(world)) : -1;
+  const breaker = coral ? slotHolding(world, racer, coralBreakers(world)) : -1;
   const slot = breaker >= 0 ? breaker : slotWithUse(world, racer, aim);
   const kind = itemAt(racer, slot)?.kind;
   if (kind === undefined) return null;
@@ -99,13 +104,13 @@ function fireChance(world: World, racer: Racer): number {
 }
 
 /** The first slot holding one of `kinds` that can fire now (`canFire`), or -1. */
-function slotHolding(racer: Racer, kinds: readonly PowerUpKind[]): number {
-  return firstSlotWhere(racer, (item, slot) => kinds.includes(item.kind) && canFire(racer, slot));
+function slotHolding(world: World, racer: Racer, kinds: readonly PowerUpKind[]): number {
+  return firstSlotWhere(racer, (item, slot) => kinds.includes(item.kind) && canFire(world, racer, slot));
 }
 
 /** The first held slot that can fire now (`canFire`) and whose kind has a use this tick, or -1. */
 function slotWithUse(world: World, racer: Racer, aim: Vec): number {
-  return firstSlotWhere(racer, (item, slot) => canFire(racer, slot) && hasUse(world, racer, aim, item.kind));
+  return firstSlotWhere(racer, (item, slot) => canFire(world, racer, slot) && hasUse(world, racer, aim, item.kind));
 }
 
 function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolean {
