@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TILE, type World } from '../../logic/types.ts';
+import { type ShotEndReason, TILE, type World } from '../../logic/types.ts';
 import { setPieceCue } from './setpiece-cues.ts';
 
 /** Just the parts of a world the cues read: the local racer's x and the level's set pieces. */
@@ -39,12 +39,26 @@ describe('set piece and shot sounds', () => {
   });
 
   it("sounds each world's shot where it ends within hearing", () => {
-    const ended = (style: 'boulder' | 'meteor' | 'comet') =>
-      ({ type: 'shot.ended', owner: 'tess', style, reason: 'landed', x: 100, y: 0 }) as const;
+    const ended = (style: 'boulder' | 'meteor' | 'comet', reason: ShotEndReason = 'hit') =>
+      ({ type: 'shot.ended', owner: 'tess', style, reason, x: 100, y: 0 }) as const;
     expect(setPieceCue(ended('boulder'), worldAt(150), 'player')).toBe('coral');
-    expect(setPieceCue(ended('meteor'), worldAt(150), 'player')).toBe('lightning.strike');
+    expect(setPieceCue(ended('meteor', 'landed'), worldAt(150), 'player')).toBe('lightning.strike');
     expect(setPieceCue(ended('comet'), worldAt(150), 'player')).toBe('decoy.pop');
     expect(setPieceCue(ended('boulder'), worldAt(5000), 'player')).toBeNull();
+  });
+
+  it('is silent for a shot that fizzled, whatever its style', () => {
+    for (const style of ['boulder', 'meteor', 'comet'] as const) {
+      const event = { type: 'shot.ended', owner: 'tess', style, reason: 'fizzled', x: 100, y: 0 } as const;
+      expect(setPieceCue(event, worldAt(150), 'player')).toBeNull();
+    }
+  });
+
+  it('leaves a landed Boulder to the coral or wall sound, and gives one that ran out a soft bump', () => {
+    const boulder = (reason: ShotEndReason) =>
+      ({ type: 'shot.ended', owner: 'tess', style: 'boulder', reason, x: 100, y: 0 }) as const;
+    expect(setPieceCue(boulder('landed'), worldAt(150), 'player')).toBeNull();
+    expect(setPieceCue(boulder('expired'), worldAt(150), 'player')).toBe('bump');
   });
 
   it('breathes when a wind zone near the local racer is about to turn', () => {

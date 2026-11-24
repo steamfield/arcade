@@ -2,7 +2,7 @@
  * Comets in flight on the race screen (`world.shots` of style 'comet'): a bright head and a tail of
  * fading, shrinking puffs trailing back along its velocity, so a bend round a planet shows in the
  * curve of the head's path and the swing of the tail. Redrawn every frame from the shots alone, so
- * a comet that ends simply stops being drawn (the impact fx comes from `shot.ended`). A space theme
+ * a comet that ends simply stops being drawn (the spark scatter where it ends is `fx/item-effects.ts`, from `shot.ended`). A space theme
  * extra layer.
  */
 import type Phaser from 'phaser';

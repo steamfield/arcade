@@ -6,6 +6,7 @@
  * racers' movement is never heard. Pure but for the timers and the last velocity it remembers.
  */
 import { courseOf } from '../../logic/courses/index.ts';
+import { bombPullOn } from '../../logic/powerups/twists/gravity-bomb.ts';
 import type { Racer, RacerId, World } from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { skinFor } from '../worlds/index.ts';
@@ -20,7 +21,8 @@ export const RUN_STEP_MIN_SPEED = 30;
 /**
  * The velocity change per tick, px/s, that reads as thrust: drift's thrust adds about 4.1 a tick
  * (more with a speed boost, less in ink), while drag takes about 0.4 and a gravity well's pull, away
- * from a planet's surface, under 3.
+ * from a planet's surface, under 3. A gravity bomb's pull reaches the band, so a racer inside one
+ * is never read as thrusting (`burnCue`).
  */
 export const THRUST_DV_PER_TICK = { min: 3, max: 8 } as const;
 /**
@@ -84,10 +86,15 @@ export function createMoveCues(localRacer: () => RacerId): MoveCues {
     return 'step';
   };
 
-  const burnCue = (racer: Racer, tick: number): MoveSfxKey | null => {
+  const burnCue = (world: World, racer: Racer, tick: number): MoveSfxKey | null => {
     const before = lastVelocity;
     lastVelocity = { tick, vx: racer.body.vx, vy: racer.body.vy };
     if (!before) return null;
+    const bomb = bombPullOn(world, racer);
+    if (bomb.x !== 0 || bomb.y !== 0) {
+      thrustTicks = 0;
+      return null;
+    }
     const change = Math.hypot(racer.body.vx - before.vx, racer.body.vy - before.vy) / (tick - before.tick);
     thrustTicks = change >= THRUST_DV_PER_TICK.min && change <= THRUST_DV_PER_TICK.max ? thrustTicks + 1 : 0;
     if (thrustTicks < THRUST_TICKS || tick - lastBurn < BURN_GAP_TICKS) return null;
@@ -114,7 +121,7 @@ export function createMoveCues(localRacer: () => RacerId): MoveCues {
       }
       const sound = skinFor(courseOf(world)).moveSound;
       if (sound === 'steps') return stepCue(racer, world.tick);
-      if (sound === 'burns') return burnCue(racer, world.tick);
+      if (sound === 'burns') return burnCue(world, racer, world.tick);
       return null;
     },
   };
