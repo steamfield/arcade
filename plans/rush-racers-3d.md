@@ -184,12 +184,41 @@ Test cases (lane a writes these; every line needs a test):
 Demo: open `?` crates, hold up to three items, cycle and fire them; rivals fire back.
 Depends on: phase 2
 
+Scaffold (orchestrator, before dispatch): `types.ts` gains `ItemKind` (`'boots' | 'shield' | 'burr' | 'pie'`), `HeldItem { kind; charges }`, on `Racer` `slots: (HeldItem | null)[]` (three), `selected: number`, `itemCooldown`, `stunTicks`, `trappedTicks`, `burrTicks`, `bootsTicks`, and on `World` `crates: { shutTicks: number }[]` (one per `crate` feature, in feature order), `shots: Shot[]` (flying pies and sap globs in track space) and `splats: Splat[]` (mud patches with `ticksLeft` and `owner`); `events.ts` gains `crate.opened` (by, kind), `item.selected`, `item.fired` (id, kind), `racer.hit` (id, by, kind, outcome `'shielded' | 'dropped' | 'stunned'`), `racer.trapped` and `pie.splatted`; `tuning.ts` gains `ITEMS` (charges per kind, crate shut ticks, cooldown, boots speed and ticks, burr ticks, pie throw and splat size and ticks, sap trap ticks, stun ticks) and `CRATE` (height above ground, touch radius); stubs `src/logic/items/index.ts` (`stepItems(world, inputs)`, `rollItem(rng, place)`), `src/engine/item-view.ts` (`createItemView(frames)` with `sync(world)`); `input.ts` adds a touch `⇄` button for `next`. Scenarios get one `crate-and-fire` scenario at landing.
+
+Test cases (lane a writes these; every line needs a test):
+- Crates: a racer whose centre passes within CRATE.touchRadius of a shut crate (at its `s`, `d`, CRATE.height above ground, any `y` within reach of a running or jumping racer) opens it: the item goes into the first empty slot with ITEMS charges for its kind, `crate.opened` fires, and the crate stays shut for ITEMS.crateShutTicks for everyone. A full inventory, or a roll of a kind already held, leaves the crate unopened for that racer (a re-roll is not taken). Fallen and finished racers never open crates.
+- Roll: `rollItem` weights by place: 1st gets mostly `shield` and `pie`, 4th mostly `boots` and `burr`; every kind can roll in every place; same rng state, same item.
+- Selection: `nextPressed`/`prevPressed` move `selected` among held slots only, wrapping, and emit `item.selected`; with nothing held `selected` stays put. Using an item's last charge empties its slot and moves the selection to the next held slot to the right, wrapping.
+- Fire: `firePressed` uses the selected item only, spends one charge, emits `item.fired`, then nothing fires for ITEMS.cooldownTicks. A stunned or trapped racer can't fire, dash or move but can change selection.
+- Rocket Boots (3): firing sets `vs` to at least ITEMS.bootsSpeed for ITEMS.bootsTicks, gliding back like a dash; it doesn't use dash charges.
+- Sap Shield (1): held, it absorbs the next hit from any slot (`racer.hit` outcome `shielded`, the shield's slot empties). Fired, it throws a sap glob forward along `s` faster than run speed that traps the first other racer it touches for ITEMS.sapTrapTicks (`racer.trapped`), or vanishes after ITEMS.sapRange meters.
+- Burr Ball (2): firing puffs the racer up for ITEMS.burrTicks; any other racing racer it bumps in that time takes a hit.
+- Mud Pie (3): lobbed forward in an arc carrying the thrower's speed, it splats where it lands (`pie.splatted`) into a mud patch ITEMS.splatLength by ITEMS.splatWidth that slows every racer but its owner as mud does, for ITEMS.splatTicks; a pie over a pit falls in and leaves nothing.
+- Hits: a hit is absorbed by a held Sap Shield; otherwise it removes the selected item with all its charges (`dropped`), or stuns for ITEMS.stunTicks with nothing held (`stunned`); every hit gives RUN.invulnTicks of invulnerability and an invulnerable racer takes no hits and can't be trapped.
+- Rivals: rivals open crates on their line and fire one item at a time: boots with no pit or log within RIVAL.dashClearance, a pie at a grounded racer 5-20 m ahead, a burr with another racer within 3 m, a sap glob at a racer 5-25 m ahead; a held shield is kept for its passive guard. A four-racer race with items on Thornwood Trail still has every rival finish within 1.25x `parTicks` for seeds 1..5.
+- Determinism: a four-racer race with items and a fixed player script gives the same `hashWorld` twice.
+
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers-3d/src/logic/items/, games/rush-racers-3d/src/logic/racer.ts, games/rush-racers-3d/src/logic/ai.ts, games/rush-racers-3d/src/logic/world.ts | contracts | | gpt-6.2-sol | pending | | |
-| b | M | games/rush-racers-3d/src/engine/item-view.ts, games/rush-racers-3d/src/engine/hud.ts, games/rush-racers-3d/src/engine/track-view.ts | contracts | | gpt-6.2-sol | pending | | |
+| a | L | games/rush-racers-3d/src/logic/items/, games/rush-racers-3d/src/logic/racer.ts, games/rush-racers-3d/src/logic/ai.ts, games/rush-racers-3d/src/logic/world.ts, games/rush-racers-3d/src/logic/tuning.ts, games/rush-racers-3d/src/logic/racer.test.ts, games/rush-racers-3d/src/logic/race.test.ts, games/rush-racers-3d/src/logic/ai.test.ts, games/rush-racers-3d/src/logic/world.test.ts | contracts | | gpt-6.2-sol | pending | | every phase 3 test case has a passing test; typecheck and lint pass |
+| b | M | games/rush-racers-3d/src/engine/item-view.ts, games/rush-racers-3d/src/engine/hud.ts, games/rush-racers-3d/src/engine/track-view.ts, games/rush-racers-3d/src/engine/game.ts | contracts | | gpt-6.2-sol | pending | | crates, shots, splats, racer effects and the inventory HUD look right in `see` on desktop and `--mobile` |
 
-(Test cases and briefs written during phase 2.)
+#### Lane 3a brief
+
+- Goal: crates, the three-slot inventory, the four items, hits, and rivals using items, as deterministic logic.
+- Interface: implement `stepItems` and `rollItem` under `src/logic/items/` (one file per item kind plus crates and hits, each under about 300 lines), call `stepItems` from `stepWorld` after racers move and before bumps, honour stun, trap, boots and burr in `stepRacer`, splats as mud for everyone but their owner in `surfaceAt`-equivalent checks inside the racer step, and item choices in `ai.ts`. Keep every scaffold export.
+- Behavior: the phase 3 test-case list. Rolls and any item noise come only from `world.rngState`.
+- Out of scope: anything under `src/engine/` except `runtime.ts` and its test; other worlds' items.
+- Done when: `pnpm arcade test rush-racers-3d src/logic src/engine/runtime.test.ts` and `pnpm arcade check rush-racers-3d --skip-tests` pass.
+
+#### Lane 3b brief
+
+- Goal: crates on the trail, items in flight and on the ground, item effects on racers, and the inventory in the HUD.
+- Interface: `createItemView(frames)` in `src/engine/item-view.ts` draws `world.crates` (a floating `?` crate that dims while shut), `world.shots` (pie and sap glob), `world.splats` (a mud patch that shrinks as `ticksLeft` runs out) and per-racer effects (boots flame, burr spikes, sap trap, stun stars, shield bubble while one is held) from racer state; the HUD shows three slots with each held item's icon and charges, the selected slot highlighted, clear of the touch controls; `track-view.ts` stops drawing crates as static props if it does.
+- Behavior: everything readable at chase distance and on a phone; instanced or pooled meshes, no per-frame allocation, under 100 draw calls mid-race with rivals.
+- Out of scope: logic, runtime, sound.
+- Done when: `pnpm arcade check rush-racers-3d --skip-tests` passes and `see` frames mid-race with a crate ahead, an item fired, a splat, and the HUD inventory look right on desktop and `--mobile`.
 
 ## Log
 
