@@ -1,14 +1,24 @@
 /**
  * Plays the item recipes (`item-recipes.ts`) from one tick's events: each power-up's fire at the
  * racer that used it, a hit's burst by its cause, a Bubble Shield's shards, speed lines strung
- * along a new Riptide lane and trailing each racer an Undertow catches. Positions come from the
+ * along a new Riptide lane and trailing each racer an Undertow catches, and where a Meteor lands or
+ * a Comet ends (a Boulder draws its own dust, and a shot that fizzled had nothing in the air). Positions come from the
  * world as it stands after the tick. Shake for the same events is `event-effects.ts`'s.
  */
 import type { Stamped } from '@arcade/core';
 import type { ThemeId } from '../../logic/courses/types.ts';
-import { POWER_UP_KINDS, type PowerUpKind, type Racer, type RacerId, type World } from '../../logic/types.ts';
+import {
+  type CannonballShotStyle,
+  POWER_UP_KINDS,
+  type PowerUpKind,
+  type Racer,
+  type RacerId,
+  type ShotEndReason,
+  type World,
+} from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { fireRecipe, impactRecipe, laneRecipe, pulledRecipe, shieldPopRecipe } from './item-recipes.ts';
+import { MATERIALS } from './materials.ts';
 import type { RecipePlayer } from './recipe-player.ts';
 import type { Recipe } from './recipe-types.ts';
 
@@ -32,6 +42,9 @@ export function createItemEffects(world: World, theme: ThemeId, player: RecipePl
   const lane = laneRecipe(theme);
   const pulled = pulledRecipe(theme);
 
+  const meteorLanding = shotEndRecipe('meteor', theme);
+  const cometEnd = shotEndRecipe('comet', theme);
+
   const playOn = (id: RacerId, recipe: Recipe, heading: (racer: Racer) => [number, number] = headingOf) => {
     const racer = world.racers.find((candidate) => candidate.id === id);
     if (!racer) return;
@@ -48,6 +61,11 @@ export function createItemEffects(world: World, theme: ThemeId, player: RecipePl
         return playOn(event.id, shards);
       case 'riptide.spawned':
         return stringLane(world, event.owner, (x, y, dirX, dirY) => player.play(lane, x, y, dirX, dirY));
+      case 'shot.ended': {
+        const recipe = shotEndRecipeFor(event.style, event.reason, meteorLanding, cometEnd);
+        if (recipe) player.play(recipe, event.x, event.y, 0, -1);
+        return;
+      }
       case 'undertow.fired':
         // Dragged back the way they came, so the lines trail out ahead of them.
         for (const id of event.pulled) playOn(id, pulled, (racer) => [-racer.facing, 0]);
@@ -86,4 +104,48 @@ function stringLane(
     const y = alongX ? riptide.y + riptide.h / 2 : riptide.y + along;
     line(x, y, riptide.dir.x, riptide.dir.y);
   }
+}
+
+/** Which of the two prebuilt recipes a shot's end plays: none for a Boulder or a fizzle, dust only for a Meteor that landed. */
+function shotEndRecipeFor(
+  style: CannonballShotStyle,
+  reason: ShotEndReason,
+  meteorLanding: Recipe,
+  cometEnd: Recipe,
+): Recipe | null {
+  if (reason === 'fizzled') return null;
+  if (style === 'meteor') return reason === 'landed' ? meteorLanding : null;
+  if (style === 'comet') return cometEnd;
+  return null;
+}
+
+/** The look of a Meteor landing (a ring of dust thrown out along the ground) or a Comet ending (a short scatter of sparks) in `theme`. */
+function shotEndRecipe(style: 'meteor' | 'comet', theme: ThemeId): Recipe {
+  const materials = MATERIALS[theme];
+  if (style === 'meteor') {
+    return [
+      {
+        pattern: 'ring',
+        look: materials.dust,
+        motion: 'fall',
+        count: 14,
+        radius: 8,
+        speed: 2,
+        life: 22,
+        layer: 'front',
+      },
+    ];
+  }
+  return [
+    {
+      pattern: 'scatter',
+      look: materials.spark,
+      motion: 'coast',
+      count: 8,
+      radius: 6,
+      speed: 2,
+      life: 12,
+      layer: 'front',
+    },
+  ];
 }

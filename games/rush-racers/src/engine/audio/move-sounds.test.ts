@@ -7,7 +7,8 @@ import { EventLog, type Stamped, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { COURSES } from '../../logic/courses/index.ts';
 import type { GameEvent } from '../../logic/events.ts';
-import type { RacerId, TickInput } from '../../logic/types.ts';
+import { centreOf } from '../../logic/racers.ts';
+import { type RacerId, TILE, type TickInput, type World } from '../../logic/types.ts';
 import { createWorld, stepRace } from '../../logic/world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { createAdapter } from './adapter.ts';
@@ -43,10 +44,16 @@ const MOVE_KEYS = new Set(['hop', 'step', 'burn', 'clank']);
  * tick at a time and the rivals driven by their AI, and returns the movement sounds the screen
  * following `local` heard, with the race's own events.
  */
-function race(course: 'run-test' | 'drift-test', inputs: readonly TickInput[], local: RacerId = 'player') {
+function race(
+  course: 'run-test' | 'drift-test',
+  inputs: readonly TickInput[],
+  local: RacerId = 'player',
+  setup: (world: World) => void = () => {},
+) {
   const log = new EventLog<GameEvent>(100_000);
   const world = createWorld(COURSES[course], log, { seed: 1 });
   world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+  setup(world);
   const heard: Heard[] = [];
   let voices: number[] = [];
   const node = {} as GainNode;
@@ -122,6 +129,27 @@ describe('a drifter’s movement sounds', () => {
     expect(burns.length).toBeGreaterThanOrEqual(3);
     expect(Math.min(...gaps(burns))).toBe(BURN_GAP_TICKS);
     expect(burns.every((tick) => tick <= 40)).toBe(true);
+  });
+
+  it('does not burn while a rival’s gravity bomb pulls it along, coasting', () => {
+    const coastInBomb = (world: World) => {
+      const player = world.racers.find((racer) => racer.id === 'player');
+      if (!player) throw new Error('no player');
+      player.body.vx = 0;
+      const at = centreOf(player);
+      world.twists.push({
+        style: 'gravityBomb',
+        owner: 'tess',
+        x: at.x + TILE / 4,
+        y: at.y,
+        vx: 0,
+        vy: 0,
+        ttl: 240,
+        phase: 0,
+      });
+    };
+    const { heard } = race('drift-test', hold(IDLE, 12), 'player', coastInBomb);
+    expect(heard).toEqual([]);
   });
 
   it('is silent while it sits still and every rival thrusts away', () => {
