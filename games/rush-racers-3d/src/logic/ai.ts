@@ -5,13 +5,13 @@
 import { createRng, TICK_DT } from '@arcade/core';
 import { RIVAL_PROFILES } from './characters.ts';
 import { groundY, surfaceAt } from './course.ts';
+import { gridD } from './grid.ts';
 import { NO_INPUT } from './racer.ts';
-import { RACE, RIVAL, RUN } from './tuning.ts';
-import type { Racer, RacerId, Span, TickInput, World } from './types.ts';
+import { RIVAL, RUN } from './tuning.ts';
+import type { Racer, Span, TickInput, World } from './types.ts';
 
 type Obstacle = Span & { kind: 'pit' | 'mud' | 'log'; height: number };
 
-const GRID_LANE: Record<RacerId, number> = { player: -0.5, r1: 0.5, r2: -1.5, r3: 1.5 };
 const LANE_COST = { pit: 36, log: 16, mud: 10 };
 const LANE_MARGIN = RUN.radius + 0.15;
 
@@ -57,8 +57,7 @@ export function rivalInput(world: World, racer: Racer): TickInput {
   }
 
   const edge = Math.max(0, course.halfWidth - RUN.radius);
-  const spacing = Math.min(RACE.gridSpacing, edge / 1.5);
-  const preferred = clamp(GRID_LANE[racer.id] * spacing + profile.lineBias, -edge, edge);
+  const preferred = clamp(gridD(course, racer.id) + profile.lineBias, -edge, edge);
   const target = chooseLine(world, racer, obstacles, preferred, edge);
   const { push } = surfaceAt(course, racer.s, racer.d);
   const steer = clamp(((target - racer.d) * 3 - racer.vd * 0.35 - push) / RUN.steerSpeed + wobble, -1, 1);

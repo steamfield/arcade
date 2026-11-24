@@ -8,7 +8,7 @@ import { migrations, SAVE_VERSION, type SaveData, SaveSchema } from '../logic/sa
 import { RACE } from '../logic/tuning.ts';
 import type { Course } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
-import { type FrameInput, RESULTS_CONFIRM_DELAY_TICKS, Runtime, type RuntimeOptions } from './runtime.ts';
+import { type FrameInput, moveCursor, RESULTS_CONFIRM_DELAY_TICKS, Runtime, type RuntimeOptions } from './runtime.ts';
 
 const course: Course = {
   id: 'thornwood-trail',
@@ -295,6 +295,17 @@ it('uses the launch character override in the race and saves it with the new bes
 function menu(direction: keyof FrameInput['menu']): FrameInput {
   return { ...idle, menu: { ...idle.menu, [direction]: true } };
 }
+
+it('moves the character cursor by row or column and clamps it at every edge', () => {
+  expect(moveCursor(5, menu('left').menu)).toBe(4);
+  expect(moveCursor(1, menu('right').menu)).toBe(2);
+  expect(moveCursor(6, menu('up').menu)).toBe(2);
+  expect(moveCursor(2, menu('down').menu)).toBe(6);
+  expect(moveCursor(4, menu('left').menu)).toBe(4);
+  expect(moveCursor(3, menu('right').menu)).toBe(3);
+  expect(moveCursor(2, menu('up').menu)).toBe(2);
+  expect(moveCursor(6, menu('down').menu)).toBe(6);
+});
 
 it('opens on title, highlights the saved character and clamps navigation to the 4x2 grid', async () => {
   const saves = await openStore();

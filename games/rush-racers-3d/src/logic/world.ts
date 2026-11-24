@@ -8,14 +8,15 @@
  */
 import { type EventSink, TICK_HZ } from '@arcade/core';
 import { rivalInput } from './ai.ts';
-import { bumpRacers, captureBumpStarts } from './bump.ts';
+import { bumpRacers } from './bump.ts';
 import { drawRivals } from './characters.ts';
 import { assertCourse, groundY } from './course.ts';
 import type { GameEvent } from './events.ts';
+import { gridD } from './grid.ts';
 import { NO_INPUT, stepRacer } from './racer.ts';
 import type { SaveData } from './save.ts';
 import { placeOf } from './standings.ts';
-import { DASH, RACE, RIVAL, RUN } from './tuning.ts';
+import { DASH, RACE, RIVAL } from './tuning.ts';
 import type { CharacterId, Racer, RacerId, TickInputs, World, WorldOptions } from './types.ts';
 
 /**
@@ -50,15 +51,13 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
     finishTicks: null,
   });
   const draw = options.rivals ? drawRivals(options.seed, options.character) : null;
-  const edge = Math.max(0, course.halfWidth - RUN.radius);
-  const spacing = Math.min(RACE.gridSpacing, edge / 1.5);
-  const racers = [racer('player', options.character, draw ? -spacing / 2 : 0)];
+  const racers = [racer('player', options.character, draw ? gridD(course, 'player') : 0)];
   if (draw) {
     const [first, second, third] = draw.rivals;
     racers.push(
-      racer('r1', first, spacing / 2),
-      racer('r2', second, -spacing * 1.5),
-      racer('r3', third, spacing * 1.5),
+      racer('r1', first, gridD(course, 'r1')),
+      racer('r2', second, gridD(course, 'r2')),
+      racer('r3', third, gridD(course, 'r3')),
     );
   }
   return {
@@ -94,7 +93,7 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
   const player = playerOf(world);
   const playerS = player.s;
   const hasRivals = world.racers.length > 1;
-  if (hasRivals) captureBumpStarts(world);
+  const startD = hasRivals ? world.racers.map((racer) => (racer.state === 'racing' ? racer.d : null)) : undefined;
   for (const racer of world.racers) {
     const isPlayer = racer.id === 'player';
     const input = isPlayer ? (inputs.player ?? NO_INPUT) : rivalInput(world, racer);
@@ -102,7 +101,7 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
     const speedMul = isPlayer ? 1 : 1 + Math.max(-1, Math.min(1, gap)) * RIVAL.catchUp;
     stepRacer(racer, input, { course, events, raceTicks, speedMul }, dt);
   }
-  if (hasRivals) bumpRacers(world);
+  if (startD) bumpRacers(world, startD);
   for (const racer of world.racers) {
     if (racer.finishTicks === raceTicks) {
       events.emit({ type: 'racer.finished', id: racer.id, ticks: raceTicks, place: placeOf(world, racer.id) });

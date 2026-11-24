@@ -7,17 +7,6 @@ const WIDTH = 2 * RUN.radius;
 const VELOCITY_TRANSFER = 0.65;
 const EPSILON = 0.0000001;
 
-// Temporary positions from this step, consumed before stepWorld returns.
-const starts = new WeakMap<World, (number | null)[]>();
-
-/** Remember the lateral order before movement, so overlapping runners can't trade sides. */
-export function captureBumpStarts(world: World): void {
-  starts.set(
-    world,
-    world.racers.map((racer) => (racer.state === 'racing' ? racer.d : null)),
-  );
-}
-
 interface LateralBounds {
   min: number;
   max: number;
@@ -34,18 +23,19 @@ interface Pair {
 /**
  * Pushes apart in `d` any two racing racers that overlap, swapping part of their `vd`, and emits
  * `racer.bumped` with `by` for each. Fallen and finished racers never bump.
+ *
+ * @param startD The pre-move `d` by racer slot, used to preserve side order when racers cross.
+ * A `null` entry marks a racer that wasn't racing before movement. Omitted positions use the current `d`.
  */
-export function bumpRacers(world: World): void {
-  const from = starts.get(world);
-  starts.delete(world);
+export function bumpRacers(world: World, startD?: readonly (number | null)[]): void {
   const pairs: Pair[] = [];
   for (const [i, a] of world.racers.entries()) {
     if (a.state !== 'racing') continue;
     for (let j = i + 1; j < world.racers.length; j++) {
       const b = world.racers[j];
       if (b?.state !== 'racing' || Math.abs(b.s - a.s) >= WIDTH || Math.abs(b.y - a.y) >= 1) continue;
-      const aStart = from?.[i] ?? a.d;
-      const bStart = from?.[j] ?? b.d;
+      const aStart = startD?.[i] ?? a.d;
+      const bStart = startD?.[j] ?? b.d;
       const aIsLeft = aStart === bStart ? a.d <= b.d : aStart < bStart;
       pairs.push({ a, b, left: aIsLeft ? a : b, right: aIsLeft ? b : a, bumped: false });
     }

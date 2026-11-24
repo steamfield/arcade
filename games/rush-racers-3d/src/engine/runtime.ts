@@ -36,6 +36,13 @@ export interface MenuInput {
   back: boolean;
 }
 
+/** Moves the row-by-row cursor in the 4x2 character grid, clamping at its edges. */
+export function moveCursor(cursor: number, menu: MenuInput): number {
+  const column = (cursor % SELECT_COLUMNS) + Number(menu.right) - Number(menu.left);
+  const row = Math.floor(cursor / SELECT_COLUMNS) + Number(menu.down) - Number(menu.up);
+  return Math.max(0, Math.min(1, row)) * SELECT_COLUMNS + Math.max(0, Math.min(SELECT_COLUMNS - 1, column));
+}
+
 /** One tick's input: the racer's controls, a fresh press of the confirm button (fire), and menu presses for screens. */
 export interface FrameInput {
   race: TickInput;
@@ -210,9 +217,7 @@ export class Runtime {
       this.scene = 'title';
       return;
     }
-    const column = (this.cursor % SELECT_COLUMNS) + Number(menu.right) - Number(menu.left);
-    const row = Math.floor(this.cursor / SELECT_COLUMNS) + Number(menu.down) - Number(menu.up);
-    this.cursor = Math.max(0, Math.min(1, row)) * SELECT_COLUMNS + Math.max(0, Math.min(SELECT_COLUMNS - 1, column));
+    this.cursor = moveCursor(this.cursor, menu);
     const picked = CHARACTER_IDS[this.cursor];
     if (confirmPressed && picked) {
       this.character = picked;
