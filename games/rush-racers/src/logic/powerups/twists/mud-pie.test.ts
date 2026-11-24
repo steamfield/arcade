@@ -181,6 +181,11 @@ describe('a thrown mud pie', () => {
     const [landedAt] = ticksOf(log, 'twist.landed');
     const [endedAt] = ticksOf(log, 'twist.ended');
 
+    expect(eventsIn(log, 'twist.launched', 'twist.landed', 'twist.ended').map((event) => event.type)).toEqual([
+      'twist.launched',
+      'twist.landed',
+      'twist.ended',
+    ]);
     expect((endedAt ?? 0) - (landedAt ?? 0)).toBe(MUD_PIE_TUNING.dryTicks);
     expect(world.twists).toEqual([]);
   });
@@ -203,22 +208,66 @@ describe('a mud patch', () => {
 });
 
 describe('a rival holding a mud pie', () => {
+  /** How the player stands for a wants check: on the floor or on CRATE's crate, and fallen or stunned. */
+  interface Target {
+    tiles: number;
+    onCrate?: boolean;
+    status?: 'fallen' | 'stunned';
+    difficulty?: Difficulty;
+  }
+
   /** Whether Tess, on the floor at col 7 facing right, wants to throw with the player standing `tiles` ahead. */
-  function wantsWithPlayerAhead(tiles: number, difficulty: Difficulty = 'hard'): boolean {
-    const { world, log, player } = thornwoodRace(FLOOR, difficulty);
+  function wantsWithPlayerAhead({ tiles, onCrate = false, status, difficulty = 'hard' }: Target): boolean {
+    const { world, log, player } = thornwoodRace(onCrate ? CRATE : FLOOR, difficulty);
     const tess = racerOf(world, 'tess');
     standOn(tess, 7, 4);
-    standOn(player, 7 + tiles, 4);
-    // One tick settles both on the floor, so each counts as on the ground.
+    standOn(player, 7 + tiles, onCrate ? 3 : 4);
+    // One tick settles both on what they stand on, so each counts as on the ground.
     step(world, log, 1, IDLE);
+    if (status) player.status[status] = HELD_TICKS;
     return twistRules('mudPie').rivalWants(world, tess, { x: 1, y: 0 });
   }
 
-  it('throws at a racer standing 3 to 10 tiles ahead, and not nearer or farther', () => {
-    expect([2, 3, 10, 11].map((tiles) => wantsWithPlayerAhead(tiles))).toEqual([false, true, true, false]);
+  it('throws at a racer standing 3 to 6 tiles ahead, and not nearer or farther', () => {
+    expect([2, 3, 6, 7].map((tiles) => wantsWithPlayerAhead({ tiles }))).toEqual([false, true, true, false]);
+  });
+
+  it('throws at a racer standing on a crate, since the pie lands there too', () => {
+    expect(wantsWithPlayerAhead({ tiles: 5, onCrate: true })).toBe(true);
+  });
+
+  it('throws at a stunned racer but not one that has fallen out of the level', () => {
+    expect([
+      wantsWithPlayerAhead({ tiles: 5, status: 'stunned' }),
+      wantsWithPlayerAhead({ tiles: 5, status: 'fallen' }),
+    ]).toEqual([true, false]);
   });
 
   it('never throws at a human on Easy', () => {
-    expect(wantsWithPlayerAhead(6, 'easy')).toBe(false);
+    expect(wantsWithPlayerAhead({ tiles: 6, difficulty: 'easy' })).toBe(false);
+  });
+
+  it('slows a full-pace runner at the far end of its band, thrown at full pace', () => {
+    const { world, log, player } = thornwoodRace(FLOOR);
+    standOn(player, 9, 4);
+    for (let ticks = 0; ticks < 300 && player.body.x + player.body.w / 2 < 17.5 * TILE; ticks++)
+      step(world, log, 1, RUN_RIGHT);
+    const pace = player.body.vx;
+    const tess = racerOf(world, 'tess');
+    // Just inside the band's far end, running at the player's pace.
+    tess.body.x = player.body.x + player.body.w / 2 - 5.9 * TILE - tess.body.w / 2;
+    tess.body.y = 5 * TILE - tess.body.h;
+    tess.body.vx = pace;
+    tess.facing = 1;
+    const wanted = twistRules('mudPie').rivalWants(world, tess, { x: 1, y: 0 });
+    twistRules('mudPie').fire(world, tess, { x: 1, y: 0 });
+    let slowest = pace;
+    for (let ticks = 0; ticks < 120; ticks++) {
+      step(world, log, 1, RUN_RIGHT);
+      slowest = Math.min(slowest, player.body.vx);
+    }
+
+    expect(wanted).toBe(true);
+    expect(slowest).toBeCloseTo(pace * MUD_SPEED_MUL, 0);
   });
 });

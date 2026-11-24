@@ -12,7 +12,14 @@ import { MUD_PIE_TUNING } from '../../logic/powerups/twists/mud-pie.ts';
 import { courseFromLevel, IDLE, racerOf } from '../../logic/test-world.ts';
 import { TILE, type World } from '../../logic/types.ts';
 import { createWorld, stepWorld } from '../../logic/world.ts';
-import { createMudPieView, mudPieLooks, PIE_TEXTURE, SPLAT_FADE_TICKS, SPLAT_TEXTURE } from './mud-pie-view.ts';
+import {
+  createMudPieView,
+  mudPieLooks,
+  PIE_TEXTURE,
+  SPLAT_FADE_TICKS,
+  SPLAT_MIN_SCALE,
+  SPLAT_TEXTURE,
+} from './mud-pie-view.ts';
 
 /** A long Thornwood floor at row 5, the rivals' starts behind the player's. */
 const FLOOR = `
@@ -48,10 +55,11 @@ function stepUntil(world: World, done: (world: World) => boolean, sync: (world: 
 const landed = (world: World) => world.twists.every((twist) => twist.phase !== 0);
 const dried = (world: World) => world.twists.length === 0;
 
-/** An image the stand-in scene added: its frame, and whether it has been destroyed. */
+/** An image the stand-in scene added: its frame, whether it has been destroyed, and the last scale it was given. */
 interface DrawnImage {
   frame: string;
   destroyed: boolean;
+  scale: number;
 }
 
 /** A stand-in for the race scene with the mud pie textures already made, recording every image added. */
@@ -59,13 +67,17 @@ function recordingScene(): { scene: Phaser.Scene; images: DrawnImage[] } {
   const images: DrawnImage[] = [];
   const add = {
     image(_x: number, _y: number, _texture: string, frame: string) {
-      const drawn: DrawnImage = { frame, destroyed: false };
+      const drawn: DrawnImage = { frame, destroyed: false, scale: 1 };
       images.push(drawn);
       const sprite = {
         setDepth: () => sprite,
         setPosition: () => sprite,
         setRotation: () => sprite,
         setAlpha: () => sprite,
+        setScale: (scale: number) => {
+          drawn.scale = scale;
+          return sprite;
+        },
         destroy: () => {
           drawn.destroyed = true;
         },
@@ -88,14 +100,15 @@ describe('the mud pie layer', () => {
     const splatted = images.map((image) => ({ ...image }));
     stepUntil(world, dried, (current) => layer.sync(current));
 
-    expect(flying).toEqual([{ frame: 'pie', destroyed: false }]);
+    expect(flying).toEqual([{ frame: 'pie', destroyed: false, scale: 1 }]);
     expect(splatted).toEqual([
-      { frame: 'pie', destroyed: true },
-      { frame: 'splat', destroyed: false },
+      { frame: 'pie', destroyed: true, scale: 1 },
+      { frame: 'splat', destroyed: false, scale: 1 },
     ]);
+    // Shrunk to its smallest on the last frame before it dried.
     expect(images).toEqual([
-      { frame: 'pie', destroyed: true },
-      { frame: 'splat', destroyed: true },
+      { frame: 'pie', destroyed: true, scale: 1 },
+      { frame: 'splat', destroyed: true, scale: SPLAT_MIN_SCALE },
     ]);
   });
 });
@@ -116,20 +129,33 @@ describe('a mud pie on screen', () => {
     expect(mudPieLooks(world, true).map((look) => look.angle)).toEqual([0]);
   });
 
-  it('lies on the floor where it splatted, opaque until its last second, then fading out', () => {
+  it('lies on the floor where it splatted, whole until its last second, then shrinking and fading out', () => {
     const world = worldWithPie();
+    /** The patch's look once its ttl is down to `ticks`. */
+    const lookAt = (ticks: number) => {
+      stepUntil(world, (current) => (current.twists[0]?.ttl ?? 0) <= ticks);
+      const look = mudPieLooks(world, false)[0];
+      return { alpha: look?.alpha, scale: look?.scale, y: look?.y ?? 0 };
+    };
     stepUntil(world, landed);
     const fresh = mudPieLooks(world, false);
-    stepUntil(world, (current) => (current.twists[0]?.ttl ?? 0) <= SPLAT_FADE_TICKS);
-    const fading = mudPieLooks(world, false)[0]?.alpha;
-    stepUntil(world, (current) => (current.twists[0]?.ttl ?? 0) <= SPLAT_FADE_TICKS / 2);
-    const halfGone = mudPieLooks(world, false)[0]?.alpha;
+    const starting = lookAt(SPLAT_FADE_TICKS);
+    const halfGone = lookAt(SPLAT_FADE_TICKS / 2);
+    const last = lookAt(6);
 
-    expect(fresh).toMatchObject([{ frame: 'splat', alpha: 1, angle: 0 }]);
+    expect(fresh).toMatchObject([{ frame: 'splat', alpha: 1, scale: 1, angle: 0 }]);
     // Its art straddles the floor's top (row 5), just above it.
     expect(fresh[0]?.y).toBeGreaterThan(4 * TILE);
     expect(fresh[0]?.y).toBeLessThan(5 * TILE);
-    expect([fading, halfGone]).toEqual([1, 0.5]);
+    expect([starting, halfGone, last].map(({ alpha, scale }) => ({ alpha, scale }))).toEqual([
+      { alpha: 1, scale: 1 },
+      { alpha: 0.5, scale: 0.5 },
+      { alpha: 0.1, scale: SPLAT_MIN_SCALE },
+    ]);
+    // Shrinking about its middle would lift it off the floor; its centre drops instead, keeping it down.
+    expect(halfGone.y).toBeGreaterThan(starting.y);
+    expect(last.y).toBeGreaterThan(halfGone.y);
+    expect(last.y).toBeLessThan(5 * TILE);
   });
 
   it('poses only mud pies', () => {

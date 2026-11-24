@@ -11,16 +11,22 @@
  */
 import { mayAttack } from '../../difficulty-level.ts';
 import { squareAt } from '../../hazards/boxes.ts';
-import { isLedge, isSolid } from '../../level/query.ts';
+import { blocksBody, isLedge } from '../../level/query.ts';
 import { moveBody, moveRulesFor } from '../../race/move.ts';
 import { centreOf } from '../../racers.ts';
 import { type Body, type Racer, TILE, type Twist, type Vec, type World } from '../../types.ts';
 import type { TwistRules } from './index.ts';
 
 /**
- * A mud pie's numbers: its box side (px), its throw (px/s forward along facing and up), gravity
- * (px/s², run's own) and fastest fall (px/s, run's `maxFall`), the splat's width (px, 3 tiles) and
- * drying time (ticks, 5 s), and the band of tiles ahead in which a rival looks for someone to hit.
+ * A mud pie's numbers: its box side (px), its throw (px/s forward along facing, on top of the
+ * thrower's own speed, and up), gravity (px/s², run's own) and fastest fall (px/s, run's `maxFall`),
+ * the splat's width (px, 3 tiles) and drying time (ticks, 5 s), and the band of tiles ahead in which
+ * a rival looks for someone to hit.
+ *
+ * The band is what a throw can reach: on flat ground a pie is in the air about 0.55 s, so thrown at
+ * full pace (100 px/s) it splats about 9.3 tiles on, its far edge 10.8. A full-pace target 6 tiles
+ * ahead has run 3.5 more by then, leaving it over a tile of mud to cross, long enough to drop to mud
+ * speed; one 7 tiles ahead would only clip the edge. Anyone nearer than 6 runs through more of it.
  */
 export const MUD_PIE_TUNING = {
   size: TILE / 2,
@@ -31,7 +37,7 @@ export const MUD_PIE_TUNING = {
   splatWidth: 3 * TILE,
   dryTicks: 300,
   wantMinTiles: 3,
-  wantMaxTiles: 10,
+  wantMaxTiles: 6,
 } as const;
 
 /** `Twist.phase` for a mud pie still in the air. */
@@ -50,8 +56,8 @@ export const MUD_PIE: TwistRules = {
 };
 
 /**
- * Lobs a pie from `racer`'s centre forward along its facing and up, and emits `twist.launched`. The
- * aim plays no part: it always goes the way the thrower faces.
+ * Lobs a pie from `racer`'s centre forward along its facing and up, carrying the thrower's own
+ * speed, and emits `twist.launched`. The aim plays no part: it always goes the way the thrower faces.
  */
 function throwPie(world: World, racer: Racer, _aim: Vec): void {
   const centre = centreOf(racer);
@@ -60,7 +66,7 @@ function throwPie(world: World, racer: Racer, _aim: Vec): void {
     owner: racer.id,
     x: centre.x,
     y: centre.y,
-    vx: racer.facing * MUD_PIE_TUNING.throwForward,
+    vx: racer.body.vx + racer.facing * MUD_PIE_TUNING.throwForward,
     vy: -MUD_PIE_TUNING.throwUp,
     ttl: MUD_PIE_TUNING.dryTicks,
     phase: FLYING,
@@ -147,14 +153,16 @@ function onPatch(racer: Racer, patch: Twist): boolean {
 }
 
 /**
- * Whether a rival holding the Mud Pie should throw it now: some unfinished racer it may attack stands
- * on the ground between `wantMinTiles` and `wantMaxTiles` tiles ahead along its facing.
+ * Whether a rival holding the Mud Pie should throw it now: some unfinished racer it may attack, not
+ * fallen out of the level, stands on the ground between `wantMinTiles` and `wantMaxTiles` tiles
+ * ahead along its facing. A stunned racer is still worth slowing once it gets up.
  */
 function pieHasUse(world: World, racer: Racer, _aim: Vec): boolean {
   const from = centreOf(racer).x;
   const { wantMinTiles, wantMaxTiles } = MUD_PIE_TUNING;
   return world.racers.some((other) => {
-    if (other === racer || other.finished || !mayAttack(world, racer.id, other.id)) return false;
+    if (other === racer || other.finished || other.status.fallen > 0) return false;
+    if (!mayAttack(world, racer.id, other.id)) return false;
     const ahead = (centreOf(other).x - from) * racer.facing;
     return ahead >= wantMinTiles * TILE && ahead <= wantMaxTiles * TILE && standsOnGround(world, other);
   });
@@ -162,15 +170,16 @@ function pieHasUse(world: World, racer: Racer, _aim: Vec): boolean {
 
 /**
  * True when the racer's feet rest on the top of the tile under its centre and that tile holds a
- * runner up (solid, or a ledge). Read from the tiles, since a runner's own grounded flag is the run
- * medium's to keep.
+ * runner up: one that stops a body under the world's move rules (rock, stone, a crate) or a ledge.
+ * Read from the tiles, since a runner's own grounded flag is the run medium's to keep.
  */
 function standsOnGround(world: World, racer: Racer): boolean {
   const bottom = racer.body.y + racer.body.h;
   const below = feetRow(racer) + 1;
   if (Math.abs(bottom - below * TILE) > GROUND_TOLERANCE) return false;
   const col = Math.floor(centreOf(racer).x / TILE);
-  return isSolid(world.level, world.broken, col, below) || isLedge(world.level, col, below);
+  const { level, broken } = world;
+  return blocksBody(level, broken, moveRulesFor(world), col, below) || isLedge(level, col, below);
 }
 
 /** The tile row a racer's feet are in. */

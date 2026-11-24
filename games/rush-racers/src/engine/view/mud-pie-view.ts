@@ -1,7 +1,7 @@
 /**
  * Thornwood's Mud Pies on the race screen, as a forest theme extra layer: each mud pie in
  * `world.twists` drawn as a tumbling pie while it flies, then as a mud patch three tiles wide lying
- * on the surface it splatted onto, fading out over its last second before it dries. Read from world
+ * on the surface it splatted onto, shrinking and fading over its last second before it dries. Read from world
  * state every frame; each pie is known by its Twist object, which logic keeps from the throw until
  * the patch dries. Code-drawn art, one texture per sprite size.
  */
@@ -17,9 +17,11 @@ export const PIE_TEXTURE = 'forest-mud-pie';
 /** Texture key for the splatted patch. */
 export const SPLAT_TEXTURE = 'forest-mud-splat';
 
-/** Ticks over which a patch fades out before it dries (1 s). */
+/** Ticks over which a patch shrinks and fades out before it dries (1 s). */
 export const SPLAT_FADE_TICKS = 60;
-/** How far the patch's art sinks into the surface it lies on, in px, so it reads as on the ground. */
+/** The smallest a drying patch shrinks to, as a share of its full size. */
+export const SPLAT_MIN_SCALE = 0.2;
+/** How far the full-size patch's art sinks into the surface it lies on, in px, so it reads as on the ground; it shrinks with the patch. */
 const SPLAT_SINK = 2;
 
 const MUD_PALETTE = [0x2a1a0e, 0x5a3a20, 0x7a5232, 0x9a7048];
@@ -46,7 +48,10 @@ const SPLAT_FRAME: NamedFrame = {
 /** Which sprite a mud pie shows: the pie in the air or the patch on the ground. */
 export type MudPieFrame = 'pie' | 'splat';
 
-/** A mud pie as drawn this frame: its twist, which sprite, where its centre is, its turn in radians and its opacity. */
+/**
+ * A mud pie as drawn this frame: its twist, which sprite, where its centre is, its turn in radians,
+ * its opacity and its scale.
+ */
 export interface MudPieLook {
   twist: Twist;
   frame: MudPieFrame;
@@ -54,12 +59,14 @@ export interface MudPieLook {
   y: number;
   angle: number;
   alpha: number;
+  scale: number;
 }
 
 /**
  * The mud pies in `world` this frame. A flying pie tumbles by the distance it has travelled over its
- * radius (held still with `reducedMotion`); a patch sits on its surface, fully opaque until its last
- * `SPLAT_FADE_TICKS`, then fading out evenly.
+ * radius (held still with `reducedMotion`); a patch sits on its surface at full size and opacity
+ * until its last `SPLAT_FADE_TICKS`, then shrinks (to no less than `SPLAT_MIN_SCALE`) and fades out
+ * evenly, its bottom staying on the surface.
  */
 export function mudPieLooks(world: World, reducedMotion: boolean): MudPieLook[] {
   return world.twists.filter((twist) => twist.style === 'mudPie').map((twist) => lookOf(twist, reducedMotion));
@@ -69,11 +76,12 @@ export function mudPieLooks(world: World, reducedMotion: boolean): MudPieLook[] 
 function lookOf(twist: Twist, reducedMotion: boolean): MudPieLook {
   if (twist.phase === FLYING) {
     const angle = reducedMotion ? 0 : twist.x / (MUD_PIE_TUNING.size / 2);
-    return { twist, frame: 'pie', x: twist.x, y: twist.y, angle, alpha: 1 };
+    return { twist, frame: 'pie', x: twist.x, y: twist.y, angle, alpha: 1, scale: 1 };
   }
-  const height = SPLAT_FRAME.rows.length;
-  const alpha = Math.min(1, twist.ttl / SPLAT_FADE_TICKS);
-  return { twist, frame: 'splat', x: twist.x, y: twist.y - height / 2 + SPLAT_SINK, angle: 0, alpha };
+  const left = Math.min(1, twist.ttl / SPLAT_FADE_TICKS);
+  const scale = Math.max(SPLAT_MIN_SCALE, left);
+  const y = twist.y + (SPLAT_SINK - SPLAT_FRAME.rows.length / 2) * scale;
+  return { twist, frame: 'splat', x: twist.x, y, angle: 0, alpha: left, scale };
 }
 
 /** A sprite drawn for one mud pie, and which of its sprites it is. */
@@ -99,7 +107,7 @@ export function createMudPieView(scene: Phaser.Scene, reducedMotion: boolean): T
       removeGone(drawn, new Set(looks.map((look) => look.twist)));
       for (const look of looks) {
         const sprite = spriteFor(scene, drawn, look);
-        sprite.setPosition(look.x, look.y).setRotation(look.angle).setAlpha(look.alpha);
+        sprite.setPosition(look.x, look.y).setRotation(look.angle).setAlpha(look.alpha).setScale(look.scale);
       }
     },
   };
