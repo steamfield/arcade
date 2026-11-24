@@ -43,9 +43,10 @@ const ASTEROIDS: readonly AsteroidDef[] = [
  *   (col 455 row 13). Take the wide upper dust belt or bank under the disc, between ice moonlets
  *   and the floor, into the solar wind at cols 481-504. The lanes rejoin and climb before the exit.
  * - Cols 603-846: THE DEBRIS STORM. A lone asteroid at col 643 teaches the crossing. Six sweeps
- *   at different heights and speeds, plasma orbs and rock shelves share the fast low road. Dust
- *   covers the final sweep at col 776. The high road climbs above the shield (cols 631-773), where
- *   staggered baffles and belts of dust cost time.
+ *   at different heights and speeds, plasma orbs and rock shelves share the fast low road. The
+ *   dust channel under the shield is clear of orbs, and dust covers the final sweep at col 776.
+ *   The high road climbs above the shield (cols 631-773), where staggered baffles and belts of
+ *   dust cost time.
  * - Cols 847-926, dark: MOON SHADOW, a corridor in a moon's shadow (rows 3-14, wider at the entry)
  *   with a Rocket Ray, a Moon Worm and a plasma orb.
  * - Cols 927-1214: THE WORMWAYS. A two-way pair crosses the sealed wall at cols 966-970. In the
@@ -152,7 +153,7 @@ const DEBRIS_STORM = `
   ...........................?....o....o....o.....#############...............###########...............############..?..............############................########..o.~~~o~~~~~~~~~~~~~~.........~~~~~~~~~~..################.......o......####
   ................................................#############...............###########.....o....o....############......o....o.....############.....o....o.....########....~~~~~~~~~~~~~~~~~~.........~~o~~~~~~~###################.............####
   ................................................#############.....o....o..............................############....................~~~~~~~..................########....~~~~~~~o~~~~~~o~~~...o.....~~~~~~~#######################...........#####
-  ................................................#############.........................................############....................~~~~~j~..................########....~~~~~~~~~~~~~~~~~~.........~~~~~##########################.........######
+  ................................................#############.........................................############....................~~~~~~~..................########....~~~~~~~~~~~~~~~~~~.........~~~~~##########################.........######
   ................................................#############..........j......o....o.........j........############..................o.~~~o~~~.o................########....~~~~~~~~~~~~~~~~~~.........~~~##############################......#######
   ................................................#############.........................................############....................~~~~~~~..................########....~~~~~~~~~~~~~~~~~~.........~##################################....#######
   ###########.....................................#############.........................................############....................~~~~~~~..................########....~~~~~~~~~~~~~~~~~~........######################################.########
@@ -308,12 +309,13 @@ const LEVEL: LevelDef = {
 };
 
 /**
- * The expert bot's mean Hard finish (151.7 s) across all eight characters and seeds 1-200.
- * All 1600 races finished, with a slowest finish of 16490 ticks (Gil, seed 162).
- * The previous par of 9095 ticks used seeds 1-40 before the slingshot entrance gained its full arch
- * and the mouth was cleared of dust.
+ * The expert bot's mean Hard finish (152.3 s) across all eight characters and seeds 1-200.
+ * All 1600 races finished, with a slowest finish of 11143 ticks (Baron, seed 15).
+ * The previous par of 9104 ticks included long stalls at the Debris Storm orb and in nebula dust.
+ * Clearing the channel and capping drag removed those stalls. A lower dust cruise keeps the
+ * course near its original pace.
  */
-const PAR_TICKS = 9104;
+const PAR_TICKS = 9139;
 
 /**
  * Normal rivals hover this many tiles behind the player here, not the table's 2. On the short layout,
