@@ -12,151 +12,151 @@ import type { ArtSheet } from '../../../art/sprites/sheet.ts';
 import { ICON_RIM } from '../../../art/ui/icons.ts';
 import { FarIconFrame, FarItemTex, FarTex } from '../keys.ts';
 
-/** One palette per item: outline, body, light, accent. Warm and saturated so they read on the HUD well. */
+/** One palette per item: outline, body, light, accent. Bright and saturated so they read on the HUD well and the dark sky. */
 export const FarItemPalette = {
-  /** Rocket Boots: dark leather outline, red boot, peach light, a yellow flame. */
-  jetFin: [0x2a1008, 0xe0482a, 0xffb070, 0xffe040],
-  /** Sap Shield: dark brown outline, amber sap, pale gold light, a white shine. */
-  bubbleShield: [0x2a1a04, 0xf0a020, 0xffe080, 0xffffff],
-  /** Burr Ball: dark brown outline, chestnut body, tan spines, a darker seed. */
-  puffer: [0x2a1608, 0xb87030, 0xf0c078, 0x6a3a14],
-  /** Mud Pie: near-black outline, brown mud, wet shine, a cream crust. */
-  inkSac: [0x140a04, 0x7a5232, 0xb88a58, 0xf0dcb0],
-  /** Firefly Jar: dark teal outline, glass, pale glass light, a yellow glow. */
-  glowLantern: [0x10242a, 0x5ca8a0, 0xc8f0e8, 0xffe860],
-  /** Boulder: near-black outline, grey stone, pale stone, a moss patch. */
-  cannonball: [0x16161e, 0x7a7a8a, 0xc0c0d0, 0x4a9a3a],
-  /** Homing Probe: dark outline and stripes, orange body, yellow light, white wings. */
-  homingSquid: [0x1a1206, 0xff9a20, 0xffe070, 0xffffff],
-  /** Tailwind: deep green outline, leaf green, pale green, white gust. */
-  riptide: [0x0a3a28, 0x58d8a0, 0xd0fff0, 0xffffff],
-  /** Snare Vine: deep green outline, vine green, lime light, a pink thorn flower. */
-  undertow: [0x0c2a0c, 0x3ea838, 0xa8e868, 0xf0509a],
-  /** Copycat: plum outline, lilac fur, pale lilac, gold eyes. */
-  mimic: [0x241838, 0xb89cf0, 0xece0ff, 0xffd23f],
+  /** Ion Thrusters: navy outline, steel pods, pale steel shine, an orange flame. */
+  jetFin: [0x14182a, 0x8a96aa, 0xdde6f2, 0xffa030],
+  /** Force Field: deep green outline, green field, mint shine, a pale hex cell. */
+  bubbleShield: [0x0a2a18, 0x30c070, 0xa0ffc8, 0xe8fff0],
+  /** Shock Bubble: deep violet outline, violet ball, lilac shine, yellow sparks. */
+  puffer: [0x200a3a, 0x9a50ff, 0xe0c0ff, 0xfff070],
+  /** Gas Bomb: dark olive outline, mustard canister, pale shine, brown hazard stripes. */
+  inkSac: [0x241a04, 0xd8b030, 0xfff0a0, 0x5a3a08],
+  /** Star Flare: dark amber outline, gold star, pale gold, a white core. */
+  glowLantern: [0x3a2404, 0xffc020, 0xfff080, 0xffffff],
+  /** Comet: dark rust outline, orange head, pale gold shine, an amber tail. */
+  cannonball: [0x2a0e04, 0xff7a20, 0xffd070, 0xffa848],
+  /** Homing Probe: near-black outline and panel lines, silver body, white shine, a red eye. */
+  homingSquid: [0x10141e, 0xa8b0c0, 0xeef2ff, 0xff3a3a],
+  /** Ion Stream: navy outline, blue chevrons, pale blue, white tips. */
+  riptide: [0x0a1a4a, 0x3a8aff, 0xa8d8ff, 0xffffff],
+  /** Tractor Beam: deep plum outline, lavender saucer, pale blue dome, a pink beam. */
+  undertow: [0x1a1030, 0x9aa0c8, 0xd0f0ff, 0xff60c0],
+  /** Hologram: dark teal base, cyan figure, pale cyan scan lines, a teal projector. */
+  mimic: [0x0a2a36, 0x40e0f0, 0xc0fcff, 0x1a7a90],
 } as const satisfies Record<PowerUpKind, Palette>;
 
 /** The ten 9x9 silhouettes, one per item. */
 const ITEM_ROWS = {
-  // A boot facing right with a flame under the heel.
+  // Two steel thruster pods on a crossbar, flames out of both nozzles.
   jetFin: [
-    '..000....',
-    '..010....',
-    '..010....',
-    '..0110...',
-    '.01111000',
-    '011112210',
-    '011111110',
-    '000000000',
-    '.33.3....',
-  ],
-  // A heater shield of amber sap with a shine.
-  bubbleShield: [
-    '.0000000.',
-    '012222210',
-    '012322110',
-    '011222110',
-    '011111110',
-    '.0111110.',
-    '.0111110.',
-    '..01110..',
-    '...000...',
-  ],
-  // A round chestnut bristling with spines.
-  puffer: [
-    '0...0...0',
-    '.0.020.0.',
-    '..02120..',
-    '001121100',
-    '001111100',
-    '.0113110.',
-    '..01110..',
-    '.0.010.0.',
-    '0...0...0',
-  ],
-  // A mud mound on a crust.
-  inkSac: [
-    '....0....',
-    '...000...',
-    '..01210..',
-    '.0112110.',
-    '.0111110.',
-    '000000000',
-    '032323230',
-    '.0333330.',
-    '..00000..',
-  ],
-  // A jar with a lid and a glowing bug.
-  glowLantern: [
-    '..00000..',
-    '..02220..',
-    '.0121110.',
-    '011133110',
-    '011333110',
-    '011133110',
-    '011111110',
-    '.0111110.',
-    '..00000..',
-  ],
-  // A round grey stone with moss at its foot.
-  cannonball: [
-    '..00000..',
-    '.0122110.',
-    '012221110',
-    '012211110',
-    '011111110',
-    '011111110',
-    '033311110',
-    '.0111110.',
-    '..00000..',
-  ],
-  // A probe seen from the side, wings up.
-  homingSquid: [
+    '.00...00.',
+    '0120.0120',
+    '0120.0120',
+    '011000110',
+    '0110.0110',
+    '.00...00.',
     '.33...33.',
-    '.3333333.',
+    '.333.333.',
+    '..3...3..',
+  ],
+  // A green hexagon with a small hex cell in its middle.
+  bubbleShield: [
     '..00000..',
-    '.0121210.',
-    '.0010100.',
+    '.0122210.',
+    '012111110',
+    '011333110',
+    '013111310',
+    '011333110',
+    '011111110',
     '.0111110.',
-    '..00100..',
+    '..00000..',
+  ],
+  // A violet ball throwing sparks at the corners and edges.
+  puffer: [
+    '3...3...3',
+    '.3.000.3.',
+    '..02210..',
+    '.0221110.',
+    '302111103',
+    '.0111110.',
+    '..01110..',
+    '.3.000.3.',
+    '3...3...3',
+  ],
+  // A gas canister with a valve on top and a striped hazard band.
+  inkSac: [
+    '...000...',
+    '..00200..',
+    '.0122110.',
+    '.0121110.',
+    '.0313130.',
+    '.0131310.',
+    '.0111110.',
+    '.0111110.',
+    '..00000..',
+  ],
+  // A gold star burst with a white core and four short rays between its points.
+  glowLantern: [
     '....0....',
-    '.........',
+    '.0..1..0.',
+    '..01210..',
+    '.0122210.',
+    '012232210',
+    '.0122210.',
+    '..01210..',
+    '.0..1..0.',
+    '....0....',
   ],
-  // Three gust lines curling right.
-  riptide: [
-    '.........',
-    '.00000...',
-    '0122210..',
-    '.0000010.',
-    '..0000210',
-    '.0222210.',
-    '0111100..',
-    '.0000....',
-    '.........',
-  ],
-  // A vine that loops back on itself with a thorn flower.
-  undertow: [
+  // An orange comet head at the top right with its tail streaming down to the left.
+  cannonball: [
     '.....000.',
-    '..0000130',
-    '.0112210.',
-    '01100000.',
-    '0120.....',
-    '01100000.',
-    '.0112210.',
-    '..0000110',
-    '.....000.',
+    '....01220',
+    '...301120',
+    '..3301110',
+    '.333.000.',
+    '3333.....',
+    '333......',
+    '33.......',
+    '3........',
   ],
-  // A cat's head with pointed ears and gold eyes.
-  mimic: [
-    '0.0...0.0',
-    '010000010',
-    '011111110',
-    '013101310',
-    '011111110',
-    '011202110',
-    '.0111110.',
+  // A silver probe between two striped solar panels, its red eye in the middle.
+  homingSquid: [
+    '....0....',
     '..00000..',
-    '.........',
+    '000121000',
+    '220111022',
+    '000131000',
+    '220111022',
+    '000111000',
+    '..00000..',
+    '...0.0...',
+  ],
+  // Two chevrons pointing right, white at the tips.
+  riptide: [
+    '00..00...',
+    '120.120..',
+    '.120.120.',
+    '..120.120',
+    '...33..33',
+    '..120.120',
+    '.120.120.',
+    '120.120..',
+    '00..00...',
+  ],
+  // A saucer with a domed top, a row of lights and a pink beam fanning down.
+  undertow: [
+    '...000...',
+    '..02220..',
+    '.0000000.',
+    '011111110',
+    '013131310',
+    '.0000000.',
+    '...333...',
+    '..3.3.3..',
+    '.3.3.3.3.',
+  ],
+  // A cyan figure in scan lines standing on its projector.
+  mimic: [
+    '...111...',
+    '..12221..',
+    '..11111..',
+    '...222...',
+    '.1111111.',
+    '.2222222.',
+    '.1111111.',
+    '..33333..',
+    '.0000000.',
   ],
 } as const satisfies Record<PowerUpKind, PixelRows>;
 
