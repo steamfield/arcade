@@ -24,7 +24,7 @@ import {
 import { createGlidePilot, steerGlider } from './glide-pilot.ts';
 
 /** Glide's numbers in pixels and seconds; `extra.gravity` is the downward pull, px/s², held or not. */
-export const GLIDE_TUNING = {
+const GLIDE_TUNING = {
   base: { forceMul: 1, kickMul: 1, kickCooldownTicks: 30, dragMul: 1 },
   force: 240,
   drag: 2,

@@ -15,41 +15,48 @@ const DIFFICULTY_BARS = 'src/logic/balance/*.test.ts';
 const API_ORIGIN = `http://127.0.0.1:${process.env.ARCADE_API_PORT ?? '8788'}`;
 
 /**
- * The source files whose code every peer in an online race must share, relative to this file: the
- * rules, the core helpers they use, and the net modules that decide what peers simulate or send.
- * Left out: `client.ts` (flow around a race), `transport/` (sockets) and every test.
+ * The folders whose code every peer in an online race must share, relative to this file: the rules,
+ * the core helpers they use, and the net modules that decide what peers simulate or send. Every
+ * non-test `.ts` file under them counts, so a new net file is hashed without anyone listing it.
  */
-const SIMULATION_FILES = [
-  'src/logic',
-  '../../packages/core/src',
-  'src/net/codec.ts',
-  'src/net/hash-ledger.ts',
-  'src/net/lobby.ts',
-  'src/net/messages.ts',
-  'src/net/race-world.ts',
-  'src/net/race.ts',
-  'src/net/session.ts',
-];
+const SIMULATION_FOLDERS = ['src/logic', '../../packages/core/src', 'src/net'];
 
-/** The non-test `.ts` files under `entry`, which is a file or a folder, as paths relative to `root`. */
-function sourceFilesUnder(root: string, entry: string): string[] {
-  if (entry.endsWith('.ts')) return [entry];
-  return readdirSync(join(root, entry), { recursive: true, encoding: 'utf8' })
-    .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
+/**
+ * Paths under `SIMULATION_FOLDERS` left out on purpose, each with its reason. A path ending in `/`
+ * leaves out the whole folder. Test files are always left out.
+ */
+const NOT_SIMULATION: Record<string, string> = {
+  'src/net/client.ts': 'the flow around a race (rooms, joining, leaving), not what a race steps',
+  'src/net/transport/': 'how messages travel (WebSocket, in-memory), which peers may differ in',
+};
+
+/** Whether `path` (relative to this file) is a test or one of `NOT_SIMULATION`'s exclusions. */
+function leftOut(path: string): boolean {
+  if (path.endsWith('.test.ts')) return true;
+  return Object.keys(NOT_SIMULATION).some((excluded) =>
+    excluded.endsWith('/') ? path.startsWith(excluded) : path === excluded,
+  );
+}
+
+/** The simulation `.ts` files under `folder`, sorted, as paths relative to `root`. */
+function sourceFilesUnder(root: string, folder: string): string[] {
+  return readdirSync(join(root, folder), { recursive: true, encoding: 'utf8' })
+    .filter((file) => file.endsWith('.ts'))
     .sort()
-    .map((file) => join(entry, file));
+    .map((file) => join(folder, file))
+    .filter((path) => !leftOut(path));
 }
 
 /**
  * Identifies the simulation code in this build. Peers in a room compare it, because lockstep only
- * holds when every browser steps the race with the same logic: a hash of every file named by
- * `SIMULATION_FILES`, by path and content.
+ * holds when every browser steps the race with the same logic: a hash of every simulation file
+ * under `SIMULATION_FOLDERS`, by path and content.
  */
 function simulationBuildId(): string {
   const root = fileURLToPath(new URL('.', import.meta.url));
   const hash = createHash('sha256');
-  for (const entry of SIMULATION_FILES) {
-    for (const path of sourceFilesUnder(root, entry)) {
+  for (const folder of SIMULATION_FOLDERS) {
+    for (const path of sourceFilesUnder(root, folder)) {
       hash.update(path).update(readFileSync(join(root, path)));
     }
   }

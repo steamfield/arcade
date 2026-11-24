@@ -294,7 +294,7 @@ function eventLines(events: ScenarioResult['events'], filter: string): string[] 
 }
 
 /** `["stage=guide", "a=b"]` → `{ stage: 'guide', a: 'b' }`. */
-export function parseQuery(pairs: string[]): Record<string, string> {
+function parseQuery(pairs: string[]): Record<string, string> {
   const out: Record<string, string> = {};
   for (const pair of pairs) {
     const eq = pair.indexOf('=');

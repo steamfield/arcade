@@ -91,6 +91,8 @@ test('a chunk that fails to load shows a reload message, reports a game error, a
   await expect(page.locator('.arcade-notice')).toHaveText(
     "Couldn't load the course art. Reload the page to try again.",
   );
+  // The game recovers on the next pick, so the shell's fatal banner (which never goes away) stays off.
+  await expect(page.locator('.arcade-error')).toHaveCount(0);
   const problems = await game.problems();
   const gameErrors = problems.filter(({ kind }) => kind === 'game-error');
   expect(gameErrors).toEqual([

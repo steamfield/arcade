@@ -24,6 +24,7 @@
  * two tiles outside its reach (below it, or above when below is rock or off the map), so a short
  * flight at it is swallowed.
  */
+import { createLogger } from '@arcade/core';
 import { guideDistanceAt, guideFor } from '../logic/guide.ts';
 import { createEnemies } from '../logic/hazards/enemies/index.ts';
 import { cellAt, isSolid } from '../logic/level/query.ts';
@@ -84,6 +85,8 @@ const SQUID_SPEED = 110;
 /** How long the `guide` stage has the player stuck already (150 ticks, 2.5 s: past the arrow's 1.5 s). */
 const STAGED_STUCK_TICKS = 150;
 
+const log = createLogger('rush-racers:stage');
+
 /** The launch parameters a stage depends on. */
 interface StageGate {
   debug: boolean;
@@ -92,12 +95,17 @@ interface StageGate {
 
 /**
  * The `?stage=` the page was opened with: null unless it names a known stage and the launch is a
- * debug (`?debug=1`) or test-mode one, so a stray or shared link cannot stage a real race.
+ * debug (`?debug=1`) or test-mode one, so a stray or shared link cannot stage a real race. An
+ * unknown name on such a launch logs a warning listing the valid ones, so a typo doesn't pass as a
+ * stage that set nothing up.
  */
 export function stageFor(gate: StageGate, search: string = window.location.search): StageName | null {
   if (!gate.debug && !gate.testMode) return null;
   const name = new URLSearchParams(search).get('stage');
-  return STAGES.find((stage) => stage === name) ?? null;
+  if (name === null) return null;
+  const stage = STAGES.find((known) => known === name);
+  if (!stage) log.warn(`Unknown ?stage=${name}, so the race is not staged. Valid stages: ${STAGES.join(', ')}`);
+  return stage ?? null;
 }
 
 /** Writes the stage's state into `world`. Call it once, before the first frame. */

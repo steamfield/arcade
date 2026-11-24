@@ -19,7 +19,8 @@
     "zod": "catalog:"
   },
   "peerDependencies": {
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vitest": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
