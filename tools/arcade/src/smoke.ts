@@ -39,14 +39,14 @@ export async function smoke(slug: string | undefined): Promise<number> {
     wranglerLog += d;
   });
   const stopWrangler = () => killProcessGroup(wrangler.pid);
-  const onSigint = () => {
+  // Once this handler has fired, the signal is sent again: with no handler left, Node dies with the
+  // conventional status (130 for SIGINT, 143 for SIGTERM) without a process.exit call here.
+  const stopThenDie = (signal: NodeJS.Signals) => () => {
     stopWrangler();
-    process.exit(130);
+    process.kill(process.pid, signal);
   };
-  const onSigterm = () => {
-    stopWrangler();
-    process.exit(143);
-  };
+  const onSigint = stopThenDie('SIGINT');
+  const onSigterm = stopThenDie('SIGTERM');
   process.once('SIGINT', onSigint);
   process.once('SIGTERM', onSigterm);
   const base = `http://127.0.0.1:${port}`;
