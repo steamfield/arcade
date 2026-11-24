@@ -18,6 +18,13 @@ export interface AudioPort {
   onEvents(events: readonly Stamped<RuntimeEvent>[]): void;
   /** Called each racing tick with the local racer's progress, 0 at the start line to 1 at the finish. */
   onRaceProgress(fraction: number): void;
+  /**
+   * Plays `song` from its start, or from the first beat of `section`, in place of the screen's own
+   * music until the next audition or scene; null stops the music. For the sound test.
+   *
+   * @throws {Error} When `section` is not one of the song's sections.
+   */
+  audition(song: SongName | null, section?: string): void;
   setMuted(muted: boolean): void;
   dispose(): void;
 }
@@ -33,6 +40,7 @@ const log = createLogger('rush-racers:audio');
 const SILENT: AudioPort = {
   onEvents() {},
   onRaceProgress() {},
+  audition() {},
   setMuted() {},
   dispose() {},
 };
@@ -75,6 +83,9 @@ export function createAudio(
   log.debug('audio ready', { state: context.state, muted: settings.muted });
   return {
     ...adapter,
+    audition() {
+      throw new Error('not implemented');
+    },
     setMuted: (muted) => synth.setMuted(muted),
     dispose() {
       stopUnlocking();

@@ -32,6 +32,7 @@ Three rules hold the layout together. Logic (`src/logic/`) compiles without DOM 
 | `src/engine/art/sprites/` | Global sprite sheets (HUD sprites, the guide arrow) and the contrast tests every world's racers must pass. | Change HUD art. |
 | `src/engine/art/ui/` | The UI kit: palette, fonts, panels, buttons, icons, the logo and kit motion. | Change a UI colour, panel or font (`UI.md` first). |
 | `src/engine/audio/` | The chip synth, sequencer, song notation parser, sound effects and the event-to-sound adapter. | Add or change a sound effect. |
+| `src/engine/audio/analysis/` | Pure measurements of a parsed song: form, chord fit, lead shape, peak level and a text report. | Change what the song conformance test can measure. |
 | `src/engine/audio/notation/` | The notation parser's parts: tokens, header, bars, events and errors. | Extend the song notation. |
 | `src/engine/audio/songs/` | One file per song in the notation, and the registry `songs`. | Add a song. |
 | `src/engine/fx/` | Particles, bursts, trails and camera shake, all driven by logic events. | Add an effect for an event. |

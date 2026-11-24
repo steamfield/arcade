@@ -20,8 +20,11 @@ interface SequencerNews {
 export interface Sequencer {
   /** The playing song's name, or null when silent. */
   readonly playing: string | null;
-  /** Starts `song` now, crossfading out whatever was playing. */
-  play(song: Song): void;
+  /**
+   * Starts `song` now, crossfading out whatever was playing. `fromBeat` (default 0) is the beat of
+   * the first pass to start at; sections at or before it are not announced.
+   */
+  play(song: Song, fromBeat?: number): void;
   /** Fades the current song out. */
   stop(): void;
   /** Speeds the current song up or down (1.0..1.15) from the next unscheduled note, without restarting. */

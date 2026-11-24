@@ -6,7 +6,7 @@
  * It knows nothing about songs or game events; the sequencer and SFX call it.
  */
 import { createRng } from '@arcade/core';
-import type { Duty, Envelope } from './notation.ts';
+import type { Drum, Duty, Envelope } from './notation.ts';
 
 /** A pitched note on a pulse or triangle voice. Times are AudioContext seconds. */
 interface ToneSpec {
@@ -37,9 +37,6 @@ interface NoiseSpec {
   /** Cutoff reached by the end of `length`, for a sweep. */
   sweepTo?: number;
 }
-
-/** The three noise-channel drums songs can call for. */
-type Drum = 'kick' | 'snare' | 'hat';
 
 /** The synthesizer. Every play method schedules nodes into `out`, which should lead to `master`. */
 export interface Synth {
@@ -74,6 +71,9 @@ const DRUMS: Record<Drum, Omit<NoiseSpec, 'at' | 'level'>> = {
   kick: { length: 0.03, envelope: env(0.001, 0.08, 0, 0.02), filter: 'lowpass', frequency: 900, sweepTo: 120 },
   snare: { length: 0.06, envelope: env(0.001, 0.12, 0.2, 0.05), filter: 'bandpass', frequency: 2200 },
   hat: { length: 0.015, envelope: env(0.001, 0.03, 0, 0.01), filter: 'highpass', frequency: 7000 },
+  openHat: { length: 0.04, envelope: env(0.001, 0.18, 0, 0.03), filter: 'highpass', frequency: 7000 },
+  crash: { length: 0.08, envelope: env(0.001, 0.6, 0, 0.1), filter: 'highpass', frequency: 4000 },
+  tom: { length: 0.05, envelope: env(0.001, 0.15, 0, 0.03), filter: 'lowpass', frequency: 600, sweepTo: 150 },
 };
 
 /**

@@ -50,7 +50,17 @@ import { collectNotes } from './notation/events.ts';
 import { applyVoiceSettings, defaultVoice, parseTempo, parseTime, requireText } from './notation/header.ts';
 import type { Channel, ChannelVoice, Line, Song } from './notation/types.ts';
 
-export type { Channel, ChannelVoice, Duty, Envelope, NoteEvent, Song } from './notation/types.ts';
+export type {
+  Channel,
+  ChannelVoice,
+  ChordSpan,
+  Drum,
+  Duty,
+  Envelope,
+  NoteEvent,
+  Song,
+  SongKey,
+} from './notation/types.ts';
 
 const CHANNELS: readonly Channel[] = ['pulse1', 'pulse2', 'triangle', 'noise'];
 const DIRECTIVE = /^(?<key>[a-z0-9]+)(?:\s+(?<arg>\S+))?\s*:\s*(?<value>.*)$/i;
@@ -143,6 +153,9 @@ function finishSong(state: ParseState): Song {
   if (bars === 0) throw new Error(`song "${state.name}" has no bars; add a channel line such as "pulse1: C5/1"`);
   return {
     name: state.name,
+    title: state.name,
+    key: null,
+    chords: [],
     bpm: state.bpm,
     beatsPerBar: state.beatsPerBar,
     lengthBeats: bars * state.beatsPerBar,
