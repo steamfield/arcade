@@ -2,15 +2,19 @@
  * The conformance suite for world skins: every world runs the same cast and object checks, and the
  * worlds together must not share a texture or glint key. A world's own rows (its wording, its
  * special art) stay in that world's test files.
+ *
+ * A world that reuses a key the global art, the UI kit, a theme or another owner drew makes
+ * `drawFrames` or `claim` throw while its art is drawn, which fails that world's rows by name, so
+ * there is no separate row for it.
  */
 import { describe, expect, it } from 'vitest';
 import { describeCastArt } from './cast-conformance.ts';
-import { drawSkin, type SkinFixture } from './drawn-skin.ts';
+import { lazyDrawnSkin, type SkinFixture } from './drawn-skin.ts';
 import { describeObjectArt } from './object-conformance.ts';
 
 /** Runs the cast and object checks for each world, then the checks that compare worlds. */
 export function describeSkinConformance(fixtures: readonly SkinFixture[]): void {
-  const drawnByWorld = fixtures.map((fixture) => ({ fixture, drawn: drawSkin(fixture.skin) }));
+  const drawnByWorld = fixtures.map((fixture) => ({ fixture, drawn: lazyDrawnSkin(fixture.skin) }));
 
   for (const { fixture, drawn } of drawnByWorld) {
     describe(`${fixture.skin.id} skin art`, () => {
@@ -20,17 +24,10 @@ export function describeSkinConformance(fixtures: readonly SkinFixture[]): void 
   }
 
   describe('keys across worlds', () => {
-    it('keeps every world off the global, UI kit and theme textures', () => {
-      for (const { fixture, drawn } of drawnByWorld) {
-        const shared = [...drawn.skinKeys].filter((key) => drawn.baseKeys.has(key));
-        expect(shared, fixture.skin.id).toEqual([]);
-      }
-    });
-
     it('draws no texture key that another world also draws', () => {
       const owners = new Map<string, string[]>();
       for (const { fixture, drawn } of drawnByWorld) {
-        for (const key of drawn.skinKeys) owners.set(key, [...(owners.get(key) ?? []), fixture.skin.id]);
+        for (const key of drawn().skinKeys) owners.set(key, [...(owners.get(key) ?? []), fixture.skin.id]);
       }
       const shared = [...owners].filter(([, worlds]) => worlds.length > 1).map(([key, worlds]) => `${key}: ${worlds}`);
       expect(shared).toEqual([]);
@@ -50,7 +47,7 @@ export function describeSkinConformance(fixtures: readonly SkinFixture[]): void 
       'names every $skin.id texture under its prefix',
       (fixture) => {
         const drawn = drawnByWorld.find((entry) => entry.fixture === fixture)?.drawn;
-        const unprefixed = [...(drawn?.skinKeys ?? [])].filter((key) => !key.startsWith(fixture.keyPrefix ?? ''));
+        const unprefixed = [...(drawn?.().skinKeys ?? [])].filter((key) => !key.startsWith(fixture.keyPrefix ?? ''));
         expect(unprefixed).toEqual([]);
       },
     );

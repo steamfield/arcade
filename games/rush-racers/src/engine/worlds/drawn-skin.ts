@@ -33,20 +33,29 @@ export interface SkinFixture {
 export interface DrawnSkin {
   skin: WorldSkin;
   art: RecordingScene;
-  /** Texture keys that existed before the skin registered: the global art, the UI kit and the themes. */
-  baseKeys: ReadonlySet<string>;
   /** Texture keys the skin's own `registerTextures` drew. */
   skinKeys: ReadonlySet<string>;
 }
 
-/** Draws the shared art, then `skin`'s own textures, on a fresh recording scene. */
-export function drawSkin(skin: WorldSkin): DrawnSkin {
-  const art = recordingScene();
-  buildTextures(art.scene);
-  buildUiTextures(art.scene, REEF_ITEM_ICON_FRAMES);
-  registerThemeTextures(art.scene);
-  const baseKeys = new Set(art.built.keys());
-  skin.registerTextures(art.scene);
-  const skinKeys = new Set([...art.built.keys()].filter((key) => !baseKeys.has(key)));
-  return { skin, art, baseKeys, skinKeys };
+/**
+ * Returns a function that draws the shared art, then `skin`'s own textures, on a fresh recording
+ * scene the first time it is called and returns that same drawing after. Calling it inside a test
+ * means a malformed sprite or a key another owner holds fails that world's tests, not the file.
+ * Reusing a key the shared art or a theme drew throws in `drawFrames` and `claim`, so no separate
+ * collision check is needed.
+ */
+export function lazyDrawnSkin(skin: WorldSkin): () => DrawnSkin {
+  let drawn: DrawnSkin | undefined;
+  return () => {
+    if (drawn) return drawn;
+    const art = recordingScene();
+    buildTextures(art.scene);
+    buildUiTextures(art.scene, REEF_ITEM_ICON_FRAMES);
+    registerThemeTextures(art.scene);
+    const baseKeys = new Set(art.built.keys());
+    skin.registerTextures(art.scene);
+    const skinKeys = new Set([...art.built.keys()].filter((key) => !baseKeys.has(key)));
+    drawn = { skin, art, skinKeys };
+    return drawn;
+  };
 }

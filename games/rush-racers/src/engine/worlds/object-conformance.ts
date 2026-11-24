@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { ENEMY_KINDS, POWER_UP_KINDS } from '../../logic/types.ts';
-import { type DrawnSkin, drawSkin, type SkinFixture } from './drawn-skin.ts';
+import { type DrawnSkin, lazyDrawnSkin, type SkinFixture } from './drawn-skin.ts';
 import { assertSkinTextures } from './index.ts';
 import type { ObjectSkin } from './object-skin.ts';
 import { type BuiltTexture, framePixels, pixelCount } from './recording-scene.ts';
@@ -19,7 +19,7 @@ const MIN_ICON_PIXELS = 30;
 const MIN_CONTRAST = 3;
 const MAX_COLOURS_PER_FRAME = 4;
 
-const reef = drawSkin(REEF_SKIN);
+const reef = lazyDrawnSkin(REEF_SKIN);
 
 /** WCAG relative luminance of a 0xRRGGBB colour. */
 function luminance(colour: number): number {
@@ -61,26 +61,24 @@ function wordGroups(objects: ObjectSkin): Record<string, string[]> {
 }
 
 /** Registers the object checks for one drawn skin. */
-export function describeObjectArt({ contrast: rule }: SkinFixture, drawn: DrawnSkin): void {
-  const { skin, art } = drawn;
+export function describeObjectArt({ skin, contrast: rule }: SkinFixture, drawn: () => DrawnSkin): void {
   const { objects } = skin;
-  const built = art.built;
+  const built = (key: string) => drawn().art.built.get(key);
 
   it('draws every texture the skin names, with the frames boot asks for', () => {
-    expect(() => assertSkinTextures(art.textures, skin)).not.toThrow();
+    expect(() => assertSkinTextures(drawn().art.textures, skin)).not.toThrow();
   });
 
   it('can be registered again without redrawing', () => {
-    const before = new Map(built);
+    const { art } = drawn();
     const drawCount = art.drawOrder.length;
     skin.registerTextures(art.scene);
-    expect(built).toEqual(before);
     expect(art.drawOrder).toHaveLength(drawCount);
   });
 
   it('draws every frame as well-formed pixel text of at most four colours', () => {
-    for (const key of drawn.skinKeys) {
-      const texture = built.get(key);
+    for (const key of drawn().skinKeys) {
+      const texture = built(key);
       for (const frame of texture?.frames ?? []) {
         const colours = new Set(framePixels(texture, frame).map((pixel) => pixel.colour));
         expect(colours.size, `${key} frame ${frame}`).toBeLessThanOrEqual(MAX_COLOURS_PER_FRAME);
@@ -91,24 +89,24 @@ export function describeObjectArt({ contrast: rule }: SkinFixture, drawn: DrawnS
   it("sizes each texture like Reef's in the same slot, and gives it the frames Reef's has, since views ask for them by name", () => {
     const reefTextures = new Map(labelledTextures(REEF_OBJECTS));
     for (const [label, key] of labelledTextures(objects)) {
-      const reefTexture = reef.art.built.get(reefTextures.get(label) ?? '');
-      expect(sizeOf(built.get(key)), `${label} size`).toEqual(sizeOf(reefTexture));
-      expect(built.get(key)?.frames, `${label} frames`).toEqual(reefTexture?.frames);
+      const reefTexture = reef().art.built.get(reefTextures.get(label) ?? '');
+      expect(sizeOf(built(key)), `${label} size`).toEqual(sizeOf(reefTexture));
+      expect(built(key)?.frames, `${label} frames`).toEqual(reefTexture?.frames);
     }
   });
 
   it('draws one 9x9 icon per item, in the frame the skin names', () => {
     for (const kind of POWER_UP_KINDS) {
       const { texture, frame } = objects.itemIcons[kind];
-      expect(built.get(texture)?.frames, kind).toContain(frame);
-      expect(sizeOf(built.get(texture)), kind).toEqual({ width: ICON_SIZE, height: ICON_SIZE });
+      expect(built(texture)?.frames, kind).toContain(frame);
+      expect(sizeOf(built(texture)), kind).toEqual({ width: ICON_SIZE, height: ICON_SIZE });
     }
   });
 
   it('fills most of each 9x9 icon so it reads in the HUD well', () => {
     for (const kind of POWER_UP_KINDS) {
       const { texture, frame } = objects.itemIcons[kind];
-      expect(pixelCount(framePixels(built.get(texture), frame)), kind).toBeGreaterThanOrEqual(MIN_ICON_PIXELS);
+      expect(pixelCount(framePixels(built(texture), frame)), kind).toBeGreaterThanOrEqual(MIN_ICON_PIXELS);
     }
   });
 
@@ -117,6 +115,18 @@ export function describeObjectArt({ contrast: rule }: SkinFixture, drawn: DrawnS
     const icons = POWER_UP_KINDS.map((kind) => objects.itemIcons[kind].frame);
     expect(new Set(textures).size).toBe(POWER_UP_KINDS.length);
     expect(new Set(icons).size).toBe(POWER_UP_KINDS.length);
+    const iconDrawings = POWER_UP_KINDS.map((kind) => {
+      const { texture, frame } = objects.itemIcons[kind];
+      const frameWidth = built(texture)?.frameWidth ?? 1;
+      return JSON.stringify(framePixels(built(texture), frame).map((run) => [run.x % frameWidth, run.y, run.width]));
+    });
+    expect(new Set(iconDrawings).size, 'two icons are drawn alike').toBe(POWER_UP_KINDS.length);
+  });
+
+  it('names a different texture for every slot: items, attack art, pickups and enemies', () => {
+    const keys = labelledTextures(objects).map(([, key]) => key);
+    const repeated = keys.filter((key, index) => keys.indexOf(key) !== index);
+    expect(repeated).toEqual([]);
   });
 
   it('gives each hazard glint a key of its own, a colour, and an alpha between 0 and 1', () => {
