@@ -3,7 +3,7 @@
  * binding answers, and when the binding throws. The binding is Cloudflare's, so it is faked.
  */
 import { afterEach, expect, test, vi } from 'vitest';
-import forward, { type SiteEnv, UNREACHABLE_ERROR } from '../src/forward.ts';
+import forward, { type SiteEnv } from '../src/forward.ts';
 
 /** Calls the script as the Workers runtime would, with a binding whose `fetch` does `respond`. */
 function forwardWith(respond: SiteEnv['API']['fetch']): Promise<Response> {
@@ -29,7 +29,10 @@ test('answers 503 with a message the page can show when the binding throws, and 
     throw new Error('no such service: arcade-api');
   });
 
-  expect([response.status, await response.json()]).toEqual([503, { error: UNREACHABLE_ERROR }]);
+  expect([response.status, await response.json()]).toEqual([
+    503,
+    { error: 'The room service is unreachable. Try again.' },
+  ]);
   expect(logged.mock.calls.map(([message]) => message)).toEqual([
     'site: forwarding POST /api/rooms to arcade-api failed',
   ]);

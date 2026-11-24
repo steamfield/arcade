@@ -131,6 +131,8 @@ export function latencyTicks(ms: number): number {
  */
 function inputDelay(pings: readonly number[]): number {
   const [slowest = 0, nextSlowest = 0] = [...pings].sort((a, b) => b - a);
+  // A peer re-sends its ping only once it has moved half a tick, so the sum can be a tick short;
+  // the margin covers that.
   const ticks = latencyTicks(slowest + nextSlowest) + DELAY_MARGIN_TICKS;
   return Math.min(MAX_INPUT_DELAY, Math.max(MIN_INPUT_DELAY, ticks));
 }

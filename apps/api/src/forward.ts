@@ -13,8 +13,11 @@ export interface SiteEnv {
   API: { fetch(request: Request): Promise<Response> };
 }
 
-/** What a page gets when the service binding throws. */
-export const UNREACHABLE_ERROR = 'The room service is unreachable. Try again.';
+/**
+ * What a page gets when the service binding throws. Not exported: a Worker's entry module may
+ * export only handlers, and workerd refuses to start one that exports anything else.
+ */
+const UNREACHABLE_ERROR = 'The room service is unreachable. Try again.';
 
 export default {
   async fetch(request: Request, env: SiteEnv): Promise<Response> {

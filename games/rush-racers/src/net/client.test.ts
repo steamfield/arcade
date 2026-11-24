@@ -249,8 +249,8 @@ describe('the lobby', () => {
     expect(guest.client.view.race?.inputDelay).toBe(8);
   });
 
-  it('tells the room a new ping only when it changes the ticks of delay it stands for', () => {
-    // One-way pings of 52 and 58 ms both round up to 4 ticks; 68 ms is 5.
+  it('tells the room a new ping only when it has moved half a tick', () => {
+    // From a sent 52 ms, 58 is within half a tick (8 ms) and 68 is not.
     let guestRoundTripMs = 104;
     const table = seated(2, { roundTripMs: (id) => (id === 2 ? guestRoundTripMs : 0) });
     const [host, guest] = table.peers as [Peer, Peer];
@@ -271,6 +271,11 @@ describe('the lobby', () => {
 
     guestRoundTripMs = 136;
     measure(68);
+    expect([pingOf(host), lobbySends().length - before]).toEqual([68, 1]);
+
+    // 66 ms rounds to a different tick count than 68, but moved 2 ms: jitter on a boundary sends nothing.
+    guestRoundTripMs = 132;
+    measure(66);
     expect([pingOf(host), lobbySends().length - before]).toEqual([68, 1]);
   });
 });

@@ -7,7 +7,7 @@
  */
 import { type RoomMessage, RoomMessageSchema } from '@arcade/api/protocol';
 import type { CharacterId, RacerId, TickInput, World } from '../logic/types.ts';
-import { createLobby, type LobbyOptions, type LobbyView, latencyTicks } from './lobby.ts';
+import { createLobby, type LobbyOptions, type LobbyView } from './lobby.ts';
 import {
   type OnlineDifficulty,
   type RelayedGameMessage,
@@ -89,6 +89,8 @@ export interface OnlineClient {
 
 /** At most this much of a malformed message goes into its warning. */
 const PREVIEW_CHARS = 80;
+/** How far a ping must move, in ms, before the room is told: half a logic tick. */
+const PING_RESEND_MS = 8;
 
 /** A short, printable form of whatever arrived, for a warning; never throws, whatever the value. */
 function preview(message: unknown): string {
@@ -206,9 +208,9 @@ export function createClient(options: ClientOptions): OnlineClient {
   function handlePing(roundTripMs: number): void {
     lobby.setPing(roundTripMs / 2);
     const ping = lobby.mine().ping;
-    // Only a change the start's delay would see is worth a message: each one wakes the room's
-    // Durable Object, and a ping every 2 s that always re-sent would keep it from hibernating.
-    if (state.sentPing === null || latencyTicks(ping) !== latencyTicks(state.sentPing)) sendEntry();
+    // Each lobby message wakes the room's Durable Object, and a ping every 2 s that always re-sent
+    // would keep it from hibernating. Half a tick of movement is what the start's delay can notice.
+    if (state.sentPing === null || Math.abs(ping - state.sentPing) >= PING_RESEND_MS) sendEntry();
   }
 
   function handle(event: ConnectionEvent): void {

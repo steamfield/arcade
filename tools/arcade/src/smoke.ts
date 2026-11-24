@@ -67,7 +67,11 @@ export async function smoke(slug: string | undefined): Promise<number> {
       }
     }
   } finally {
-    if (wrangler.pid) process.kill(-wrangler.pid, 'SIGTERM');
+    try {
+      if (wrangler.pid) process.kill(-wrangler.pid, 'SIGTERM');
+    } catch {
+      // wrangler already exited (it failed to start); the error that says why is the one to show.
+    }
   }
   console.log(failed ? `\n✗ smoke failed in ${elapsed(start)}` : `\n✓ smoke passed in ${elapsed(start)}`);
   return failed ? 1 : 0;
