@@ -1,11 +1,21 @@
 import { expect } from '@playwright/test';
+import { COURSES, levelOf } from '../src/logic/courses/index.ts';
 import { HARD_SAVE, hold, scenario, tap, wait } from './kit.ts';
 
-/** Drift Test's black hole: tile (78, 2) centred, with a reach of 3 tiles, in px (16 px tiles). */
-const HOLE = { x: 78.5 * 16, y: 2.5 * 16, reach: 3 * 16 };
+/** Drift Test's black hole, the one well with a horizon: centre and reach in px. */
+const HOLE = (() => {
+  const hole = levelOf(COURSES['drift-test']).wells.find((well) => well.horizon !== null);
+  if (!hole) throw new Error('drift-test has no black hole');
+  return hole;
+})();
 
-/** A racer body is 12 by 10 px and its x, y are its top-left corner. */
-const BODY_HALF = { x: 6, y: 5 };
+/** The player's body size in `debugState().racers`, to turn the respawn's top-left into a centre. */
+function playerSize(state: unknown): { w: number; h: number } {
+  const racers = (state as { racers: { id: string; body: { w: number; h: number } }[] }).racers;
+  const player = racers.find((racer) => racer.id === 'player');
+  if (!player) throw new Error('debugState().racers has no player entry');
+  return player.body;
+}
 
 /**
  * On Drift Test, fly the bend, then glide along the open row 7 of the top corridor (the hold at its
@@ -36,14 +46,15 @@ export default scenario({
     hold('up', 40),
     wait(80),
   ],
-  expect({ events }) {
+  expect({ events, state }) {
     const falls = events.filter((e) => e.type === 'racer.fell' && e.id === 'player');
     const respawns = events.filter((e) => e.type === 'racer.respawned' && e.id === 'player');
     expect(falls).toHaveLength(1);
     expect(respawns).toHaveLength(1);
     expect((respawns[0]?.tick ?? 0) - (falls[0]?.tick ?? 0)).toBe(60);
-    const x = Number(respawns[0]?.x) + BODY_HALF.x;
-    const y = Number(respawns[0]?.y) + BODY_HALF.y;
-    expect(Math.hypot(x - HOLE.x, y - HOLE.y)).toBeGreaterThan(HOLE.reach);
+    const { w, h } = playerSize(state);
+    const x = Number(respawns[0]?.x) + w / 2;
+    const y = Number(respawns[0]?.y) + h / 2;
+    expect(Math.hypot(x - HOLE.centre.x, y - HOLE.centre.y)).toBeGreaterThan(HOLE.reach);
   },
 });
