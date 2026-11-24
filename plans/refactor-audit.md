@@ -372,8 +372,10 @@ Depends on: phase 6, phase 8
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | AGENTS.md, README.md, docs/, .claude/skills/, .claude/rules/, .claude/agents/, plans/ | | | opus | pending | | |
-| b | M | games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md, games/rush-racers/MAP.md, games/rush-racers/src/map.test.ts, games/rush-racers/package.json | | | opus | pending | | |
+| a | M | AGENTS.md, README.md, docs/, .claude/skills/, .claude/rules/, .claude/agents/, plans/ | | | opus | running | deliver/refactor-audit-9a | |
+| b | M | games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md, games/rush-racers/MAP.md, games/rush-racers/src/map.test.ts, games/rush-racers/package.json | | | opus | running | deliver/refactor-audit-9b | |
+
+Scaffold: 4a7c03c36b4a (no contract commit)
 
 #### Lane 9a brief
 
