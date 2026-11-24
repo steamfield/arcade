@@ -10,7 +10,7 @@ import type { GameEvent } from '../../events.ts';
 import { courseFromLevel, eventsIn, giveItems, hold, IDLE, placeOnTile, racerOf } from '../../test-world.ts';
 import { type Difficulty, type Finish, RACER_IDS, type RacerId, TILE, type TickInput } from '../../types.ts';
 import { createWorld, stepRace } from '../../world.ts';
-import { METEOR, METEOR_TUNING } from './meteor.ts';
+import { groundBelow, METEOR, METEOR_TUNING, skyTopAbove } from './meteor.ts';
 
 /** The floor's top edge, px: row 9 is the floor. */
 const FLOOR_Y = 9 * TILE;
@@ -26,20 +26,41 @@ const SKY = [
   `${'#'.repeat(30)}C${'#'.repeat(9)}`,
 ].join('\n');
 
-/** The tile row racers stand on, just over the floor. */
+/** The tile row racers stand on in SKY and TOWER, just over the floor. */
 const STANDING_ROW = 8;
 
+/** SKY with a two-column tower (cols 24-25) rising from the floor to row 5. */
+const TOWER = [
+  '#'.repeat(40),
+  ...Array.from({ length: 4 }, () => `#${'.'.repeat(37)}F#`),
+  ...Array.from({ length: 3 }, () => `#${'.'.repeat(23)}##${'.'.repeat(12)}F#`),
+  `#1.2.3.4${'.'.repeat(16)}##${'.'.repeat(12)}F#`,
+  '#'.repeat(40),
+].join('\n');
+
 /**
- * A racing Cloudreach world on SKY. On Hard every slot is a person (so nobody moves on their own);
- * Easy allows only the player, so its rivals fly.
+ * A taller sky, 24 rows, with a block hanging from the ceiling over cols 22-34 down to row 18, so
+ * under it is a low covered stretch (rows 19-22) with open sky behind it. Racers stand on row 22.
  */
-function meteorRace(difficulty: Difficulty = 'hard') {
+const COVERED = [
+  '#'.repeat(40),
+  ...Array.from({ length: 18 }, () => `#${'.'.repeat(21)}${'#'.repeat(13)}...F#`),
+  ...Array.from({ length: 3 }, () => `#${'.'.repeat(37)}F#`),
+  `#1.2.3.4${'.'.repeat(30)}F#`,
+  '#'.repeat(40),
+].join('\n');
+
+/**
+ * A racing Cloudreach world on `ascii`, racers placed on `standingRow`. On Hard every slot is a
+ * person (so nobody moves on their own); Easy allows only the player, so its rivals fly.
+ */
+function meteorRace(difficulty: Difficulty = 'hard', ascii = SKY, standingRow = STANDING_ROW) {
   const log = new EventLog<GameEvent>(100_000);
-  const course = courseFromLevel({ name: 'meteor', ascii: SKY }, 'flight', { world: 'cloudreach', theme: 'sky' });
+  const course = courseFromLevel({ name: 'meteor', ascii }, 'flight', { world: 'cloudreach', theme: 'sky' });
   const humans = difficulty === 'hard' ? RACER_IDS : (['player'] as const);
   const world = createWorld(course, log, { seed: 1, endsWhen: 'everyone', difficulty, humans });
   world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'everyone' };
-  const at = (id: RacerId, col: number) => placeOnTile(racerOf(world, id), col, STANDING_ROW);
+  const at = (id: RacerId, col: number) => placeOnTile(racerOf(world, id), col, standingRow);
   /** Steps `ticks` ticks with every person idle except any `inputs` given. */
   const run = (ticks: number, inputs: Partial<Record<RacerId, TickInput>> = {}) => {
     for (let tick = 0; tick < ticks; tick++) {
@@ -207,5 +228,47 @@ describe('where a meteor falls', () => {
     run(UNTIL_LANDED);
     expect(eventsIn(log, 'coral.broken')).toEqual([{ type: 'coral.broken', tx: 30, ty: 9, by: 'player' }]);
     expect(meteorHits(log)).toEqual(['squib']);
+  });
+});
+
+describe('leading a flyer past cover', () => {
+  /**
+   * Squib flies right along the floor of `ascii` from column `start` for `warmUp` ticks, then the
+   * player, far behind, fires a meteor at it; returns who the meteor hit once it has landed.
+   */
+  function steadyFlyerHits(ascii: string, standingRow: number, start: number, warmUp: number): RacerId[] {
+    const { world, log, at, run } = meteorRace('hard', ascii, standingRow);
+    const right = hold({ x: 1, y: 0 });
+    at('player', 1);
+    at('tess', 2);
+    at('bo', 3);
+    at('squib', start);
+    run(warmUp, { squib: right });
+    giveItems(racerOf(world, 'player'), ['cannonball']);
+    run(1, { squib: right, player: hold({ x: 0, y: 0 }, { use: true }) });
+    // The warning, then a fall from row 1 to the floor of the taller sky.
+    run(METEOR_TUNING.warnTicks + 45, { squib: right });
+    expect(world.shots, 'the meteor has landed').toEqual([]);
+    return meteorHits(log);
+  }
+
+  it('hits a flyer heading into a tower, marking the open air in front of it rather than the tower', () => {
+    // Squib is two tiles short of the tower at the lock, and stops against it before the meteor lands.
+    expect(steadyFlyerHits(TOWER, STANDING_ROW, 12, 40)).toEqual(['squib']);
+  });
+
+  it('hits a flyer entering a covered stretch, leading it by the short fall from the roof', () => {
+    // At the lock squib is still in the open, about to fly under the block.
+    expect(steadyFlyerHits(COVERED, 22, 10, 20)).toEqual(['squib']);
+  });
+
+  it('falls onto the top of a tower marked inside it', () => {
+    const { world } = meteorRace('hard', TOWER);
+    const inTower = { x: 24.5 * TILE, y: 7.5 * TILE };
+    expect(skyTopAbove(world, inTower.x, inTower.y)).toBe(TILE);
+    expect(groundBelow(world, inTower.x, skyTopAbove(world, inTower.x, inTower.y))).toEqual({
+      x: inTower.x,
+      y: 5 * TILE,
+    });
   });
 });

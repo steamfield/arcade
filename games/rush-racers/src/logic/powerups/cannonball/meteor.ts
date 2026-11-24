@@ -103,19 +103,64 @@ function warn(world: World, shot: Shot): void {
 }
 
 /**
- * Moves the shadow's mark to where the target will be when the meteor reaches it: its centre now,
- * carried along by its speed through the lock and the fall from the sky's top above it. A target that
- * has fallen out of the sky or finished leaves the mark where it was.
+ * Moves the shadow's mark to where the target will be when the meteor reaches it (`ledMark`). A
+ * target that has fallen out of the sky or finished leaves the mark where it was.
  */
 function followTarget(world: World, shot: Shot): void {
   const target = world.racers.find((racer) => racer.id === shot.target);
   if (!target || target.finished || target.status.fallen > 0) return;
   const at = centreOf(target);
-  const dropPx = at.y - skyTopAbove(world, at.x, at.y);
-  const leadSeconds = METEOR_TUNING.lockTicks * TICK_DT + dropPx / METEOR_TUNING.fallSpeed;
-  const levelRight = world.level.width * TILE - 1;
-  shot.x = Math.min(levelRight, Math.max(0, at.x + target.body.vx * leadSeconds));
+  shot.x = ledMark(world, at, target.body.vx);
   shot.y = at.y;
+}
+
+/**
+ * Where along its tile row a target at `at` moving at `vx` px/s will be when a meteor marked there
+ * reaches its height. How long the meteor takes depends on the column it falls in (a roof shortens
+ * the fall), so each open column the target could reach is tried: the target's position when a meteor
+ * over that column arrives (`leadSeconds`), kept inside the column. The column where that comes
+ * closest to the target's own position wins, the nearest on a tie. The search stops short of the
+ * first solid tile on the row (`markAlongRow`), which the target can't fly through.
+ */
+function ledMark(world: World, at: Vec, vx: number): number {
+  if (vx === 0) return at.x;
+  const furthest = markAlongRow(world, at, vx * (METEOR_TUNING.lockTicks * TICK_DT + at.y / METEOR_TUNING.fallSpeed));
+  const [near, far] = vx > 0 ? [at.x, furthest] : [furthest, at.x];
+  let best = { x: at.x, miss: Number.POSITIVE_INFINITY };
+  for (let column = Math.floor(near / TILE); column <= Math.floor(far / TILE); column++) {
+    const lo = Math.max(near, column * TILE);
+    const hi = Math.min(far, (column + 1) * TILE - 1);
+    const arrives = at.x + vx * leadSeconds(world, (lo + hi) / 2, at.y);
+    const x = Math.min(hi, Math.max(lo, arrives));
+    const miss = Math.abs(arrives - x);
+    // Scanning toward the target when it flies left, so the nearest column wins ties either way.
+    if (miss < best.miss || (miss === best.miss && vx < 0)) best = { x, miss };
+  }
+  return best.x;
+}
+
+/** Seconds until a meteor marked over (`x`, `y`) reaches that height: the lock, then the fall from the sky's top above it. */
+function leadSeconds(world: World, x: number, y: number): number {
+  const dropPx = y - skyTopAbove(world, x, y);
+  return METEOR_TUNING.lockTicks * TICK_DT + dropPx / METEOR_TUNING.fallSpeed;
+}
+
+/**
+ * `at.x` moved `shiftPx` along `at`'s tile row, stopped in the last open tile before the first solid
+ * one on the way. Off the grid's sides is rock, so the mark always stays on the map.
+ */
+function markAlongRow(world: World, at: Vec, shiftPx: number): number {
+  const step = Math.sign(shiftPx);
+  const row = Math.floor(at.y / TILE);
+  const goal = at.x + shiftPx;
+  const lastColumn = Math.floor(goal / TILE);
+  for (let column = Math.floor(at.x / TILE); column !== lastColumn; column += step) {
+    const next = column + step;
+    if (!isSolid(world.level, world.broken, next, row)) continue;
+    // The edge of the open tile `column` that faces the solid one.
+    return step > 0 ? next * TILE - 1 : column * TILE;
+  }
+  return goal;
 }
 
 /**
@@ -151,13 +196,17 @@ function endMeteor(world: World, shot: Shot): false {
 
 /**
  * The top of the open sky straight above (`x`, `y`), px: the top edge of the highest tile in the
- * unbroken run of open tiles from (`x`, `y`) up. A point inside a solid tile is its own top.
+ * unbroken run of open tiles from (`x`, `y`) up. A point inside a solid tile, such as a tower, first
+ * climbs out through the solid run above it, so a meteor marked there falls onto the tower's top. A
+ * column solid all the way up gives the level's top edge.
  */
 export function skyTopAbove(world: World, x: number, y: number): number {
   const tx = Math.floor(x / TILE);
+  const solid = (ty: number) => isSolid(world.level, world.broken, tx, ty);
   let ty = Math.floor(y / TILE);
-  if (isSolid(world.level, world.broken, tx, ty)) return y;
-  while (ty > 0 && !isSolid(world.level, world.broken, tx, ty - 1)) ty -= 1;
+  while (ty > 0 && solid(ty)) ty -= 1;
+  if (solid(ty)) return 0;
+  while (ty > 0 && !solid(ty - 1)) ty -= 1;
   return ty * TILE;
 }
 

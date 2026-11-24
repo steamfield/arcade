@@ -32,7 +32,8 @@ export interface FeltWind {
  *
  * @param lightning The level's storm zones, which no wind zone may share a column with.
  * @throws {LevelError} For a zone reversed or off the map, two zones sharing a column, a zone sharing a
- *   column with a storm zone, a period under `SHIFTING_WIND.minPeriodTicks`, or a push that isn't positive.
+ *   column with a storm zone, a period or offset that isn't a whole number of ticks, a period under
+ *   `SHIFTING_WIND.minPeriodTicks`, or a push that isn't positive.
  */
 export function parseShiftingWind(
   defs: readonly ShiftingWindDef[],
@@ -56,6 +57,8 @@ function requireZone(def: ShiftingWindDef, index: number, width: number): Shifti
       `Shifting wind zone ${index} covers columns ${from}-${to} but the map has columns 0-${width - 1}`,
     );
   }
+  requireWholeTicks(index, 'period', def.periodTicks);
+  requireWholeTicks(index, 'offset', def.offsetTicks);
   if (def.periodTicks < SHIFTING_WIND.minPeriodTicks) {
     throw new LevelError(
       `Shifting wind zone ${index} turns every ${def.periodTicks / 2} ticks (period ${def.periodTicks}); ` +
@@ -67,6 +70,12 @@ function requireZone(def: ShiftingWindDef, index: number, width: number): Shifti
     throw new LevelError(`Shifting wind zone ${index} has push ${def.push}; use a positive push in px/s²`);
   }
   return { cols: [from, to], periodTicks: def.periodTicks, offsetTicks: def.offsetTicks, push: def.push };
+}
+
+/** Throws unless `ticks` is a whole number: a timer of fractions or NaN never lands on a warning or turn tick. */
+function requireWholeTicks(index: number, what: 'period' | 'offset', ticks: number): void {
+  if (Number.isInteger(ticks)) return;
+  throw new LevelError(`Shifting wind zone ${index} has ${what} ${ticks}; use whole ticks`);
 }
 
 /** Throws when `zone` shares a column with an earlier wind zone, so a racer is only ever in one gust. */
@@ -145,17 +154,18 @@ export function shiftingWindAt(world: World, point: Vec): FeltWind | null {
 
 /**
  * The shifting wind slot of `stepRace`: emits `wind.warned {zone, dir}` (the coming direction) on the
- * first tick of each warning and `wind.shifted {zone, dir}` on each turn, a turn landing on race tick 0
- * included. The push itself reaches racers through `shiftingWindAt`, which each medium samples when it
+ * first tick of each warning and `wind.shifted {zone, dir}` on each turn. Race tick 0 is the start
+ * signal: a turn landing on it is not announced, and a race starting inside a warning announces that
+ * warning on tick 0, so every turn after the start is warned first. The push itself reaches racers through `shiftingWindAt`, which each medium samples when it
  * moves them, so `_racing` and `_dt` go unused here.
  */
 export function blowShiftingWind(world: World, _racing: readonly Racer[], _dt: number): void {
   const raceTick = world.race.raceTick;
   world.level.shiftingWind.forEach((zone, index) => {
-    const left = ticksToTurn(zone, raceTick);
     const dir = windDirection(zone, raceTick);
-    if (left === SHIFTING_WIND.warnTicks) world.events.emit({ type: 'wind.warned', zone: index, dir: opposite(dir) });
-    if (isTurnTick(zone, raceTick)) world.events.emit({ type: 'wind.shifted', zone: index, dir });
+    const warnsNow = raceTick === 0 ? windWarning(zone, 0) : ticksToTurn(zone, raceTick) === SHIFTING_WIND.warnTicks;
+    if (warnsNow) world.events.emit({ type: 'wind.warned', zone: index, dir: opposite(dir) });
+    if (raceTick > 0 && isTurnTick(zone, raceTick)) world.events.emit({ type: 'wind.shifted', zone: index, dir });
   });
 }
 

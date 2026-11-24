@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
 import { LevelError } from '../level/level-error.ts';
 import { parseLevel } from '../level/parse.ts';
-import { courseFromLevel, eventsIn, placeOnTile, racerOf, step } from '../test-world.ts';
+import { COUNTDOWN_TICKS } from '../race/standings.ts';
+import { courseFromLevel, eventsIn, placeOnTile, racerOf, step, ticksOf } from '../test-world.ts';
 import type { LevelDef, ShiftingWindDef } from '../types.ts';
 import { createWorld } from '../world.ts';
 import { parseShiftingWind, SHIFTING_WIND, windDirection } from './shifting-wind.ts';
@@ -60,6 +61,9 @@ describe('parsing shifting wind zones', () => {
     ['off the left of the map', { ...ZONE, cols: [-1, 3] }, /covers columns -1-3 but the map has columns 0-23/],
     ['off the right of the map', { ...ZONE, cols: [20, 24] }, /covers columns 20-24 but the map has columns 0-23/],
     ['too short a period', { ...ZONE, periodTicks: 239 }, /use a period of at least 240/],
+    ['with no period', { ...ZONE, periodTicks: Number.NaN }, /zone 0 has period NaN; use whole ticks/],
+    ['with a fractional period', { ...ZONE, periodTicks: 300.5 }, /zone 0 has period 300.5; use whole ticks/],
+    ['with a fractional offset', { ...ZONE, offsetTicks: 12.5 }, /zone 0 has offset 12.5; use whole ticks/],
     ['no push', { ...ZONE, push: 0 }, /has push 0; use a positive push/],
     ['a backward push', { ...ZONE, push: -70 }, /has push -70/],
   ] as const)('rejects a zone %s', (_name, zone, message) => {
@@ -119,6 +123,35 @@ describe('announcing turns', () => {
       { type: 'wind.warned', zone: 0, dir: 1, raceTick: 2 * PERIOD - SHIFTING_WIND.warnTicks },
       { type: 'wind.shifted', zone: 0, dir: 1, raceTick: 2 * PERIOD },
     ]);
+  });
+
+  /** The wind events from the start signal on, each with its race tick, in a race begun from the countdown. */
+  function fromTheStart(zone: ShiftingWindDef, raceTicks: number) {
+    const log = new EventLog<GameEvent>(100_000);
+    const world = createWorld(courseFromLevel(windySky([zone]), 'flight'), log, { seed: 1 });
+    step(world, log, COUNTDOWN_TICKS + 1 + raceTicks);
+    const started = ticksOf(log, 'race.started')[0] ?? 0;
+    return log
+      .all()
+      .filter((event) => event.type === 'wind.warned' || event.type === 'wind.shifted')
+      .map(({ seq: _seq, tick, ...event }) => ({ ...event, raceTick: tick - started }));
+  }
+
+  it('announces nothing at the start signal when a zone turns on it', () => {
+    expect(fromTheStart(ZONE, HALF)).toEqual([
+      { type: 'wind.warned', zone: 0, dir: -1, raceTick: HALF - SHIFTING_WIND.warnTicks },
+      { type: 'wind.shifted', zone: 0, dir: -1, raceTick: HALF },
+    ]);
+  });
+
+  it('warns at the start signal when the race starts inside a warning, then turns as usual', () => {
+    const midWarning = { ...ZONE, offsetTicks: HALF - 30 };
+    expect(fromTheStart(midWarning, 30)).toEqual([
+      { type: 'wind.warned', zone: 0, dir: -1, raceTick: 0 },
+      { type: 'wind.shifted', zone: 0, dir: -1, raceTick: 30 },
+    ]);
+    const atWarning = { ...ZONE, offsetTicks: HALF - SHIFTING_WIND.warnTicks };
+    expect(fromTheStart(atWarning, 1)).toEqual([{ type: 'wind.warned', zone: 0, dir: -1, raceTick: 0 }]);
   });
 
   it('names each zone by its index', () => {

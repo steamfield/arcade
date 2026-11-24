@@ -24,8 +24,8 @@ const flapAndCoast = [hold(['right', 'up'], 1), hold('right', FLAP_EVERY - 1)];
  * The `cannonball` stage puts the player in the low tunnel before its puff cloud plug. From GO the
  * player flies the `flight-ring-boost` route (dash through the plug, flap along the low road, ride
  * the updraft up the last tower and through the rings), then keeps flapping right down the run home
- * through the wind zone to the finish. The zone turns to +x at GO; after that every turn is warned 60
- * ticks ahead, the warning naming the direction the turn brings, and the turns alternate.
+ * through the wind zone to the finish. The zone starts blowing +x at GO; every turn after that is warned
+ * 60 ticks ahead, the warning naming the direction the turn brings, and the turns alternate.
  */
 export default scenario({
   description: 'a shifting wind zone warns, then turns its gust, every half period',
@@ -45,11 +45,11 @@ export default scenario({
   expect({ events, state }) {
     const winds = events.filter((e) => e.type === 'wind.warned' || e.type === 'wind.shifted');
     expect(winds.every((e) => e.zone === 0)).toBe(true);
-    // The zone starts its cycle at GO, so the first event is that turn, with no warning before it.
-    expect(winds[0]).toMatchObject({ type: 'wind.shifted', dir: 1 });
+    // The zone starts its cycle at GO, a turn the start signal doesn't announce: the first event is the next warning.
     const warnings = winds.filter((e) => e.type === 'wind.warned');
-    const turns = winds.filter((e) => e.type === 'wind.shifted').slice(1);
-    expect(turns.length, 'at least two turns after the start').toBeGreaterThanOrEqual(2);
+    const turns = winds.filter((e) => e.type === 'wind.shifted');
+    expect(winds[0]?.type).toBe('wind.warned');
+    expect(turns.length, 'at least two turns').toBeGreaterThanOrEqual(2);
     turns.forEach((turn, index) => {
       expect(turn.tick - (warnings[index]?.tick ?? 0), `turn ${index} is warned 60 ticks ahead`).toBe(60);
       expect(warnings[index]?.dir, `warning ${index} names the coming direction`).toBe(turn.dir);
