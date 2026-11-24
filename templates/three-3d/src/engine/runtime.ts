@@ -28,8 +28,6 @@ export interface RuntimeOptions {
   seed: number;
   /** Shows the player a message that doesn't stop the game. */
   notice: (message: string) => void;
-  /** Reports a failure that isn't an exception the shell would catch. */
-  reportError: (kind: string, error: unknown) => void;
   /** Read once per logic tick. */
   readInput: () => TickInput;
   /** True when ticks may run. The engine returns false while physics is loading. */
@@ -49,6 +47,7 @@ export class Runtime {
   private staged: boolean;
   /** The last queued save write. New writes chain onto it so they never overlap. */
   private writes: Promise<void> = Promise.resolve();
+  private writesPending = 0;
 
   private constructor(options: RuntimeOptions, save: SaveData) {
     this.options = options;
@@ -99,11 +98,26 @@ export class Runtime {
     this.staged = false;
   }
 
-  /** Queues a write of the current world; resolves once it is written or has failed. A staged world is not written. */
-  persist(): Promise<void> {
+  /**
+   * Queues a write of the current world; `what` names the data in the warning if it fails. Writes
+   * run one at a time in the order asked for. A failed write, whether the store reports it or
+   * throws, becomes a `save.failed` event, so the promise never rejects. A staged world is not written.
+   */
+  persist(what: string): Promise<void> {
     if (this.staged) return this.writes;
     const data = toSave(this.world);
-    this.writes = this.writes.then(() => this.write(data));
+    this.writesPending++;
+    this.writes = this.writes.then(() => this.write(data, what));
+    return this.writes;
+  }
+
+  /** True while a save write is queued or running. The engine's `idle()` includes it. */
+  get saving(): boolean {
+    return this.writesPending > 0;
+  }
+
+  /** Resolves when every write queued so far has finished. */
+  settled(): Promise<void> {
     return this.writes;
   }
 
@@ -122,20 +136,23 @@ export class Runtime {
     const collectedBefore = this.world.collected.size;
     stepWorld(this.world, this.options.readInput(), dt);
     this.options.afterTick(this.world);
-    if (this.world.collected.size !== collectedBefore) void this.persist();
+    if (this.world.collected.size !== collectedBefore) void this.persist('orb progress');
   }
 
-  private async write(data: SaveData): Promise<void> {
+  private async write(data: SaveData, what: string): Promise<void> {
     try {
       const result = await this.options.saves.save(SAVE_SLOT, data);
-      if (result.ok) {
-        this.events.emit({ type: 'save.written' });
-        return;
-      }
-      log.warn(`save failed: ${result.reason}`);
-      this.events.emit({ type: 'save.failed', reason: result.reason });
+      if (result.ok) this.events.emit({ type: 'save.written' });
+      else this.failWrite(what, result.reason);
     } catch (error) {
-      this.options.reportError('save', error);
+      this.failWrite(what, error instanceof Error ? error.message : String(error));
+    } finally {
+      this.writesPending--;
     }
+  }
+
+  private failWrite(what: string, reason: string): void {
+    log.warn(`${what} not saved: ${reason}`);
+    this.events.emit({ type: 'save.failed', reason });
   }
 }

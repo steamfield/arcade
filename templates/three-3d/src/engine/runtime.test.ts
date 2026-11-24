@@ -22,12 +22,11 @@ const openStore = () =>
 
 /** A runtime on `saves` whose input is whatever `held.input` is, with physics always ready. */
 async function startRuntime(saves: Awaited<ReturnType<typeof openStore>>, options: { stage?: StageName } = {}) {
-  const held = { input: STILL, ready: true, notices: [] as string[], errors: [] as string[] };
+  const held = { input: STILL, ready: true, notices: [] as string[] };
   const runtime = await Runtime.start({
     saves,
     seed: 1,
     notice: (message) => held.notices.push(message),
-    reportError: (kind) => held.errors.push(kind),
     readInput: () => held.input,
     isReady: () => held.ready,
     afterTick: () => {},
@@ -44,7 +43,7 @@ describe('runtime', () => {
 
     first.held.input = FORWARD;
     first.runtime.advance(TICKS_TO_FIRST_ORB);
-    await first.runtime.persist();
+    await first.runtime.settled();
     expect(first.runtime.summary()).toMatchObject({ orbs: '1/6' });
     expect(first.runtime.events.all().map((e) => e.type)).toContain('save.written');
 
@@ -83,7 +82,7 @@ describe('runtime', () => {
 
     staged.held.input = FORWARD;
     staged.runtime.advance(TICKS_TO_FIRST_ORB);
-    await staged.runtime.persist();
+    await staged.runtime.settled();
     expect(staged.runtime.summary()).toMatchObject({ status: 'cleared' });
     expect(staged.runtime.events.all().map((e) => e.type)).not.toContain('save.written');
 
@@ -92,7 +91,7 @@ describe('runtime', () => {
   });
 
   it('replaces the world from an imported save and saves from there', async () => {
-    const { runtime, held } = await startRuntime(await openStore(), { stage: 'nearly-cleared' });
+    const { runtime } = await startRuntime(await openStore(), { stage: 'nearly-cleared' });
     await runtime.loadSave({
       version: SAVE_VERSION,
       savedAt: '2026-11-22T00:00:00.000Z',
@@ -100,13 +99,24 @@ describe('runtime', () => {
     });
     expect(runtime.summary()).toMatchObject({ tick: 0, orbs: '1/6' });
 
-    await runtime.persist();
+    await runtime.persist('test progress');
     expect(runtime.events.all().map((e) => e.type)).toContain('save.written');
-    expect(held.errors).toEqual([]);
   });
 
   it('rejects a save the store cannot read', async () => {
     const { runtime } = await startRuntime(await openStore());
     await expect(runtime.loadSave({ nonsense: true })).rejects.toThrow('Fixture rejected by save store');
+  });
+
+  it('reports a save the store throws on as save.failed and keeps running', async () => {
+    const saves = await openStore();
+    const { runtime, held } = await startRuntime(saves);
+    saves.save = () => Promise.reject(new Error('disk full'));
+    held.input = FORWARD;
+    runtime.advance(TICKS_TO_FIRST_ORB);
+    expect(runtime.saving).toBe(true);
+    await runtime.settled();
+    expect(runtime.saving).toBe(false);
+    expect(runtime.events.all()).toContainEqual(expect.objectContaining({ type: 'save.failed', reason: 'disk full' }));
   });
 });

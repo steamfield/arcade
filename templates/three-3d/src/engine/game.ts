@@ -25,7 +25,6 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     saves,
     seed: ctx.params.seed,
     notice: ctx.notice,
-    reportError: ctx.reportError,
     stage: stageFor(ctx.params, window.location.search),
     isReady: () => physics !== null,
     readInput: () => {
@@ -89,7 +88,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
 
   return {
     events: runtime.events,
-    idle: () => physics !== null,
+    idle: () => physics !== null && !runtime.saving,
     advance(ticks) {
       const ran = runtime.advance(ticks);
       render();
@@ -118,6 +117,6 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
       last = performance.now();
       requestAnimationFrame(loop);
     },
-    onHide: () => runtime.persist(),
+    onHide: () => runtime.persist('progress on hide'),
   };
 }
