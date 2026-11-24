@@ -27,6 +27,7 @@ import { length } from '../num.ts';
 import { breakCoral } from '../race/coral.ts';
 import { centreOf, hitbox } from '../racers.ts';
 import type { Intent, PowerUpKind, Racer, Vec, World } from '../types.ts';
+import { shotRules, shotStyleOf } from './cannonball/index.ts';
 import { spawnDecoy } from './decoys.ts';
 import { cycleSelection, itemAt, selectedSlot, selectSlot, spendCharge } from './inventory.ts';
 import { layRiptide } from './riptides.ts';
@@ -153,6 +154,11 @@ function startDash(world: World, racer: Racer, aim: Vec, dash: { ticks: number; 
 }
 
 function fireCannonball(world: World, racer: Racer, aim: Vec): void {
+  const style = shotStyleOf(world);
+  if (style) {
+    shotRules(style).fire(world, racer, aim);
+    return;
+  }
   startDash(world, racer, aim, CANNONBALL);
   racer.status.inflated = Math.max(racer.status.inflated, CANNONBALL.ticks);
   racer.status.cannonball = CANNONBALL.ticks;

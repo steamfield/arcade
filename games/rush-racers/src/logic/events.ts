@@ -23,7 +23,7 @@
  * lists the racers given `status.undertow`. `decoy.popped.by` is null when the decoy simply
  * expires.
  */
-import type { EnemyKind, HitCause, PowerUpKind, RacerId } from './types.ts';
+import type { CannonballShotStyle, EnemyKind, HitCause, PowerUpKind, RacerId } from './types.ts';
 
 export type GameEvent =
   | { type: 'race.countdown'; n: 3 | 2 | 1 }
@@ -41,6 +41,20 @@ export type GameEvent =
   | { type: 'lightning.warned'; zone: number }
   /** Storm zone `zone` began its strike this cycle. */
   | { type: 'lightning.struck'; zone: number }
+  /** A geyser vent's warning before it erupts (`setpieces/vents.ts`). */
+  | { type: 'vent.warned'; vent: number }
+  /** A geyser vent starts erupting. */
+  | { type: 'vent.erupted'; vent: number }
+  /** A shifting wind zone's warning before its gust turns. */
+  | { type: 'wind.warned'; zone: number; dir: -1 | 1 }
+  /** A shifting wind zone's gust now blows along `dir` (x sign). */
+  | { type: 'wind.shifted'; zone: number; dir: -1 | 1 }
+  /** A world-specific Cannonball leaves its owner (`powerups/cannonball/`). */
+  | { type: 'shot.launched'; owner: RacerId; style: CannonballShotStyle; target: RacerId | null }
+  /** A shot that warns before it lands, such as a Meteor's shadow over its target. */
+  | { type: 'shot.warned'; owner: RacerId; style: CannonballShotStyle; target: RacerId }
+  /** A shot ends where it stopped: it hit, broke, fell out or ran out of time. */
+  | { type: 'shot.ended'; owner: RacerId; style: CannonballShotStyle; x: number; y: number }
   /**
    * A racer rebounded off a tile hard enough to notice (a bouncing medium only); `speed` is how fast it
    * went in (px/s) and `axis` the axis the tile stopped it on (the harder one in a corner).

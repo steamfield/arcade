@@ -58,6 +58,13 @@ const IMPACT: Readonly<Record<HitCause, RecipeFor>> = {
   bubble: (m) => [part({ pattern: 'ring', look: m.puff, motion: 'splash', count: 8, radius: 3, speed: 1.4, life: 14 })],
   flash: (m) => [part({ pattern: 'ring', look: m.glow, count: 8, radius: 3, speed: 1.2, life: 16 })],
   squid: (m) => [part({ pattern: 'scatter', look: m.ink, motion: 'drift', count: 8, radius: 4, speed: 1, life: 20 })],
+  asteroid: enemyThump,
+  boulder: enemyThump,
+  meteor: (m) => [
+    part({ pattern: 'ring', look: m.dust, motion: 'fall', count: 10, radius: 6, speed: 2, life: 20 }),
+    part({ pattern: 'scatter', look: m.spark, count: 6, radius: 4, speed: 2.2, life: 12 }),
+  ],
+  comet: (m) => [part({ pattern: 'scatter', look: m.spark, count: 10, radius: 5, speed: 2, life: 14 })],
   shark: enemyThump,
   eel: enemyThump,
   crab: enemyThump,

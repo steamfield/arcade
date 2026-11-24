@@ -26,6 +26,10 @@
  * cell and names the art a theme draws it with (a shipwreck hull that is rock, a sand bar that is
  * kelp). `Level.glyphs` keeps the character written at every tile, so a theme can tell them apart.
  */
+
+import { parseAsteroids } from '../setpieces/asteroids.ts';
+import { parseShiftingWind } from '../setpieces/shifting-wind.ts';
+import { parseVents } from '../setpieces/vents.ts';
 import { type Cell, type EnemyKind, type Level, type LevelDef, RACER_IDS, type Vec } from '../types.ts';
 import { errorAt, LevelError } from './level-error.ts';
 import { requireLightningZones } from './lightning-zones.ts';
@@ -136,6 +140,9 @@ export function parseLevel(def: LevelDef): Level {
     surface,
     wells: parseWells(def.wells ?? [], width, rows.length),
     lightning: requireLightningZones(def.lightning ?? [], width),
+    vents: parseVents(def.vents ?? [], width, rows.length),
+    shiftingWind: parseShiftingWind(def.shiftingWind ?? [], width),
+    asteroids: parseAsteroids(def.asteroids ?? [], width, rows.length),
   };
 }
 

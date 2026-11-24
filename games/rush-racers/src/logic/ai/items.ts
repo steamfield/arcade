@@ -13,6 +13,7 @@ import { itemAggressionMul, mayAttack } from '../difficulty-level.ts';
 import { pickSquidTarget } from '../hazards/squid-target.ts';
 import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
+import { shotRules, shotStyleOf } from '../powerups/cannonball/index.ts';
 import { firstSlotWhere, itemAt } from '../powerups/inventory.ts';
 import { CLAM, CORAL_BREAKERS, FLASH } from '../powerups/tuning.ts';
 import { canFire } from '../powerups/use.ts';
@@ -76,11 +77,11 @@ export const ITEM_USE = {
 export function chooseItemSlot(world: World, racer: Racer, aim: Vec, roll: number): number | null {
   if (racer.useCooldown > 0) return null;
   const coral = pufferHasCoral(world, racer);
-  const breaker = coral ? slotHolding(racer, CORAL_BREAKERS) : -1;
+  const breaker = coral ? slotHolding(racer, coralBreakers(world)) : -1;
   const slot = breaker >= 0 ? breaker : slotWithUse(world, racer, aim);
   const kind = itemAt(racer, slot)?.kind;
   if (kind === undefined) return null;
-  const dashes = kind === 'jetFin' || (kind === 'cannonball' && !coral);
+  const dashes = kind === 'jetFin' || (kind === 'cannonball' && !coral && shotStyleOf(world) === null);
   return roll < fireChance(world, racer) * (dashes ? ITEM_USE.jetChanceMul : 1) ? slot : null;
 }
 
@@ -121,8 +122,11 @@ function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolea
       return pufferHasCoral(world, racer);
     case 'jetFin':
       return clearAhead(world, racer, aim, ITEM_USE.jetClearTiles);
-    case 'cannonball':
+    case 'cannonball': {
+      const style = shotStyleOf(world);
+      if (style) return shotRules(style).rivalWants(world, racer, aim);
       return pufferHasCoral(world, racer) || clearAhead(world, racer, aim, ITEM_USE.jetClearTiles);
+    }
     case 'homingSquid':
       return pickSquidTarget(world, racer.id, centreOf(racer), null) !== null;
     case 'riptide':
@@ -210,4 +214,12 @@ function clearAhead(world: World, racer: Racer, aim: Vec, tiles: number): boolea
   const reach = tiles * TILE;
   const to = { x: centre.x + aim.x * reach, y: centre.y + aim.y * reach };
   return hasClearSweep(world.level, world.broken, racer.body, to);
+}
+
+/** The kinds that open coral in this world: Puffer, and the Cannonball unless its shot style can't. */
+function coralBreakers(world: World): readonly PowerUpKind[] {
+  const style = shotStyleOf(world);
+  return style === null || shotRules(style).breaksCoral
+    ? CORAL_BREAKERS
+    : CORAL_BREAKERS.filter((kind) => kind !== 'cannonball');
 }
