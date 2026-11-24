@@ -61,8 +61,8 @@ describe('the forest theme', () => {
 
   it('lays the tileset out in ForestTile order on the 16 px grid, and points terrain at it', () => {
     const tiles = sheetFor(ForestTex.tiles);
-    expect(tiles?.frames.map((frame) => frame.name)).toEqual(['rock', 'coral', 'ledge', 'rockBuried']);
-    expect(Object.keys(ForestTile)).toEqual(['rock', 'coral', 'ledge', 'rockBuried']);
+    expect(tiles?.frames.map((frame) => frame.name)).toEqual(['rock', 'coral', 'ledge', 'rockBuried', 'bounce']);
+    expect(Object.keys(ForestTile)).toEqual(['rock', 'coral', 'ledge', 'rockBuried', 'bounce']);
     expect(measureFrames(ForestTex.tiles, tiles?.frames ?? [])).toEqual({ width: 16, height: 16 });
     expect(FOREST_THEME.terrain).toMatchObject({
       tileset: 'forest-tiles',
