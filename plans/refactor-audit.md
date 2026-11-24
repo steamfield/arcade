@@ -75,7 +75,7 @@ Test cases:
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | biome.json, turbo.json, tools/arcade/src/guardrails.test.ts | tools/biome/no-nondeterminism.grit, tools/arcade/src/repo-map.test.ts | tools/arcade/src/guardrails.test.ts | opus | running | deliver/refactor-audit-1a | guardrails tests pass and fail when the logic override's patterns are removed |
-| b | M | tools/arcade/src/cli.ts, games/rush-racers/package.json, tools/arcade/src/test.ts, tools/arcade/src/test.test.ts, tools/arcade/src/smoke.ts, tools/arcade/src/run.ts, tools/arcade/src/run.test.ts, tools/arcade/src/attract.ts, packages/testing/src/driver.ts, packages/testing/src/driver.test.ts | tools/arcade/src/games.ts | tools/arcade/src/test.test.ts, tools/arcade/src/run.test.ts | sonnet | running | deliver/refactor-audit-1b | test and run tests pass, typecheck clean |
+| b | M | tools/arcade/src/cli.ts, games/rush-racers/package.json, tools/arcade/src/test.ts, tools/arcade/src/test.test.ts, tools/arcade/src/smoke.ts, tools/arcade/src/run.ts, tools/arcade/src/run.test.ts, tools/arcade/src/attract.ts, packages/testing/src/driver.ts, packages/testing/src/driver.test.ts | tools/arcade/src/games.ts | tools/arcade/src/test.test.ts, tools/arcade/src/run.test.ts | sonnet | merged | deliver/refactor-audit-1b | test and run tests pass, typecheck clean |
 
 Inline (me): `.github/workflows/ci.yml` concurrency, `.claude/hooks/check-on-stop.ts` `--skip-tests`, `.gitignore`, `packages/config/src/vite.ts` `sourcemap: false`, `games/rush-racers/scenarios/kit.ts` `HARD_SAVE` and the other inline saves in `scenarios/course-select.ts`, `tests/course.spec.ts`.
 
