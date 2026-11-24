@@ -17,6 +17,14 @@ import { HOW_TO_PLAY_PAGES } from './screens/how-to-play.ts';
 import { formatBest, levelBanner, racerName } from './view/race-text.ts';
 import { squidHuntingLocal } from './view/threat-math.ts';
 
+/** How much art the game has built. */
+export interface ArtSummary {
+  /** Phaser texture keys, not counting Phaser's own defaults. */
+  textures: number;
+  /** World and theme ids whose art is registered, in load order. */
+  art: readonly string[];
+}
+
 /**
  * Scene, save status, the character slot 1 races as (the select cursor while picking), the
  * course and its medium, the difficulty in force and the world summary of the local racer (with the difficulty the race was built on, the
@@ -27,12 +35,18 @@ import { squidHuntingLocal } from './view/threat-math.ts';
  * world (`selectName`), the 1-based page on How to Play, the friends screen (`friends`) on Friends, and the race outcome on results. `local` names the slot the screen follows, and is present only when
  * a `?local=` was accepted (a debug race, never saved). `net` describes the online room and race
  * while a room is open, until the player leaves online play (see `netSummary`). During an online
- * race `course` and `medium` are the race's, which the host picked.
+ * race `course` and `medium` are the race's, which the host picked. `textures` and `art` say how much
+ * art is built (see `ArtSummary`).
  *
  * @param sceneRunning Whether Phaser is actually running `rt.scene`. When it isn't, the
  * scene reads 'none', so a runtime that believes in a scene Phaser stopped is visible.
  */
-export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: boolean): Record<string, unknown> {
+export function debugSummary(
+  rt: Runtime,
+  saveStatus: SaveStatus,
+  sceneRunning: boolean,
+  art: ArtSummary,
+): Record<string, unknown> {
   const { menu, world } = rt;
   const net = netSummary(rt.flow);
   return {
@@ -42,6 +56,8 @@ export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: 
     course: rt.raceCourse.id,
     medium: mediumIdOf(rt.raceCourse),
     difficulty: rt.settings.difficulty,
+    textures: art.textures,
+    art: art.art,
     ...(world
       ? {
           ...summarize(world, rt.localRacer),
@@ -87,10 +103,15 @@ function courseSelectOf(rt: Runtime) {
 }
 
 /** Everything in the summary plus racers (with their characters), race state, settings, the save and the course as ASCII. */
-export function debugState(rt: Runtime, saveStatus: SaveStatus, sceneRunning: boolean): Record<string, unknown> {
+export function debugState(
+  rt: Runtime,
+  saveStatus: SaveStatus,
+  sceneRunning: boolean,
+  art: ArtSummary,
+): Record<string, unknown> {
   const { world } = rt;
   return {
-    ...debugSummary(rt, saveStatus, sceneRunning),
+    ...debugSummary(rt, saveStatus, sceneRunning, art),
     save: rt.save,
     saveStatus,
     settings: rt.settings,

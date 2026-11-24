@@ -1,17 +1,13 @@
 /**
- * The theme registry: every theme by id, the lookup scenes use to draw a course, and the boot step
- * that builds every theme's textures through each theme's `registerArt`. Adding a theme is its data
- * file and its `art.ts`, and one line in each map here.
+ * The theme registry: every theme by id, the lookup scenes use to draw a course, and the on-demand
+ * import of each theme's `art.ts` (`worlds/load.ts` runs it). Adding a theme is its data file and its
+ * `art.ts`, and one line in each map here.
  */
 import type Phaser from 'phaser';
 import type { Course, ThemeId } from '../../logic/courses/types.ts';
-import { registerArt as registerForestArt } from './forest/art.ts';
 import { FOREST_THEME } from './forest.ts';
-import { registerArt as registerOceanArt } from './ocean/art.ts';
 import { OCEAN_THEME } from './ocean.ts';
-import { registerArt as registerSkyArt } from './sky/art.ts';
 import { SKY_THEME } from './sky.ts';
-import { registerArt as registerSpaceArt } from './space/art.ts';
 import { SPACE_THEME } from './space.ts';
 import type { Theme } from './types.ts';
 
@@ -37,19 +33,13 @@ export function themeFor(course: Course): Theme {
   return THEMES[course.theme];
 }
 
-/** Each theme's `registerArt`, which draws the textures and loops the theme names; keyed like `THEMES`. */
-const THEME_ART: Readonly<Record<ThemeId, (scene: Phaser.Scene) => void>> = {
-  ocean: registerOceanArt,
-  forest: registerForestArt,
-  space: registerSpaceArt,
-  sky: registerSkyArt,
-};
-
 /**
- * Builds every theme's textures and animations. Boot calls it once.
- *
- * @throws {Error} When a theme's pixel art is malformed (see `drawSheets`).
+ * Each theme's `art.ts`, imported on demand so its sprite rows are a chunk of their own; keyed like
+ * `THEMES`. Only `worlds/load.ts` calls these.
  */
-export function registerThemeTextures(scene: Phaser.Scene): void {
-  for (const registerArt of Object.values(THEME_ART)) registerArt(scene);
-}
+export const THEME_ART: Readonly<Record<ThemeId, () => Promise<{ registerArt(scene: Phaser.Scene): void }>>> = {
+  ocean: () => import('./ocean/art.ts'),
+  forest: () => import('./forest/art.ts'),
+  space: () => import('./space/art.ts'),
+  sky: () => import('./sky/art.ts'),
+};
