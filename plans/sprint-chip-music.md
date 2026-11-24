@@ -53,15 +53,16 @@ Layout (paths under `games/rush-racers/src/engine/`):
 
 ### Phase 1: richer synth, rotation, sound test, analysis (MVP)
 
+Scaffold: ecef52a539ec46c3fa5d36261f476884da662f52
 Demo: `pnpm arcade dev rush-racers`, open `/games/rush-racers/?scene=jukebox`, play each song and skip between sections; `pnpm arcade see rush-racers --query scene=jukebox` shows the list.
 Test cases: listed per lane below.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/engine/audio/notation.ts, games/rush-racers/src/engine/audio/notation.test.ts, games/rush-racers/src/engine/audio/notation/ | contracts | | opus | pending | | notation tests pass |
-| b | M | games/rush-racers/src/engine/audio/synth.ts, games/rush-racers/src/engine/audio/sequencer.ts, games/rush-racers/src/engine/audio/sequencer.test.ts, games/rush-racers/src/engine/audio/play-note.ts, games/rush-racers/src/engine/audio/play-note.test.ts, games/rush-racers/src/engine/audio/render.ts, games/rush-racers/src/engine/audio/render.test.ts | contracts | | opus | pending | | play-note, sequencer and render tests pass |
-| c | S | games/rush-racers/src/engine/audio/track-rotation.ts, games/rush-racers/src/engine/audio/track-rotation.test.ts, games/rush-racers/src/engine/audio/music-cues.ts, games/rush-racers/src/engine/audio/adapter.ts, games/rush-racers/src/engine/audio/adapter.test.ts, games/rush-racers/src/engine/audio/index.ts | contracts | | opus | pending | | rotation and adapter tests pass |
-| d | M | games/rush-racers/src/engine/runtime.ts, games/rush-racers/src/engine/runtime.test.ts, games/rush-racers/src/engine/game.ts, games/rush-racers/src/engine/debug.ts, games/rush-racers/src/engine/scenes/jukebox.ts, games/rush-racers/src/engine/screens/jukebox.ts, games/rush-racers/src/engine/screens/jukebox.test.ts, games/rush-racers/scenarios/jukebox.ts | contracts, games/rush-racers/src/engine/scenes/course.ts, games/rush-racers/src/engine/screens/how-to-play.ts | | opus | pending | | jukebox tests and scenario pass, see capture shows the list |
+| a | M | games/rush-racers/src/engine/audio/notation.ts, games/rush-racers/src/engine/audio/notation.test.ts, games/rush-racers/src/engine/audio/notation/ | contracts | | opus | running | sprint/chip-music-1a | notation tests pass |
+| b | M | games/rush-racers/src/engine/audio/synth.ts, games/rush-racers/src/engine/audio/sequencer.ts, games/rush-racers/src/engine/audio/sequencer.test.ts, games/rush-racers/src/engine/audio/play-note.ts, games/rush-racers/src/engine/audio/play-note.test.ts, games/rush-racers/src/engine/audio/render.ts, games/rush-racers/src/engine/audio/render.test.ts | contracts | | opus | running | sprint/chip-music-1b | play-note, sequencer and render tests pass |
+| c | S | games/rush-racers/src/engine/audio/track-rotation.ts, games/rush-racers/src/engine/audio/track-rotation.test.ts, games/rush-racers/src/engine/audio/music-cues.ts, games/rush-racers/src/engine/audio/adapter.ts, games/rush-racers/src/engine/audio/adapter.test.ts, games/rush-racers/src/engine/audio/index.ts | contracts | | opus | running | sprint/chip-music-1c | rotation and adapter tests pass |
+| d | M | games/rush-racers/src/engine/runtime.ts, games/rush-racers/src/engine/runtime.test.ts, games/rush-racers/src/engine/game.ts, games/rush-racers/src/engine/debug.ts, games/rush-racers/src/engine/scenes/jukebox.ts, games/rush-racers/src/engine/screens/jukebox.ts, games/rush-racers/src/engine/screens/jukebox.test.ts, games/rush-racers/scenarios/jukebox.ts | contracts, games/rush-racers/src/engine/scenes/course.ts, games/rush-racers/src/engine/screens/how-to-play.ts | | opus | running | sprint/chip-music-1d | jukebox tests and scenario pass, see capture shows the list |
 | e | M | games/rush-racers/src/engine/audio/analysis/ | contracts | | opus | pending | | analysis tests pass |
 
 #### Lane a brief
