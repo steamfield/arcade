@@ -15,6 +15,11 @@
  * Online, friends and room screens hand each tick to the online flow (`online/flow.ts`), which says
  * where to go next. An online race is stepped by the flow's client, never by `stepRace` here, and
  * like a debug race it saves nothing; its results offer Race again (back to the room) and Title.
+ *
+ * A screen starts only once the art it draws is registered (`ArtPort`): the menu course's on the
+ * title, course select and Friends, the picked course's on select and How to Play, the race's on
+ * race and results, and every world's in the room, since a guest races whatever the host picks.
+ * Ticks wait while it loads; a failed load is reported and leaves the player on the screen showing.
  */
 import { createLogger, EventLog, FixedStep, type Stamped } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
@@ -107,6 +112,27 @@ export interface RaceOutcome {
 /** Receives each tick's drained events. Views use it for event-driven visuals such as broken coral. */
 type EventListener = (events: readonly Stamped<RuntimeEvent>[]) => void;
 
+/** What a screen draws art for: these courses' worlds and themes, or every world and theme. */
+export type ArtNeed = readonly Course[] | 'all';
+
+/** Registers the art screens draw. The game backs it with `worlds/load.ts`; tests pass their own. */
+export interface ArtPort {
+  /** Whether everything `need` names is registered already. */
+  ready(need: ArtNeed): boolean;
+  /**
+   * Registers everything `need` names.
+   *
+   * @throws {Error} Rejects naming the world or theme whose art failed to load.
+   */
+  load(need: ArtNeed): Promise<void>;
+}
+
+/** Art that is always in, for runtimes with no textures to build. */
+const ART_ALWAYS_READY: ArtPort = { ready: () => true, load: () => Promise.resolve() };
+
+/** What the player reads when a world's or theme's art fails to load. */
+export const ART_LOAD_FAILED = "Couldn't load the course art. Reload the page to try again.";
+
 /** What the runtime needs from the outside: the shell context, saves, the OS motion setting and a scene switcher. */
 interface RuntimeOptions {
   ctx: GameContext;
@@ -123,6 +149,8 @@ interface RuntimeOptions {
   listedCourses?: readonly Course[];
   /** The network, clipboard and seed the online screens use; tests pass a memory room. */
   online: OnlinePorts;
+  /** Loads the art each screen draws. Defaults to art that is always in. */
+  art?: ArtPort;
 }
 
 /** The one save slot Rush Racers uses. */
@@ -149,7 +177,7 @@ export class Runtime {
   readonly events = new EventLog<RuntimeEvent>(RUNTIME_EVENT_CAPACITY);
   readonly step = new FixedStep((dt) => this.tick(dt));
   scene: SceneKey = 'boot';
-  /** True between asking for a scene and that scene's create(); ticks wait while it is set. */
+  /** True between asking for a scene and that scene's create(), art loading included; ticks wait while it is set. */
   loading = true;
   world: World | null = null;
   save: SaveData | null;
@@ -224,6 +252,9 @@ export class Runtime {
   private menuArmIn = 0;
   /** Set by a tick that sent the player into an online race: that tick's events go out on the race scene's first tick instead. */
   private holdEvents = false;
+  private readonly art: ArtPort;
+  /** Counts art waits, so a load that finishes after a newer request was made does nothing. */
+  private artRequests = 0;
 
   constructor(options: RuntimeOptions) {
     this.ctx = options.ctx;
@@ -231,6 +262,7 @@ export class Runtime {
     this.save = options.save;
     this.prefersReducedMotion = options.prefersReducedMotion;
     this.startScene = options.startScene;
+    this.art = options.art ?? ART_ALWAYS_READY;
     this.search = options.search ?? '';
     this.localSlot = options.ctx.params.debug ? localSlotFor(this.search) : null;
     this.listedCourses = options.listedCourses ?? LISTED_COURSES;
@@ -323,11 +355,51 @@ export class Runtime {
     if (!this.ctx.params.testMode) this.step.frame(deltaMs / 1000);
   }
 
-  /** Switches scenes. Ticks pause until the new scene calls `entered`. */
+  /** Switches scenes once the art `scene` draws is in. Ticks pause until the new scene calls `entered`. */
   goTo(scene: SceneKey): void {
     this.loading = true;
-    this.menu = null;
-    this.startScene(scene);
+    this.whenArtReady(this.artFor(scene), () => {
+      this.menu = null;
+      this.startScene(scene);
+    });
+  }
+
+  /**
+   * Runs `then` once the art `need` names is registered: at once when it already is, else after it
+   * loads, with `loading` set meanwhile. Only the latest request runs. A failed load is reported as
+   * an 'art' error and shown as `ART_LOAD_FAILED`, `then` never runs, and ticks carry on on the
+   * screen showing, so the player's next pick tries again.
+   */
+  whenArtReady(need: ArtNeed, then: () => void): void {
+    const request = ++this.artRequests;
+    if (this.art.ready(need)) {
+      then();
+      return;
+    }
+    this.loading = true;
+    void this.art.load(need).then(
+      () => {
+        if (request === this.artRequests) then();
+      },
+      (error: unknown) => {
+        if (request === this.artRequests) this.failArt(error);
+      },
+    );
+  }
+
+  /** The art `scene` draws: see the module comment. */
+  private artFor(scene: SceneKey): ArtNeed {
+    if (scene === 'room') return 'all';
+    if (scene === 'race' || scene === 'results') return [this.raceCourse];
+    if (scene === 'select' || scene === 'howToPlay') return [this.course];
+    if (scene === 'boot') return [];
+    return [this.menuCourse];
+  }
+
+  private failArt(error: unknown): void {
+    this.loading = false;
+    this.ctx.reportError('art', error);
+    this.ctx.notice(ART_LOAD_FAILED);
   }
 
   /**

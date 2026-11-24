@@ -1,6 +1,6 @@
 /**
  * The art seam: a world's or theme's data modules import no pixel rows, and nothing reaches its art
- * but the boot step that draws it, so phase 6 can load each `art.ts` on its own. Under `worlds/` and
+ * but the registry's on-demand import, so each `art.ts` stays a chunk of its own. Under `worlds/` and
  * `themes/`, only an `art.ts` and the files inside a `sprites/` folder may import from a `sprites/`
  * path. Anywhere in the game, only `worlds/index.ts`, `themes/index.ts` and another `art.ts` may
  * import an `art.ts`. Test code is exempt: test files, files that import Vitest, and files only test

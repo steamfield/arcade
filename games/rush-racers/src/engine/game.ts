@@ -2,15 +2,16 @@
  * Wiring between the shell and Phaser: loads the save, builds the Runtime (with
  * the page's online ports) and the Phaser game with its scenes, fits the canvas
  * at integer zoom, reports WebGL context loss, and returns the GameHandle
- * the shell and tests drive. No game rules or scene logic live here.
+ * the shell and tests drive, and backs the runtime's art port with the world and theme art loader.
+ * No game rules or scene logic live here.
  */
 import type { SaveStore } from '@arcade/save';
 import type { GameContext, GameHandle } from '@arcade/shell';
 import Phaser from 'phaser';
 import type { SaveData } from '../logic/save.ts';
-import { debugState, debugSummary } from './debug.ts';
+import { type ArtSummary, debugState, debugSummary } from './debug.ts';
 import { pagePorts } from './online/page-ports.ts';
-import { Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
+import { type ArtPort, Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
 import { BootScene } from './scenes/boot.ts';
 import { CourseScene } from './scenes/course.ts';
 import { FriendsScene } from './scenes/friends.ts';
@@ -21,6 +22,7 @@ import { RoomScene } from './scenes/room.ts';
 import { SelectScene } from './scenes/select.ts';
 import { TitleScene } from './scenes/title.ts';
 import { type Stage, stageFor } from './stage.ts';
+import { ensureAllArt, ensureCourseArt, hasAllArt, hasCourseArt, loadedArt } from './worlds/load.ts';
 
 /**
  * Starts Rush Racers inside `ctx.container`.
@@ -40,6 +42,7 @@ export async function startPhaser(ctx: GameContext, saves: SaveStore<SaveData>):
       if (game) switchScene(game, scene);
     },
     online: pagePorts(ctx),
+    art: artPort(() => game),
   });
   game = createPhaserGame(ctx, rt);
   watchGame(ctx, game, rt);
@@ -82,6 +85,25 @@ function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
       new RoomScene(rt),
     ],
   });
+}
+
+/**
+ * The art loader as the runtime asks for it. Textures and loops belong to the game, not a scene,
+ * so the boot scene registers them whichever screen asked.
+ */
+function artPort(game: () => Phaser.Game | null): ArtPort {
+  const scene = (): Phaser.Scene => {
+    const boot = game()?.scene.getScene('boot');
+    if (!boot) throw new Error('Art was asked for before the Phaser game had its boot scene');
+    return boot;
+  };
+  return {
+    ready: (need) => (need === 'all' ? hasAllArt() : need.every(hasCourseArt)),
+    async load(need) {
+      if (need === 'all') return ensureAllArt(scene());
+      for (const course of need) await ensureCourseArt(scene(), course);
+    },
+  };
 }
 
 function switchScene(game: Phaser.Game, scene: SceneKey): void {
@@ -146,8 +168,8 @@ function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>
       return ran;
     },
     renderer: () => (game.renderer?.type === Phaser.WEBGL ? 'webgl' : game.renderer ? 'canvas' : 'none'),
-    debugSummary: () => debugSummary(rt, saves.status, game.scene.isActive(rt.scene)),
-    debugState: () => debugState(rt, saves.status, game.scene.isActive(rt.scene)),
+    debugSummary: () => debugSummary(rt, saves.status, game.scene.isActive(rt.scene), artSummary(game)),
+    debugState: () => debugState(rt, saves.status, game.scene.isActive(rt.scene), artSummary(game)),
     async loadState(fixture) {
       const imported = await saves.importJson(SAVE_SLOT, JSON.stringify(fixture));
       if (imported.kind !== 'ok')
@@ -159,4 +181,9 @@ function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>
     resume: () => game.loop.wake(),
     onHide: () => rt.hide(),
   };
+}
+
+/** The texture count (Phaser's `getTextureKeys` leaves out its own defaults) and the art loaded. */
+function artSummary(game: Phaser.Game): ArtSummary {
+  return { textures: game.textures.getTextureKeys().length, art: loadedArt() };
 }

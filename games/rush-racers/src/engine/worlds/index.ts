@@ -1,19 +1,16 @@
 /**
  * The world skin registry: every shipped world's skin by world id, the lookup views go through for a
- * course, each world's art registration and the boot step that runs them all, and the completeness checks boot and tests run.
+ * course, the on-demand import of each world's art (`worlds/load.ts` runs it), and the completeness
+ * checks the loader and tests run.
  */
 import type Phaser from 'phaser';
 import type { Course } from '../../logic/courses/types.ts';
 import { CHARACTER_IDS, ENEMY_KINDS, POWER_UP_KINDS } from '../../logic/types.ts';
 import type { ShippedWorldId } from '../../logic/worlds/types.ts';
 import { Frame } from '../art/keys.ts';
-import { registerArt as registerCloudreachArt } from './cloudreach/art.ts';
 import { CLOUDREACH_SKIN } from './cloudreach.ts';
-import { registerArt as registerFarsideArt } from './farside/art.ts';
 import { FARSIDE_SKIN } from './farside.ts';
-import { registerArt as registerReefArt } from './reef/art.ts';
 import { REEF_SKIN } from './reef.ts';
-import { registerArt as registerThornwoodArt } from './thornwood/art.ts';
 import { THORNWOOD_SKIN } from './thornwood.ts';
 import type { WorldSkin } from './types.ts';
 
@@ -37,18 +34,16 @@ export function skinFor(course: Pick<Course, 'id' | 'world'>): WorldSkin {
   return SKINS[course.world as ShippedWorldId];
 }
 
-/** Each shipped world's `registerArt`, which draws the textures and loops its skin names; keyed like `SKINS`. */
-const WORLD_ART: Readonly<Record<ShippedWorldId, (scene: Phaser.Scene) => void>> = {
-  reef: registerReefArt,
-  thornwood: registerThornwoodArt,
-  cloudreach: registerCloudreachArt,
-  farside: registerFarsideArt,
+/**
+ * Each shipped world's `art.ts`, imported on demand so its sprite rows are a chunk of their own;
+ * keyed like `SKINS`. Only `worlds/load.ts` calls these.
+ */
+export const WORLD_ART: Readonly<Record<ShippedWorldId, () => Promise<{ registerArt(scene: Phaser.Scene): void }>>> = {
+  reef: () => import('./reef/art.ts'),
+  thornwood: () => import('./thornwood/art.ts'),
+  cloudreach: () => import('./cloudreach/art.ts'),
+  farside: () => import('./farside/art.ts'),
 };
-
-/** Builds every shipped skin's own textures; boot calls it once. */
-export function registerSkinTextures(scene: Phaser.Scene): void {
-  for (const registerArt of Object.values(WORLD_ART)) registerArt(scene);
-}
 
 /**
  * Throws unless `skin` names art for every character slot, item, enemy, pickup and hazard glint, and words for
@@ -89,8 +84,8 @@ export interface TextureLookup {
  * Throws unless every texture and frame `skin` names was built: the racers with both stride frames,
  * portraits, heads, item icons and sprites, attack art, the pearl and the clam's open and shut
  * frames, enemy bodies and marks, and each hazard's frame, plus each looping hazard's animation
- * when `anims` is given. Boot runs it for every skin once textures are registered, so a key a skin
- * names but never draws fails at boot rather than as a missing-texture square mid-race.
+ * when `anims` is given. The loader runs it for each skin once its textures are registered, so a key a skin
+ * names but never draws fails as the art loads rather than as a missing-texture square mid-race.
  *
  * @throws {Error} Naming the world and the first missing texture or frame, e.g.
  *   "World 'thornwood' skin names texture 'thornwood-acorn', which was never built".
