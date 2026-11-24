@@ -2,7 +2,10 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { CharacterId } from '../logic/types.ts';
 
-// Okabe–Ito accents with slate for Shade. Fur and silhouette are independent cues.
+/**
+ * Each character's card swatch, progress marker and 3D accent color.
+ * The palette uses Okabe–Ito accents with slate for Shade.
+ */
 export const RACER_COLORS: Readonly<Record<CharacterId, number>> = {
   grit: 0x0072b2,
   skip: 0xe69f00,
@@ -34,7 +37,13 @@ type Part = (
   tiltZ?: number,
   shape?: Shape,
 ) => void;
-type Limb = [width: number, height: number, depth: number, x: number, y: number, front: number, back?: number];
+interface Limb {
+  size: [width: number, height: number, depth: number];
+  x: number;
+  y: number;
+  front: number;
+  back?: number;
+}
 
 interface RacerGeometry {
   body: THREE.BufferGeometry;
@@ -179,22 +188,57 @@ function wolf(part: Part, yellow: number): void {
   part(0x5c6779, 0.16, 0.66, 1.22, 0.14, 0.15, 0.28, 0.28);
 }
 
-const MODELS: Record<CharacterId, [draw: (part: Part, accent: number) => void, foot: number, limbs: Limb]> = {
-  grit: [badger, 0x4d5262, [0.21, 0.27, 0.24, 0.37, 0.48, -0.37, 0.38]],
-  skip: [hare, 0xb88057, [0.126, 0.4, 0.16, 0.23, 0.74, -0.08, 0.28]],
-  blaze: [fox, 0x633b37, [0.14, 0.31, 0.18, 0.26, 0.55, -0.34, 0.39]],
-  shade: [panther, 0x443750, [0.19, 0.25, 0.2, 0.29, 0.44, -0.33, 0.4]],
-  cheeks: [chipmunk, 0x986047, [0.14, 0.23, 0.19, 0.26, 0.41, -0.15, 0.31]],
-  duke: [tortoise, 0x859358, [0.25, 0.22, 0.26, 0.52, 0.39, -0.4, 0.45]],
-  dusk: [owl, 0xb8854f, [0.12, 0.165, 0.19, 0.16, 0.29, -0.03]],
-  fang: [wolf, 0x6d798d, [0.16, 0.35, 0.22, 0.28, 0.63, -0.31, 0.42]],
+const MODELS: Record<CharacterId, { draw: (part: Part, accent: number) => void; foot: number; limbs: Limb }> = {
+  grit: {
+    draw: badger,
+    foot: 0x4d5262,
+    limbs: { size: [0.21, 0.27, 0.24], x: 0.37, y: 0.48, front: -0.37, back: 0.38 },
+  },
+  skip: {
+    draw: hare,
+    foot: 0xb88057,
+    limbs: { size: [0.126, 0.4, 0.16], x: 0.23, y: 0.74, front: -0.08, back: 0.28 },
+  },
+  blaze: {
+    draw: fox,
+    foot: 0x633b37,
+    limbs: { size: [0.14, 0.31, 0.18], x: 0.26, y: 0.55, front: -0.34, back: 0.39 },
+  },
+  shade: {
+    draw: panther,
+    foot: 0x443750,
+    limbs: { size: [0.19, 0.25, 0.2], x: 0.29, y: 0.44, front: -0.33, back: 0.4 },
+  },
+  cheeks: {
+    draw: chipmunk,
+    foot: 0x986047,
+    limbs: { size: [0.14, 0.23, 0.19], x: 0.26, y: 0.41, front: -0.15, back: 0.31 },
+  },
+  duke: {
+    draw: tortoise,
+    foot: 0x859358,
+    limbs: { size: [0.25, 0.22, 0.26], x: 0.52, y: 0.39, front: -0.4, back: 0.45 },
+  },
+  dusk: {
+    draw: owl,
+    foot: 0xb8854f,
+    limbs: { size: [0.12, 0.165, 0.19], x: 0.16, y: 0.29, front: -0.03 },
+  },
+  fang: {
+    draw: wolf,
+    foot: 0x6d798d,
+    limbs: { size: [0.16, 0.35, 0.22], x: 0.28, y: 0.63, front: -0.31, back: 0.42 },
+  },
 };
 
-/** Parts share a vertex-colored body mesh. Feet stay separate for the stride. */
+/**
+ * Builds a vertex-colored body and a separate foot for the stride. The result is cached per
+ * character and shared by every RacerView for that character. Callers must never dispose it.
+ */
 export function geometryFor(character: CharacterId): RacerGeometry {
   const cached = geometries.get(character);
   if (cached) return cached;
-  const [draw, foot, limbs] = MODELS[character];
+  const { draw, foot, limbs } = MODELS[character];
   const pieces: THREE.BufferGeometry[] = [];
   draw((color, x, y, z, sx, sy, sz, tiltX = 0, tiltZ = 0, shape = 'round') => {
     const unit = shape === 'point' ? cone : shape === 'box' ? box : sphere;
@@ -203,7 +247,7 @@ export function geometryFor(character: CharacterId): RacerGeometry {
   }, RACER_COLORS[character]);
   const body = mergeGeometries(pieces);
   for (const piece of pieces) piece.dispose();
-  const [width, height, depth] = limbs;
+  const [width, height, depth] = limbs.size;
   const leg = paint(
     sphere
       .clone()

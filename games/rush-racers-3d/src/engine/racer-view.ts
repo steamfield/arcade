@@ -46,7 +46,7 @@ export class RacerView {
   constructor(character: CharacterId) {
     this.character = character;
     const { body, leg, limbs } = geometryFor(character);
-    const [, , , x, y, front, back] = limbs;
+    const { x, y, front, back } = limbs;
     for (const side of [-1, 1]) {
       for (const z of back === undefined ? [front] : [front, back]) {
         const foot = new THREE.Mesh(leg, FUR);

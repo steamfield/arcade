@@ -16,6 +16,7 @@ import { CameraRig } from './camera-rig.ts';
 import { stageFor } from './capture-stages.ts';
 import { Hud } from './hud.ts';
 import { input } from './input.ts';
+import { createPedestal } from './pedestal.ts';
 import { RacerView } from './racer-view.ts';
 import { Runtime, type Scene } from './runtime.ts';
 import { createScreens } from './screens.ts';
@@ -102,36 +103,14 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const hud = new Hud(ctx.container);
   const screens = createScreens(ctx.container);
   scene.add(trail.root);
-  const stand = frames.frameAt(course.startS + 31);
-  const podiumHeight = 0.55;
-  const podiumTop = new THREE.Vector3(stand.x, stand.y + podiumHeight, stand.z);
-  const podium = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.35, 1.55, podiumHeight, 16),
-    new THREE.MeshLambertMaterial({ color: 0x806047 }),
-  );
-  podium.position.copy(podiumTop);
-  podium.position.y -= podiumHeight / 2 + 0.01;
-  scene.add(podium);
+  const pedestal = createPedestal(scene, frames, course);
 
   let drawnWorld: World | undefined;
-  let drawnScreen: Scene | undefined;
-  let screenTicks = 0;
-  let preview: RacerView | undefined;
-  let previewStarted = 0;
   const racers = new Map<RacerId, RacerView>();
   let cursor = 0;
   let goUntil = -1;
   let newBest = false;
-  syncViews = () => {
-    const { world, scene: screen } = runtime;
-    const screenChanged = screen !== drawnScreen;
-    screenTicks = screenChanged ? 0 : screenTicks + 1;
-    drawnScreen = screen;
-    podium.visible = screen === 'select';
-    if (screenChanged && screen !== 'select') {
-      preview?.dispose();
-      preview = undefined;
-    }
+  const syncRaceViews = (world: World, screen: Scene, screenChanged: boolean): boolean => {
     const racing = screen === 'race' || screen === 'results';
     const newWorld = racing && world !== drawnWorld;
     if (newWorld) {
@@ -150,22 +129,34 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     }
     if (racing) {
       for (const racer of world.racers) racers.get(racer.id)?.tick(racer, frames, course);
-      rig.tick(playerOf(world), snap);
-      return;
+    } else if (screenChanged) {
+      for (const view of racers.values()) view.root.visible = false;
     }
-    if (screenChanged) for (const view of racers.values()) view.root.visible = false;
-    if (screen === 'title') {
-      rig.title(motion.matches ? 0 : screenTicks * TICK_DT);
-    } else {
-      const character = CHARACTER_IDS[runtime.cursor] ?? runtime.character;
-      if (preview?.character !== character) {
-        preview?.dispose();
-        preview = new RacerView(character);
-        scene.add(preview.root);
-        previewStarted = screenTicks;
-      }
-      preview.preview(podiumTop.x, podiumTop.y, podiumTop.z, 0.45 + (screenTicks - previewStarted) * TICK_DT * 0.85);
-      if (screenChanged) rig.select(podiumTop);
+    return snap;
+  };
+
+  let drawnScreen: Scene | undefined;
+  let screenTicks = 0;
+  syncViews = () => {
+    const { world, scene: screen } = runtime;
+    const screenChanged = screen !== drawnScreen;
+    screenTicks = screenChanged ? 0 : screenTicks + 1;
+    drawnScreen = screen;
+
+    const selected = screen === 'select' ? (CHARACTER_IDS[runtime.cursor] ?? runtime.character) : null;
+    pedestal.sync(selected, screenTicks);
+    const snap = syncRaceViews(world, screen, screenChanged);
+    switch (screen) {
+      case 'title':
+        rig.title(motion.matches ? 0 : screenTicks * TICK_DT);
+        break;
+      case 'select':
+        if (screenChanged) rig.select(pedestal.top);
+        break;
+      case 'race':
+      case 'results':
+        rig.tick(playerOf(world), snap);
+        break;
     }
   };
   syncViews();
@@ -182,7 +173,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     if (width === 0 || height === 0) return;
     renderer.setSize(width, height);
     rig.resize(width, height);
-    if (runtime.scene === 'select') rig.select(podiumTop);
+    if (runtime.scene === 'select') rig.select(pedestal.top);
     render();
   };
   resize();
