@@ -204,6 +204,15 @@ describe('when a rival wants a Headwind', () => {
     expect(wants('squib')).toBe(false);
   });
 
+  it('does not want it for a racer too far ahead for the front to catch', () => {
+    const world = standings('hard', [1, 2, 3, 4], [10, 11, 12, 30]);
+    const wants = (id: RacerId) => HEADWIND.rivalWants(world, racerOf(world, id), { x: 1, y: 0 });
+    // Last place is 18-20 tiles behind everyone: past the front's 16-tile reach.
+    expect(wants('bo')).toBe(false);
+    racerOf(world, 'squib').progress = 14;
+    expect(wants('bo')).toBe(true);
+  });
+
   it('does not count a human ahead on Easy', () => {
     const world = standings('easy', [1, 3, 2, 4], [10, 18, 12, 22]);
     expect(HEADWIND.rivalWants(world, racerOf(world, 'tess'), { x: 1, y: 0 })).toBe(false);

@@ -39,6 +39,11 @@ export const HEADWIND_TUNING = {
    * imports this module).
    */
   rivalLeadTiles: 8,
+  /**
+   * The farthest ahead a rival aims it: the front gains about 60 px/s on a cruising flyer for its
+   * sweep, so it never reaches one starting much more than 16 tiles ahead.
+   */
+  rivalReachTiles: 16,
 } as const;
 
 /** Half the front's width, px. */
@@ -111,7 +116,8 @@ function advanceHeadwind(world: World, twist: Twist, _racing: readonly Racer[], 
 
 /**
  * True when `racer` is in 3rd place or worse and some racer it may attack is at least
- * `rivalLeadTiles` ahead by progress: the shared Undertow's rule.
+ * `rivalLeadTiles` ahead by progress (the shared Undertow's rule), but no more than
+ * `rivalReachTiles`, which the front could never catch.
  */
 function rivalWantsHeadwind(world: World, racer: Racer): boolean {
   if (racer.place < CLAM.undertowMinPlace) return false;
@@ -119,6 +125,7 @@ function rivalWantsHeadwind(world: World, racer: Racer): boolean {
     (other) =>
       other.id !== racer.id &&
       mayAttack(world, racer.id, other.id) &&
-      other.progress <= racer.progress - HEADWIND_TUNING.rivalLeadTiles,
+      other.progress <= racer.progress - HEADWIND_TUNING.rivalLeadTiles &&
+      other.progress >= racer.progress - HEADWIND_TUNING.rivalReachTiles,
   );
 }
