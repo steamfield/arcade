@@ -27,6 +27,9 @@ const STEP_MS = 16;
 const ROUND_LIMIT = 6000;
 const CODE = 'ABCDEF';
 const COURSES = ['sunlit-shallows', 'bramble-run', 'run-test'] as const;
+const QUOTA_RESET_AT = Date.parse('2026-11-25T00:00:00Z');
+const RESET_TIME = new Date(QUOTA_RESET_AT).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+const QUOTA_NOTICE = `Online play is full for today\nBack at ${RESET_TIME}. Solo races still work.`;
 
 type Screen = 'friends' | 'room' | 'race' | 'results' | 'title';
 
@@ -56,6 +59,7 @@ function scriptedInput(slot: RacerId, tick: number): TickInput {
 
 interface PlayerOptions {
   createRoom?: () => Promise<CreateRoomResult>;
+  quotaBlockedUntil?: () => number | null;
   copyLink?: () => Promise<boolean>;
   /** Replaces the table's room for this player's connections. */
   connect?: () => RoomConnection;
@@ -99,6 +103,7 @@ function createTable(roomOptions: MemoryRoomOptions = {}) {
     player.flow = createOnlineFlow({
       connect: options.connect ?? (() => room.connect()),
       createRoom: options.createRoom ?? (() => Promise.resolve({ ok: true, code: CODE })),
+      quotaBlockedUntil: options.quotaBlockedUntil,
       copyLink: options.copyLink ?? (() => Promise.resolve(true)),
       seed: () => 5,
       kickAfterMs: options.kickAfterMs ?? null,
@@ -241,7 +246,7 @@ describe('Friends', () => {
 
   it('stays on Friends with a notice when no room can be created', async () => {
     const table = createTable();
-    const host = table.seat({ createRoom: () => Promise.resolve({ ok: false }) });
+    const host = table.seat({ createRoom: () => Promise.resolve({ ok: false, reason: 'unavailable' }) });
 
     table.tick(host, 'fire');
     await vi.waitFor(() => expect(host.flow.busy).toBe(false));
@@ -250,6 +255,45 @@ describe('Friends', () => {
     expect(host.screen).toBe('friends');
     expect(host.flow.client).toBeNull();
     expect(host.notices).toEqual([null, 'Creating room...', 'Rooms are unavailable right now']);
+  });
+
+  it('shows the local reset time on Friends when the room service reports quota', async () => {
+    const table = createTable();
+    let quotaResetAt: number | null = null;
+    const host = table.seat({
+      createRoom: async () => {
+        quotaResetAt = QUOTA_RESET_AT;
+        return { ok: false, reason: 'quota' };
+      },
+      quotaBlockedUntil: () => quotaResetAt,
+    });
+
+    table.tick(host, 'fire');
+    await vi.waitFor(() => expect(host.flow.busy).toBe(false));
+    table.tick(host);
+
+    expect(host.screen).toBe('friends');
+    expect(host.notices).toEqual([null, 'Creating room...', QUOTA_NOTICE]);
+  });
+
+  it('shows the quota notice on the same tick as a blocked create or join', () => {
+    const table = createTable();
+    const createRoom = vi.fn(async () => ({ ok: true, code: CODE }) satisfies CreateRoomResult);
+    const connect = vi.fn(silentConnection);
+    const player = table.seat({ createRoom, connect, quotaBlockedUntil: () => QUOTA_RESET_AT });
+
+    table.tick(player, 'fire');
+    expect.soft([player.screen, player.flow.busy, player.flow.state.notice]).toEqual(['friends', false, QUOTA_NOTICE]);
+
+    player.flow.openFriends();
+    pressAll(table, player, spell(CODE));
+    expect([player.screen, player.flow.state.friends.mode, player.flow.state.notice]).toEqual([
+      'friends',
+      'menu',
+      QUOTA_NOTICE,
+    ]);
+    expect(createRoom).not.toHaveBeenCalled();
+    expect(connect).not.toHaveBeenCalled();
   });
 
   it('joins by code, and host and guest see each other', async () => {
@@ -526,9 +570,27 @@ describe('departures and states', () => {
     expect([player.screen, player.flow.state.notice]).toEqual(['title', notice]);
   });
 
+  it('shows the local reset time on the title when a join is closed for quota', () => {
+    const table = createTable();
+    let quotaResetAt: number | null = null;
+    const player = table.seat({
+      connect: () => refusedConnection('quota'),
+      quotaBlockedUntil: () => quotaResetAt,
+    });
+
+    pressAll(table, player, spell(CODE));
+    quotaResetAt = QUOTA_RESET_AT;
+    table.tick(player);
+
+    expect([player.screen, player.flow.state.notice]).toEqual(['title', QUOTA_NOTICE]);
+    expect(QUOTA_NOTICE.split('\n').every((line) => line.length <= NOTICE_MAX_CHARS)).toBe(true);
+  });
+
   it('keeps every notice to one line of 40 characters', () => {
     const reasons: CloseReason[] = ['left', 'full', 'version', 'unknown-room', 'kicked', 'unavailable', 'lost'];
-    const notices = [...Object.values(NOTICES), ...reasons.map(closedNotice)].filter((text) => text !== null);
+    const notices = [...Object.values(NOTICES), ...reasons.map((reason) => closedNotice(reason))].filter(
+      (text) => text !== null,
+    );
 
     expect(notices.filter((text) => text.length > NOTICE_MAX_CHARS)).toEqual([]);
   });

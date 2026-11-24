@@ -1,6 +1,6 @@
 /**
- * The status lines the online screens and the title show, each at most `NOTICE_MAX_CHARS` long so
- * it fits one line clear of the touch zones. Every notice the flow sets comes from here.
+ * The notices the online screens and the title show, with at most `NOTICE_MAX_CHARS` per line
+ * so they fit clear of the touch zones. Every notice the flow sets comes from here.
  */
 import type { CloseReason } from '../../net/transport/types.ts';
 
@@ -19,7 +19,7 @@ export const NOTICES = {
 } as const;
 
 /** What each way a connection can end says; the player leaving on purpose says nothing. */
-const CLOSED_NOTICES: Readonly<Record<CloseReason, string | null>> = {
+const CLOSED_NOTICES: Readonly<Record<Exclude<CloseReason, 'quota'>, string | null>> = {
   left: null,
   full: 'That room is full',
   version: 'Game versions differ: everyone reload',
@@ -29,7 +29,14 @@ const CLOSED_NOTICES: Readonly<Record<CloseReason, string | null>> = {
   lost: 'Connection lost',
 };
 
+/** Two lines fit above the menu. The reset time uses the player's time zone. */
+export function quotaNotice(resetAt: number | null): string {
+  if (resetAt === null) return 'Online play hit its daily limit\nTry again later. Solo races still work.';
+  const time = new Date(resetAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return `Online play is full for today\nBack at ${time}. Solo races still work.`;
+}
+
 /** What the title says after a connection ended for `reason` (null reads as lost); null when the player left on purpose. */
-export function closedNotice(reason: CloseReason | null): string | null {
-  return CLOSED_NOTICES[reason ?? 'lost'];
+export function closedNotice(reason: CloseReason | null, resetAt: number | null = null): string | null {
+  return reason === 'quota' ? quotaNotice(resetAt) : CLOSED_NOTICES[reason ?? 'lost'];
 }

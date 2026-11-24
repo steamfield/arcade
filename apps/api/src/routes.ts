@@ -6,6 +6,7 @@ import { randomRoomCode } from './codes.ts';
 import type { Env } from './index.ts';
 import { allowedOrigin } from './origin.ts';
 import { CLOSE, type Created, isRoomCode } from './protocol.ts';
+import { isQuotaError } from './quota.ts';
 import { refuseSocket } from './sockets.ts';
 
 /** Codes tried before creating a room gives up; with 31^6 codes a second collision is already unlikely. */
@@ -14,11 +15,13 @@ const CLAIM_ATTEMPTS = 5;
 const CREATED = 201;
 const FORBIDDEN = 403;
 const NOT_FOUND = 404;
+const TOO_MANY_REQUESTS = 429;
 const UNAVAILABLE = 503;
 
 /**
  * `POST /api/rooms`: claims a fresh code and answers 201 `{ code }`, 503 `{ error }` when every
- * code tried was taken or a room failed to answer, or 403 `{ error }` for a page on another site.
+ * code tried was taken or a room failed to answer, 429 `{ error, reason: 'quota' }` when the
+ * account's quota is exhausted, or 403 `{ error }` for a page on another site.
  */
 export async function createRoom(request: Request, env: Env): Promise<Response> {
   if (!allowedOrigin(request)) return jsonResponse(FORBIDDEN, { error: 'Rooms can only be created from this site.' });
@@ -27,8 +30,12 @@ export async function createRoom(request: Request, env: Env): Promise<Response> 
     if (code !== null) return jsonResponse(CREATED, { code } satisfies Created);
     return jsonResponse(UNAVAILABLE, { error: `No free room code after ${CLAIM_ATTEMPTS} tries. Try again.` });
   } catch (error) {
-    // The error model answers 503, never 500, so the page can show "unavailable".
     console.error('api: claiming a room code failed', error);
+    if (isQuotaError(error))
+      return jsonResponse(TOO_MANY_REQUESTS, {
+        error: 'The room service has reached its usage limit.',
+        reason: 'quota',
+      });
     return jsonResponse(UNAVAILABLE, { error: 'The room service could not create a room. Try again.' });
   }
 }
@@ -36,7 +43,7 @@ export async function createRoom(request: Request, env: Env): Promise<Response> 
 /**
  * `GET /api/rooms/<code>` with `Upgrade: websocket`: passes the upgrade to the room's Durable
  * Object. A page on another site, a code that cannot exist, or a room that fails to answer gets a
- * socket closed with `origin`, `unknownRoom` or `unavailable` instead.
+ * socket closed with `origin`, `unknownRoom`, `quota` or `unavailable` instead.
  */
 export async function joinRoom(request: Request, env: Env, code: string): Promise<Response> {
   if (!allowedOrigin(request)) return refuseSocket(CLOSE.origin, 'origin');
@@ -46,6 +53,7 @@ export async function joinRoom(request: Request, env: Env, code: string): Promis
   } catch (error) {
     // Refusals are close codes, never HTTP errors: a failed upgrade logs a console error in the browser.
     console.error(`api: room ${code} failed to take a join`, error);
+    if (isQuotaError(error)) return refuseSocket(CLOSE.quota, 'quota');
     return refuseSocket(CLOSE.unavailable, 'unavailable');
   }
 }

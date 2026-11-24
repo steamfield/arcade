@@ -175,6 +175,7 @@ The relay for online races, a separate Worker (`arcade-api`) the site forwards `
 | `apps/api/src/origin.ts` | `allowedOrigin`: which pages may use the service. |
 | `apps/api/src/codes.ts` | `randomRoomCode`. |
 | `apps/api/src/routes.ts` | The Worker's routes: `createRoom` (claims a code), `joinRoom` (hands the upgrade to the `Room`), 404 JSON. |
+| `apps/api/src/quota.ts` | Classifies account quota errors from Durable Objects. |
 | `apps/api/src/room.ts` | The `Room` Durable Object: claim, join, relay, race phase, kick, limits, idle alarm. |
 | `apps/api/src/peers.ts` | The room's peers read from socket attachments: host, phase, join order, and `joinRefusal`. |
 | `apps/api/src/traffic.ts` | The room's only in-memory state: per-peer heard times and message rates; `kickSilenceMs`. |
@@ -183,6 +184,8 @@ The relay for online races, a separate Worker (`arcade-api`) the site forwards `
 | `apps/api/src/forward.ts` | The site Worker's script: forwards `/api/*` to the API Worker through the service binding; a 503 JSON error when the binding throws. |
 | `apps/api/test/room-kit.ts` | Test kit: starts the real Worker in-process through wrangler, creates rooms over HTTP, opens real WebSockets; waits on events with deadlines. |
 | `apps/api/test/rooms.test.ts` | Creating and joining rooms: codes, the origin rule, every refusal. |
+| `apps/api/test/failing-room.mjs` | Worker fixture that runs the real routes against a Room binding that throws. |
+| `apps/api/test/quota.test.ts` | Account quota, object overload and unrelated error messages. |
 | `apps/api/test/relay.test.ts` | What the room passes between peers, and how start, end and departures move its phase and host. |
 | `apps/api/test/kick.test.ts` | When the room honours a `kick`: only between racers, only after the silence window. |
 | `apps/api/test/limits.test.ts` | The size and rate limits. |

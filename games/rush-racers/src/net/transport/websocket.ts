@@ -6,7 +6,7 @@ import { CLOSE, CREATE_ROOM_PATH, CreatedSchema, PING, PONG, roomSocketPath } fr
 import type { CloseReason, ConnectionEvent, RoomConnection } from './types.ts';
 
 /** How creating a room went. */
-export type CreateRoomResult = { ok: true; code: string } | { ok: false };
+export type CreateRoomResult = { ok: true; code: string } | { ok: false; reason: 'unavailable' | 'quota' };
 
 /** Milliseconds between round-trip measurements while the socket is open. */
 export const PING_EVERY_MS = 2000;
@@ -27,21 +27,26 @@ const REASON_BY_CODE: Readonly<Record<number, CloseReason>> = {
   [CLOSE.limit]: 'unavailable',
   [CLOSE.idle]: 'unavailable',
   [CLOSE.origin]: 'unavailable',
+  [CLOSE.quota]: 'quota',
 };
 
 /**
- * Asks the room service for a new room. Resolves to `{ ok: false }` when the service is
+ * Asks the room service for a new room. Resolves with a failure reason when the service is
  * unreachable, refuses or answers with anything but a code; it never rejects.
  */
-export async function createRoom(): Promise<CreateRoomResult> {
+async function requestRoom(recordQuota: () => void): Promise<CreateRoomResult> {
   try {
     const response = await fetch(CREATE_ROOM_PATH, { method: 'POST' });
-    if (!response.ok) return { ok: false };
+    if (response.status === 429) {
+      recordQuota();
+      return { ok: false, reason: 'quota' };
+    }
+    if (!response.ok) return { ok: false, reason: 'unavailable' };
     const created = CreatedSchema.safeParse(await response.json());
-    return created.success ? { ok: true, code: created.data.code } : { ok: false };
+    return created.success ? { ok: true, code: created.data.code } : { ok: false, reason: 'unavailable' };
   } catch {
     // Unreachable or an unreadable body: the caller only needs to know there is no room.
-    return { ok: false };
+    return { ok: false, reason: 'unavailable' };
   }
 }
 
@@ -61,7 +66,7 @@ function parseJson(text: string): unknown {
  * the page is visible, it closes the socket and queues `closed` with reason `lost`. A hidden tab is
  * not checked, since browsers throttle its timers, and the clock restarts when it shows again.
  */
-export function connectToRoom(code: string, build: string): RoomConnection {
+function openRoomSocket(code: string, build: string, recordQuota: () => void): RoomConnection {
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const socket = new WebSocket(`${scheme}//${location.host}${roomSocketPath(code, build)}`);
   socket.binaryType = 'arraybuffer';
@@ -128,6 +133,7 @@ export function connectToRoom(code: string, build: string): RoomConnection {
   socket.addEventListener('close', (event: CloseEvent) => {
     clearInterval(pinger);
     document.removeEventListener('visibilitychange', onVisibilityChange);
+    if (event.code === CLOSE.quota) recordQuota();
     if (closedByUs) return;
     const reason = opened ? (REASON_BY_CODE[event.code] ?? 'lost') : 'unavailable';
     queue.push({ kind: 'closed', reason });
@@ -142,6 +148,33 @@ export function connectToRoom(code: string, build: string): RoomConnection {
     poll: () => queue.splice(0),
     close() {
       if (!closedByUs) end('left');
+    },
+  };
+}
+
+/** The room transport shared for the lifetime of a game page. */
+export function createRoomTransport(now: () => number = Date.now) {
+  let resetAt: number | null = null;
+
+  function recordQuota(): void {
+    resetAt = new Date(now()).setUTCHours(24, 0, 0, 0);
+  }
+
+  function quotaBlockedUntil(): number | null {
+    if (resetAt !== null && now() >= resetAt) resetAt = null;
+    return resetAt;
+  }
+
+  return {
+    quotaBlockedUntil,
+    async createRoom(): Promise<CreateRoomResult> {
+      if (quotaBlockedUntil() !== null) return { ok: false, reason: 'quota' };
+      return requestRoom(recordQuota);
+    },
+    connectToRoom(code: string, build: string): RoomConnection {
+      if (quotaBlockedUntil() === null) return openRoomSocket(code, build, recordQuota);
+      const queue: ConnectionEvent[] = [{ kind: 'closed', reason: 'quota' }];
+      return { send() {}, poll: () => queue.splice(0), close() {} };
     },
   };
 }

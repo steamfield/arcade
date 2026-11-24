@@ -2,6 +2,7 @@
  * Creating rooms and joining them: codes, the origin rule and every refusal, through the real
  * Worker and real sockets.
  */
+import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { CLOSE, PROTOCOL_VERSION, ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '../src/protocol.ts';
 import {
@@ -15,6 +16,7 @@ import {
 } from './room-kit.ts';
 
 const FOREIGN_ORIGIN = 'https://elsewhere.example';
+const FAILING_ROOM = fileURLToPath(new URL('./failing-room.mjs', import.meta.url));
 
 let service: RoomService;
 
@@ -34,6 +36,28 @@ test('create returns a six-character code from the alphabet', async () => {
   expect(Object.keys(body)).toEqual(['code']);
   expect(body.code).toHaveLength(ROOM_CODE_LENGTH);
   expect([...body.code].every((character) => ROOM_CODE_ALPHABET.includes(character))).toBe(true);
+});
+
+test.each([
+  ['Exceeded the free tier daily request limit for Durable Objects.', 429, { reason: 'quota' }, 4009, 'quota'],
+  [
+    'Durable Object is overloaded. Too many requests for the same object (limit reached).',
+    503,
+    {},
+    CLOSE.unavailable,
+    'unavailable',
+  ],
+])('reports a Room failure on create and join (%s)', async (message, status, body, code, reason) => {
+  const failing = await startRoomService({ ROOM_FAILURE: message }, FAILING_ROOM);
+  try {
+    const response = await postCreateRoom(failing);
+    const close = await openSocket(failing, 'ABCDEF').closed;
+
+    expect.soft([response.status, await response.json()]).toEqual([status, { error: expect.any(String), ...body }]);
+    expect(close).toEqual({ code, reason, opened: true });
+  } finally {
+    await failing.dispose();
+  }
 });
 
 test('create from a foreign origin is 403 and a join from one is closed with origin', async () => {
