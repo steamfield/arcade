@@ -870,8 +870,8 @@ export interface World {
   twists: Twist[];
   /** One state per `level.crumbles` entry, in order (`setpieces/crumbles.ts`). */
   crumbles: CrumbleState[];
-  /** Pool index at each occupied racer's centre last tick. Only whirlpool levels keep this record. */
-  whirlpoolOccupants?: Partial<Record<RacerId, number>>;
+  /** Pool index for each racer whose centre was inside a whirlpool last tick (`setpieces/whirlpools.ts`). */
+  whirlpoolRiders: Partial<Record<RacerId, number>>;
   /** Tile indices of crumbling branches that are down. Only `setpieces/crumbles.ts` changes it. */
   fallen: ReadonlySet<number>;
   /** Racers a cloud cannon holds, is firing, or is reloading for (`setpieces/cannons.ts`). */

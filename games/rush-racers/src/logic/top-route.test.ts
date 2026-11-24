@@ -26,8 +26,9 @@ const TOP_ROUTE_MARGIN_TICKS = 300;
  * when the course gained its geyser vents, which push whoever is in an eruption and so move the rivals,
  * and again when the world gained `twists` for the world item twists (with it left out, every pin hashes to the values before it),
  * and again when the world gained `crumbles`, `fallen`, `cannonRides` and `warps` for the long courses' set pieces.
+ * The world now always hashes `whirlpoolRiders`, even on courses without whirlpools.
  */
-const TOP_ROUTE_HASH = 3800126978;
+const TOP_ROUTE_HASH = 3729058530;
 
 /**
  * `hashWorld` at the end of `busyRace` on each level. The top route never dashes or uses an item,
@@ -44,11 +45,12 @@ const TOP_ROUTE_HASH = 3800126978;
  * the racers in their columns, so every race here plays out differently from then on, and again
  * when the world gained `twists` for the world item twists (with it left out, every pin hashes to the values before it),
  * and again when the world gained `crumbles`, `fallen`, `cannonRides` and `warps`.
+ * The world now always hashes `whirlpoolRiders`, even on courses without whirlpools.
  */
 const BUSY_RACE_HASHES: readonly [Difficulty, number][] = [
-  ['easy', 357194412],
-  ['normal', 4020535258],
-  ['hard', 2020514956],
+  ['easy', 2896676750],
+  ['normal', 2855408392],
+  ['hard', 3357044914],
 ];
 
 const KICK_EVERY_TICKS = 45;

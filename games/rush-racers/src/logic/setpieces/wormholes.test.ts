@@ -38,28 +38,34 @@ function playerWarps(log: EventLog<GameEvent>) {
 
 describe('parsing wormholes', () => {
   it.each([
-    ['off the map', [{ ...PAIR, a: [-1, 2] }], 2, -1, "Wormhole 0's mouth is off the map"],
-    ['on rock', [{ ...PAIR, b: [16, 0] }], 0, 16, "Wormhole 0's mouth needs an open tile"],
+    [
+      'off the map',
+      [{ ...PAIR, a: [-1, 2] }],
+      2,
+      -1,
+      'Wormhole 0 mouth a: expected integer coordinates in cols 0–23 and rows 0–6, got (-1, 2)',
+    ],
+    ['on rock', [{ ...PAIR, b: [16, 0] }], 0, 16, 'Wormhole 0 mouth b: expected an open tile, got rock'],
     [
       'under four tiles from its pair',
       [{ ...PAIR, b: [9, 3] }],
       3,
       9,
-      "Wormhole 0's mouths are 3.2 tiles apart and need at least 4",
+      'Wormhole 0 mouth spacing: expected at least 4 tiles between mouths, got 3.2 tiles',
     ],
     [
       'under three tiles from another pair',
       [PAIR, { a: [8, 3], b: [19, 4], oneWay: true }],
       3,
       8,
-      "Wormhole 1's mouth is 2.2 tiles from wormhole 0's and needs at least 3",
+      'Wormhole 1 spacing from wormhole 0: expected at least 3 tiles between mouths, got 2.2 tiles',
     ],
   ] satisfies [string, WormholeDef[], number, number, string][])(
     'locates a mouth %s',
     (_name, defs, row, col, message) => {
       const parse = () => parseLevel(belt(defs));
       expect(parse).toThrow(LevelError);
-      expect(parse).toThrow(expect.objectContaining({ row, col, message: expect.stringContaining(message) }));
+      expect(parse).toThrow(expect.objectContaining({ row, col, message: `${message} at row ${row}, col ${col}` }));
     },
   );
 });

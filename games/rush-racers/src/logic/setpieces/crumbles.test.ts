@@ -52,18 +52,44 @@ function step(world: World, log: EventLog<GameEvent>, ticks = 1): void {
 }
 
 describe('crumble definitions', () => {
+  const bounds = 'tile: expected integer coordinates in cols 0–11 and rows 0–6';
   it.each([
-    { defs: [{ ...BRANCH, col: -1 }], reason: /off the map/, row: 3, col: -1 },
-    { defs: [{ ...BRANCH, row: 7 }], reason: /off the map/, row: 7, col: 5 },
-    { defs: [{ ...BRANCH, col: 11 }], reason: /off the map/, row: 3, col: 12 },
-    { defs: [{ ...BRANCH, length: 4 }], reason: /ledge/, row: 3, col: 8 },
-    { defs: [{ ...BRANCH, length: 0 }], reason: /length/, row: 3, col: 5 },
-    { defs: [{ ...BRANCH, length: 13 }], reason: /length/, row: 3, col: 5 },
-    { defs: [{ ...BRANCH, length: 1.5 }], reason: /length/, row: 3, col: 5 },
-    { defs: [BRANCH, { col: 7, row: 3, length: 1 }], reason: /overlap/, row: 3, col: 7 },
+    { defs: [{ ...BRANCH, col: -1 }], reason: `Crumbling branch 0 ${bounds}, got (-1, 3)`, row: 3, col: -1 },
+    { defs: [{ ...BRANCH, row: 7 }], reason: `Crumbling branch 0 ${bounds}, got (5, 7)`, row: 7, col: 5 },
+    { defs: [{ ...BRANCH, col: 11 }], reason: `Crumbling branch 0 ${bounds}, got (12, 3)`, row: 3, col: 12 },
+    {
+      defs: [{ ...BRANCH, length: 4 }],
+      reason: 'Crumbling branch 0 tile: expected a ledge, got water',
+      row: 3,
+      col: 8,
+    },
+    {
+      defs: [{ ...BRANCH, length: 0 }],
+      reason: 'Crumbling branch 0 length: expected an integer in 1–12, got 0',
+      row: 3,
+      col: 5,
+    },
+    {
+      defs: [{ ...BRANCH, length: 13 }],
+      reason: 'Crumbling branch 0 length: expected an integer in 1–12, got 13',
+      row: 3,
+      col: 5,
+    },
+    {
+      defs: [{ ...BRANCH, length: 1.5 }],
+      reason: 'Crumbling branch 0 length: expected an integer in 1–12, got 1.5',
+      row: 3,
+      col: 5,
+    },
+    {
+      defs: [BRANCH, { col: 7, row: 3, length: 1 }],
+      reason: 'Crumbling branch 1 tile: expected an unclaimed ledge, got a ledge already claimed by a crumbling branch',
+      row: 3,
+      col: 7,
+    },
   ])('reports $reason at row $row, col $col', ({ defs, reason, row, col }) => {
     expect(() => createWorld(branchCourse(defs), new EventLog<GameEvent>(), { seed: 1 })).toThrow(
-      expect.objectContaining({ name: LevelError.name, message: expect.stringMatching(reason), row, col }),
+      expect.objectContaining({ name: LevelError.name, message: `${reason} at row ${row}, col ${col}`, row, col }),
     );
   });
 });

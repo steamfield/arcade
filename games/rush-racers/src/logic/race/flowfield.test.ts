@@ -1,10 +1,14 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { steerDirection } from '../ai/steer.ts';
 import { DEFAULT_COURSE, levelOf } from '../courses/index.ts';
+import type { GameEvent } from '../events.ts';
 import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
 import { buildSwimNav, validateSwimLevel } from '../media/swim/nav.ts';
+import { courseFromLevel, placeOnTile, racerOf, step } from '../test-world.ts';
 import { type Body, type Level, RACER_SIZE, TILE } from '../types.ts';
+import { createWorld } from '../world.ts';
 import { buildProgressField, distancesToFinish, type EntryCost, progressAt } from './flowfield.ts';
 
 /** A four-lane straight with one column (x = 3) of `fill`. The finish is at x = 6. */
@@ -333,5 +337,37 @@ describe('progress across a wall only a wormhole crosses', () => {
     expect(at(progress, level, 1, 2)).toBeGreaterThan(at(progress, level, 2, 2) ?? 0);
     expect(at(progress, level, 2, 2)).toBeGreaterThan(at(progress, level, 3, 2) ?? 0);
     expect(at(progress, level, 3, 2)).toBeGreaterThan(at(progress, level, 8, 2) ?? 0);
+  });
+
+  it('charges only the warp onto the finish column and one extra step from beside it', () => {
+    for (const [exitCol, distance] of [
+      [10, 1],
+      [9, 2],
+    ] as const) {
+      const course = courseFromLevel(
+        {
+          name: 'wormhole at the finish',
+          ascii: `
+          ############
+          #1...#.....#
+          #2...#....F#
+          #3...#.....#
+          #4...#.....#
+          ############
+        `,
+          wormholes: [{ a: [3, 2], b: [exitCol, 2], oneWay: false }],
+        },
+        'drift',
+      );
+      const log = new EventLog<GameEvent>();
+      const world = createWorld(course, log, { seed: 1 });
+      world.race.phase = 'racing';
+      const player = racerOf(world, 'player');
+      expect(at(world.progress.distance, world.level, 3, 2)).toBe(distance);
+
+      placeOnTile(player, 3, 2);
+      step(world, log);
+      expect(player.finished !== null).toBe(exitCol === world.level.finishX);
+    }
   });
 });
