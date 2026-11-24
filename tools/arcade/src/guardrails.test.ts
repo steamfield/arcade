@@ -26,14 +26,18 @@ interface CrossFolderImport {
   resolved: string;
 }
 
-// Matches `... from '<x>'`, `import('<x>')` and side-effect `import '<x>'`.
-const IMPORT_SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)['"]([^'"]+)['"]/g;
+// Matches `... from '<x>'`, `import('<x>')` and side-effect `import '<x>'` in
+// group 1, and `import(\`<x>\`)` in group 2. For a template literal only the
+// static prefix before any `${` is captured, which is enough to see where the
+// path climbs to.
+const IMPORT_SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)['"]([^'"]+)['"]|\bimport\s*\(\s*`([^`$]*)/g;
+const SCANNED_EXTENSIONS = /\.(m|c)?[jt]sx?$/;
 
 const SCANNED_TOPS = ['games', 'templates'] as const;
 const SCANNED_SUBS = ['src', 'scenarios', 'tests'] as const;
 
 function importSpecifiers(source: string): string[] {
-  return [...source.matchAll(IMPORT_SPECIFIER)].map((match) => match[1] ?? '');
+  return [...source.matchAll(IMPORT_SPECIFIER)].map((match) => match[1] ?? match[2] ?? '');
 }
 
 /** `games/<slug>` or `templates/<name>`: the folder a file may import within. */
@@ -65,7 +69,7 @@ function describeCrossings(crossings: CrossFolderImport[]): string[] {
 }
 
 function isScannedSource(relativePath: string): boolean {
-  return relativePath.endsWith('.ts') && !relativePath.split('/').includes('node_modules');
+  return SCANNED_EXTENSIONS.test(relativePath) && !relativePath.split('/').includes('node_modules');
 }
 
 function collectGameSources(): SourceFile[] {
@@ -99,6 +103,8 @@ describe('import boundaries', () => {
           "import type { Car } from '../../../beta/src/logic/car';",
           "import '../../../../templates/phaser-2d/src/styles';",
           "const level = await import('../levels/one');",
+          // biome-ignore lint/suspicious/noTemplateCurlyInString: this line is source text holding a template literal
+          'const track = await import(`../../../beta/src/tracks/${level.name}.ts`);',
         ].join('\n'),
       },
     ];
@@ -106,11 +112,17 @@ describe('import boundaries', () => {
     expect(describeCrossings(findCrossFolderImports(files))).toEqual([
       'games/alpha/src/logic/world.ts: ../../../beta/src/logic/car -> games/beta/src/logic/car',
       'games/alpha/src/logic/world.ts: ../../../../templates/phaser-2d/src/styles -> templates/phaser-2d/src/styles',
+      'games/alpha/src/logic/world.ts: ../../../beta/src/tracks/ -> games/beta/src/tracks/',
     ]);
   });
 
   it('no game or template imports a relative path outside its own folder', () => {
-    const crossings = describeCrossings(findCrossFolderImports(collectGameSources()));
+    const sources = collectGameSources();
+    // Guards against a vacuous pass if ROOT or the scanned folders move.
+    expect(sources.map((file) => file.path)).toEqual(
+      expect.arrayContaining(['games/rush-racers/src/main.ts', 'templates/phaser-2d/src/main.ts']),
+    );
+    const crossings = describeCrossings(findCrossFolderImports(sources));
     expect(crossings, 'Games never import other games. Move shared code into a package').toEqual([]);
   });
 });
