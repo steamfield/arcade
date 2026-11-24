@@ -12,9 +12,9 @@
  */
 import { parseArgs } from 'node:util';
 import { BOT_PROFILES } from '../src/logic/ai/profiles.ts';
+import { parBand } from '../src/logic/balance/hard-bars.ts';
+import { meanPlayerFinish, type Run, race, seconds } from '../src/logic/balance/race-bots.ts';
 import { courseById } from '../src/logic/courses/index.ts';
-import { parBand } from '../src/logic/difficulty/hard-bars.ts';
-import { meanPlayerFinish, type Run, race, seconds } from '../src/logic/difficulty/race-bots.ts';
 import { CHARACTER_IDS, type CharacterId, DIFFICULTIES, type Difficulty } from '../src/logic/types.ts';
 
 const USAGE = 'usage: node scripts/measure.ts <par|race> <course> [--seeds N] [--bot B] [--difficulty D] [--char a,b]';

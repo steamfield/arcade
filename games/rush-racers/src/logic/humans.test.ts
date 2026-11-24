@@ -5,9 +5,9 @@
 import { createRng, EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES, PLAYER_PROFILE } from './ai/profiles.ts';
+import { botDriver } from './balance/bot-driver.ts';
 import { CHARACTERS, pickRivals } from './characters.ts';
 import { DEFAULT_COURSE } from './courses/index.ts';
-import { botDriver } from './difficulty/bot-driver.ts';
 import type { GameEvent } from './events.ts';
 import { hashWorld } from './hash.ts';
 import { COUNTDOWN_TICKS, DNF_GRACE_TICKS } from './race/standings.ts';

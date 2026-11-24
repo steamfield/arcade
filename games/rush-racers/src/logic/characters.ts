@@ -49,7 +49,7 @@ export interface Character {
  * `reactionTicks / itemAggression` ticks on average (`ai/items.ts`). Rivals use most of what they
  * get, so clam supply more than eagerness limits how often they fire: a rival rolls up to two
  * items from a clam (`CLAM.rivalRolls`). On Normal each character's median as a rival is 6-9.5 uses
- * a race (`difficulty/rival-items.ts`, 40 races each), inside the 5-10 band; Gil went 0.4 -> 0.3
+ * a race (`balance/rival-items.ts`, 40 races each), inside the 5-10 band; Gil went 0.4 -> 0.3
  * (he was at the 10 ceiling) and Streak 0.4 -> 0.5 (5.5, near the floor) to keep room on both sides.
  */
 export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {

@@ -6,8 +6,8 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../../ai/profiles.ts';
+import { race } from '../../balance/race-bots.ts';
 import { courseById } from '../../courses/index.ts';
-import { race } from '../../difficulty/race-bots.ts';
 import type { GameEvent } from '../../events.ts';
 import { courseFromLevel, hold, placeOnTile, racerOf } from '../../test-world.ts';
 import { CHARACTER_IDS, type Racer, TILE, type World } from '../../types.ts';
