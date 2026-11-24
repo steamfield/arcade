@@ -7,6 +7,8 @@
  * racers halfway from start to finish; `near-finish` 30 m before the finish line; `before-pit` 25 m
  * before the first full-width pit; `before-log` 20 m before the first log. Every stage skips the
  * countdown.
+ *
+ * Also parses `?character=`, the other launch param that changes how the race starts.
  */
 import type { Logger } from '@arcade/core';
 import { groundY } from '../logic/course.ts';
