@@ -176,7 +176,7 @@ test('on Thunderhead Pass a tap of the on-screen Up button flaps @touch', async 
  * world gained `twists`, and again when it gained the long courses' set-piece state, and again when Sunlit gained The
  * Maelstrom and `TOP_ROUTE` was re-recorded through it.
  */
-const TOP_ROUTE_BROWSER_HASH = 1567330866;
+const TOP_ROUTE_BROWSER_HASH = 1757047396;
 
 test('a finished race is saved and its best time shows on the title after a reload', async ({ game }) => {
   test.slow(true, 'swims the whole course, about 250 input steps');

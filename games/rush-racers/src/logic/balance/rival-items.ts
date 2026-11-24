@@ -11,6 +11,8 @@
  * Measured at v2 phase 4 (two clam rolls for a rival, `CLAM.rivalRolls`) on Sunlit Shallows over
  * these races, median uses per race: Rudy 7.5, Gil 9.5, Streak 6, Onyx 7, Nib 8, Baron 6.5,
  * Selene 6, Rook 9. With three rolls Nib reached 14 and Rook 12; with one, the median rival used 4.
+ * Remeasured after the long-courses extension (par 132 s to 154.5 s, Normal rivals pacing 2 tiles
+ * back): Rudy 7.5, Gil 9, Streak 5, Onyx 6, Nib 12, Baron 9, Selene 7.5, Rook 9.
  * Every kind fires in these races. Test-only.
  */
 import { EventLog } from '@arcade/core';
@@ -27,9 +29,11 @@ const RACES = 40;
 
 /**
  * A rival's median item uses per race on Normal must fall in this band: busy, but not a blur. The
- * floor was 5 until the harder course (surface section, cave) took Selene's median to 4.5.
+ * floor was 5 until the harder course (surface section, cave) took Selene's median to 4.5. The cap
+ * was 10 until the course grew from 132 s to 154.5 s par: Nib, the hoarder (item aggression 1, a
+ * four-item pocket), went from 8 to 12, one item every 13 s, the rate 10 allowed on the shorter race.
  */
-const USES_BAND = { min: 4.5, max: 10 } as const;
+const USES_BAND = { min: 4.5, max: 12 } as const;
 
 /** Each band races at most its RACES seeds; the kinds check reuses the bands' races. */
 const RACES_TIMEOUT_MS = racesTimeoutMs(RACES);
