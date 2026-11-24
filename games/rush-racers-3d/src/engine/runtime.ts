@@ -145,12 +145,19 @@ export class Runtime {
     const tick = this.step.tick;
     this.events.tick = tick;
     const frame = this.options.readInput();
-    if (this.scene === 'race') {
-      stepWorld(this.world, { player: frame.race }, dt);
-      if (this.world.phase === 'finished') this.showResults(tick);
-    } else if (frame.confirmPressed && tick - this.resultsTick >= RESULTS_CONFIRM_DELAY_TICKS) {
-      this.newRace();
-      this.events.emit({ type: 'race.restarted' });
+    switch (this.scene) {
+      case 'race':
+        stepWorld(this.world, { player: frame.race }, dt);
+        if (this.world.phase === 'finished') this.showResults(tick);
+        break;
+      case 'results':
+        if (frame.confirmPressed && tick - this.resultsTick >= RESULTS_CONFIRM_DELAY_TICKS) {
+          this.newRace();
+          this.events.emit({ type: 'race.restarted' });
+        }
+        break;
+      default:
+        this.scene satisfies never;
     }
     this.options.afterTick(this.world);
   }

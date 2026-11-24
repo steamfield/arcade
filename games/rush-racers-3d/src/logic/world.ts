@@ -4,7 +4,7 @@
  *
  * `race.countdown` fires on steps 0, 60 and 120. Step `RACE.countdownTicks` starts the race and
  * runs its first racing tick. On each racing tick, `raceTicks` counts up, then each racer in
- * `racers` order takes `stepRacer` with its input. The race ends (`race.ended`, phase `finished`)
+ * `racers` order takes `stepRacer` with its input, and `racer.finished` fires for one that just crossed. The race ends (`race.ended`, phase `finished`)
  * when the player finishes (phase 1) or at `RACE.limitTicks`. A finished world ignores input.
  */
 import { type EventSink, TICK_HZ } from '@arcade/core';
@@ -67,7 +67,13 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
   }
   world.tick++;
   world.raceTicks++;
-  for (const racer of world.racers) stepRacer(racer, inputs[racer.id] ?? NO_INPUT, world, dt);
+  const { course, events, raceTicks } = world;
+  for (const racer of world.racers) {
+    const wasFinished = racer.state === 'finished';
+    stepRacer(racer, inputs[racer.id] ?? NO_INPUT, { course, events, raceTicks, speedMul: 1 }, dt);
+    if (!wasFinished && racer.state === 'finished')
+      events.emit({ type: 'racer.finished', id: racer.id, ticks: raceTicks });
+  }
   if (playerOf(world).state === 'finished' || world.raceTicks >= RACE.limitTicks) {
     world.phase = 'finished';
     world.events.emit({ type: 'race.ended', ticks: world.raceTicks });

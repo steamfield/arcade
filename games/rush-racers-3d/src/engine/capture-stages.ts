@@ -4,14 +4,14 @@
  * honoured only with `?debug=1` or in test mode, and the runtime refuses to save a staged world.
  *
  * The names, each derived from the course so it follows a retuned layout: `mid-course` puts the
- * player halfway from start to finish; `near-finish` 30 m before the finish line; `before-pit` 25 m
+ * racers halfway from start to finish; `near-finish` 30 m before the finish line; `before-pit` 25 m
  * before the first full-width pit; `before-log` 20 m before the first log. Every stage skips the
  * countdown.
  */
 import type { Logger } from '@arcade/core';
 import { groundY } from '../logic/course.ts';
+import { RACE } from '../logic/tuning.ts';
 import type { Course, World } from '../logic/types.ts';
-import { playerOf } from '../logic/world.ts';
 
 /** Every stage name `applyStage` knows. */
 export const STAGES = ['mid-course', 'near-finish', 'before-pit', 'before-log'] as const;
@@ -58,13 +58,19 @@ export function stageS(course: Course, stage: StageName): number {
   }
 }
 
-/** Writes the stage's state into `world`: the race already running, the player at the stage's spot. Call it once, right after the world is built. */
+/**
+ * Writes the stage's state into `world`: the race already running, every racer at the stage's spot
+ * in its own grid lane. Call it once, right after the world is built.
+ */
 export function applyStage(world: World, stage: StageName): void {
-  const player = playerOf(world);
   world.phase = 'racing';
-  world.tick = 180;
+  world.tick = RACE.countdownTicks;
   world.raceTicks = 1;
-  player.s = stageS(world.course, stage);
-  player.safeS = player.s;
-  player.y = groundY(world.course, player.s);
+  const s = stageS(world.course, stage);
+  for (const racer of world.racers) {
+    racer.s = s;
+    racer.safeS = s;
+    racer.safeD = racer.d;
+    racer.y = groundY(world.course, s);
+  }
 }

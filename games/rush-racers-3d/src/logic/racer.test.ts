@@ -25,7 +25,7 @@ const dash = { ...forward, dashPressed: true };
 const pit: Feature = { kind: 'pit', s0: 30, s1: 38, d0: -5, d1: 5 };
 const log: Feature = { kind: 'log', s: 30, d0: -5, d1: 5, height: 0.8 };
 
-function start(patch: Partial<Course> = {}, startingPose: Partial<Racer> = {}) {
+function start(patch: Partial<Course> = {}, startingPose: Partial<Racer> = {}, speedMul = 1) {
   const course = { ...straight, ...patch };
   const world = createWorld(new EventLog<GameEvent>(), { course, seed: 1, character: 'grit', rivals: false });
   const racer = Object.assign(playerOf(world), startingPose);
@@ -33,7 +33,7 @@ function start(patch: Partial<Course> = {}, startingPose: Partial<Racer> = {}) {
   function advance(ticks: number, input: TickInput = NO_INPUT) {
     for (let i = 0; i < ticks; i++) {
       events.tick++;
-      stepRacer(racer, input, { course, events, raceTicks: events.tick }, TICK_DT);
+      stepRacer(racer, input, { course, events, raceTicks: events.tick, speedMul }, TICK_DT);
     }
   }
   return { course, racer, events, advance };
@@ -54,6 +54,15 @@ it('accelerates to running speed, coasts down on release and brakes faster witho
   advance(1, forward);
   advance(100);
   expect(racer.vs).toBe(0);
+});
+
+it('runs at its own top speed under a speed multiplier and caps mud from that speed', () => {
+  const fast = start({}, {}, 1.1);
+  fast.advance(120, forward);
+  expect(fast.racer.vs).toBeCloseTo(RUN.runSpeed * 1.1);
+  const muddy = start({ features: [{ kind: 'mud', s0: 0, s1: 200, d0: -5, d1: 5 }] }, {}, 1.1);
+  muddy.advance(120, forward);
+  expect(muddy.racer.vs).toBeCloseTo(RUN.runSpeed * 1.1 * RUN.mudSpeedMul);
 });
 
 it.each([-1, 1])('steers at a capped speed and stops at the track edge (%s)', (side) => {

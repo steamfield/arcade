@@ -1,7 +1,8 @@
 /**
  * One racer's movement for one tick: running, braking, steering, jumping, dashing, the dash meter,
  * the course's features (hills, pits, mud, gusts, logs), falling and respawning, and the finish
- * line. Emits the racer's own events. Knows nothing about other racers or the race phase.
+ * line. Emits the racer's own events except `racer.finished`, which `stepWorld` emits because only it
+ * knows the standings. Knows nothing about other racers or the race phase.
  */
 import type { EventSink } from '@arcade/core';
 import { groundY, type LogFeature, logAt, pitAt, surfaceAt } from './course.ts';
@@ -22,11 +23,15 @@ export const NO_INPUT: TickInput = {
   prevPressed: false,
 };
 
-/** What `stepRacer` needs besides the racer: the course, the events sink, and race ticks so far (for `finishTicks`). */
+/**
+ * What `stepRacer` needs besides the racer: the course, the events sink, race ticks so far (for
+ * `finishTicks`), and `speedMul`, which scales this racer's top run speed (1 for the player).
+ */
 export interface RacerContext {
   course: Course;
   events: EventSink<GameEvent>;
   raceTicks: number;
+  speedMul: number;
 }
 
 /** Advances `racer` by one tick of `input` while the race is running. A finished racer is left alone. */
@@ -46,17 +51,18 @@ export function stepRacer(racer: Racer, input: TickInput, ctx: RacerContext, dt:
   const { course } = ctx;
   const surface = surfaceAt(course, racer.s, racer.d);
   const inMud = surface.kind === 'mud' && isOnGround(racer, groundY(course, racer.s));
-  run(racer, input, ctx, inMud, dt);
+  const top = RUN.runSpeed * ctx.speedMul;
+  run(racer, input, ctx, top, inMud, dt);
   const steer = Math.max(-1, Math.min(1, input.steer)) * RUN.steerSpeed;
   const steerStep = RUN.steerAccel * dt;
   racer.vd += Math.max(-steerStep, Math.min(steerStep, steer - racer.vd));
 
   move(racer, ctx, surface.push, input.jumpHeld, dt);
   if (racer.state !== 'racing') return;
-  const mudSpeed = RUN.runSpeed * RUN.mudSpeedMul;
+  const mudSpeed = top * RUN.mudSpeedMul;
   if (
     racer.vs > mudSpeed &&
-    racer.vs <= RUN.runSpeed &&
+    racer.vs <= top &&
     isOnGround(racer, groundY(course, racer.s)) &&
     surfaceAt(course, racer.s, racer.d).kind === 'mud'
   ) {
@@ -72,7 +78,6 @@ export function stepRacer(racer: Racer, input: TickInput, ctx: RacerContext, dt:
     racer.vs = 0;
     racer.vd = 0;
     racer.vy = 0;
-    ctx.events.emit({ type: 'racer.finished', id: racer.id, ticks: ctx.raceTicks });
   }
 }
 
@@ -84,7 +89,7 @@ function rechargeDash(racer: Racer, ctx: RacerContext): void {
   }
 }
 
-function run(racer: Racer, input: TickInput, ctx: RacerContext, mud: boolean, dt: number): void {
+function run(racer: Racer, input: TickInput, ctx: RacerContext, top: number, mud: boolean, dt: number): void {
   racer.dashTicks = Math.max(0, racer.dashTicks - 1);
   if (input.dashPressed && racer.dashCharges > 0) {
     racer.dashCharges--;
@@ -95,9 +100,9 @@ function run(racer: Racer, input: TickInput, ctx: RacerContext, mud: boolean, dt
     return;
   }
   if (input.brake) racer.vs = Math.max(0, racer.vs - RUN.brake * dt);
-  else if (racer.vs > RUN.runSpeed) racer.vs = Math.max(RUN.runSpeed, racer.vs - DASH.drag * dt);
+  else if (racer.vs > top) racer.vs = Math.max(top, racer.vs - DASH.drag * dt);
   else if (!input.forward) racer.vs = Math.max(0, racer.vs - RUN.friction * dt);
-  else racer.vs = Math.min(RUN.runSpeed * (mud ? RUN.mudSpeedMul : 1), racer.vs + RUN.accel * dt);
+  else racer.vs = Math.min(top * (mud ? RUN.mudSpeedMul : 1), racer.vs + RUN.accel * dt);
 }
 
 function jump(racer: Racer, ctx: RacerContext): void {
