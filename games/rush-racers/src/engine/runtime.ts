@@ -35,6 +35,7 @@ import {
   type World,
 } from '../logic/types.ts';
 import { createWorld, stepRace } from '../logic/world.ts';
+import { createOnlineWorld } from '../net/race-world.ts';
 import { enemyWithinHearing } from './audio/adapter.ts';
 import { withinHearing } from './audio/attack-sfx.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
@@ -52,7 +53,6 @@ import {
   type ResultsChoice,
 } from './online/flow.ts';
 import type { ScreenPress } from './online/friends-screen.ts';
-import { createOnlineWorld } from './online/race-world.ts';
 import { onlineCourses } from './online/room-courses.ts';
 import type { OnlineState } from './online/state.ts';
 import { raceProgress } from './race-progress.ts';

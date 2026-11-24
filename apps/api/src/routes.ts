@@ -2,10 +2,10 @@
  * The Worker's two routes: creating a room, and handing a join's WebSocket upgrade to its Room.
  * Both apply the origin rule first. The JSON answers for everything else live here too.
  */
-import { isRoomCode, randomRoomCode } from './codes.ts';
+import { randomRoomCode } from './codes.ts';
 import type { Env } from './index.ts';
 import { allowedOrigin } from './origin.ts';
-import { CLOSE, type Created } from './protocol.ts';
+import { CLOSE, type Created, isRoomCode } from './protocol.ts';
 import { refuseSocket } from './sockets.ts';
 
 /** Codes tried before creating a room gives up; with 31^6 codes a second collision is already unlikely. */

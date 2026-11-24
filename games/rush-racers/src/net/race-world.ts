@@ -4,11 +4,11 @@
  * characters.
  */
 import type { EventSink } from '@arcade/core';
-import { courseById } from '../../logic/courses/index.ts';
-import type { GameEvent } from '../../logic/events.ts';
-import { RACER_IDS, type World } from '../../logic/types.ts';
-import { createWorld } from '../../logic/world.ts';
-import type { StartMessage } from '../../net/messages.ts';
+import { courseById } from '../logic/courses/index.ts';
+import type { GameEvent } from '../logic/events.ts';
+import { RACER_IDS, type World } from '../logic/types.ts';
+import { createWorld } from '../logic/world.ts';
+import type { StartMessage } from './messages.ts';
 
 /**
  * A world for `start`, its events going to `events`. `humans` are the start's slots in `RACER_IDS`

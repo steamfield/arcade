@@ -11,6 +11,12 @@ export type CreateRoomResult = { ok: true; code: string } | { ok: false };
 /** Milliseconds between round-trip measurements while the socket is open. */
 export const PING_EVERY_MS = 2000;
 
+/**
+ * Ping intervals without a PONG, on a visible page, after which an open socket counts as dead. A
+ * network that drops silently never fires `close`, so this is how such a connection ends.
+ */
+export const DEAD_AFTER_PINGS = 3;
+
 /** The reason each of the room's close codes stands for; any other code is a lost connection. */
 const REASON_BY_CODE: Readonly<Record<number, CloseReason>> = {
   [CLOSE.full]: 'full',
@@ -51,7 +57,9 @@ function parseJson(text: string): unknown {
 /**
  * Opens a connection to room `code` for a page running simulation build `build`. Events are queued
  * in arrival order. It measures its round trip to the room every `PING_EVERY_MS` and queues each
- * measurement as a `ping` event.
+ * measurement as a `ping` event. When no PONG has come back for `DEAD_AFTER_PINGS` intervals while
+ * the page is visible, it closes the socket and queues `closed` with reason `lost`. A hidden tab is
+ * not checked, since browsers throttle its timers, and the clock restarts when it shows again.
  */
 export function connectToRoom(code: string, build: string): RoomConnection {
   const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -61,21 +69,48 @@ export function connectToRoom(code: string, build: string): RoomConnection {
   let opened = false;
   let closedByUs = false;
   let pingSentAt: number | null = null;
+  /** When the room last showed it was there: the socket opening, a PONG, or the page showing again. */
+  let heardAt = performance.now();
 
+  const isSilent = () => !document.hidden && performance.now() - heardAt > DEAD_AFTER_PINGS * PING_EVERY_MS;
   const pinger = setInterval(() => {
     if (socket.readyState !== WebSocket.OPEN) return;
+    if (isSilent()) {
+      end('lost');
+      return;
+    }
     pingSentAt = performance.now();
     socket.send(PING);
   }, PING_EVERY_MS);
+  const onVisibilityChange = () => {
+    if (!document.hidden) heardAt = performance.now();
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
+  /** Ends the connection from this side; `closed` with `reason` is the last event queued. */
+  function end(reason: CloseReason): void {
+    closedByUs = true;
+    clearInterval(pinger);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+    // Closing a socket still connecting logs a console error, so it is closed once it opens. If it
+    // fails or closes before then, `open` never fires and there is nothing left to close.
+    if (socket.readyState === WebSocket.CONNECTING)
+      socket.addEventListener('open', () => socket.close(), { once: true });
+    else socket.close();
+    queue.push({ kind: 'closed', reason });
+  }
 
   // Each event is queued inside its own handler, so the queue keeps the socket's arrival order.
   socket.addEventListener('open', () => {
     // After `close()` the queue already ends with `closed`, which must stay last.
     if (closedByUs) return;
     opened = true;
+    heardAt = performance.now();
     queue.push({ kind: 'open' });
   });
   socket.addEventListener('message', (event: MessageEvent) => {
+    // After we closed, the queue ends with `closed`; anything the socket still delivers is dropped.
+    if (closedByUs) return;
     if (event.data instanceof ArrayBuffer) {
       const bytes = new Uint8Array(event.data);
       if (bytes.length > 0) queue.push({ kind: 'binary', from: bytes[0] ?? 0, bytes: bytes.subarray(1) });
@@ -83,6 +118,7 @@ export function connectToRoom(code: string, build: string): RoomConnection {
     }
     const text = String(event.data);
     if (text === PONG) {
+      heardAt = performance.now();
       if (pingSentAt !== null) queue.push({ kind: 'ping', roundTripMs: performance.now() - pingSentAt });
       pingSentAt = null;
       return;
@@ -91,6 +127,7 @@ export function connectToRoom(code: string, build: string): RoomConnection {
   });
   socket.addEventListener('close', (event: CloseEvent) => {
     clearInterval(pinger);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     if (closedByUs) return;
     const reason = opened ? (REASON_BY_CODE[event.code] ?? 'lost') : 'unavailable';
     queue.push({ kind: 'closed', reason });
@@ -104,15 +141,7 @@ export function connectToRoom(code: string, build: string): RoomConnection {
     },
     poll: () => queue.splice(0),
     close() {
-      if (closedByUs) return;
-      closedByUs = true;
-      clearInterval(pinger);
-      // Closing a socket still connecting logs a console error, so it is closed once it opens. If it
-      // fails or closes before then, `open` never fires and there is nothing left to close.
-      if (socket.readyState === WebSocket.CONNECTING)
-        socket.addEventListener('open', () => socket.close(), { once: true });
-      else socket.close();
-      queue.push({ kind: 'closed', reason: 'left' });
+      if (!closedByUs) end('left');
     },
   };
 }

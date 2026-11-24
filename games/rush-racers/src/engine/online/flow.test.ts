@@ -12,6 +12,7 @@ import { RACER_IDS, type RacerId, type TickInput, type World } from '../../logic
 import type { RaceView } from '../../net/client.ts';
 import { IDLE_INPUT } from '../../net/codec.ts';
 import type { StartMessage } from '../../net/messages.ts';
+import { createOnlineWorld } from '../../net/race-world.ts';
 import { createMemoryRoom, type MemoryRoom, type MemoryRoomOptions } from '../../net/transport/memory.ts';
 import type { CloseReason, ConnectionEvent, RoomConnection } from '../../net/transport/types.ts';
 import type { CreateRoomResult } from '../../net/transport/websocket.ts';
@@ -19,7 +20,6 @@ import { createOnlineFlow, type FlowNext, type OnlineFlow, type ResultsChoice } 
 import type { ScreenPress } from './friends-screen.ts';
 import { closedNotice, NOTICE_MAX_CHARS, NOTICES } from './notices.ts';
 import { WAITING_AFTER_MS, waitingLine } from './race-hud.ts';
-import { createOnlineWorld } from './race-world.ts';
 
 /** Wall time one logic tick stands for. */
 const STEP_MS = 16;
@@ -512,7 +512,7 @@ describe('departures and states', () => {
   it.each([
     ['full', 'That room is full'],
     ['unknown-room', 'No room with that code'],
-    ['version', 'Reload the page to update, then rejoin'],
+    ['version', 'Game versions differ: everyone reload'],
     ['unavailable', 'Rooms are unavailable right now'],
     ['kicked', 'You were dropped from the race'],
     ['lost', 'Connection lost'],

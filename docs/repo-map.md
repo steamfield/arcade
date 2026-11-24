@@ -20,6 +20,7 @@ Where everything is, so you can open the right file instead of searching. Every 
 | Change the landing page | `apps/site/` |
 | Record a game's landing-page footage and cover | `pnpm arcade attract <slug>`, settings in its package.json `arcade.attract` |
 | Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans and `tools/biome/no-inexact-math.grit` for rush-racers' bit-exact math |
+| Change online rooms or races | Room service: `apps/api/src/` (`protocol.ts` is the wire contract). Rush Racers: `games/rush-racers/src/net/` (client, lobby, lockstep, transports), `src/engine/online/` (flow, screens), `tests/online*.spec.ts` |
 | Change CI or deploys | `.github/workflows/ci.yml`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts`, `cf:build` in `package.json` |
 
 `<game>` is `games/<slug>` or `templates/<name>`.
@@ -149,7 +150,11 @@ The relay for online races, a separate Worker (`arcade-api`) the site forwards `
 | File | What it is |
 | --- | --- |
 | `apps/api/wrangler.jsonc` | The Worker: the `Room` Durable Object binding and its SQLite migration; no public route. Deployed by hand with `pnpm deploy:api`. |
-| `apps/api/src/protocol.ts` | The room wire protocol (versions, limits, close codes, room codes, schemas), also imported by games as `@arcade/api/protocol`. |
+| `apps/api/package.json` | `@arcade/api`: `dev` (wrangler on port 8788), `types`, `typecheck`, `test`, `deploy`; exports `./protocol` to games. |
+| `apps/api/tsconfig.json` | Types the Workers (`src/`) with the runtime types `wrangler types` generates; no DOM, no Node. |
+| `apps/api/tsconfig.test.json` | Types the tests with Node types, never the Workers runtime's. |
+| `apps/api/vitest.config.ts` | Runs `test/**/*.test.ts` in Node. |
+| `apps/api/src/protocol.ts` | The room wire protocol (versions, limits, close codes, room codes and `isRoomCode`, schemas), also imported by games as `@arcade/api/protocol`. |
 | `apps/api/src/index.ts` | The Worker's fetch: origin check, `POST /api/rooms`, WebSocket upgrade routing to a `Room`. |
 | `apps/api/src/origin.ts` | `allowedOrigin`: which pages may use the service. |
 | `apps/api/src/codes.ts` | `randomRoomCode`. |
@@ -159,7 +164,13 @@ The relay for online races, a separate Worker (`arcade-api`) the site forwards `
 | `apps/api/src/traffic.ts` | The room's only in-memory state: per-peer heard times and message rates; `kickSilenceMs`. |
 | `apps/api/src/incoming.ts` | Reading a peer's message: its byte size and whether it is relayable JSON. |
 | `apps/api/src/sockets.ts` | WebSocket helpers: upgrade response, refusing a socket, replying to a close, sending without throwing. |
-| `apps/api/src/forward.ts` | The site Worker's script: forwards `/api/*` to the API Worker through the service binding. |
+| `apps/api/src/forward.ts` | The site Worker's script: forwards `/api/*` to the API Worker through the service binding; a 503 JSON error when the binding throws. |
+| `apps/api/test/room-kit.ts` | Test kit: starts the real Worker in-process through wrangler, creates rooms over HTTP, opens real WebSockets; waits on events with deadlines. |
+| `apps/api/test/rooms.test.ts` | Creating and joining rooms: codes, the origin rule, every refusal. |
+| `apps/api/test/relay.test.ts` | What the room passes between peers, and how start, end and departures move its phase and host. |
+| `apps/api/test/kick.test.ts` | When the room honours a `kick`: only between racers, only after the silence window. |
+| `apps/api/test/limits.test.ts` | The size and rate limits. |
+| `apps/api/test/forward.test.ts` | The site's `/api/*` script: passing responses through, and the 503 when the binding throws. |
 
 ## Landing page (`apps/site/`)
 
