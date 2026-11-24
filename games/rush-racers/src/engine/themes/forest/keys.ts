@@ -34,6 +34,11 @@ export const ForestTile = {
   rockBuried: 3,
   /** A spring mushroom (bounce cell). */
   bounce: 4,
+  streamStone: 5,
+  oakBark: 6,
+  knotRim: 7,
+  rottenWood: 8,
+  ropePost: 9,
 } as const;
 
 /** Forest animation keys: mud bubbles and the four wind flows. */

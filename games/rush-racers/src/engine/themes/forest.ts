@@ -29,6 +29,13 @@ export const FOREST_THEME = defineTheme({
     tileset: ForestTex.tiles,
     tiles: { rock: ForestTile.rock, coral: ForestTile.coral, ledge: ForestTile.ledge, bounce: ForestTile.bounce },
     buriedTiles: { rock: ForestTile.rockBuried },
+    glyphTiles: {
+      streamStone: ForestTile.streamStone,
+      oakBark: ForestTile.oakBark,
+      knotRim: ForestTile.knotRim,
+      rottenWood: ForestTile.rottenWood,
+      ropePost: ForestTile.ropePost,
+    },
     flowing: {
       kelp: { texture: ForestTex.mud, anim: ForestAnim.mudBubble },
       'current-right': { texture: ForestTex.windRight, anim: ForestAnim.windRight },
