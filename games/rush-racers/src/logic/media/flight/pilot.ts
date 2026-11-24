@@ -72,8 +72,9 @@ export function createFlightPilot(): FlightPilot {
 
 /**
  * A flight rival's steering this tick. Mutates only its pilot memory. It starts from whether physics
- * last saw Up held, and while stunned, trapped or fallen it keeps reading the way but lets go of the
- * stick (`letGo`).
+ * last saw Up held. While stunned, trapped or fallen it keeps reading the way but lets go of the
+ * stick (`letGo`), except that a puff dash already under way keeps holding toward its cloud until the
+ * dash runs out (the racer's status discards that stick, so it changes nothing in play).
  *
  * @throws {Error} When `racer.ai` is null (a human drives it), or its memory, motion or the world's nav isn't flight's.
  */
