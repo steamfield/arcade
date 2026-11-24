@@ -217,14 +217,20 @@ Every game has the same shape. The 2D template is the reference; the 3D template
 | `templates/phaser-2d/src/logic/level.ts` | ASCII levels, `TILE`, `parseLevel`, `isSolid`, `LEVEL_1`. |
 | `templates/phaser-2d/src/logic/events.ts` | `GameEvent` union: everything observable that logic emits. |
 | `templates/phaser-2d/src/logic/save.ts` | `SAVE_VERSION`, `SaveSchema`, `migrations`, `NEW_GAME`. |
-| `templates/phaser-2d/src/engine/game.ts` | `startPhaser`: `Runtime` (owns `FixedStep`, scene changes, `idle`), Boot, Title and Play scenes, debug overlay, the `GameHandle`. |
+| `templates/phaser-2d/src/logic/hash.ts`, `templates/phaser-2d/src/logic/hash.test.ts` | `hashWorld`: the world hash without the level and event log. |
+| `templates/phaser-2d/src/engine/game.ts` | `startPhaser`: Boot, Title and Play scenes, the logic clock fed from Phaser's STEP event, the `GameHandle`. |
+| `templates/phaser-2d/src/engine/runtime.ts` | Phaser-free `Runtime`: scene flow, title menu, in-order save write queue, per-tick logic step; `idle()` is false while a scene loads or a save is written. |
+| `templates/phaser-2d/src/engine/runtime.test.ts` | Vitest test of the runtime: start, play to a coin, save order, restore, capture stage gate, loading guard, failed writes. |
+| `templates/phaser-2d/src/engine/debug.ts` | `debugSummary()` and `debugState()`, both with `worldHash`. |
+| `templates/phaser-2d/src/engine/debug-stage.ts` | `?stage=` capture stages (`near-goal`), only with `?debug=1` or in test mode; a staged run is never saved. |
 | `templates/phaser-2d/src/engine/input.ts` | Action names, key bindings, touch layout. |
 | `templates/phaser-2d/src/engine/textures.ts` | `Tex` keys and placeholder textures drawn at boot. |
-| `templates/phaser-2d/scenarios/kit.ts` | The game's typed `scenario`, `hold`, `tap`, `wait`. |
+| `templates/phaser-2d/scenarios/kit.ts` | The game's typed `scenario`, `hold`, `tap`, `wait`, and presets (`TITLE_TO_PLAY`, `TWO_COINS_SAVE`). |
 | `templates/phaser-2d/scenarios/collect-first-coin.ts` | Scenario: walk right and collect a coin. |
 | `templates/phaser-2d/scenarios/complete-level.ts` | Scenario: finish the level. |
 | `templates/phaser-2d/scenarios/restore-save.ts` | Scenario: start from a save fixture. |
-| `templates/phaser-2d/tests/smoke.spec.ts` | Loads, WebGL renderer, save survives reload, touch controls (`@touch`). |
+| `templates/phaser-2d/scenarios/near-goal-stage.ts` | Scenario: the `near-goal` capture stage, and that it writes no save. |
+| `templates/phaser-2d/tests/smoke.spec.ts` | Loads, WebGL renderer, save survives reload, touch controls (`@touch`), and a pinned `worldHash` every browser project agrees on. |
 | `templates/phaser-2d/tests/scenarios.spec.ts` | Turns every scenario into a Playwright test. |
 | `templates/phaser-2d/tests/save.test.ts`, `templates/phaser-2d/tests/fixtures/save-v1.json` | Every committed save version must still load. |
 

@@ -316,7 +316,7 @@ Depends on: phase 7
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | templates/phaser-2d/ | | | opus | running | deliver/refactor-audit-8a | |
+| a | M | templates/phaser-2d/ | | | opus | merged | deliver/refactor-audit-8a | |
 | b | M | templates/three-3d/ | | | sonnet | merged | deliver/refactor-audit-8b | |
 
 Both template lanes adopt the same patterns, in their engine's idiom. Read Rush Racers for each one before writing it; keep the template small (a template that needs a page of explanation has gone too far).
