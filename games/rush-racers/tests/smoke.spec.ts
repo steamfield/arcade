@@ -90,9 +90,10 @@ test('a Slingshot Alley race starts from the menus and drifts 600 ticks', async 
  * gravity well and the fall-out timer, the way `TOP_ROUTE_BROWSER_HASH` covers swimming: every
  * browser project must compute the same number. Re-pinned when Drift Test gained its drifting
  * asteroid and Farside rivals took up the Comet, again when the world gained `twists`, and again
- * when Drift Test gained its wormholes and standings began counting a wormhole as a way through.
+ * when Drift Test gained its wormholes and standings began counting a wormhole as a way through, and
+ * again when the world began hashing `whirlpoolRiders` on every course.
  */
-const DRIFT_WELLS_BROWSER_HASH = 453518422;
+const DRIFT_WELLS_BROWSER_HASH = 1964228244;
 
 test('a Drift Test race swings past the planet, is swallowed by the black hole and comes back, to one hash on every browser', async ({
   game,
@@ -171,10 +172,10 @@ test('on Thunderhead Pass a tap of the on-screen Up button flaps @touch', async 
  * the results screen. Online races run the
  * same simulation on each player's browser and compare this hash, so the engines must agree on it.
  * It differs from the pin in `src/logic/top-route.test.ts`, whose replay stops on the finish tick.
- * Re-pinned when Sunlit gained geyser vents and `TOP_ROUTE` was re-recorded, and again when the
- * world gained `twists`.
+ * Re-pinned when Sunlit gained geyser vents and `TOP_ROUTE` was re-recorded, again when the
+ * world gained `twists`, and again when it gained the long courses' set-piece state.
  */
-const TOP_ROUTE_BROWSER_HASH = 2509614054;
+const TOP_ROUTE_BROWSER_HASH = 2523564175;
 
 test('a finished race is saved and its best time shows on the title after a reload', async ({ game }) => {
   test.slow(true, 'swims the whole course, about 250 input steps');
