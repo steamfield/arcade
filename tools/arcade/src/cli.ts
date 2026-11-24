@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
+import { affected } from './affected.ts';
 import { assemble, type Include, includeForBranch } from './assemble.ts';
 import { attract } from './attract.ts';
 import { check } from './check.ts';
@@ -12,11 +13,16 @@ import { testGame } from './test.ts';
 
 const HELP = `arcade: build, check and see games in this repo
 
-  pnpm arcade check [slug] [--all] [--skip-tests]
+  pnpm arcade check [slug] [--all] [--skip-tests] [--base <ref>]
       Typecheck, lint and unit tests. With a slug: that game plus every package changed since
       HEAD and all their dependents. Prints one line when everything passes. The full run is
       the pre-merge gate; --skip-tests gives typecheck and lint alone while you prove a change
-      with arcade test.
+      with arcade test. --base <ref> checks what changed since that commit (CI).
+
+  pnpm arcade affected --base <ref> [--json]
+      Which packages and games the commits since <ref> need tested: changed packages and their
+      dependents, or everything when CI, the CLI or root config changed. --json adds each
+      game's slow-suite shards (package.json "arcade": { "ci": { "slow": ... } }) for CI.
 
   pnpm arcade test <slug> [paths... | @group...] [-t <name pattern>]
       Only the game's Vitest tests, narrowed to files, folders, named groups or a test name. This
@@ -64,6 +70,8 @@ async function main(argv: string[]): Promise<number> {
     allowPositionals: true,
     options: {
       all: { type: 'boolean', default: false },
+      base: { type: 'string' },
+      json: { type: 'boolean', default: false },
       'skip-tests': { type: 'boolean', default: false },
       scenario: { type: 'string' },
       input: { type: 'string' },
@@ -99,7 +107,10 @@ async function main(argv: string[]): Promise<number> {
 
   switch (command) {
     case 'check':
-      return check(slug, { all: values.all, skipTests: values['skip-tests'] });
+      return check(slug, { all: values.all, skipTests: values['skip-tests'], base: values.base });
+    case 'affected':
+      if (values.base === undefined) throw new UsageError('arcade affected needs --base <ref>');
+      return affected(values.base, { json: values.json });
     case 'test':
       return testGame(requireSlug(), [
         ...positionals.slice(1),

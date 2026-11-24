@@ -20,7 +20,7 @@ Where everything is, so you can open the right file instead of searching. Every 
 | Change the landing page | `apps/site/` |
 | Record a game's landing-page footage and cover | `pnpm arcade attract <slug>`, settings in its package.json `arcade.attract` |
 | Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans and `tools/biome/no-inexact-math.grit` for rush-racers' bit-exact math |
-| Change CI or deploys | `.github/workflows/ci.yml`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts`, `cf:build` in `package.json` |
+| Change CI or deploys | `.github/workflows/ci.yml`, `tools/arcade/src/affected.ts`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts`, `cf:build` in `package.json` |
 
 `<game>` is `games/<slug>` or `templates/<name>`.
 
@@ -128,7 +128,10 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/cli.ts` | Argument parsing and help for every command. Entry point. |
 | `tools/arcade/src/games.ts` | `listGames`, `findGame`, `ROOT`, `UsageError`. Reads every `game.json`. |
 | `tools/arcade/src/run.ts` | `run(cmd)` subprocess helper with captured output, `elapsed`. |
-| `tools/arcade/src/check.ts` | `check`: turbo typecheck, lint, test (or `--skip-tests`) for the slug plus changed packages; condenses output. |
+| `tools/arcade/src/check.ts` | `check`: turbo typecheck, lint, test (or `--skip-tests`) for the slug plus changed packages, or what changed since `--base`; condenses output. |
+| `tools/arcade/src/affected.ts` | `affected`, `affectedSince`, `planFromChanges`: which packages, games and slow-suite shards a change since a base commit needs tested. CI's job matrices come from it. |
+| `tools/arcade/src/affected.test.ts` | Which games a change selects, the global files that select all, slow-suite shards. |
+| `tools/arcade/src/ci.test.ts` | CI's Playwright container tag matches the catalog's `@playwright/test`. |
 | `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/` (or `--out`); `--query` launch params, `--compare` pixel diff against an earlier run. |
 | `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths, `@group`s from the game's package.json, or `-t`; one line when green. |
 | `tools/arcade/src/test.test.ts` | `@group` expansion for `arcade test`. |

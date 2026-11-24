@@ -29,6 +29,12 @@
     "fake-indexeddb": "catalog:"
   },
   "arcade": {
+    "ci": {
+      "slow": {
+        "script": "test:difficulty",
+        "shards": 4
+      }
+    },
     "attract": {
       "scenario": "race-to-finish",
       "from": 150,
