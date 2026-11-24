@@ -86,6 +86,8 @@ export const CLOSE = {
   idle: 4007,
   /** The request came from a page on another site. */
   origin: 4008,
+  /** The room service has used up its account quota. */
+  quota: 4009,
 } as const;
 
 /** One of the room's close codes. */

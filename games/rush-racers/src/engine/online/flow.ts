@@ -13,7 +13,7 @@ import type { StartMessage } from '../../net/messages.ts';
 import type { RoomConnection } from '../../net/transport/types.ts';
 import type { CreateRoomResult } from '../../net/transport/websocket.ts';
 import { createFriendsScreen, type FriendsAction, pressFriends, type ScreenPress } from './friends-screen.ts';
-import { closedNotice, NOTICES } from './notices.ts';
+import { closedNotice, NOTICES, quotaNotice } from './notices.ts';
 import { createPending } from './pending.ts';
 import { roomLinkParam } from './room-link.ts';
 import { createRoomScreen, pressRoom, type RoomAction } from './room-screen.ts';
@@ -25,6 +25,8 @@ export interface OnlinePorts {
   connect(code: string): RoomConnection;
   /** Asks the room service for a new room; never rejects. */
   createRoom(): Promise<CreateRoomResult>;
+  /** The next reset while the transport is blocking room requests. */
+  quotaBlockedUntil?(): number | null;
   /** Puts room `code`'s link on the clipboard; resolves false when the browser refuses. */
   copyLink(code: string): Promise<boolean>;
   /** A seed for a race this peer starts as host. */
@@ -128,6 +130,8 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
   /** A copy belongs to the room it was asked in: leaving that room cancels it, so its answer never shows in another. */
   const copy = createPending<boolean>();
 
+  const quotaBlockedUntil = () => deps.quotaBlockedUntil?.() ?? null;
+
   /** Closes the room in use, if any, and forgets it with its race and any copy still on its way. */
   function dropClient(): void {
     if (client && client.view.status !== 'closed') client.leave();
@@ -150,7 +154,8 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
     });
     state.code = code;
     state.room = createRoomScreen();
-    state.notice = NOTICES.joining;
+    const resetAt = quotaBlockedUntil();
+    state.notice = resetAt === null ? NOTICES.joining : quotaNotice(resetAt);
     refresh();
   }
 
@@ -174,7 +179,7 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
   function follow(current: OnlineClient, stepped: number): FlowNext | null {
     const view = current.view;
     if (view.status === 'closed') {
-      state.notice = closedNotice(view.reason);
+      state.notice = closedNotice(view.reason, quotaBlockedUntil());
       return TITLE;
     }
     if (view.race?.desync) {
@@ -209,7 +214,7 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
 
   function applyCreated(result: CreateRoomResult): FlowNext {
     if (!result.ok) {
-      state.notice = NOTICES.unavailable;
+      state.notice = result.reason === 'quota' ? quotaNotice(quotaBlockedUntil()) : NOTICES.unavailable;
       return STAY;
     }
     join(result.code);
@@ -222,7 +227,7 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
       () => deps.createRoom(),
       (error) => {
         deps.warn(`online: creating a room failed: ${error instanceof Error ? error.message : String(error)}`);
-        return { ok: false };
+        return { ok: false, reason: 'unavailable' };
       },
     );
   }
@@ -232,6 +237,12 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
       creation.cancel();
       state.notice = null;
       return TITLE;
+    }
+    const resetAt = quotaBlockedUntil();
+    if (resetAt !== null) {
+      state.friends.mode = 'menu';
+      state.notice = quotaNotice(resetAt);
+      return STAY;
     }
     if (action.kind === 'join') {
       join(action.code);

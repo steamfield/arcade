@@ -5,7 +5,7 @@
  */
 import { KICK_SILENCE_MS } from '@arcade/api/protocol';
 import type { GameContext } from '@arcade/shell';
-import { connectToRoom, createRoom } from '../../net/transport/websocket.ts';
+import { createRoomTransport } from '../../net/transport/websocket.ts';
 import { BUILD_ID } from '../build-id.ts';
 import type { OnlinePorts } from './flow.ts';
 import { roomLink } from './room-link.ts';
@@ -15,9 +15,11 @@ import { roomLink } from './room-link.ts';
  * repeats, and nobody is ever kicked, since a test page stalls whenever the harness stops advancing it.
  */
 export function pagePorts(ctx: GameContext): OnlinePorts {
+  const transport = createRoomTransport();
   return {
-    connect: (code) => connectToRoom(code, BUILD_ID),
-    createRoom,
+    connect: (code) => transport.connectToRoom(code, BUILD_ID),
+    createRoom: transport.createRoom,
+    quotaBlockedUntil: transport.quotaBlockedUntil,
     copyLink: (code) => copyText(roomLink(window.location.href, code)),
     seed: () => (ctx.params.testMode ? ctx.params.seed >>> 0 : randomSeed()),
     kickAfterMs: ctx.params.testMode ? null : KICK_SILENCE_MS,

@@ -18,6 +18,8 @@ export type CloseReason =
   | 'kicked'
   /** The room service could not be reached, or refused for a reason of its own (its limits, its idle timeout, the origin rule). */
   | 'unavailable'
+  /** The room service has used up its daily quota. */
+  | 'quota'
   /** The connection dropped. */
   | 'lost';
 

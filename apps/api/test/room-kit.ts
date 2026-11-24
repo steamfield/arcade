@@ -27,13 +27,15 @@ export interface RoomService {
  * Starts the Worker from `apps/api/wrangler.jsonc` on a free port, without persistence.
  *
  * @param vars - Extra plain-text vars, such as a short `KICK_SILENCE_MS`.
+ * @param entrypoint - A test Worker entry point, when the Room binding itself needs to fail.
  */
-export async function startRoomService(vars: Record<string, string> = {}): Promise<RoomService> {
+export async function startRoomService(vars: Record<string, string> = {}, entrypoint?: string): Promise<RoomService> {
   const bindings = Object.fromEntries(
     Object.entries(vars).map(([name, value]) => [name, { type: 'plain_text' as const, value }]),
   );
   const worker = await unstable_startWorker({
     config: CONFIG_PATH,
+    entrypoint,
     bindings,
     dev: { server: { port: 0 }, inspector: false, logLevel: 'error', persist: false, watch: false },
   });
