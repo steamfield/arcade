@@ -104,6 +104,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | Path | Exports |
 | --- | --- |
 | `packages/shell/src/index.ts` | `bootGame({ manifest, input, start, onFirstGesture })`, the `GameContext` passed to a game and the `GameHandle` it returns, `window.__arcade` (the test hook), URL launch params (`?seed`, `?scene`, `?debug`, `?test` via `readLaunchParams`; `?touch`, `?log` read at boot), back link (top right), rotate prompt, `integerScale`, `renderPixelRatio`. Starts the game on load; the start gate shows only in test mode, and `onFirstGesture` runs on the first tap or key press. |
+| `packages/shell/src/report-error.ts`, `packages/shell/src/report-error.test.ts` | `createErrorReporter`: records each game error in `window.__arcade.errors` and logs it; only a fatal report (the default) shows the red banner, so `reportError(source, error, { fatal: false })` is for errors the game recovers from. |
 
 ### `@arcade/testing`
 
