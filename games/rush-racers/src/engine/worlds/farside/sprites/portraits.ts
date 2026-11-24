@@ -10,9 +10,8 @@
  * row of spikes over a red visor.
  */
 import type { CharacterId } from '../../../../logic/types.ts';
-import { CHARACTER_IDS } from '../../../../logic/types.ts';
 import type { NamedFrame, PixelRows } from '../../../art/pixel.ts';
-import type { ArtSheet } from '../../../art/sprites/sheet.ts';
+import { type ArtSheet, castFrames } from '../../../art/sprites/sheet.ts';
 import { FarCastFrame, FarTex } from '../keys.ts';
 import { FarsidePalette } from './palette.ts';
 
@@ -202,13 +201,8 @@ const FACES: Record<CharacterId, Face> = {
   },
 };
 
-/** One sheet frame per slot, named by `FarCastFrame`, drawn in that slot's palette. */
 function framesOf(size: keyof Face): NamedFrame[] {
-  return CHARACTER_IDS.map((character) => ({
-    name: FarCastFrame[character],
-    palette: FarsidePalette[character],
-    rows: FACES[character][size],
-  }));
+  return castFrames(FarCastFrame, FarsidePalette, (character) => FACES[character][size]);
 }
 
 /** The portrait and head sheets, one frame per slot in each, named by `FarCastFrame`. */

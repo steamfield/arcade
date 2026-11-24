@@ -2,15 +2,16 @@
  * Wiring between the shell and Phaser: loads the save, builds the Runtime (with
  * the page's online ports) and the Phaser game with its scenes, fits the canvas
  * at integer zoom, reports WebGL context loss, and returns the GameHandle
- * the shell and tests drive. No game rules or scene logic live here.
+ * the shell and tests drive, and backs the runtime's art port with the world and theme art loader.
+ * No game rules or scene logic live here.
  */
 import type { SaveStore } from '@arcade/save';
 import type { GameContext, GameHandle } from '@arcade/shell';
 import Phaser from 'phaser';
 import type { SaveData } from '../logic/save.ts';
-import { debugState, debugSummary } from './debug.ts';
+import { type ArtSummary, debugState, debugSummary } from './debug.ts';
 import { pagePorts } from './online/page-ports.ts';
-import { Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
+import { type ArtPort, Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
 import { BootScene } from './scenes/boot.ts';
 import { CourseScene } from './scenes/course.ts';
 import { FriendsScene } from './scenes/friends.ts';
@@ -21,6 +22,7 @@ import { RoomScene } from './scenes/room.ts';
 import { SelectScene } from './scenes/select.ts';
 import { TitleScene } from './scenes/title.ts';
 import { type Stage, stageFor } from './stage.ts';
+import { ensureAllArt, ensureCoursesArt, hasAllArt, hasCourseArt, loadedArt } from './worlds/load.ts';
 
 /**
  * Starts Rush Racers inside `ctx.container`.
@@ -40,6 +42,7 @@ export async function startPhaser(ctx: GameContext, saves: SaveStore<SaveData>):
       if (game) switchScene(game, scene);
     },
     online: pagePorts(ctx),
+    art: artPort(() => game),
   });
   game = createPhaserGame(ctx, rt);
   watchGame(ctx, game, rt);
@@ -84,6 +87,22 @@ function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
   });
 }
 
+/**
+ * The art loader as the runtime asks for it. Textures and loops belong to the game, not a scene,
+ * so the boot scene registers them whichever screen asked.
+ */
+function artPort(game: () => Phaser.Game | null): ArtPort {
+  const scene = (): Phaser.Scene => {
+    const boot = game()?.scene.getScene('boot');
+    if (!boot) throw new Error('Art was asked for before the Phaser game had its boot scene');
+    return boot;
+  };
+  return {
+    ready: (need) => (need === 'all' ? hasAllArt() : need.every(hasCourseArt)),
+    load: (need) => (need === 'all' ? ensureAllArt(scene()) : ensureCoursesArt(scene(), need)),
+  };
+}
+
 function switchScene(game: Phaser.Game, scene: SceneKey): void {
   // stop() is queued but start() of a running scene restarts it at once; stopping the
   // target too would let the queued stop land after the restart and leave it blank.
@@ -110,13 +129,26 @@ function containerStage(container: HTMLElement): Stage {
  * context-loss hookup once Phaser is ready.
  */
 function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
-  game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => rt.frame(deltaMs));
+  /** The screen showing when a resize came mid-load, or null: it lays out again if it is still showing once the load ends. */
+  let resizedWhileLoading: SceneKey | null = null;
+  const restartShowing = () => {
+    for (const running of game.scene.getScenes(true)) if (running.scene.key !== 'boot') running.scene.restart();
+  };
+  game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => {
+    // A load that failed leaves the old screen up at the old size; one that worked started a screen at the new size.
+    if (resizedWhileLoading !== null && !rt.loading) {
+      if (resizedWhileLoading === rt.scene) restartShowing();
+      resizedWhileLoading = null;
+    }
+    rt.frame(deltaMs);
+  });
   const fitToContainer = () => {
     const stage = containerStage(ctx.container);
     if (stage.width !== game.scale.width || stage.height !== game.scale.height) {
       game.scale.resize(stage.width, stage.height);
-      // Mid-load a scene is still being built at the old size; it lays out at the new one when it starts.
-      if (!rt.loading) for (const running of game.scene.getScenes(true)) running.scene.restart();
+      // Mid-load the next scene is still to be built and lays out at the new size when it starts.
+      if (rt.loading) resizedWhileLoading = rt.scene;
+      else restartShowing();
     }
     game.scale.setZoom(stage.zoom);
   };
@@ -146,8 +178,8 @@ function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>
       return ran;
     },
     renderer: () => (game.renderer?.type === Phaser.WEBGL ? 'webgl' : game.renderer ? 'canvas' : 'none'),
-    debugSummary: () => debugSummary(rt, saves.status, game.scene.isActive(rt.scene)),
-    debugState: () => debugState(rt, saves.status, game.scene.isActive(rt.scene)),
+    debugSummary: () => debugSummary(rt, saves.status, game.scene.isActive(rt.scene), artSummary(game)),
+    debugState: () => debugState(rt, saves.status, game.scene.isActive(rt.scene), artSummary(game)),
     async loadState(fixture) {
       const imported = await saves.importJson(SAVE_SLOT, JSON.stringify(fixture));
       if (imported.kind !== 'ok')
@@ -159,4 +191,9 @@ function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>
     resume: () => game.loop.wake(),
     onHide: () => rt.hide(),
   };
+}
+
+/** The texture count (Phaser's `getTextureKeys` leaves out its own defaults) and the art loaded. */
+function artSummary(game: Phaser.Game): ArtSummary {
+  return { textures: game.textures.getTextureKeys().length, art: loadedArt() };
 }

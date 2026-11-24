@@ -76,7 +76,7 @@ function resetAfterRespawn(motion: RunMotion): void {
 }
 
 /** Tiles a respawn backs a runner off from the edge it fell from, ground allowing. */
-export const RESPAWN_RUN_UP_TILES = 2;
+const RESPAWN_RUN_UP_TILES = 2;
 
 /** The x furthest back from `safe` along `back`, up to RESPAWN_RUN_UP_TILES whole tiles, where a body still stands safe and clear. */
 function runUpX(world: World, body: Box, safe: Vec, back: number): number {

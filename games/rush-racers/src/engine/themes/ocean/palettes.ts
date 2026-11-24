@@ -1,9 +1,9 @@
 /**
- * The ocean theme's colours: reef and cave terrain, sky, hazards, the painted backdrop layers, the
- * water's depth bands and the light in it. Terrain is mid-value, the water and backdrop dark, blue and low in
- * saturation, so racers, hazards and pickups (global art, brighter and more saturated) read in
- * front. Each racer's main colour and the urchin's body hold 3:1 off every water band, sky and backdrop
- * colour (`OCEAN_CONTRAST_BANDS` in `ocean.ts`), so the water is kept dark enough at the surface.
+ * The ocean theme's colours: reef and cave terrain, sky, the painted backdrop layers, the water's
+ * depth bands and the light in it. Terrain is mid-value, the water and backdrop dark, blue and low
+ * in saturation, so the world's sprites (brighter and more saturated) read in front. Each racer's
+ * main colour and each hazard's body hold 3:1 off every water band, sky and backdrop colour
+ * (`OCEAN_CONTRAST_BANDS` in `ocean.ts`), so the water is kept dark enough at the surface.
  */
 import type { Palette } from '../../art/pixel.ts';
 
@@ -28,14 +28,6 @@ export const TerrainPalette = {
   waterline: [0x2a6a9a, 0x7cc8e8, 0xd8f6ff, SKY],
   /** Cave stone: cracks, stone, lit stone, edge. Darker and bluer than reef rock, so a cave reads apart from the reef. */
   caveStone: [0x0c0e1c, 0x1c2438, 0x2a3650, 0x3e5070],
-} as const satisfies Record<string, Palette>;
-
-/** Hazard palettes: dark bodies with hot accents, so danger reads by shape and value, not hue alone. */
-export const HazardPalette = {
-  /** Urchin: near-black spines and core, a lit lilac body that holds 3:1 in deep water, spine tips. */
-  urchin: [0x0c0414, 0xc488f0, 0xff5a7a],
-  /** Jellyfish: outline, bell, light bell, stinging tentacles. */
-  jelly: [0x6a1a5c, 0xff70c4, 0xffc8ec, 0xffe0f4],
 } as const satisfies Record<string, Palette>;
 
 /** Backdrop palettes: dark, desaturated blues a step away from the water behind them. */

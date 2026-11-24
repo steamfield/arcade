@@ -9,7 +9,7 @@
 import type Phaser from 'phaser';
 
 /** Shifts one camera by a shake offset each rendered frame. */
-export interface CameraNudge {
+interface CameraNudge {
   /** Moves the camera to the rig's scroll for `tick` plus (`dx`, `dy`) whole px. */
   apply(tick: number, dx: number, dy: number): void;
 }

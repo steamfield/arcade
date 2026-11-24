@@ -49,6 +49,7 @@
       ],
       "seams": [
         "src/logic/architecture.test.ts",
+        "src/map.test.ts",
         "src/logic/media/boundary.test.ts",
         "src/logic/guide.test.ts",
         "src/engine/themes"
@@ -58,7 +59,7 @@
         "src/logic/conformance/course.test.ts",
         "src/logic/level",
         "src/logic/difficulty-level.test.ts",
-        "src/logic/difficulty/sanity"
+        "src/logic/balance/sanity"
       ],
       "media": [
         "src/logic/media",
@@ -73,9 +74,12 @@
       "engine": [
         "src/engine"
       ],
-      "bars": [
-        "src/logic/difficulty/"
-      ],
+      "bars": {
+        "project": "difficulty",
+        "paths": [
+          "src/logic/balance/"
+        ]
+      },
       "platform": [
         "src/logic/race/move-contacts.test.ts",
         "src/logic/race/ledge.test.ts",

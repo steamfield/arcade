@@ -1,6 +1,7 @@
 import { scenarioKit } from '@arcade/testing';
 import type { Action } from '../src/engine/input.ts';
 import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../src/logic/race/standings.ts';
+import { NEW_GAME, SAVE_VERSION, type SaveData } from '../src/logic/save.ts';
 
 export const { scenario, hold, tap, wait } = scenarioKit<Action>();
 
@@ -11,14 +12,28 @@ export const { scenario, hold, tap, wait } = scenarioKit<Action>();
  * the scenario's `seed`.
  */
 export const HARD_SAVE = {
-  version: 5,
+  version: SAVE_VERSION,
   savedAt: '2026-11-22T00:00:00.000Z',
+  data: { ...NEW_GAME, settings: { ...NEW_GAME.settings, difficulty: 'hard' } } satisfies SaveData,
+};
+
+/**
+ * A save on Hard whose last course is Sunlit Shallows, with a best on each course, so course
+ * select opens on Sunlit Shallows with a best on both rows.
+ */
+export const TWO_COURSE_SAVE = {
+  version: SAVE_VERSION,
+  savedAt: '2026-11-23T00:00:00.000Z',
   data: {
-    best: { easy: null, normal: null, hard: null },
+    bests: {
+      'sunlit-shallows': { easy: null, normal: null, hard: { ticks: 5400, place: 1 } },
+      'bramble-run': { easy: null, normal: null, hard: { ticks: 6000, place: 2 } },
+    },
+    lastCourse: 'sunlit-shallows',
     races: 0,
     settings: { muted: false, reducedMotion: null, difficulty: 'hard' },
     character: 'rudy',
-  },
+  } satisfies SaveData,
 };
 
 /**

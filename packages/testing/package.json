@@ -19,8 +19,10 @@
     "@playwright/test": "catalog:"
   },
   "devDependencies": {
+    "@arcade/save": "workspace:*",
     "@playwright/test": "catalog:",
     "@types/node": "catalog:",
+    "fake-indexeddb": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

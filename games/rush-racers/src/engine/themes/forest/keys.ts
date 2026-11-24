@@ -4,7 +4,7 @@
  * views get them through the theme.
  */
 
-/** Forest texture keys: the tileset, mud, wind, finish banner, hazards and backdrop layers. */
+/** Forest texture keys: the tileset, mud, wind, finish banner and backdrop layers. */
 export const ForestTex = {
   /** Tileset for the tilemap: one frame per entry in `ForestTile`. */
   tiles: 'forest-tiles',
@@ -15,8 +15,6 @@ export const ForestTex = {
   windUp: 'forest-wind-up',
   windDown: 'forest-wind-down',
   finishGate: 'forest-finish-gate',
-  thornBush: 'forest-thorn-bush',
-  wasp: 'forest-wasp',
   backdropFar: 'forest-backdrop-far',
   backdropNear: 'forest-backdrop-near',
 } as const;
@@ -36,12 +34,11 @@ export const ForestTile = {
   rockBuried: 3,
 } as const;
 
-/** Forest animation keys: mud bubbles, the four wind flows and the wasp's wings. */
+/** Forest animation keys: mud bubbles and the four wind flows. */
 export const ForestAnim = {
   mudBubble: 'forest-mud-bubble',
   windRight: 'forest-wind-right-flow',
   windLeft: 'forest-wind-left-flow',
   windUp: 'forest-wind-up-flow',
   windDown: 'forest-wind-down-flow',
-  waspBuzz: 'forest-wasp-buzz',
 } as const;

@@ -20,7 +20,7 @@
 import { parseSong, type Song } from '../notation.ts';
 
 /** Farside's race song in the game's notation. */
-export const farsideSource = `
+const farsideSource = `
 name: farside
 tempo: 88
 time: 4/4

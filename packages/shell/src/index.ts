@@ -1,5 +1,8 @@
 import { configureLogging, createLogger, type Drained, type EventLog, type LogEntry } from '@arcade/core';
 import type { Input } from '@arcade/input';
+import { createErrorReporter, type RecordedError, type ReportError } from './report-error.ts';
+
+export type { RecordedError, ReportError, ReportErrorOptions } from './report-error.ts';
 
 /**
  * Boots every game the same way: container sizing and mobile hygiene, starting
@@ -27,8 +30,12 @@ export interface GameContext {
   /** The element the engine must render into. The shell owns its size; size the canvas to it. */
   container: HTMLElement;
   params: LaunchParams;
-  /** Route errors that aren't exceptions (loader failures, context loss) so tests fail on them. */
-  reportError(source: string, error: unknown): void;
+  /**
+   * Route errors that aren't exceptions (loader failures, context loss) so tests fail on them. By
+   * default it also shows a red banner that stays up; pass `{ fatal: false }` for a failure the game
+   * shows and recovers from itself (it is still recorded in `__arcade.errors` and logged).
+   */
+  reportError: ReportError;
   /** Show a short message over the game, e.g. a storage warning. */
   notice(text: string): void;
   /** Register an AudioContext so the shell resumes it after iOS interrupts it. */
@@ -73,7 +80,7 @@ export interface BootOptions<A extends string> {
 export interface ArcadeHook {
   ready: boolean;
   gameId: string;
-  errors: { source: string; message: string }[];
+  errors: RecordedError[];
   logs: LogEntry[];
   tick: number;
   /** Runs up to `ticks`; returns how many ran (fewer if a load started). */
@@ -150,13 +157,10 @@ export async function bootGame<A extends string>(options: BootOptions<A>): Promi
   window.__arcade = hook;
 
   const banner = el('div', 'arcade-error');
-  const reportError = (source: string, error: unknown) => {
-    const message = error instanceof Error ? `${error.message}\n${error.stack ?? ''}` : String(error);
-    hook.errors.push({ source, message });
-    log.error(`${source}: ${message}`);
-    banner.textContent = `${source}: ${message.split('\n')[0]}`;
+  const reportError = createErrorReporter(hook.errors, (line) => {
+    banner.textContent = line;
     container.append(banner);
-  };
+  });
   window.addEventListener('error', (e) => reportError('error', e.error ?? e.message));
   window.addEventListener('unhandledrejection', (e) => reportError('unhandledrejection', e.reason));
 

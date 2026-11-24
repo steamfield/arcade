@@ -41,7 +41,7 @@ const SOCKET = { size: 3, inset: 3 } as const;
 export const NOT_READY_ALPHA = 0.5;
 
 /** Where the well's item slots go and how wide the well is, for a racer with `slots` inventory slots. */
-export interface WellLayout {
+interface WellLayout {
   /** The well panel's width in px. */
   width: number;
   /** Each item slot's left edge, slot 0 first. */

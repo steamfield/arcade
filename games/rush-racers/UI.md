@@ -20,9 +20,9 @@ Ramps, not new hues: `indigoLight`/`indigoDark` bevels, `well` inset fill, `sunD
 
 ### Contrast bands per theme
 
-Each theme lists its `contrastBands` (`engine/themes/types.ts`): every colour that can sit behind a racer or off-panel text in play, which for the ocean is each water band and each painted backdrop layer colour. The rules hold against every theme's bands, so a new theme that breaks them fails the build:
+Each theme lists its `contrastBands` (`engine/themes/types.ts`): every colour that can sit behind a racer or off-panel text in play, which for the ocean is each water band and each painted backdrop layer colour. The rules hold against every theme's bands, so a theme that breaks them fails the build:
 
-- Each racer's main colour and the Homing Squid's hold 3:1 off every band, and at least a quarter of each racer frame's pixels do, spread over most of its height (`art/sprites/sprites.test.ts`). The theme's own hazards hold 3:1 off its bands (the ocean urchin: `themes/ocean.test.ts`).
+- Each racer's main colour and the Homing Squid's hold 3:1 off every band, and at least a quarter of each racer frame's pixels do, spread over most of its height (`art/sprites/sprites.test.ts`). Both hazard bodies of every world hold 3:1 off the bands of every listed course's theme (`view/hazard-view.test.ts`).
 - Off-panel text (foam or sun, outlined) holds 4.5:1, or its ink outline 3:1, off every band and off the theme's brightest backdrop: its top band under its caustics (22%) and a ray (5%), when it has them (`art/ui/ui.test.ts`).
 - Panels, the HUD and every UI colour are global, never part of a theme.
 
@@ -93,7 +93,7 @@ Enemies draw in the world between the tiles and the racers: an eel's hole over t
 
 ## Attack power-ups in the water
 
-Drawn from world state by `view/attack-view.ts` (squids, lanes, decoys) and `view/powerup-view.ts` (what happens to a racer). Art is in `art/sprites/attack.ts` and `art/sprites/powerups.ts`.
+Drawn from world state by `view/attack-view.ts` (squids, lanes, decoys) and `view/powerup-view.ts` (what happens to a racer). Reef's art is in `worlds/reef/sprites/attack.ts` and `worlds/reef/sprites/items.ts`; each world draws its own.
 
 | Thing | Look | Motion | Reduced motion |
 | --- | --- | --- | --- |
@@ -103,11 +103,11 @@ Drawn from world state by `view/attack-view.ts` (squids, lanes, decoys) and `vie
 | Mimic decoy | the owner's own racer sprite at 72-90% opacity with a cool tint (`0xcfe8ff`), swimming; blinks at 40% for its last 45 ticks | shimmers on a 48-tick cycle | steady 80% (40% when expiring) |
 | Undertow pull | three violet speed lines trailing the racer, 10 px behind its centre, for as long as `status.undertow` runs | two-frame flicker, 4 ticks a frame | holds frame a |
 
-Event effects: a squid fired puffs bubbles at its owner; a shake-off pops bubbles on the racer; a squid that fizzles leaves an ink puff where it was; a new Riptide strings bubbles along its lane; Undertow trails bubbles from each racer it pulls; a popped decoy bursts into droplets. Sounds are in `audio/sfx.ts`, chosen by `audio/attack-sfx.ts`.
+Event effects: a squid fired puffs bubbles at its owner; a shake-off pops bubbles on the racer; a squid that fizzles leaves an ink puff where it was; a Riptide just laid strings bubbles along its lane; Undertow trails bubbles from each racer it pulls; a popped decoy bursts into droplets. Sounds are in `audio/sfx.ts`, chosen by `audio/attack-sfx.ts`.
 
 In dark zones a decoy carries the rival's 28 px light pool and a squid a 14 px one.
 
-Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.ts`, applied by `Runtime.startRace`) puts staged state in the world before the first frame: `icons-a`, `icons-b`, `icons-c`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow`, `dark`. It only writes plain world state the views read, and a staged race never saves.
+Review captures: `?stage=<name>` with `?debug=1` on the race URL (`capture-stages.ts`, applied by `Runtime.startRace`) puts staged state in the world before the first frame; the attack stages are `icons-a`, `icons-b`, `icons-c`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow` and `dark`, and the header of `capture-stages.ts` lists every stage. It only writes plain world state the views read, and a staged race never saves.
 
 ## Title
 
@@ -125,11 +125,11 @@ Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.t
 | PRESS A | centred on x 264, top 110, 41 wide | touch screens only (`?touch=1` or a coarse pointer, the rule `@arcade/input` mounts the controls by); on a keyboard A is a move key. Foam, outlined, blinks. Under the best card and just above the A/B zone (y 118), next to the button it names: the six buttons leave no room under the column |
 | Best card | 214, 82, 100, 24 | `raised`, right of the buttons so six buttons fit; clear of the back link above and the A/B zone (y 118 and below); medal at (218, 87), or the saved character's portrait for a 4th-place best; "BEST 2ND" in dim at (234, 86); time in foam at (234, 95). It shows the best on the current course at the level the Level button is on, and swaps as it cycles; a level with no best there shows no card |
 
-The backdrop behind the title and course select is the last listed course raced (Sunlit Shallows until then), in that course's theme; select shows the picked course's, and How to Play the current course's level in its theme. All six buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A new save starts on Easy.
+The backdrop behind the title and course select is the last listed course raced (Sunlit Shallows until then), in that course's theme; select shows the picked course's, and How to Play the current course's level in its theme. All six buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A fresh save starts on Easy.
 
 ```
       NO ROOM WITH THAT CODE                (back link)
-              R E E F   R U S H   (2x)
+              R U S H   R A C E R S  (2x)
   ~ ~ racers ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
                >[    RACE    ]
                 [  FRIENDS   ]       [BEST 2ND  ]
@@ -141,7 +141,7 @@ The backdrop behind the title and course select is the last listed course raced 
 
 ## How to Play
 
-Seven picture pages, built for a reader who may be six: at most four short words on any line, and every idea is also a moving picture of the game's own sprites (the player's saved racer, the clam, the item well, the dash meter's pips, pearls, the enemies, the squid). Opened from the title; A or right turns to the next page, B or left to the previous one. Left and right stop at the first and last page: only B on the first page and A on the last page leave, back to the title with HOW TO PLAY still selected. Each turn plays the menu-move sound. Like every menu it ignores presses for its first 20 ticks. Drawn over the current course's level in its theme, so words are foam or sun and outlined. The sprites, headings and captions are the course's world's: in Thornwood the player's saved racer is its Thornwood critter, crates and acorns replace clams and pearls, the enemies page shows a beetle, and the attacks are BEE, TAILWIND, SNARE VINE and COPYCAT; in Cloudreach balloons and feathers (BALLOON POP, FEATHERS), a Cloud Crab, a Storm Crow and a Sky Eel on the enemies page, and HOMING GULL, JET STREAM, HEADWIND and MIRAGE. Pages 1, 2, 5 and 7 belong to the medium (`MEDIUM_PAGES`; a medium without its own page 2, 5 or 7 shows the shared one); Thornwood's and Cloudreach's are below the table.
+Seven picture pages, built for a reader who may be six: at most four short words on any line, and every idea is also a moving picture of the game's own sprites (the player's saved racer, the clam, the item well, the dash meter's pips, pearls, the enemies, the squid). Opened from the title; A or right turns to the next page, B or left to the previous one. Left and right stop at the first and last page: only B on the first page and A on the last page leave, back to the title with HOW TO PLAY still selected. Each turn plays the menu-move sound. Like every menu it ignores presses for its first 20 ticks. Drawn over the current course's level in its theme, so words are foam or sun and outlined. The sprites, headings and captions are the course's world's: in Thornwood the player's saved racer is its Thornwood critter, crates and acorns replace clams and pearls, the enemies page shows a beetle, and the attacks are BEE, TAILWIND, SNARE VINE and COPYCAT; in Cloudreach balloons and feathers (BALLOON POP, FEATHERS), a Cloud Crab, a Storm Crow and a Sky Eel on the enemies page, and HOMING GULL, JET STREAM, HEADWIND and MIRAGE. Pages 1, 2, 5 and 7 belong to the medium (`MEDIUM_PAGES`; a medium without its own page 2, 5 or 7 shows the shared one); Thornwood's, Cloudreach's and Farside's are below the table.
 
 | Element | Rect | Notes |
 | --- | --- | --- |
@@ -192,8 +192,8 @@ For the first race on a save and every Easy race, short prompts show beside the 
 | Hint | When | Look |
 | --- | --- | --- |
 | PRESS FIRE | The first time an item lands, until the player fires one (then never again that race). On Easy it has no timeout; on the first race of another level it gives up after 4 s | display, sun, outlined: `PRESS` then the fire glyph (the key cap SPACE on a keyboard or the round A on touch), then `!`. Centred on x 168, placed beside the player (`besidePlayerY`), and dropped below the player when that would sit in the centre splash's band (x 53-267, y 50-74) |
-| DASH! | A locked-on squid is inside the dodge window plus 8 ticks of lead (`SQUID.dodgeTicks`, 12, at squid speed) and the player's dash is ready, since a dash only dodges just before contact and then cools down. Only where the medium lets a dash dodge (`kickRules.dodgesSquid`), so never in Thornwood | the dash glyph (X or B) and DASH!, placed like PRESS FIRE. Wins over PRESS FIRE when both apply. The latched squid's own DASH! prompt (above) takes over once it grips, where it shows |
-| Guide arrow | Easy only: the player has pushed 1.5 s (`DIFFICULTY.easy.guide.showTicks`, 90 ticks) without reaching a tile closer to the finish, so a wall is in the way. Gone as soon as they do. DASH! always wins; PRESS FIRE wins for the first 4.5 s of being stuck, then the arrow takes over and PRESS FIRE hides | a 13x13 sun-yellow arrow with a near-black outline (`sprites/guide.ts`: right and down-right, turned in quarter turns for the 8 directions), centre 24 px from the player's centre along the way on, bobbing up to 3 px outward every 40 ticks. Clamped to the play area (x 8-312, y 52-172, below the HUD rows) and dropped under the centre splash's band when it would cross it. Fades in and out at 0.2 per frame |
+| DASH! | A locked-on squid is inside the dodge window plus 8 ticks of lead (`dodgeTicks(world)`: 12 ticks on Hard, 18 on Normal, 24 on Easy, at squid speed; `KICK_LEAD_TICKS`) and the player's dash is ready, since a dash only dodges just before contact and then cools down. Only where the medium lets a dash dodge (`kickRules.dodgesSquid`), so never in Thornwood | the dash glyph (X or B) and DASH!, placed like PRESS FIRE. Wins over PRESS FIRE when both apply. The latched squid's own DASH! prompt (above) takes over once it grips, where it shows |
+| Guide arrow | Easy only: the player has pushed 1.5 s (`DIFFICULTY.easy.guide.showTicks`, 90 ticks) without reaching a tile closer to the finish, so a wall is in the way. Gone as soon as they do. DASH! always wins; PRESS FIRE wins for the first 4.5 s of being stuck, then the arrow takes over and PRESS FIRE hides | a 13x13 sun-yellow arrow with a near-black outline (`art/sprites/guide.ts`: right and down-right, turned in quarter turns for the 8 directions), centre 24 px from the player's centre along the way on, bobbing up to 3 px outward every 40 ticks. Clamped to the play area (x 8-312, y 52-172, below the HUD rows) and dropped under the centre splash's band when it would cross it. Fades in and out at 0.2 per frame |
 | SWAP! | Once a race: the first time the player holds two or more items while no hint above wants the spot (so after PRESS FIRE is done). Gone when the player swaps (the selection moves off an item that is still held; using up or losing it doesn't count) or once it has been on screen 4 s (`SWAP_TICKS`; a hint that takes the spot pauses it), and never back that race. A latched squid's DASH! prompt also holds the spot | the next-item control (the E key cap, or `⇄` on touch) and SWAP!, placed like PRESS FIRE |
 | Pulsing fire glyph by the well | Items have sat unused for 5 s on Easy, or from the moment PRESS FIRE gives up on another level (restarts after each use), and no other hint is up | the fire glyph 3 px right of the pearl counter (x 201, Nib 217), level with the well (top y 24), blinking its gold frame twice a second; steady gold under reduced motion. A glyph that would reach the back link (x 248 or more: Nib's SPACE cap ends at x 256) drops to top y 27, just under it |
 
@@ -201,7 +201,7 @@ Glyph frames and the pulse blink at most 3 times a second. On touch screens the 
 
 ## Course select
 
-Shown between the title and select while more than one course is listed, which is now: Sunlit Shallows, Bramble Run, Thunderhead Pass, then Slingshot Alley. With one course listed, or with an unlisted `?course=` in force (such as `run-test`, `sky-test` or `drift-test`), Race goes straight to select. Drawn by `view/course-view.ts`; `course-view.test.ts` holds three courses to this layout on desktop and phone.
+Shown between the title and select while more than one course is listed (the listed courses, in order, are in DESIGN.md "Worlds and courses"). With one course listed, or with an unlisted `?course=` in force (such as `run-test`, `sky-test` or `drift-test`), Race goes straight to select. Drawn by `view/course-view.ts`; `view/course-view.test.ts` holds three courses to this layout on desktop and phone, and refuses a sixth.
 
 | Element | Rect | Notes |
 | --- | --- | --- |
@@ -226,7 +226,7 @@ Up and down move the cursor and wrap; A (fire) picks the course and goes to sele
 | --- | --- | --- |
 | Heading | 112, 6, 96, 12 | "PICK A RACER", display, sun, outlined, centred on x 160 |
 | Grid cells | from 22, 28; 66x22; 4 px between columns, 2 between rows | the picked course's world's cast (Reef: Rudy to Rook; Thornwood: Grit, Skip, Blaze, Shade, Cheeks, Duke, Dusk, Fang; Cloudreach: Bumper, Zip, Dart, Nox, Pip, Admiral, Luna, Talon; Farside: Bolt, Zib, Flare, Umbra, Widget, Admiral, Nova, Krag; short names being the first word), 4x2 in `CHARACTER_IDS` order: rows y 28-49 and 52-73. `raised`, the cursor's cell `accent` with its name in sun; 16x16 portrait at (+3, +3), short name in foam at (+22, +8). The top-right cell (x 232-297) starts below the back link; the bottom row ends above the d-pad zone |
-| Card | 110, 78, 188, 40 | `raised`; right edge on the grid's, bottom at y 117 above the A/B zone. Portrait at 2x (32x32) at (114, 82); text column x 150-293 (`CARD_TEXT_WIDTH` 144): full name in display sun at y 83, ability in foam at y 98, blurb in dim at y 107. `character-select.test.ts` holds every line to the column |
+| Card | 110, 78, 188, 40 | `raised`; right edge on the grid's, bottom at y 117 above the A/B zone. Portrait at 2x (32x32) at (114, 82); text column x 150-293 (`CARD_TEXT_WIDTH` 144): full name in display sun at y 83, ability in foam at y 98, blurb in dim at y 107. `screens/character-select.test.ts` holds every line to the column |
 | Preview | 144, 128, 32, 24 | the picked racer's sprite at 2x, centred on (160, 140), swimming in place |
 | Footer | 114, 159, 92, 15 | `inset` readout: fire icon at (122, 162) + RACE, dash icon at (164, 162) + BACK, words in foam 11 px right of their icons. On touch screens (the PRESS A rule) the icons give way to the button letters A and B in sun |
 

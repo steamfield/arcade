@@ -22,7 +22,7 @@ export interface NamedFrame {
 }
 
 /** Width and height shared by every frame of a sheet, in pixels. */
-export interface FrameSize {
+interface FrameSize {
   width: number;
   height: number;
 }

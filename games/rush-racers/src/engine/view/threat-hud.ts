@@ -23,7 +23,7 @@ import { BASE_LAYOUT, type ScreenLayout } from './screen-layout.ts';
 import { type Marker, markerFor, newMarker, type Rect, squidHuntingLocal } from './threat-math.ts';
 
 /** The squid warnings; `sync` redraws them from the world. */
-export interface ThreatHud {
+interface ThreatHud {
   /**
    * `view` is the camera's world rectangle, to turn world positions into screen ones. `splashShowing`
    * keeps the arrow off the centre splash while a banner is up.
@@ -32,7 +32,7 @@ export interface ThreatHud {
 }
 
 /** The prompt's two lines: empty when nothing is latched, and the touch hint only on touch screens. */
-export interface PromptText {
+interface PromptText {
   headline: string;
   hint: string;
 }

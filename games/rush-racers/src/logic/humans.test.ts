@@ -5,9 +5,9 @@
 import { createRng, EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES, PLAYER_PROFILE } from './ai/profiles.ts';
-import { CHARACTERS, pickRivals } from './characters.ts';
+import { botDriver } from './balance/bot-driver.ts';
+import { assignCharacters, CHARACTERS } from './characters.ts';
 import { DEFAULT_COURSE } from './courses/index.ts';
-import { botDriver } from './difficulty/bot-driver.ts';
 import type { GameEvent } from './events.ts';
 import { hashWorld } from './hash.ts';
 import { COUNTDOWN_TICKS, DNF_GRACE_TICKS } from './race/standings.ts';
@@ -169,7 +169,10 @@ describe('characters per slot', () => {
         const roster = createRng((Math.imul(seed, 0x9e3779b1) ^ RNG_SALTS.roster) >>> 0);
         const { world } = countdownOn({ seed, character });
 
-        expect(world.racers.map((racer) => racer.character)).toEqual([character, ...pickRivals(roster, character)]);
+        const cast = assignCharacters(roster, { player: character });
+
+        expect(world.racers[0]?.character).toBe(character);
+        expect(world.racers.map((racer) => racer.character)).toEqual(world.racers.map((racer) => cast[racer.id]));
       }
     },
   );

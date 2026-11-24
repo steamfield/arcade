@@ -10,7 +10,7 @@ import type { EventSink } from '@arcade/core';
 import { kickImpulse } from '../abilities.ts';
 import type { GameEvent } from '../events.ts';
 import type { KickRules, Medium, MediumEffects, MediumEnv, MediumTuning } from '../media/types.ts';
-import { length } from '../num.ts';
+import { length, unit } from '../num.ts';
 import type { Body, Intent, MoveModifiers, Racer, Vec } from '../types.ts';
 import type { GlideEnv, GlideMotion } from './glide-data.ts';
 import {
@@ -24,7 +24,7 @@ import {
 import { createGlidePilot, steerGlider } from './glide-pilot.ts';
 
 /** Glide's numbers in pixels and seconds; `extra.gravity` is the downward pull, px/s², held or not. */
-export const GLIDE_TUNING = {
+const GLIDE_TUNING = {
   base: { forceMul: 1, kickMul: 1, kickCooldownTicks: 30, dragMul: 1 },
   force: 240,
   drag: 2,
@@ -94,11 +94,6 @@ function gravityOf(tuning: MediumTuning): number {
   if (gravity === undefined)
     throw new Error("Glide tuning has no extra 'gravity'; pass glide's tuning (effectiveTuning)");
   return gravity;
-}
-
-function unit(v: Vec): Vec {
-  const size = length(v.x, v.y);
-  return size === 0 ? { x: 0, y: 0 } : { x: v.x / size, y: v.y / size };
 }
 
 function accelerate(body: Body, direction: Vec, amount: number): void {

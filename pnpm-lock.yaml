@@ -331,6 +331,9 @@ importers:
       vite:
         specifier: 'catalog:'
         version: 8.3.8(@types/node@24.19.2)(esbuild@0.28.2)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.1(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2))
 
   packages/core:
     devDependencies:
@@ -422,12 +425,18 @@ importers:
         specifier: workspace:*
         version: link:../shell
     devDependencies:
+      '@arcade/save':
+        specifier: workspace:*
+        version: link:../save
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.65.1
       '@types/node':
         specifier: 'catalog:'
         version: 24.19.2
+      fake-indexeddb:
+        specifier: 'catalog:'
+        version: 6.2.8
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

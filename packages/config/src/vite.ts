@@ -1,10 +1,25 @@
+/**
+ * The shared Vite preset every game's `vite.config.ts` calls: base path and html tags from
+ * `game.json`, hashed assets, engine pre-bundling, and the Vitest defaults.
+ */
 import { readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Plugin, UserConfig } from 'vite';
-import { type GameManifest, parseManifest } from './manifest.ts';
+import type { ViteUserConfig as UserConfig } from 'vitest/config';
+import { gameHtmlPlugin } from './game-html-plugin.ts';
+import { readManifest } from './manifest-file.ts';
+import { buildTestConfig, type SlowTests } from './test-config.ts';
+
+export { readManifest } from './manifest-file.ts';
+export type { SlowTests } from './test-config.ts';
 
 const ENGINE_DEPS = ['phaser', 'three', '@dimforge/rapier3d-compat'];
+
+/** Options of `defineGameConfig` that shape more than one part of the config. */
+export interface GameConfigOptions {
+  /** Moves these test files into their own Vitest project, leaving `unit` as the default. */
+  slowTests?: SlowTests;
+}
 
 /**
  * Vite config for a game. Usage in games/<slug>/vite.config.ts:
@@ -13,8 +28,17 @@ const ENGINE_DEPS = ['phaser', 'three', '@dimforge/rapier3d-compat'];
  * Sets the base path from game.json, puts hashed assets under _v/ (the only
  * folder served as immutable), pre-bundles engines so the first dev run in a
  * fresh worktree doesn't reload mid-test, and injects title and share tags.
+ * Every key of `overrides` reaches the result; `plugins`, `build`, `optimizeDeps`, `server` and
+ * `test` merge with the defaults, and the rest (`define`, for one) pass straight through. `root` and
+ * `base` always come from `game.json`, whatever `overrides` says.
+ *
+ * @throws {Error} When `game.json` is missing or invalid, or its slug differs from the game's folder name.
  */
-export function defineGameConfig(configUrl: string, overrides: UserConfig = {}): UserConfig {
+export function defineGameConfig(
+  configUrl: string,
+  overrides: UserConfig = {},
+  options: GameConfigOptions = {},
+): UserConfig {
   const root = dirname(fileURLToPath(configUrl));
   const manifest = readManifest(root);
   const folder = basename(root);
@@ -27,13 +51,15 @@ export function defineGameConfig(configUrl: string, overrides: UserConfig = {}):
   const engines = ENGINE_DEPS.filter((d) => pkg.dependencies?.[d]);
 
   return {
+    ...overrides,
     root,
     base: `/games/${manifest.slug}/`,
     plugins: [gameHtmlPlugin(manifest), ...(overrides.plugins ?? [])],
     build: {
       assetsDir: '_v',
       target: 'es2023',
-      sourcemap: true,
+      // No production sourcemaps: they doubled the deploy (14 MB for Rush Racers) and approach Cloudflare's per-file limit.
+      sourcemap: false,
       chunkSizeWarningLimit: 2000,
       ...overrides.build,
     },
@@ -45,49 +71,6 @@ export function defineGameConfig(configUrl: string, overrides: UserConfig = {}):
       forwardConsole: !process.env.ARCADE_TEST_SERVER,
       ...overrides.server,
     },
-    test: {
-      include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
-      environment: 'node',
-      // Dots for passes, full detail for failures: keeps agent context small. Use --reporter=verbose to list tests.
-      reporters: ['dot'],
-      ...(overrides as { test?: object }).test,
-    },
-  } as UserConfig;
-}
-
-export function readManifest(gameDir: string): GameManifest {
-  const path = join(gameDir, 'game.json');
-  return parseManifest(JSON.parse(readFileSync(path, 'utf8')), path);
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
-}
-
-/** Injects <title>, description and Open Graph tags so a shared /games/<slug>/ link previews properly. */
-function gameHtmlPlugin(manifest: GameManifest): Plugin {
-  const siteUrl = process.env.ARCADE_SITE_URL?.replace(/\/$/, '') ?? '';
-  return {
-    name: 'arcade:game-html',
-    transformIndexHtml() {
-      const url = `${siteUrl}/games/${manifest.slug}/`;
-      const tags: [string, string][] = [
-        ['og:title', manifest.title],
-        ['og:description', manifest.pitch],
-        ['og:type', 'website'],
-        ['twitter:card', manifest.cover ? 'summary_large_image' : 'summary'],
-      ];
-      if (siteUrl) tags.push(['og:url', url]);
-      if (siteUrl && manifest.cover) tags.push(['og:image', `${url}${manifest.cover.replace(/^\.?\//, '')}`]);
-      return [
-        { tag: 'title', children: escapeHtml(manifest.title), injectTo: 'head' },
-        { tag: 'meta', attrs: { name: 'description', content: manifest.pitch }, injectTo: 'head' },
-        ...tags.map(([property, content]) => ({
-          tag: 'meta',
-          attrs: { property, content },
-          injectTo: 'head' as const,
-        })),
-      ];
-    },
+    test: buildTestConfig(overrides.test, options.slowTests),
   };
 }

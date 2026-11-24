@@ -1,6 +1,6 @@
 import { configureLogging, type LogEntry } from '@arcade/core';
 import { afterEach, describe, expect, it } from 'vitest';
-import { HOW_TO_PLAY_PAGES } from '../../how-to-play.ts';
+import { HOW_TO_PLAY_PAGES } from '../../screens/how-to-play.ts';
 import { SKINS } from '../../worlds/index.ts';
 import { MEDIUM_PAGES, mediumPagesFor, pageSpecsFor } from './index.ts';
 import type { PageKit } from './kit.ts';

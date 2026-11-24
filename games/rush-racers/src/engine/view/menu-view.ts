@@ -7,7 +7,7 @@
  */
 import type Phaser from 'phaser';
 import { type Button, createButton } from '../art/ui/button.ts';
-import type { Menu, MenuOption } from '../menu.ts';
+import type { Menu, MenuOption } from '../screens/menu.ts';
 
 /** A drawn menu that follows the runtime's selection. */
 export interface MenuView {
@@ -19,7 +19,7 @@ export interface MenuView {
 }
 
 /** Where the column sits: buttons centred on `centreX`, the first top edge at `top`, one every `pitch` px. */
-export interface MenuLayout {
+interface MenuLayout {
   centreX: number;
   top: number;
   /** Every button is this wide, so the column lines up and the fins share one x. */
@@ -28,7 +28,7 @@ export interface MenuLayout {
 }
 
 /** The text an option's button shows now. Defaults to `OPTION_LABELS`. */
-export type OptionText = (option: MenuOption) => string;
+type OptionText = (option: MenuOption) => string;
 
 /** Each option's button text when it has no live state to show: the option in capitals, built once. */
 export const OPTION_LABELS: Readonly<Record<MenuOption, string>> = {

@@ -4,26 +4,7 @@
  * course select with the cursor on Bramble Run.
  */
 import { expect } from '@playwright/test';
-import { scenario, tap, wait } from './kit.ts';
-
-/**
- * A v6 save on Hard whose last course is Sunlit Shallows, with a best on each course, so course
- * select opens on Sunlit Shallows with a best on both rows.
- */
-const TWO_COURSE_SAVE = {
-  version: 6,
-  savedAt: '2026-11-23T00:00:00.000Z',
-  data: {
-    bests: {
-      'sunlit-shallows': { easy: null, normal: null, hard: { ticks: 5400, place: 1 } },
-      'bramble-run': { easy: null, normal: null, hard: { ticks: 6000, place: 2 } },
-    },
-    lastCourse: 'sunlit-shallows',
-    races: 0,
-    settings: { muted: false, reducedMotion: null, difficulty: 'hard' },
-    character: 'rudy',
-  },
-};
+import { scenario, TWO_COURSE_SAVE, tap, wait } from './kit.ts';
 
 /**
  * Title Race opens course select on Sunlit Shallows, the course in force. Down moves to Bramble Run

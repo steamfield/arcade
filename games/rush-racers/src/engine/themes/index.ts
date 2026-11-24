@@ -1,6 +1,7 @@
 /**
- * The theme registry: every theme by id, the lookup scenes use to draw a course, and the boot step
- * that builds every theme's textures. Adding a theme is one file and one line here.
+ * The theme registry: every theme by id, the lookup scenes use to draw a course, and the on-demand
+ * import of each theme's `art.ts` (`worlds/load.ts` runs it). Adding a theme is its data file and its
+ * `art.ts`, and one line in each map here.
  */
 import type Phaser from 'phaser';
 import type { Course, ThemeId } from '../../logic/courses/types.ts';
@@ -33,10 +34,12 @@ export function themeFor(course: Course): Theme {
 }
 
 /**
- * Builds every theme's textures and animations. Boot calls it once.
- *
- * @throws {Error} When a theme's pixel art is malformed (see `drawSheets`).
+ * Each theme's `art.ts`, imported on demand so its sprite rows are a chunk of their own; keyed like
+ * `THEMES`. Only `worlds/load.ts` calls these.
  */
-export function registerThemeTextures(scene: Phaser.Scene): void {
-  for (const theme of Object.values(THEMES)) theme.registerTextures(scene);
-}
+export const THEME_ART: Readonly<Record<ThemeId, () => Promise<{ registerArt(scene: Phaser.Scene): void }>>> = {
+  ocean: () => import('./ocean/art.ts'),
+  forest: () => import('./forest/art.ts'),
+  space: () => import('./space/art.ts'),
+  sky: () => import('./sky/art.ts'),
+};

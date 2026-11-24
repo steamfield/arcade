@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createSaveStore } from '@arcade/save';
+import { checkSaveFixtures } from '@arcade/testing';
 import { describe, expect, it } from 'vitest';
 import { migrations, NEW_GAME, SAVE_VERSION, type SaveData, SaveSchema } from '../src/logic/save.ts';
 
 const fixturesDir = new URL('./fixtures/', import.meta.url);
-const fixtures = readdirSync(fixturesDir).filter((f) => /^save-v\d+\.json$/.test(f));
 let store = 0;
 const freshStore = () =>
   createSaveStore({ gameId: `fixture-${store++}`, version: SAVE_VERSION, schema: SaveSchema, migrate: migrations });
@@ -24,14 +24,10 @@ async function load(file: string) {
 }
 
 describe('save compatibility', () => {
-  it('has a fixture for every save version up to the current one', () => {
-    const versions = fixtures.map((f) => Number(/\d+/.exec(f)?.[0]));
-    for (let v = 1; v <= SAVE_VERSION; v++) expect(versions).toContain(v);
-  });
-
   // Every fixture, including ones added later without their own assertions, must still load.
-  it.each(fixtures)('%s still loads with the current code', async (file) => {
-    expect((await load(file)).kind).toBe('ok');
+  it('has a fixture for every save version, and each loads migrated to the current one', async () => {
+    const report = await checkSaveFixtures({ dir: fixturesDir, currentVersion: SAVE_VERSION, openStore: freshStore });
+    expect(report).toEqual({ missingVersions: [], failures: [] });
   });
 
   it('upgrades a v1 save to a new game: nothing in the template save carries over', async () => {

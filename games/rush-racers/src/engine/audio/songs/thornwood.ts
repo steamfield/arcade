@@ -20,7 +20,7 @@
 import { parseSong, type Song } from '../notation.ts';
 
 /** Thornwood's race song in the game's notation. */
-export const thornwoodSource = `
+const thornwoodSource = `
 name: thornwood
 tempo: 156
 time: 6/8

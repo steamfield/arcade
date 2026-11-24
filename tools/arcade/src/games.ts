@@ -1,7 +1,8 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { type GameManifest, parseManifest } from '@arcade/config/manifest';
+import type { GameManifest } from '@arcade/config/manifest';
+import { readManifestsIn } from '@arcade/config/manifest-file';
 
 export const ROOT = resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 
@@ -14,25 +15,23 @@ export interface GameInfo {
   kind: 'game' | 'template';
 }
 
-/** Every game and template in the repo, read from their game.json files. */
-export function listGames(): GameInfo[] {
+/**
+ * Every game and template under `root` (the repo by default), read from their game.json files.
+ * A folder with a game.json but no package.json is skipped with a warning, before its manifest is read.
+ */
+export function listGames(root: string = ROOT): GameInfo[] {
   const found: GameInfo[] = [];
   for (const [folder, kind] of [
     ['games', 'game'],
     ['templates', 'template'],
   ] as const) {
-    const base = join(ROOT, folder);
-    if (!existsSync(base)) continue;
-    for (const name of readdirSync(base)) {
-      const dir = join(base, name);
-      const manifestPath = join(dir, 'game.json');
-      if (!existsSync(manifestPath)) continue;
-      if (!existsSync(join(dir, 'package.json'))) {
-        // A half-made or leftover folder shouldn't stop every arcade command.
-        console.warn(`arcade: skipping ${folder}/${name}: it has game.json but no package.json`);
-        continue;
-      }
-      const manifest = parseManifest(JSON.parse(readFileSync(manifestPath, 'utf8')), manifestPath);
+    const hasPackageJson = (dir: string): boolean => {
+      if (existsSync(join(dir, 'package.json'))) return true;
+      // A half-made or leftover folder shouldn't stop every arcade command.
+      console.warn(`arcade: skipping ${folder}/${basename(dir)}: it has game.json but no package.json`);
+      return false;
+    };
+    for (const { dir, manifest } of readManifestsIn(join(root, folder), hasPackageJson)) {
       const pkg = (JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as { name: string }).name;
       found.push({ slug: manifest.slug, dir, pkg, manifest, kind });
     }

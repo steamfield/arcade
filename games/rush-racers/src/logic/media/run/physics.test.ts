@@ -6,24 +6,20 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { jumpMulFor } from '../../abilities.ts';
-import { PLAYER_PROFILE } from '../../ai/profiles.ts';
 import type { GameEvent } from '../../events.ts';
-import { noItems } from '../../racers.ts';
-import { courseFromLevel, eventsIn, hold, IDLE, racerOf, step } from '../../test-world.ts';
+import { eventsIn, hold, IDLE, step } from '../../test-world.ts';
 import {
   CHARACTER_IDS,
   type CharacterId,
   type Intent,
   type MoveModifiers,
-  RACER_SIZE,
   type Racer,
   TILE,
   type Vec,
 } from '../../types.ts';
-import { createWorld } from '../../world.ts';
 import { applyIntent as applySwimIntent } from '../swim/physics.ts';
 import { SWIM_TUNING } from '../swim/tuning.ts';
-import type { MediumTuning } from '../types.ts';
+import { bareRacer, type LaneWorldOptions, laneWorld, stepBare, ticksIn, ticksOfRacer } from '../test-kit.ts';
 import { type RunEnv, runMotion } from './data.ts';
 import { applyRunIntent, createRunMotion } from './physics.ts';
 import { RUN_TUNING } from './tuning.ts';
@@ -37,28 +33,8 @@ const UP_RIGHT: Vec = { x: 1, y: -1 };
 const STILL: Vec = { x: 0, y: 0 };
 const { jumpSpeed, gravity, bufferTicks, coyoteTicks } = RUN_TUNING.extra;
 
-/** Ticks in a number of seconds. */
-const ticksIn = (seconds: number) => Math.round(seconds / TICK_DT);
-
-function bareRunner(character: CharacterId = 'rudy'): Racer {
-  const body = { x: 40, y: 40, vx: 0, vy: 0, w: RACER_SIZE.width, h: RACER_SIZE.height };
-  return {
-    id: 'player',
-    character,
-    motion: createRunMotion(body),
-    body,
-    facing: 1,
-    kickCooldown: 0,
-    kickCharges: 2,
-    kickRecharge: 0,
-    progress: Number.POSITIVE_INFINITY,
-    place: 1,
-    finished: null,
-    ai: null,
-    profile: PLAYER_PROFILE,
-    ...noItems(3),
-  };
-}
+/** A runner in slot 'player' at rest near the top-left, outside any world. */
+const bareRunner = (character: CharacterId = 'rudy') => bareRacer(createRunMotion, { character, x: 40, y: 40 });
 
 /** Applies run to a bare racer for `ticks` ticks; returns `vx` after each and the events emitted. */
 function runFor(
@@ -68,39 +44,20 @@ function runFor(
   env: RunEnv = ON_GROUND,
   mods: MoveModifiers = BASE,
 ): { speeds: number[]; log: EventLog<GameEvent> } {
-  const log = new EventLog<GameEvent>(1000);
-  const speeds = Array.from({ length: ticks }, () => {
-    applyRunIntent(racer, intent, env, RUN_TUNING, mods, log, TICK_DT);
-    return racer.body.vx;
-  });
-  return { speeds, log };
+  const { samples, log } = stepBare(
+    applyRunIntent,
+    racer,
+    ticks,
+    intent,
+    { env, tuning: RUN_TUNING, mods },
+    ({ body }) => body.vx,
+  );
+  return { speeds: samples, log };
 }
 
-/**
- * A racing world on `playerRows` (the player's lane, with start 1 and the finish column) under a
- * three-row lane where the rivals start, so they never touch the player.
- */
-function runWorld(
-  playerRows: readonly string[],
-  options: { character?: CharacterId; tuning?: Partial<MediumTuning> } = {},
-) {
-  const width = playerRows[0]?.length ?? 0;
-  const rivalLane = [`${'.'.repeat(width - 1)}F`, `.234${'.'.repeat(width - 5)}F`, '#'.repeat(width)];
-  const overrides = options.tuning ? { tuning: options.tuning } : {};
-  const course = courseFromLevel([...rivalLane, ...playerRows].join('\n'), 'run', overrides);
-  const log = new EventLog<GameEvent>(100_000);
-  const world = createWorld(course, log, { seed: 1, character: options.character ?? 'rudy', endsWhen: 'everyone' });
-  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'everyone' };
-  return { world, log, player: racerOf(world, 'player') };
-}
-
-/** World ticks on which the player emitted an event of `type`; rivals in their lane emit their own. */
-function playerTicksOf(log: EventLog<GameEvent>, type: 'racer.jumped' | 'racer.kicked'): number[] {
-  return log
-    .all()
-    .filter((event) => event.type === type && event.id === 'player')
-    .map((event) => event.tick);
-}
+/** A racing run world on `playerRows`; the rivals race in their own lane walled off above. */
+const runWorld = (playerRows: readonly string[], options: LaneWorldOptions = {}) =>
+  laneWorld('run', playerRows, options);
 
 /** A flat lane 6 tiles high and 16 wide. */
 const FLAT = [
@@ -242,7 +199,7 @@ describe('jumping', () => {
     step(world, log, SETTLE);
     step(world, log, 90, hold(UP_RIGHT));
 
-    expect({ jumps: playerTicksOf(log, 'racer.jumped').length, dashes: playerTicksOf(log, 'racer.kicked') }).toEqual({
+    expect({ jumps: ticksOfRacer(log, 'racer.jumped').length, dashes: ticksOfRacer(log, 'racer.kicked') }).toEqual({
       jumps: 1,
       dashes: [],
     });
@@ -262,7 +219,7 @@ describe('jumping', () => {
     step(world, log, SETTLE);
     step(world, log, 120, hold(UP));
 
-    expect(playerTicksOf(log, 'racer.jumped')).toHaveLength(1);
+    expect(ticksOfRacer(log, 'racer.jumped')).toHaveLength(1);
   });
 
   describe('buffer', () => {
@@ -275,7 +232,7 @@ describe('jumping', () => {
         step(world, log, 1, tick === pressTick ? hold(UP) : IDLE);
         if (landedOn === null && runMotion(player.motion).grounded) landedOn = world.tick;
       }
-      return { landedOn: landedOn ?? Number.NaN, jumps: playerTicksOf(log, 'racer.jumped') };
+      return { landedOn: landedOn ?? Number.NaN, jumps: ticksOfRacer(log, 'racer.jumped') };
     }
     // The runner stands (reads grounded) the tick after the move that lands it.
     const standsOn = dropPressingAt(null).landedOn + 1;
@@ -310,7 +267,7 @@ describe('jumping', () => {
         // The first tick that reads not grounded is the one after the move that left the ledge.
         if (airborneFrom === null && !runMotion(player.motion).grounded) airborneFrom = world.tick + 1;
       }
-      return { airborneFrom: airborneFrom ?? Number.NaN, jumps: playerTicksOf(log, 'racer.jumped') };
+      return { airborneFrom: airborneFrom ?? Number.NaN, jumps: ticksOfRacer(log, 'racer.jumped') };
     }
     const airborneFrom = runOffPressingAt(null).airborneFrom;
 
@@ -415,10 +372,10 @@ describe('dash', () => {
       step(world, log, 1, hold(STILL, { kick: true }));
       if (runMotion(player.motion).grounded) landedOn = world.tick;
     }
-    const airDashes = playerTicksOf(log, 'racer.kicked').length;
+    const airDashes = ticksOfRacer(log, 'racer.kicked').length;
     step(world, log, 1, hold(STILL, { kick: true }));
 
     expect(landedOn).not.toBeNull();
-    expect([airDashes, playerTicksOf(log, 'racer.kicked').length]).toEqual([1, 2]);
+    expect([airDashes, ticksOfRacer(log, 'racer.kicked').length]).toEqual([1, 2]);
   });
 });

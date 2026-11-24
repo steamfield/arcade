@@ -1,324 +1,182 @@
-# Agent Experience (AX) Plan
+# Agent experience
 
-Status: revised after devil's-advocate review. Companion to [architecture.md](architecture.md).
+How an agent working here verifies its own change: the `arcade` CLI, the test harness and the guardrails. Companion to [architecture.md](architecture.md). The commands an agent runs, and when, are in `AGENTS.md`; this doc explains how they work and why.
 
-## TL;DR
+An agent can't watch a game run or hear it, and every line of tool output costs it context. So the tooling is built around four ideas:
 
-Most of the code here will be written by agents. An agent working on a game can't watch it run or hear it, and every line of tool output costs it context. The foundation should remove those handicaps before the first game exists:
-
-- **One CLI with three core commands.** `check` is fast, quiet and includes every game a change can affect. `see` runs a game headlessly to an exact state and writes a screenshot, state, events and console log to disk. `smoke` tests the production build.
-- **Deterministic games.** The test harness steps the game tick by tick, randomness is seeded, and the harness waits for asset loads. The same input always gives the same state.
-- **Silent failures fail loudly.** Loader errors, unknown asset keys, a lost WebGL context, a dropped event and a weakened test all make the run fail.
-- **Lint and type rules give instructions.** Each message tells the agent what to do instead.
-
-The test for every item below: does it let an agent find out whether its change actually worked, without a human opening a browser and without a misleading green result?
+- **Short output, details on disk.** Commands print one line on success and the failures otherwise; screenshots, state and logs go to files.
+- **Deterministic games.** The harness steps the game tick by tick, randomness is seeded, and the harness waits for loads. The same input always gives the same state.
+- **Silent failures fail loudly.** Game errors, console errors, failed requests and dropped events fail the run.
+- **Rules that give instructions.** Each lint and type rule says what to do instead.
 
 ## The inner loop
 
-1. Edit code. A hook formats the file.
-2. `pnpm arcade test <slug> <paths or @groups>` and `pnpm arcade check <slug> --skip-tests`: the tests covering the change, then typecheck and lint. Quiet on success, short on failure. Seconds.
-3. `pnpm arcade see <slug> --scenario <name>`: a headless run to a known state. The agent reads the screenshot and the state summary.
-4. At the merge, once, by whoever merges: `pnpm arcade check <slug>` (every unit test), any slow project the game defines, and `pnpm arcade smoke <slug>`, the production-build smoke test. Subagents stop at step 3 (AGENTS.md "Test scope").
+1. Edit code.
+2. `pnpm arcade test <slug> <paths or @groups>` and `pnpm arcade check <slug> --skip-tests`: the tests covering the change, then typecheck and lint.
+3. `pnpm arcade see <slug> --scenario <name>`: a headless run to a known state. The agent reads the screenshot and the summary.
+4. At the merge, once, by whoever merges: `pnpm arcade check <slug>` (every unit test), any slow project the game defines, and `pnpm arcade smoke <slug>`. Subagents stop at step 3 (AGENTS.md "Test scope").
 
 CI runs the same `arcade` commands, so "passes locally" and "passes in CI" mean the same thing.
 
-| Command                    | What it does                                                                                            | Prints                                                                                                             |
-| -------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `arcade check [slug]`      | Typecheck, lint and Vitest for the game plus every dependent of any changed package (Turbo `...[base]`) | One line per failure with `file:line` and the fix hint. A line like "packages/input changed: also checked 6 games" |
-| `arcade see <slug> [opts]` | Headless run to a state, then capture                                                                   | A short summary plus artifact paths                                                                                |
-| `arcade smoke [slug]`      | Production build, assemble, Playwright smoke; also the file-size and file-count limits                  | Pass/fail per game, artifact paths on failure                                                                      |
-| `arcade affected --base <ref>` | Which packages and games the commits since `<ref>` need tested; CI's job matrices (`--json`)        | Packages, games, or "everything" with the file that forced it                                                      |
+| Command | What it does |
+| --- | --- |
+| `arcade check [slug] [--all] [--skip-tests] [--base <ref>]` | Biome over the repo and, in parallel, Turbo `typecheck` and `test` for the game plus every package changed since HEAD and its dependents (`--filter=...[HEAD]`). `--base` checks what changed since a commit, as CI does. One line on success, saying how many tasks came from Turbo's cache. |
+| `arcade test <slug> [paths \| @group] [-t name] [--project name]` | One game's Vitest run, narrowed. See "Running tests". |
+| `arcade see <slug> [opts]` | Headless run to exact ticks, then capture. See "Seeing the game". |
+| `arcade smoke [slug]` | Production build, `assemble`, one `wrangler dev` serving the site and the API Worker, then each game's Playwright suite against it. Also enforces Cloudflare's file-count and file-size limits. |
+| `arcade affected --base <ref> [--json]` | Which packages and games the commits since `<ref>` need tested, or "everything" with the file that forced it. CI's job matrices come from `--json`. |
+| `arcade attract <slug>` | Records the landing page's `public/attract.mp4` and `public/cover.png` from a scenario. See "Attract footage". |
+| `arcade dev <slug> [--port n]` | Vite dev server for one game. |
+| `arcade new <slug> --template phaser-2d\|three-3d [--title]` | Copies a template, renames it, formats the copy, adds the game to `.claude/launch.json` and installs. |
+| `arcade assemble [--include ...]`, `arcade list` | Build the deployable `dist/`; list games and templates with their status. |
 
-Everything else is a plain `package.json` script until it earns a place in the CLI:
+Plain `package.json` scripts cover the rest: `pnpm fix` (Biome safe fixes and formatting), `pnpm test:update` (snapshots, only ever run deliberately; `check` never passes `-u`), `pnpm deploy:api`.
 
-- `pnpm new-game` (the Turbo generator)
-- `pnpm dev <slug>`
-- `pnpm fix`
-- `pnpm test:update` (snapshots and baselines, only ever run deliberately)
-
-`check` never passes `-u`, so an agent can't make a failing snapshot pass by accident.
-
-Output goes to files. A passing run of 200 tests costs one line of context. Turborepo runs with `--output-logs=errors-only`, Vitest with `dot` and Playwright with `line`, and the CLI sets those flags so agents don't have to. Run artifacts go to `.arcade/runs/<timestamp>-<slug>/` (gitignored), with a `latest` link. Ports are never fixed.
+Output is kept small. `pnpm arcade` is a bin, so pnpm adds no echo or ELIFECYCLE lines. Biome uses its one-line GitHub reporter, and formatting issues collapse into one "run pnpm fix" line. Vitest uses the `dot` reporter, Playwright `line`, and Turbo `--output-logs=errors-only`, grouped by package with repo-relative paths. Duplicate problems (one exception seen as a page error, a console error and a game error) are reported once. Ports are never fixed: servers take a free one from `freePort()` in `@arcade/testing`.
 
 ## Determinism
 
-`see`, scenarios and smoke tests only mean something if the same inputs give the same state every time. Playwright's fake clock can't provide that alone. Real time keeps flowing through boot and asset loads until the harness pauses the clock. Fake `requestAnimationFrame` ticks every 16 ms, which doesn't line up with a 60 Hz step. `AudioContext` time is never faked.
+`see`, scenarios and smoke tests only mean something if the same inputs give the same state every time. The shell owns stepping in test mode (`?test=1`, or the flag the harness sets):
 
-So the shell owns stepping in test mode:
-
-- **Ticks are the unit.** A "frame" in every CLI option, scenario and assertion means one fixed logic tick, 1/60 s.
-- **Shell-owned loop.** In test mode the shell holds the game loop after `ready`. `__arcade.advance(ticks)` steps exactly N fixed ticks and renders once. The Phaser template stops Phaser's own loop and calls its step directly. The three.js template calls its own update and render. The fake clock is still installed, so engine timers and `Date` stay frozen between steps.
-- **One clock per game.** In Phaser games, the core accumulator drives `physics.world.step(dt)`, and Phaser's own fixed step is turned off. Logic and physics can't drift onto different ticks.
-- **Wait for loads.** `__arcade.idle()` resolves once no asset loads or decodes are pending. The harness waits on it before the first tick and after every scene change, so a battle scene that loads assets doesn't shift which tick `battle.started` fires on.
-- **Seeded randomness.** It comes from `createRng(seed)` in `@arcade/core`. `Math.random`, `Date.now` and `new Date()` are lint errors in `logic/`.
-- **Semantic assertions.** Scenarios assert on scene, flags, counts and events, or on positions with tolerances. They never compare raw float positions exactly. Local runs (arm64 macOS) and CI (x86 Linux, Chromium and WebKit) can differ in the last bits of `Math.sin`.
-
-The first build task is a spike that proves stepping, idle-waiting and the single clock in both templates, before the scenario format is built on top.
+- **Ticks are the unit.** A "frame" in every CLI option, scenario and assertion is one fixed logic tick, 1/60 s.
+- **Shell-owned stepping.** The engine's own loop keeps running but only renders. Logic advances only through `__arcade.advance(n)`, which stops early when the game stops being idle (a scene, asset or art chunk loading), and the driver waits for `idle()` before continuing. Load timing therefore never changes which tick something happens on. Playwright's fake clock isn't used. Screenshots wait two animation frames so they show the latest state.
+- **One clock per game.** The 2D template keeps tile physics in `src/logic/`. A Phaser game that wants arcade physics sets `arcade.customUpdate: true` and calls `physics.world.singleStep()` once per logic tick, never from Phaser's loop.
+- **Seeded randomness.** It comes from `createRng(seed)` in `@arcade/core`. `Math.random`, `Date.now` and `new Date()` are lint errors in `src/logic/` and `src/net/`.
+- **Semantic assertions.** Scenarios assert on scene, counts, status and events, or on positions with tolerances, never raw floats.
+- **A world hash.** Both templates and Rush Racers put `worldHash` (`hashState` from `@arcade/core` over logic state) in `debugState()`, and smoke pins one hash for a fixed input across desktop Chromium and the phone project, plus WebKit for Phaser (2D) games only (`browserProjects` in `packages/testing/src/playwright.ts` adds it only for them). Rush Racers' lockstep races depend on it holding bit for bit, which is why its logic also bans inexact `Math` (`tools/biome/no-inexact-math.grit`).
 
 ## Seeing the game
 
 ### `arcade see`
 
 ```
-pnpm arcade see rpg --scenario first-battle --at 0,30,90 --device mobile
+pnpm arcade see phaser-2d --scenario complete-level --at 0,180,end
 ```
 
-`see` starts a dev server for this worktree or reuses one, then opens it in headless Chromium:
+Each run opens its own session through `openGameSession` (`packages/testing/src/game-session.ts`): a Vite server in test mode from the current worktree on a free port, headless Chromium with `CHROMIUM_ARGS`, and a `GameDriver` page. `close()` stops all of it, even when a step fails. Then `see` loads the scenario's start save through `__arcade.loadState()`, waits for `idle()`, plays the input and advances to each requested tick.
 
-- **Server reuse** is keyed by worktree root plus slug, recorded in `.arcade/servers.json`. The server reports its absolute root on a health endpoint, and `see` refuses any server whose root doesn't match. An agent in worktree A can't screenshot worktree B's code.
-- **Idle servers** exit after 10 idle minutes, or when their worktree directory disappears.
-- **First run in a fresh worktree:** `defineGameConfig` lists the engines in `optimizeDeps.include`, so this run doesn't hit Vite's mid-run dependency reload.
+It writes a run folder, `.arcade/runs/<timestamp>-<slug>/` (the 50 most recent are kept) or `--out <dir>` (kept until deleted). The summary's first line, `run:`, is its absolute path; use that rather than `.arcade/runs/latest`, which another agent in the same checkout can repoint. In the folder:
 
-Then `see` loads the scenario's start save through `__arcade.loadState()`, waits for `idle()`, plays the input, and advances to each requested tick. It writes:
+- **`summary.txt`**, also printed: the renderer, the game's `debugSummary()` at each captured tick, event counts, deduplicated console warnings, PROBLEMS, the scenario verdict, and the file list. The renderer line matters: a black screenshot from a headless WebGL failure otherwise looks like a bug in the agent's code.
+- **`frame-<tick>.png`** per capture, at CSS pixel size, plus `frames.png`, a contact sheet, when there are several. `--crop x,y,w,h` zooms in.
+- **`state.json`** (the full `debugState()`), **`events.jsonl`** and **`console.log`**.
+- **`diff-<tick>.png`** with `--compare <dir>`: changed pixels in red against an earlier run's frames.
 
-- **`summary.txt`**, also printed:
-  - active renderer and GL vendor
-  - ticks captured
-  - error count
-  - deduplicated console warnings with counts
-  - dropped-event count
-  - the game's small `debugSummary()` at each capture
-  - paths to everything else
+Options: `--scenario`, `--input "<steps>"`, `--at`, `--seed`, `--scene`, `--debug`, `--mobile` (phone viewport and touch controls), `--viewport WxH` (desktop size, default 960x540), `--query k=v` (repeatable launch parameters), `--ascii`, `--field <path>`, `--events <type>`, `--crop`, `--out`, `--compare`. `pnpm arcade help` has the details. `see` exits non-zero when a scenario's expectations fail or the run had any problem.
 
-  The renderer line matters. A black screenshot from a headless WebGL failure otherwise looks like a bug in the agent's code.
-- **`frame-<tick>.png`** per capture, plus `frames.png`, a contact sheet when there are several. The contact sheet is capped in total size so pixel art stays readable after the image is downscaled on read. The default is a single frame, and `--crop x,y,w,h` zooms in.
-- **`state.json`**: the full `debugState()` per capture. It can be large, so the CLI prints only the summary and `--field player.pos` selects specific paths.
-- **`events.jsonl`** and **`console.log`**. `arcade see --events <type>` filters events from the latest run.
+### Attract footage
 
-Other options:
-
-- `--input` for ad hoc input
-- `--seed`
-- `--debug` (overlay on)
-- `--ascii` (tile grid as text)
-- `--device mobile` (Playwright device descriptor with touch)
+`arcade attract <slug>` plays the scenario named in the game's package.json `arcade.attract` (`scenario`, `from`, `to`, `every`, `cover`), screenshots every `every` ticks through the same session `see` uses, and encodes `public/attract.mp4` and `public/cover.png` with ffmpeg. The footage is deterministic, so rerunning it after a look change gives a reproducible loop.
 
 ### Launch parameters and the test hook
 
-The shell reads `?seed=`, `?scene=`, `?debug=1` and `?log=` so humans and agents can jump straight to the part they're working on. Save fixtures are passed through `__arcade.loadState(obj)`, not by URL.
+The shell reads `?seed=`, `?scene=`, `?debug=1`, `?test=1`, `?touch=1` and `?log=` (a level or namespace filter). Games add their own: both templates take `?stage=<name>` (only with `?debug=1` or in test mode), which puts the world in a known state right after it is built for a capture and never saves the result. Scenarios pass these through `start.query`; save fixtures go through `__arcade.loadState(obj)`, not the URL.
 
-The `__arcade` hook is write-capable: it can load state, inject input and advance ticks. It ships in every build because smoke tests run on the production build. In a free, single-player arcade, a player using it to skip content harms no one. A game that later has a leaderboard must validate scores on the server regardless.
+`window.__arcade` is write-capable: `start`, `advance`, `idle`, `events(cursor)`, `debugState`, `debugSummary`, `renderer`, `loadState`, `inject`, plus `errors` and `logs`. It ships in every build because smoke runs on the production build. In a free arcade a player using it to skip content harms no one; a game with a leaderboard would have to validate scores on the server anyway.
 
-### Debug overlay and text views
+### Text views
 
-Each template has an overlay, toggled with `?debug=1`, that shows:
-
-- FPS
-- physics bodies
-- tile coordinates
-- entity labels
-- the scene name
-
-For tile games, `logic/` exposes `toAscii(world)`. Unit tests snapshot it, `see --ascii` prints it, and diffs of it are easy to read. Small platformer levels can be authored as ASCII, which agents write more reliably than Tiled JSON. 3D games get the same information through `debugSummary()`: player position, velocity, grounded flag and nearby objects.
+For tile games, `logic/` exposes `toAscii(world)`. Unit tests assert on it, `see --ascii` prints it, and its diffs are easy to read. Small levels are authored as ASCII, which agents write more reliably than Tiled JSON. 3D games give the same information through `debugSummary()`: position, grounded flag, counts. With `?debug=1` the 2D template outlines the player's body.
 
 ## Silent failures, made loud
 
-- **Errors:** the shell catches `error` and `unhandledrejection`. The template adapters also route events that aren't exceptions into `__arcade.errors`:
-  - Phaser loader errors
-  - audio decode failures
-  - `webglcontextlost`
-
-  Any entry fails `see` and smoke, and shows as a red banner in dev.
-- **Asset keys:** each template generates a typed key manifest from its asset imports, so `Keys.sprites.player` is checked by the compiler. Missing-texture warnings are errors under test. Imported URLs alone fix paths but not the string keys Phaser looks things up by.
-- **Audio:** the engine's audio adapter emits `audio.played { key }` after the sound actually started, not when logic asked for it. Smoke checks that the AudioContext is `running` after the start gate, which only exists in test mode; players start straight into the game. That is how an agent "hears" the game.
-- **Events:** the harness drains the event log with a cursor after every step. A run fails if the ring buffer dropped any events, so "fired once" is never judged on a truncated log.
-- **Renderer:** smoke asserts the expected renderer, so a silent Canvas fallback fails.
+- **Errors:** the shell catches `error` and `unhandledrejection`, records them in `__arcade.errors` and shows a red banner on the page. Games report what isn't an exception through `ctx.reportError(source, error)`: both templates report a lost WebGL context, the 3D template a failed Rapier load, Rush Racers failed audio and a course-art chunk that won't load.
+- **The `game` fixture** (`@arcade/testing/playwright`) fails any test that logged a console error, had a failed request, reported a game error or dropped events, and attaches the console log. When it can't read `__arcade.errors` from an open page, that is a problem too.
+- **Events:** the driver drains the event log with a cursor after every step, and a run fails if the ring buffer dropped any, so "fired once" is never judged on a truncated log.
+- **Renderer:** each template's smoke asserts the renderer (`webgl` for Phaser, `webgl2` for three.js), so a silent Canvas fallback fails.
 
 ## Logs and events
 
-`@arcade/core` provides `createLogger('rpg:battle')`. Logs go to a sink the shell installs, because `console` isn't part of the no-DOM `logic/` environment. Lines are namespaced and filterable with `?log=debug` or `?log=rpg:battle`. Under Playwright they land in `console.log`.
+`@arcade/core` provides `createLogger('ns')`. Logs go to a sink the shell installs, because `console` isn't part of the no-DOM logic environment and `noConsole` bans it in game and package source. Lines are namespaced and filterable with `?log=debug` or `?log=<namespace>`; under Playwright they land in `console.log`.
 
-Domain events record what happened in the game, and tests assert on them: `battle.started`, `player.damaged { amount, hp }`, `level.completed`, `save.written`. Logic emits typed events. The engine adapters emit `audio.played` and similar events.
+Domain events record what happened in the game, and tests assert on them (`coin.collected`, `save.written`, `menu.selected`). Logic emits typed events; the engine adds its own.
 
-## Guardrails: types and lint
+## Guardrails
 
 Every rule exists because agents make that mistake, and every message says what to do instead.
 
-TypeScript settings:
+TypeScript (`packages/config/tsconfig.base.json`): `strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`, `noFallthroughCasesInSwitch`, `verbatimModuleSyntax`, `erasableSyntaxOnly`. Each game's `tsconfig.logic.json` compiles `src/logic/` (and `src/net/` where it exists) with `lib` set to ES only and test files excluded, so `window`, timers and storage are type errors there. Logic may import only `@arcade/core` and Zod; save types such as `Migration` live in `@arcade/core` so logic never pulls in `@arcade/save`'s IndexedDB code.
 
-- `strict`
-- `noUncheckedIndexedAccess`
-- `noImplicitOverride`
-- `noFallthroughCasesInSwitch`
-- `verbatimModuleSyntax`
+Biome (`biome.json`):
 
-`src/logic/` compiles as its own project with `lib` set to ES only:
+| Rule | Scope | The message tells the agent |
+| --- | --- | --- |
+| `noRestrictedImports`: `phaser`, `three`, Rapier, `@arcade/shell`, `@arcade/save`, `@arcade/input` | `src/logic/`, `src/net/` | Logic is engine-free; rendering goes in `src/engine/` |
+| `noRestrictedImports`: `@arcade/*/src` internals | game and template `src/`, logic included | Import from the package entry |
+| `noRestrictedGlobals`: `localStorage`, `sessionStorage`, `indexedDB` | game and template `src/` | Use `@arcade/save` |
+| GritQL `tools/biome/no-nondeterminism.grit`: `Math.random()`, `Date.now()`, `new Date()` | `src/logic/`, `src/net/` (not `src/net/transport/websocket.ts`) | Use `createRng` and the `dt` you were given |
+| GritQL `tools/biome/no-inexact-math.grit`: `**`, `Math.pow`, `Math` members off an exact list | Rush Racers `src/logic/`, `src/net/` | Multiply, or use `src/logic/num.ts` |
+| `noNonNullAssertion` | `src/logic/`, `src/net/` | Handle the missing case |
+| `noConsole` | game, template and package `src/` | Use `createLogger` |
+| `noSkippedTests`, `noFocusedTests` | test files and scenarios | Fix or delete the test |
+| `noTsIgnore`, `noFloatingPromises` | everywhere | Fix the type; await or `void` the promise |
 
-- **Excluded files:** test files are kept out, so Node and Vitest types don't bring timers back in.
-- **Imports:** `logic/` may import only `@arcade/core` and Zod. Source-only packages are typechecked under the importer's settings, so importing `@arcade/save` would pull IndexedDB code into a no-DOM compile. Save-related types, such as the migration function type, live in `@arcade/core` for that reason.
+Tests in `tools/arcade/` guard the guardrails. They run in `@arcade/cli`'s test task, whose Turbo inputs include every file they read, so a cached `arcade check --all` reruns them when a rule, game source or doc they read changes:
 
-Biome rules:
-
-| Rule                                                                 | Scope                                          | The message tells the agent                                                              |
-| -------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `noRestrictedImports`: engines                                       | `src/logic/**`                                 | Logic must be engine-free; rendering goes in `src/engine/`                               |
-| `noRestrictedImports`: other games, package internals                | games, packages                                | Import only from `@arcade/<pkg>` entry points                                            |
-| `noRestrictedGlobals`: `localStorage`, `indexedDB`, `sessionStorage` | games                                          | Use `@arcade/save`                                                                       |
-| GritQL: `Math.random()`, `Date.now()`, `new Date()`                  | `src/logic/**` (confirm plugin scoping in 2.6) | Use `rng` / the `dt` you were given                                                      |
-| `noConsole`                                                          | `games/**/src`, `packages/**/src`              | Use `createLogger`                                                                       |
-| `noSkippedTests`, `noFocusedTests`                                   | tests                                          | Fix or delete the test; don't skip it                                                    |
-| `noNonNullAssertion`                                                 | `src/logic/**`                                 | Handle the missing case; `!` hides the bugs `noUncheckedIndexedAccess` exists to find    |
-| `noTsIgnore`                                                         | everywhere                                     | Fix the type                                                                             |
-| `noFloatingPromises`                                                 | everywhere                                     | Await or `void` it. Biome's inference is partial, so this doesn't replace the save tests |
-
-Checks are protected against weakening. CI posts a PR summary that lists:
-
-- new `biome-ignore` and `@ts-expect-error` comments
-- changed snapshot and baseline files
-- any drop in test or scenario count
-
-The owner sees in review when an agent made a check pass by changing the check.
-
-`arcade check` also runs the fast repo rules:
-
-- `game.json` is valid
-- every game has a smoke script and scenarios
-- tooling comes from the pnpm catalog
-- engines are pinned exactly
-- every third-party asset is listed in `assets/CREDITS.md`
-
-The size and file-count limits need build output, so they run in `smoke`.
+- `guardrails.test.ts` lints probe files against a copy of `biome.json` and proves each ban fires and a near miss passes. It also resolves every relative import in `games/*` and `templates/*` and fails, naming file and specifier, when one leaves its own game or template folder (a glob in `biome.json` can't express that).
+- `repo-map.test.ts` keeps `docs/repo-map.md` in step with the disk.
+- `ci.test.ts` keeps CI's Playwright container on the catalog's Playwright version and checks that a run on main is never cancelled.
 
 ## Tests
 
-| Layer     | Tool                                                         | Covers                                                                                                                        |
-| --------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| Logic     | Vitest                                                       | Rules, state, ASCII snapshots, save round-trip, migrate-from-every-fixture, every scenario's start fixture loads              |
-| Scenarios | Playwright, shell-stepped                                    | Start save + input + semantic assertions on state and events                                                                  |
-| Smoke     | Playwright on assembled prod build, Chromium and WebKit (2D) | Loads, no errors, right renderer, ticks advance, input works, audio running, save survives reload, touch overlay              |
-| Visual    | `toHaveScreenshot`, CI container only                        | Menus, HUD and the touch overlay; never gameplay frames. Baselines have a platform suffix, so these run only in the container |
+| Layer | Tool | Covers |
+| --- | --- | --- |
+| Logic | Vitest | Rules and state through `createWorld`/`stepWorld`, ASCII views, save round-trip, every committed save fixture (`checkSaveFixtures`) |
+| Runtime | Vitest | Both templates' Phaser- or three-free `src/engine/runtime.ts`: scene flow, save queue, capture-stage gate |
+| Scenarios | Playwright, shell-stepped | Start state plus input plus semantic assertions on summary, state and events; also run by `see --scenario` |
+| Smoke | Playwright on the assembled production build: desktop Chromium, a phone, and WebKit for Phaser (2D) games | Loads, no errors, right renderer, input, save survives reload, touch controls (`GameDriver.touch`), the pinned world hash |
 
-Scenarios use one typed format for tests and for `see`. Action names are typed per game, so a typo fails typecheck:
+Scenarios use one typed format for tests and `see`. Action names are typed per game, so a typo fails typecheck:
 
 ```ts
-// games/rpg/scenarios/first-battle.ts
+// templates/phaser-2d/scenarios/collect-first-coin.ts
 export default scenario({
-  start: { save: 'fixtures/save-v3-new-game.json', scene: 'overworld', seed: 1 },
-  input: [hold('up', 20), tap('confirm'), wait(10)],
-  expect: ({ state, events }) => {
-    expect(state.scene).toBe('battle');
-    expect(events).toContainEvent('battle.started');
+  description: 'starting a new game from the title and running right collects the first ground coin and autosaves',
+  input: [...TITLE_TO_PLAY, hold('right', 120)],
+  expect({ summary, events }) {
+    expect(summary).toMatchObject({ scene: 'play', coins: '1/9', player: { grounded: true } });
+    expect(events.map((e) => e.type)).toContain('save.written');
   },
 });
 ```
 
-Start states are save fixtures, loaded through `@arcade/save` with validation and migration, so a save version bump can't silently break every scenario. The CLI shorthand `--input "up*20 confirm right+jump"` parses into the same typed form:
-
-- `*n` means hold for n ticks.
-- A bare action is one tap.
-- `+` presses actions together.
-
-An agent that reproduces a bug with `see` saves the input as a scenario, and it becomes a regression test. Known bugs are written as `todo` scenarios, so they are tracked where the code is.
+`start` takes `save`, `scene`, `seed` and `query`. Each game's `scenarios/kit.ts` holds its typed `scenario`, `hold`, `tap`, `wait` and shared presets (navigation such as `TITLE_TO_PLAY`, and save fixtures built from the current `SAVE_VERSION`). The CLI shorthand `--input "up*20 confirm right+jump"` parses into the same steps: `*n` holds for n ticks, a bare action is one tap, `+` presses actions together, `_*n` waits. A known bug is a scenario with `todo: true`: it runs and must still fail, and passing tells you to remove `todo`. A long scenario sets `slow: true` for Playwright's tripled timeout.
 
 No sleeps anywhere: the harness waits on `ready`, `idle()`, ticks or events.
 
 ### Running tests
 
-Agents prove a change with the tests that cover it, and the full suite runs once, before a merge (AGENTS.md "Test scope"). `pnpm arcade test <slug>` takes paths and named groups (`@courses`, defined under `"arcade": { "testGroups" }` in the game's `package.json`), and `pnpm arcade check <slug> --skip-tests` gives typecheck and lint without the unit tests. Several lanes building at once on one machine was the reason: each running the whole suite pushed a 5-second check past a minute and timed tests out.
+Agents prove a change with the tests that cover it, and the full suite runs once, before a merge (AGENTS.md "Test scope"). Several lanes building at once on one machine is why: each running the whole suite pushed a 5-second check past a minute and timed tests out.
 
-`.rr.yaml` runs the same commands on the remote hosts in `~/.rr/config.yaml` through rr: `rr test -- <slug> <paths>`, `rr check -- <slug>`, and `rr suite -- <slug>`, which splits a game's whole Vitest suite into four shards across hosts. The hosts have Node but not the repo's pnpm, so the config runs `pnpm@12.9.1` through an npx shim (`.rr-bin/`, ignored) and installs before each run. Measured on Reef Rush in November 2026: the full suite takes about 33 s on an idle 16-core laptop and 51-56 s through `rr suite` (shards of 15-34 s plus sync and install), so rr is for when the laptop is busy with other agents or for long seeded reports, not a faster default. The fingerprint tests pass on the remote hosts (Node 26 on macOS, Node 24 on Linux), so results don't depend on the machine.
+`pnpm arcade test <slug>` takes repo- or game-relative paths, `-t <name pattern>`, and named groups from the game's package.json (`"arcade": { "testGroups": { ... } }`). A group is a path list, or `{ "project": "<name>", "paths": [...] }` for files in another Vitest project (Rush Racers' `@bars` runs the `difficulty` project). By default it runs the game's fast project, the one its `test` script names with `--project`; explicit `.test.ts`/`.spec.ts` files, `--project <name>` or a project group turn that off. A filter that matches no test fails, and an unknown group lists the defined ones.
+
+A game splits slow tests into their own Vitest project with `defineGameConfig`'s `slowTests` option and declares them in package.json (`"arcade": { "ci": { "slow": { "script", "shards" } } }`), so CI runs them as a sharded job only when that game is affected.
+
+`.rr.yaml` runs the same commands on remote hosts through rr: `rr test -- <slug> <paths>`, `rr check -- <slug>`, and `rr suite -- <slug>`, which splits a game's whole Vitest suite (every project) into four shards across hosts. The hosts have Node but not the repo's pnpm, so the config runs the pinned pnpm through an npx shim (`.rr-bin/`, ignored) and installs before each run. rr is for when this machine is busy with other agents, not a faster default: on an idle laptop the local suite was quicker.
 
 ## Context for agents
 
-`AGENTS.md` at the root is short:
+- `AGENTS.md` (imported by `CLAUDE.md`, so Claude Code and Codex read the same conventions): commands, layout, rules, versions, test scope, definition of done.
+- `docs/repo-map.md`: every shared source file and what it's for, checked by a test.
+- Each game's `DESIGN.md`: pitch, core loop, controls, scenes and launch parameters, kept short.
+- `.claude/skills/`: `verify-game` (the check, see, smoke loop and how to read its output), `phaser-game`, `threejs-game` (version-specific gotchas), `game-feel`.
+- `.claude/rules/`: `game-logic.md`, `game-engine.md` and `game-tests.md`, loaded when an agent touches the matching paths.
+- `.claude/agents/game-reviewer.md`: a read-only reviewer for game changes.
+- `.claude/launch.json`: each game's dev server for the in-app browser; `arcade new` adds each game it creates.
 
-- the three commands and the scripts
-- directory rules and the reasoning behind the lint rules
-- the package-change rule from the architecture doc
-- version notes (Phaser 4 not 3, three r187, Vite 8, TS 7), with an instruction to use Context7 instead of memory for those libraries
-
-`CLAUDE.md` contains `@AGENTS.md`, so Claude Code and Codex read the same conventions.
-
-Each game's `DESIGN.md` stays short: pitch, core loop, controls per device, and its scenes and launch parameters. Status and known issues live in scenarios, not prose.
-
-Project skills in `.claude/skills/`:
-
-- `verify-game`: the inner loop, including how to read a summary and a contact sheet
-- per-engine notes (`phaser-game`, `threejs-game`) that grow whenever an agent hits a version-specific gotcha
-
-Claude Code hooks:
-
-- **`PostToolUse`:** runs `biome format --write` on the edited file, with no output. It runs format only, not `check --write`. Safe fixes can delete an import the agent added for its next edit, and reformatting can make the agent's next `old_string` miss.
-- **`Stop`:** runs `arcade check` on changed games, so an agent can't report done on a red tree. CI covers Codex and other tools.
-
-`.claude/launch.json` lists each game's dev server for the in-app browser.
-
-## Performance
-
-Headless frame times say nothing about a mid-range phone, and agents would optimise against them. Budgets use device-independent numbers that `smoke` reports per game:
-
-- draw calls and triangles (three.js `renderer.info`)
-- JS heap after a scenario
-- initial JS gzipped
-- total asset size
-
-Each budget is set in `game.json` once the templates give us baselines. `see --perf` reports FPS under CPU throttling as information only. Real-device performance comes from Cloudflare Web Analytics and the pre-publish phone check.
+Two Claude Code hooks exist as scripts in `.claude/hooks/`, inactive until the owner registers them in a `settings.json`. `format.ts` (PostToolUse) runs `biome format --write` on the edited file with no output; format only, because safe fixes can delete an import the agent added for its next edit. `check-on-stop.ts` (Stop) runs `pnpm arcade check --skip-tests` when game, template, package, tool or app code changed, and blocks the stop once with the failure output.
 
 ## Assets
 
-Agents can't draw, so the templates generate labeled placeholder textures at boot. Gameplay can be built and tested before any art exists. Real art comes from the owner or from CC0 packs, credited in `assets/CREDITS.md`.
+The 2D template draws placeholder textures at boot and the 3D template uses plain meshes, so gameplay can be built and tested before any art exists. Rush Racers draws its pixel art in code and loads each world's and theme's art as its own chunk when a screen first needs it. Imported assets are hashed and a missing file fails the build (AGENTS.md "Rules").
 
-## Scope
+## Not built yet
 
-Must, in the scaffold:
-
-- the determinism spike in both templates
-- `check` (with dependents), `see` (summary, frames, state, events, console), `smoke`
-- shell stepping, `idle()`, `loadState`, error routing
-- `@arcade/core`
-- the lint and TS rules, including the anti-weakening ones
-- the typed scenario format
-- `AGENTS.md`
-- the format and Stop hooks
-
-Should, with the first real game:
-
-- contact sheets and `--crop`
-- `--ascii`
-- debug overlays
-- typed asset keys
-- the PR weakening report
-- performance budgets
-- the `verify-game` skill
-
-Could:
-
-- `--json` output, once something consumes it
-- an MCP server wrapping the CLI
-
-Won't:
-
-- video recording (contact sheets carry the same information for less context)
-- a custom level editor
-- an in-house test framework
-
-Everything sits on Playwright, Vitest, Biome and Turborepo.
-
-## As built (2026-11-22)
-
-The scaffold implements this plan with these differences, found while building and testing it:
-
-- **Stepping without Playwright's fake clock.** The engine's own loop keeps running in test mode but only renders. Logic advances only through `__arcade.advance(n)`, which stops early when the game stops being idle (a scene or asset loading), and the driver waits for `idle()` before continuing. That made the fake clock unnecessary. Screenshots wait two animation frames so they show the latest state.
-- **One clock in Phaser games.** The 2D template keeps tile physics in `src/logic/` instead of using Phaser arcade physics. A game that wants arcade physics sets `arcade.customUpdate: true` and calls `physics.world.singleStep()` once per logic tick, never from Phaser's loop.
-- **`see` starts its own Vite server for each run,** from the current worktree, on a free port, and closes it afterwards (about 1-2 s overhead). This removes the cross-worktree reuse risk and the orphan-server problem. Server reuse is a possible later optimization.
-- **CLI surface:**
-  - Commands: `check`, `test`, `see`, `smoke`, `affected`, `dev`, `new`, `assemble`, `list`.
-  - `see` options include `--events`, `--field`, `--ascii`, `--crop`, `--mobile`, `--at` (ticks past the input wait idle), `--query`, `--out` and `--compare`.
-  - `new` replaces the Turbo generator. It formats the copied files and registers the game in `.claude/launch.json`.
-  - `pnpm arcade` is a bin, so pnpm adds no echo or ELIFECYCLE lines.
-- **Output budget:**
-  - Biome uses its one-line GitHub reporter, and formatting issues collapse into one "run pnpm fix" line.
-  - Vitest uses the `dot` reporter.
-  - Turbo output is grouped by package with repo-relative paths.
-  - Vite's browser console forwarding is off under test servers.
-  - Duplicate problems (one exception seen as a page error, a console error and a game error) are reported once.
-  - Captures are taken at CSS pixel size.
-- **`check` before the first commit** checks every package, because it can't tell what changed.
-- **Not built yet:**
-  - the CI report on weakened checks (new suppressions, changed snapshots, test count drops)
-  - `--perf` and size budgets
-  - debug overlay for the 3D template
-  - pointer-drag look
-  - typed asset-key manifests
-  - visual regression for menus
-- **Claude Code hooks:** the format and Stop hooks exist as scripts in `.claude/hooks/`. Registering them in `.claude/settings.json` is left to the owner.
+- A CI report on weakened checks: added Biome and TypeScript suppression comments, changed snapshots, drops in test or scenario count.
+- Repo rules in `check`: tooling from the catalog, exact engine pins, every game having a smoke script and scenarios. `game.json` is validated wherever it is read.
+- Performance budgets per game (draw calls, heap, initial JS, asset size) and `see --perf`.
+- A debug overlay beyond the 2D template's player outline (FPS, bodies, tile coordinates, labels), and none in the 3D template.
+- Typed asset-key manifests generated from imports, and missing-texture warnings treated as errors.
+- `audio.played` events from the engines and a smoke check that the AudioContext is running.
+- Visual regression (`toHaveScreenshot`) for menus, HUD and the touch overlay.
+- Pointer-drag look in `@arcade/input`.

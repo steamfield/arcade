@@ -6,16 +6,13 @@
  */
 import { Frame } from '../../../art/keys.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
-import { SpaceTex, type SpaceTexKey } from '../keys.ts';
+import { FAR_HEIGHT, NEAR_HEIGHT, SpaceTex, type SpaceTexKey } from '../keys.ts';
 import { SpaceBackdropPalette, StarLight } from '../palettes.ts';
 import { type Asteroid, type Horizon, moonLimb } from './moonscape.ts';
 import { type StarCounts, starField } from './stars.ts';
 
 /** Width of both layers in px; the layer repeats every this many pixels. */
 const LAYER_WIDTH = 128;
-/** Layer heights in px, which `space.ts` declares to the backdrop view. */
-export const FAR_HEIGHT = 192;
-export const NEAR_HEIGHT = 80;
 
 /** Faint, lit and bright stars across one far tile: sparse, so racers and stardust stay the brightest things on screen. */
 const FAR_STARS: StarCounts = { faint: 70, lit: 22, bright: 4 };

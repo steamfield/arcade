@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { Tex } from '../art/keys.ts';
 import { measureFrames } from '../art/pixel.ts';
 import { FarItemTex, FarRacerTex, FarTex } from '../worlds/farside/keys.ts';
+import { FAR_HAZARD_LOOPS, FAR_HAZARD_SHEETS } from '../worlds/farside/sprites/hazards.ts';
+import { ReefItemTex, ReefRacerTex, ReefTex } from '../worlds/reef/keys.ts';
+import { REEF_HAZARD_LOOPS, REEF_HAZARD_SHEETS } from '../worlds/reef/sprites/hazards.ts';
 import { FOREST_SHEETS } from './forest/sprites/index.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import { OCEAN_THEME } from './ocean.ts';
 import { SpaceAnim, SpaceTex, SpaceTile } from './space/keys.ts';
-import { SpaceHazardPalette } from './space/palettes.ts';
 import { SPACE_SHEETS } from './space/sprites/index.ts';
 import { SPACE_THEME } from './space.ts';
 
@@ -40,22 +42,26 @@ describe('the space theme', () => {
     const otherTextures = [
       ...OCEAN_SHEETS.map((sheet) => sheet.key),
       ...Object.values(Tex),
+      ...Object.values(ReefTex),
+      ...Object.values(ReefRacerTex),
+      ...Object.values(ReefItemTex),
       ...Object.values(FarTex),
       ...Object.values(FarRacerTex),
       ...Object.values(FarItemTex),
+      ...[...REEF_HAZARD_SHEETS, ...FAR_HAZARD_SHEETS].map((sheet) => sheet.key),
     ];
     const otherAnims = [
       ...Object.values(OCEAN_THEME.terrain.flowing).map((art) => art.anim),
-      OCEAN_THEME.hazards.jelly.anim,
+      ...[...REEF_HAZARD_LOOPS, ...FAR_HAZARD_LOOPS].map((loop) => loop.key),
     ];
     const spaceTextures: string[] = Object.values(SpaceTex);
     const spaceAnims: string[] = Object.values(SpaceAnim);
     expect(otherTextures.filter((key) => spaceTextures.includes(key))).toEqual([]);
-    expect(otherAnims.filter((key) => key !== null && spaceAnims.includes(key))).toEqual([]);
+    expect(otherAnims.filter((key) => spaceAnims.includes(key))).toEqual([]);
   });
 
   it('gives every looping texture the two frames its animation asks for', () => {
-    const loops = [SpaceTex.dust, SpaceTex.orb, SpaceTex.windRight, SpaceTex.windLeft];
+    const loops = [SpaceTex.dust, SpaceTex.windRight, SpaceTex.windLeft];
     for (const key of [...loops, SpaceTex.windUp, SpaceTex.windDown]) expect(frameNames(key), key).toEqual(['a', 'b']);
   });
 
@@ -88,23 +94,11 @@ describe('the space theme', () => {
     expect(sizeOf(near?.texture ?? '').height).toBe(near?.height);
   });
 
-  it('animates the plasma orb and leaves the space mine still, in the hazard slots the views read', () => {
-    expect(SPACE_THEME.hazards.urchin).toEqual({ texture: SpaceTex.mine, frame: 'a', anim: null });
-    expect(SPACE_THEME.hazards.jelly).toMatchObject({ texture: SpaceTex.orb, anim: SpaceAnim.orbPulse });
-  });
-
-  it("keeps the space mine's body 3:1 off every space contrast band, so it reads against the darkest and lightest sky", () => {
-    const weakest = Math.min(
-      ...SPACE_THEME.contrastBands.map((band) => contrast(SpaceHazardPalette.mine[1], band.colour)),
-    );
-    expect(weakest).toBeGreaterThanOrEqual(3);
-  });
-
   it('lets no particle rise or fall, since nothing in space has weight', () => {
     for (const [kind, motion] of Object.entries(SPACE_THEME.particles)) expect(motion.ay, kind).toBe(0);
   });
 
-  it("draws its own tiles, backdrop, flows and hazards: no frame is one of the forest's", () => {
+  it("draws its own tiles, backdrop and flows: no frame is one of the forest's", () => {
     const drawn = (sheets: readonly { frames: readonly { rows: readonly string[] }[] }[]) =>
       sheets.flatMap((sheet) => sheet.frames.map((frame) => frame.rows.join('\n')));
     const forest = new Set(drawn(FOREST_SHEETS));

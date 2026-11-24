@@ -22,9 +22,6 @@ const FarMarkPalette = {
   pop: [0xffffff, 0x80e0ff],
 } as const satisfies Record<string, Palette>;
 
-/** Size of each frame in the marks sheet, px. */
-export const FAR_MARK_SIZE = 12;
-
 /** The marks, each on a 12x12 frame with its own palette. */
 const MARK_FRAMES: readonly NamedFrame[] = [
   {

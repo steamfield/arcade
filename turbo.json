@@ -25,14 +25,22 @@
       "dependsOn": ["^typecheck"],
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/docs/repo-map.md",
-        "$TURBO_ROOT$/.github/workflows/ci.yml",
+        "$TURBO_ROOT$/packages/**",
+        "$TURBO_ROOT$/tools/**",
+        "$TURBO_ROOT$/apps/**",
+        "$TURBO_ROOT$/templates/**",
+        "$TURBO_ROOT$/games/**",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/.claude/**",
+        "$TURBO_ROOT$/.github/**",
+        "$TURBO_ROOT$/biome.json",
         "$TURBO_ROOT$/pnpm-workspace.yaml",
-        "$TURBO_ROOT$/packages/*/src/**",
-        "$TURBO_ROOT$/tools/*/src/**",
-        "$TURBO_ROOT$/apps/*/src/**",
-        "$TURBO_ROOT$/templates/*/src/**",
-        "$TURBO_ROOT$/templates/*/scenarios/**"
+        "!$TURBO_ROOT$/**/node_modules/**",
+        "!$TURBO_ROOT$/**/dist/**",
+        "!$TURBO_ROOT$/**/.wrangler/**",
+        "!$TURBO_ROOT$/**/.turbo/**",
+        "!$TURBO_ROOT$/**/test-results/**",
+        "!$TURBO_ROOT$/.claude/worktrees/**"
       ]
     }
   }

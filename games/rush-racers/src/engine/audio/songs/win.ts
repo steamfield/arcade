@@ -5,7 +5,7 @@
 import { parseSong, type Song } from '../notation.ts';
 
 /** The win jingle in the game's notation. */
-export const winSource = `
+const winSource = `
 name: win
 tempo: 180
 time: 4/4

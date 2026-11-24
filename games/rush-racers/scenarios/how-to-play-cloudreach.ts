@@ -3,7 +3,7 @@
  * move page, balloons, feathers, the Cloudreach cast) and page through to the last with no error.
  */
 import { expect } from '@playwright/test';
-import { HOW_TO_PLAY_PAGES } from '../src/engine/how-to-play.ts';
+import { HOW_TO_PLAY_PAGES } from '../src/engine/screens/how-to-play.ts';
 import { scenario, tap, wait } from './kit.ts';
 
 /** A tap followed by a short wait, so the same button pressed twice registers twice. */

@@ -6,7 +6,7 @@
 import { parseSong, type Song } from '../notation.ts';
 
 /** The lose jingle in the game's notation. */
-export const loseSource = `
+const loseSource = `
 name: lose
 tempo: 132
 time: 3/4

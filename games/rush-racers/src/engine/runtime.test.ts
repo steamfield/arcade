@@ -5,7 +5,7 @@ import { createSaveStore } from '@arcade/save';
 import type { GameContext } from '@arcade/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOP_ROUTE } from '../../scenarios/kit.ts';
-import { DEFAULT_COURSE } from '../logic/courses/index.ts';
+import { COURSES, DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
 import { hashWorld } from '../logic/hash.ts';
 import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../logic/race/standings.ts';
@@ -18,10 +18,10 @@ import { IDLE_INPUT } from '../net/codec.ts';
 import { createOnlineWorld } from '../net/race-world.ts';
 import { createMemoryRoom, type MemoryRoom } from '../net/transport/memory.ts';
 import { type Action, input } from './input.ts';
-import { selectedOption } from './menu.ts';
 import type { OnlinePorts } from './online/flow.ts';
 import { netSummary } from './online/net-summary.ts';
-import { Runtime, type SceneKey } from './runtime.ts';
+import { ART_LOAD_FAILED, type ArtNeed, type ArtPort, Runtime, type SceneKey } from './runtime.ts';
+import { selectedOption } from './screens/menu.ts';
 
 /** Title rows: Race, Friends, How to play, Level, Sound, Motion. Sound is four down. */
 const SOUND_ROW = 4;
@@ -46,6 +46,8 @@ interface Harness {
 }
 
 interface TitleHarness extends Harness {
+  /** What `ctx.notice` showed, in order. */
+  notices: string[];
   /** Brings up the scene the runtime last asked for, if it is still waiting (only with `deferScenes`). */
   showScene(): void;
 }
@@ -53,7 +55,9 @@ interface TitleHarness extends Harness {
 /**
  * A runtime on its title screen, as the shell hands it over, over `saves`, opened at `search` and
  * offering `listedCourses` on course select. Each scene it asks for comes up at once, as Phaser's would,
- * or with `deferScenes` only when the test calls `showScene`, as between two of Phaser's frames.
+ * or with `deferScenes` only when the test calls `showScene`, as between two of Phaser's frames. Its
+ * art is always in unless the test passes an `art` port. With `boot` it starts on boot instead and
+ * routes on from there, as the boot scene has it do.
  */
 function titleRuntime(
   saves: SaveStore<SaveData>,
@@ -64,6 +68,8 @@ function titleRuntime(
     debug = false,
     online = roomPorts(createMemoryRoom()),
     deferScenes = false,
+    art,
+    boot = false,
   }: {
     search?: string;
     listedCourses?: readonly Course[];
@@ -71,6 +77,8 @@ function titleRuntime(
     debug?: boolean;
     online?: OnlinePorts;
     deferScenes?: boolean;
+    art?: ArtPort;
+    boot?: boolean;
   } = {},
 ): TitleHarness {
   let asked: SceneKey | null = null;
@@ -80,12 +88,13 @@ function titleRuntime(
     if (scene) rt.entered(scene);
   };
   const gameErrors: string[] = [];
+  const notices: string[] = [];
   const ctx = {
     params: { seed: 1, scene: null, debug, testMode: true },
     reportError: (source: string) => {
       if (source !== 'audio') gameErrors.push(source);
     },
-    notice: () => {},
+    notice: (text: string) => notices.push(text),
     registerAudioContext: () => {},
   } as unknown as GameContext;
   const rt: Runtime = new Runtime({
@@ -100,10 +109,15 @@ function titleRuntime(
     search,
     listedCourses,
     online,
+    ...(art && { art }),
   });
+  if (boot) {
+    rt.boot();
+    return { rt, gameErrors, notices, showScene };
+  }
   rt.entered('title');
   rt.step.advance(ARMED);
-  return { rt, gameErrors, showScene };
+  return { rt, gameErrors, notices, showScene };
 }
 
 /** Ports onto an in-memory room: every code connects to it, and a created room is always `ROOM_CODE`. */
@@ -424,6 +438,197 @@ describe('course select', () => {
     rt.step.advance(ARMED);
     press(rt, 'dash');
     expect(rt.scene).toBe('title');
+  });
+});
+
+describe('art a screen needs', () => {
+  /**
+   * Art for the courses in `loaded` is in; any other load waits until the test calls `finish` or
+   * `fail`, as a chunk still on the wire does. `asked` lists each load: course ids, or 'all'.
+   */
+  function heldArt(loaded: readonly Course[]) {
+    const have = new Set(loaded.map((course) => course.id));
+    const asked: string[] = [];
+    let held: { need: ArtNeed; resolve(): void; reject(error: Error): void } | null = null;
+    const port: ArtPort = {
+      ready: (need) => (need === 'all' ? have.has('all') : need.every(({ id }) => have.has(id) || have.has('all'))),
+      load: (need) =>
+        new Promise((resolve, reject) => {
+          asked.push(need === 'all' ? 'all' : need.map(({ id }) => id).join(','));
+          held = { need, resolve, reject };
+        }),
+    };
+    const settle = () => {
+      const load = held;
+      if (!load) throw new Error('No art load is waiting');
+      held = null;
+      return load;
+    };
+    return {
+      port,
+      asked,
+      finish() {
+        const { need, resolve } = settle();
+        for (const id of need === 'all' ? ['all'] : need.map((course) => course.id)) have.add(id);
+        resolve();
+      },
+      fail: () => settle().reject(new Error("Couldn't load the art for world 'thornwood': 404")),
+    };
+  }
+
+  /** On course select with Bramble Run picked and its art still loading. */
+  async function pickedBrambleRun() {
+    const art = heldArt([DEFAULT_COURSE]);
+    const harness = titleRuntime(await realStore(), {
+      listedCourses: [DEFAULT_COURSE, COURSES['bramble-run']],
+      art: art.port,
+    });
+    press(harness.rt, 'fire');
+    harness.rt.step.advance(ARMED);
+    press(harness.rt, 'down');
+    press(harness.rt, 'fire');
+    return { ...harness, art };
+  }
+
+  it("holds course select, ticking nothing, until the picked course's art is in, then opens select", async () => {
+    const { rt, art, gameErrors } = await pickedBrambleRun();
+    expect(art.asked).toEqual(['bramble-run']);
+    expect([rt.scene, rt.loading, rt.courseCursor]).toEqual(['course', true, 1]);
+
+    const logged = rt.events.all().length;
+    rt.step.advance(ARMED);
+    expect([rt.scene, rt.courseCursor, rt.events.all().length]).toEqual(['course', 1, logged]);
+
+    art.finish();
+    await vi.waitFor(() =>
+      expect([rt.scene, rt.loading, rt.course]).toEqual(['select', false, COURSES['bramble-run']]),
+    );
+    expect(gameErrors).toEqual([]);
+  });
+
+  it('reports a failed load, tells the player to reload, and tries again on the next pick', async () => {
+    const { rt, art, gameErrors, notices } = await pickedBrambleRun();
+
+    art.fail();
+    await vi.waitFor(() => expect(gameErrors).toEqual(['art']));
+    expect(notices).toEqual([ART_LOAD_FAILED]);
+    expect([rt.scene, rt.loading]).toEqual(['course', false]);
+
+    rt.step.advance(1);
+    press(rt, 'fire');
+    art.finish();
+    await vi.waitFor(() => expect(rt.scene).toBe('select'));
+    expect(art.asked).toEqual(['bramble-run', 'bramble-run']);
+  });
+
+  /** A host waiting in a memory room; each round ticks it, then `rt`, then delivers. */
+  function hostedRoom() {
+    const room = createMemoryRoom();
+    const host = createClient({
+      connection: room.connect(),
+      lobby: { character: 'gil', course: 'run-test', difficulty: 'normal' },
+      createRace: (start) => createOnlineWorld(start, new EventLog(10_000)),
+      kickAfterMs: null,
+      warn: (message) => {
+        throw new Error(`the host warned: ${message}`);
+      },
+    });
+    const rounds = (rt: Runtime, count: number) => {
+      for (let done = 0; done < count; done++) {
+        host.tick(IDLE_INPUT, 16);
+        rt.step.advance(1);
+        room.deliver();
+      }
+    };
+    return { room, host, rounds };
+  }
+
+  it("keeps a room link's guest out of the room, so the host can't start, until every world's art is in", async () => {
+    const { room, host, rounds } = hostedRoom();
+    const art = heldArt([DEFAULT_COURSE]);
+    const { rt, gameErrors } = titleRuntime(await realStore(), {
+      search: `?room=${ROOM_CODE}`,
+      online: roomPorts(room),
+      art: art.port,
+    });
+
+    expect(rt.openRoomLink()).toBe(true);
+    rounds(rt, 60);
+    expect([art.asked, rt.scene, rt.flow.client, host.view.lobby.canStart]).toEqual([['all'], 'title', null, false]);
+
+    art.finish();
+    await vi.waitFor(() => expect(rt.scene).toBe('room'));
+    rounds(rt, 60);
+    expect(host.view.lobby.canStart).toBe(true);
+    expect(gameErrors).toEqual([]);
+  });
+
+  it("opens Friends, where rooms are joined and created, only once every world's art is in", async () => {
+    const art = heldArt([DEFAULT_COURSE]);
+    const { rt } = titleRuntime(await realStore(), { art: art.port });
+
+    press(rt, 'down');
+    press(rt, 'fire');
+    expect([art.asked, rt.scene, rt.loading]).toEqual([['all'], 'title', true]);
+
+    art.finish();
+    await vi.waitFor(() => expect([rt.scene, rt.loading]).toEqual(['friends', false]));
+    // Lets the input see fire released, which it couldn't while the art loaded, so later tests start clean.
+    rt.step.advance(1);
+  });
+
+  it("never joins a room link's room when every world's art fails to load", async () => {
+    const { room, host, rounds } = hostedRoom();
+    const art = heldArt([DEFAULT_COURSE]);
+    const { rt, gameErrors, notices } = titleRuntime(await realStore(), {
+      search: `?room=${ROOM_CODE}`,
+      online: roomPorts(room),
+      art: art.port,
+    });
+    rt.openRoomLink();
+
+    art.fail();
+    await vi.waitFor(() => expect(gameErrors).toEqual(['art']));
+    rounds(rt, 60);
+
+    expect([notices, rt.scene, rt.flow.client, host.view.lobby.canStart]).toEqual([
+      [ART_LOAD_FAILED],
+      'title',
+      null,
+      false,
+    ]);
+  });
+
+  it('asks again for boot’s art on the next press after it fails to load, then opens the title', async () => {
+    const art = heldArt([]);
+    const { rt, gameErrors, notices } = titleRuntime(await realStore(), { art: art.port, boot: true });
+    expect([art.asked, rt.scene, rt.loading]).toEqual([['sunlit-shallows,sunlit-shallows'], 'boot', true]);
+
+    art.fail();
+    await vi.waitFor(() => expect(gameErrors).toEqual(['art']));
+    expect([notices, rt.scene, rt.loading]).toEqual([[ART_LOAD_FAILED], 'boot', false]);
+    rt.step.advance(ARMED);
+    expect(art.asked).toHaveLength(1);
+
+    press(rt, 'fire');
+    expect(art.asked).toHaveLength(2);
+    art.finish();
+    await vi.waitFor(() => expect([rt.scene, rt.loading]).toEqual(['title', false]));
+    // Lets the input see fire released, which it couldn't while the art loaded, so later tests start clean.
+    rt.step.advance(1);
+  });
+
+  it("loads every world's art before a room link's room opens, so no race starts before it is in", async () => {
+    const art = heldArt([DEFAULT_COURSE]);
+    const { rt, gameErrors } = titleRuntime(await realStore(), { search: `?room=${ROOM_CODE}`, art: art.port });
+
+    expect(rt.openRoomLink()).toBe(true);
+    rt.step.advance(10);
+    expect([art.asked, rt.scene, rt.loading]).toEqual([['all'], 'title', true]);
+
+    art.finish();
+    await vi.waitFor(() => expect([rt.scene, rt.loading]).toEqual(['room', false]));
+    expect(gameErrors).toEqual([]);
   });
 });
 

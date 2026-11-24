@@ -104,7 +104,7 @@ const NO_GUIDE: GuideTuning = { enabled: false, assistGraceTicks: 0, assistHoldT
  * lag held every rival 10 tiles behind whoever led them, so a player who never dashed or fired won
  * 99% of Normal races and the expert 100%: skill didn't show. At 2 the no-dash player still places
  * top 3 in 9-10 of 10 races per character but wins only 1-4, and the expert wins 9-10
- * (`difficulty/normal-bars.ts`).
+ * (`balance/normal-bars.ts`).
  */
 export const DIFFICULTY: Record<Difficulty, DifficultyTuning> = {
   hard: {

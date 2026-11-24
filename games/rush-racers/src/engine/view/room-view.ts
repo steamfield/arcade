@@ -50,7 +50,7 @@ const STATUS = { x: 248, y: 28, maxChars: 11 } as const;
 const WAITING_AT = { x: 160, y: 60 } as const;
 
 /** What the Start row says while a race this peer is not in runs. */
-export const RACING_TEXT = 'RACE IN PROGRESS';
+const RACING_TEXT = 'RACE IN PROGRESS';
 /** What a player row shows for a pick or ping not known yet. */
 const UNKNOWN = '-';
 
@@ -60,7 +60,7 @@ function lobbyCourse(lobby: LobbyView): Course {
 }
 
 /** The text of one player row's columns. */
-export interface PlayerRowText {
+interface PlayerRowText {
   label: string;
   name: string;
   ping: string;
@@ -70,7 +70,7 @@ export interface PlayerRowText {
 }
 
 /** What a player row shows for `peer`, with character names from `course`'s world. */
-export function playerRowText(peer: LobbyPeer, course: Course): PlayerRowText {
+function playerRowText(peer: LobbyPeer, course: Course): PlayerRowText {
   return {
     label: peer.label,
     name: peer.character === null ? UNKNOWN : racerShortName(peer.character, course),
@@ -82,7 +82,7 @@ export function playerRowText(peer: LobbyPeer, course: Course): PlayerRowText {
 }
 
 /** What `row`'s button says for this peer in `lobby`. */
-export function roomRowText(row: RoomRow, lobby: LobbyView): string {
+function roomRowText(row: RoomRow, lobby: LobbyView): string {
   switch (row) {
     case 'Character': {
       const mine = lobby.peers.find((peer) => peer.you)?.character ?? null;
@@ -103,7 +103,7 @@ export function roomRowText(row: RoomRow, lobby: LobbyView): string {
  * The status strip's text: the notice, or, while a race runs and this peer has no Start row to say
  * so, RACE IN PROGRESS.
  */
-export function statusText(notice: string | null, lobby: LobbyView | null, rows: readonly RoomRow[]): string {
+function statusText(notice: string | null, lobby: LobbyView | null, rows: readonly RoomRow[]): string {
   if (notice !== null) return notice;
   return lobby?.phase === 'racing' && !rows.includes('Start') ? RACING_TEXT : '';
 }

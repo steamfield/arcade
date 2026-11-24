@@ -1,9 +1,16 @@
 # RFC: Reef Rush online races with friends
 
-Status, 2026-11-23: phases 1 to 4 are built for up to four racers (the game is now `games/rush-racers`; build plan `plans/rush-racers-online.md`): the room service in `apps/api`, the lockstep client in `src/net`, Friends on the title, the room, online races and results, departures handed to the AI, and the notices. Cut or changed from this RFC by that plan's "Decisions": no `hello` message (protocol version and build id ride on the WebSocket URL); no WebRTC; no rejoining a race, and a tab hidden mid-race leaves it for the title instead of reconnecting (5.8); no Easy online (a room on an Easy save starts on Normal); nothing from an online race is saved; no spectators, names or chat; more than four racers (5.10) is not built; the `?online=1` gate was dropped, so Friends ships on the title; the API deploys by hand with `pnpm deploy:api` before the site. The two-network real-device check stays with the owner.
+Status: partly built. The game this RFC names, `games/reef-rush`, was renamed `games/rush-racers`, and every `games/reef-rush/` path below refers to it.
 
-Earlier status: phase 1 has landed on `deliver/reef-online` (lane plan: `plans/reef-online-deliver.md`): the world hash, several human slots with AI takeover, and an engine that follows a local racer. Its determinism guard holds: Chromium, the phone project and WebKit hash the top route equally. Draft written 2026-11-23, revised the same day after a devil's-advocate review against the code (section 12 lists what the review changed). The spikes in section 9 have not run. Section 11 lists decisions that need the owner.
-Game: `games/reef-rush` (Phaser 4.2.1). Read `AGENTS.md`, `docs/repo-map.md`, `docs/architecture.md` ("Backend later, on Cloudflare") and `games/reef-rush/DESIGN.md` before starting.
+Built (phases 1 to 4, up to four racers; build plans `plans/done/reef-online-deliver.md` and `plans/done/rush-racers-online.md`):
+
+- The room service: `apps/api`, a relay Durable Object reached through the site's `/api/*` service binding, deployed by hand with `pnpm deploy:api` before the site.
+- The lockstep client: `games/rush-racers/src/net/` (session, codec, messages, lobby, hash ledger, transports), with the world hash, human slots and AI takeover in `src/logic/`.
+- The screens: Friends on the title, the room, online races and results, departures handed to the AI, and the notices, in `games/rush-racers/src/engine/online/`.
+
+Not built, or changed by the build plan's "Decisions": no `hello` message (protocol version and build id ride on the WebSocket URL); no WebRTC (section 6); no rejoining a race, and a tab hidden mid-race leaves it for the title (5.8); no Easy online (a room on an Easy save starts on Normal); nothing from an online race is saved; no spectators, names or chat; no more than four racers (5.10); no `?online=1` gate, so Friends is on the title. The two-network real-device check is the owner's.
+
+The sections below are the RFC as written on 2026-11-23 and revised after review (section 12); read them as the design record, and the code for what is true.
 
 ## 1. Why
 

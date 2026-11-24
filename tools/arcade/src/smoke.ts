@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { createServer } from 'node:net';
+import { freePort } from '@arcade/testing';
 import { assemble, selectGames } from './assemble.ts';
 import { ROOT } from './games.ts';
 import { elapsed, run } from './run.ts';
@@ -38,6 +38,21 @@ export async function smoke(slug: string | undefined): Promise<number> {
   wrangler.stderr.on('data', (d) => {
     wranglerLog += d;
   });
+  // A spawn failure (pnpm missing, say) is reported like run() reports it: through the log waitFor prints.
+  wrangler.once('error', (err) => {
+    wranglerLog += `pnpm exec wrangler: ${err.message}\n`;
+  });
+  const stopWrangler = () => killProcessGroup(wrangler.pid);
+  // Once this handler has fired, the signal is sent again: with no handler left, Node dies with the
+  // conventional status (130 for SIGINT, 143 for SIGTERM) without a process.exit call here.
+  const stopThenDie = (signal: NodeJS.Signals) => () => {
+    stopWrangler();
+    process.kill(process.pid, signal);
+  };
+  const onSigint = stopThenDie('SIGINT');
+  const onSigterm = stopThenDie('SIGTERM');
+  process.once('SIGINT', onSigint);
+  process.once('SIGTERM', onSigterm);
   const base = `http://127.0.0.1:${port}`;
   let failed = 0;
   try {
@@ -67,14 +82,21 @@ export async function smoke(slug: string | undefined): Promise<number> {
       }
     }
   } finally {
-    try {
-      if (wrangler.pid) process.kill(-wrangler.pid, 'SIGTERM');
-    } catch {
-      // wrangler already exited (it failed to start); the error that says why is the one to show.
-    }
+    process.off('SIGINT', onSigint);
+    process.off('SIGTERM', onSigterm);
+    stopWrangler();
   }
   console.log(failed ? `\n✗ smoke failed in ${elapsed(start)}` : `\n✓ smoke passed in ${elapsed(start)}`);
   return failed ? 1 : 0;
+}
+
+/** Sends SIGTERM to a detached child's whole process group, so wrangler's workers go with it. */
+function killProcessGroup(pid: number | undefined): void {
+  try {
+    if (pid) process.kill(-pid, 'SIGTERM');
+  } catch {
+    // The process already exited (it failed to start); the error that says why is the one to show.
+  }
 }
 
 /** Playwright's failure blocks, minus attachment and trace boilerplate. */
@@ -89,17 +111,6 @@ function failureDetail(output: string): string {
     .slice(firstFailure === -1 ? 0 : firstFailure)
     .slice(0, 60)
     .join('\n');
-}
-
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = createServer();
-    srv.once('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const a = srv.address();
-      srv.close(() => (typeof a === 'object' && a ? resolve(a.port) : reject(new Error('no port'))));
-    });
-  });
 }
 
 async function waitFor(url: string, timeoutMs: number, log: () => string): Promise<void> {

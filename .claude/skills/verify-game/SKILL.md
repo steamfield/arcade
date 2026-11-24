@@ -10,9 +10,9 @@ You can't watch the game, so verify through three commands that print short summ
 
 Prove a change with the narrowest tests that cover it: `pnpm arcade test <slug> <paths or @groups> [-t name]` runs only those Vitest files (well under a second per file), and `pnpm arcade check <slug> --skip-tests` gives typecheck and lint in about a second. Use them instead of `pnpm exec vitest`, `npx vitest` or `pnpm --filter ... exec vitest`. `arcade test` fails when a filter matches no test, so a typo can't pass silently, and an unknown `@group` lists the game's groups. The full `check` and `smoke` below are the pre-merge gate: run them when you merge, or when your brief asks, not after every edit (AGENTS.md "Test scope").
 
-## 1. `pnpm arcade check <slug>` (seconds; before a merge)
+## 1. `pnpm arcade check <slug>` (before a merge)
 
-Typecheck, lint and unit tests for the game, plus every package changed since HEAD and everything depending on it. Green prints one line. Red prints one line per lint error (`file:line rule message`) and the failing typecheck/test output grouped by package.
+Typecheck, lint and unit tests for the game, plus every package changed since HEAD and everything depending on it. For Rush Racers it takes minutes: its full merge gate (check, difficulty bars, smoke) measured 89-184 s. Turbo replays cached tasks, and the success line says how many came from cache. Green prints one line. Red prints one line per lint error (`file:line rule message`) and the failing typecheck/test output grouped by package.
 
 - "N file(s) need formatting": run `pnpm fix`, then check again.
 - A lint message names the fix (use `createRng`, use `@arcade/save`, move rendering to `src/engine/`). Do what it says rather than suppressing it. `biome-ignore` and `@ts-expect-error` show up in review.
@@ -52,9 +52,9 @@ When `see` reproduces a bug, copy the input into `scenarios/<bug-name>.ts` with 
 
 When the user has the game open from `pnpm arcade dev` (or the preview pane), that tab's save is theirs. Don't drive it with synthetic key presses to test something: inputs on the same tick can be dropped, and a menu press lands in their real settings (it once flipped a player's difficulty to Hard). Verify with `see` or a scenario, and if you must use a browser, open a fresh tab with `?test=1` or a different port.
 
-## 3. `pnpm arcade smoke <slug>` (10-30 s; before a merge)
+## 3. `pnpm arcade smoke <slug>` (before a merge)
 
-Production build, assembled the way Cloudflare serves it, under `wrangler dev`. Runs the game's Playwright suite (scenarios plus `tests/smoke.spec.ts`) on desktop Chromium, a phone, and WebKit for 2D games. This catches wrong base paths, missing assets and Safari-only failures that dev mode hides. Run it before a merge, or before handing back work nobody else will merge.
+Production build, assembled the way Cloudflare serves it, under `wrangler dev`. Runs the game's Playwright suite (scenarios plus `tests/smoke.spec.ts`) on desktop Chromium, a phone, and WebKit for 2D games. This catches wrong base paths, missing assets and Safari-only failures that dev mode hides. A template takes 10-30 s; Rush Racers runs about 100 tests and takes minutes. Run it before a merge, or before handing back work nobody else will merge.
 
 Failure output shows Playwright's assertion diff. Traces and screenshots are in `<game>/test-results/`.
 

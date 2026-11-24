@@ -32,7 +32,7 @@ export interface Panel {
 }
 
 /** Where a panel draws; both optional. */
-export interface PanelOptions {
+interface PanelOptions {
   /** Pinned to the screen instead of scrolling with the world. */
   fixed?: boolean;
   depth?: number;

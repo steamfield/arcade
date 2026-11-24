@@ -8,6 +8,7 @@
 import type { EventSink } from '@arcade/core';
 import { jumpMulFor } from '../../abilities.ts';
 import type { GameEvent } from '../../events.ts';
+import { approach, clamp } from '../../num.ts';
 import type { Body, Intent, MoveModifiers, Racer } from '../../types.ts';
 import type { MediumEnv, MediumTuning } from '../types.ts';
 import { coolDownKick, dashOrCoolDown } from './dash.ts';
@@ -279,13 +280,4 @@ export function stepFallSpeed(
 ): number {
   const cut = cutShort && speed < 0 ? extra.cutGravityMul : 1;
   return Math.min(extra.maxFall, speed + (extra.gravity * cut + draft) * dt);
-}
-
-function clamp(value: number, low: number, high: number): number {
-  return Math.min(high, Math.max(low, value));
-}
-
-function approach(value: number, target: number, step: number): number {
-  if (value < target) return Math.min(target, value + step);
-  return Math.max(target, value - step);
 }

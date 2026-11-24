@@ -5,7 +5,7 @@
  * through the theme.
  */
 
-/** Sky texture keys: the tileset, popped-cloud puffs, fog, winds, finish banner, hazards and backdrop layers. */
+/** Sky texture keys: the tileset, popped-cloud puffs, fog, winds, finish banner and backdrop layers. */
 export const SkyThemeTex = {
   /** Tileset for the tilemap: one frame per entry in `SkyThemeTile`. */
   tiles: 'sky-theme-tiles',
@@ -16,8 +16,6 @@ export const SkyThemeTex = {
   updraft: 'sky-theme-updraft',
   downdraft: 'sky-theme-downdraft',
   finishGate: 'sky-theme-finish-gate',
-  sparkCloud: 'sky-theme-spark-cloud',
-  staticWisp: 'sky-theme-static-wisp',
   backdropFar: 'sky-theme-backdrop-far',
   backdropNear: 'sky-theme-backdrop-near',
 } as const;
@@ -39,13 +37,11 @@ export const SkyThemeTile = {
   bounce: 4,
 } as const;
 
-/** Sky animation keys: fog drift, the four winds and the two hazards. */
+/** Sky animation keys: fog drift and the four winds. */
 export const SkyThemeAnim = {
   fogDrift: 'sky-theme-fog-drift',
   windRight: 'sky-theme-wind-right-flow',
   windLeft: 'sky-theme-wind-left-flow',
   updraft: 'sky-theme-updraft-flow',
   downdraft: 'sky-theme-downdraft-flow',
-  sparkCrackle: 'sky-theme-spark-crackle',
-  wispFlicker: 'sky-theme-wisp-flicker',
 } as const;

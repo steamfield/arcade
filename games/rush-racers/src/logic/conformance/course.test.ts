@@ -7,9 +7,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../ai/profiles.ts';
+import { race, table } from '../balance/race-bots.ts';
 import { COURSES, levelOf, registerCourse } from '../courses/index.ts';
 import type { Course } from '../courses/types.ts';
-import { race, table } from '../difficulty/race-bots.ts';
 import { effectiveTuning, mediumById } from '../media/index.ts';
 import type { Level } from '../types.ts';
 import { mediumIdOf } from '../worlds/index.ts';

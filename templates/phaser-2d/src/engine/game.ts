@@ -1,125 +1,23 @@
-import { createLogger, EventLog, FixedStep } from '@arcade/core';
+/**
+ * Wiring between the shell and Phaser: loads the save, builds the `Runtime` and the Phaser game
+ * with its scenes, fits the canvas at integer zoom, reports WebGL context loss, and returns the
+ * `GameHandle` the shell and tests drive. The scenes here only render runtime state; game flow
+ * and logic ticks live in `runtime.ts`.
+ */
 import type { SaveStore } from '@arcade/save';
 import { type GameContext, type GameHandle, integerScale } from '@arcade/shell';
 import Phaser from 'phaser';
-import type { GameEvent } from '../logic/events.ts';
-import { LEVEL_1, parseLevel, TILE } from '../logic/level.ts';
-import { NEW_GAME, type SaveData } from '../logic/save.ts';
-import { createWorld, stepWorld, summarize, toAscii, toSave, type World } from '../logic/world.ts';
-import { input } from './input.ts';
+import { TILE } from '../logic/level.ts';
+import type { SaveData } from '../logic/save.ts';
+import { PHYSICS, summarize } from '../logic/world.ts';
+import { debugState, debugSummary } from './debug.ts';
+import { Runtime, SAVE_SLOT, type SceneKey } from './runtime.ts';
 import { createPlaceholderTextures, Tex } from './textures.ts';
 
 const WIDTH = 320;
 const HEIGHT = 180;
-const SAVE_SLOT = 'main';
-const log = createLogger('phaser-2d');
 
-/** Events the engine adds on top of the world's. */
-export type EngineEvent =
-  | { type: 'scene.started'; scene: SceneKey }
-  | { type: 'menu.selected'; option: string }
-  | { type: 'save.written' }
-  | { type: 'save.failed'; reason: string };
-
-type SceneKey = 'boot' | 'title' | 'play';
-
-/**
- * Shared state between scenes and the shell. Logic ticks happen only in
- * `tick()`, driven by FixedStep in real time or by advance() in test mode.
- * Phaser's own loop keeps running in both modes, but only to render.
- */
-class Runtime {
-  readonly events = new EventLog<GameEvent | EngineEvent>();
-  readonly step = new FixedStep((dt) => this.tick(dt));
-  scene: SceneKey = 'boot';
-  /** True between scene.start() and the new scene's create(). */
-  loading = true;
-  world: World | null = null;
-  save: SaveData | null;
-  game!: Phaser.Game;
-  menu = { options: [] as string[], selected: 0 };
-
-  readonly ctx: GameContext;
-  readonly saves: SaveStore<SaveData>;
-
-  constructor(ctx: GameContext, saves: SaveStore<SaveData>, save: SaveData | null) {
-    this.ctx = ctx;
-    this.saves = saves;
-    this.save = save;
-  }
-
-  /** Called from each scene's update(). Real-time only; in test mode the shell calls advance(). */
-  frame(deltaMs: number): void {
-    if (!this.ctx.params.testMode) this.step.frame(deltaMs / 1000);
-  }
-
-  goTo(scene: SceneKey, data?: object): void {
-    this.loading = true;
-    for (const s of this.game.scene.getScenes(true)) s.scene.stop();
-    this.game.scene.start(scene, data);
-  }
-
-  entered(scene: SceneKey): void {
-    this.scene = scene;
-    this.loading = false;
-    this.events.emit({ type: 'scene.started', scene });
-  }
-
-  startPlay(save: SaveData): void {
-    this.world = createWorld(parseLevel(LEVEL_1), this.events, save);
-    this.goTo('play');
-  }
-
-  private tick(dt: number): void {
-    if (this.loading) return;
-    this.events.tick = this.step.tick;
-    input.update();
-    if (this.scene === 'title') this.tickTitle();
-    else if (this.scene === 'play') this.tickPlay(dt);
-  }
-
-  private tickTitle(): void {
-    const { menu } = this;
-    if (input.justPressed('down')) menu.selected = (menu.selected + 1) % menu.options.length;
-    if (input.justPressed('up')) menu.selected = (menu.selected + menu.options.length - 1) % menu.options.length;
-    if (input.justPressed('jump')) {
-      const option = menu.options[menu.selected] ?? 'New game';
-      this.events.emit({ type: 'menu.selected', option });
-      this.startPlay(option === 'Continue' && this.save ? this.save : NEW_GAME);
-    }
-  }
-
-  private tickPlay(dt: number): void {
-    const world = this.world;
-    if (!world) return;
-    if (world.status === 'won' && input.justPressed('jump')) {
-      this.goTo('title');
-      return;
-    }
-    const before = world.collected.size;
-    const wasPlaying = world.status === 'playing';
-    stepWorld(
-      world,
-      { move: input.vector('move').x, jumpPressed: input.justPressed('jump'), jumpHeld: input.isDown('jump') },
-      dt,
-    );
-    if (world.collected.size !== before || (wasPlaying && world.status === 'won')) void this.persist();
-  }
-
-  async persist(): Promise<void> {
-    if (!this.world) return;
-    const data = toSave(this.world);
-    const result = await this.saves.save(SAVE_SLOT, data);
-    if (result.ok) {
-      this.save = data;
-      this.events.emit({ type: 'save.written' });
-    } else {
-      log.warn(`save failed: ${result.reason}`);
-      this.events.emit({ type: 'save.failed', reason: result.reason });
-    }
-  }
-}
-
+/** Draws the placeholder textures, then hands over to the runtime to pick the first screen. */
 class BootScene extends Phaser.Scene {
   private readonly rt: Runtime;
   constructor(rt: Runtime) {
@@ -128,12 +26,11 @@ class BootScene extends Phaser.Scene {
   }
   create() {
     createPlaceholderTextures(this);
-    const jump = this.rt.ctx.params.scene;
-    if (jump === 'play') this.rt.startPlay(this.rt.save ?? NEW_GAME);
-    else this.rt.goTo('title');
+    this.rt.start();
   }
 }
 
+/** The game's title and the runtime's menu, with the cursor on the selected row. */
 class TitleScene extends Phaser.Scene {
   private optionTexts: Phaser.GameObjects.Text[] = [];
   private readonly rt: Runtime;
@@ -142,8 +39,7 @@ class TitleScene extends Phaser.Scene {
     this.rt = rt;
   }
   create() {
-    const hasProgress = Boolean(this.rt.save && (this.rt.save.collected.length > 0 || this.rt.save.completed));
-    this.rt.menu = { options: hasProgress ? ['Continue', 'New game'] : ['New game'], selected: 0 };
+    this.rt.entered('title');
     this.add
       .text(WIDTH / 2, 50, this.rt.ctx.manifest.title.toUpperCase(), {
         fontFamily: 'monospace',
@@ -154,17 +50,17 @@ class TitleScene extends Phaser.Scene {
     this.optionTexts = this.rt.menu.options.map((label, i) =>
       this.add.text(WIDTH / 2, 100 + i * 18, label, { fontFamily: 'monospace', fontSize: '12px' }).setOrigin(0.5),
     );
-    this.rt.entered('title');
   }
-  override update(_time: number, delta: number) {
-    this.rt.frame(delta);
-    this.optionTexts.forEach((t, i) => {
-      const label = this.rt.menu.options[i] ?? '';
-      t.setText(i === this.rt.menu.selected ? `> ${label} <` : label);
+  override update() {
+    const { menu } = this.rt;
+    this.optionTexts.forEach((text, i) => {
+      const label = menu.options[i] ?? '';
+      text.setText(i === menu.selected ? `> ${label} <` : label);
     });
   }
 }
 
+/** The level, coins, flag and player drawn from the runtime's world, with a coin HUD. */
 class PlayScene extends Phaser.Scene {
   private player!: Phaser.GameObjects.Image;
   private coins: Phaser.GameObjects.Image[] = [];
@@ -177,14 +73,14 @@ class PlayScene extends Phaser.Scene {
   }
   create() {
     const world = this.rt.world;
-    if (!world) throw new Error('PlayScene started without a world');
+    if (!world) throw new Error('PlayScene started without a world: call Runtime.startPlay, not goTo("play")');
     const { level } = world;
     level.solid.forEach((row, y) => {
       row.forEach((solid, x) => {
         if (solid) this.add.image(x * TILE, y * TILE, Tex.tile).setOrigin(0);
       });
     });
-    this.coins = level.coins.map((c) => this.add.image(c.x * TILE + 8, c.y * TILE + 8, Tex.coin));
+    this.coins = level.coins.map((c) => this.add.image(c.x * TILE + TILE / 2, c.y * TILE + TILE / 2, Tex.coin));
     this.add.image(level.goal.x * TILE, level.goal.y * TILE, Tex.goal).setOrigin(0);
     this.player = this.add.image(0, 0, Tex.player).setOrigin(0);
     this.hud = this.add.text(6, 6, '', { fontFamily: 'monospace', fontSize: '10px' }).setScrollFactor(0);
@@ -193,36 +89,57 @@ class PlayScene extends Phaser.Scene {
     this.sync();
     this.rt.entered('play');
   }
-  override update(_time: number, delta: number) {
-    this.rt.frame(delta);
+  override update() {
     this.sync();
   }
   private sync() {
     const world = this.rt.world;
     if (!world) return;
     this.player.setPosition(Math.round(world.player.x), Math.round(world.player.y));
-    this.coins.forEach((c, i) => {
-      c.setVisible(!world.collected.has(i));
+    this.coins.forEach((coin, i) => {
+      coin.setVisible(!world.collected.has(i));
     });
-    const s = summarize(world);
-    this.hud.setText(world.status === 'won' ? `Level complete! ${s.coins}  (A: title)` : `Coins ${s.coins}`);
-    if (this.debug) {
-      this.debug.clear().lineStyle(1, 0xff00ff).strokeRect(world.player.x, world.player.y, 10, 14);
-      this.hud.setText(`${this.hud.text}\ntick ${world.tick} tile ${s.player.tile.join(',')}`);
-    }
+    const summary = summarize(world);
+    this.hud.setText(
+      world.status === 'won' ? `Level complete! ${summary.coins}  (A: title)` : `Coins ${summary.coins}`,
+    );
+    if (!this.debug) return;
+    this.debug.clear().lineStyle(1, 0xff00ff).strokeRect(world.player.x, world.player.y, PHYSICS.width, PHYSICS.height);
+    this.hud.setText(`${this.hud.text}\ntick ${world.tick} tile ${summary.player.tile.join(',')}`);
   }
 }
 
+/** Starts the game inside `ctx.container` and returns the handle the shell drives. */
 export async function startPhaser(ctx: GameContext, saves: SaveStore<SaveData>): Promise<GameHandle> {
+  const save = await loadSave(ctx, saves);
+  let game: Phaser.Game | null = null;
+  const rt = new Runtime({
+    ctx,
+    saves,
+    save,
+    search: window.location.search,
+    startScene: (scene) => {
+      if (game) switchScene(game, scene);
+    },
+  });
+  game = createPhaserGame(ctx, rt);
+  watchGame(ctx, game, rt);
+  return createHandle(rt, game, saves);
+}
+
+/** The saved game, or null when there is none or it can't be read (the player is told, and it is never overwritten). */
+async function loadSave(ctx: GameContext, saves: SaveStore<SaveData>): Promise<SaveData | null> {
   const loaded = await saves.load(SAVE_SLOT);
   if (loaded.kind === 'unreadable' || loaded.kind === 'newer-than-code') {
     ctx.notice('Your saved progress could not be loaded, so it will not be overwritten.');
   } else if (saves.status === 'memory-only') {
     ctx.notice('Progress will not be saved in this browser mode.');
   }
-  const rt = new Runtime(ctx, saves, loaded.kind === 'ok' ? loaded.data : null);
+  return loaded.kind === 'ok' ? loaded.data : null;
+}
 
-  const game = new Phaser.Game({
+function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
+  return new Phaser.Game({
     type: Phaser.AUTO,
     parent: ctx.container,
     width: WIDTH,
@@ -233,16 +150,33 @@ export async function startPhaser(ctx: GameContext, saves: SaveStore<SaveData>):
     scale: { mode: Phaser.Scale.NONE },
     scene: [new BootScene(rt), new TitleScene(rt), new PlayScene(rt)],
   });
-  rt.game = game;
+}
 
+function switchScene(game: Phaser.Game, scene: SceneKey): void {
+  // stop() is queued but start() of a running scene restarts it at once; stopping the
+  // target too would let the queued stop land after the restart and leave it blank.
+  for (const running of game.scene.getScenes(true)) {
+    if (running.scene.key !== scene) running.scene.stop();
+  }
+  game.scene.start(scene);
+}
+
+/**
+ * Feeds the logic clock once per game step (not per scene, so a scene switch mid-step can't tick
+ * twice), fits the canvas to the container at integer zoom, and reports WebGL context loss.
+ */
+function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
+  game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => rt.frame(deltaMs));
   const fitToContainer = () => game.scale.setZoom(integerScale(WIDTH, HEIGHT, ctx.container));
   new ResizeObserver(fitToContainer).observe(ctx.container);
   game.events.once(Phaser.Core.Events.READY, () => {
     fitToContainer();
     game.canvas.addEventListener('webglcontextlost', () => ctx.reportError('webgl', 'WebGL context lost'));
   });
+}
 
-  const idle = () => game.isBooted && !rt.loading;
+function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>): GameHandle {
+  const idle = () => game.isBooted && !rt.loading && !rt.saving;
   return {
     events: rt.events,
     idle,
@@ -255,27 +189,17 @@ export async function startPhaser(ctx: GameContext, saves: SaveStore<SaveData>):
       return ran;
     },
     renderer: () => (game.renderer?.type === Phaser.WEBGL ? 'webgl' : game.renderer ? 'canvas' : 'none'),
-    debugSummary: () => ({ scene: rt.scene, save: saves.status, ...(rt.world ? summarize(rt.world) : {}) }),
-    debugState: () => ({
-      scene: rt.scene,
-      menu: rt.scene === 'title' ? rt.menu : undefined,
-      save: rt.save,
-      world: rt.world && {
-        player: rt.world.player,
-        collected: [...rt.world.collected],
-        status: rt.world.status,
-        tick: rt.world.tick,
-      },
-      ascii: rt.world ? toAscii(rt.world) : undefined,
-    }),
-    async loadState(save) {
-      const result = await saves.importJson(SAVE_SLOT, JSON.stringify(save));
-      if (result.kind !== 'ok') throw new Error(`Fixture rejected by save store: ${JSON.stringify(result)}`);
-      rt.save = result.data;
-      rt.startPlay(result.data);
+    debugSummary: () => debugSummary(rt, saves.status),
+    debugState: () => debugState(rt),
+    async loadState(fixture) {
+      const imported = await saves.importJson(SAVE_SLOT, JSON.stringify(fixture));
+      if (imported.kind !== 'ok') {
+        throw new Error(`Save fixture rejected by the save store: ${JSON.stringify(imported)}`);
+      }
+      rt.loadSave(imported.data);
     },
     pause: () => game.loop.sleep(),
     resume: () => game.loop.wake(),
-    onHide: () => (rt.scene === 'play' ? rt.persist() : undefined),
+    onHide: () => rt.hide(),
   };
 }

@@ -24,7 +24,7 @@ const PADDING_X = 8;
 const CURSOR_GAP = 2;
 
 /** Where and how a button draws; every field is optional. */
-export interface ButtonOptions {
+interface ButtonOptions {
   /** Width in px. Defaults to the label's width plus padding, at least 64. */
   width?: number;
   /** Pinned to the screen instead of scrolling with the world. */

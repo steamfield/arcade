@@ -20,7 +20,7 @@ const THIN = 1;
 const THICK = 2;
 
 /** One haze streak: where it starts across the screen, its row in the level, its size and drift speed. */
-export interface HazeStreak {
+interface HazeStreak {
   /** Left edge at tick 0, px across the screen. */
   home: number;
   /** Top edge, px down the level. */
@@ -32,7 +32,7 @@ export interface HazeStreak {
 }
 
 /** A streak's rectangle at one tick: x across the screen, y down the level, in px. */
-export interface HazeRect {
+interface HazeRect {
   x: number;
   y: number;
   width: number;
@@ -67,7 +67,7 @@ export function hazeRects(streaks: readonly HazeStreak[], tick: number, screenWi
 }
 
 /** The haze, drawn at `depth`; `update` moves it to where it is at a tick. */
-export interface Haze {
+interface Haze {
   update(tick: number): void;
 }
 

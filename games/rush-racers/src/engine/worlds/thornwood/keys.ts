@@ -1,9 +1,14 @@
 /**
  * Thornwood's own texture and frame keys, as typed consts, prefixed `thornwood-` so they can't
- * collide with the global art, the UI kit or a theme. The cast and object skins name these; their
- * `register` functions build every one at boot, and `assertSkinTextures` checks they exist.
+ * collide with the global art, the UI kit or a theme. The cast and object skins name these;
+ * `art.ts` builds every one at boot, and `assertSkinTextures` checks they exist.
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
+import { worldArtOwner } from '../../art/index.ts';
+import { byItem, bySlot } from '../../art/keys.ts';
+
+/** The art owner name Thornwood's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
+export const THORNWOOD_ART_OWNER = worldArtOwner('thornwood');
 
 /** Racer texture per slot: 16x12, facing right, run-stride frames `Frame.a` and `Frame.b`. */
 export const ThornRacerTex: Readonly<Record<CharacterId, string>> = {
@@ -61,27 +66,19 @@ export const ThornItemTex: Readonly<Record<PowerUpKind, string>> = {
 };
 
 /** Frame names in `ThornTex.portraits` and `ThornTex.heads`: the slot id. */
-export const ThornCastFrame: Readonly<Record<CharacterId, string>> = {
-  rudy: 'rudy',
-  gil: 'gil',
-  streak: 'streak',
-  onyx: 'onyx',
-  nib: 'nib',
-  baron: 'baron',
-  selene: 'selene',
-  rook: 'rook',
-};
+export const ThornCastFrame: Readonly<Record<CharacterId, string>> = bySlot();
 
 /** Frame names in `ThornTex.icons`: the item kind. */
-export const ThornIconFrame: Readonly<Record<PowerUpKind, string>> = {
-  jetFin: 'jetFin',
-  bubbleShield: 'bubbleShield',
-  puffer: 'puffer',
-  inkSac: 'inkSac',
-  glowLantern: 'glowLantern',
-  homingSquid: 'homingSquid',
-  riptide: 'riptide',
-  undertow: 'undertow',
-  mimic: 'mimic',
-  cannonball: 'cannonball',
-};
+export const ThornIconFrame: Readonly<Record<PowerUpKind, string>> = byItem();
+
+/** Thornwood hazard texture keys. */
+export const ThornHazardTex = {
+  thornBush: 'forest-thorn-bush',
+  /** The wasp: frames `a` and `b`, looped by `ThornHazardAnim.waspBuzz`. */
+  wasp: 'forest-wasp',
+} as const;
+
+/** Thornwood hazard animation keys. */
+export const ThornHazardAnim = {
+  waspBuzz: 'forest-wasp-buzz',
+} as const;

@@ -4,8 +4,10 @@
  * body tile). Each sits in its Reef counterpart's slot (crab, shark, eel) at the same size and with
  * the same frame names, and holds its main colour 3:1 off the sky's bands.
  */
+
 import { Frame } from '../../../art/keys.ts';
 import type { Palette, PixelRows } from '../../../art/pixel.ts';
+import { mirroredRows } from '../../../art/rows.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { SkyTex } from '../keys.ts';
 
@@ -19,18 +21,13 @@ export const SkyEnemyPalette = {
   skyEel: [0x0a2a30, 0x5ee0c8, 0xd8fff4, 0xff6a9a],
 } as const satisfies Record<string, Palette>;
 
-/** A row of `half` followed by its mirror image, so a symmetric sprite is drawn once. */
-function mirrored(halves: PixelRows): PixelRows {
-  return halves.map((half) => half + [...half].reverse().join(''));
-}
-
 /** The same rows bottom to top: an enemy knocked onto its back. */
 function upsideDown(rows: PixelRows): PixelRows {
   return [...rows].reverse();
 }
 
 // Claws up, legs out.
-const CRAB_STRIDE_A = mirrored([
+const CRAB_STRIDE_A = mirroredRows([
   '.00.....',
   '0230....',
   '0110.030',
@@ -46,7 +43,7 @@ const CRAB_STRIDE_A = mirrored([
 ]);
 
 // Claws lower, legs in.
-const CRAB_STRIDE_B = mirrored([
+const CRAB_STRIDE_B = mirroredRows([
   '........',
   '.00.....',
   '0230.030',

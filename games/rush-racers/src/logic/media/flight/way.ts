@@ -86,7 +86,7 @@ export function flightCornerAhead(world: World, tile: Vec, steps: number, route:
  *
  * @throws {Error} When the world's nav was built by another medium.
  */
-export function flightPuffAhead(world: World, tile: Vec, steps: number): Vec | null {
+function flightPuffAhead(world: World, tile: Vec, steps: number): Vec | null {
   const { level, broken } = world;
   const way = flightWayAhead(world, tile, steps, 'ram');
   return (
