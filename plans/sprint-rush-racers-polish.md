@@ -163,12 +163,27 @@ Rules every lane follows:
 
 ### Phase 3: second item twist per world (stretch)
 
-Demo: each twisted item fired from a stage in its world.
+Demo: each reworked item used from a debug stage or a scenario in its world.
 Depends on: phase 2
+Test cases: per lane below. Scaffold (stashed as `phase3-scaffold`, committed when phase 2 lands): `ItemTwistStyle`, `Twist`, `World.twists`, `WorldDef.itemTwists`, events `twist.launched`, `twist.landed`, `twist.ended`, `powerups/twists/index.ts` (`TwistRules { fire, advance, rivalWants }`, `twistStyleOf`, `advanceTwists` after `advanceShots`), `use.ts` and `ai/items.ts` asking the world's twist first. Same rules as phase 2 for determinism, `mayAttack`, bars, conformance, scenarios and docs. Views are theme extra layers.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/logic/powerups/twists/ | contracts | | opus | pending | | twist tests pass |
+| a | M | games/rush-racers/src/logic/powerups/twists/mud-pie.ts, games/rush-racers/src/logic/powerups/twists/mud-pie.test.ts, games/rush-racers/src/logic/worlds/thornwood.ts, games/rush-racers/src/logic/courses/bramble-run.ts, games/rush-racers/scenarios/mud-pie.ts, games/rush-racers/src/engine/themes/forest.ts, games/rush-racers/src/engine/themes/forest/, games/rush-racers/src/engine/view/mud-pie-view.ts, games/rush-racers/src/engine/view/mud-pie-view.test.ts | contracts | | opus | pending | | mud pie tests and Bramble bars pass |
+| b | M | games/rush-racers/src/logic/powerups/twists/headwind.ts, games/rush-racers/src/logic/powerups/twists/headwind.test.ts, games/rush-racers/src/logic/worlds/cloudreach.ts, games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/scenarios/headwind.ts, games/rush-racers/src/engine/themes/sky.ts, games/rush-racers/src/engine/themes/sky/, games/rush-racers/src/engine/view/headwind-view.ts, games/rush-racers/src/engine/view/headwind-view.test.ts | contracts | | opus | pending | | headwind tests and Thunderhead bars pass |
+| c | M | games/rush-racers/src/logic/powerups/twists/gravity-bomb.ts, games/rush-racers/src/logic/powerups/twists/gravity-bomb.test.ts, games/rush-racers/src/logic/worlds/farside.ts, games/rush-racers/src/logic/courses/slingshot-alley.ts, games/rush-racers/scenarios/gravity-bomb.ts, games/rush-racers/src/engine/themes/space.ts, games/rush-racers/src/engine/themes/space/, games/rush-racers/src/engine/view/gravity-bomb-view.ts, games/rush-racers/src/engine/view/gravity-bomb-view.test.ts | contracts, games/rush-racers/src/logic/level/wells.ts | | opus | pending | | gravity bomb tests and Slingshot bars pass |
+
+#### Lane a brief (Thornwood's Mud Pie)
+
+- Set `itemTwists: { inkSac: 'mudPie' }` in `logic/worlds/thornwood.ts`. Using it lobs a pie forward along facing (about 160 px/s forward, 220 px/s up, run gravity) from the racer's centre; it splats on the first solid tile or crate top it comes down onto (`twist.landed`, phase 1), or ends if it leaves the level. A splat is a mud patch 3 tiles wide on that surface for 5 s (`twist.ended` when it dries): any racer but its owner standing in it runs at the mud speed (0.6x; reuse how mud slows a runner, through status or the modifiers the run medium reads, whichever stays inside your files and the contracts; if neither does, report what you need). Respects `mayAttack` (Easy rivals' mud never slows a human). `rivalWants`: a racer it may attack 3-10 tiles ahead on the ground. The pie flying and the splat are drawn by `view/mud-pie-view.ts` as a forest extra layer. Tests: arc and landing, ends off the level, slows a rival standing in it but not the owner, dries after 5 s, Easy rule. Scenario `mud-pie` on `?course=run-test`.
+
+#### Lane b brief (Cloudreach's Headwind)
+
+- Set `itemTwists: { undertow: 'headwind' }` in `logic/worlds/cloudreach.ts`. Using it launches a gust front at the owner's x that sweeps forward (+x) at 300 px/s for up to 24 tiles, spanning the whole sky's height; each racer (not the owner) whose centre it passes over for the first time gets its x velocity set to -140 px/s and its glide broken (a light shove, not a hit; no stun), once per front. A dash in progress keeps its speed (a dash fights it, as before). Respects `mayAttack`. `rivalWants`: the Undertow's existing rule (3rd or 4th, a racer it may attack 8 or more tiles ahead). Drawn by `view/headwind-view.ts` (a band of wind streaks moving forward) as a sky extra layer. Tests: sweeps and ends at 24 tiles, shoves each racer once, never the owner, dash keeps speed, Easy rule. Scenario `headwind` on `?course=sky-test`.
+
+#### Lane c brief (Farside's gravity bomb)
+
+- Set `itemTwists: { inkSac: 'gravityBomb' }` in `logic/worlds/farside.ts` (its name in Farside stays Gas Bomb). Using it drops a bomb 1 tile behind the owner, at rest; for 4 s it pulls every racer but its owner within 5 tiles toward it like a planet (`pull * (1 - d / reach)`, pull about 1.5x Slingshot Alley's planets), with no horizon; then `twist.ended`. Respects `mayAttack`. `rivalWants`: Ink Sac's existing rule (a racer within 4 tiles behind). Drawn by `view/gravity-bomb-view.ts` (a pulsing core and a reach ring, as the well view draws planets' reach) as a space extra layer. Tests: pull direction and falloff, nothing past the reach or after 4 s, never the owner, Easy rule. Scenario `gravity-bomb` on `?course=drift-test`.
 
 ## Log
 
