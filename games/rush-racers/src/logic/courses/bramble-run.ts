@@ -218,11 +218,11 @@ const LEVEL: LevelDef = {
 };
 
 /**
- * The expert bot's mean Hard finish (150.6 s) over seeds 1-200 and all eight characters, measured as
- * COURSES.md "parTicks" says: 1600 races, every one finished. Re-measured when the course gained the
- * Millstream, the Hollow Oak and the Rotten Bridges; it was 4119 (68.7 s) before them.
+ * The expert bot's mean Hard finish (150.7 s) over seeds 1-200 and all eight characters, measured as
+ * COURSES.md "parTicks" says: 1600 races, every one finished. Re-measured after tuning the Treetops
+ * approach and Hard catch-up; it was 9033 (150.6 s) before that tuning.
  */
-const PAR_TICKS = 9033;
+const PAR_TICKS = 9040;
 
 /**
  * Normal rivals hover this many tiles behind the player here, not the table's 2. On foot a rival
@@ -256,5 +256,11 @@ export const BRAMBLE_RUN: ShippedCourse = {
   listed: true,
   parTicks: PAR_TICKS,
   sections: SECTIONS,
-  catchUp: { normal: { lagTiles: NORMAL_LAG_TILES } },
+  // A runner that backs away from the first Treetops step needs to turn forward before it lands.
+  tuning: { extra: { airAccel: 650 } },
+  catchUp: {
+    // Keep Hard rivals moving through the jumps when ahead and let them close the gap when behind.
+    hard: { min: 0.8, max: 1.4 },
+    normal: { lagTiles: NORMAL_LAG_TILES },
+  },
 };
