@@ -1,5 +1,6 @@
 /** Item effects, projectiles, and hit timing in live race ticks. */
 import { expect, it } from 'vitest';
+import { groundY } from '../course.ts';
 import { DASH, ITEMS, RACE, RUN } from '../tuning.ts';
 import type { Feature } from '../types.ts';
 import { start, startPair } from './item-test-kit.ts';
@@ -174,6 +175,28 @@ it('throws straight sap at the first eligible racer and traps them for 60 ticks'
   ]);
 });
 
+it('traps a racer 10 m uphill with a sap glob', () => {
+  const { world, player, rival, events, advance } = startPair(
+    [],
+    [
+      { s: 0, y: 0 },
+      { s: 20, y: 0 },
+      { s: 80, y: 6 },
+    ],
+  );
+  player.s = 30;
+  rival.s = 40;
+  player.d = rival.d;
+  player.y = groundY(world.course, player.s);
+  rival.y = groundY(world.course, rival.s);
+  player.slots[0] = { kind: 'shield', charges: 1 };
+
+  advance(1, { firePressed: true });
+  advance(39);
+
+  expect(events.all().filter((event) => event.type === 'racer.trapped')).toMatchObject([{ id: 'r1', by: 'player' }]);
+});
+
 it.each([
   { surface: 'ground', afterFire: 7, outcome: 'racer.landed' },
   { surface: 'pit', afterFire: 24, outcome: 'racer.fell' },
@@ -241,10 +264,12 @@ it('lobs a Mud Pie with the thrower’s velocity and leaves mud for everyone but
     vd: player.vd,
     vy: ITEMS.pieThrowUp - RUN.gravity / 60,
   });
-  expect(shot?.y).toBeGreaterThan(player.y + RUN.radius);
-  const firstY = shot?.y ?? Infinity;
+  if (shot?.kind !== 'pie') throw new Error('expected a pie in flight');
+  expect(shot.y).toBeGreaterThan(player.y + RUN.radius);
+  const firstY = shot.y;
   advance(12);
-  expect(world.shots[0]?.y).toBeGreaterThan(firstY);
+  const nextShot = world.shots[0];
+  expect(nextShot?.kind === 'pie' ? nextShot.y : undefined).toBeGreaterThan(firstY);
   advance(21);
   expect(world.splats).toEqual([]);
   advance();

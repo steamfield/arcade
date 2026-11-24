@@ -44,7 +44,6 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
     bufferTicks: 0,
     dashCharges: DASH.charges,
     dashRecharge: 0,
-    dashTicks: 0,
     state: 'racing',
     outTicks: 0,
     invulnTicks: 0,
@@ -106,8 +105,7 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
   const playerS = player.s;
   const from = world.racers.map(({ s, d, y, state }) => (state === 'racing' ? { s, d, y } : null));
   const hasRivals = world.racers.length > 1;
-  const startD = hasRivals ? from.map((pose) => pose?.d ?? null) : undefined;
-  const lockedAtStart = hasRivals ? new Set(world.racers.filter(isImmobilized)) : undefined;
+  const lockedAtStart = new Set(hasRivals ? world.racers.filter(isImmobilized) : []);
   const raceInputs: TickInputs = {};
   for (const racer of world.racers) {
     const isPlayer = racer.id === 'player';
@@ -118,7 +116,11 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
     stepRacer(racer, input, { course, events, raceTicks, speedMul, splats: world.splats }, dt);
   }
   stepItems(world, raceInputs, from);
-  if (startD) bumpRacers(world, startD, lockedAtStart);
+  if (hasRivals) {
+    // A respawned racer has no pre-move pose, so use its respawn position.
+    const startD = world.racers.map((racer, index) => from[index]?.d ?? racer.d);
+    bumpRacers(world, startD, lockedAtStart);
+  }
   for (const racer of world.racers) {
     if (racer.finishTicks === raceTicks) {
       events.emit({ type: 'racer.finished', id: racer.id, ticks: raceTicks, place: placeOf(world, racer.id) });
@@ -142,7 +144,10 @@ function endRace(world: World, reason: Extract<GameEvent, { type: 'race.ended' }
   world.events.emit({ type: 'race.ended', ticks: world.raceTicks, reason });
 }
 
-/** The player's racer. */
+/**
+ * The player's racer.
+ * @throws {Error} When the player is missing from the first race slot.
+ */
 export function playerOf(world: World): Racer {
   const player = world.racers[0];
   if (!player || player.id !== 'player') throw new Error('world has no player in slot 0');

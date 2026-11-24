@@ -57,7 +57,7 @@ export function stepCrates(world: World, from: readonly (Point | null)[]): void 
 
       crate.shutTicks = ITEMS.crateShutTicks;
       giveItem(world, racer, slot, kind);
-      world.events.emit({ type: 'crate.opened', id: racer.id, crate: index, kind });
+      world.events.emit({ type: 'crate.opened', id: racer.id, crate: index, kind, slot });
     }
   }
 }

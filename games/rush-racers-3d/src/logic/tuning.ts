@@ -1,6 +1,6 @@
 /**
  * The race's numbers, in meters, seconds and ticks (60 per second). Started from Rush Racers' run
- * tuning scaled to a 3D trail (one 2D tile of 16 px read as about 1 m); lane a may tune them.
+ * tuning scaled to a 3D trail (one 2D tile of 16 px read as about 1 m).
  * Logic may use only + - * / and the exact Math members (sqrt, floor, ceil, round, min, max, abs,
  * sign) so a race computes the same on every JavaScript engine.
  */
@@ -38,16 +38,16 @@ export const RUN = {
   invulnTicks: 60,
 } as const;
 
+/** The dash meter, recharge timing and speed boost. */
 export const DASH = {
   charges: 2,
   rechargeTicks: 90,
   /** Forward speed a dash sets at least, m/s, and how fast speed over run speed glides back, m/s². */
   speed: 24,
   drag: 10,
-  /** Ticks a dash's burst counts as dashing (for bonks and pushes in later phases). */
-  burstTicks: 12,
 } as const;
 
+/** Starting-grid spacing and the timing of the countdown and race end. */
 export const RACE = {
   /** 3-2-1 at 60 ticks each, then GO. */
   countdownTicks: 180,
@@ -59,7 +59,7 @@ export const RACE = {
   rivalsDoneGraceTicks: 600,
 } as const;
 
-/** How rivals drive. Lane 2a tunes these. */
+/** How far rivals look ahead, when they use items and how they catch up. */
 export const RIVAL = {
   /** Catch-up: a rival this many meters or more behind the player runs at 1 + catchUp, as far ahead at 1 - catchUp. */
   catchUpRange: 60,
@@ -75,7 +75,7 @@ export const RIVAL = {
   burrRange: 3,
 } as const;
 
-/** Items and crates. Lane 3a tunes these. */
+/** Inventory capacity, crate timing and item effects. */
 export const ITEMS = {
   /** Inventory places per racer. */
   slots: 3,
@@ -104,6 +104,7 @@ export const ITEMS = {
   stunTicks: 60,
 } as const;
 
+/** Crate placement above the trail and the reach required to open one. */
 export const CRATE = {
   /** Height of a crate's centre above the ground, m. */
   height: 1.2,

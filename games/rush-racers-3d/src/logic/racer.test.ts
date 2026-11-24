@@ -145,7 +145,7 @@ it('follows the interpolated ground each tick up and down a hill', () => {
 it('spends dash charges, glides at dash drag and recharges one at a time from the first spend', () => {
   const { racer, advance, events } = start();
   advance(1, dash);
-  expect(racer).toMatchObject({ vs: DASH.speed, dashCharges: 1, dashTicks: DASH.burstTicks });
+  expect(racer).toMatchObject({ vs: DASH.speed, dashCharges: 1 });
   advance(1, forward);
   expect(racer.vs).toBeCloseTo(DASH.speed - DASH.drag * TICK_DT);
   advance(1, dash);
@@ -153,7 +153,7 @@ it('spends dash charges, glides at dash drag and recharges one at a time from th
   advance(1, dash);
   expect(racer.vs).toBeCloseTo(DASH.speed - DASH.drag * TICK_DT);
   advance(DASH.rechargeTicks - 5, forward);
-  expect(racer).toMatchObject({ vs: RUN.runSpeed, dashCharges: 0, dashTicks: 0 });
+  expect(racer).toMatchObject({ vs: RUN.runSpeed, dashCharges: 0 });
   advance(1, forward);
   expect(racer.dashCharges).toBe(0);
   advance(1, forward);
@@ -248,9 +248,9 @@ it('loses an active dash on falling even at the far wall of a short pit', () => 
   const { racer, advance, events } = start({ features: [{ ...pit, s1: 31 }] }, { s: 29.9, vs: RUN.runSpeed });
   advance(25, forward);
   advance(1, dash);
-  expect(racer.dashTicks).toBe(DASH.burstTicks);
+  expect(racer.vs).toBe(DASH.speed);
   advance(5, forward);
-  expect(racer).toMatchObject({ state: 'fallen', dashTicks: 0, vs: 0 });
+  expect(racer).toMatchObject({ state: 'fallen', vs: 0 });
   expect(events.all().at(-1)).toMatchObject({ type: 'racer.fell', tick: 31 });
 });
 

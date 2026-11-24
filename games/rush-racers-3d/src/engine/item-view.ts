@@ -4,10 +4,12 @@
  */
 import { TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
+import { groundY } from '../logic/course.ts';
 import type { Course, Racer, World } from '../logic/types.ts';
 import { createItemPools, SPIKE_COUNT, STAR_COUNT } from './item-pools.ts';
 import type { TrackFrame, TrackFrames } from './track-geometry.ts';
 
+/** Scene meshes for crates, projectiles and active item effects. */
 export interface ItemView {
   /** Add this to the scene once. */
   root: THREE.Group;
@@ -62,7 +64,8 @@ export function createItemView(course: Course, track: TrackFrames): ItemView {
 
   function drawShots(world: World, time: number): void {
     for (const shot of world.shots) {
-      place(shot.s, shot.d, shot.y);
+      const y = shot.kind === 'pie' ? shot.y : groundY(course, shot.s) + shot.height;
+      place(shot.s, shot.d, y);
       const heading = Math.atan2(-frame.tx, -frame.tz);
       if (shot.kind === 'pie') {
         point.rotation.set(time * 6, heading, time * 3);

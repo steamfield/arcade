@@ -2,7 +2,7 @@ import { TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
 import { groundY } from '../logic/course.ts';
 import { RUN } from '../logic/tuning.ts';
-import type { CharacterId, Course, Racer } from '../logic/types.ts';
+import type { CharacterId, Course, Racer, RacerId, World } from '../logic/types.ts';
 import { geometryFor } from './racer-geometry.ts';
 import type { TrackFrame, TrackFrames } from './track-geometry.ts';
 
@@ -130,5 +130,43 @@ export class RacerView {
   dispose(): void {
     this.root.removeFromParent();
     this.shadow.material.dispose();
+  }
+}
+
+/** Owns the racer meshes attached to the race scene. */
+export class RacerViews {
+  private readonly views = new Map<RacerId, RacerView>();
+  private readonly scene: THREE.Scene;
+
+  constructor(scene: THREE.Scene) {
+    this.scene = scene;
+  }
+
+  /** Reuses matching views and resets their poses for a new race. */
+  sync(racers: readonly Racer[]): void {
+    for (const [id, view] of this.views) {
+      if (racers.some((racer) => racer.id === id && racer.character === view.character)) {
+        view.resetPose();
+      } else {
+        view.dispose();
+        this.views.delete(id);
+      }
+    }
+    for (const racer of racers) {
+      if (this.views.has(racer.id)) continue;
+      const view = new RacerView(racer.character);
+      this.views.set(racer.id, view);
+      this.scene.add(view.root);
+    }
+  }
+
+  /** Poses the current racers once per tick. */
+  tick(world: World, frames: TrackFrames, course: Course): void {
+    for (const racer of world.racers) this.views.get(racer.id)?.tick(racer, frames, course);
+  }
+
+  /** Hides the racers while the menus are shown. */
+  hide(): void {
+    for (const view of this.views.values()) view.root.visible = false;
   }
 }

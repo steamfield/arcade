@@ -27,22 +27,19 @@ interface Pair {
  * `racer.bumped` with `by` for each. Fallen and finished racers never bump.
  *
  * @param startD The pre-move `d` by racer slot, used to preserve side order when racers cross.
- * A `null` entry marks a racer that wasn't racing before movement. Omitted positions use the current `d`.
  * @param lockedAtStart Racers held still during movement, including those whose timer has just expired.
  */
-export function bumpRacers(
-  world: World,
-  startD?: readonly (number | null)[],
-  lockedAtStart?: ReadonlySet<Racer>,
-): void {
+export function bumpRacers(world: World, startD: readonly number[], lockedAtStart: ReadonlySet<Racer>): void {
   const pairs: Pair[] = [];
   for (const [i, a] of world.racers.entries()) {
-    if (a.state !== 'racing') continue;
+    const aStart = startD[i];
+    if (a.state !== 'racing' || aStart === undefined) continue;
     for (let j = i + 1; j < world.racers.length; j++) {
       const b = world.racers[j];
-      if (b?.state !== 'racing' || Math.abs(b.s - a.s) >= WIDTH || Math.abs(b.y - a.y) >= 1) continue;
-      const aStart = startD?.[i] ?? a.d;
-      const bStart = startD?.[j] ?? b.d;
+      const bStart = startD[j];
+      if (b?.state !== 'racing' || bStart === undefined || Math.abs(b.s - a.s) >= WIDTH || Math.abs(b.y - a.y) >= 1) {
+        continue;
+      }
       const aIsLeft = aStart === bStart ? a.d <= b.d : aStart < bStart;
       pairs.push({ a, b, left: aIsLeft ? a : b, right: aIsLeft ? b : a, bumped: false });
     }
@@ -60,8 +57,8 @@ export function bumpRacers(
       const { a, b, left, right } = pair;
       const overlap = WIDTH - (right.d - left.d);
       if (overlap <= EPSILON) continue;
-      const leftLocked = lockedAtStart?.has(left) || isImmobilized(left);
-      const rightLocked = lockedAtStart?.has(right) || isImmobilized(right);
+      const leftLocked = lockedAtStart.has(left) || isImmobilized(left);
+      const rightLocked = lockedAtStart.has(right) || isImmobilized(right);
       const min = leftLocked ? left.d : (bounds.get(left)?.min ?? left.d);
       const max = rightLocked ? right.d : (bounds.get(right)?.max ?? right.d);
       let leftD = Math.max(min, left.d - overlap / 2);

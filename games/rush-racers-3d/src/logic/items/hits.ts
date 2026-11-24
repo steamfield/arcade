@@ -12,7 +12,6 @@ export function isImmobilized(racer: Racer): boolean {
 export function stopRacer(racer: Racer): void {
   racer.vs = 0;
   racer.vd = 0;
-  racer.dashTicks = 0;
   racer.bufferTicks = 0;
 }
 

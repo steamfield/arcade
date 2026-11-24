@@ -1,6 +1,6 @@
-/** Everything observable that happens in a race. Tests and `arcade see` read these. */
 import type { ItemKind, RacerId } from './types.ts';
 
+/** Race outcomes and actions reported to the engine and tests. */
 export type GameEvent =
   | { type: 'race.countdown'; n: 3 | 2 | 1 }
   | { type: 'race.started' }
@@ -15,8 +15,8 @@ export type GameEvent =
   | { type: 'racer.respawned'; id: RacerId; s: number; d: number }
   /** `place` is 1-based, the racer's place in the standings on the tick it finished. */
   | { type: 'racer.finished'; id: RacerId; ticks: number; place: number }
-  /** `crate` is the crate's index in `World.crates`. */
-  | { type: 'crate.opened'; id: RacerId; crate: number; kind: ItemKind }
+  /** `crate` indexes `World.crates` and `slot` indexes the racer's inventory. */
+  | { type: 'crate.opened'; id: RacerId; crate: number; kind: ItemKind; slot: number }
   | { type: 'item.selected'; id: RacerId; slot: number }
   | { type: 'item.fired'; id: RacerId; kind: ItemKind }
   /** `kind` is what hit them; `outcome` is what the hit did. */

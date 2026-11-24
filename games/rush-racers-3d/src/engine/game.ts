@@ -3,43 +3,25 @@
  * shell and tests drive. Gameplay lives in `Runtime`; this file reads input, renders its state and
  * nothing else.
  */
-import { createLogger, type Logger, TICK_DT } from '@arcade/core';
+import { createLogger, TICK_DT } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import { type GameContext, type GameHandle, renderPixelRatio } from '@arcade/shell';
 import * as THREE from 'three';
 import { THORNWOOD_TRAIL } from '../logic/courses/thornwood-trail.ts';
 import type { SaveData } from '../logic/save.ts';
-import type { RacerId, World } from '../logic/types.ts';
-import { CHARACTER_IDS, type CharacterId } from '../logic/types.ts';
+import { CHARACTER_IDS, type World } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
 import { CameraRig } from './camera-rig.ts';
-import { stageFor } from './capture-stages.ts';
+import { characterFor, stageFor } from './capture-stages.ts';
 import { Hud } from './hud.ts';
 import { input } from './input.ts';
 import { createItemView } from './item-view.ts';
 import { createPedestal } from './pedestal.ts';
-import { RacerView } from './racer-view.ts';
+import { RacerViews } from './racer-view.ts';
 import { Runtime, type Scene } from './runtime.ts';
 import { createScreens } from './screens.ts';
 import { buildTrackFrames } from './track-geometry.ts';
 import { createTrackView } from './track-view.ts';
-
-function reconcileRacerViews(scene: THREE.Scene, views: Map<RacerId, RacerView>, racers: World['racers']): void {
-  for (const [id, view] of views) {
-    if (racers.some((racer) => racer.id === id && racer.character === view.character)) {
-      view.resetPose();
-    } else {
-      view.dispose();
-      views.delete(id);
-    }
-  }
-  for (const racer of racers) {
-    if (views.has(racer.id)) continue;
-    const view = new RacerView(racer.character);
-    views.set(racer.id, view);
-    scene.add(view.root);
-  }
-}
 
 /** Starts the game in `ctx.container` and returns the handle the shell drives. */
 export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): Promise<GameHandle> {
@@ -109,34 +91,24 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const pedestal = createPedestal(scene, frames, course);
 
   let drawnWorld: World | undefined;
-  const racers = new Map<RacerId, RacerView>();
+  const racers = new RacerViews(scene);
   let cursor = 0;
-  let goUntil = -1;
-  let newBest = false;
   const syncRaceViews = (world: World, screen: Scene, screenChanged: boolean): boolean => {
     const racing = screen === 'race' || screen === 'results';
     const newWorld = racing && world !== drawnWorld;
     if (newWorld) {
-      reconcileRacerViews(scene, racers, world.racers);
+      racers.sync(world.racers);
       drawnWorld = world;
-      goUntil = -1;
-      newBest = false;
     }
     let snap = newWorld || (screenChanged && screen === 'race');
     const batch = runtime.events.drain(cursor);
     cursor = batch.cursor;
     for (const event of batch.events) {
       if (event.type === 'racer.respawned' && event.id === 'player') snap = true;
-      if (event.type === 'race.started') goUntil = world.tick + 45;
-      if (event.type === 'best.new' && event.course === world.course.id) newBest = true;
-      if (event.type === 'crate.opened' && event.id === 'player') hud.flashPickup(world);
+      hud.onEvent(event, world);
     }
-    if (racing) {
-      hud.observeInventory(world);
-      for (const racer of world.racers) racers.get(racer.id)?.tick(racer, frames, course);
-    } else if (screenChanged) {
-      for (const view of racers.values()) view.root.visible = false;
-    }
+    if (racing) racers.tick(world, frames, course);
+    else if (screenChanged) racers.hide();
     return snap;
   };
 
@@ -170,7 +142,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     const { world, scene: screen, bests } = runtime;
     trail.tick(world.tick);
     items.sync(world);
-    hud.sync(world, screen, bests, screen === 'race' && world.tick < goUntil, newBest);
+    hud.sync(world, screen, bests);
     screens.sync({ scene: screen, cursor: runtime.cursor, character: runtime.character });
     renderer.render(scene, rig.camera);
   };
@@ -221,16 +193,4 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     },
     onHide: () => runtime.settled(),
   };
-}
-
-/**
- * The `?character=` the page was opened with, or null to race as the saved character. An unknown id
- * is logged as a warning that lists the valid ones.
- */
-function characterFor(search: string, log: Logger): CharacterId | null {
-  const name = new URLSearchParams(search).get('character');
-  if (name === null) return null;
-  const character = CHARACTER_IDS.find((id) => id === name);
-  if (!character) log.warn(`unknown ?character=${name}; valid characters: ${CHARACTER_IDS.join(', ')}`);
-  return character ?? null;
 }

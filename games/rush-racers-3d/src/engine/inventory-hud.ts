@@ -1,6 +1,5 @@
 import { ITEMS } from '../logic/tuning.ts';
-import type { ItemKind, Racer, World } from '../logic/types.ts';
-import { playerOf } from '../logic/world.ts';
+import type { ItemKind, Racer } from '../logic/types.ts';
 
 const PICKUP_TICKS = 15;
 const ITEM_ICONS: Record<ItemKind, { name: string; art: string }> = {
@@ -29,7 +28,6 @@ interface InventorySlot {
   kind: ItemKind | null;
   uses: number;
   selected: boolean;
-  occupied: boolean;
   flashUntil: number;
 }
 
@@ -42,14 +40,13 @@ function inventorySlot(): InventorySlot {
   icon.className = 'rr3d-item-icon';
   charges.className = 'rr3d-item-charges';
   node.append(icon, charges);
-  return { node, icon, charges, kind: null, uses: -1, selected: false, occupied: false, flashUntil: -1 };
+  return { node, icon, charges, kind: null, uses: -1, selected: false, flashUntil: -1 };
 }
 
 /** Race inventory DOM and short pickup flashes. */
 export class InventoryHud {
   readonly root = document.createElement('div');
   private readonly slots = Array.from({ length: ITEMS.slots }, inventorySlot);
-  private pickupWorld: World | undefined;
 
   constructor() {
     this.root.className = 'rr3d-inventory';
@@ -58,38 +55,19 @@ export class InventoryHud {
     for (const { node } of this.slots) this.root.append(node);
   }
 
-  /** Replays crate fills from the previous tick's slots so a pickup can flash even if spent immediately. */
-  flashPickup(world: World): void {
-    this.useWorld(world);
-    for (const slot of this.slots) {
-      if (slot.occupied) continue;
-      slot.occupied = true;
-      slot.flashUntil = world.tick + PICKUP_TICKS;
-      break;
-    }
+  /** Highlights a slot when a crate awards an item there. */
+  flashPickup(index: number, tick: number): void {
+    const slot = this.slots[index];
+    if (slot) slot.flashUntil = tick + PICKUP_TICKS;
   }
 
-  /** Call once per logic tick after draining and handling its events. `flashPickup` needs the previous tick's slots. */
-  observeInventory(world: World): void {
-    this.useWorld(world);
-    const { slots } = playerOf(world);
-    for (let i = 0; i < this.slots.length; i++) {
-      const slot = this.slots[i];
-      if (slot) slot.occupied = slots[i] != null;
-    }
-  }
-
-  private useWorld(world: World): void {
-    if (this.pickupWorld === world) return;
-    this.pickupWorld = world;
-    for (const slot of this.slots) {
-      slot.occupied = false;
-      slot.flashUntil = -1;
-    }
+  /** Clears pickup highlights when a new race starts. */
+  resetFlashes(): void {
+    for (const slot of this.slots) slot.flashUntil = -1;
   }
 
   /** Updates changed DOM values and returns whether the player has an item. */
-  sync(world: World, player: Racer): boolean {
+  sync(tick: number, player: Racer): boolean {
     let held = false;
     for (let index = 0; index < this.slots.length; index++) {
       const slot = this.slots[index];
@@ -98,7 +76,7 @@ export class InventoryHud {
       const kind = item?.kind ?? null;
       const uses = item?.charges ?? 0;
       const selected = player.selected === index;
-      const flash = this.pickupWorld === world && world.tick < slot.flashUntil;
+      const flash = tick < slot.flashUntil;
       held ||= kind !== null;
       if (slot.node.hasAttribute('data-pickup') !== flash) slot.node.toggleAttribute('data-pickup', flash);
       if (kind === slot.kind && uses === slot.uses && selected === slot.selected) continue;
