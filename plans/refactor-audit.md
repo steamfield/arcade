@@ -304,6 +304,27 @@ Depends on: phase 7
 | a | M | templates/phaser-2d/ | | | opus | pending | | |
 | b | M | templates/three-3d/ | | | sonnet | pending | | |
 
+Both template lanes adopt the same patterns, in their engine's idiom. Read Rush Racers for each one before writing it; keep the template small (a template that needs a page of explanation has gone too far).
+
+#### Lane 8a brief
+
+- Goal: a new 2D game started from `templates/phaser-2d` begins with what Rush Racers worked out, so its first agent doesn't rediscover it.
+- Interface:
+  - Runtime split: move scene flow, the save write queue and the per-tick logic stepping out of `src/engine/game.ts` into a Phaser-free `src/engine/runtime.ts` (model: `games/rush-racers/src/engine/runtime.ts`, much smaller), with `src/engine/runtime.test.ts` driving it in Vitest without a browser (start, play to a coin, save written, restore). `game.ts` keeps the Phaser scene wiring and renders runtime state.
+  - World hash: `debugState()` (and `debugSummary()` if it fits) gains `worldHash` from `hashState` in `@arcade/core`; `tests/smoke.spec.ts` gains a test that plays a fixed input to a fixed tick and asserts one hash across every Playwright project (desktop Chromium, phone, WebKit), the way `games/rush-racers/tests/smoke.spec.ts` does around line 95 and 170.
+  - Capture stages: `?stage=<name>` applied right after the world is built, with one example stage and an unsaved-result guard, as `games/rush-racers/src/engine/debug-stage.ts` does; document the param in `DESIGN.md`'s launch params.
+  - Scenario presets: `scenarios/kit.ts` exports named navigation sequences (title to play, and a save fixture built from the current `SAVE_VERSION`) that the existing scenarios use, like Rush Racers' `TITLE_TO_RACE` and `HARD_SAVE`.
+  - Shared helpers: `tests/save.test.ts` uses `checkSaveFixtures` and `tests/smoke.spec.ts` uses `GameDriver.touch` from `@arcade/testing`; `vite.config.ts` stays a plain `defineGameConfig` call.
+- Decisions already made: Phaser stays 4.2.1; no new dependencies; existing scenarios keep passing; `arcade new` copies the template as is, so everything must work in a renamed copy.
+- Done when: `pnpm arcade test phaser-2d`, `pnpm arcade check phaser-2d --skip-tests`, `pnpm arcade see phaser-2d --scenario complete-level` and `pnpm --filter game-phaser-2d exec playwright test` (all projects; it is small) pass, and `pnpm arcade new scratch-2d --template phaser-2d --title Scratch` followed by `pnpm arcade check scratch-2d --skip-tests` and `pnpm arcade test scratch-2d` passes, then delete `games/scratch-2d` (check `git status` that nothing of it is left).
+
+#### Lane 8b brief
+
+- Goal: the same for `templates/three-3d`, in three.js and Rapier's idiom.
+- Interface: as lane 8a's list (runtime split with a Vitest runtime test, `worldHash` in `debugState` with a cross-project smoke test, a `?stage=` capture stage, scenario presets in `scenarios/kit.ts`, `checkSaveFixtures` and `GameDriver.touch`), adapted: Rapier is engine-side physics, so the hash covers logic state only, and the smoke hash test must not depend on Rapier timing (if the template's logic state depends on Rapier, hash only what logic owns and say so in the test's doc comment).
+- Decisions already made: three.js r187 WebGLRenderer, Rapier 0.21 lazy-loaded; no new dependencies.
+- Done when: `pnpm arcade test three-3d`, `pnpm arcade check three-3d --skip-tests`, `pnpm arcade see three-3d --scenario push-crate` and `pnpm --filter game-three-3d exec playwright test` pass, and an `arcade new scratch-3d --template three-3d` copy checks and tests clean before you delete it.
+
 ### Phase 9: docs match the code
 
 Demo: `pnpm --filter @arcade/cli exec vitest run src/repo-map.test.ts` and the game map test pass; every audit doc finding is fixed.
