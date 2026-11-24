@@ -317,7 +317,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/logic/difficulty/ | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | running | deliver/cloudreach-5a | Thunderhead Pass bars pass |
+| a | L | games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/logic/difficulty/ | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | cut | deliver/cloudreach-5a | Thunderhead Pass bars pass |
 | b | M | games/rush-racers/scenarios/, games/rush-racers/tests/, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md, games/rush-racers/src/engine/debug-stage.ts, games/rush-racers/src/engine/debug-stage.test.ts | contracts | games/rush-racers/tests/smoke.spec.ts | opus | merged | deliver/cloudreach-5b | scenarios and smoke pass |
 | c | L | games/rush-racers/src/logic/media/flight/, games/rush-racers/src/logic/difficulty/kid-bot.ts, games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/logic/difficulty/, games/rush-racers/src/engine/themes/sky/sprites/flow.ts | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | running | deliver/cloudreach-5c | Thunderhead Pass bars pass |
 
@@ -334,3 +334,4 @@ Test cases:
 - 2026-11-23 lane 4/a merged after review fixes (a following rival pushed a storm-waiting one into the strike; near-equal passes re-armed and ground; one skill roll judged bounce and ring together; tile centre copied thrice). The expert's sky-test mean moved 851 -> 916 (+7.6 %), so sky-test's par is re-pinned at 1191 (916 + 30 %). sky-skill: expert ahead in 99.4 % of pairs, means 15.3 s vs 20.9 s.
 - 2026-11-23 phase 4 gate green: check 20.5 s, 143 bars, smoke 72/72.
 - 2026-11-23 lane 5/a reported blocked: the level (660x26, par 4526) is built and 4 of 26 bars files pass; the rest fail on flight's pilot and physics (rivals aim at base cruise, dive carry and dash ignore forceMul) and on the toddler bot, which never flaps in flight. As with Bramble Run's 5/c, lane 5/c starts from 5/a's branch, owns flight's pilot and physics, the kid bot's flight habit, the level and the bars, and lands both.
+- Lane 5/a is marked cut because its commits land through 5/c's branch, not on their own.
