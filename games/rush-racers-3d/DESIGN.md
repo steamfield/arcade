@@ -1,10 +1,10 @@
 # Rush Racers 3D
 
-A forest foot race seen from behind the runner. Run Thornwood Trail, jump logs and pits, dash for bursts of speed and steer clear of mud. Rivals, items and menus arrive in later phases (`plans/rush-racers-3d.md`). It shares Rush Racers' feel and Thornwood's cast, with its own code: nothing imports from `games/rush-racers`.
+A forest foot race seen from behind the runner. Pick one of eight animals, then race three rivals down Thornwood Trail: jump logs and pits, dash for bursts of speed and steer clear of mud. Items arrive in phase 3 (`plans/rush-racers-3d.md`). It shares Rush Racers' feel and Thornwood's cast, with its own code: nothing imports from `games/rush-racers`.
 
 ## Core loop
 
-A 3-2-1 countdown (steps 0, 60, 120; GO and the first racing step at 180), then the race. Hold forward to run, steer across the trail, jump over logs and pits, dash when it pays. Cross the finish line to see your time and best; press fire to race again. The best time per course is saved.
+Title, then character select (a 4x2 grid of Thornwood's cast; the pick is saved), then a 3-2-1 countdown (steps 0, 60, 120; GO and the first racing step at 180) and the race against three rivals drawn by seed from the other seven. Hold forward to run, steer across the trail, jump over logs and pits, dash when it pays. The HUD shows your place and a progress strip. Results list every place and time; fire races again with the same character, back returns to select. The best time per course is saved, only from a finish of your own.
 
 ## Controls
 
@@ -16,6 +16,8 @@ A 3-2-1 countdown (steps 0, 60, 120; GO and the first racing step at 180), then 
 | jump (hold for higher) | Space | A |
 | dash | Shift, X | B |
 | fire, confirm on screens | Z, Enter | ★ |
+| back on screens | Shift, X | B |
+| move the select cursor | arrows, WASD | d-pad |
 | previous / next item (phase 3) | Q / E, Tab | |
 
 ## Rules worth knowing
@@ -27,7 +29,10 @@ A 3-2-1 countdown (steps 0, 60, 120; GO and the first racing step at 180), then 
 - Dash: a meter of two charges; a dash spends one and lifts speed over run speed, which glides back. Each charge returns 1.5 s after the meter dropped.
 - Pits have no floor. Falling in takes you out for 1 s, then you're back at rest at your last safe spot with 1 s of invulnerability.
 - Mud slows running; gusts push you sideways; logs are solid unless you jump them, and you can land on top.
-- The race ends when you cross the finish, or at 4 minutes.
+- Rivals (`src/logic/ai.ts`) drive by the same rules from what a player could see: features ahead and other racers' positions. Each cast member has a rival profile (steer wobble, jump jitter, preferred line); noise comes from the world's seeded rng. A rival far behind you runs up to 10% faster, one far ahead up to 10% slower.
+- Racers bump: overlapping racers are pushed apart sideways and trade some sideways speed; nobody passes through anyone.
+- Places: finished racers by time, then the rest by distance, ties by grid slot.
+- The race ends when you cross the finish, 10 s after the third rival finishes if you haven't, or at 4 minutes.
 
 ## Course
 
@@ -43,4 +48,4 @@ Thornwood Trail (`src/logic/courses/thornwood-trail.ts`), about 1.1 km in six se
 
 ## Scenarios
 
-`finish-line`, `log-bump`, `log-jump`, `pit-fall`. `scenarios/kit.ts` holds shared timings and `savedGame()`.
+`finish-line`, `log-bump`, `log-jump`, `pit-fall` (staged, asserting on the player's own events with `ofPlayer`), `title-to-race`, `rivals-race`. `scenarios/kit.ts` holds shared timings, `ofPlayer()` and `savedGame()`.
