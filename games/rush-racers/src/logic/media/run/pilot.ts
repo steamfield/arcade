@@ -9,15 +9,18 @@
  * backs off from the finish, then jumps toward it.
  */
 import { TICK_DT } from '@arcade/core';
-import { isLedge, isSolid } from '../../level/query.ts';
+import { isSolid, ledgeHolds } from '../../level/query.ts';
 import { canDash } from '../../powerups/dash-meter.ts';
+import { moveRulesFor } from '../../race/move.ts';
+import { PriorityQueue } from '../../race/priority-queue.ts';
 import { isDowned } from '../../status.ts';
-import { type MoveModifiers, type Racer, TILE, type Vec, type World } from '../../types.ts';
+import { type MoveModifiers, type MoveRules, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { runMotion } from './data.ts';
 import { sampleRunEnvironment } from './env.ts';
 import { type AirRules, type Flying, feetOnRow, landingX } from './landing.ts';
+import { plannedSpeed } from './links.ts';
 import { HOP_HOLD_TICKS } from './nav.ts';
 import { runExtra } from './physics.ts';
 import { springUnderFeet } from './spring.ts';
@@ -105,7 +108,7 @@ export function steerRunner(
 
   const nav = runNav(world.nav);
   const stand = grounded ? standToFollow(world, nav, racer, memory) : null;
-  const link = stand === null ? null : (nav.best[stand] ?? null);
+  const link = stand === null ? null : availableLink(world, nav, stand);
   if (grounded) memory.landingTile = link?.to ?? null;
   if (link?.kind === 'bounce') {
     // The launch needs Up held, not a fresh press: a mushroom springs whatever was held before.
@@ -119,7 +122,7 @@ export function steerRunner(
   const up = memory.holdUpTicks > 0;
   if (up) memory.holdUpTicks--;
   memory.upHeld = up;
-  const hesitates = grounded && !up && link !== null && hesitatesOn(nav, link, racer, draws.wobble);
+  const hesitates = grounded && !up && link !== null && hesitatesOn(world, nav, link, racer, draws.wobble);
   const x = hesitates ? 0 : grounded ? (link?.dir ?? heading) : airSteer(world, nav, racer, memory, mods, heading);
   const kick = grounded && !up && link?.kind === 'walk' && wantsDash(world, racer, link.dir, draws.kick);
   return { move: { x, y: up ? -1 : 0 }, kick, kickHeld: kick, aim, recovering: false };
@@ -161,7 +164,7 @@ function canPress(memory: RunPilot): boolean {
  */
 function standToFollow(world: World, nav: RunNav, racer: Racer, memory: RunPilot): number | null {
   const spring = springUnderFeet(world.level, racer.body);
-  if (spring === null) return followedStand(nav, racer, memory);
+  if (spring === null) return followedStand(world, nav, racer, memory);
   memory.planTile = spring;
   return spring;
 }
@@ -172,13 +175,72 @@ function standToFollow(world: World, nav: RunNav, racer: Racer, memory: RunPilot
  * running off the edge still takes the jump or drop planned there. With no plan (it just landed on a
  * corner), the stand tile its tile reads.
  */
-function followedStand(nav: RunNav, racer: Racer, memory: RunPilot): number | null {
+function followedStand(world: World, nav: RunNav, racer: Racer, memory: RunPilot): number | null {
   const { col, row } = footingOf(racer);
   const tile = row * nav.width + col;
   const anchor = nav.anchor[tile] ?? -1;
-  if (anchor === tile) memory.planTile = tile;
-  else if (memory.planTile === null && anchor >= 0) memory.planTile = anchor;
+  if (memory.planTile !== null && !supportRemains(world, nav, memory.planTile)) memory.planTile = null;
+  if (anchor >= 0 && supportRemains(world, nav, anchor) && (anchor === tile || memory.planTile === null)) {
+    memory.planTile = anchor;
+  }
   return memory.planTile;
+}
+
+/** A stand tile in the static graph may have lost the branch directly beneath it. */
+function supportRemains(world: World, nav: RunNav, stand: number): boolean {
+  return !world.fallen.has(stand + nav.width);
+}
+
+/** Follow the precomputed route until one of its landings has lost support. */
+function availableLink(world: World, nav: RunNav, stand: number): RunLink | null {
+  const best = nav.best[stand] ?? null;
+  if (world.fallen.size === 0) return best;
+  for (let link = best; link; link = nav.best[link.to] ?? null) {
+    if (!supportRemains(world, nav, link.to)) return detourLink(world, nav, stand);
+  }
+  return best;
+}
+
+interface DetourStep {
+  stand: number;
+  ticks: number;
+  first: RunLink | null;
+}
+
+/**
+ * Finds a route over the existing links with live support, including drops through missing
+ * landings. A lower way can start by turning back, so the intact route's distance can't rank it.
+ */
+function detourLink(world: World, nav: RunNav, stand: number): RunLink | null {
+  const visited = new Set<number>();
+  const pending = new PriorityQueue<DetourStep>();
+  const ticksPerTile = TILE / (plannedSpeed(effectiveTuning(world)) * TICK_DT);
+  pending.push(0, { stand, ticks: 0, first: null });
+  for (let step = pending.pop(); step; step = pending.pop()) {
+    if (visited.has(step.stand)) continue;
+    if (step.stand % nav.width >= world.level.finishX) return step.first;
+    visited.add(step.stand);
+    for (const planned of nav.links.get(step.stand) ?? []) {
+      const link = supportRemains(world, nav, planned.to) ? planned : dropPastBranch(world, nav, planned, ticksPerTile);
+      if (!link || visited.has(link.to)) continue;
+      const ticks = step.ticks + link.ticks;
+      pending.push(ticks, { stand: link.to, ticks, first: step.first ?? link });
+    }
+  }
+  return null;
+}
+
+/** A blocked walk or drop can still walk off its lip to the low road below the missing landing. */
+function dropPastBranch(world: World, nav: RunNav, link: RunLink, ticksPerTile: number): RunLink | null {
+  if (link.kind !== 'walk' && link.kind !== 'drop') return null;
+  for (let to = link.to + nav.width; to < nav.distance.length; to += nav.width) {
+    if (nav.anchor[to] === -1) return null;
+    if (nav.anchor[to] === to && supportRemains(world, nav, to)) {
+      // Price the extra fall at the same scale as travel over one tile of ground.
+      return { ...link, kind: 'drop', to, ticks: link.ticks + ((to - link.to) / nav.width) * ticksPerTile };
+    }
+  }
+  return null;
 }
 
 /** True when the runner has run up to where its jump link takes off, or past it: the middle of the stand tile, or its far edge for a jump over a gap. */
@@ -215,6 +277,10 @@ function airSteer(
 ): number {
   const { landingTile } = memory;
   if (landingTile === null) return heading;
+  if (!supportRemains(world, nav, landingTile)) {
+    memory.landingTile = null;
+    return racer.facing;
+  }
   const { body } = racer;
   const landingCentre = ((landingTile % nav.width) + 0.5) * TILE;
   const offset = landingCentre - (body.x + body.w / 2);
@@ -223,7 +289,7 @@ function airSteer(
   const flying = flyingOf(racer, memory, mods);
   const rules = airRulesFor(world, racer);
   const comesDownAt = (stick: number) => landingX(flying, stick, feetOnRow(row), rules);
-  const onGround = (x: number | null) => x !== null && standsOver(nav, x, body.w, row);
+  const onGround = (x: number | null) => x !== null && standsOver(world, nav, x, body.w, row);
   const flyOn = Math.sign(body.vx);
   const flownOn = flyOn === 0 ? null : comesDownAt(flyOn);
   if (flownOn !== null && onGround(flownOn) && Math.sign(flownOn - landingCentre) === flyOn) return flyOn;
@@ -269,11 +335,11 @@ function airRulesFor(world: World, racer: Racer): AirRules {
 }
 
 /** True when a box `width` px wide with its middle at x `middle` has stand tiles of row `row` under both edges. */
-function standsOver(nav: RunNav, middle: number, width: number, row: number): boolean {
+function standsOver(world: World, nav: RunNav, middle: number, width: number, row: number): boolean {
   return [middle - width / 2, middle + width / 2 - 1].every((x) => {
     const col = Math.floor(x / TILE);
     const tile = row * nav.width + col;
-    return col >= 0 && col < nav.width && nav.anchor[tile] === tile;
+    return col >= 0 && col < nav.width && nav.anchor[tile] === tile && supportRemains(world, nav, tile);
   });
 }
 
@@ -282,19 +348,19 @@ function standsOver(nav: RunNav, middle: number, width: number, row: number): bo
  * `link` and the next HESITATE_CLEAR_LINKS links after it are walks, so a hesitation never costs
  * the run-up a planned jump needs.
  */
-function hesitatesOn(nav: RunNav, link: RunLink, racer: Racer, roll: number): boolean {
+function hesitatesOn(world: World, nav: RunNav, link: RunLink, racer: Racer, roll: number): boolean {
   if (roll >= Math.min(HESITATE_MAX, racer.profile.wobble * HESITATE_PER_WOBBLE)) return false;
   let next: RunLink | null = link;
   for (let links = 0; links <= HESITATE_CLEAR_LINKS; links++) {
-    if (next?.kind !== 'walk') return false;
+    if (next?.kind !== 'walk' || !supportRemains(world, nav, next.to)) return false;
     next = nav.best[next.to] ?? null;
   }
   return true;
 }
 
 /** Rock, coral or a ledge: something a runner can stand on. */
-function isGround(world: World, col: number, row: number): boolean {
-  return isSolid(world.level, world.broken, col, row) || isLedge(world.level, col, row);
+function isGround(world: World, rules: MoveRules, col: number, row: number): boolean {
+  return isSolid(world.level, world.broken, col, row) || ledgeHolds(world.level, rules, col, row);
 }
 
 /** Dashes when the dash is ready, it is already running toward `dir`, the ground ahead is flat, and the skill roll passes. */
@@ -302,9 +368,10 @@ function wantsDash(world: World, racer: Racer, dir: -1 | 1, roll: number): boole
   if (racer.kickCooldown > 0 || !canDash(racer)) return false;
   if (Math.sign(racer.body.vx) !== dir) return false;
   const at = footingOf(racer);
+  const rules = moveRulesFor(world);
   for (let tiles = 1; tiles <= DASH_CLEAR_TILES; tiles++) {
     const col = at.col + dir * tiles;
-    if (isSolid(world.level, world.broken, col, at.row) || !isGround(world, col, at.row + 1)) return false;
+    if (isSolid(world.level, world.broken, col, at.row) || !isGround(world, rules, col, at.row + 1)) return false;
   }
   return roll < racer.profile.kickSkill;
 }
@@ -322,9 +389,10 @@ function wantsHop(world: World, nav: RunNav, racer: Racer, dir: -1 | 1): boolean
   const { body } = racer;
   const reach = Math.abs(body.vx) * nav.hopAirTicks * TICK_DT + body.w / 2;
   const landingCol = Math.floor((body.x + body.w / 2 + dir * reach) / TILE);
+  const rules = moveRulesFor(world);
   for (let tiles = 0; tiles <= Math.abs(landingCol - at.col); tiles++) {
     const col = at.col + dir * tiles;
-    if (tiles > 0 && !isGround(world, col, at.row + 1)) return false;
+    if (tiles > 0 && !isGround(world, rules, col, at.row + 1)) return false;
     for (let up = 0; up <= 2; up++) if (isSolid(world.level, world.broken, col, at.row - up)) return false;
   }
   return true;

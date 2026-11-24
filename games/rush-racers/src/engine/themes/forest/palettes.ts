@@ -29,6 +29,15 @@ export const ForestTerrainPalette = {
   finish: [0x16161e, 0x2a2a3a, 0xf2f2f2, 0xffcc33],
 } as const satisfies Record<string, Palette>;
 
+/** Split bark, pale wood exposed by a crack, and the new leaves on a regrown branch. */
+export const CrumblePalette = {
+  split: ForestTerrainPalette.branch[0],
+  bark: ForestTerrainPalette.branch[2],
+  rawWood: 0xd5a46b,
+  stem: 0x6c9944,
+  leaf: 0xb4d27c,
+} as const;
+
 /** Backdrop palettes: dark, desaturated greens a step away from the canopy behind them. */
 export const ForestBackdropPalette = {
   /** Far trees: silhouette and its faintly lit crown. */

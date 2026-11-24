@@ -148,6 +148,7 @@ export function buildRunNav(level: Level, broken: ReadonlySet<number>, tuning: M
     distance,
     anchor,
     best: bestLinks(distance.length, links, ticks),
+    links,
     hopAirTicks: jumpAirTicks(tuning, HOP_HOLD_TICKS, TICK_DT),
   };
 }

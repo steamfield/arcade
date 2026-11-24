@@ -6,7 +6,7 @@
  * rather than sinking into the earth out of reach. Drift also stops at a surface: a pickup never
  * drifts from the water into air, and one knocked loose in the air falls back to the water.
  */
-import { isAirAt, isLedge, isSolid, tileIndex } from '../level/query.ts';
+import { isAirAt, isSolid, ledgeHolds, tileIndex } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { gainItem, holds, inventoryFull } from '../powerups/inventory.ts';
 import { LOOSE } from '../powerups/tuning.ts';
@@ -68,8 +68,9 @@ function stopsDrift(world: World, loose: LoosePowerUp, nextY: number): boolean {
   const tx = Math.floor(loose.x / TILE);
   const ty = Math.floor(nextY / TILE);
   if (isSolid(world.level, world.broken, tx, ty)) return true;
-  if (moveRulesFor(world).solidTiles.has(tileIndex(world.level, tx, ty))) return true;
-  return nextY > loose.y && ty > Math.floor(loose.y / TILE) && isLedge(world.level, tx, ty);
+  const rules = moveRulesFor(world);
+  if (rules.solidTiles.has(tileIndex(world.level, tx, ty))) return true;
+  return nextY > loose.y && ty > Math.floor(loose.y / TILE) && ledgeHolds(world.level, rules, tx, ty);
 }
 
 /** One loose pickup's ttl and grab for the tick. Returns true when it is gone: expired or grabbed. */
