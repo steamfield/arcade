@@ -335,3 +335,4 @@ Test cases:
 - 2026-11-23 phase 4 gate green: check 20.5 s, 143 bars, smoke 72/72.
 - 2026-11-23 lane 5/a reported blocked: the level (660x26, par 4526) is built and 4 of 26 bars files pass; the rest fail on flight's pilot and physics (rivals aim at base cruise, dive carry and dash ignore forceMul) and on the toddler bot, which never flaps in flight. As with Bramble Run's 5/c, lane 5/c starts from 5/a's branch, owns flight's pilot and physics, the kid bot's flight habit, the level and the bars, and lands both.
 - Lane 5/a is marked cut because its commits land through 5/c's branch, not on their own.
+- 2026-11-23 user: when done, merge to main, fix CI, clean up and push (no separate approval stop before the merge).
