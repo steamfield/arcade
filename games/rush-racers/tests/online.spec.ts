@@ -4,6 +4,7 @@
  * stepping the same simulation from the inputs the room relays.
  */
 import type { GameDriver } from '@arcade/testing';
+import { MAX_INPUT_DELAY, MIN_INPUT_DELAY } from '../src/net/messages.ts';
 import {
   ARMED_TICKS,
   expect,
@@ -34,7 +35,12 @@ test.describe('an online race between two browsers', () => {
     await startRace(host, guest);
     const starts = await Promise.all([host, guest].map(summaryOf));
     expect(starts.map((summary) => summary.net?.race?.local)).toEqual(['player', 'tess']);
-    expect(starts.map((summary) => summary.net?.race?.delay)).toEqual([3, 3]);
+    // The delay comes from pings measured on wall time, so its value varies with the machine; lobby.test.ts
+    // pins the value for known pings. Here: both pages took the host's delay, and it is one a race allows.
+    const [hostDelay, guestDelay] = starts.map((summary) => summary.net?.race?.delay);
+    expect(guestDelay).toBe(hostDelay);
+    expect(hostDelay).toBeGreaterThanOrEqual(MIN_INPUT_DELAY);
+    expect(hostDelay).toBeLessThanOrEqual(MAX_INPUT_DELAY);
 
     await raceToResults([host, guest]);
 
