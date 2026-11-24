@@ -218,9 +218,11 @@ const LEVEL: LevelDef = {
 };
 
 /**
- * The expert bot's mean Hard finish over seeds 1–40 and all eight characters. All 320 finished.
+ * The expert bot's mean Hard finish (150.6 s) over seeds 1-200 and all eight characters, measured as
+ * COURSES.md "parTicks" says: 1600 races, every one finished. Re-measured when the course gained the
+ * Millstream, the Hollow Oak and the Rotten Bridges; it was 4119 (68.7 s) before them.
  */
-const PAR_TICKS = 9027;
+const PAR_TICKS = 9033;
 
 /**
  * Normal rivals hover this many tiles behind the player here, not the table's 2. On foot a rival

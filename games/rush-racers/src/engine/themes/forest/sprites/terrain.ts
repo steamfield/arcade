@@ -60,6 +60,7 @@ const BRANCH_ROWS = [
   ...Array.from({ length: 12 }, () => '................'),
 ];
 
+/** Millstream stepping stone: a flat mossy top over a rounded stone face. */
 const STREAM_STONE_ROWS = [
   '2322222222232222',
   '1112111111112111',
@@ -88,6 +89,7 @@ const OAK_BARK_ROWS = [
   '0112332110112211',
 ];
 
+/** The Hollow Oak's knothole: a lit rim ringing a dark hollow. */
 const KNOT_RIM_ROWS = [
   '1111122222211111',
   '1112223333222111',
