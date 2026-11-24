@@ -122,8 +122,13 @@ const LEVEL: LevelDef = {
   },
 };
 
-/** Mean Hard expert-bot finish over seeds 1-40 and all eight characters (319 of 320 finished). */
-const PAR_TICKS = 9425;
+/**
+ * The expert bot's mean Hard finish (154.5 s) over seeds 1-200 and all eight characters, measured as
+ * COURSES.md "parTicks" says. All 1600 races finished, with the slowest player finish in 11075 ticks.
+ * The previous 7920 ticks covered seeds 1-30 before The Maelstrom added 160 columns. This measurement
+ * includes the new stretch and the steering fix for the Jelly Field stalls.
+ */
+const PAR_TICKS = 9271;
 
 /** The zones the race screen calls out, from the section list above; the cave starts with its dark zone. */
 const SECTIONS: readonly CourseSection[] = [

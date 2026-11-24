@@ -28,8 +28,9 @@ const TOP_ROUTE_MARGIN_TICKS = 300;
  * and again when the world gained `crumbles`, `fallen`, `cannonRides` and `warps` for the long courses' set pieces.
  * The world now always hashes `whirlpoolRiders`, even on courses without whirlpools.
  * Re-pinned after Sunlit Shallows gained the Maelstrom and the route was recorded through its pools.
+ * Re-pinned after the Jelly Field steering fix changed rival encounters and the route was re-recorded.
  */
-const TOP_ROUTE_HASH = 4167512701;
+const TOP_ROUTE_HASH = 381524321;
 
 /**
  * `hashWorld` at the end of `busyRace` on each level. The top route never dashes or uses an item,
@@ -48,11 +49,12 @@ const TOP_ROUTE_HASH = 4167512701;
  * and again when the world gained `crumbles`, `fallen`, `cannonRides` and `warps`.
  * The world now always hashes `whirlpoolRiders`, even on courses without whirlpools.
  * Re-pinned with the Maelstrom layout and its new top route.
+ * Re-pinned after the Jelly Field steering fix changed rival encounters and the route was re-recorded.
  */
 const BUSY_RACE_HASHES: readonly [Difficulty, number][] = [
-  ['easy', 1981984341],
-  ['normal', 258325316],
-  ['hard', 3677699796],
+  ['easy', 3122243653],
+  ['normal', 2875068262],
+  ['hard', 1671608300],
 ];
 
 const KICK_EVERY_TICKS = 45;
@@ -127,8 +129,7 @@ describe('TOP_ROUTE on the default seed', () => {
     // The log is a ring buffer; a dropped early event would read as a pool the route skipped.
     expect(dropped).toBe(0);
     expect(
-      logged
-        .flatMap((event) => (event.type === 'whirlpool.caught' && event.racer === 'player' ? [event.pool] : [])),
+      logged.flatMap((event) => (event.type === 'whirlpool.caught' && event.racer === 'player' ? [event.pool] : [])),
     ).toEqual([0, 1, 2, 3]);
   });
 

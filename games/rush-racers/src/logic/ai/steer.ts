@@ -14,6 +14,8 @@ import { type Box, type GridSize, type Level, TILE, type Vec } from '../types.ts
 const SIGHT_STEP_PX = 1;
 /** Shrinks the swept box so an edge lying exactly on a tile boundary doesn't count as touching the next tile. */
 const EDGE_INSET_PX = 0.001;
+/** Relative precision of a Float32 field value (23 fractional bits). */
+const FIELD_EPSILON = 1 / (1 << 23);
 const STILL: Vec = { x: 0, y: 0 };
 /** The field's cost multiplier for entering a tile along a neighbouring offset. */
 export type StepPrice = (tile: Vec, move: Vec) => number;
@@ -93,15 +95,21 @@ export function downhillPath(
   for (let step = 0; step < steps; step++) {
     let next: Vec | null = null;
     const here = fieldAt(field, size, tile);
+    // The field stores both ends of the step in Float32. Treat totals within their combined
+    // rounding error of the cheapest route as tied, and descend fastest among those steps.
+    // This starts a turn early when a straight step would only defer it.
+    const tieLimit = price && Number.isFinite(here) ? here + here * FIELD_EPSILON : 0;
     let nextValue = Number.POSITIVE_INFINITY;
+    let nextRemaining = Number.NEGATIVE_INFINITY;
     for (const offset of NEIGHBOURS) {
       const candidate = { x: tile.x + offset.x, y: tile.y + offset.y };
       const value = fieldAt(field, size, candidate);
       if (value >= here || !open(candidate.x, candidate.y) || !cornerIsClear(tile, offset, open)) continue;
-      const total = price ? value + length(offset.x, offset.y) * price(candidate, offset) : value;
-      if (total >= nextValue) continue;
+      const total = price ? Math.max(tieLimit, value + length(offset.x, offset.y) * price(candidate, offset)) : value;
+      if (total > nextValue || (total === nextValue && value >= nextRemaining)) continue;
       next = candidate;
       nextValue = total;
+      nextRemaining = value;
     }
     if (!next) break;
     path.push(next);

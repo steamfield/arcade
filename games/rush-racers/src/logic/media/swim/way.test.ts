@@ -4,14 +4,17 @@
  * `nextTile`, `distanceAt` and `aimFrom` give the steer field's readings, never the smash or ram
  * field's.
  */
-import { EventLog } from '@arcade/core';
+import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import { BOT_PROFILES } from '../../ai/profiles.ts';
 import { downhillPath, openTiles, steerDirection } from '../../ai/steer.ts';
 import { DEFAULT_COURSE } from '../../courses/index.ts';
 import type { GameEvent } from '../../events.ts';
 import { fieldAt } from '../../race/flowfield.ts';
+import { centreOf, playerOf } from '../../racers.ts';
+import { courseFromLevel, IDLE } from '../../test-world.ts';
 import { RACER_SIZE, TILE, type Vec } from '../../types.ts';
-import { createWorld } from '../../world.ts';
+import { createWorld, stepWorld } from '../../world.ts';
 import { MEDIA } from '../index.ts';
 import { swimNav } from './data.ts';
 import { swimStepPrice } from './nav.ts';
@@ -63,4 +66,43 @@ describe('the swim way on Sunlit Shallows', () => {
       sample.map((tile) => steerDirection(nav.steer, nav, level, world.broken, boxOn(tile), 3, false, price)),
     );
   });
+});
+
+it('swims past a jelly pair with a whirlpool farther down the course', () => {
+  const course = courseFromLevel({
+    name: 'Jelly pair before a distant whirlpool',
+    ascii: `
+      ###########################
+      #.........................#
+      #.........................#
+      #......j..................#
+      #.........................#
+      #.........................#
+      #....1....................#
+      #......j.................F#
+      #.........................#
+      #.........................#
+      #.2.......................#
+      #.3.......................#
+      #.4.......................#
+      #.........................#
+      #.........................#
+      #.........................#
+      ###########################
+    `,
+    whirlpools: [{ col: 21, row: 3, radius: 2, spin: 1, push: 220 }],
+  });
+  const race = createWorld(course, new EventLog<GameEvent>(), {
+    seed: 1,
+    difficulty: 'hard',
+    character: 'streak',
+    playerBot: BOT_PROFILES.expert,
+  });
+  const player = playerOf(race);
+  const pastJellies = 8 * TILE;
+  while (race.race.raceTick < 600 && race.race.phase !== 'finished' && centreOf(player).x < pastJellies) {
+    stepWorld(race, IDLE, TICK_DT);
+  }
+
+  expect(centreOf(player).x / TILE).toBeGreaterThanOrEqual(pastJellies / TILE);
 });
