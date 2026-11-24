@@ -98,10 +98,6 @@ export type StartMessage = z.infer<typeof StartSchema>;
 export const EndSchema = z.object({ type: z.literal('end'), tick: Uint32, hash: Uint32 });
 export type EndMessage = z.infer<typeof EndSchema>;
 
-/** A game message as a peer sends it. */
-export const GameMessageSchema = z.union([LobbySchema, StartSchema, EndSchema]);
-export type GameMessage = z.infer<typeof GameMessageSchema>;
-
 /** A game message as it arrives, with the sender's peer id. */
 export const RelayedGameMessageSchema = z.union([
   LobbySchema.extend({ from: From }),

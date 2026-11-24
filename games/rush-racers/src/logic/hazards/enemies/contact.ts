@@ -45,7 +45,7 @@ export function enemyBox(enemy: Enemy): Box {
  * Whether `racer` bonks an enemy it touches rather than being hurt: it dashed in the last
  * `ENEMY.bonkTicks` (`status.bonking`), or is boosting (Jet Fins, Cannonball) or inflated (Puffer).
  */
-export function isBonking(racer: Racer): boolean {
+function isBonking(racer: Racer): boolean {
   return racer.status.bonking > 0 || racer.status.dashing > 0 || racer.status.inflated > 0;
 }
 
@@ -100,7 +100,7 @@ export function touchEnemies(
  *
  * @param fallSpeed The racer's vertical speed this tick, px/s, positive down.
  */
-export function isStomping(racer: Racer, enemy: Enemy, fallSpeed: number): boolean {
+function isStomping(racer: Racer, enemy: Enemy, fallSpeed: number): boolean {
   if (fallSpeed <= 0 || isDowned(racer)) return false;
   const box = hitbox(racer);
   const depthFromAbove = box.y + box.h - enemyBox(enemy).y;

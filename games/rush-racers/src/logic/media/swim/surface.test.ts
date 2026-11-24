@@ -5,19 +5,15 @@
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import type { GameEvent } from './events.ts';
-import { applyHit } from './hazards/hits.ts';
-import { parseLevel } from './level/parse.ts';
-import { isAirAt } from './level/query.ts';
-import type { SwimEnv } from './media/swim/data.ts';
-import { buildSwimNav, steerCost } from './media/swim/nav.ts';
-import { applyIntent } from './media/swim/physics.ts';
-import { SPLASH_DEPTH, SWIM_TUNING as SWIM } from './media/swim/tuning.ts';
-import { spawnLoose } from './pickups/loose.ts';
-import { scatterPearls } from './pickups/pearl-drift.ts';
-import { CANNONBALL } from './powerups/tuning.ts';
-import { fieldAt } from './race/flowfield.ts';
-import { centreOf } from './racers.ts';
+import type { GameEvent } from '../../events.ts';
+import { applyHit } from '../../hazards/hits.ts';
+import { parseLevel } from '../../level/parse.ts';
+import { isAirAt } from '../../level/query.ts';
+import { spawnLoose } from '../../pickups/loose.ts';
+import { scatterPearls } from '../../pickups/pearl-drift.ts';
+import { CANNONBALL } from '../../powerups/tuning.ts';
+import { fieldAt } from '../../race/flowfield.ts';
+import { centreOf } from '../../racers.ts';
 import {
   courseFromLevel,
   eventsIn,
@@ -29,9 +25,13 @@ import {
   step,
   ticksOf,
   tileCentre,
-} from './test-world.ts';
-import { type LevelDef, type Racer, TILE, type Vec, type World } from './types.ts';
-import { createWorld } from './world.ts';
+} from '../../test-world.ts';
+import { type LevelDef, type Racer, TILE, type Vec, type World } from '../../types.ts';
+import { createWorld } from '../../world.ts';
+import type { SwimEnv } from './data.ts';
+import { buildSwimNav, steerCost } from './nav.ts';
+import { applyIntent } from './physics.ts';
+import { SPLASH_DEPTH, SWIM_TUNING as SWIM } from './tuning.ts';
 
 const UP: Vec = { x: 0, y: -1 };
 const RIGHT: Vec = { x: 1, y: 0 };

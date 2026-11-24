@@ -10,6 +10,7 @@
 import { type EventSink, TICK_DT } from '@arcade/core';
 import { jumpMulFor } from '../../abilities.ts';
 import type { GameEvent } from '../../events.ts';
+import { approach } from '../../num.ts';
 import type { Body, Intent, MoveModifiers, Racer } from '../../types.ts';
 import type { MediumEnv, MediumTuning } from '../types.ts';
 import { cruiseSpeed, forceScale, windDrift } from './cruise.ts';
@@ -244,10 +245,4 @@ function dashSpeed(tuning: MediumTuning, mods: MoveModifiers): number {
 /** Takes a tick off the kick cooldown, stopping at 0. */
 function coolDownKick(racer: Racer): void {
   if (racer.kickCooldown > 0) racer.kickCooldown -= 1;
-}
-
-/** `value` moved toward `target` by at most `step`, never past it. */
-function approach(value: number, target: number, step: number): number {
-  if (value < target) return Math.min(target, value + step);
-  return Math.max(target, value - step);
 }

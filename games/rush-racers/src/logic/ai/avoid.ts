@@ -22,7 +22,7 @@ import { type Box, type Enemy, type Racer, TILE, type Vec, type World } from '..
  * box a jelly is treated as reaching, for the bob it makes while the racer closes in; and the
  * turns tried, in degrees.
  */
-export const HAZARD_AVOID = {
+const HAZARD_AVOID = {
   lookaheadPx: 64,
   stepPx: 4,
   marginPx: 2,
@@ -32,7 +32,7 @@ export const HAZARD_AVOID = {
 } as const;
 
 /** How far ahead along its move, in px, a rival with a dash charge looks for a crab or out eel to dash into. */
-export const BONK_LOOKAHEAD_PX = 24;
+const BONK_LOOKAHEAD_PX = 24;
 
 /** Turns tried, smallest first, as cos and sin pairs. */
 const TURNS = HAZARD_AVOID.turnsDeg.map((deg) => ({

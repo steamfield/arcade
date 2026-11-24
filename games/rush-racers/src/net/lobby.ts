@@ -120,7 +120,7 @@ function resolveCharacters(picks: readonly (CharacterId | null)[]): CharacterId[
 }
 
 /** The whole logic ticks a latency of `ms` spans, rounded up: what it adds to a start's input delay. */
-export function latencyTicks(ms: number): number {
+function latencyTicks(ms: number): number {
   // Multiplying before dividing keeps whole-tick latencies exact, so ceil does not round them up.
   return Math.ceil((ms * TICKS_PER_SECOND) / 1000);
 }

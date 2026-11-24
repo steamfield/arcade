@@ -20,31 +20,27 @@ import { avoidHazards } from '../../ai/avoid.ts';
 import { steerDirection } from '../../ai/steer.ts';
 import { playerHasLanternLight } from '../../difficulty-level.ts';
 import { inDark } from '../../level/query.ts';
-import { cos, length, sin } from '../../num.ts';
-import { canDash, dashCharges } from '../../powerups/dash-meter.ts';
+import { length } from '../../num.ts';
 import { holds } from '../../powerups/inventory.ts';
 import { CORAL_BREAKERS } from '../../powerups/tuning.ts';
 import type { MoveModifiers, Racer, Vec, World } from '../../types.ts';
+import {
+  canRecover,
+  DARK_STEERING,
+  hasDashToSpend,
+  LOOKAHEAD_TILES,
+  recoveryMove,
+  stepWobble,
+  wobbledAim,
+} from '../pilot-kit.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { type SwimPilot, swimNav, swimPilot } from './data.ts';
 
-/** How much looser a rival steers in a dark zone it can't see in: wobble bound and reaction time multipliers. */
-export const DARK_STEERING = { wobbleMul: 2, reactionMul: 2 } as const;
+/** How much looser a swim rival steers in a dark zone it can't see in (the shared pilot kit's). */
+export { DARK_STEERING };
 
-/** Tiles down the steer field a rival aims at. */
-const LOOKAHEAD_TILES = 3;
-/** Largest change in wobble per tick, as a fraction of the profile's wobble bound. */
-const WOBBLE_STEP = 0.15;
 /** Kick only when the aim is within about 37 degrees of the way the racer is already moving. */
 const KICK_ALIGNMENT = 0.8;
-/** Dash charges a rival keeps back for shaking off a squid latch. */
-const DASH_RESERVE = 1;
-/** Places behind the leader past which a rival stops keeping a reserve and dashes everything. */
-const RESERVE_WAIVED_BEHIND = 2;
-/** Below this speed in px/s a racing rival counts as stuck. */
-const STUCK_SPEED = 8;
-const STUCK_TICKS = 30;
-const RECOVER_TICKS = 20;
 
 /** A swim rival's pilot memory at the start line. */
 export function createSwimPilot(): SwimPilot {
@@ -90,19 +86,6 @@ export function steerSwimmer(
 }
 
 /**
- * Stuck recovery runs only while racing and free to swim. A stunned or trapped rival sits still
- * through no fault of its steering, so that time resets its stuck count instead.
- */
-function canRecover(world: World, racer: Racer, memory: SwimPilot): boolean {
-  if (world.race.phase !== 'racing') return false;
-  if (racer.status.stunned > 0 || racer.status.trapped > 0) {
-    memory.stuckTicks = 0;
-    return false;
-  }
-  return true;
-}
-
-/**
  * Re-reads its field every `reactionTicks` (times `reactionMul`), so slower rivals react later to
  * the course. A rival that is inflated, or holds a Puffer or Cannonball in any slot with its item use
  * ready, reads the smash field and aims through coral, which inflating breaks; while its use cools
@@ -120,52 +103,6 @@ function replanAim(world: World, racer: Racer, memory: SwimPilot, reactionMul: n
     memory.replanIn = racer.profile.reactionTicks * reactionMul;
   }
   memory.replanIn--;
-}
-
-/** One step of the bounded random walk on the steering angle. */
-function stepWobble(memory: SwimPilot, bound: number, draw: number): void {
-  const step = (draw * 2 - 1) * bound * WOBBLE_STEP;
-  memory.wobble = Math.max(-bound, Math.min(bound, memory.wobble + step));
-}
-
-function wobbledAim(memory: SwimPilot): Vec {
-  const c = cos(memory.wobble);
-  const s = sin(memory.wobble);
-  return { x: memory.aim.x * c - memory.aim.y * s, y: memory.aim.x * s + memory.aim.y * c };
-}
-
-/**
- * The sideways swim of a racer that has sat nearly still too long (or that `forceRecover` sends),
- * held for RECOVER_TICKS to slide off whatever it is pinned against; null while it isn't recovering.
- */
-function recoveryMove(racer: Racer, memory: SwimPilot, sideDraw: number, forceRecover: boolean): Vec | null {
-  if (memory.recoverTicks === 0) {
-    const speed = length(racer.body.vx, racer.body.vy);
-    memory.stuckTicks = speed < STUCK_SPEED ? memory.stuckTicks + 1 : 0;
-    if (memory.stuckTicks < STUCK_TICKS && !forceRecover) return null;
-    memory.stuckTicks = 0;
-    memory.recoverTicks = RECOVER_TICKS;
-    memory.recoverDir = sidewaysFrom(memory.aim, racer.facing, sideDraw < 0.5 ? 1 : -1);
-  }
-  memory.recoverTicks--;
-  return { ...memory.recoverDir };
-}
-
-/** Perpendicular to the aim on the given side; to the facing when there is no aim yet. */
-function sidewaysFrom(aim: Vec, facing: 1 | -1, side: 1 | -1): Vec {
-  const forward = aim.x === 0 && aim.y === 0 ? { x: facing, y: 0 } : aim;
-  return { x: -forward.y * side, y: forward.x * side };
-}
-
-/**
- * Whether the rival will spend a dash charge now. It never kicks on an empty meter, and keeps
- * DASH_RESERVE charges back for shaking off a squid unless it is latched already or trails the
- * leader by more than RESERVE_WAIVED_BEHIND places.
- */
-function hasDashToSpend(racer: Racer): boolean {
-  if (!canDash(racer)) return false;
-  if (racer.status.latched > 0 || racer.place - 1 > RESERVE_WAIVED_BEHIND) return true;
-  return dashCharges(racer) > DASH_RESERVE;
 }
 
 /** Kicks when ready, has a dash to spend, is already moving roughly along its aim, and the skill roll passes. */
