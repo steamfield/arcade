@@ -34,6 +34,9 @@ export interface Vec2 {
   y: number;
 }
 
+/** One edit typed while text entry is on: some text (a key or a paste), or a Backspace. */
+export type TextEdit = { text: string } | { backspace: true };
+
 export interface Input<A extends string = string, V extends string = string> {
   readonly actions: readonly A[];
   isDown(action: A): boolean;
@@ -45,6 +48,18 @@ export interface Input<A extends string = string, V extends string = string> {
   on(action: A, callback: () => void): () => void;
   /** Test injection: hold or release an action as if a player did. */
   inject(action: A, down: boolean): void;
+  /**
+   * Turns text entry on or off (off to start). While it is on, printable keys (not Space), Backspace
+   * and pastes become `TextEdit`s for `takeText()` instead of firing actions, and modifier keys fire
+   * no actions, so Shift for a capital is not a press. Space, Enter, Escape, Tab and the arrows still
+   * fire their actions, as do keys held with Ctrl, Alt or Meta (browser shortcuts). Turning it off
+   * drops any edits not yet taken.
+   */
+  setTextEntry(on: boolean): void;
+  /** The edits typed or pasted since the last call, oldest first. Empty while text entry is off. */
+  takeText(): TextEdit[];
+  /** Test injection: `text` typed while text entry is on, as one edit. Ignored while it is off. */
+  injectText(text: string): void;
   /** Attach keyboard listeners and, on touch devices, the on-screen controls. */
   mount(container: HTMLElement, options?: { forceTouch?: boolean }): void;
   destroy(): void;
@@ -66,6 +81,15 @@ export function createInput<A extends string, V extends string = never>(options:
   let current = new Set<A>();
   const listeners = new Map<A, Set<() => void>>();
   const cleanup: (() => void)[] = [];
+  let textEntry = false;
+  let edits: TextEdit[] = [];
+
+  /** Whether a keydown is text while text entry is on: Backspace, or one printable character other than Space. */
+  const textEditOf = (e: KeyboardEvent): TextEdit | null => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return null;
+    if (e.key === 'Backspace') return { backspace: true };
+    return e.key.length === 1 && e.key !== ' ' ? { text: e.key } : null;
+  };
 
   const physicallyDown = (action: A): boolean =>
     injected.has(action) ||
@@ -111,8 +135,29 @@ export function createInput<A extends string, V extends string = never>(options:
       if (down) injected.add(action);
       else injected.delete(action);
     },
+    setTextEntry(on) {
+      textEntry = on;
+      if (!on) edits = [];
+    },
+    takeText() {
+      const taken = edits;
+      edits = [];
+      return taken;
+    },
+    injectText(text) {
+      if (textEntry) edits.push({ text });
+    },
     mount(container, mountOptions = {}) {
       const onKeyDown = (e: KeyboardEvent) => {
+        if (textEntry) {
+          const edit = textEditOf(e);
+          if (edit) {
+            e.preventDefault();
+            edits.push(edit);
+            return;
+          }
+          if (MODIFIER_KEYS.has(e.key)) return;
+        }
         const mapped = keyToActions.get(e.code);
         if (!mapped) return;
         e.preventDefault();
@@ -121,13 +166,21 @@ export function createInput<A extends string, V extends string = never>(options:
       };
       const onKeyUp = (e: KeyboardEvent) => keysDown.delete(e.code);
       const onBlur = () => keysDown.clear();
+      const onPaste = (e: ClipboardEvent) => {
+        const text = e.clipboardData?.getData('text') ?? '';
+        if (!textEntry || text === '') return;
+        e.preventDefault();
+        edits.push({ text });
+      };
       window.addEventListener('keydown', onKeyDown);
       window.addEventListener('keyup', onKeyUp);
       window.addEventListener('blur', onBlur);
+      window.addEventListener('paste', onPaste);
       cleanup.push(() => {
         window.removeEventListener('keydown', onKeyDown);
         window.removeEventListener('keyup', onKeyUp);
         window.removeEventListener('blur', onBlur);
+        window.removeEventListener('paste', onPaste);
       });
 
       const isTouch = mountOptions.forceTouch || window.matchMedia('(pointer: coarse)').matches;
@@ -150,6 +203,9 @@ export function createInput<A extends string, V extends string = never>(options:
   };
   return input;
 }
+
+/** `KeyboardEvent.key` values of modifier keys, which fire no actions while text entry is on. */
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock']);
 
 const OVERLAY_CSS = `
 .arcade-touch { position: absolute; inset: 0; pointer-events: none; z-index: 10; }

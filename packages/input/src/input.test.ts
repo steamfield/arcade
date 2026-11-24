@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { createInput } from './index.ts';
 
 const make = () =>
@@ -43,5 +43,80 @@ describe('createInput', () => {
     expect(() => make().inject('dash' as 'jump', true)).toThrow(
       'Unknown action "dash". Known actions: left, right, jump',
     );
+  });
+});
+
+describe('text entry', () => {
+  /** Tests run without a DOM, so the page's window is an EventTarget that never matches a coarse pointer. */
+  const page = Object.assign(new EventTarget(), { matchMedia: () => ({ matches: false }) });
+  const mounted = () => {
+    Object.assign(globalThis, { window: page });
+    const input = createInput<'jump' | 'back', never>({
+      actions: { jump: ['Space', 'KeyW'], back: ['Escape', 'ShiftLeft', 'KeyX'] },
+    });
+    input.mount({} as HTMLElement);
+    return input;
+  };
+  const press = (code: string, key: string, modifiers: { metaKey?: boolean } = {}) => {
+    const event = Object.assign(new Event('keydown', { cancelable: true }), { code, key, repeat: false, ...modifiers });
+    page.dispatchEvent(event);
+    page.dispatchEvent(Object.assign(new Event('keyup'), { code, key }));
+    return event;
+  };
+  const paste = (text: string) =>
+    page.dispatchEvent(
+      Object.assign(new Event('paste', { cancelable: true }), { clipboardData: { getData: () => text } }),
+    );
+  const pressedThisTick = (input: ReturnType<typeof mounted>) => {
+    input.update();
+    return input.actions.filter((action) => input.justPressed(action));
+  };
+
+  afterEach(() => {
+    Reflect.deleteProperty(globalThis, 'window');
+  });
+
+  it('is off to start: a letter key fires its action and nothing is typed', () => {
+    const input = mounted();
+    press('KeyW', 'w');
+    expect(pressedThisTick(input)).toEqual(['jump']);
+    expect(input.takeText()).toEqual([]);
+  });
+
+  it('turns letters, Shift-held capitals, Backspace and pastes into edits, and fires none of their actions', () => {
+    const input = mounted();
+    input.setTextEntry(true);
+    const typed = press('KeyW', 'w');
+    press('ShiftLeft', 'Shift');
+    press('KeyX', 'X');
+    press('Backspace', 'Backspace');
+    paste('ABCD');
+    expect(typed.defaultPrevented).toBe(true);
+    expect(pressedThisTick(input)).toEqual([]);
+    expect(input.takeText()).toEqual([{ text: 'w' }, { text: 'X' }, { backspace: true }, { text: 'ABCD' }]);
+    expect(input.takeText()).toEqual([]);
+  });
+
+  it('still fires Space, Escape and shortcuts held with Meta as actions', () => {
+    const input = mounted();
+    input.setTextEntry(true);
+    press('Space', ' ');
+    press('Escape', 'Escape');
+    expect(pressedThisTick(input)).toEqual(['jump', 'back']);
+    input.update();
+    press('KeyW', 'w', { metaKey: true });
+    expect(pressedThisTick(input)).toEqual(['jump']);
+    expect(input.takeText()).toEqual([]);
+  });
+
+  it('drops edits not yet taken when it is turned off, and ignores pastes and injected text while off', () => {
+    const input = mounted();
+    input.setTextEntry(true);
+    input.injectText('AB');
+    input.setTextEntry(false);
+    paste('CD');
+    input.injectText('EF');
+    input.setTextEntry(true);
+    expect(input.takeText()).toEqual([]);
   });
 });
