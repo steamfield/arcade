@@ -29,8 +29,9 @@ const TOP_ROUTE_MARGIN_TICKS = 300;
  * The world now always hashes `whirlpoolRiders`, even on courses without whirlpools.
  * Re-pinned after Sunlit Shallows gained the Maelstrom and the route was recorded through its pools.
  * Re-pinned after the Jelly Field steering fix changed rival encounters and the route was re-recorded.
+ * Re-pinned after lighting the cave exit changed the run to the finish.
  */
-const TOP_ROUTE_HASH = 381524321;
+const TOP_ROUTE_HASH = 3056539263;
 
 /**
  * `hashWorld` at the end of `busyRace` on each level. The top route never dashes or uses an item,
@@ -50,11 +51,12 @@ const TOP_ROUTE_HASH = 381524321;
  * The world now always hashes `whirlpoolRiders`, even on courses without whirlpools.
  * Re-pinned with the Maelstrom layout and its new top route.
  * Re-pinned after the Jelly Field steering fix changed rival encounters and the route was re-recorded.
+ * Re-pinned for the lit cave exit and the Normal override of a 2-tile lag and a 1.15 catch-up cap.
  */
 const BUSY_RACE_HASHES: readonly [Difficulty, number][] = [
-  ['easy', 3122243653],
-  ['normal', 2875068262],
-  ['hard', 1671608300],
+  ['easy', 1728439817],
+  ['normal', 853171427],
+  ['hard', 4043989195],
 ];
 
 const KICK_EVERY_TICKS = 45;

@@ -24,7 +24,7 @@ const VENTS: LevelDef['vents'] = [
 ];
 
 /**
- * Sunlit Shallows, the ocean course: about 157 s for a good swimmer. Each section
+ * Sunlit Shallows, the ocean course: about 155 s for a good swimmer. Each section
  * shows one idea gently, then tests it.
  *
  * - Cols 0-94, the reef: a start bay, a current tunnel over a kelp bed, a pillar
@@ -59,7 +59,8 @@ const VENTS: LevelDef['vents'] = [
  *   and a tunnel over the top. Past the gate a shark guards the exit, then the reef
  *   closes into a cave (legend `R` cave rock, `T` stalactite, `L` stalagmite) whose
  *   stalactites and stalagmites (none longer than 3 tiles, so a diagonal always gets past),
- *   floating urchins and eels sit at irregular spacing, so no straight line runs clean. The cave is dark (cols 788-866) and drops to the floor run and the finish.
+ *   floating urchins and eels sit at irregular spacing, so no straight line runs clean. The
+ *   darkness lifts just before the down current, leaving the floor run to the finish lit.
  *
  * Enemies (all past col 60, so start-area scenarios are unchanged): sharks guard the hall
  * (228, 8), the surface water (413, 10) and the coral gate's exit (778, 9). Seventeen eels sit at
@@ -74,7 +75,7 @@ const VENTS: LevelDef['vents'] = [
  * at most one and the racer just behind still finds the other ready; a roll favours speed
  * the further back you are. No clam sits above row 6: clams are numbered in reading
  * order and scenarios name the reef's first clam, at (22, 6), as index 0.
- * One dark zone, the cave (cols 788-866): you see about 60-80 px around you, so its hazards
+ * One dark zone, the cave entrance and middle (cols 788-837): you see about 60-80 px around you, so its hazards
  * come out of the dark one at a time. Rivals that can't see steer loosely there; Selene and
  * anyone with a Glow Lantern selected see as if lit.
  */
@@ -102,7 +103,7 @@ const LEVEL: LevelDef = {
     ################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR#####
     ################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################################RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR#####
   `,
-  dark: [[788, 866]],
+  dark: [[788, 837]],
   surface: [{ from: 371, to: 453, row: 9 }],
   vents: VENTS,
   whirlpools: [
@@ -124,11 +125,23 @@ const LEVEL: LevelDef = {
 
 /**
  * The expert bot's mean Hard finish (154.5 s) over seeds 1-200 and all eight characters, measured as
- * COURSES.md "parTicks" says. All 1600 races finished, with the slowest player finish in 11075 ticks.
- * The previous 7920 ticks covered seeds 1-30 before The Maelstrom added 160 columns. This measurement
- * includes the new stretch and the steering fix for the Jelly Field stalls.
+ * COURSES.md "parTicks" says. All 1600 expert runs finished with the cave exit lit.
+ * The previous 7920 ticks covered seeds 1-30 before The Maelstrom added 160 columns.
  */
 const PAR_TICKS = 9271;
+
+/**
+ * Normal rivals are held back until they are 2 tiles behind the leading player and gain up to 15%
+ * swim force beyond that gap (long-courses phase 3). With the table's 2 tiles and 25% boost on the
+ * original cave, novice Baron, Onyx and Rudy each placed top three 4/10, and Onyx's expert beat
+ * the no-dash bot by 3 wins (needed 4). Sweeping 1.5 and 2 tiles, the 1.0 cap improved novice
+ * places but left Streak's expert only 5-10 wins ahead over 30 seeds. Caps of 1.05-1.25 kept at
+ * least one novice below 15/30 at both lag targets on the original layout. At 2 tiles and 1.15
+ * the original cave gave Baron, Onyx and Rudy 13/30, 13/30 and 12/30 top-three finishes.
+ * With the lit cave exit and this override, novice top-three counts are 19/30, 20/30 and 21/30
+ * respectively. Streak and Nib's experts win 30/30 each, against 13 and 9 no-dash wins.
+ */
+const NORMAL_CATCH_UP = { lagTiles: 2, max: 1.15 };
 
 /** The zones the race screen calls out, from the section list above; the cave starts with its dark zone. */
 const SECTIONS: readonly CourseSection[] = [
@@ -152,4 +165,5 @@ export const SUNLIT_SHALLOWS: ShippedCourse = {
   listed: true,
   parTicks: PAR_TICKS,
   sections: SECTIONS,
+  catchUp: { normal: NORMAL_CATCH_UP },
 };

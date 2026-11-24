@@ -62,7 +62,7 @@ export const TOP_ROUTE_LAST_HOLD = 30;
  * Jelly Field steering fix with the medium's aim (`Medium.aimFrom`, 3 tiles ahead) bent round
  * hazards by `avoidHazards` and snapped to the eight key directions. After 30 ticks without
  * improving `Medium.distanceAt`, it nudges 45 degrees off the aim for 24 ticks, alternating
- * sides. It crosses the finish on tick 12685 counted from the start of the countdown.
+ * sides. With the lit cave exit it crosses the finish on tick 12632 from the start of the countdown.
  * `top-route.test.ts` checks it crosses at least 300 ticks before the DNF cutoff.
  *
  * Results come up about 60 ticks after it ends. The route is tied to Sunlit Shallows and the rivals'
@@ -313,7 +313,6 @@ export const TOP_ROUTE = [
   hold(['right', 'up'], 19),
   hold('right', 1),
   hold('up', 7),
-  hold('right', 171),
-  hold(['right', 'up'], 2),
+  hold('right', 120),
   hold('right', TOP_ROUTE_LAST_HOLD),
 ];
