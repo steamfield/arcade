@@ -2,7 +2,9 @@
  * Thornwood's rolling Boulders on the race screen, as a forest theme extra layer: each boulder shot
  * in `world.shots` drawn as a cracked stone turning with the distance it has rolled, and a puff of
  * dust that fades where one ended. Read from world state every frame, so a boulder that is gone from
- * `world.shots` since the last frame is one that ended there. Code-drawn art, one texture per game.
+ * `world.shots` since the last frame is one that ended there. Each boulder is known by its Shot
+ * object, which logic keeps for as long as the boulder rolls (and frozen in place once the race is
+ * finished). Code-drawn art, one texture per game.
  */
 import type Phaser from 'phaser';
 import { BOULDER_TUNING } from '../../logic/powerups/cannonball/boulder.ts';
@@ -20,9 +22,9 @@ export const DUST_TICKS = 20;
 /** How much the dust puff grows over its life, as a scale factor at its end. */
 const DUST_GROWTH = 1.8;
 
-/** A boulder as drawn this frame: who threw it and when (its key), where its centre is, and its turn in radians. */
+/** A boulder as drawn this frame: its shot, where its centre is, and its turn in radians. */
 export interface BoulderPose {
-  key: string;
+  shot: Shot;
   x: number;
   y: number;
   angle: number;
@@ -84,14 +86,13 @@ const FRAMES: readonly NamedFrame[] = [
 /**
  * The boulders in `world` this frame. Rolling without slipping, a boulder has turned through the
  * distance it rolled over its radius; since it rolls only along x, that is its x over its radius
- * (plus a constant, which no one can see). Its key is its owner and the tick it was thrown,
- * which stays the same for as long as it rolls.
+ * (plus a constant, which no one can see).
  */
 export function boulderPoses(world: World): BoulderPose[] {
   const radius = BOULDER_TUNING.size / 2;
   return world.shots
     .filter((shot) => shot.style === 'boulder')
-    .map((shot) => ({ key: keyOf(world, shot), x: shot.x, y: shot.y, angle: shot.x / radius }));
+    .map((shot) => ({ shot, x: shot.x, y: shot.y, angle: shot.x / radius }));
 }
 
 /** How the dust puff looks `ticks` after its boulder ended: fading and spreading, or null once it is gone. */
@@ -101,9 +102,10 @@ export function dustLook(ticks: number): DustLook | null {
   return { alpha: 1 - life, scale: 1 + (DUST_GROWTH - 1) * life };
 }
 
-/** A boulder shot's key: its owner and the tick it was thrown, worked back from the ttl it has left. */
-function keyOf(world: World, shot: Shot): string {
-  return `${shot.owner}@${world.tick - (BOULDER_TUNING.ttlTicks - shot.ttl)}`;
+/** The boulders posed last frame that are no longer in flight this frame: the ones that ended between them. */
+export function endedBoulders(last: readonly BoulderPose[], current: readonly BoulderPose[]): BoulderPose[] {
+  const live = new Set(current.map((pose) => pose.shot));
+  return last.filter((pose) => !live.has(pose.shot));
 }
 
 /** A puff of dust left where a boulder ended, and the tick it ended on. */
@@ -120,22 +122,21 @@ interface Dust {
  */
 export function createBoulderView(scene: Phaser.Scene, world: World): ThemeLayer {
   if (!scene.textures.exists(BOULDER_TEXTURE)) drawFrames(scene, BOULDER_TEXTURE, FRAMES);
-  const stones = new Map<string, Phaser.GameObjects.Image>();
+  const stones = new Map<Shot, Phaser.GameObjects.Image>();
   const dusts: Dust[] = [];
   let last = boulderPoses(world);
 
   return {
     sync(current) {
       const poses = boulderPoses(current);
-      const live = new Set(poses.map((pose) => pose.key));
-      for (const gone of last.filter((pose) => !live.has(pose.key))) {
-        stones.get(gone.key)?.destroy();
-        stones.delete(gone.key);
+      for (const gone of endedBoulders(last, poses)) {
+        stones.get(gone.shot)?.destroy();
+        stones.delete(gone.shot);
         const sprite = scene.add.image(gone.x, gone.y, BOULDER_TEXTURE, BoulderFrame.dust).setDepth(Layer.objects);
         dusts.push({ sprite, endedAt: current.tick });
       }
       for (const pose of poses) {
-        const stone = stones.get(pose.key) ?? addStone(scene, stones, pose.key);
+        const stone = stones.get(pose.shot) ?? addStone(scene, stones, pose.shot);
         stone.setPosition(pose.x, pose.y).setRotation(pose.angle);
       }
       fadeDust(dusts, current.tick);
@@ -145,9 +146,9 @@ export function createBoulderView(scene: Phaser.Scene, world: World): ThemeLayer
 }
 
 /** Adds the stone sprite for a boulder that just started rolling. */
-function addStone(scene: Phaser.Scene, stones: Map<string, Phaser.GameObjects.Image>, key: string) {
+function addStone(scene: Phaser.Scene, stones: Map<Shot, Phaser.GameObjects.Image>, shot: Shot) {
   const stone = scene.add.image(0, 0, BOULDER_TEXTURE, BoulderFrame.stone).setDepth(Layer.objects);
-  stones.set(key, stone);
+  stones.set(shot, stone);
   return stone;
 }
 

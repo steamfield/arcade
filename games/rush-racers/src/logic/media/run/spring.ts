@@ -5,7 +5,7 @@
  * ground and decides how the launch goes: Up held raises it, and nothing a jump does can lower it.
  * It also finds the mushroom under a runner's feet, for the pilot to follow its bounce.
  */
-import { cellAt } from '../../level/query.ts';
+import { bodyTiles, cellAt } from '../../level/query.ts';
 import { type Body, type Box, type Level, TILE } from '../../types.ts';
 import type { RunMotion } from './data.ts';
 import { RUN_BOUNCE_SPEED, RUN_HELD_BOUNCE_SPEED } from './tuning.ts';
@@ -29,15 +29,16 @@ export function rideSpring(body: Pick<Body, 'vy'>, motion: RunMotion, upHeld: bo
 }
 
 /**
- * The stand tile index (`y * width + x`) on top of a spring mushroom under either bottom corner of
- * `body`, or null. A corner over one is enough to launch a runner, often while its middle is still
- * over the tile before, so the pilot follows the bounce planned on the mushroom's tile.
+ * The stand tile index (`y * width + x`) on top of a spring mushroom under `body`'s feet, or null.
+ * It reads the same tiles `race/bounce.ts` launches from, so a sliver of a corner over one counts,
+ * often while the runner's middle is still over the tile before; the pilot then follows the bounce
+ * planned on the mushroom's tile rather than the tile it is leaving.
  */
 export function springUnderFeet(level: Level, body: Box): number | null {
-  const row = Math.floor((body.y + body.h - 1) / TILE);
-  for (const x of [body.x, body.x + body.w - 1]) {
-    const col = Math.floor(x / TILE);
-    if (cellAt(level, col, row + 1) === 'bounce') return row * level.width + col;
+  const { left, right } = bodyTiles(body);
+  const rowBelow = Math.floor((body.y + body.h) / TILE);
+  for (const col of [left, right]) {
+    if (cellAt(level, col, rowBelow) === 'bounce') return (rowBelow - 1) * level.width + col;
   }
   return null;
 }
