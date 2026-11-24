@@ -144,12 +144,16 @@ describe('flight rivals and lightning', () => {
     const tess = racerOf(world, 'tess');
     let enteredAt: number | null = null;
     let firstStrikeAt: number | null = null;
+    let gapAtStrike = Infinity;
     let inZoneDuringStrike = 0;
     let waited = 0;
     raceUntilFinished(world, log, ['tess'], FINISH_LIMIT, () => {
       const phase = lightningPhase(zone, world.race.raceTick);
       const inZone = overlapsColumns(tess, zone);
-      if (phase === 'strike') firstStrikeAt ??= world.race.raceTick;
+      if (phase === 'strike' && firstStrikeAt === null) {
+        firstStrikeAt = world.race.raceTick;
+        gapAtStrike = zone.cols[0] * TILE - (tess.body.x + tess.body.w);
+      }
       if (inZone && enteredAt === null) enteredAt = world.race.raceTick;
       if (inZone && phase === 'strike') inZoneDuringStrike++;
       if (enteredAt === null && waitingBefore(tess, zone)) waited++;
@@ -162,6 +166,7 @@ describe('flight rivals and lightning', () => {
       enteredAt,
       enteredIn,
       firstStrikeAt,
+      gapAtStrike,
       inZoneDuringStrike,
       struck,
       waited,
@@ -176,6 +181,10 @@ describe('flight rivals and lightning', () => {
     expect(wide.enteredAt ?? 0).toBeGreaterThan(wide.firstStrikeAt ?? Number.POSITIVE_INFINITY);
     expect(wide.waited).toBeGreaterThan(0);
     expect(wide.waited).toBeLessThan(WIDE.periodTicks);
+  });
+
+  it('keeps the established lightning wait gap on courses without cannons', () => {
+    expect(crossing(WIDE).gapAtStrike).toBeLessThan(TILE * 0.75);
   });
 
   it('crosses a zone that is warning when, at its speed, it clears the columns before the strike', () => {

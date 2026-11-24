@@ -42,7 +42,9 @@ export function stormWait(
   if (!ahead || racerInZone(world, racer, ahead.zone)) return null;
   const strikeIn = ticksUntilStrike(ahead.zone, world.race.raceTick);
   if (ticksToClear(racer, ahead.zone, ahead.travel, numbers) < strikeIn) return null;
-  return { x: waitX(racer, ahead.zone, ahead.travel), travel: ahead.travel };
+  // Cannon routes can draw flyers onto the same line through the weather. Leave room for a bump.
+  const gap = world.level.cannons.length > 0 ? TILE : WAIT_GAP_PX;
+  return { x: waitX(racer, ahead.zone, ahead.travel, gap), travel: ahead.travel };
 }
 
 /** The first zone the way from `tile` on `route` enters, and the way it crosses (-1 left, 1 right); null when none. */
@@ -78,8 +80,8 @@ function ticksToClear(racer: Racer, zone: LightningZone, travel: -1 | 1, numbers
 }
 
 /** The centre x at which the racer's leading edge waits WAIT_GAP_PX short of the zone's near side. */
-function waitX(racer: Racer, zone: LightningZone, travel: -1 | 1): number {
+function waitX(racer: Racer, zone: LightningZone, travel: -1 | 1, gap: number): number {
   const halfWidth = hitbox(racer).w / 2;
-  if (travel > 0) return zone.cols[0] * TILE - WAIT_GAP_PX - halfWidth;
-  return (zone.cols[1] + 1) * TILE + WAIT_GAP_PX + halfWidth;
+  if (travel > 0) return zone.cols[0] * TILE - gap - halfWidth;
+  return (zone.cols[1] + 1) * TILE + gap + halfWidth;
 }
