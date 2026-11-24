@@ -28,7 +28,7 @@ Then read `<game>/game.json` for `engine` and `status`, and `<game>/DESIGN.md` i
 ## Run the checks you can
 
 - `pnpm arcade check <slug> --skip-tests` and `pnpm arcade test <slug>` on the tests covering the changed files (or their `@groups`): report failures verbatim (one line each). Leave the full suite and slow projects to whoever merges (AGENTS.md "Test scope").
-- If the change is visual or about feel, run `pnpm arcade see <slug> --scenario <name>` (or `--input "..."`), plus `--mobile` if the HUD or controls changed. Read `.arcade/runs/latest/summary.txt` and look at `frames.png` or `frame-<tick>.png`.
+- If the change is visual or about feel, run `pnpm arcade see <slug> --scenario <name>` (or `--input "..."`), plus `--mobile` if the HUD or controls changed. Read the printed summary and look at `frames.png` or `frame-<tick>.png` in the `run:` folder it names.
 - Don't run `smoke` unless asked; it's slow. Say whether it should be run before merge.
 - Don't run anything that writes outside `.arcade/`, `test-results/` or `dist/`. No `pnpm fix`, no `test:update`.
 

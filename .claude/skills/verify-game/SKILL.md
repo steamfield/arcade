@@ -30,11 +30,14 @@ pnpm arcade see <slug> --ascii                            # tile games: the map 
 pnpm arcade see <slug> --field world.player               # one value from debugState()
 pnpm arcade see <slug> --scene race --query stage=guide   # extra launch params (a game's debug stages)
 pnpm arcade see <slug> --scene title --at 0,120           # ticks past the input wait idle; no _*N padding needed
+pnpm arcade see <slug> --viewport 1280x800                # a window that isn't a whole multiple of the game's size
 ```
+
+`--scene` and `--query stage=` jump straight to a scene, which skips any state a player carries in from the scenes before it (clocks, selections, a finished race). When a bug report starts from the title screen, reproduce it from the title screen. The default 960x540 window is an exact multiple of many pixel-art sizes, so check layout and letterboxing at another `--viewport` too.
 
 Before a change that must not alter visuals (a refactor, a new seam), capture a baseline with `--out .arcade/baseline-<name>/<capture>` from the old code, then rerun the same command with `--compare` on that folder. It prints `identical` or the changed pixel count per frame and writes `diff-<tick>.png` with changes in red. Runs under `.arcade/runs/` keep only the last 50, so baselines go through `--out`.
 
-Read the printed summary first. It has the renderer, the game's `debugSummary()` at each captured tick, event counts, console warnings and PROBLEMS. Then open `.arcade/runs/latest/frames.png` (or `frame-<tick>.png`) with your image tool to judge the visuals. `--crop x,y,w,h` zooms into a region when pixel art is too small to read. `state.json` and `events.jsonl` have the full detail.
+Read the printed summary first. It has the renderer, the game's `debugSummary()` at each captured tick, event counts, console warnings and PROBLEMS. Then open `frames.png` (or `frame-<tick>.png`, one per `--at` tick) in the `run:` folder the summary prints, with your image tool, to judge the visuals. Use that path, not `.arcade/runs/latest`, which another agent in the same checkout can repoint. `--crop x,y,w,h` zooms into a region when pixel art is too small to read. `state.json` and `events.jsonl` have the full detail.
 
 How to read results:
 

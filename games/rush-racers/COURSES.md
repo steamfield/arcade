@@ -74,24 +74,14 @@ The medium checks the level too: `createWorld` throws `LevelError` (with row and
 
 `parTicks` is a good racer's finish on Hard: the expert bot's mean finish over seeds 1-200 and all eight characters. The difficulty bars and course conformance judge race length against it, so measure it rather than guess. Sunlit's 5144 came from that run.
 
-Measure with a throwaway test file (don't commit it), with `parTicks` set to a rough guess first:
+Measure it with the committed script, from `games/rush-racers`, with `parTicks` set to a rough guess first:
 
-```ts
-// src/logic/difficulty/measure-par.test.ts
-import { it } from 'vitest';
-import { BOT_PROFILES } from '../ai/profiles.ts';
-import { CHARACTER_IDS } from '../types.ts';
-import { race } from './race-bots.ts';
-
-it('measures par', () => {
-  const times = CHARACTER_IDS.flatMap((character) =>
-    Array.from({ length: 200 }, (_, i) => race(BOT_PROFILES.expert, character, i + 1, 'hard', 'kelp-forest').finish.player),
-  ).filter((t) => t !== null);
-  console.log('par', Math.round(times.reduce((a, b) => a + b, 0) / times.length), 'from', times.length, 'finishes');
-}, 3_600_000);
+```
+node scripts/measure.ts par <course-id>            # 8 characters x 200 seeds on Hard, several minutes
+node scripts/measure.ts par <course-id> --seeds 20  # a quick estimate while the level still moves
 ```
 
-Run it with `pnpm --filter game-rush-racers exec vitest run --project difficulty src/logic/difficulty/measure-par.test.ts` (1600 races take several minutes) and write the number into the course with a comment saying where it came from.
+Write the number into the course with a comment saying where it came from. Don't write a throwaway test file for this: every earlier course did, and each lane rebuilt the same harness.
 
 ### Difficulty bars
 
@@ -108,6 +98,8 @@ describeDifficulty('rudy', 'kelp-forest');
 plus `kelp-forest-rudy-novice.test.ts` (`describeNovice`), the Normal files (`describeNormal`) and Easy files modelled on `easy-level.test.ts` and `easy-toddler.test.ts` with the course id passed to `race` and `scriptedRace`. The bars themselves (win counts, balance band, the par band for mean finish) don't change per course, and character profiles never change for a course.
 
 If the geometry can't reach a bar, tune the level first. If it still can't, the course may override the rivals' catch-up for one difficulty level: `catchUp: { hard: { max: 1.3 } }` is merged field by field onto that level's bounds in `DIFFICULTY` (`rivalCatchUpFor` in `logic/difficulty-level.ts`); levels the course doesn't name keep the table's bounds exactly.
+
+Before running a bar, see its margin: `node scripts/measure.ts race <course-id> --bot <expert|noDash|novice|toddler> --difficulty <easy|normal|hard> [--char rudy,baron] [--seeds 30]` prints each character's places and mean finish against the par band, in about ten seconds per character at 30 seeds. To tune, edit the course or medium file and rerun it; sweep with more seeds rather than smaller knob steps, since a small change to a physics knob can swing results across the whole seed set. Run it on the stub level as soon as the course is listed, for the toddler on Easy and the expert on Hard, and plan the tuning as its own lane: Bramble Run and Thunderhead Pass each failed most of their bars on their first level.
 
 Run the new course's bars with `pnpm arcade test rush-racers src/logic/difficulty/<your-bars-file>.test.ts`; the whole `@bars` group (`pnpm --filter game-rush-racers test:difficulty`) runs before a merge. `pnpm arcade check rush-racers` runs the `unit` project only and must stay under 30 s cold, so never put whole-race bars outside `logic/difficulty/`'s top level.
 

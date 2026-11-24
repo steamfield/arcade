@@ -1,5 +1,5 @@
 {
   "extends": "@arcade/config/tsconfig.game.json",
-  "include": ["src", "tests", "scenarios", "*.ts"],
+  "include": ["src", "tests", "scenarios", "scripts", "*.ts"],
   "compilerOptions": { "types": ["vite/client", "node"] }
 }

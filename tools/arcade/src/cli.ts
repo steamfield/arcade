@@ -33,13 +33,14 @@ const HELP = `arcade: build, check and see games in this repo
       ("arcade": { "testGroups": { ... } }), and an unknown group lists the defined ones.
 
   pnpm arcade see <slug> [options]
-      Run the game headlessly to an exact state and capture it. Writes to .arcade/runs/latest/:
-      frame-<tick>.png (frames.png contact sheet for several), state.json, events.jsonl,
-      console.log, summary.txt. Prints the summary.
+      Run the game headlessly to an exact state and capture it. Writes a run folder (its absolute
+      path is the summary's first line, "run:"): frame-<tick>.png (frames.png contact sheet for
+      several), state.json, events.jsonl, console.log, summary.txt. Prints the summary.
         --scenario <name>   play scenarios/<name>.ts and check its expectations
         --input "<steps>"   right*30 = hold 30 ticks, jump = tap, right+jump*10 = chord, _*20 = wait
         --at 0,30,end       capture at these ticks (default: end); ticks past the input wait idle
         --seed <n>  --scene <name>  --debug  --mobile (phone viewport + touch controls)
+        --viewport WxH      desktop window size (default 960x540), e.g. 1280x800 to catch letterboxing
         --query k=v         extra launch parameter, repeatable (e.g. --query stage=guide)
         --ascii             print the tile map as text (games that expose debugState().ascii)
         --field <path>      print one value from debugState(), e.g. --field world.player
@@ -87,6 +88,7 @@ async function main(argv: string[]): Promise<number> {
       project: { type: 'string' },
       debug: { type: 'boolean', default: false },
       mobile: { type: 'boolean', default: false },
+      viewport: { type: 'string' },
       ascii: { type: 'boolean', default: false },
       field: { type: 'string' },
       crop: { type: 'string' },
@@ -124,6 +126,7 @@ async function main(argv: string[]): Promise<number> {
       return see(requireSlug(), {
         debug: values.debug,
         mobile: values.mobile,
+        ...(values.viewport !== undefined && { viewport: values.viewport }),
         ascii: values.ascii,
         ...(values.scenario !== undefined && { scenario: values.scenario }),
         ...(values.input !== undefined && { input: values.input }),

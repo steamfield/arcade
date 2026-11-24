@@ -27,6 +27,11 @@ export function listGames(): GameInfo[] {
       const dir = join(base, name);
       const manifestPath = join(dir, 'game.json');
       if (!existsSync(manifestPath)) continue;
+      if (!existsSync(join(dir, 'package.json'))) {
+        // A half-made or leftover folder shouldn't stop every arcade command.
+        console.warn(`arcade: skipping ${folder}/${name}: it has game.json but no package.json`);
+        continue;
+      }
       const manifest = parseManifest(JSON.parse(readFileSync(manifestPath, 'utf8')), manifestPath);
       const pkg = (JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as { name: string }).name;
       found.push({ slug: manifest.slug, dir, pkg, manifest, kind });

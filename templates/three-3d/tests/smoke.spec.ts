@@ -22,3 +22,12 @@ test('on-screen controls move the player @touch', async ({ game, page }) => {
   await button.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
   expect(await game.summary()).toMatchObject({ player: { z: -2.5 } });
 });
+
+test('a player arriving from the arcade lands in the game with no start button to press', async ({ page }) => {
+  // No test flag: this is what a player gets from a link on the landing page.
+  await page.goto('/games/three-3d/');
+  await page.waitForFunction(() => window.__arcade?.ready === true || (window.__arcade?.errors.length ?? 0) > 0);
+  expect(await page.evaluate(() => window.__arcade?.errors)).toEqual([]);
+  await expect(page.locator('[data-arcade-start]')).toHaveCount(0);
+  await expect(page.locator('canvas')).toBeVisible();
+});

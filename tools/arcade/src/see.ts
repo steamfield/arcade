@@ -17,6 +17,8 @@ export interface SeeOptions {
   query?: string[];
   debug: boolean;
   mobile: boolean;
+  /** Desktop viewport as WxH (default 960x540); not with `mobile`. */
+  viewport?: string;
   ascii: boolean;
   field?: string;
   crop?: string;
@@ -52,6 +54,7 @@ export async function see(slug: string, opts: SeeOptions): Promise<number> {
   const total = inputTicks + padded;
   const compareDir = opts.compare ? resolve(opts.compare) : undefined;
   if (compareDir && !existsSync(compareDir)) throw new UsageError(`--compare folder ${opts.compare} does not exist`);
+  if (opts.mobile && opts.viewport) throw new UsageError('--viewport sets a desktop window; drop it or --mobile');
 
   const runDir = opts.out ? makeOutDir(opts.out) : makeRunDir(slug);
   process.env.ARCADE_TEST_SERVER = '1';
@@ -70,7 +73,7 @@ export async function see(slug: string, opts: SeeOptions): Promise<number> {
     if (!address || typeof address === 'string') throw new Error('Vite did not report a port');
     const phone = game.manifest.orientation === 'landscape' ? devices['Pixel 7 landscape'] : devices['Pixel 7'];
     const context = await browser.newContext({
-      ...(opts.mobile ? phone : { viewport: { width: 960, height: 540 } }),
+      ...(opts.mobile ? phone : { viewport: parseViewport(opts.viewport ?? '960x540') }),
       baseURL: `http://127.0.0.1:${address.port}`,
     });
     const page = await context.newPage();
@@ -143,7 +146,8 @@ export async function see(slug: string, opts: SeeOptions): Promise<number> {
       }
     }
 
-    lines.push(`run: ${relative(ROOT, runDir)}  (${elapsed(start)})`);
+    // Absolute, so an agent in a worktree or a subfolder reads this run, not another checkout's `latest`.
+    lines.push(`run: ${runDir}  (${elapsed(start)})`);
     lines.push(
       `renderer: ${renderer}   ticks: ${total}${padded ? ` (input ${inputTicks} + ${padded} idle to reach --at)` : ''}   seed: ${seed ?? 1}${opts.mobile ? '   device: mobile' : ''}`,
     );
@@ -223,6 +227,13 @@ export async function loadScenario(gameDir: string, name: string): Promise<Scena
   const mod = (await import(pathToFileURL(file).href)) as { default?: Scenario };
   if (!mod.default) throw new UsageError(`${file} must default-export a scenario(...)`);
   return mod.default;
+}
+
+/** `--viewport 1280x800` as Playwright's viewport. */
+function parseViewport(value: string): { width: number; height: number } {
+  const m = /^(\d{2,5})x(\d{2,5})$/.exec(value);
+  if (!m) throw new UsageError(`--viewport ${value}: use WIDTHxHEIGHT, for example 1280x800`);
+  return { width: Number(m[1]), height: Number(m[2]) };
 }
 
 /** `--out <dir>`: a run folder the caller names, emptied first. Refuses a folder that isn't a previous run. */

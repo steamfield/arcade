@@ -5,11 +5,12 @@ on:
   push:
     branches: [main]
 
-# A newer push to a PR replaces the older run. On main every push runs to the end, because each run
-# only tests what changed since the push before it: a cancelled run would leave its commits untested.
+# A PR's new push replaces its older run. Pushes to main each get their own group: each run tests only
+# what changed since the previous push (BASE_SHA), so a cancelled main run would leave its commit's
+# changes untested, and several sessions push main within minutes of each other.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.ref }}-${{ github.event_name == 'push' && github.sha || 'pr' }}
+  cancel-in-progress: true
 
 env:
   TURBO_TELEMETRY_DISABLED: "1"
