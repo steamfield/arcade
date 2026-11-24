@@ -8,10 +8,9 @@ import { createLogger, EventLog, FixedStep, type Logger } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import type { GameEvent } from '../logic/events.ts';
 import { hashWorld } from '../logic/hash.ts';
-import type { SaveData } from '../logic/save.ts';
-import { NEW_SAVE } from '../logic/save.ts';
+import { NEW_SAVE, type SaveData } from '../logic/save.ts';
 import type { CharacterId, Course, TickInput, World } from '../logic/types.ts';
-import { createWorld, summarize } from '../logic/world.ts';
+import { createWorld, stepWorld, summarize, withBest } from '../logic/world.ts';
 import { applyStage, type StageName } from './capture-stages.ts';
 
 const SAVE_SLOT = 'main';
@@ -69,6 +68,9 @@ export class Runtime {
   protected readonly options: RuntimeOptions;
   protected readonly log: Logger;
   protected readonly step: FixedStep;
+  private resultsTick = 0;
+  private writes: Promise<void> = Promise.resolve();
+  private writesPending = 0;
 
   protected constructor(options: RuntimeOptions) {
     this.options = options;
@@ -121,14 +123,12 @@ export class Runtime {
 
   /** True while a save write is queued or running. The engine's `idle()` includes it. */
   get saving(): boolean {
-    // Scaffold: no queue yet, so never saving. Lane 1/a replaces this with the write queue.
-    return false;
+    return this.writesPending > 0;
   }
 
   /** Resolves when every write queued so far has finished. */
   settled(): Promise<void> {
-    // Scaffold: nothing queued. Lane 1/a replaces this with the write queue.
-    return Promise.resolve();
+    return this.writes;
   }
 
   /** A small stable view of the world for the CLI summary. */
@@ -142,7 +142,55 @@ export class Runtime {
   }
 
   protected tickOnce(dt: number): void {
-    void dt;
-    throw new Error('not implemented');
+    const frame = this.options.readInput();
+    const tick = this.step.tick + 1;
+    // The first countdown event describes the start line at tick zero of this race.
+    this.events.tick = this.world.tick === 0 ? tick - 1 : tick;
+    if (this.scene === 'race') {
+      stepWorld(this.world, { player: frame.race }, dt);
+      if (this.world.phase === 'finished') this.showResults(tick);
+    } else if (frame.confirmPressed && tick - this.resultsTick >= RESULTS_CONFIRM_DELAY_TICKS) {
+      this.newRace();
+      this.events.emit({ type: 'race.restarted' });
+    }
+    this.options.afterTick(this.world);
+  }
+
+  private showResults(tick: number): void {
+    this.scene = 'results';
+    this.resultsTick = tick;
+    if (this.options.stage !== null) return;
+
+    const bests = withBest(this.world, this.bests);
+    if (bests !== this.bests) {
+      this.bests = bests;
+      const course = this.world.course.id;
+      const ticks = bests[course];
+      if (ticks !== undefined) this.events.emit({ type: 'best.new', course, ticks });
+    }
+    if (!this.saveBlocked) this.persist();
+  }
+
+  private persist(): void {
+    const data = { character: this.character, bests: { ...this.bests } };
+    this.writesPending++;
+    this.writes = this.writes.then(() => this.write(data));
+  }
+
+  private async write(data: SaveData): Promise<void> {
+    try {
+      const result = await this.options.saves.save(SAVE_SLOT, data);
+      if (result.ok) this.events.emit({ type: 'save.written' });
+      else this.failWrite(result.reason);
+    } catch (error) {
+      this.failWrite(error instanceof Error ? error.message : String(error));
+    } finally {
+      this.writesPending--;
+    }
+  }
+
+  private failWrite(reason: string): void {
+    this.log.warn(`race progress not saved: ${reason}`);
+    this.events.emit({ type: 'save.failed', reason });
   }
 }

@@ -8,9 +8,10 @@
  * race ends (`race.ended`, phase `finished`) when the player has finished (phase 1) or at
  * `RACE.limitTicks`. A finished world ignores input.
  */
-import type { EventSink } from '@arcade/core';
+import { type EventSink, TICK_HZ } from '@arcade/core';
 import { assertCourse, groundY } from './course.ts';
 import type { GameEvent } from './events.ts';
+import { NO_INPUT, stepRacer } from './racer.ts';
 import type { SaveData } from './save.ts';
 import { DASH, RACE } from './tuning.ts';
 import type { Racer, RacerId, TickInputs, World, WorldOptions } from './types.ts';
@@ -53,11 +54,25 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
 
 /** Advances the world by one tick. */
 export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
-  void world;
-  void inputs;
-  void dt;
-  void RACE;
-  throw new Error('not implemented');
+  if (world.phase === 'finished') return;
+  if (world.phase === 'countdown') {
+    if (world.tick === 0) world.events.emit({ type: 'race.countdown', n: 3 });
+    world.tick++;
+    if (world.tick === TICK_HZ) world.events.emit({ type: 'race.countdown', n: 2 });
+    if (world.tick === 2 * TICK_HZ) world.events.emit({ type: 'race.countdown', n: 1 });
+    if (world.tick === RACE.countdownTicks) {
+      world.phase = 'racing';
+      world.events.emit({ type: 'race.started' });
+    }
+    return;
+  }
+  world.tick++;
+  world.raceTicks++;
+  for (const racer of world.racers) stepRacer(racer, inputs[racer.id] ?? NO_INPUT, world, dt);
+  if (playerOf(world).state === 'finished' || world.raceTicks >= RACE.limitTicks) {
+    world.phase = 'finished';
+    world.events.emit({ type: 'race.ended', ticks: world.raceTicks });
+  }
 }
 
 /** The player's racer. */
@@ -72,9 +87,10 @@ export function playerOf(world: World): Racer {
  * player finished faster than it (or had none). Returns the same object when nothing improved.
  */
 export function withBest(world: World, bests: SaveData['bests']): SaveData['bests'] {
-  void world;
-  void bests;
-  throw new Error('not implemented');
+  const { finishTicks } = playerOf(world);
+  const { id } = world.course;
+  if (finishTicks === null || (Object.hasOwn(bests, id) && finishTicks >= (bests[id] ?? Infinity))) return bests;
+  return { ...bests, [id]: finishTicks };
 }
 
 const round = (v: number) => Math.round(v * 10) / 10;
