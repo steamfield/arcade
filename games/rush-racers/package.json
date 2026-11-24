@@ -49,6 +49,7 @@
       ],
       "seams": [
         "src/logic/architecture.test.ts",
+        "src/map.test.ts",
         "src/logic/media/boundary.test.ts",
         "src/logic/guide.test.ts",
         "src/engine/themes"
