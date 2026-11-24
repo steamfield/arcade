@@ -19,8 +19,22 @@ export interface AnimLoop {
   frameRate: number;
 }
 
-/** The owner name of the global art in `keys.ts`; worlds and themes own keys under their own id. */
+/** The owner name of the global art in `keys.ts`; a theme owns keys under its theme id, a world under `worldArtOwner(id)`. */
 export const GLOBAL_ART = 'global';
+
+const WORLD_OWNER_PREFIX = 'world:';
+
+/** The owner name a world skin draws its textures under, kept apart from theme ids so errors can say which is which. */
+export function worldArtOwner(worldId: string): string {
+  return `${WORLD_OWNER_PREFIX}${worldId}`;
+}
+
+/** An owner as an error names it: the global art, a world or a theme. */
+function describeOwner(owner: string): string {
+  if (owner === GLOBAL_ART) return 'the global art';
+  if (owner.startsWith(WORLD_OWNER_PREFIX)) return `world '${owner.slice(WORLD_OWNER_PREFIX.length)}'`;
+  return `theme '${owner}'`;
+}
 
 // Owners per texture and animation manager: both are shared by every scene of one game, and a new game starts clean.
 const textureOwners = new WeakMap<object, Map<string, string>>();
@@ -88,8 +102,7 @@ function claim(
   const current = owners.get(key);
   if (current === owner) return false;
   if (current !== undefined) {
-    const holder = current === GLOBAL_ART ? 'the global art' : `theme '${current}'`;
-    throw new Error(`${what} '${key}' is owned by ${holder}; give '${owner}' its own key`);
+    throw new Error(`${what} '${key}' is owned by ${describeOwner(current)}; give ${describeOwner(owner)} its own key`);
   }
   owners.set(key, owner);
   return true;

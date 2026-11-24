@@ -13,6 +13,7 @@ import { SkyItemTex, SkyRacerTex, SkyTex } from './cloudreach/keys.ts';
 import { CLOUDREACH_SKIN } from './cloudreach.ts';
 import { FARSIDE_SKIN } from './farside.ts';
 import { assertSkinAssets, assertSkinTextures, SKINS, skinFor, type TextureLookup } from './index.ts';
+import { ReefItemTex, ReefRacerTex, ReefTex } from './reef/keys.ts';
 import { REEF_SKIN } from './reef.ts';
 import { ThornItemTex, ThornRacerTex, ThornTex } from './thornwood/keys.ts';
 import type { WorldSkin } from './types.ts';
@@ -161,6 +162,9 @@ describe('the Cloudreach skin', () => {
     ];
     const others: string[] = [
       ...Object.values(Tex),
+      ...Object.values(ReefTex),
+      ...Object.values(ReefRacerTex),
+      ...Object.values(ReefItemTex),
       ...Object.values(UiTex),
       ...Object.values(OceanTex),
       ...Object.values(ForestTex),

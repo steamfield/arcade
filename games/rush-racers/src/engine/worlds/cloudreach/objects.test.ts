@@ -8,10 +8,11 @@ import { ENEMY_KINDS, POWER_UP_KINDS } from '../../../logic/types.ts';
 import { Frame } from '../../art/keys.ts';
 import { measureFrames } from '../../art/pixel.ts';
 import type { ArtSheet } from '../../art/sprites/sheet.ts';
-import { ICON_SHEETS } from '../../art/ui/icons.ts';
+import { iconSheets } from '../../art/ui/icons.ts';
 import { UiTex } from '../../art/ui/keys.ts';
 import { SKY_BANDS, SkyBackdropPalette } from '../../themes/sky/palettes.ts';
 import { REEF_OBJECT_SHEETS, REEF_OBJECTS } from '../reef/objects.ts';
+import { REEF_ITEM_ICON_FRAMES } from '../reef/sprites/icons.ts';
 import { THORNWOOD_OBJECTS } from '../thornwood/objects.ts';
 import { SkyIconFrame, SkyItemTex, SkyTex } from './keys.ts';
 import { CLOUDREACH_OBJECTS } from './objects.ts';
@@ -71,7 +72,7 @@ describe('Cloudreach object art', () => {
   it('gives the icon sheet one 9x9 frame per item, named as keys.ts says', () => {
     const icons = skySheet(SkyTex.icons);
     expect(frameNames(icons)?.sort()).toEqual(POWER_UP_KINDS.map((kind) => SkyIconFrame[kind]).sort());
-    const reefIcons = ICON_SHEETS.find((sheet) => sheet.key === UiTex.icons);
+    const reefIcons = iconSheets(REEF_ITEM_ICON_FRAMES).find((sheet) => sheet.key === UiTex.icons);
     expect(sizeOf(icons)).toEqual(measureFrames('reef icons', reefIcons?.frames ?? []));
   });
 

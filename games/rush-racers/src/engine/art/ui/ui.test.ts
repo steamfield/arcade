@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { THEMES } from '../../themes/index.ts';
+import { REEF_ITEM_ICON_FRAMES } from '../../worlds/reef/sprites/icons.ts';
 import { measureFrames, type NamedFrame } from '../pixel.ts';
-import { UI_SHEETS } from './index.ts';
+import { uiSheets } from './index.ts';
 import { IconFrame, MedalFrame, UiTex } from './keys.ts';
 import { cursorNudge } from './motion.ts';
 import { DISPLAY_SHADE, OFF_PANEL_TONES, PanelPalette, TEXT_SHADOW, UiColour, UiTone } from './palette.ts';
@@ -20,6 +21,8 @@ import {
   type Typeface,
 } from './typeface.ts';
 
+// The kit as boot builds it, with Reef's item icons in the icon sheet.
+const UI_SHEETS = uiSheets(REEF_ITEM_ICON_FRAMES);
 const sheetFor = (key: string) => UI_SHEETS.find((sheet) => sheet.key === key);
 const frameNames = (key: string) => sheetFor(key)?.frames.map((frame) => frame.name);
 

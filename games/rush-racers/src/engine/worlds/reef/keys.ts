@@ -1,16 +1,15 @@
 /**
- * Reef's own texture and frame keys, as typed consts. They keep the unprefixed strings the game has
- * always used (`racer-rudy`, `pearl`, `ui-portraits`). The cast and object skins name these; their
- * `register` functions build every one at boot, and `assertSkinTextures` checks they exist. Reef's
- * HUD item icons are frames of the UI kit's shared `ui-icons` texture, named by `IconFrame` in
- * `art/ui/keys.ts`. The shark, eel head and crab keys are still read from `Tex` in `art/keys.ts`,
- * because a view test outside the world names them there.
+ * Reef's own texture and frame keys, as typed consts. Unlike the other worlds', Reef's keys carry no
+ * world prefix (`racer-rudy`, `pearl`, `ui-portraits`), and `themes/ocean.test.ts` pins them. The
+ * cast and object skins name these; their `register` functions build every one at boot, and
+ * `assertSkinTextures` checks they exist. Reef's HUD item icons are frames of the UI kit's shared
+ * `ui-icons` texture, named by `IconFrame` in `art/ui/keys.ts`.
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
-import { Tex } from '../../art/keys.ts';
+import { worldArtOwner } from '../../art/index.ts';
 
 /** The art owner name Reef's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
-export const REEF_ART_OWNER = 'reef';
+export const REEF_ART_OWNER = worldArtOwner('reef');
 
 /** Racer texture per slot: 16x12, facing right, swim-stroke frames `Frame.a` and `Frame.b`. */
 export const ReefRacerTex: Readonly<Record<CharacterId, string>> = {
@@ -43,13 +42,13 @@ export const ReefTex = {
   bubble: 'bubble',
   looseGlow: 'loose-glow',
   /** The shark (24x14, facing right): swim strokes, a jaws-open bite pose and a dazed stagger pose. */
-  shark: Tex.shark,
+  shark: 'enemy-shark',
   /** The moray eel's head (16x10, pointing right): mouth shut and open. */
-  eelHead: Tex.eelHead,
+  eelHead: 'enemy-eel-head',
   /** One 8x10 tile of eel body, pointing right; the view repeats it from the wall to the head. */
   eelBody: 'enemy-eel-body',
   /** The crab (16x12, symmetric): two walking strokes and a dazed stagger pose. */
-  crab: Tex.crab,
+  crab: 'enemy-crab',
   /** Enemy marks on 12x12 frames: the wall hole and its eyes, the `!` tell, a bubble, the dizzy star, the pop ring. */
   marks: 'enemy-mark',
 } as const;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Tex } from '../art/keys.ts';
 import { measureFrames } from '../art/pixel.ts';
 import { FarItemTex, FarRacerTex, FarTex } from '../worlds/farside/keys.ts';
+import { ReefItemTex, ReefRacerTex, ReefTex } from '../worlds/reef/keys.ts';
 import { FOREST_SHEETS } from './forest/sprites/index.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import { OCEAN_THEME } from './ocean.ts';
@@ -40,6 +41,9 @@ describe('the space theme', () => {
     const otherTextures = [
       ...OCEAN_SHEETS.map((sheet) => sheet.key),
       ...Object.values(Tex),
+      ...Object.values(ReefTex),
+      ...Object.values(ReefRacerTex),
+      ...Object.values(ReefItemTex),
       ...Object.values(FarTex),
       ...Object.values(FarRacerTex),
       ...Object.values(FarItemTex),

@@ -93,7 +93,7 @@ Enemies draw in the world between the tiles and the racers: an eel's hole over t
 
 ## Attack power-ups in the water
 
-Drawn from world state by `view/attack-view.ts` (squids, lanes, decoys) and `view/powerup-view.ts` (what happens to a racer). Art is in `art/sprites/attack.ts` and `art/sprites/powerups.ts`.
+Drawn from world state by `view/attack-view.ts` (squids, lanes, decoys) and `view/powerup-view.ts` (what happens to a racer). Reef's art is in `worlds/reef/sprites/attack.ts` and `worlds/reef/sprites/items.ts`; each world draws its own.
 
 | Thing | Look | Motion | Reduced motion |
 | --- | --- | --- | --- |

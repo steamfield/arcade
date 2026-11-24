@@ -11,8 +11,7 @@ import { OCEAN_THEME } from './ocean.ts';
 /**
  * Every texture key the game built at the end of phase 7, before the ocean art moved into its theme,
  * plus the Cannonball item's icon (v2 phase 1), the enemies (v2 phase 3), and the waterline and
- * cave wall (difficulty sprint phase 2), less the unused HUD marker sheet. Reef's art has since
- * moved into its world skin under the same keys.
+ * cave wall (difficulty sprint phase 2), less the unused HUD marker sheet.
  */
 const PHASE_7_KEYS = [
   'tiles',

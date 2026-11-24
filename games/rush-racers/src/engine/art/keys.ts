@@ -6,17 +6,11 @@
  * `themes/`, never here.
  */
 
-/** Global texture keys, plus three Reef enemy keys that Reef's object skin builds. */
+/** Global texture keys. */
 export const Tex = {
   kickPip: 'kick-pip',
   /** The Easy guide's arrow (13x13, pointing right and down-right frames); the view turns it in quarter turns. */
   guideArrow: 'guide-arrow',
-  /** Reef's shark, drawn by Reef's object skin as `ReefTex.shark`; named here while `view/enemy-look.test.ts` reads it from `Tex`. */
-  shark: 'enemy-shark',
-  /** Reef's eel head (`ReefTex.eelHead`), kept here for the same view test. */
-  eelHead: 'enemy-eel-head',
-  /** Reef's crab (`ReefTex.crab`), kept here for the same view test. */
-  crab: 'enemy-crab',
 } as const;
 
 /** Any texture key in `Tex`. */

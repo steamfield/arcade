@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import { describe, expect, it } from 'vitest';
 import { defineTheme } from '../themes/define.ts';
 import { OCEAN_THEME } from '../themes/ocean.ts';
+import { REEF_SKIN } from '../worlds/reef.ts';
 import { buildTextures, drawSheets, registerLoops } from './index.ts';
 import { sheet } from './sprites/sheet.ts';
 
@@ -56,6 +57,14 @@ describe('texture and loop ownership', () => {
     );
     expect(() => registerLoops(scene, [{ key: 'kelp-sway', texture: 'tiles', frameRate: 2 }], 'copycat')).toThrow(
       "Animation 'kelp-sway' is owned by theme 'ocean'",
+    );
+  });
+
+  it("names a world skin as a world, not a theme, when a theme reuses one of the world's keys", () => {
+    const { scene } = recordingScene();
+    REEF_SKIN.registerTextures(scene);
+    expect(() => drawSheets(scene, [{ ...PIXEL, key: 'pearl' }], 'copycat')).toThrow(
+      "Texture 'pearl' is owned by world 'reef'; give theme 'copycat' its own key",
     );
   });
 });

@@ -1,8 +1,8 @@
 /**
  * Reef's ten in-world item sprites (12x12, each its own shape: fin, bubble, puffer, ink drop,
  * lantern, squid, wave, pull arrow, octopus, cannonball), shown as a loose pickup or a clam's burst.
- * The palettes and the four attack kinds' silhouettes are shared with the HUD icons in the UI kit's
- * `ui-icons` (`art/ui/icons.ts`), so a kind keeps one colour and shape everywhere.
+ * The palettes and the four attack kinds' silhouettes are shared with Reef's HUD icons in
+ * `icons.ts`, so a kind keeps one colour and shape everywhere.
  */
 import type { PowerUpKind } from '../../../../logic/types.ts';
 import { Frame } from '../../../art/keys.ts';

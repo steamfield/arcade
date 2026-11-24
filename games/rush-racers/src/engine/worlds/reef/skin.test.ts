@@ -11,6 +11,7 @@ import { buildUiTextures } from '../../art/ui/index.ts';
 import { UiTex } from '../../art/ui/keys.ts';
 import { assertSkinTextures } from '../index.ts';
 import { REEF_SKIN } from '../reef.ts';
+import { REEF_ITEM_ICON_FRAMES } from './sprites/icons.ts';
 
 /**
  * The parts of a Phaser scene the art builders touch, recording the frames of each texture made.
@@ -59,7 +60,7 @@ describe('Reef skin textures', () => {
   it('are not built by the global art or the UI kit, except the shared HUD icons', () => {
     const { scene, built } = recordingScene();
     buildTextures(scene);
-    buildUiTextures(scene);
+    buildUiTextures(scene, REEF_ITEM_ICON_FRAMES);
     const prebuilt = new Set(reefTextures().filter((key) => built.has(key)));
     expect([...prebuilt]).toEqual([UiTex.icons]);
   });
@@ -67,7 +68,7 @@ describe('Reef skin textures', () => {
   it('pass the boot texture check once the skin registers its own, after the global art and UI kit', () => {
     const { scene, textures } = recordingScene();
     buildTextures(scene);
-    buildUiTextures(scene);
+    buildUiTextures(scene, REEF_ITEM_ICON_FRAMES);
     REEF_SKIN.registerTextures(scene);
     expect(() => assertSkinTextures(textures, REEF_SKIN)).not.toThrow();
   });
@@ -75,7 +76,7 @@ describe('Reef skin textures', () => {
   it('fail the boot texture check without the skin registering, naming the first missing texture', () => {
     const { scene, textures } = recordingScene();
     buildTextures(scene);
-    buildUiTextures(scene);
+    buildUiTextures(scene, REEF_ITEM_ICON_FRAMES);
     expect(() => assertSkinTextures(textures, REEF_SKIN)).toThrow(
       `World 'reef' skin names texture '${REEF_SKIN.cast.racers.rudy}', which was never built`,
     );

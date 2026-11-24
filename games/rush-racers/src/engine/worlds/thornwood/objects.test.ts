@@ -6,10 +6,11 @@ import { describe, expect, it } from 'vitest';
 import { ENEMY_KINDS, POWER_UP_KINDS } from '../../../logic/types.ts';
 import { measureFrames } from '../../art/pixel.ts';
 import type { ArtSheet } from '../../art/sprites/sheet.ts';
-import { ICON_SHEETS } from '../../art/ui/icons.ts';
+import { iconSheets } from '../../art/ui/icons.ts';
 import { UiTex } from '../../art/ui/keys.ts';
 import { ForestBackdropPalette, WOOD_BANDS } from '../../themes/forest/palettes.ts';
 import { REEF_OBJECT_SHEETS, REEF_OBJECTS } from '../reef/objects.ts';
+import { REEF_ITEM_ICON_FRAMES } from '../reef/sprites/icons.ts';
 import { ThornIconFrame, ThornItemTex, ThornTex } from './keys.ts';
 import { THORNWOOD_OBJECTS } from './objects.ts';
 import { ATTACK_ART_SHEETS } from './sprites/attack.ts';
@@ -64,7 +65,7 @@ describe('Thornwood object art', () => {
   it('gives the icon sheet one 9x9 frame per item, named as keys.ts says', () => {
     const icons = thornSheet(ThornTex.icons);
     expect(frameNames(icons)?.sort()).toEqual(POWER_UP_KINDS.map((kind) => ThornIconFrame[kind]).sort());
-    const reefIcons = ICON_SHEETS.find((sheet) => sheet.key === UiTex.icons);
+    const reefIcons = iconSheets(REEF_ITEM_ICON_FRAMES).find((sheet) => sheet.key === UiTex.icons);
     expect(sizeOf(icons)).toEqual(measureFrames('reef icons', reefIcons?.frames ?? []));
   });
 
