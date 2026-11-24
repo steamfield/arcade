@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { hold, scenario } from './kit.ts';
+import { hold, ofPlayer, scenario } from './kit.ts';
 
 export default scenario({
   description: 'holding jump as the first log comes up clears it with no bump',
@@ -7,8 +7,9 @@ export default scenario({
   // From 20 m out at run speed the log arrives after about 1.6 s; jump a little before it.
   input: [hold('forward', 75), hold(['forward', 'jump'], 25), hold('forward', 60)],
   expect({ summary, events }) {
-    expect(events.map((e) => e.type)).toContain('racer.jumped');
-    expect(events.map((e) => e.type)).not.toContain('racer.bumped');
+    const mine = ofPlayer(events);
+    expect(mine.map((e) => e.type)).toContain('racer.jumped');
+    expect(mine.filter((e) => e.type === 'racer.bumped' && e.by === null)).toEqual([]);
     expect((summary as { player: { s: number } }).player.s).toBeGreaterThan(62);
   },
 });

@@ -12,6 +12,11 @@ export const { scenario, hold, tap, wait } = scenarioKit<Action>();
 /** Ticks of holding forward that carry the player from a stage's spot well past what lies 20-30 m ahead. */
 export const RUN_ON = 240;
 
+/** The player's own events: stage scenarios race beside three rivals, whose events they ignore. */
+export function ofPlayer<E extends { [key: string]: unknown }>(events: E[]): E[] {
+  return events.filter((e) => e.id === 'player');
+}
+
 /** A save file in the current format, for `start: { save }`. */
 export function savedGame(data: { character: string; bests: Record<string, number> }) {
   return { version: SAVE_VERSION, savedAt: '2026-11-24T00:00:00.000Z', data };
