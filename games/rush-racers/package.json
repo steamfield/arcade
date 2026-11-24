@@ -73,9 +73,12 @@
       "engine": [
         "src/engine"
       ],
-      "bars": [
-        "src/logic/difficulty/"
-      ],
+      "bars": {
+        "project": "difficulty",
+        "paths": [
+          "src/logic/difficulty/"
+        ]
+      },
       "platform": [
         "src/logic/race/move-contacts.test.ts",
         "src/logic/race/ledge.test.ts",
