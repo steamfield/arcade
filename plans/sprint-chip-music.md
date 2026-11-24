@@ -189,7 +189,20 @@ Depends on: phase 2
 | c | M | games/rush-racers/src/engine/audio/songs/cloudreach.ts, games/rush-racers/src/engine/audio/songs/cloudreach-2.ts, games/rush-racers/src/engine/audio/songs/cloudreach-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | pending | | critique findings applied, conformance passes |
 | d | M | games/rush-racers/src/engine/audio/songs/farside.ts, games/rush-racers/src/engine/audio/songs/farside-2.ts, games/rush-racers/src/engine/audio/songs/farside-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | pending | | critique findings applied, conformance passes |
 
-(Briefs written during phase 2. Inline work: render WAVs through the dev server and check peaks, DESIGN.md, MAP.md.)
+Test cases: the same conformance and pin tests as phase 2; this phase changes music, not rules.
+
+#### Lane briefs (a Reef, b Thornwood, c Cloudreach, d Farside)
+
+- Goal: a second musician's pass over the world's three tracks. The composer who wrote them could not hear them and wrote to a checklist; you read them cold as an arranger and a listener, write down what is weak, and fix it. The bar is the same: a player hums the hook after two races and is not tired of it after ten.
+- Interface: the three song files of the world; exports, `name:` headers and track ids unchanged.
+- Behavior:
+  - Before changing anything, read each track's notation bar by bar and write a short critique (keep it for your report): sing the hook in your head and say whether it has a rhythm cell, a peak and an answer; where phrases start and end and whether any section is filler; where the lead and second pulse move in parallel or collide; whether the bass line has shape or only roots; whether the drums change between sections and fill into each one; whether each repeat of A earns its place; whether the breakdown and turnaround build back into A; and whether the three tracks are three tunes or one tune three times.
+  - Then revise: rewrite the weakest phrases and sections, fix wrong or bland notes, give the second pulse a real counter-line where it only doubles or arpeggiates, vary drum patterns, and make the loop seam land. Keep what is already good; do not rewrite a working hook for the sake of change. Track 1's pinned material (its hook and A lead, and for Reef everything `songs.test.ts` pins) stays.
+  - Mix: render each track with `node games/rush-racers/scripts/render-songs.ts <track>` and read the peak and RMS it prints. Aim for an RMS of 0.20 to 0.30 and a peak under 0.98 on every track, and keep the three tracks of the set within 0.04 RMS of each other, by adjusting voice levels. The lead stays the loudest pulse.
+  - Every track must still pass `songs/race-tracks.test.ts`, and each header comment must match the notes after your changes.
+- Decisions already made: same four voices, same track ids, same rules as phase 2 (`games/rush-racers/MUSIC.md`).
+- Out of scope: any file but your three; thresholds (report one you believe is wrong).
+- Done when: the world's tracks pass `pnpm arcade test rush-racers src/engine/audio/songs`, `pnpm arcade check rush-racers --skip-tests` passes, and the render numbers are in range. Report the critique per track in three or four sentences, what you changed, and each track's peak and RMS.
 
 ## Log
 
