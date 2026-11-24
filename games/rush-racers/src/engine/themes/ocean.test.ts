@@ -89,7 +89,20 @@ describe('the ocean theme', () => {
 
   it('lays the tileset out in OceanTile order on the 16 px grid, and points terrain at it', () => {
     const tiles = sheetFor(OceanTex.tiles);
-    const order = ['rock', 'coral', 'sky', 'caveRock', 'stalactite', 'stalagmite', 'ledge', 'bounce'];
+    const order = [
+      'rock',
+      'coral',
+      'sky',
+      'caveRock',
+      'stalactite',
+      'stalagmite',
+      'ledge',
+      'bounce',
+      'shellTopLeft',
+      'shellTopRight',
+      'shellBottomLeft',
+      'shellBottomRight',
+    ];
     expect(tiles?.frames.map((frame) => frame.name)).toEqual(order);
     expect(Object.keys(OceanTile)).toEqual(order);
     expect(Object.values(OceanTile)).toEqual(order.map((_, index) => index));
@@ -97,7 +110,15 @@ describe('the ocean theme', () => {
     expect(OCEAN_THEME.terrain).toMatchObject({
       tileset: 'tiles',
       tiles: { rock: 0, coral: 1, air: 2, ledge: 6, bounce: 7 },
-      glyphTiles: { caveRock: 3, stalactite: 4, stalagmite: 5 },
+      glyphTiles: {
+        caveRock: 3,
+        stalactite: 4,
+        stalagmite: 5,
+        shellTopLeft: 8,
+        shellTopRight: 9,
+        shellBottomLeft: 10,
+        shellBottomRight: 11,
+      },
     });
   });
 

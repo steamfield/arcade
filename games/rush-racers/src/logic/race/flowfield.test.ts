@@ -133,8 +133,8 @@ describe('the coral gate on the ocean course', () => {
     vy: 0,
   });
 
-  it('the ram field runs straight through the gate (columns 577-578) from the room before it', () => {
-    const aim = steerDirection(fields.ram, fields, level, new Set(), bodyAt(572, 9), 3, true);
+  it('the ram field runs straight through the gate (columns 737-738) from the room before it', () => {
+    const aim = steerDirection(fields.ram, fields, level, new Set(), bodyAt(732, 9), 3, true);
 
     // Through, not over: the cave beyond pulls it a little low, but never up the way the others go.
     expect(aim.x).toBeGreaterThan(0.9);
@@ -142,8 +142,8 @@ describe('the coral gate on the ocean course', () => {
   });
 
   it('the steer and smash fields send a swimmer up and over the gate instead', () => {
-    const steer = steerDirection(fields.steer, fields, level, new Set(), bodyAt(572, 9), 3);
-    const smash = steerDirection(fields.smash, fields, level, new Set(), bodyAt(572, 9), 3, true);
+    const steer = steerDirection(fields.steer, fields, level, new Set(), bodyAt(732, 9), 3);
+    const smash = steerDirection(fields.smash, fields, level, new Set(), bodyAt(732, 9), 3, true);
 
     expect(steer.y).toBeLessThan(-0.5);
     expect(smash.y).toBeLessThan(-0.5);

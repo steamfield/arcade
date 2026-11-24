@@ -9,6 +9,7 @@ import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { OceanTex, type OceanTexKey } from '../keys.ts';
 import { TerrainPalette } from '../palettes.ts';
 import { CAVE_TILES } from './cave.ts';
+import { SHELL_TILES } from './shell.ts';
 import { SKY_TILE } from './surface.ts';
 
 /** Branch strip for ledges: dark underside, bark, lit top. Wood, so it reads apart from rock and coral. */
@@ -71,8 +72,8 @@ const CORAL_ROWS = [
 
 /**
  * Terrain sheets. The tileset frames sit in `OceanTile` order: rock, coral, sky, the cave tiles, the
- * ledge, then the bounce cloud. The bounce cloud is here for sky-test, which races in the ocean
- * theme until the sky theme lands and may restyle it.
+ * ledge, the bounce cloud, then the four shell tiles. The bounce cloud is here for sky-test, which
+ * races in the ocean theme until the sky theme lands and may restyle it.
  */
 export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
   {
@@ -105,6 +106,7 @@ export const TERRAIN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
       ...CAVE_TILES,
       { name: 'ledge', palette: BRANCH_PALETTE, rows: LEDGE_ROWS },
       { name: 'bounce', palette: BOUNCE_PALETTE, rows: BOUNCE_ROWS },
+      ...SHELL_TILES,
     ],
   },
   sheet(OceanTex.coralDebris, TerrainPalette.coral, {

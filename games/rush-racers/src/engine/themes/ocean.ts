@@ -40,6 +40,10 @@ export const OCEAN_THEME = defineTheme({
       caveRock: OceanTile.caveRock,
       stalactite: OceanTile.stalactite,
       stalagmite: OceanTile.stalagmite,
+      shellTopLeft: OceanTile.shellTopLeft,
+      shellTopRight: OceanTile.shellTopRight,
+      shellBottomLeft: OceanTile.shellBottomLeft,
+      shellBottomRight: OceanTile.shellBottomRight,
     },
     flowing: {
       kelp: { texture: OceanTex.kelp, anim: OceanAnim.kelpSway },
