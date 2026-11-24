@@ -1,47 +1,55 @@
 /**
- * The two painted parallax layers behind the course, each tiling horizontally: a far ridge of
- * pines and a near line of thick trunks. Two dark colours each, a step off the canopy bands, so
- * they recede.
+ * The two painted parallax layers behind the course, each tiling horizontally: a far starfield tall
+ * enough to fill the sky behind a course, and a near layer with the limb of a cratered moon and a few
+ * distant asteroids. The near layer is two dark colours a step off the sky bands, so it recedes; the
+ * stars are single pixels of the theme's starlight, too small for a racer ever to sit on.
  */
 import { Frame } from '../../../art/keys.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { SpaceTex, type SpaceTexKey } from '../keys.ts';
-import { SpaceBackdropPalette } from '../palettes.ts';
-import { type Pine, pineRidge, type Trunk, trunkLine } from './trees.ts';
+import { SpaceBackdropPalette, StarLight } from '../palettes.ts';
+import { type Asteroid, type Horizon, moonLimb } from './moonscape.ts';
+import { type StarCounts, starField } from './stars.ts';
 
 /** Width of both layers in px; the layer repeats every this many pixels. */
 const LAYER_WIDTH = 128;
-const FAR_HEIGHT = 64;
-const NEAR_HEIGHT = 80;
-/** Rows of earth the far pines stand on. */
-const FAR_BANK_ROWS = 6;
+/** Layer heights in px, which `space.ts` declares to the backdrop view. */
+export const FAR_HEIGHT = 192;
+export const NEAR_HEIGHT = 80;
 
-/** Far pines, uneven in height and spacing so the ridge doesn't repeat inside one tile. */
-const FAR_PINES: readonly Pine[] = [
-  { x: 8, top: 22, tiers: 5 },
-  { x: 24, top: 34, tiers: 4 },
-  { x: 42, top: 16, tiers: 6 },
-  { x: 60, top: 30, tiers: 4 },
-  { x: 76, top: 24, tiers: 5 },
-  { x: 93, top: 36, tiers: 3 },
-  { x: 108, top: 18, tiers: 6 },
-  { x: 122, top: 32, tiers: 4 },
-];
+/** Faint, lit and bright stars across one far tile: sparse, so racers and stardust stay the brightest things on screen. */
+const FAR_STARS: StarCounts = { faint: 70, lit: 22, bright: 4 };
+/** Any fixed seed: it only decides where the stars sit. */
+const FAR_STAR_SEED = 7;
+/** Faint stars in the far trees' lit colour, lit and bright ones in starlight. */
+const STAR_PALETTE = [SpaceBackdropPalette.far[1], StarLight.ray, StarLight.mote];
 
-/** Near trunks, wide and few. */
-const NEAR_TRUNKS: readonly Trunk[] = [
-  { x: 10, width: 7 },
-  { x: 47, width: 5 },
-  { x: 74, width: 8 },
-  { x: 112, width: 5 },
+/** The moon's horizon: low, gently rolling, with three craters of different sizes. */
+const MOON_HORIZON: Horizon = {
+  baseRows: 16,
+  swell: [4, 2],
+  craters: [
+    { x: 20, halfWidth: 9, depth: 4 },
+    { x: 70, halfWidth: 5, depth: 3 },
+    { x: 104, halfWidth: 12, depth: 5 },
+  ],
+};
+
+/** Distant asteroids hanging over the moon, uneven in size and height so the layer doesn't look tiled. */
+const NEAR_ASTEROIDS: readonly Asteroid[] = [
+  { x: 14, y: 22, radius: 3 },
+  { x: 46, y: 10, radius: 2 },
+  { x: 58, y: 38, radius: 5 },
+  { x: 92, y: 18, radius: 2 },
+  { x: 118, y: 44, radius: 3 },
 ];
 
 /** Backdrop layer sheets. */
 export const BACKDROP_SHEETS: readonly ArtSheet<SpaceTexKey>[] = [
-  sheet(SpaceTex.backdropFar, SpaceBackdropPalette.far, {
-    [Frame.a]: pineRidge(LAYER_WIDTH, FAR_HEIGHT, FAR_PINES, FAR_BANK_ROWS),
+  sheet(SpaceTex.backdropFar, STAR_PALETTE, {
+    [Frame.a]: starField(LAYER_WIDTH, FAR_HEIGHT, FAR_STARS, FAR_STAR_SEED),
   }),
   sheet(SpaceTex.backdropNear, SpaceBackdropPalette.near, {
-    [Frame.a]: trunkLine(LAYER_WIDTH, NEAR_HEIGHT, NEAR_TRUNKS),
+    [Frame.a]: moonLimb(LAYER_WIDTH, NEAR_HEIGHT, MOON_HORIZON, NEAR_ASTEROIDS),
   }),
 ];

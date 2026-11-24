@@ -1,5 +1,6 @@
 /**
- * Every space sprite sheet in one list, gathered from the family files so the theme's texture
+ * Every space sprite sheet in one list, gathered from the family files (the shape drawers in
+ * `grid.ts`, `stars.ts` and `moonscape.ts` feed `backdrop.ts`) so the theme's texture
  * builder and its art data test walk the same set.
  */
 import type { ArtSheet } from '../../../art/sprites/sheet.ts';
