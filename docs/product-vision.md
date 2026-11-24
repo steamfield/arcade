@@ -76,7 +76,7 @@ Predictable for builders. Every game has the same layout, the same scripts and t
 
 ### Won't (this version)
 
-- Accounts, cloud saves, leaderboards or multiplayer. These need a backend. When a game needs one, it gets a small Cloudflare Worker scoped to that feature, not a general API.
+- Accounts, cloud saves or leaderboards. These need a backend. When a game needs one, it gets a small Cloudflare Worker scoped to that feature, not a general API, the way Rush Racers' online races with friends use the room service in `apps/api`.
 - A shared in-house game engine. Games use established engines directly; shared code stays small.
 - Native app wrappers (Electron, Capacitor, Steam).
 - Monetization (ads, payments).

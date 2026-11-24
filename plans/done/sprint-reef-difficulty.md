@@ -2,6 +2,7 @@
 
 Skill: sprint. Profile: sprint. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.0/shared/scripts/plan_graph.py
+Status: done, merged to main 2026-11-23.
 Started: 2026-11-23 (epoch 1795452220). Timebox: none. Landing branch: sprint/reef-difficulty (worktree `/Users/riley/Projects/games/.claude/worktrees/reef-difficulty`).
 Gate: `pnpm arcade check reef-rush && pnpm --filter game-reef-rush test:difficulty && pnpm arcade smoke reef-rush`. Filtered tests: `pnpm arcade test reef-rush <paths or @groups> [-t name]`. Typecheck: `pnpm arcade check reef-rush --skip-tests`.
 Runner: plain commands.

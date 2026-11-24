@@ -10,11 +10,11 @@ Browser games, one per folder, each deployed at `/games/<slug>/` on one static C
 | --- | --- |
 | `docs/repo-map.md` | Finding where anything lives. |
 | `docs/architecture.md` | Changing shared packages, hosting, deploys, or questioning a stack decision. |
-| `docs/agent-experience.md` | Changing the `arcade` CLI, test harness or guardrails. Its "As built" section lists what isn't built yet. |
+| `docs/agent-experience.md` | Changing the `arcade` CLI, test harness or guardrails. Its "Not built yet" list says what isn't. |
 | `docs/product-vision.md`, `docs/problem-statement.md` | Deciding what a game or feature should be. |
 | `.claude/skills/` | `verify-game` (check, see, smoke), `phaser-game`, `threejs-game`, `game-feel`. |
 | `<game>/DESIGN.md` | Working on that game. |
-| `plans/<game>.md` | A game's phased build plan while it is being built: lanes, contracts and briefs. DESIGN.md is the source of truth for how the game works. |
+| `plans/<feature>.md` | A feature's phased build plan while it is being built: lanes, contracts and briefs. A finished plan moves to `plans/done/` with a `Status: done` line. DESIGN.md is the source of truth for how a game works. |
 
 ## Commands
 
@@ -46,13 +46,15 @@ packages/shell       boot (starts at once; test-mode gate), sizing, error captur
 packages/testing     scenario kit, GameDriver, Playwright fixture/config
 packages/config      tsconfig bases, defineGameConfig (Vite), game.json schema
 apps/site            landing page, generated from games/*/game.json
+apps/api             room service for online races: a separate Worker the site forwards /api/* to
 tools/arcade         the CLI
 ```
 
 Inside a game:
 
 - `src/logic/`: rules and state in plain TypeScript. It compiles without DOM types and may import only `@arcade/core` and `zod`. No engine imports, no `Math.random`/`Date.now`/`new Date()` (use `createRng` and the `dt` you're given). Lint and the logic tsconfig enforce this.
-- `src/engine/`: Phaser scenes or the three.js world. Renders logic state, reads `@arcade/input`, emits engine events. Never ticks logic from the engine's own loop in test mode (the shell calls `advance()`).
+- `src/net/` (games with online play, such as Rush Racers): the lockstep session, messages and codec. Same lint and tsconfig rules as `src/logic/`, plus the room protocol from `@arcade/api/protocol`; `src/net/transport/websocket.ts` is the one file exempt, since it opens the browser's WebSocket.
+- `src/engine/`: Phaser scenes or the three.js world. Renders logic state, reads `@arcade/input`, emits engine events. Never ticks logic from the engine's own loop in test mode (the shell calls `advance()`). Both templates start with a Phaser- or three-free `src/engine/runtime.ts` (scene flow, save queue, logic step; tested in Vitest), a `worldHash` in `debugState()` that smoke pins across browsers, and `?stage=` capture stages in `src/engine/debug-stage.ts`.
 - `scenarios/*.ts`: start state + typed input + expectations. Each is a Playwright test and works with `arcade see --scenario`.
 - `tests/`: `smoke.spec.ts` (the game's own smoke script), `save.test.ts` + `fixtures/save-v<N>.json`.
 - `DESIGN.md`: pitch, core loop, controls, scenes and launch params. Keep it current and short.
@@ -66,6 +68,7 @@ Inside a game:
 - Changes under `packages/` affect every game: keep them in their own PR, run `pnpm arcade check` (no slug) and `pnpm arcade smoke` (all games).
 - Every `pnpm arcade` command runs from the repo root (or a worktree's root), so you never need to `cd` into a game.
 - Other sessions often work in the same checkout. Stage files by path, never `git add -A` or `git add .`, and check `git status` for edits that aren't yours before blaming a failure on your change.
+- `.claude/worktrees/` holds other sessions' checkouts of this repo. `git grep` and ripgrep skip it (it's gitignored), but `grep -r`, `find` and searches with ignore files off read their copies too: exclude it.
 - Pushing main deploys the site (Cloudflare Workers Builds), and `pnpm deploy:api` deploys the multiplayer API. Do either only when the user asked for it in this session; "finish the feature" isn't a go-ahead to deploy. To get CI before main, push the branch and open a draft PR. Find the run for a commit with `gh run list --commit <sha>`.
 - Every game is original. Genre conventions are fine; other games' names, characters, art, music or levels are not.
 
@@ -102,4 +105,4 @@ For a change someone else merges: the tests covering it pass by "Test scope", ty
 
 ## Hooks
 
-`.claude/hooks/format.ts` (Biome-format each edited file) and `.claude/hooks/check-on-stop.ts` (run `pnpm arcade check` before ending a turn that changed code) exist but only run once a person registers them in a Claude Code `settings.json`. Agents shouldn't register them on their own. Until they're registered, run `pnpm fix` and the checks "Test scope" asks for yourself.
+`.claude/hooks/format.ts` (Biome-format each edited file) and `.claude/hooks/check-on-stop.ts` (run `pnpm arcade check --skip-tests` before ending a turn that changed code) exist but only run once a person registers them in a Claude Code `settings.json`. Agents shouldn't register them on their own. Until they're registered, run `pnpm fix` and the checks "Test scope" asks for yourself.

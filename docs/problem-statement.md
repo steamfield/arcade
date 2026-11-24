@@ -33,7 +33,7 @@ When a player comes back a week later, they want their save to still be there, s
 
 ## Who this is not for
 
-Multiplayer players and competitive leaderboards are out of scope for now. The architecture should not rule them out, but nothing ships with a server until a specific game needs one.
+Public multiplayer and competitive leaderboards are out of scope for now. Nothing ships with a server until a specific game needs one: Rush Racers' races with friends are the first, through a room Worker in `apps/api`.
 
 ## Assumptions
 
@@ -41,7 +41,7 @@ Multiplayer players and competitive leaderboards are out of scope for now. The a
 | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------------- |
 | Agents produce more consistent games from a working template plus written conventions than from a blank folder | Observed drift when agents scaffold from scratch                                 | High       | Build two games from templates, compare review effort                   |
 | One engine cannot serve all genres well, so the repo must support several                                      | Phaser/Pixi are 2D-first; three.js has no 2D tilemap story                       | High       | Research report (see architecture plan)                                 |
-| Static hosting plus browser storage covers every game in the first year                                        | No planned game needs shared state                                               | Medium     | Revisit when the first leaderboard or multiplayer idea comes up         |
+| Static hosting plus browser storage covers every game in the first year                                        | Held for single-player games; Rush Racers' online races added one small Worker   | Medium     | Revisit when the first leaderboard idea comes up                        |
 | Players will tolerate a few MB of download for a 3D game but not for a 2D one                                  | General web performance norms, no data of our own                                | Low        | Measure load times and bounce once deployed                             |
 | Touch controls can be shared across most 2D games                                                              | Platformers and tile RPGs both map to d-pad plus a few buttons                   | Medium     | Build touch input for the first two 2D games and see how much is shared |
 | Safari storage eviction will bite returning players                                                            | WebKit's 7-day cap on script-writable storage for sites without user interaction | Medium     | Test a save on iOS Safari after a week of no visits                     |
