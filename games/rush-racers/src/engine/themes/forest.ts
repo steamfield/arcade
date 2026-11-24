@@ -4,22 +4,11 @@
  * rise slowly, debris falls fast and a splash is a short burst of dust.
  */
 
-import { drawSheets, registerLoops } from '../art/index.ts';
 import { FxFrame } from '../fx/textures.ts';
 import { defineTheme } from './define.ts';
 import { ForestAnim, ForestTex, ForestTile } from './forest/keys.ts';
 import { CanopyLight, ForestBackdropPalette, WOOD_BANDS } from './forest/palettes.ts';
-import { FOREST_SHEETS } from './forest/sprites/index.ts';
 import type { ContrastBand } from './types.ts';
-
-/** Mud bubbles and wind animate on Phaser's clock, never on logic ticks. */
-const FOREST_LOOPS = [
-  { key: ForestAnim.mudBubble, texture: ForestTex.mud, frameRate: 2 },
-  { key: ForestAnim.windRight, texture: ForestTex.windRight, frameRate: 4 },
-  { key: ForestAnim.windLeft, texture: ForestTex.windLeft, frameRate: 4 },
-  { key: ForestAnim.windUp, texture: ForestTex.windUp, frameRate: 4 },
-  { key: ForestAnim.windDown, texture: ForestTex.windDown, frameRate: 4 },
-] as const;
 
 /** Every canopy band and backdrop layer colour: everything a racer or off-panel text can sit in front of. */
 const FOREST_CONTRAST_BANDS: readonly ContrastBand[] = [
@@ -31,10 +20,6 @@ const FOREST_CONTRAST_BANDS: readonly ContrastBand[] = [
 /** The forest theme. */
 export const FOREST_THEME = defineTheme({
   id: 'forest',
-  registerTextures(scene) {
-    drawSheets(scene, FOREST_SHEETS, 'forest');
-    registerLoops(scene, FOREST_LOOPS, 'forest');
-  },
   terrain: {
     tileset: ForestTex.tiles,
     tiles: { rock: ForestTile.rock, coral: ForestTile.coral, ledge: ForestTile.ledge },

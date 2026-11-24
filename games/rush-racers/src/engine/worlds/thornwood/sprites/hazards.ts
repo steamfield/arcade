@@ -1,25 +1,14 @@
 /**
- * Thornwood's hazards: a thorn bush (the urchin's slot) and a buzzing wasp (the jelly's slot), with
- * their texture and loop keys. Both are dark-outlined with sharp, stinging shapes, so they read as
- * dangerous by silhouette and not by colour alone. The keys keep the `forest-` prefix they were
- * first drawn under, so existing captures and baselines don't change.
+ * Thornwood's hazard art: a thorn bush (the urchin's slot) and a buzzing wasp (the jelly's slot), and
+ * the wasp's loop. Both are dark-outlined with sharp, stinging shapes, so they read as dangerous by
+ * silhouette and not by colour alone. Their texture and loop keys are in `../keys.ts` and keep the
+ * `forest-` prefix they were first drawn under, so existing captures and baselines don't change.
  */
 import type { AnimLoop } from '../../../art/index.ts';
 import { Frame } from '../../../art/keys.ts';
 import type { Palette } from '../../../art/pixel.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
-
-/** Thornwood hazard texture keys. */
-export const ThornHazardTex = {
-  thornBush: 'forest-thorn-bush',
-  /** The wasp: frames `a` and `b`, looped by `ThornHazardAnim.waspBuzz`. */
-  wasp: 'forest-wasp',
-} as const;
-
-/** Thornwood hazard animation keys. */
-export const ThornHazardAnim = {
-  waspBuzz: 'forest-wasp-buzz',
-} as const;
+import { ThornHazardAnim, ThornHazardTex } from '../keys.ts';
 
 /** Hazard palettes: dark bodies with hot accents, so danger reads by shape and value, not hue alone. */
 export const ThornHazardPalette = {

@@ -6,10 +6,11 @@
 import { describe, expect, it } from 'vitest';
 import { ENEMY_KINDS, POWER_UP_KINDS } from '../../logic/types.ts';
 import { type DrawnSkin, lazyDrawnSkin, type SkinFixture } from './drawn-skin.ts';
-import { assertSkinTextures } from './index.ts';
+import { assertSkinTextures, WORLD_ART } from './index.ts';
 import type { ObjectSkin } from './object-skin.ts';
 import { type BuiltTexture, framePixels, pixelCount } from './recording-scene.ts';
-import { REEF_OBJECT_SHEETS, REEF_OBJECTS } from './reef/objects.ts';
+import { REEF_OBJECT_SHEETS } from './reef/art.ts';
+import { REEF_OBJECTS } from './reef/objects.ts';
 import { REEF_SKIN } from './reef.ts';
 
 const ICON_SIZE = 9;
@@ -72,7 +73,7 @@ export function describeObjectArt({ skin, contrast: rule }: SkinFixture, drawn: 
   it('can be registered again without redrawing', () => {
     const { art } = drawn();
     const drawCount = art.drawOrder.length;
-    skin.registerTextures(art.scene);
+    WORLD_ART[skin.id](art.scene);
     expect(art.drawOrder).toHaveLength(drawCount);
   });
 

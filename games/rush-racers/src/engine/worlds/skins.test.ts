@@ -104,7 +104,7 @@ describe('world skins', () => {
       ...REEF_SKIN,
       id: 'broken',
       objects: { ...REEF_SKIN.objects, glints: { ...glints, jelly: { ...glints.jelly, key: '' } } },
-    } as WorldSkin;
+    } as unknown as WorldSkin;
     expect(() => assertSkinAssets(broken)).toThrow("World 'broken' skin has no glint for 'jelly'");
   });
 

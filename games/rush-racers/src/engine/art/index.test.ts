@@ -1,8 +1,7 @@
 import type Phaser from 'phaser';
 import { describe, expect, it } from 'vitest';
-import { defineTheme } from '../themes/define.ts';
-import { OCEAN_THEME } from '../themes/ocean.ts';
-import { REEF_SKIN } from '../worlds/reef.ts';
+import { THEME_ART } from '../themes/index.ts';
+import { WORLD_ART } from '../worlds/index.ts';
 import { buildTextures, drawSheets, registerLoops } from './index.ts';
 import { sheet } from './sprites/sheet.ts';
 
@@ -33,25 +32,24 @@ describe('texture and loop ownership', () => {
   it('lets the global art and a theme register twice without change', () => {
     const { scene, textures } = recordingScene();
     buildTextures(scene);
-    OCEAN_THEME.registerTextures(scene);
+    THEME_ART.ocean(scene);
     const built = textures.size;
     buildTextures(scene);
-    OCEAN_THEME.registerTextures(scene);
+    THEME_ART.ocean(scene);
     expect(textures.size).toBe(built);
     expect(textures.has('tiles')).toBe(true);
   });
 
   it("refuses a second theme that names the ocean's tileset", () => {
     const { scene } = recordingScene();
-    OCEAN_THEME.registerTextures(scene);
-    const copycat = defineTheme({ ...OCEAN_THEME, registerTextures: (s) => drawSheets(s, [PIXEL], 'copycat') });
-    expect(() => copycat.registerTextures(scene)).toThrow("Texture 'tiles' is owned by theme 'ocean'");
+    THEME_ART.ocean(scene);
+    expect(() => drawSheets(scene, [PIXEL], 'copycat')).toThrow("Texture 'tiles' is owned by theme 'ocean'");
   });
 
   it('refuses a theme texture that reuses a global key, and a loop another theme owns', () => {
     const { scene } = recordingScene();
     buildTextures(scene);
-    OCEAN_THEME.registerTextures(scene);
+    THEME_ART.ocean(scene);
     expect(() => drawSheets(scene, [{ ...PIXEL, key: 'kick-pip' }], 'copycat')).toThrow(
       "Texture 'kick-pip' is owned by the global art",
     );
@@ -62,7 +60,7 @@ describe('texture and loop ownership', () => {
 
   it("names a world skin as a world, not a theme, when a theme reuses one of the world's keys", () => {
     const { scene } = recordingScene();
-    REEF_SKIN.registerTextures(scene);
+    WORLD_ART.reef(scene);
     expect(() => drawSheets(scene, [{ ...PIXEL, key: 'pearl' }], 'copycat')).toThrow(
       "Texture 'pearl' is owned by world 'reef'; give theme 'copycat' its own key",
     );

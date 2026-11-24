@@ -1,15 +1,19 @@
 /**
  * The world skin registry: every shipped world's skin by world id, the lookup views go through for a
- * course, boot registration of skin textures, and the completeness checks boot and tests run.
+ * course, each world's art registration and the boot step that runs them all, and the completeness checks boot and tests run.
  */
 import type Phaser from 'phaser';
 import type { Course } from '../../logic/courses/types.ts';
 import { CHARACTER_IDS, ENEMY_KINDS, POWER_UP_KINDS } from '../../logic/types.ts';
 import type { ShippedWorldId } from '../../logic/worlds/types.ts';
 import { Frame } from '../art/keys.ts';
+import { registerArt as registerCloudreachArt } from './cloudreach/art.ts';
 import { CLOUDREACH_SKIN } from './cloudreach.ts';
+import { registerArt as registerFarsideArt } from './farside/art.ts';
 import { FARSIDE_SKIN } from './farside.ts';
+import { registerArt as registerReefArt } from './reef/art.ts';
 import { REEF_SKIN } from './reef.ts';
+import { registerArt as registerThornwoodArt } from './thornwood/art.ts';
 import { THORNWOOD_SKIN } from './thornwood.ts';
 import type { WorldSkin } from './types.ts';
 
@@ -33,9 +37,17 @@ export function skinFor(course: Pick<Course, 'id' | 'world'>): WorldSkin {
   return SKINS[course.world as ShippedWorldId];
 }
 
+/** Each shipped world's `registerArt`, which draws the textures and loops its skin names; keyed like `SKINS`. */
+export const WORLD_ART: Readonly<Record<ShippedWorldId, (scene: Phaser.Scene) => void>> = {
+  reef: registerReefArt,
+  thornwood: registerThornwoodArt,
+  cloudreach: registerCloudreachArt,
+  farside: registerFarsideArt,
+};
+
 /** Builds every shipped skin's own textures; boot calls it once. */
 export function registerSkinTextures(scene: Phaser.Scene): void {
-  for (const skin of Object.values(SKINS)) skin.registerTextures(scene);
+  for (const registerArt of Object.values(WORLD_ART)) registerArt(scene);
 }
 
 /**

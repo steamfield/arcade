@@ -5,23 +5,11 @@
  * sooner.
  */
 
-import { drawSheets, registerLoops } from '../art/index.ts';
 import { FxFrame } from '../fx/textures.ts';
 import { defineTheme } from './define.ts';
-import { SpaceAnim, SpaceTex, SpaceTile } from './space/keys.ts';
+import { FAR_HEIGHT, NEAR_HEIGHT, SpaceAnim, SpaceTex, SpaceTile } from './space/keys.ts';
 import { SpaceBackdropPalette, StarLight, VOID_BANDS } from './space/palettes.ts';
-import { FAR_HEIGHT, NEAR_HEIGHT } from './space/sprites/backdrop.ts';
-import { SPACE_SHEETS } from './space/sprites/index.ts';
 import type { ContrastBand } from './types.ts';
-
-/** Dust sway and wind animate on Phaser's clock, never on logic ticks. */
-const SPACE_LOOPS = [
-  { key: SpaceAnim.dustSwirl, texture: SpaceTex.dust, frameRate: 2 },
-  { key: SpaceAnim.windRight, texture: SpaceTex.windRight, frameRate: 4 },
-  { key: SpaceAnim.windLeft, texture: SpaceTex.windLeft, frameRate: 4 },
-  { key: SpaceAnim.windUp, texture: SpaceTex.windUp, frameRate: 4 },
-  { key: SpaceAnim.windDown, texture: SpaceTex.windDown, frameRate: 4 },
-] as const;
 
 /**
  * Everything a racer or off-panel text can sit in front of: the seven sky bands and the near moon's
@@ -38,10 +26,6 @@ const SPACE_CONTRAST_BANDS: readonly ContrastBand[] = [
 /** The space theme. */
 export const SPACE_THEME = defineTheme({
   id: 'space',
-  registerTextures(scene) {
-    drawSheets(scene, SPACE_SHEETS, 'space');
-    registerLoops(scene, SPACE_LOOPS, 'space');
-  },
   terrain: {
     tileset: SpaceTex.tiles,
     tiles: { rock: SpaceTile.rock, coral: SpaceTile.coral, ledge: SpaceTile.ledge },

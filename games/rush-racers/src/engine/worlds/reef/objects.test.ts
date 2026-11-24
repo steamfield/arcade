@@ -6,8 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { POWER_UP_KINDS } from '../../../logic/types.ts';
 import { Frame } from '../../art/keys.ts';
 import { measureFrames } from '../../art/pixel.ts';
+import { REEF_OBJECT_SHEETS } from './art.ts';
 import { ReefTex } from './keys.ts';
-import { REEF_OBJECT_SHEETS, REEF_OBJECTS } from './objects.ts';
+import { REEF_OBJECTS } from './objects.ts';
 import { RIPTIDE_TILE } from './sprites/attack.ts';
 import { REEF_MARK_SIZE } from './sprites/marks.ts';
 

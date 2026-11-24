@@ -1,7 +1,7 @@
 /**
  * Farside's own texture and frame keys, as typed consts, prefixed `farside-` so they can't
- * collide with the global art, the UI kit or a theme. The cast and object skins name these; their
- * `register` functions build every one at boot, and `assertSkinTextures` checks they exist.
+ * collide with the global art, the UI kit or a theme. The cast and object skins name these;
+ * `art.ts` builds every one at boot, and `assertSkinTextures` checks they exist.
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
 import { worldArtOwner } from '../../art/index.ts';
@@ -70,3 +70,15 @@ export const FarCastFrame: Readonly<Record<CharacterId, string>> = bySlot();
 
 /** Frame names in `FarTex.icons`: the item kind. */
 export const FarIconFrame: Readonly<Record<PowerUpKind, string>> = byItem();
+
+/** Farside hazard texture keys. */
+export const FarHazardTex = {
+  mine: 'space-mine',
+  /** The plasma orb: frames `a` and `b`, looped by `FarHazardAnim.orbPulse`. */
+  orb: 'space-orb',
+} as const;
+
+/** Farside hazard animation keys. */
+export const FarHazardAnim = {
+  orbPulse: 'space-orb-pulse',
+} as const;

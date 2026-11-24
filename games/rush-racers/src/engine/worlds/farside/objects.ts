@@ -1,21 +1,13 @@
 /**
  * Farside's object skin: items, attacks, the `?` pod and stardust, space enemies, space mines and
- * plasma orbs with their glints, and the words for them, plus `registerFarsideObjects`, which draws
- * every texture the skin names.
+ * plasma orbs with their glints, and the words for them. `art.ts` draws every texture the skin
+ * names.
  */
-import type Phaser from 'phaser';
 import type { PowerUpKind } from '../../../logic/types.ts';
-import { drawSheets, registerLoops } from '../../art/index.ts';
 import { Frame } from '../../art/keys.ts';
 import type { ArtRef } from '../art-ref.ts';
 import { GLINT_ALPHA, type ObjectSkin } from '../object-skin.ts';
-import { FARSIDE_ART_OWNER, FarIconFrame, FarItemTex, FarTex } from './keys.ts';
-import { ATTACK_ART_SHEETS } from './sprites/attack.ts';
-import { FAR_ENEMY_SHEETS } from './sprites/enemies.ts';
-import { FAR_HAZARD_LOOPS, FAR_HAZARD_SHEETS, FarHazardAnim, FarHazardTex } from './sprites/hazards.ts';
-import { ITEM_ART_SHEETS } from './sprites/items.ts';
-import { FAR_MARK_SHEET } from './sprites/marks.ts';
-import { FAR_PICKUP_SHEETS } from './sprites/pickups.ts';
+import { FarHazardAnim, FarHazardTex, FarIconFrame, FarItemTex, FarTex } from './keys.ts';
 
 const icon = (kind: PowerUpKind): ArtRef => ({ texture: FarTex.icons, frame: FarIconFrame[kind] });
 
@@ -65,25 +57,3 @@ export const FARSIDE_OBJECTS: ObjectSkin = {
     pearlsHeading: 'STARDUST',
   },
 };
-
-/**
- * Draws every object texture and frame the skin names, and the hazards' loops, once; calling it
- * again changes nothing.
- *
- * @throws {Error} When a sprite's pixel text is malformed or a key belongs to another owner (see `drawSheets`).
- */
-export function registerFarsideObjects(scene: Phaser.Scene): void {
-  drawSheets(
-    scene,
-    [
-      ...ITEM_ART_SHEETS,
-      ...ATTACK_ART_SHEETS,
-      ...FAR_PICKUP_SHEETS,
-      ...FAR_ENEMY_SHEETS,
-      FAR_MARK_SHEET,
-      ...FAR_HAZARD_SHEETS,
-    ],
-    FARSIDE_ART_OWNER,
-  );
-  registerLoops(scene, FAR_HAZARD_LOOPS, FARSIDE_ART_OWNER);
-}

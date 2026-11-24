@@ -1,7 +1,7 @@
 /**
  * Reef's own texture and frame keys, as typed consts. Unlike the other worlds', Reef's keys carry no
  * world prefix (`racer-rudy`, `pearl`, `ui-portraits`), and `themes/ocean.test.ts` pins them. The
- * cast and object skins name these; their `register` functions build every one at boot, and
+ * cast and object skins name these; `art.ts` builds every one at boot, and
  * `assertSkinTextures` checks they exist. Reef's HUD item icons are frames of the UI kit's shared
  * `ui-icons` texture, named by `IconFrame` in `art/ui/keys.ts`.
  */
@@ -70,3 +70,15 @@ export const ReefItemTex: Readonly<Record<PowerUpKind, string>> = {
 
 /** Frame names in `ReefTex.portraits` and `ReefTex.heads`: the slot id. */
 export const ReefCastFrame: Readonly<Record<CharacterId, string>> = bySlot();
+
+/** Reef hazard texture keys. */
+export const ReefHazardTex = {
+  urchin: 'urchin',
+  /** The jellyfish: frames `a` and `b`, looped by `ReefHazardAnim.jellyPulse`. */
+  jelly: 'jelly',
+} as const;
+
+/** Reef hazard animation keys. */
+export const ReefHazardAnim = {
+  jellyPulse: 'jelly-pulse',
+} as const;

@@ -1,34 +1,15 @@
 /**
- * Cloudreach's hazards: a spark cloud (the urchin's slot) and a static wisp (the jelly's slot), with
- * their texture and loop keys. Both are dark-outlined with a bright body and a crackle that moves
- * between their two frames, so they read as dangerous by shape and motion, not by colour alone. The
- * keys keep the `sky-theme-` prefix they were first drawn under, so existing captures and baselines
- * don't change.
+ * Cloudreach's hazard art: a spark cloud (the urchin's slot) and a static wisp (the jelly's slot),
+ * and their loops. Both are dark-outlined with a bright body and a crackle that moves between their
+ * two frames, so they read as dangerous by shape and motion, not by colour alone. Their texture and
+ * loop keys are in `../keys.ts` and keep the `sky-theme-` prefix they were first drawn under, so
+ * existing captures and baselines don't change; their palettes are in `../palettes.ts`.
  */
 import type { AnimLoop } from '../../../art/index.ts';
 import { Frame } from '../../../art/keys.ts';
-import type { Palette } from '../../../art/pixel.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
-
-/** Cloudreach hazard texture keys; each has frames `a` and `b`, looped by `SkyHazardAnim`. */
-export const SkyHazardTex = {
-  sparkCloud: 'sky-theme-spark-cloud',
-  staticWisp: 'sky-theme-static-wisp',
-} as const;
-
-/** Cloudreach hazard animation keys. */
-export const SkyHazardAnim = {
-  sparkCrackle: 'sky-theme-spark-crackle',
-  wispFlicker: 'sky-theme-wisp-flicker',
-} as const;
-
-/** Hazard palettes: dark outlines with bright bodies, so danger reads by shape and value, not hue alone. */
-export const SkyHazardPalette = {
-  /** Spark cloud: outline, a lit violet body that holds 3:1 off the sky, yellow sparks. */
-  sparkCloud: [0x1a1030, 0xc0a8e8, 0xfff060],
-  /** Static wisp: outline, ice-blue body, white crackle. */
-  staticWisp: [0x1a2448, 0x9ad8ff, 0xf4fcff],
-} as const satisfies Record<string, Palette>;
+import { SkyHazardAnim, SkyHazardTex } from '../keys.ts';
+import { SkyHazardPalette } from '../palettes.ts';
 
 /** Both hazards crackle on Phaser's clock, never on logic ticks. */
 export const SKY_HAZARD_LOOPS: readonly AnimLoop[] = [

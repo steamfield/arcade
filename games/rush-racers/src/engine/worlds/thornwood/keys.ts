@@ -1,7 +1,7 @@
 /**
  * Thornwood's own texture and frame keys, as typed consts, prefixed `thornwood-` so they can't
- * collide with the global art, the UI kit or a theme. The cast and object skins name these; their
- * `register` functions build every one at boot, and `assertSkinTextures` checks they exist.
+ * collide with the global art, the UI kit or a theme. The cast and object skins name these;
+ * `art.ts` builds every one at boot, and `assertSkinTextures` checks they exist.
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
 import { worldArtOwner } from '../../art/index.ts';
@@ -70,3 +70,15 @@ export const ThornCastFrame: Readonly<Record<CharacterId, string>> = bySlot();
 
 /** Frame names in `ThornTex.icons`: the item kind. */
 export const ThornIconFrame: Readonly<Record<PowerUpKind, string>> = byItem();
+
+/** Thornwood hazard texture keys. */
+export const ThornHazardTex = {
+  thornBush: 'forest-thorn-bush',
+  /** The wasp: frames `a` and `b`, looped by `ThornHazardAnim.waspBuzz`. */
+  wasp: 'forest-wasp',
+} as const;
+
+/** Thornwood hazard animation keys. */
+export const ThornHazardAnim = {
+  waspBuzz: 'forest-wasp-buzz',
+} as const;

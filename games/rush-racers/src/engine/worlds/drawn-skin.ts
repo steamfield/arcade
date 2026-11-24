@@ -7,8 +7,9 @@ import { buildTextures } from '../art/index.ts';
 import type { Palette } from '../art/pixel.ts';
 import { buildUiTextures } from '../art/ui/index.ts';
 import { registerThemeTextures } from '../themes/index.ts';
+import { WORLD_ART } from './index.ts';
 import { type RecordingScene, recordingScene } from './recording-scene.ts';
-import { REEF_ITEM_ICON_FRAMES } from './reef/sprites/icons.ts';
+import { REEF_ITEM_ICON_FRAMES } from './reef/art.ts';
 import type { WorldSkin } from './types.ts';
 
 /** What a world's art must look like, beyond what every skin has to satisfy. */
@@ -33,7 +34,7 @@ export interface SkinFixture {
 export interface DrawnSkin {
   skin: WorldSkin;
   art: RecordingScene;
-  /** Texture keys the skin's own `registerTextures` drew. */
+  /** Texture keys the skin's world art (`WORLD_ART`) drew. */
   skinKeys: ReadonlySet<string>;
 }
 
@@ -53,7 +54,7 @@ export function lazyDrawnSkin(skin: WorldSkin): () => DrawnSkin {
     buildUiTextures(art.scene, REEF_ITEM_ICON_FRAMES);
     registerThemeTextures(art.scene);
     const baseKeys = new Set(art.built.keys());
-    skin.registerTextures(art.scene);
+    WORLD_ART[skin.id](art.scene);
     const skinKeys = new Set([...art.built.keys()].filter((key) => !baseKeys.has(key)));
     drawn = { skin, art, skinKeys };
     return drawn;

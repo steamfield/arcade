@@ -13,11 +13,12 @@ import { measureFrames } from '../art/pixel.ts';
 import type { ArtSheet } from '../art/sprites/sheet.ts';
 import { buildUiTextures } from '../art/ui/index.ts';
 import { themeFor } from '../themes/index.ts';
-import { SKY_HAZARD_LOOPS, SKY_HAZARD_SHEETS, SkyHazardPalette } from '../worlds/cloudreach/sprites/hazards.ts';
+import { SkyHazardPalette } from '../worlds/cloudreach/palettes.ts';
+import { SKY_HAZARD_LOOPS, SKY_HAZARD_SHEETS } from '../worlds/cloudreach/sprites/hazards.ts';
 import { CLOUDREACH_SKIN } from '../worlds/cloudreach.ts';
 import { FAR_HAZARD_LOOPS, FAR_HAZARD_SHEETS, FarHazardPalette } from '../worlds/farside/sprites/hazards.ts';
 import { FARSIDE_SKIN } from '../worlds/farside.ts';
-import { assertSkinTextures, skinFor } from '../worlds/index.ts';
+import { assertSkinTextures, skinFor, WORLD_ART } from '../worlds/index.ts';
 import type { HazardSkin } from '../worlds/object-skin.ts';
 import { REEF_HAZARD_LOOPS, REEF_HAZARD_SHEETS, ReefHazardPalette } from '../worlds/reef/sprites/hazards.ts';
 import { REEF_ITEM_ICON_FRAMES } from '../worlds/reef/sprites/icons.ts';
@@ -158,7 +159,7 @@ describe.each(WORLD_HAZARD_ART.map((art) => [art.skin.id, art] as const))('%s ha
   it('registers every hazard texture, frame and loop with the skin, passing the boot texture check', () => {
     const { scene, textures, anims } = recordingScene();
     buildUiTextures(scene, REEF_ITEM_ICON_FRAMES);
-    art.skin.registerTextures(scene);
+    WORLD_ART[art.skin.id](scene);
     expect(() => assertSkinTextures(textures, art.skin, { exists: (key) => anims.has(key) })).not.toThrow();
   });
 });
