@@ -123,6 +123,8 @@ export interface MoveRules {
   pitBelow: boolean;
   /** Extra tile indices that block like rock this tick (every crate, ready or shut, in a solid-crate medium). */
   solidTiles: ReadonlySet<number>;
+  /** Ledge tile indices that hold nothing this tick: crumbling branches that are down (`World.fallen`). */
+  openLedges: ReadonlySet<number>;
 }
 
 /** An extra level glyph: the base cell it behaves as, and the art key a theme draws it with. */
@@ -153,6 +155,14 @@ export interface LevelDef {
   shiftingWind?: readonly ShiftingWindDef[];
   /** Asteroids drifting back and forth on straight tracks (`setpieces/asteroids.ts`); none when left out. */
   asteroids?: readonly AsteroidDef[];
+  /** Whirlpools that carry racers round their centres (`setpieces/whirlpools.ts`); none when left out. */
+  whirlpools?: readonly WhirlpoolDef[];
+  /** Rotten ledge runs that give way under a racer and grow back (`setpieces/crumbles.ts`); none when left out. */
+  crumbles?: readonly CrumbleDef[];
+  /** Cloud cannons that catch a racer and fire it along a fixed aim (`setpieces/cannons.ts`); none when left out. */
+  cannons?: readonly CannonDef[];
+  /** Paired mouths that carry a racer from one to the other (`setpieces/wormholes.ts`); none when left out. */
+  wormholes?: readonly WormholeDef[];
 }
 
 /**
@@ -188,6 +198,45 @@ export interface AsteroidDef {
   periodTicks: number;
   offsetTicks: number;
   radius: number;
+}
+
+/**
+ * A whirlpool centred on tile (`col`, `row`) with a `radius` in tiles. It pushes racers inside it
+ * round its centre: `spin` 1 turns clockwise on screen (water moves right along its top), -1 the
+ * other way; `push` is the peak tangential acceleration in px/s².
+ */
+export interface WhirlpoolDef {
+  col: number;
+  row: number;
+  radius: number;
+  spin: 1 | -1;
+  push: number;
+}
+
+/** A run of `length` ledge tiles from tile (`col`, `row`) rightward that shakes, falls and grows back as one branch. */
+export interface CrumbleDef {
+  col: number;
+  row: number;
+  length: number;
+}
+
+/**
+ * A cloud cannon on open tile (`col`, `row`): it catches a racer, holds it, then fires it along
+ * `dir` (each of x and y -1, 0 or 1, not both 0) at `speed` px/s for `flightTicks`.
+ */
+export interface CannonDef {
+  col: number;
+  row: number;
+  dir: readonly [dx: -1 | 0 | 1, dy: -1 | 0 | 1];
+  speed: number;
+  flightTicks: number;
+}
+
+/** Two wormhole mouths on open tiles: a racer entering `a` leaves from `b`, and the other way too unless `oneWay`. */
+export interface WormholeDef {
+  a: readonly [col: number, row: number];
+  b: readonly [col: number, row: number];
+  oneWay: boolean;
 }
 
 /**
@@ -263,6 +312,14 @@ export interface Level {
   shiftingWind: ShiftingWindDef[];
   /** Drifting asteroids (`LevelDef.asteroids`), checked by `parseAsteroids`; empty for a level without any. */
   asteroids: AsteroidDef[];
+  /** Whirlpools (`LevelDef.whirlpools`), checked by `parseWhirlpools`; empty for a level without any. */
+  whirlpools: WhirlpoolDef[];
+  /** Crumbling branches (`LevelDef.crumbles`), checked by `parseCrumbles`; empty for a level without any. */
+  crumbles: CrumbleDef[];
+  /** Cloud cannons (`LevelDef.cannons`), checked by `parseCannons`; empty for a level without any. */
+  cannons: CannonDef[];
+  /** Wormholes (`LevelDef.wormholes`), checked by `parseWormholes`; empty for a level without any. */
+  wormholes: WormholeDef[];
 }
 
 /** An axis-aligned box in world pixels: top-left corner and size. */
@@ -811,6 +868,41 @@ export interface World {
   shots: Shot[];
   /** World-specific reworked items in play (`powerups/twists/`). */
   twists: Twist[];
+  /** One state per `level.crumbles` entry, in order (`setpieces/crumbles.ts`). */
+  crumbles: CrumbleState[];
+  /** Pool index for each racer whose centre was inside a whirlpool last tick (`setpieces/whirlpools.ts`). */
+  whirlpoolRiders: Partial<Record<RacerId, number>>;
+  /** Tile indices of crumbling branches that are down. Only `setpieces/crumbles.ts` changes it. */
+  fallen: ReadonlySet<number>;
+  /** Racers a cloud cannon holds, is firing, or is reloading for (`setpieces/cannons.ts`). */
+  cannonRides: CannonRide[];
+  /** Racers that just came out of a wormhole and can't warp again yet (`setpieces/wormholes.ts`). */
+  warps: WarpCooldown[];
   /** The player's way-finding record for the Easy guide. */
   guide: GuideMemory;
+}
+
+/** Where a crumbling branch is in its cycle, and the ticks left in that phase (while solid, the ticks left of its regrowth sprout). */
+export interface CrumbleState {
+  phase: 'solid' | 'shaking' | 'fallen';
+  ticks: number;
+}
+
+/**
+ * Racer `racer` and cloud cannon `cannon` (an index into `level.cannons`): `held` ticks left before
+ * it fires, then `flight` ticks left of the shot, then `reload` ticks before that cannon may catch
+ * the racer again. The ride is over when all three are 0.
+ */
+export interface CannonRide {
+  racer: RacerId;
+  cannon: number;
+  held: number;
+  flight: number;
+  reload: number;
+}
+
+/** Racer `racer` came out of a wormhole and can't warp again for `ticks` more ticks. */
+export interface WarpCooldown {
+  racer: RacerId;
+  ticks: number;
 }

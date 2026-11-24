@@ -60,6 +60,84 @@ const BRANCH_ROWS = [
   ...Array.from({ length: 12 }, () => '................'),
 ];
 
+/** Millstream stepping stone: a flat mossy top over a rounded stone face. */
+const STREAM_STONE_ROWS = [
+  '2322222222232222',
+  '1112111111112111',
+  '1101111101111111',
+  '.0000000.000000.',
+  ...BRANCH_ROWS.slice(4),
+];
+
+/** Vertical grain runs across tile joins, with an offset gouge and a strip of lit wood. */
+const OAK_BARK_ROWS = [
+  '0112332110112211',
+  '0112332110112211',
+  '0112332110112211',
+  '0112233211012211',
+  '0012233211012211',
+  '1012233211012211',
+  '1012332211011211',
+  '1012332110011211',
+  '1012332101012211',
+  '1012332101122211',
+  '0112332101122111',
+  '0112322101122111',
+  '0112322110112111',
+  '0112332110112111',
+  '0112332110112211',
+  '0112332110112211',
+];
+
+/** The Hollow Oak's knothole: a lit rim ringing a dark hollow. */
+const KNOT_RIM_ROWS = [
+  '1111122222211111',
+  '1112223333222111',
+  '1122332222332211',
+  '1223221111223221',
+  '1223211001123221',
+  '1232110000112321',
+  '1232100110012321',
+  '1232101001012321',
+  '1232101001012321',
+  '1232100110012321',
+  '1232110000112321',
+  '1223211001123221',
+  '1223221111223221',
+  '1122332222332211',
+  '1112223333222111',
+  '1111122222211111',
+];
+
+/** Splintered boards read apart from the forest's thin living branches even before they shake. */
+const ROTTEN_WOOD_ROWS = [
+  '2222033222220322',
+  '1111001111110011',
+  '0111101111111011',
+  '..0000.00000..00',
+  ...BRANCH_ROWS.slice(4),
+];
+
+/** An end post and its lashings. Its base meets the deck below this tile. */
+const ROPE_POST_ROWS = [
+  '................',
+  '................',
+  '......0220......',
+  '......0330......',
+  '.....033330.....',
+  '.....033330.....',
+  '......0120......',
+  '......0120......',
+  '......0120......',
+  '......0120......',
+  '......0120......',
+  '......0120......',
+  '......0120......',
+  '......0120......',
+  '.....001200.....',
+  '.....001200.....',
+];
+
 /**
  * A spring mushroom (a bounce cell): a big spotted cap across the top of the tile over a short
  * stem set in dark soil, so one in the floor still reads as ground and a run of them as a bed of
@@ -104,7 +182,7 @@ const FINISH_ROWS = [
   '...00111122220..',
 ];
 
-/** Terrain sheets. The tileset frames sit in `ForestTile` order: earth, stone, the branch, buried earth, then the mushroom. */
+/** Terrain sheets. The tileset frames sit in `ForestTile` order. */
 export const TERRAIN_SHEETS: readonly ArtSheet<ForestTexKey>[] = [
   {
     key: ForestTex.tiles,
@@ -114,6 +192,11 @@ export const TERRAIN_SHEETS: readonly ArtSheet<ForestTexKey>[] = [
       { name: 'ledge', palette: ForestTerrainPalette.branch, rows: BRANCH_ROWS },
       { name: 'rockBuried', palette: ForestTerrainPalette.earth, rows: BURIED_EARTH_ROWS },
       { name: 'bounce', palette: ForestTerrainPalette.mushroom, rows: MUSHROOM_ROWS },
+      { name: 'streamStone', palette: ForestTerrainPalette.streamStone, rows: STREAM_STONE_ROWS },
+      { name: 'oakBark', palette: ForestTerrainPalette.oakBark, rows: OAK_BARK_ROWS },
+      { name: 'knotRim', palette: ForestTerrainPalette.knotRim, rows: KNOT_RIM_ROWS },
+      { name: 'rottenWood', palette: ForestTerrainPalette.rottenWood, rows: ROTTEN_WOOD_ROWS },
+      { name: 'ropePost', palette: ForestTerrainPalette.ropePost, rows: ROPE_POST_ROWS },
     ],
   },
   sheet(ForestTex.stoneDebris, ForestTerrainPalette.crackedStone, {

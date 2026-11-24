@@ -22,7 +22,7 @@ const ROOM: Level = parseLevel({
   `,
 });
 
-const OPEN: MoveRules = { pitBelow: false, solidTiles: new Set() };
+const OPEN: MoveRules = { pitBelow: false, solidTiles: new Set(), openLedges: new Set() };
 
 const body = (x: number, y: number, vx: number, vy: number): Body => ({
   x,
@@ -89,7 +89,11 @@ describe('move contacts', () => {
   it('treats a rule-given solid tile like rock and reports the head bump on it', () => {
     const crate = tileIndex(ROOM, 6, 2);
     const rising = body(98, 60, 0, -80);
-    const all = contactsOver(rising, ROOM, 20, { pitBelow: false, solidTiles: new Set([crate]) });
+    const all = contactsOver(rising, ROOM, 20, {
+      pitBelow: false,
+      solidTiles: new Set([crate]),
+      openLedges: new Set(),
+    });
 
     expect(all.find((c) => c.ceiling)?.ceilingTiles).toEqual([crate]);
     expect(rising.y).toBeGreaterThanOrEqual(48);

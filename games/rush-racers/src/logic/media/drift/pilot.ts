@@ -37,7 +37,7 @@ import type { AiDraws, Steering } from '../types.ts';
 import { asteroidPace } from './asteroid-wait.ts';
 import { wayRunsStraight } from './lookahead.ts';
 import { brakeStick, stickToward, unitOr, wantedVelocity } from './thrust-plan.ts';
-import { type DriftRoute, driftRouteAim } from './way.ts';
+import { type DriftRoute, driftRouteAim, wormholeApproach } from './way.ts';
 import { type DriftPilot, driftPilot } from './way-data.ts';
 
 /** Dash only when moving within about 37 degrees of the aim. */
@@ -79,21 +79,21 @@ export function steerDrifter(
   const route = routeFor(racer);
   replanAim(world, racer, memory, route, blind ? DARK_STEERING.reactionMul : 1);
   stepWobble(memory, racer.profile.wobble * (blind ? DARK_STEERING.wobbleMul : 1), draws.wobble);
-  const wobbled = wobbledAim(memory);
-  const aim = avoidHazards(world, racer, wobbled);
+  const approach = wormholeApproach(world, racer, route, LOOKAHEAD_TILES);
+  const planned = approach?.aim ?? wobbledAim(memory);
+  const aim = avoidHazards(world, racer, planned);
   // avoidHazards hands back the same object when nothing is in the way.
-  const swerving = aim !== wobbled;
+  const swerving = aim !== planned;
   const wanted = wantedVelocity(world, racer, aim, mods, route);
-  const pace = asteroidPace(world, racer, wanted);
-  // Holding back for an asteroid is slow on purpose, like a stun, so it restarts the stuck count
-  // instead of ending in a sideways shove along the asteroid's track.
+  const pace = approach?.waiting ? 0 : asteroidPace(world, racer, wanted);
+  // Waiting for a warp or an asteroid is deliberate. Restart the stuck count while holding back.
   if (pace < 1) memory.stuckTicks = 0;
   const recovery =
     pace === 1 && canRecover(world, racer, memory) ? recoveryMove(racer, memory, draws.side, forceRecover) : null;
   if (recovery) return { move: recovery, kick: false, kickHeld: false, aim, recovering: true };
   if (pace < 1) return slowedSteering(world, racer, wanted, pace, aim, mods);
   // A swerving rival holds its dash, which would carry it on toward the hazard.
-  const kick = !swerving && wantsDash(world, racer, aim, draws.kick);
+  const kick = !approach && !swerving && wantsDash(world, racer, aim, draws.kick);
   // A dash fires along the stick, so on its tick the stick points where it wants to go.
   const move = kick ? unitOr(wanted, aim) : stickToward(world, racer, wanted, aim, mods);
   return { move, kick, kickHeld: kick, aim, recovering: false };

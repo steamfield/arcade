@@ -35,6 +35,12 @@ export const SkyThemeTile = {
   rockBuried: 3,
   /** A springy cloud with a coiled rim. */
   bounce: 4,
+  /** A gold-lit edge on a Sunbreak cloudbank. */
+  sunlitBank: 5,
+  /** A thunderhead perch lined with twigs and quills. */
+  crowRoost: 6,
+  /** A riveted cross-brace on a cannon gantry. */
+  cannonRigging: 7,
 } as const;
 
 /** Sky animation keys: fog drift and the four winds. */

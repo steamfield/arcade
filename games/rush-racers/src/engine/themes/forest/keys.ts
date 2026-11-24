@@ -34,6 +34,16 @@ export const ForestTile = {
   rockBuried: 3,
   /** A spring mushroom (bounce cell). */
   bounce: 4,
+  /** A Millstream stepping stone (`s`, a ledge). */
+  streamStone: 5,
+  /** Hollow Oak bark (`b`, rock). */
+  oakBark: 6,
+  /** The Hollow Oak's knothole rim (`k`, rock). */
+  knotRim: 7,
+  /** A Rotten Bridges plank (`r`, a crumbling ledge). */
+  rottenWood: 8,
+  /** A Rotten Bridges rope post (`p`, open: drawn behind racers). */
+  ropePost: 9,
 } as const;
 
 /** Forest animation keys: mud bubbles and the four wind flows. */

@@ -6,7 +6,7 @@
  * `art/sprites/sprites.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { COURSES } from '../../logic/courses/index.ts';
+import { COURSES, levelOf } from '../../logic/courses/index.ts';
 import { Tex } from '../art/keys.ts';
 import { measureFrames, type NamedFrame } from '../art/pixel.ts';
 import type { NoteEvent, Song } from '../audio/notation.ts';
@@ -14,6 +14,7 @@ import { songs } from '../audio/songs/index.ts';
 import { FxFrame } from '../fx/textures.ts';
 import { STORM_TEXTURE } from '../view/set-pieces/lightning-view.ts';
 import { RING_TEXTURE } from '../view/set-pieces/ring-view.ts';
+import { tileAt } from '../view/terrain-tile.ts';
 import { SkyItemTex, SkyRacerTex, SkyTex } from '../worlds/cloudreach/keys.ts';
 import { SKY_HAZARD_LOOPS, SKY_HAZARD_SHEETS } from '../worlds/cloudreach/sprites/hazards.ts';
 import { ReefItemTex, ReefRacerTex, ReefTex } from '../worlds/reef/keys.ts';
@@ -170,13 +171,28 @@ describe('the sky art', () => {
       tileset: 'sky-theme-tiles',
       tiles: { rock: 0, coral: 1, ledge: 2, bounce: 4 },
       buriedTiles: { rock: 3 },
-      glyphTiles: {},
     });
     expect(SKY_THEME.terrain.tiles.air).toBeUndefined();
   });
 
   it('has art for every cell and glyph of Sky Test', () => {
     expect(() => assertCourseAssets(COURSES['sky-test'])).not.toThrow();
+  });
+
+  it('draws each new Thunderhead Pass landmark with its own tile', () => {
+    const course = COURSES['thunderhead-pass'];
+    const level = levelOf(course);
+    const legend = course.level.legend ?? {};
+    expect(() => assertCourseAssets(course)).not.toThrow();
+    for (const [glyph, art, tile, col, row] of [
+      ['s', 'sunlit-bank', SkyThemeTile.sunlitBank, 427, 24],
+      ['r', 'crow-roost', SkyThemeTile.crowRoost, 862, 5],
+      ['g', 'cannon-rigging', SkyThemeTile.cannonRigging, 1239, 10],
+    ] as const) {
+      expect(level.glyphs[row]?.[col]).toBe(glyph);
+      expect(legend[glyph]?.art).toBe(art);
+      expect(tileAt(level, SKY_THEME.terrain, legend, col, row)).toBe(tile);
+    }
   });
 
   it('fills a thunderhead to every edge and lights its top row, but rounds a puff cloud off at its corners', () => {

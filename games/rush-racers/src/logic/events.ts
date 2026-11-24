@@ -57,6 +57,20 @@ export type GameEvent =
   | { type: 'wind.warned'; zone: number; dir: -1 | 1 }
   /** A shifting wind zone's gust now blows along `dir` (x sign). */
   | { type: 'wind.shifted'; zone: number; dir: -1 | 1 }
+  /** A racer's centre entered whirlpool `pool` (an index into `level.whirlpools`). */
+  | { type: 'whirlpool.caught'; racer: RacerId; pool: number }
+  /** A racer landed on crumbling branch `crumble` (an index into `level.crumbles`), which starts to shake. */
+  | { type: 'crumble.shook'; crumble: number }
+  /** A crumbling branch gave way; its tiles are open. */
+  | { type: 'crumble.fell'; crumble: number }
+  /** A fallen crumbling branch grew back. */
+  | { type: 'crumble.regrew'; crumble: number }
+  /** Cloud cannon `cannon` (an index into `level.cannons`) caught a racer and holds it. */
+  | { type: 'cannon.loaded'; racer: RacerId; cannon: number }
+  /** Cloud cannon `cannon` fired the racer it held. */
+  | { type: 'cannon.fired'; racer: RacerId; cannon: number }
+  /** A racer went into wormhole `hole` (an index into `level.wormholes`) at mouth `from` and came out of the other. */
+  | { type: 'wormhole.warped'; racer: RacerId; hole: number; from: 'a' | 'b' }
   /** A world-specific Cannonball leaves its owner (`powerups/cannonball/`). */
   | { type: 'shot.launched'; owner: RacerId; style: CannonballShotStyle; target: RacerId | null }
   /** A shot that warns before it lands, such as a Meteor's shadow over its target. */

@@ -21,6 +21,30 @@ const CURRENT_DIRECTIONS: ReadonlyMap<Cell, Vec> = new Map([
   ['current-down', { x: 0, y: 1 }],
 ]);
 
+/** The 8 neighbour offsets, orthogonal first so grid walks break ties in the same order. */
+export const NEIGHBOURS: readonly Vec[] = [
+  { x: 1, y: 0 },
+  { x: -1, y: 0 },
+  { x: 0, y: 1 },
+  { x: 0, y: -1 },
+  { x: 1, y: 1 },
+  { x: 1, y: -1 },
+  { x: -1, y: 1 },
+  { x: -1, y: -1 },
+];
+
+/** A diagonal step needs both tiles beside it open. Orthogonal steps always pass. */
+export function cornerIsClear(tile: Vec, offset: Vec, isOpen: (tx: number, ty: number) => boolean): boolean {
+  if (offset.x === 0 || offset.y === 0) return true;
+  return isOpen(tile.x + offset.x, tile.y) && isOpen(tile.x, tile.y + offset.y);
+}
+
+/** The tile holding a point in world px. */
+export const tileOf = (point: Vec): Vec => ({ x: Math.floor(point.x / TILE), y: Math.floor(point.y / TILE) });
+
+/** A tile's centre in world px. */
+export const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE });
+
 /** The cell at a tile; anything outside the grid is rock. */
 export function cellAt(level: Level, tx: number, ty: number): Cell {
   return level.cells[ty]?.[tx] ?? 'rock';
@@ -38,6 +62,11 @@ export function tileIndex(level: Level, tx: number, ty: number): number {
  */
 export function isRockLike(cell: Cell): boolean {
   return cell === 'rock' || cell === 'bounce';
+}
+
+/** An unobstructed tile for a set piece, including air, slow terrain and currents. */
+export function isOpenCell(cell: Cell): boolean {
+  return !isRockLike(cell) && cell !== 'coral' && cell !== 'ledge';
 }
 
 /** True for rock (including outside the grid), a bounce cloud, and coral that hasn't been broken. */
@@ -66,6 +95,15 @@ export function blocksBody(
 /** True for a ledge (`=`): a one-way platform that holds only a body coming down onto it from above. */
 export function isLedge(level: Level, tx: number, ty: number): boolean {
   return cellAt(level, tx, ty) === 'ledge';
+}
+
+/**
+ * True for a ledge that holds a body landing on it this tick under `rules`: a ledge (`isLedge`) that
+ * isn't one of the rules' open ledges (a crumbling branch that is down). Use it wherever something
+ * lands on ledges during a race; `isLedge` alone is the level's shape.
+ */
+export function ledgeHolds(level: Level, rules: MoveRules, tx: number, ty: number): boolean {
+  return isLedge(level, tx, ty) && !rules.openLedges.has(tileIndex(level, tx, ty));
 }
 
 /**

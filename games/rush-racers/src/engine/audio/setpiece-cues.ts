@@ -5,7 +5,11 @@
  * to turn breathes like a wingbeat, a shot that warns the local racer it is the target pings like a
  * squid lock, and a shot ending within hearing sounds like its world (a fizzle is silent): a Boulder that hit crunches like coral,
  * a Meteor lands with a lightning crack and a Comet pops like a decoy. Of the reworked items, a Mud
- * Pie splats like a squid latching and a gravity bomb pops like a decoy as it ends. Positions come
+ * Pie splats like a squid latching and a gravity bomb pops like a decoy as it ends. Of the long
+ * courses' set pieces, a whirlpool catching the local racer pulls like an Undertow, a crumbling branch
+ * within hearing thuds as it shakes and crunches like coral as it falls, a cloud cannon clanks as it
+ * loads the local racer and rushes like a Riptide as it fires within hearing, and a wormhole whooshes
+ * like a dodge as it carries the local racer. Positions come
  * from the event or the level, judged against the local racer.
  */
 import { type RacerId, type ShotEndReason, TILE, type World } from '../../logic/types.ts';
@@ -49,6 +53,22 @@ export function setPieceCue(event: RuntimeEvent, world: World | null, local: Rac
       if (!inside && !heard(zone.cols[0] * TILE) && !heard((zone.cols[1] + 1) * TILE)) return null;
       return event.type === 'wind.warned' ? 'flap' : 'riptide';
     }
+    case 'whirlpool.caught':
+      return event.racer === local ? 'undertow' : null;
+    case 'crumble.shook':
+    case 'crumble.fell': {
+      const branch = world.level.crumbles[event.crumble];
+      if (!branch || !heard((branch.col + branch.length / 2) * TILE)) return null;
+      return event.type === 'crumble.shook' ? 'bump' : 'coral';
+    }
+    case 'cannon.loaded':
+      return event.racer === local ? 'clank' : null;
+    case 'cannon.fired': {
+      const cannon = world.level.cannons[event.cannon];
+      return cannon && heard((cannon.col + 0.5) * TILE) ? 'riptide' : null;
+    }
+    case 'wormhole.warped':
+      return event.racer === local ? 'squid.dodge' : null;
     case 'shot.warned':
       return event.target === local ? 'squid.lock' : null;
     case 'shot.ended':

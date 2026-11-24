@@ -9,6 +9,8 @@ function worldAt(playerX: number): World {
     level: {
       vents: [{ col: 10, row: 20, height: 6, periodTicks: 300, offsetTicks: 0 }],
       shiftingWind: [{ cols: [40, 50], periodTicks: 600, offsetTicks: 0, push: 200 }],
+      crumbles: [{ col: 10, row: 12, length: 4 }],
+      cannons: [{ col: 10, row: 8, dir: [1, 0], speed: 600, flightTicks: 20 }],
     },
   } as unknown as World;
 }
@@ -78,5 +80,30 @@ describe('set piece and shot sounds', () => {
 
   it('is silent off the race screen', () => {
     expect(setPieceCue({ type: 'vent.erupted', vent: 0 }, null, 'player')).toBeNull();
+  });
+
+  it("pulls when a whirlpool catches the local racer, and not for a rival's catch", () => {
+    const event = { type: 'whirlpool.caught', racer: 'player', pool: 0 } as const;
+    expect(setPieceCue(event, worldAt(0), 'player')).toBe('undertow');
+    expect(setPieceCue({ ...event, racer: 'bo' }, worldAt(0), 'player')).toBeNull();
+  });
+
+  it('thuds as a branch within hearing shakes and crunches as it falls, and is silent far off', () => {
+    expect(setPieceCue({ type: 'crumble.shook', crumble: 0 }, worldAt(12 * TILE), 'player')).toBe('bump');
+    expect(setPieceCue({ type: 'crumble.fell', crumble: 0 }, worldAt(12 * TILE), 'player')).toBe('coral');
+    expect(setPieceCue({ type: 'crumble.fell', crumble: 0 }, worldAt(400 * TILE), 'player')).toBeNull();
+  });
+
+  it('clanks as a cannon loads the local racer and rushes as any cannon within hearing fires', () => {
+    expect(setPieceCue({ type: 'cannon.loaded', racer: 'player', cannon: 0 }, worldAt(0), 'player')).toBe('clank');
+    expect(setPieceCue({ type: 'cannon.loaded', racer: 'bo', cannon: 0 }, worldAt(0), 'player')).toBeNull();
+    expect(setPieceCue({ type: 'cannon.fired', racer: 'bo', cannon: 0 }, worldAt(10 * TILE), 'player')).toBe('riptide');
+    expect(setPieceCue({ type: 'cannon.fired', racer: 'bo', cannon: 0 }, worldAt(400 * TILE), 'player')).toBeNull();
+  });
+
+  it('whooshes when a wormhole carries the local racer', () => {
+    const event = { type: 'wormhole.warped', racer: 'player', hole: 0, from: 'a' } as const;
+    expect(setPieceCue(event, worldAt(0), 'player')).toBe('squid.dodge');
+    expect(setPieceCue({ ...event, racer: 'bo' }, worldAt(0), 'player')).toBeNull();
   });
 });

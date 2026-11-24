@@ -4,11 +4,12 @@
  * flowing cells such as kelp and currents as animated sprites, the theme's wave crest along the
  * top of the water under open sky, the finish gate, and inert placeholders for pearls, clams, urchins
  * and jellies. The pickup and hazard views take over those placeholders. Broken coral is removed
- * when its `coral.broken` event arrives.
+ * when its `coral.broken` event arrives. Crumbling branch tiles follow the world's fallen set.
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
-import type { Cell, Level } from '../../logic/types.ts';
+import { tileIndex } from '../../logic/level/query.ts';
+import type { Cell, Level, World } from '../../logic/types.ts';
 import { TILE, type Vec } from '../../logic/types.ts';
 import { Frame, type FrameKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
@@ -17,6 +18,7 @@ import type { HazardSkin, ObjectSkin } from '../worlds/object-skin.ts';
 import type { WorldSkin } from '../worlds/types.ts';
 import { addHazardSprite } from './hazard-view.ts';
 import { Layer } from './layers.ts';
+import { crumbleLook } from './set-pieces/crumble-view.ts';
 import { type Legend, tileAt } from './terrain-tile.ts';
 
 /** Course objects drawn as stand-ins until the pickup and hazard views replace them. */
@@ -27,14 +29,44 @@ interface LevelPlaceholders {
   jellies: Phaser.GameObjects.Sprite[];
 }
 
-/** The drawn course: its placeholders and a hook for course-changing events. */
+/** The drawn course, with hooks for events and per-frame branch state. */
 interface LevelView {
   placeholders: LevelPlaceholders;
   /** Applies a tick's drained events to the course (today only `coral.broken`). */
   onEvents(events: readonly Stamped<RuntimeEvent>[]): void;
+  /** Shows, hides and shakes crumbling-branch tiles to match `world.crumbles` and `world.fallen`; call every frame. */
+  syncFallen(world: World): void;
 }
 
 const TILESET_NAME = 'reef';
+
+type CrumbleTile = Pick<Phaser.Tilemaps.Tile, 'visible' | 'x' | 'pixelX'>;
+
+/** Keeps branch tiles in the tilemap so regrowth restores their original art. */
+export function createCrumbleTileSync(
+  layer: { getTileAt(x: number, y: number): CrumbleTile | null },
+  level: Level,
+  reducedMotion: boolean,
+): LevelView['syncFallen'] {
+  const branches = level.crumbles.map(({ col, row, length }) => {
+    const tiles: { tile: CrumbleTile; index: number }[] = [];
+    for (let x = col; x < col + length; x++) {
+      const tile = layer.getTileAt(x, row);
+      if (tile) tiles.push({ tile, index: tileIndex(level, x, row) });
+    }
+    return tiles;
+  });
+  return ({ crumbles, fallen }) => {
+    branches.forEach((tiles, branch) => {
+      const state = crumbles[branch];
+      const offset = state ? crumbleLook(state, reducedMotion).offset : 0;
+      for (const { tile, index } of tiles) {
+        tile.visible = !fallen.has(index);
+        tile.pixelX = tile.x * TILE + offset;
+      }
+    });
+  };
+}
 
 /**
  * Builds every course object for `level` in `scene`, drawn with `theme` and the world's `skin`
@@ -47,15 +79,18 @@ export function createLevelView(
   level: Level,
   theme: Theme,
   skin: WorldSkin,
+  reducedMotion: boolean,
   legend: Legend = {},
 ): LevelView {
   const layer = createTileLayer(scene, level, theme.terrain, legend);
+  const syncFallen = createCrumbleTileSync(layer, level, reducedMotion);
   addFlowingCells(scene, level, theme.terrain);
   addWaterline(scene, level, theme.terrain);
   addFinishGate(scene, level, theme.terrain);
   const placeholders = addPlaceholders(scene, level, skin.objects);
   return {
     placeholders,
+    syncFallen,
     onEvents(events) {
       for (const event of events) {
         if (event.type === 'coral.broken') layer.removeTileAt(event.tx, event.ty);

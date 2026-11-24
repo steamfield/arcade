@@ -5,9 +5,11 @@
  * the bounce pads.
  */
 import { downhillPath, openTiles, steerDirection } from '../../ai/steer.ts';
-import { cellAt, isSolid } from '../../level/query.ts';
+import { cellAt, cornerIsClear, isSolid, NEIGHBOURS, tileIndex } from '../../level/query.ts';
+import { length } from '../../num.ts';
 import { fieldAt } from '../../race/flowfield.ts';
 import type { Box, Vec, World } from '../../types.ts';
+import { flightEnterCost, flightRamEnterCost } from './nav.ts';
 import { type FlightRoute, flightNav } from './way-data.ts';
 
 /**
@@ -39,7 +41,54 @@ export function flightRouteDistanceAt(world: World, tile: Vec, route: FlightRout
 export function flightWayAhead(world: World, tile: Vec, steps: number, route: FlightRoute): Vec[] {
   const nav = flightNav(world.nav);
   const open = openTiles(world.level, world.broken, route === 'ram');
-  return downhillPath(nav[route], nav, open, tile, steps);
+  const cannons = world.level.cannons;
+  if (cannons.length === 0) return downhillPath(nav[route], nav, open, tile, steps);
+
+  const path: Vec[] = [];
+  let at = tile;
+  for (let i = 0; i < steps; i++) {
+    const nearCannon = cannons.some(({ col, row }) => Math.abs(col - at.x) <= 1 && Math.abs(row - at.y) <= 1);
+    const next = nearCannon
+      ? cheapestStepNearCannon(world, at, route, open)
+      : downhillPath(nav[route], nav, open, at, 1)[0];
+    if (!next) break;
+    path.push(next);
+    // The cheapest neighbour of a mouth may be beside it, but entering the mouth takes the shot.
+    if (isCannonTile(world, next)) break;
+    at = next;
+  }
+  return path;
+}
+
+/** At a cannon junction, compare the full price of entering each neighbour and continuing. */
+function cheapestStepNearCannon(
+  world: World,
+  from: Vec,
+  route: FlightRoute,
+  open: (x: number, y: number) => boolean,
+): Vec | undefined {
+  const { level, broken } = world;
+  const price = route === 'steer' ? flightEnterCost : flightRamEnterCost;
+  const remaining = flightRouteDistanceAt(world, from, route);
+  let best = Infinity;
+  let next: Vec | undefined;
+  for (const move of NEIGHBOURS) {
+    const tile = { x: from.x + move.x, y: from.y + move.y };
+    const onward = flightRouteDistanceAt(world, tile, route);
+    if (onward >= remaining || !open(tile.x, tile.y) || !cornerIsClear(from, move, open)) continue;
+    const entry = price(cellAt(level, tile.x, tile.y), broken.has(tileIndex(level, tile.x, tile.y)), move, tile, level);
+    const cost = onward + length(move.x, move.y) * entry;
+    if (cost < best) {
+      best = cost;
+      next = tile;
+    }
+  }
+  return next;
+}
+
+/** Whether this waypoint is a cannon mouth that needs to be hit precisely. */
+export function isCannonTile(world: World, { x, y }: Vec): boolean {
+  return world.level.cannons.some((cannon) => cannon.col === x && cannon.row === y);
 }
 
 /**

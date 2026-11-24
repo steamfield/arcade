@@ -28,8 +28,12 @@
  */
 
 import { parseAsteroids } from '../setpieces/asteroids.ts';
+import { parseCannons } from '../setpieces/cannons.ts';
+import { parseCrumbles } from '../setpieces/crumbles.ts';
 import { parseShiftingWind } from '../setpieces/shifting-wind.ts';
 import { parseVents } from '../setpieces/vents.ts';
+import { parseWhirlpools } from '../setpieces/whirlpools.ts';
+import { parseWormholes } from '../setpieces/wormholes.ts';
 import { type Cell, type EnemyKind, type Level, type LevelDef, RACER_IDS, type Vec } from '../types.ts';
 import { errorAt, LevelError } from './level-error.ts';
 import { requireLightningZones } from './lightning-zones.ts';
@@ -144,6 +148,10 @@ export function parseLevel(def: LevelDef): Level {
     vents: parseVents(def.vents ?? [], width, rows.length),
     shiftingWind: parseShiftingWind(def.shiftingWind ?? [], width, lightning),
     asteroids: parseAsteroids(def.asteroids ?? [], width, rows.length),
+    whirlpools: parseWhirlpools(def.whirlpools ?? [], cells),
+    crumbles: parseCrumbles(def.crumbles ?? [], cells),
+    cannons: parseCannons(def.cannons ?? [], cells),
+    wormholes: parseWormholes(def.wormholes ?? [], cells),
   };
 }
 

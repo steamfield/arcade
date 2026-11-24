@@ -19,6 +19,9 @@ export const SpaceTerrainPalette = {
   crackedIce: [0x1e2c44, 0x6f9cc8, 0xa8d0f0, 0xe4f4ff],
   /** Strut: shadowed metal, metal, lit metal. */
   branch: [0x1a1c26, 0x4a5064, 0x8088a0],
+  gasGiant: [0x242b53, 0x38477d, 0x556da6, 0x8a9ddb],
+  debrisShield: [0x242037, 0x4c4a68, 0x71788d, 0xd29566],
+  wormwayArch: [0x241c44, 0x4c3b79, 0x8975bd, 0xc8b4ec],
   /** Nebula dust: dark, body, bright wisp. Violet, the body 2:1 and the wisp 3:1 off the sky, sparse so racers inside still read. */
   dust: [0x1e1234, 0x5c3e8c, 0x7a58b8],
   /** Solar wind streaks: faint and bright, so the wind reads without hiding racers. */
@@ -44,4 +47,10 @@ export const StarLight = {
   ray: 0xc8d8ff,
   dapple: 0xe0e8ff,
   mote: 0xf4f6ff,
+} as const;
+
+/** Bright rims for the paired mouths, plus a dark centre against the starfield. */
+export const WormholePalette = {
+  rims: [0x80ddff, 0xffbb75, 0xcfadff, 0x8ff3c5, 0xff9eb8, 0xf5e891],
+  centre: 0x080816,
 } as const;

@@ -1,11 +1,15 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { steerDirection } from '../ai/steer.ts';
 import { DEFAULT_COURSE, levelOf } from '../courses/index.ts';
+import type { GameEvent } from '../events.ts';
 import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
 import { buildSwimNav, validateSwimLevel } from '../media/swim/nav.ts';
+import { courseFromLevel, placeOnTile, racerOf, step } from '../test-world.ts';
 import { type Body, type Level, RACER_SIZE, TILE } from '../types.ts';
-import { buildProgressField, progressAt } from './flowfield.ts';
+import { createWorld } from '../world.ts';
+import { buildProgressField, distancesToFinish, type EntryCost, progressAt } from './flowfield.ts';
 
 /** A four-lane straight with one column (x = 3) of `fill`. The finish is at x = 6. */
 const straight = (fill = '.'): Level =>
@@ -129,8 +133,8 @@ describe('the coral gate on the ocean course', () => {
     vy: 0,
   });
 
-  it('the ram field runs straight through the gate (columns 577-578) from the room before it', () => {
-    const aim = steerDirection(fields.ram, fields, level, new Set(), bodyAt(572, 9), 3, true);
+  it('the ram field runs straight through the gate (columns 737-738) from the room before it', () => {
+    const aim = steerDirection(fields.ram, fields, level, new Set(), bodyAt(732, 9), 3, true);
 
     // Through, not over: the cave beyond pulls it a little low, but never up the way the others go.
     expect(aim.x).toBeGreaterThan(0.9);
@@ -138,8 +142,8 @@ describe('the coral gate on the ocean course', () => {
   });
 
   it('the steer and smash fields send a swimmer up and over the gate instead', () => {
-    const steer = steerDirection(fields.steer, fields, level, new Set(), bodyAt(572, 9), 3);
-    const smash = steerDirection(fields.smash, fields, level, new Set(), bodyAt(572, 9), 3, true);
+    const steer = steerDirection(fields.steer, fields, level, new Set(), bodyAt(732, 9), 3);
+    const smash = steerDirection(fields.smash, fields, level, new Set(), bodyAt(732, 9), 3, true);
 
     expect(steer.y).toBeLessThan(-0.5);
     expect(smash.y).toBeLessThan(-0.5);
@@ -263,5 +267,107 @@ describe('progress beside a blocked diagonal', () => {
     const readings = route.map((body) => progressAt(fields, body));
 
     for (let i = 1; i < readings.length; i++) expect(readings[i]).toBeLessThanOrEqual(readings[i - 1] ?? 0);
+  });
+});
+
+describe('links', () => {
+  const uniform: EntryCost = (cell) => (cell === 'rock' ? Number.POSITIVE_INFINITY : 1);
+
+  it('prices a link start from where it carries a racer, and its neighbours route into it', () => {
+    const level = hook();
+    const walked = distancesToFinish(level, new Set(), uniform);
+    const linked = distancesToFinish(level, new Set(), uniform, [
+      { from: { x: 1, y: 4 }, to: { x: 6, y: 1 }, cost: 2 },
+    ]);
+
+    expect(at(walked, level, 1, 4)).toBe(9);
+    expect(at(linked, level, 1, 4)).toBe(3);
+    expect(at(linked, level, 2, 4)).toBe(4);
+  });
+
+  it('makes a link that carries a racer back a tile to steer round, not a free way past', () => {
+    const level = straight();
+    const walked = distancesToFinish(level, new Set(), uniform);
+    // A mouth in the middle of the second lane that throws a racer back to the start column.
+    const linked = distancesToFinish(level, new Set(), uniform, [
+      { from: { x: 3, y: 2 }, to: { x: 1, y: 2 }, cost: 1 },
+    ]);
+
+    expect(at(walked, level, 3, 2)).toBe(3);
+    // One for the link plus the start column's way to the finish, which now bends round the mouth.
+    expect(at(linked, level, 3, 2)).toBeCloseTo(1 + 4 + Math.SQRT2, 5);
+    // The tile behind the mouth reaches the finish round it, through the lanes beside.
+    expect(at(linked, level, 2, 2)).toBeCloseTo(3 + Math.SQRT2, 5);
+  });
+
+  it('ignores a link out of a closed tile, and leaves a start Infinity when its target cannot reach the finish', () => {
+    const level = hook();
+    const linked = distancesToFinish(level, new Set(), uniform, [
+      { from: { x: 0, y: 4 }, to: { x: 6, y: 1 }, cost: 1 },
+      { from: { x: 1, y: 4 }, to: { x: 3, y: 3 }, cost: 0 },
+    ]);
+
+    expect(at(linked, level, 0, 4)).toBe(Number.POSITIVE_INFINITY);
+    expect(at(linked, level, 1, 4)).toBe(Number.POSITIVE_INFINITY);
+  });
+});
+
+describe('progress across a wall only a wormhole crosses', () => {
+  // The wall at x = 5 is sealed; the two-way hole carries racers from (3, 2) to (7, 2).
+  const sealed = (oneWay: boolean): Level =>
+    parseLevel({
+      name: 'sealed',
+      ascii: `
+        ############
+        #1...#....F#
+        #2...#....F#
+        #3...#....F#
+        #4...#....F#
+        ############
+      `,
+      wormholes: [{ a: [3, 2], b: [7, 2], oneWay }],
+    });
+
+  it.each([false, true])('ranks the near side by the way through the hole (one-way: %s)', (oneWay) => {
+    const level = sealed(oneWay);
+    const progress = buildProgressField(level).distance;
+
+    expect(at(progress, level, 1, 2)).toBeLessThan(Number.POSITIVE_INFINITY);
+    // Approaching the mouth gets closer, and the far side is closer still.
+    expect(at(progress, level, 1, 2)).toBeGreaterThan(at(progress, level, 2, 2) ?? 0);
+    expect(at(progress, level, 2, 2)).toBeGreaterThan(at(progress, level, 3, 2) ?? 0);
+    expect(at(progress, level, 3, 2)).toBeGreaterThan(at(progress, level, 8, 2) ?? 0);
+  });
+
+  it('charges only the warp onto the finish column and one extra step from beside it', () => {
+    for (const [exitCol, distance] of [
+      [10, 1],
+      [9, 2],
+    ] as const) {
+      const course = courseFromLevel(
+        {
+          name: 'wormhole at the finish',
+          ascii: `
+          ############
+          #1...#.....#
+          #2...#....F#
+          #3...#.....#
+          #4...#.....#
+          ############
+        `,
+          wormholes: [{ a: [3, 2], b: [exitCol, 2], oneWay: false }],
+        },
+        'drift',
+      );
+      const log = new EventLog<GameEvent>();
+      const world = createWorld(course, log, { seed: 1 });
+      world.race.phase = 'racing';
+      const player = racerOf(world, 'player');
+      expect(at(world.progress.distance, world.level, 3, 2)).toBe(distance);
+
+      placeOnTile(player, 3, 2);
+      step(world, log);
+      expect(player.finished !== null).toBe(exitCol === world.level.finishX);
+    }
   });
 });

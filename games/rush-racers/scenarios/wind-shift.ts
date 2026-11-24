@@ -1,5 +1,5 @@
 /**
- * Sky Test's shifting wind zone (columns 112-116, between the storm cell and the finish) turns its
+ * Sky Test's shifting wind zone (columns 112-116, past the storm cell) turns its
  * gust round every 2 s with a warning first, and a flyer crossing it is carried along or held back.
  */
 import { expect } from '@playwright/test';
@@ -11,8 +11,8 @@ const FLAP_EVERY = 40;
 /** Flaps from the tunnel to the updraft, as in `flight-ring-boost`. */
 const LOW_ROAD_FLAPS = 10;
 
-/** Flaps along the run home past the rings, the storm cell and into the wind zone. */
-const RUN_HOME_FLAPS = 5;
+/** Flaps past the rings, the storm cell and the wind zone, then over the cannon wall to the finish. */
+const RUN_HOME_FLAPS = 11;
 
 /** The wind zone's period on Sky Test, race ticks: +x for the first half, -x for the second. */
 const PERIOD = 240;

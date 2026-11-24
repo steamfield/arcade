@@ -18,7 +18,7 @@
  * unfinished racers when the medium's racers collide (`racerCollision`: 'solid' along the shallower
  * overlap, 'horizontal' sideways only, 'ghost' not at all); then the phase 3 systems for unfinished
  * racers only: items (cycle, then use, from intents), projectiles and inks, world-specific Cannonball shots and reworked items, squids, riptides, decoys, jellies,
- * enemies, lightning, the course set pieces (vents, shifting wind, asteroids), contacts (hits), pickups (clams, pearls, rings, loose), status counters and dash recharge; then abilities
+ * enemies, lightning, the course set pieces (vents, shifting wind, asteroids, whirlpools, crumbling branches, cloud cannons, wormholes), contacts (hits), pickups (clams, pearls, rings, loose), status counters and dash recharge; then abilities
  * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
  * then progress, finishes, places, race end. Finished racers are out of play:
  * they stay where they crossed the line, nobody bumps them, and they never
@@ -72,8 +72,12 @@ import { separateRacers } from './race/separate.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
 import { activeHumans, activeRacers, centreOf, noItems } from './racers.ts';
 import { strikeAsteroids } from './setpieces/asteroids.ts';
+import { fireCannons, rideCannon } from './setpieces/cannons.ts';
+import { createCrumbles, crumbleBranches } from './setpieces/crumbles.ts';
 import { blowShiftingWind } from './setpieces/shifting-wind.ts';
 import { eruptVents } from './setpieces/vents.ts';
+import { swirlWhirlpools } from './setpieces/whirlpools.ts';
+import { warpWormholes } from './setpieces/wormholes.ts';
 import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
 import {
   type Cell,
@@ -190,6 +194,11 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     decoys: [],
     shots: [],
     twists: [],
+    whirlpoolRiders: {},
+    crumbles: createCrumbles(level),
+    fallen: new Set(),
+    cannonRides: [],
+    warps: [],
     guide: { bestSteer: Number.POSITIVE_INFINITY, stuckTicks: 0, helpTicks: 0 },
   };
   // Catch-up reads progress on the first racing tick, before stepWorld updates it.
@@ -358,6 +367,10 @@ export function stepRace(world: World, inputs: Partial<Record<RacerId, TickInput
   eruptVents(world, racing, dt);
   blowShiftingWind(world, racing, dt);
   strikeAsteroids(world, racing);
+  swirlWhirlpools(world, racing, dt);
+  crumbleBranches(world, racing);
+  fireCannons(world, racing);
+  warpWormholes(world, racing);
   resolveContacts(world, racing);
   // A racer that is out (waiting to be put back after a pit or a black hole) collects nothing.
   const collecting = racing.filter((racer) => racer.status.fallen === 0);
@@ -443,6 +456,12 @@ function spendKickedDashes(world: World): void {
  * and any crates its head hit.
  */
 function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
+  // A cloud cannon moves a racer it holds or has fired instead of the medium (`setpieces/cannons.ts`).
+  const ridden = rideCannon(world, racer, dt);
+  if (ridden) {
+    medium.afterMove(world, racer, ridden, world.events);
+    return;
+  }
   const env = medium.sampleEnvironment(world, racer);
   medium.applyIntent(racer, intent, env, effectiveTuning(world), mods, world.events, dt);
   driftLatched(racer, dt);
@@ -538,7 +557,7 @@ function itemChars(world: World): Map<string, string> {
 /**
  * The course as text: racers (`@ T S B`) at their centre tiles over items (see `itemChars`: urchins `*`,
  * pearls `o`, clams `?` `_`, jellies `j`, Mimic decoys `m` and Homing Squids `s`) over
- * tiles in the level's own characters (bounce clouds `B`), with broken coral shown as water. Rings
+ * tiles in the level's own characters (bounce clouds `B`), with broken coral and fallen crumbling branches shown as open. Rings
  * aren't shown: `@` is the player. Readable in test failures
  * and `arcade see --ascii`.
  */
@@ -553,6 +572,7 @@ export function toAscii(world: World): string {
           if (shown) return shown;
           if (x === world.level.finishX && cell === 'water') return 'F';
           if (cell === 'coral' && world.broken.has(y * world.level.width + x)) return '.';
+          if (cell === 'ledge' && world.fallen.has(y * world.level.width + x)) return '.';
           return CELL_CHAR[cell];
         })
         .join(''),

@@ -7,6 +7,10 @@
 import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { ABILITY } from '../../abilities.ts';
+import { CHARACTERS } from '../../characters.ts';
+import { COURSES } from '../../courses/index.ts';
+import { DIFFICULTY } from '../../difficulty-level.ts';
+import { PASSIVE, SQUID } from '../../powerups/tuning.ts';
 import { eventsIn, hold, IDLE, placeOnTile, step } from '../../test-world.ts';
 import { CHARACTER_IDS, type Vec } from '../../types.ts';
 import { effectiveTuning, MEDIA } from '../index.ts';
@@ -14,11 +18,11 @@ import type { DriftEnv } from './data.ts';
 import { sampleDriftEnvironment } from './env.ts';
 import { applyDriftIntent } from './physics.ts';
 import { bareDrifter, drift, driftWorld, RIVAL_LANE_ROWS, ticksIn, VACUUM } from './test-kit.ts';
-import { DRIFT_TUNING } from './tuning.ts';
+import { DRIFT_TUNING, driftCruise } from './tuning.ts';
 
 const BASE = DRIFT_TUNING.base;
 const { force, drag, maxSpeed, kick } = DRIFT_TUNING;
-const { cruise, overDrag, idleBrake, dustCruiseMul, dustDrag, windForce } = DRIFT_TUNING.extra;
+const { cruise, overDrag, idleBrake, dustCruiseMul, dustDrag, dustThrustShare, windForce } = DRIFT_TUNING.extra;
 const RIGHT: Vec = { x: 1, y: 0 };
 const LEFT: Vec = { x: -1, y: 0 };
 const UP: Vec = { x: 0, y: -1 };
@@ -228,8 +232,47 @@ describe('drag', () => {
 
 describe('nebula dust', () => {
   const DUST: DriftEnv = { ...VACUUM, inDust: true };
+  const easy = DIFFICULTY.easy;
+  const minCatchUp = COURSES['slingshot-alley'].catchUp?.easy?.min ?? easy.rivalCatchUp.min;
+  // Bound the floor conservatively with the weakest rival profile and Baron's ramp, plus all slowdowns.
+  const minForceMul =
+    BASE.forceMul *
+    minCatchUp *
+    easy.rivalForceMul *
+    Math.min(...CHARACTER_IDS.map((id) => CHARACTERS[id].profile.forceMul)) *
+    ABILITY.bulldozer.accelMul *
+    PASSIVE.slowedForceMul *
+    PASSIVE.inflatedForceMul *
+    SQUID.latchedForceMul;
 
-  it('lowers cruise to dustCruiseMul of it', () => {
+  it.each([0.6, minForceMul])('leaves a drifter with forceMul %s enough thrust to accelerate from rest', (forceMul) => {
+    const racer = bareDrifter();
+    drift(racer, ticksIn(1), hold(RIGHT), { env: DUST, mods: { ...BASE, forceMul } });
+    const minSpeed = Math.min(
+      (1 - dustThrustShare) * force * forceMul,
+      driftCruise(DRIFT_TUNING.extra, forceMul, true),
+    );
+
+    expect(racer.body.vx).toBeGreaterThanOrEqual(minSpeed - 1e-6);
+  });
+
+  it('brakes a weak drifter holding against its motion at least as quickly as letting go', () => {
+    const options = { env: DUST, mods: { ...BASE, forceMul: 0.2 } };
+    const braking = moving(30);
+    const coasting = moving(30);
+    drift(braking, 1, hold(LEFT), options);
+    drift(coasting, 1, IDLE, options);
+
+    expect(braking.body.vx).toBeLessThanOrEqual(coasting.body.vx);
+  });
+
+  it('takes the full dust drag and idle brake from a weak drifter that lets go', () => {
+    const { samples } = drift(moving(30), 1, IDLE, { env: DUST, mods: { ...BASE, forceMul: 0.2 } });
+
+    expect(samples[0]?.speed).toBeCloseTo(30 - (drag + idleBrake + dustDrag) * TICK_DT, 6);
+  });
+
+  it('settles at the dust cruise with full thrust', () => {
     const { samples } = drift(bareDrifter(), ticksIn(2), hold(RIGHT), { env: DUST });
     const top = Math.max(...samples.map((sample) => sample.speed));
 
@@ -237,10 +280,11 @@ describe('nebula dust', () => {
     expect(samples.at(-1)?.speed).toBeGreaterThan(cruise * dustCruiseMul - (drag + dustDrag) * TICK_DT - 1e-6);
   });
 
-  it('drags a racer that enters at cruise down to dust cruise within half a second', () => {
-    const { samples } = drift(moving(cruise), ticksIn(0.5), hold(RIGHT), { env: DUST });
+  it.each([1, 0.6])('slows an entry at open cruise to dust cruise within half a second at forceMul %s', (forceMul) => {
+    // A racer can enter at the medium's open cruise even if its thrust was cut just before the dust.
+    const { samples } = drift(moving(cruise), ticksIn(0.5), hold(RIGHT), { env: DUST, mods: { ...BASE, forceMul } });
 
-    expect(samples.at(-1)?.speed).toBeLessThanOrEqual(cruise * dustCruiseMul + 1e-6);
+    expect(samples.at(-1)?.speed).toBeLessThanOrEqual(driftCruise(DRIFT_TUNING.extra, forceMul, true) + 1e-6);
   });
 });
 

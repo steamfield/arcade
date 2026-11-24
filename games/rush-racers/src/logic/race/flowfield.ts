@@ -6,11 +6,12 @@
  * (`Medium.enterCost`), with `alongCost` for currents and winds; the progress field's cost is
  * uniform and medium-free. `unreachableStarts` is the level check every open-field medium runs.
  */
-import { cellAt, isRockLike, tileIndex } from '../level/query.ts';
+import { cellAt, cornerIsClear, isRockLike, NEIGHBOURS, tileIndex } from '../level/query.ts';
 import type { LevelProblem } from '../media/types.ts';
 import { length } from '../num.ts';
 import { type Box, type Cell, type GridSize, type Level, type ProgressField, TILE, type Vec } from '../types.ts';
 import { PriorityQueue } from './priority-queue.ts';
+import { wormholeLinks } from './wormhole-links.ts';
 
 /**
  * Cost multiplier for moving into a tile along `move` (-1, 0 or 1 per axis); Infinity means closed.
@@ -25,53 +26,54 @@ type QueuedTile = { cost: number; tx: number; ty: number };
 const STILL: Vec = { x: 0, y: 0 };
 const NOTHING_BROKEN: ReadonlySet<number> = new Set();
 
-/**
- * The 8 neighbour offsets, orthogonal first. Every walk over the grid visits them in this order,
- * so ties resolve the same way every run.
- */
-export const NEIGHBOURS: readonly Vec[] = [
-  { x: 1, y: 0 },
-  { x: -1, y: 0 },
-  { x: 0, y: 1 },
-  { x: 0, y: -1 },
-  { x: 1, y: 1 },
-  { x: 1, y: -1 },
-  { x: -1, y: 1 },
-  { x: -1, y: -1 },
-];
-
 /** Uniform cost with only rock (and bounce clouds, rock-like) closed, so places don't depend on terrain or broken coral. */
 const progressCost: EntryCost = (cell) => (isRockLike(cell) ? Number.POSITIVE_INFINITY : 1);
-
-/**
- * The corner rule shared by every walk over the grid: a diagonal step from `tile` by `offset` is
- * allowed only when both tiles beside it are open. Orthogonal steps always pass.
- */
-export function cornerIsClear(tile: Vec, offset: Vec, isOpen: (tx: number, ty: number) => boolean): boolean {
-  if (offset.x === 0 || offset.y === 0) return true;
-  return isOpen(tile.x + offset.x, tile.y) && isOpen(tile.x, tile.y + offset.y);
-}
 
 /**
  * The progress field for `level`. Coral counts as open whether broken or not, so the field never
  * needs rebuilding during a race.
  */
 export function buildProgressField(level: Level): ProgressField {
+  const links = wormholeLinks(level, (tile, move) => progressCost(cellAt(level, tile.x, tile.y), false, move, tile), 1);
   return {
     width: level.width,
     height: level.height,
-    distance: distancesToFinish(level, NOTHING_BROKEN, progressCost),
+    distance: distancesToFinish(level, NOTHING_BROKEN, progressCost, links),
   };
 }
 
-/** Cheapest cost from every tile to any finish tile, in tiles; Infinity where the finish is out of reach. */
-export function distancesToFinish(level: Level, broken: ReadonlySet<number>, cost: EntryCost): Float32Array {
+/**
+ * A forced jump the grid's neighbours don't show: a racer that enters tile `from` is carried to tile
+ * `to` for `cost` field units, as a cloud cannon fires it or a wormhole warps it. A medium passes its
+ * own links. Entering `from` is never a way past it, so its value is the link's alone.
+ */
+export interface NavLink {
+  from: Vec;
+  to: Vec;
+  cost: number;
+}
+
+/**
+ * Cheapest cost from every tile to any finish tile, in tiles; Infinity where the finish is out of reach.
+ * Each of `links` sets its `from` tile to `cost` more than its `to` tile, and its neighbours price
+ * entering it from that, so a link that carries a racer back makes its tile one to steer round. A
+ * link whose `from` tile is closed (Infinity to enter) is ignored. A `from` tile whose `to` can't reach
+ * the finish stays Infinity. Two links out of one tile keep the cheaper.
+ */
+export function distancesToFinish(
+  level: Level,
+  broken: ReadonlySet<number>,
+  cost: EntryCost,
+  links: readonly NavLink[] = [],
+): Float32Array {
   const entry = (tx: number, ty: number, move: Vec) =>
     cost(cellAt(level, tx, ty), broken.has(tileIndex(level, tx, ty)), move, { x: tx, y: ty });
   const isOpen = (tx: number, ty: number) => Number.isFinite(entry(tx, ty, STILL));
   // Searched in float64 so sums don't drift; stored as float32 like every field.
   const distance = new Float64Array(level.width * level.height).fill(Number.POSITIVE_INFINITY);
   const frontier = new PriorityQueue<QueuedTile>();
+  const linksInto = linksByTarget(level, links);
+  const linkStarts = new Set(links.map((link) => tileIndex(level, link.from.x, link.from.y)));
   for (let ty = 0; ty < level.height; ty++) {
     if (!isOpen(level.finishX, ty)) continue;
     distance[tileIndex(level, level.finishX, ty)] = 0;
@@ -81,6 +83,14 @@ export function distancesToFinish(level: Level, broken: ReadonlySet<number>, cos
   for (let next = frontier.pop(); next; next = frontier.pop()) {
     const { cost: settled, tx, ty } = next;
     if (settled > (distance[tileIndex(level, tx, ty)] ?? 0)) continue;
+    for (const link of linksInto.get(tileIndex(level, tx, ty)) ?? []) {
+      if (!isOpen(link.from.x, link.from.y)) continue;
+      const reached = settled + link.cost;
+      const fromIndex = tileIndex(level, link.from.x, link.from.y);
+      if (reached >= (distance[fromIndex] ?? 0)) continue;
+      distance[fromIndex] = reached;
+      frontier.push(reached, { cost: reached, tx: link.from.x, ty: link.from.y });
+    }
     for (const offset of NEIGHBOURS) {
       // The search runs backwards: a racer on the neighbour moves into this tile.
       const fromX = tx + offset.x;
@@ -90,12 +100,26 @@ export function distancesToFinish(level: Level, broken: ReadonlySet<number>, cos
       const move = { x: -offset.x, y: -offset.y };
       const reached = settled + length(move.x, move.y) * entry(tx, ty, move);
       const fromIndex = tileIndex(level, fromX, fromY);
+      // A racer on a link's start is carried off, so the tile beyond is no way on from there.
+      if (linkStarts.has(fromIndex)) continue;
       if (reached >= (distance[fromIndex] ?? 0)) continue;
       distance[fromIndex] = reached;
       frontier.push(reached, { cost: reached, tx: fromX, ty: fromY });
     }
   }
   return Float32Array.from(distance);
+}
+
+/** `links` grouped by the index of their `to` tile, each group in the order given, for the search to relax. */
+function linksByTarget(level: Level, links: readonly NavLink[]): Map<number, NavLink[]> {
+  const byTarget = new Map<number, NavLink[]>();
+  for (const link of links) {
+    const index = tileIndex(level, link.to.x, link.to.y);
+    const group = byTarget.get(index);
+    if (group) group.push(link);
+    else byTarget.set(index, [link]);
+  }
+  return byTarget;
 }
 
 /**

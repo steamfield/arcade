@@ -11,6 +11,7 @@
  */
 import { itemAggressionMul, mayAttack } from '../difficulty-level.ts';
 import { pickSquidTarget } from '../hazards/squid-target.ts';
+import { tileOf } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { length } from '../num.ts';
 import { shotRules, shotStyleOf } from '../powerups/cannonball/index.ts';
@@ -20,7 +21,7 @@ import { twistRules, twistStyleOf } from '../powerups/twists/index.ts';
 import { canFire } from '../powerups/use.ts';
 import { activeRacers, centreOf, isHuman } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
-import { hasClearSweep, tileOf } from './steer.ts';
+import { hasClearSweep } from './steer.ts';
 
 /** How near a use has to be before a rival spends an item on it. */
 export const ITEM_USE = {

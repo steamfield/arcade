@@ -1,8 +1,9 @@
 /**
  * Maps one tick's drained events to effects: which burst plays where (kick puffs, coral debris,
  * pickups, a squid fizzling, a racer shaking one off, a decoy's pop, the splash of a racer breaching
- * the surface or falling back in, a puff under a racer springing off a bounce cloud, and sparkles
- * where the local racer passes a boost ring), and how much screen shake the local racer's own
+ * the surface or falling back in, a puff under a racer springing off a bounce cloud, sparkles
+ * where the local racer passes a boost ring and at both mouths of a wormhole any racer warps
+ * through, and splinters along a crumbling branch as it falls), and how much screen shake the local racer's own
  * knocks and a lightning strike on screen add (the slot the screen follows; see `local-racer.ts`). A
  * strike is on screen by the same measure the lightning view uses for its flash (`view/set-pieces/storm-reach.ts`). Positions come from the event and the world as it stands
  * after the tick. Shake is only ever asked for through `shake`, which the caller leaves out
@@ -101,6 +102,20 @@ export function createEventEffects(
           case 'lightning.struck': {
             const zone = world.level.lightning[event.zone];
             if (zone && zoneSide(zone, screen()) === 'on screen') strikeOnScreen = true;
+            break;
+          }
+          case 'wormhole.warped': {
+            const hole = world.level.wormholes[event.hole];
+            if (!hole) break;
+            for (const [tx, ty] of [hole.a, hole.b]) bursts.pearlSparkle(tileCentre(tx), tileCentre(ty));
+            break;
+          }
+          case 'crumble.fell': {
+            const branch = world.level.crumbles[event.crumble];
+            if (!branch) break;
+            for (let tx = branch.col; tx < branch.col + branch.length; tx++) {
+              bursts.coralDebris(tileCentre(tx), tileCentre(branch.row));
+            }
             break;
           }
           case 'pearl.collected': {

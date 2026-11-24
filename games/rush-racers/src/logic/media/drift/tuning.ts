@@ -16,9 +16,10 @@ import type { KickRules, MediumEffects, MediumTuning } from '../types.ts';
  * lasts a second or two and no longer; `idleBrake` (px/s²), added to drag while the stick is idle; `bounce`, the share of the
  * speed into a wall that comes back; `bounceMinSpeed` (px/s), the slowest impact that emits
  * `racer.rebounded`; `dustCruiseMul`, cruise's multiplier in nebula dust, and `dustDrag` (px/s²),
- * added to drag there; `windForce` (px/s²), a solar wind cell's push; `wellPull`, the multiplier on
- * every gravity well's pull; `respawnTicks`, how long a racer a black hole swallowed is out, and
- * `respawnInvulnTicks`, how long it can't be hit once it is back.
+ * added to drag there. `dustThrustShare` limits how much thrust drag may take below dust cruise
+ * when the stick points along the motion or the racer starts from rest. `windForce` (px/s²) is a
+ * solar wind cell's push. `wellPull` multiplies every gravity well's pull. `respawnTicks` is how long a racer
+ * a black hole swallowed is out, and `respawnInvulnTicks` is how long it can't be hit once it is back.
  */
 export const DRIFT_TUNING = {
   base: { forceMul: 1, kickMul: 1, kickCooldownTicks: 36, dragMul: 1 },
@@ -34,6 +35,7 @@ export const DRIFT_TUNING = {
     bounceMinSpeed: 40,
     dustCruiseMul: 0.6,
     dustDrag: 150,
+    dustThrustShare: 0.75,
     windForce: 200,
     wellPull: 1,
     respawnTicks: 60,

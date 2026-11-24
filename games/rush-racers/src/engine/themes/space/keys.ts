@@ -32,6 +32,13 @@ export const SpaceTile = {
   ledge: 2,
   /** Asteroid rock under rock or ice: no rim, a scatter of lit specks instead. */
   rockBuried: 3,
+  gasGiant: 4,
+  debrisShield: 5,
+  archCrown: 6,
+  archShoulderLeft: 7,
+  archShoulderRight: 8,
+  archPillarLeft: 9,
+  archPillarRight: 10,
 } as const;
 
 /** Space animation keys: the dust's sway and the four wind flows. */

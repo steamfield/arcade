@@ -5,6 +5,7 @@
 import { TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../level/parse.ts';
+import { tileIndex } from '../level/query.ts';
 import { type Body, type Level, type MoveRules, RACER_SIZE, TILE } from '../types.ts';
 import { moveBody } from './move.ts';
 
@@ -23,7 +24,7 @@ const SHELF: Level = parseLevel({
   `,
 });
 
-const RULES: MoveRules = { pitBelow: false, solidTiles: new Set() };
+const RULES: MoveRules = { pitBelow: false, solidTiles: new Set(), openLedges: new Set() };
 const LEDGE_TOP = 3 * TILE;
 
 const body = (x: number, y: number, vx: number, vy: number): Body => ({
@@ -85,6 +86,17 @@ describe('a ledge', () => {
     });
 
     expect(standing.y + standing.h).toBeCloseTo(LEDGE_TOP, 6);
+  });
+
+  it('lets a body fall through an open ledge while the other ledge tiles still hold', () => {
+    const rules = { ...RULES, openLedges: new Set([tileIndex(SHELF, 4, 3)]) };
+    const aboveOpen = body(66, LEDGE_TOP - RACER_SIZE.height, 0, 120);
+    const aboveSolid = body(82, LEDGE_TOP - RACER_SIZE.height, 0, 120);
+
+    expect(moveBody(aboveOpen, SHELF, new Set(), TICK_DT, rules).floor).toBe(false);
+    expect(aboveOpen.y + aboveOpen.h).toBeGreaterThan(LEDGE_TOP);
+    expect(moveBody(aboveSolid, SHELF, new Set(), TICK_DT, rules).floor).toBe(true);
+    expect(aboveSolid.y + aboveSolid.h).toBeCloseTo(LEDGE_TOP);
   });
 
   it('never pushes a body that overlaps it out sideways or down', () => {

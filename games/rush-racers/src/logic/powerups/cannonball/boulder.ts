@@ -11,7 +11,7 @@
 import { mayAttack } from '../../difficulty-level.ts';
 import { overlaps, squareAt } from '../../hazards/boxes.ts';
 import { applyHit } from '../../hazards/hits.ts';
-import { blocksBody, bodyTiles, cellAt, isLedge, isSolid } from '../../level/query.ts';
+import { blocksBody, bodyTiles, cellAt, isSolid, ledgeHolds } from '../../level/query.ts';
 import { breakCoral } from '../../race/coral.ts';
 import { moveBody, moveRulesFor } from '../../race/move.ts';
 import { centreOf, hitbox } from '../../racers.ts';
@@ -173,6 +173,7 @@ interface RollPath {
  */
 function rollPath(world: World, racer: Racer): RollPath {
   const { level, broken } = world;
+  const rules = moveRulesFor(world);
   const row = feetRow(racer);
   const start = Math.floor(centreOf(racer).x / TILE);
   const cols: number[] = [];
@@ -180,7 +181,7 @@ function rollPath(world: World, racer: Racer): RollPath {
     const col = start + racer.facing * step;
     // Coral that is still solid hasn't broken yet.
     if (isSolid(level, broken, col, row)) return { row, cols, coralAhead: cellAt(level, col, row) === 'coral' };
-    if (!isSolid(level, broken, col, row + 1) && !isLedge(level, col, row + 1)) break;
+    if (!isSolid(level, broken, col, row + 1) && !ledgeHolds(level, rules, col, row + 1)) break;
     cols.push(col);
   }
   return { row, cols, coralAhead: false };

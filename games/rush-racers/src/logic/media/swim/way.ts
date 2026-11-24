@@ -8,6 +8,7 @@ import { cellAt, isSolid } from '../../level/query.ts';
 import { fieldAt } from '../../race/flowfield.ts';
 import type { Box, Vec, World } from '../../types.ts';
 import { swimNav } from './data.ts';
+import { swimStepPrice } from './nav.ts';
 
 /**
  * Unit aim from `body` toward the tile `lookaheadTiles` steps down the steer field; zero at the finish.
@@ -16,7 +17,16 @@ import { swimNav } from './data.ts';
  */
 export function swimAimFrom(world: World, body: Box, lookaheadTiles: number): Vec {
   const nav = swimNav(world.nav);
-  return steerDirection(nav.steer, nav, world.level, world.broken, body, lookaheadTiles);
+  return steerDirection(
+    nav.steer,
+    nav,
+    world.level,
+    world.broken,
+    body,
+    lookaheadTiles,
+    false,
+    swimStepPrice(world, 'steer'),
+  );
 }
 
 /**
@@ -26,7 +36,14 @@ export function swimAimFrom(world: World, body: Box, lookaheadTiles: number): Ve
  */
 export function swimNextTile(world: World, tile: Vec): Vec | null {
   const nav = swimNav(world.nav);
-  const next = downhillPath(nav.steer, nav, openTiles(world.level, world.broken, false), tile, 1)[0];
+  const next = downhillPath(
+    nav.steer,
+    nav,
+    openTiles(world.level, world.broken, false),
+    tile,
+    1,
+    swimStepPrice(world, 'steer'),
+  )[0];
   return next ? { x: next.x - tile.x, y: next.y - tile.y } : null;
 }
 
@@ -48,6 +65,6 @@ export function swimDistanceAt(world: World, tile: Vec): number {
 export function coralOnSmashPath(world: World, tile: Vec, steps: number): boolean {
   const { level, broken } = world;
   const nav = swimNav(world.nav);
-  const path = downhillPath(nav.smash, nav, openTiles(level, broken, true), tile, steps);
+  const path = downhillPath(nav.smash, nav, openTiles(level, broken, true), tile, steps, swimStepPrice(world, 'smash'));
   return path.some((step) => cellAt(level, step.x, step.y) === 'coral' && isSolid(level, broken, step.x, step.y));
 }

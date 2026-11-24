@@ -3,7 +3,7 @@
  * they ran into (`MoveContacts`), and the rules a world's medium moves bodies by (`moveRulesFor`):
  * extra solid tiles, an open floor below the last row, and ledges that hold only from above.
  */
-import { blocksBody, bodyTiles, isLedge, overlapsTile, tileIndex } from '../level/query.ts';
+import { blocksBody, bodyTiles, ledgeHolds, overlapsTile, tileIndex } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { type Body, type Level, type MoveContacts, type MoveRules, TILE, type World } from '../types.ts';
 
@@ -23,7 +23,7 @@ const MAX_SUBSTEPS = 64;
 const LEDGE_TOLERANCE = 1e-6;
 
 /** The rules of a medium with no platformer seams: a solid bottom edge, no extra solid tiles. */
-export const NO_MOVE_RULES: MoveRules = { pitBelow: false, solidTiles: new Set() };
+export const NO_MOVE_RULES: MoveRules = { pitBelow: false, solidTiles: new Set(), openLedges: new Set() };
 
 /** One `moveBody` call's grid and rules, and what the body has run into so far this tick. */
 interface TileMove {
@@ -140,7 +140,7 @@ function landOnFloor(body: Body, move: TileMove): void {
 /** Whether the tile stops a body coming down onto it: anything blocking, or a ledge it was above. */
 function holdsFromAbove(move: TileMove, tx: number, ty: number): boolean {
   if (blocksBody(move.level, move.broken, move.rules, tx, ty)) return true;
-  return isLedge(move.level, tx, ty) && move.bottomAtStart <= ty * TILE + LEDGE_TOLERANCE;
+  return ledgeHolds(move.level, move.rules, tx, ty) && move.bottomAtStart <= ty * TILE + LEDGE_TOLERANCE;
 }
 
 /** Stops a rising body under the row over it, listing every blocking tile its head spans there. */
@@ -168,12 +168,12 @@ function bumpCeiling(body: Body, move: TileMove): void {
  */
 export function moveRulesFor(world: World): MoveRules {
   const { pitBelow, solidClams } = mediumOf(world).effects;
-  if (!pitBelow && !solidClams) return NO_MOVE_RULES;
+  if (!pitBelow && !solidClams && world.fallen.size === 0) return NO_MOVE_RULES;
   const solidTiles = new Set<number>();
   if (solidClams) {
     for (const clam of world.clams) solidTiles.add(tileIndex(world.level, clam.tile.x, clam.tile.y));
   }
-  return { pitBelow, solidTiles };
+  return { pitBelow, solidTiles, openLedges: world.fallen };
 }
 
 /** Length two spans share along one axis; zero when they touch, negative when there's a gap. */

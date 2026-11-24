@@ -6,6 +6,7 @@
  * upper left.
  */
 import { Frame } from '../../../art/keys.ts';
+import { mirrorRows } from '../../../art/rows.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { SpaceTex, type SpaceTexKey } from '../keys.ts';
 import { SpaceTerrainPalette } from '../palettes.ts';
@@ -89,6 +90,71 @@ const STRUT_ROWS = [
   ...Array.from({ length: 13 }, () => '................'),
 ];
 
+/** Jet streams join at either side of the tile, with thinner filaments between the broad bands. */
+const GAS_GIANT_ROWS = [
+  '0000000000000000',
+  '0000010000000000',
+  '1111111111111111',
+  '2222222222222222',
+  '2222223333222222',
+  '3333333333333333',
+  '2222222222222222',
+  '2221111111222222',
+  '1111111111111111',
+  '1111111111111111',
+  '1122221111111111',
+  '2222222222222222',
+  '1111111111111111',
+  '0000000000000000',
+  '0000000111000000',
+  '0000000000000000',
+];
+
+/** Ribbed plating marks the wall that shields the high road from the asteroid sweeps. */
+const DEBRIS_SHIELD_ROWS = [
+  '2222222222222222',
+  '1111111111111110',
+  '1011111111111010',
+  '1111111111111110',
+  '1113111311131110',
+  '1131113111311110',
+  '1311131113111110',
+  '1111111111111110',
+  '1111111111111110',
+  '1111111111111110',
+  '1111111111111110',
+  '1011111111111010',
+  '1111111111111110',
+  '2222222222222222',
+  '0000000000000000',
+  '1111111111111111',
+];
+
+/** A three-tile arch shelters each ring. The crown and shoulders join the pillars at the seams. */
+const EMPTY_ROW = '................';
+const ARCH_CROWN_ROWS = [
+  ...Array<string>(7).fill(EMPTY_ROW),
+  '1111111111111111',
+  '2222222222222222',
+  '2223332222333222',
+  '1112221111222111',
+  '0000000000000000',
+  ...Array<string>(4).fill(EMPTY_ROW),
+];
+const ARCH_SHOULDER_ROWS = [
+  ...Array<string>(7).fill(EMPTY_ROW),
+  '.............111',
+  '...........11222',
+  '..........122222',
+  '.........1222111',
+  '........12221000',
+  '.......12210....',
+  '.......1210.....',
+  '......1210......',
+  '......1210......',
+];
+const ARCH_PILLAR_ROWS = Array.from({ length: 16 }, (_, row) => (row === 3 ? '......1310......' : '......1210......'));
+
 /** Ice chips: a few pale shards with dark edges. */
 const ICE_CHIP_ROWS = ['..22....', '.2210...', '.110..2.', '..0..221', '.....10.', '2.......', '21..22..', '.0..10..'];
 
@@ -115,7 +181,7 @@ const GATE_ROWS = [
   '..001111222200..',
 ];
 
-/** Terrain sheets. The tileset frames sit in `SpaceTile` order: rock, ice, the strut, then buried rock. */
+/** Terrain sheets, with tileset frames in `SpaceTile` order. */
 export const TERRAIN_SHEETS: readonly ArtSheet<SpaceTexKey>[] = [
   {
     key: SpaceTex.tiles,
@@ -124,6 +190,13 @@ export const TERRAIN_SHEETS: readonly ArtSheet<SpaceTexKey>[] = [
       { name: 'coral', palette: SpaceTerrainPalette.crackedIce, rows: ICE_ROWS },
       { name: 'ledge', palette: SpaceTerrainPalette.branch, rows: STRUT_ROWS },
       { name: 'rockBuried', palette: SpaceTerrainPalette.earth, rows: BURIED_ASTEROID_ROWS },
+      { name: 'gasGiant', palette: SpaceTerrainPalette.gasGiant, rows: GAS_GIANT_ROWS },
+      { name: 'debrisShield', palette: SpaceTerrainPalette.debrisShield, rows: DEBRIS_SHIELD_ROWS },
+      { name: 'archCrown', palette: SpaceTerrainPalette.wormwayArch, rows: ARCH_CROWN_ROWS },
+      { name: 'archShoulderLeft', palette: SpaceTerrainPalette.wormwayArch, rows: ARCH_SHOULDER_ROWS },
+      { name: 'archShoulderRight', palette: SpaceTerrainPalette.wormwayArch, rows: mirrorRows(ARCH_SHOULDER_ROWS) },
+      { name: 'archPillarLeft', palette: SpaceTerrainPalette.wormwayArch, rows: ARCH_PILLAR_ROWS },
+      { name: 'archPillarRight', palette: SpaceTerrainPalette.wormwayArch, rows: mirrorRows(ARCH_PILLAR_ROWS) },
     ],
   },
   sheet(SpaceTex.iceDebris, SpaceTerrainPalette.crackedIce, { [Frame.a]: ICE_CHIP_ROWS }),

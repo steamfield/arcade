@@ -7,7 +7,7 @@
  * which side the point lies on and whether the way carries on past it, so the pilot flies through a
  * point on a straight rather than stopping on it. The next read comes `reactionTicks` later.
  */
-import { tileCentre, tileOf } from '../../ai/steer.ts';
+import { tileCentre, tileOf } from '../../level/query.ts';
 import { centreOf } from '../../racers.ts';
 import { type Racer, TILE, type Vec, type World } from '../../types.ts';
 import type { AiDraws } from '../types.ts';
@@ -16,7 +16,7 @@ import { choosesRam } from './dashes.ts';
 import { ringAimPoint, ringToFly } from './ring-line.ts';
 import type { FlightPilotNumbers } from './stick.ts';
 import { stormWait } from './storm.ts';
-import { flightCornerAhead, flightRouteDistanceAt, flightWayAhead } from './way.ts';
+import { flightCornerAhead, flightRouteDistanceAt, flightWayAhead, isCannonTile } from './way.ts';
 import type { FlightPilot, FlightRoute } from './way-data.ts';
 
 /** Most tiles along the way the pilot flies toward (it stops at a turn). */
@@ -49,9 +49,13 @@ export function replan(
   const kept = lost || route !== memory.route ? null : furtherAlong(world, route, memory.waypoint, ahead);
   memory.route = route;
   memory.waypoint = kept ?? ahead;
-  const setPiece = setPiecePoint(world, racer, memory, numbers, tile, draws.side);
+  const cannon = isCannonTile(world, memory.waypoint);
+  if (cannon) memory.ring = null;
+  const setPiece = cannon
+    ? tileCentre(memory.waypoint)
+    : setPiecePoint(world, racer, memory, numbers, tile, draws.side);
   const point = setPiece ?? tileCentre(memory.waypoint);
-  const jitter = (draws.wobble * 2 - 1) * racer.profile.wobble * WOBBLE_TILES * TILE;
+  const jitter = cannon ? 0 : (draws.wobble * 2 - 1) * racer.profile.wobble * WOBBLE_TILES * TILE;
   memory.target = { x: point.x + jitter * WOBBLE_REACH_SHARE, y: point.y + jitter };
   memory.stormHold = stormWait(world, racer, route, tile, numbers);
   if (memory.stormHold) memory.target.x = memory.stormHold.x;

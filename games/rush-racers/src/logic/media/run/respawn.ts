@@ -8,9 +8,10 @@
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../../events.ts';
-import { blocksBody, bodyTiles, cellAt, isLedge } from '../../level/query.ts';
+import { blocksBody, bodyTiles, cellAt, ledgeHolds } from '../../level/query.ts';
 import { moveRulesFor } from '../../race/move.ts';
-import { type Box, type Level, type MoveContacts, type Racer, TILE, type Vec, type World } from '../../types.ts';
+import { activeCannonRide } from '../../setpieces/cannons.ts';
+import { type Box, type MoveContacts, type MoveRules, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { fallOut, isBelowLevel, respawnAt, waitOut } from '../fall-out.ts';
 import { effectiveTuning } from '../index.ts';
 import { type RunMotion, runMotion } from './data.ts';
@@ -27,16 +28,17 @@ export function afterRunMove(world: World, racer: Racer, contacts: MoveContacts,
   if (racer.status.fallen > 0) {
     if (waitOut(racer)) {
       respawnAt(racer, respawnSpot(world, racer.body, motion), extra.respawnInvulnTicks, events);
-      resetAfterRespawn(motion);
+      clearJumpState(motion);
     }
     return;
   }
+  if (activeCannonRide(world, racer.id)) clearJumpState(motion);
   const { body } = racer;
   motion.grounded = contacts.floor;
   if (contacts.ceiling && body.vy < 0) body.vy = 0;
   if (motion.grounded) {
     motion.airDashUsed = false;
-    if (hasSafeFooting(world, body)) motion.lastSafe = { x: body.x, y: body.y };
+    if (hasSafeFooting(world, body, moveRulesFor(world))) motion.lastSafe = { x: body.x, y: body.y };
   }
   if (isBelowLevel(world.level, body)) {
     fallOut(racer, events, extra.respawnTicks);
@@ -46,18 +48,16 @@ export function afterRunMove(world: World, racer: Racer, contacts: MoveContacts,
 
 /**
  * True when rock or a ledge lies under both bottom corners of `body`, so a runner put back here
- * stands on it and never on the lip of a pit. Neither ever breaks. Cracked stone (coral) doesn't
- * count, since a ram or a Puffer can break it for good, and neither does a crate: its tile is open
- * in the level, solid only to `moveBody` (`moveRulesFor`).
+ * has support away from the lip of a pit. Cracked stone, crates and crumbling branches may be
+ * gone by the time the runner respawns.
  */
-function hasSafeFooting(world: World, body: Box): boolean {
+function hasSafeFooting({ level }: World, body: Box, rules: MoveRules): boolean {
   const { left, right, bottom } = bodyTiles(body);
   const row = bottom + 1;
-  return [left, right].every((column) => isFirmGround(world.level, column, row));
-}
-
-function isFirmGround(level: Level, tx: number, ty: number): boolean {
-  return cellAt(level, tx, ty) === 'rock' || isLedge(level, tx, ty);
+  if (level.crumbles.some((branch) => branch.row === row && left < branch.col + branch.length && right >= branch.col)) {
+    return false;
+  }
+  return [left, right].every((col) => cellAt(level, col, row) === 'rock' || ledgeHolds(level, rules, col, row));
 }
 
 /** Where a fallen runner comes back: its last safe spot, backed off from the edge it fell from. */
@@ -68,8 +68,8 @@ function respawnSpot(world: World, body: Box, motion: RunMotion): Vec {
   return { x: runUpX(world, body, motion.lastSafe, back), y: motion.lastSafe.y };
 }
 
-/** A runner back in play: its jump timers cleared. */
-function resetAfterRespawn(motion: RunMotion): void {
+/** A fall or cannon ride ends the jump and clears any press or coyote time left over. */
+function clearJumpState(motion: RunMotion): void {
   motion.coyote = 0;
   motion.buffer = 0;
   motion.jumping = false;
@@ -83,7 +83,7 @@ function runUpX(world: World, body: Box, safe: Vec, back: number): number {
   const rules = moveRulesFor(world);
   const clearAt = (x: number) => {
     const box = { x, y: safe.y, w: body.w, h: body.h };
-    if (!hasSafeFooting(world, box)) return false;
+    if (!hasSafeFooting(world, box, rules)) return false;
     const { left, right, top, bottom } = bodyTiles(box);
     for (let ty = top; ty <= bottom; ty++) {
       for (let tx = left; tx <= right; tx++) if (blocksBody(world.level, world.broken, rules, tx, ty)) return false;
