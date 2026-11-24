@@ -11,15 +11,16 @@ const press = (action: 'fire' | 'down') => [tap(action), wait(3)];
 
 /**
  * `?course=thunderhead-pass` makes Thunderhead Pass the course in force, so How to Play teaches its
- * medium, flight, in its world's words. From the title, How to Play is one row below Race; after the
- * screen's 20 arming ticks, A walks one page forward at a time to the last. The game fixture fails
- * the run on any console or game error while a page builds or shows.
+ * medium, flight, in its world's words. From the title, How to Play is two rows below Race (past
+ * Friends); after the screen's 20 arming ticks, A walks one page forward at a time to the last. The
+ * game fixture fails the run on any console or game error while a page builds or shows.
  */
 export default scenario({
   description: "How to Play on Thunderhead Pass shows Cloudreach's flight pages, every one of them",
   start: { query: { course: 'thunderhead-pass' } },
   input: [
     wait(25),
+    ...press('down'),
     ...press('down'),
     tap('fire'),
     wait(25),
