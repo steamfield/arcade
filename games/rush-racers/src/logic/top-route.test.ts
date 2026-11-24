@@ -122,10 +122,12 @@ describe('TOP_ROUTE on the default seed', () => {
   it('rides all four Maelstrom pools in course order', () => {
     const events = new EventLog<GameEvent>(10_000);
     replayTopRoute(events);
+    const { events: logged, dropped } = events.drain(0);
 
+    // The log is a ring buffer; a dropped early event would read as a pool the route skipped.
+    expect(dropped).toBe(0);
     expect(
-      events
-        .all()
+      logged
         .flatMap((event) => (event.type === 'whirlpool.caught' && event.racer === 'player' ? [event.pool] : [])),
     ).toEqual([0, 1, 2, 3]);
   });

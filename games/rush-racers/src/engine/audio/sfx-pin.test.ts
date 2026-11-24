@@ -97,7 +97,8 @@ describe('the sound of a race on Sunlit Shallows', () => {
     // Re-pinned when Sunlit gained geyser vents: they move every racer, so the counts shift and one
     // of the two Hard expert races now places second. This harness has no race world, so the vents'
     // own rumble and rush stay silent here (`setpiece-cues.test.ts` covers them).
-    // Re-pinned when Sunlit Shallows gained the Maelstrom, adding pearls and changing how the races play out.
+    // Re-pinned when Sunlit Shallows gained the Maelstrom, adding pearls and changing how the races play
+    // out: all three races now win, so there is no `song:lose`.
     expect(counts).toEqual({
       'sfx:bump': 35,
       'sfx:coral': 2,

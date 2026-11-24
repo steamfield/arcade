@@ -37,6 +37,7 @@ export const OceanTile = {
   ledge: 6,
   /** A bounce cloud, for sky-test until the sky theme has its own. */
   bounce: 7,
+  /** The Maelstrom's giant shell landmark, drawn as a 2x2 block of these quarters. */
   shellTopLeft: 8,
   shellTopRight: 9,
   shellBottomLeft: 10,
