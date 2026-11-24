@@ -6,6 +6,7 @@ import type { Course } from '../logic/types.ts';
 import { createWorld, playerOf } from '../logic/world.ts';
 import { CameraRig } from './camera-rig.ts';
 import { buildTrackFrames } from './track-geometry.ts';
+import { buildTerrainGrid, terrainPointAt } from './track-terrain.ts';
 
 function flatCourse(path: Course['path']): Course {
   return { ...THORNWOOD_TRAIL, path, hills: [], features: [], startS: 0, finishS: 10 };
@@ -71,6 +72,10 @@ describe('track frames', () => {
     expect(track.frameAt(track.length + 10)).toEqual(track.frameAt(track.length));
   });
 
+  it('includes the invalid spacing in its error', () => {
+    expect(() => buildTrackFrames(THORNWOOD_TRAIL, 0)).toThrow(/got 0/);
+  });
+
   it('keeps the height equal to the logic ground on and between hill knots', () => {
     const track = buildTrackFrames(THORNWOOD_TRAIL, 7);
     for (const s of [0, 150, 175.3, 260.2, 609.4, 860, 1000.8, 1140]) {
@@ -85,6 +90,39 @@ describe('track frames', () => {
     expect(point.x - x).toBeCloseTo(-2 * tz, 9);
     expect(point.z - z).toBeCloseTo(2 * tx, 9);
     expect(point.y).toBe(12);
+  });
+});
+
+describe('verge placement', () => {
+  const course = THORNWOOD_TRAIL;
+  const grid = buildTerrainGrid(course, buildTrackFrames(course));
+
+  it('matches the mesh vertex heights at row and side breakpoints', () => {
+    for (const [s, d, riseScale] of [
+      [150, -33, 1],
+      [151, 18, 11.4 / 14],
+      [175, 9, 2.4 / 14],
+    ] as const) {
+      const height = groundY(course, s) + riseScale * (1.25 + 0.8 * Math.sin(s * 0.12 + d * 0.31));
+      expect(terrainPointAt(grid, s, d).y).toBeCloseTo(height, 10);
+    }
+  });
+
+  it('interpolates within the cell and follows the diagonal shared by the mesh triangles', () => {
+    const a = terrainPointAt(grid, 74, -33).y;
+    const b = terrainPointAt(grid, 74, -18).y;
+    const c = terrainPointAt(grid, 75, -18).y;
+    const d = terrainPointAt(grid, 75, -33).y;
+    const diagonal = terrainPointAt(grid, 74.5, -25.5).y;
+    expect(diagonal).toBeCloseTo((a + c) / 2, 10);
+    for (const [s, offset] of [
+      [74.2, -23.7],
+      [74.8, -29],
+    ] as const) {
+      const height = terrainPointAt(grid, s, offset).y;
+      expect(height).toBeGreaterThan(Math.min(a, b, c, d));
+      expect(height).toBeLessThan(Math.max(a, b, c, d));
+    }
   });
 });
 

@@ -20,6 +20,23 @@ import { Runtime } from './runtime.ts';
 import { buildTrackFrames } from './track-geometry.ts';
 import { createTrackView } from './track-view.ts';
 
+function reconcileRacerViews(scene: THREE.Scene, views: Map<RacerId, RacerView>, racers: World['racers']): void {
+  for (const [id, view] of views) {
+    if (racers.some((racer) => racer.id === id && racer.character === view.character)) {
+      view.resetPose();
+    } else {
+      view.dispose();
+      views.delete(id);
+    }
+  }
+  for (const racer of racers) {
+    if (views.has(racer.id)) continue;
+    const view = new RacerView(racer.character);
+    views.set(racer.id, view);
+    scene.add(view.root);
+  }
+}
+
 /** Starts the game in `ctx.container` and returns the handle the shell drives. */
 export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): Promise<GameHandle> {
   let syncViews = () => {};
@@ -81,13 +98,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     const world = runtime.world;
     let snap = world !== drawnWorld;
     if (snap) {
-      for (const view of racers.values()) view.dispose();
-      racers.clear();
-      for (const racer of world.racers) {
-        const view = new RacerView(racer.character);
-        racers.set(racer.id, view);
-        scene.add(view.root);
-      }
+      reconcileRacerViews(scene, racers, world.racers);
       drawnWorld = world;
       goUntil = -1;
       newBest = false;

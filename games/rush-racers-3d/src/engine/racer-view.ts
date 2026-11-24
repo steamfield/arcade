@@ -40,66 +40,91 @@ function shadowTexture(): THREE.DataTexture {
   return texture;
 }
 
-/** One view owns the runner and its blob shadow, so a restart can dispose them together. */
+const SHADOW_MAP = shadowTexture();
+const SHADOW_GEOMETRY = new THREE.PlaneGeometry(2, 1.65).rotateX(-Math.PI / 2);
+
+interface RacerGeometry {
+  body: THREE.BufferGeometry;
+  leg: THREE.BufferGeometry;
+}
+
+const geometries = new Map<CharacterId, RacerGeometry>();
+
+function buildRacerGeometry(character: CharacterId): RacerGeometry {
+  const fur = new THREE.Color(FUR[character]);
+  const bib = new THREE.Color(0xffe2af);
+  const dark = new THREE.Color(0x332627);
+  const sphere = new THREE.SphereGeometry(1, 14, 9);
+  const pieces: THREE.BufferGeometry[] = [];
+  const part = (color: THREE.Color, x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
+    const geometry = sphere.clone().scale(sx, sy, sz).translate(x, y, z);
+    tint(geometry, color);
+    pieces.push(geometry);
+  };
+  part(fur, 0, 0.86, 0, 0.51, 0.6, 0.4); // Body
+  part(bib, 0, 0.89, -0.31, 0.33, 0.43, 0.16);
+  part(fur, 0, 1.43, -0.14, 0.48, 0.4, 0.42); // Head
+  part(bib, 0, 1.32, -0.49, 0.27, 0.18, 0.18);
+  part(dark, 0, 1.39, -0.64, 0.1, 0.075, 0.065);
+  part(bib, 0, 0.73, 0.43, 0.26, 0.23, 0.27); // Tail
+  for (const side of [-1, 1]) {
+    part(fur, side * 0.34, 1.78, -0.13, 0.22, 0.27, 0.17);
+    part(bib, side * 0.35, 1.81, -0.24, 0.135, 0.17, 0.088);
+    part(dark, side * 0.27, 1.51, -0.48, 0.065, 0.085, 0.05);
+  }
+  const body = mergeGeometries(pieces);
+  for (const piece of pieces) piece.dispose();
+  const leg = sphere.scale(0.17, 0.3, 0.19).translate(0, -0.22, -0.05);
+  tint(leg, fur.clone().multiplyScalar(0.78));
+  return { body, leg };
+}
+
+function geometryFor(character: CharacterId): RacerGeometry {
+  const geometry = geometries.get(character) ?? buildRacerGeometry(character);
+  geometries.set(character, geometry);
+  return geometry;
+}
+
+/** A posed runner and blob shadow with view-owned materials and shared geometry. */
 export class RacerView {
   readonly root = new THREE.Group();
+  readonly character: CharacterId;
   private readonly runner = new THREE.Group();
   private readonly pose = new THREE.Group();
   private readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true });
   private readonly motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   private readonly frame: TrackFrame = { x: 0, y: 0, z: 0, tx: 0, tz: 0, rx: 0, rz: 0 };
-  private readonly body: THREE.BufferGeometry;
-  private readonly leg: THREE.BufferGeometry;
   private readonly legs: THREE.Mesh[];
-  private readonly shadow: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
-  private readonly shadowMap = shadowTexture();
+  private readonly shadow = new THREE.Mesh(
+    SHADOW_GEOMETRY,
+    new THREE.MeshBasicMaterial({ map: SHADOW_MAP, transparent: true, depthWrite: false }),
+  );
   private stride = 0;
 
   constructor(character: CharacterId) {
-    const fur = new THREE.Color(FUR[character]);
-    const bib = new THREE.Color(0xffe2af);
-    const dark = new THREE.Color(0x332627);
-    const sphere = new THREE.SphereGeometry(1, 14, 9);
-    const pieces: THREE.BufferGeometry[] = [];
-    const part = (color: THREE.Color, x: number, y: number, z: number, sx: number, sy: number, sz: number) => {
-      const geometry = sphere.clone().scale(sx, sy, sz).translate(x, y, z);
-      tint(geometry, color);
-      pieces.push(geometry);
-    };
-    part(fur, 0, 0.86, 0, 0.51, 0.6, 0.4); // Body
-    part(bib, 0, 0.89, -0.31, 0.33, 0.43, 0.16);
-    part(fur, 0, 1.43, -0.14, 0.48, 0.4, 0.42); // Head
-    part(bib, 0, 1.32, -0.49, 0.27, 0.18, 0.18);
-    part(dark, 0, 1.39, -0.64, 0.1, 0.075, 0.065);
-    part(bib, 0, 0.73, 0.43, 0.26, 0.23, 0.27); // Tail
-    for (const side of [-1, 1]) {
-      part(fur, side * 0.34, 1.78, -0.13, 0.22, 0.27, 0.17);
-      part(bib, side * 0.35, 1.81, -0.24, 0.135, 0.17, 0.088);
-      part(dark, side * 0.27, 1.51, -0.48, 0.065, 0.085, 0.05);
-    }
-    this.body = mergeGeometries(pieces);
-    for (const piece of pieces) piece.dispose();
-    this.leg = sphere.scale(0.17, 0.3, 0.19).translate(0, -0.22, -0.05);
-    tint(this.leg, fur.clone().multiplyScalar(0.78));
+    this.character = character;
+    const geometry = geometryFor(character);
     this.legs = [];
     for (const side of [-1, 1]) {
       for (const z of [-0.23, 0.25]) {
-        const leg = new THREE.Mesh(this.leg, this.material);
+        const leg = new THREE.Mesh(geometry.leg, this.material);
         leg.position.set(side * 0.29, 0.53, z);
         this.legs.push(leg);
       }
     }
-    this.pose.add(new THREE.Mesh(this.body, this.material), ...this.legs);
+    this.pose.add(new THREE.Mesh(geometry.body, this.material), ...this.legs);
     this.runner.add(this.pose);
 
-    this.shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.0, 1.65).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ map: this.shadowMap, transparent: true, depthWrite: false }),
-    );
     this.shadow.rotation.order = 'YXZ';
     this.root.add(this.runner, this.shadow);
   }
 
+  /** Restarts the stride cycle when this view is reused for a new race. */
+  resetPose(): void {
+    this.stride = 0;
+  }
+
+  /** Updates the visual pose and shadow from the racer's current logic state. */
   tick(racer: Racer, track: TrackFrames, course: Course): void {
     this.root.visible = racer.state !== 'fallen';
     if (!this.root.visible) return;
@@ -123,7 +148,10 @@ export class RacerView {
       i++;
     }
     this.material.opacity = racer.invulnTicks > 0 ? 0.58 : 1;
+    this.syncShadow(racer, course, y, heading);
+  }
 
+  private syncShadow(racer: Racer, course: Course, y: number, heading: number): void {
     // Skip the blob when its footprint crosses a pit edge or the racer is standing on a log.
     this.shadow.visible = !(racer.grounded && racer.y > y + 0.05);
     for (const feature of course.features) {
@@ -139,18 +167,15 @@ export class RacerView {
       }
     }
     const rise = Math.max(0, racer.y - y);
-    this.shadow.position.set(worldX, y + 0.035, worldZ);
+    this.shadow.position.set(this.runner.position.x, y + 0.035, this.runner.position.z);
     this.shadow.rotation.set(Math.atan(groundY(course, racer.s + 1) - y), -heading, 0);
     this.shadow.material.opacity = 0.5 / (1 + rise * 0.65);
   }
 
+  /** Removes this view and disposes its own materials. */
   dispose(): void {
     this.root.removeFromParent();
-    this.body.dispose();
-    this.leg.dispose();
     this.material.dispose();
-    this.shadow.geometry.dispose();
     this.shadow.material.dispose();
-    this.shadowMap.dispose();
   }
 }

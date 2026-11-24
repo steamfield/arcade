@@ -19,6 +19,7 @@ export interface TrackFrame {
   rz: number;
 }
 
+/** Sampled centreline and coordinate transforms for a rendered course. */
 export interface TrackFrames {
   /** The course length, meters (equals `courseLength`). */
   length: number;
@@ -30,7 +31,9 @@ export interface TrackFrames {
 
 /** Samples `course.path` every `step` meters (and at every segment joint) into frames. */
 export function buildTrackFrames(course: Course, step = 1): TrackFrames {
-  if (!Number.isFinite(step) || step <= 0) throw new RangeError('Track sample spacing must be positive and finite');
+  if (!Number.isFinite(step) || step <= 0) {
+    throw new RangeError(`Track sample spacing must be positive and finite, got ${step}`);
+  }
 
   const origin = { s: 0, x: 0, z: 0, heading: 0 };
   const samples = [origin];
@@ -64,7 +67,7 @@ export function buildTrackFrames(course: Course, step = 1): TrackFrames {
     while (hi - lo > 1) {
       const mid = (hi + lo) >>> 1;
       const sample = samples[mid];
-      if (!sample) throw new RangeError('Track sample index out of bounds');
+      if (!sample) throw new RangeError(`Missing track sample ${mid} of ${samples.length} at s=${s}`);
       if (sample.s <= at) {
         lo = mid;
         a = sample;

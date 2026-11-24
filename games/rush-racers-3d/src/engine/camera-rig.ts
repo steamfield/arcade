@@ -41,6 +41,7 @@ export class CameraRig {
     this.camera.lookAt(this.look);
   }
 
+  /** Updates the projection when the game viewport changes size. */
   resize(width: number, height: number): void {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();

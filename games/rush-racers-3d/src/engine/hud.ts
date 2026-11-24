@@ -110,10 +110,6 @@ const CSS = `
 }
 `;
 
-function label(node: HTMLElement, value: string): void {
-  if (node.textContent !== value) node.textContent = value;
-}
-
 function show(node: HTMLElement, visible: boolean): void {
   if (node.hidden === visible) node.hidden = !visible;
 }
@@ -127,6 +123,7 @@ function formatTime(time: number): string {
   return `${Math.floor(time / 600)}:${seconds}.${time % 10}`;
 }
 
+/** DOM overlay for the countdown, race clock, dash charges, and results. */
 export class Hud {
   private readonly clock = document.createElement('div');
   private readonly dash = document.createElement('div');
@@ -139,6 +136,10 @@ export class Hud {
   private readonly badge = document.createElement('p');
   private time = -1;
   private charges = -1;
+  private countSecond: number | null = null;
+  private finishTicks: number | undefined;
+  private bestTicks: number | undefined;
+  private finished: boolean | undefined;
 
   constructor(container: HTMLElement) {
     const root = document.createElement('div');
@@ -158,6 +159,7 @@ export class Hud {
     timeLabel.textContent = 'Time';
     const bestLabel = document.createElement('dt');
     bestLabel.textContent = 'Best';
+    this.bestTime.textContent = '—';
     times.append(timeLabel, this.finishTime, bestLabel, this.bestTime);
     this.badge.className = 'rr3d-best';
     this.badge.textContent = 'NEW BEST';
@@ -168,6 +170,10 @@ export class Hud {
     container.append(root);
   }
 
+  /**
+   * Syncs the visible race or results values. `go` is true during the short GO banner after
+   * the countdown, and `newBest` records whether this race emitted `best.new`.
+   */
   sync(world: World, scene: Scene, bests: SaveData['bests'], go: boolean, newBest: boolean): void {
     const player = playerOf(world);
     const time = tenths(world.raceTicks);
@@ -181,23 +187,42 @@ export class Hud {
       this.dash.setAttribute('aria-label', `Dash charges: ${this.charges} of ${this.pips.length}`);
     }
 
-    const count =
-      world.phase === 'countdown'
-        ? String(Math.max(1, Math.ceil((RACE.countdownTicks - world.tick) / TICK_HZ)))
-        : go
-          ? 'GO'
-          : '';
-    label(this.count, count);
-    show(this.count, count !== '');
+    this.syncCountdown(world, go);
     const showResults = scene === 'results';
     show(this.dash, !showResults);
     show(this.results, showResults);
-    if (showResults) {
-      label(this.heading, player.finishTicks === null ? 'Time limit reached' : 'Race complete');
-      label(this.finishTime, formatTime(tenths(player.finishTicks ?? world.raceTicks)));
-      const best = bests[world.course.id];
-      label(this.bestTime, best === undefined ? '—' : formatTime(tenths(best)));
-      show(this.badge, newBest);
+    if (showResults) this.syncResults(player.finishTicks, world.raceTicks, bests[world.course.id], newBest);
+  }
+
+  private syncCountdown(world: World, go: boolean): void {
+    const second =
+      world.phase === 'countdown'
+        ? Math.max(1, Math.ceil((RACE.countdownTicks - world.tick) / TICK_HZ))
+        : go
+          ? 0
+          : null;
+    if (second !== this.countSecond) {
+      this.countSecond = second;
+      this.count.textContent = second === null ? '' : second === 0 ? 'GO' : String(second);
     }
+    show(this.count, second !== null);
+  }
+
+  private syncResults(finish: number | null, raceTicks: number, best: number | undefined, newBest: boolean): void {
+    const finished = finish !== null;
+    if (finished !== this.finished) {
+      this.finished = finished;
+      this.heading.textContent = finished ? 'Race complete' : 'Time limit reached';
+    }
+    const time = finish ?? raceTicks;
+    if (time !== this.finishTicks) {
+      this.finishTicks = time;
+      this.finishTime.textContent = formatTime(tenths(time));
+    }
+    if (best !== this.bestTicks) {
+      this.bestTicks = best;
+      this.bestTime.textContent = best === undefined ? '—' : formatTime(tenths(best));
+    }
+    show(this.badge, newBest);
   }
 }
