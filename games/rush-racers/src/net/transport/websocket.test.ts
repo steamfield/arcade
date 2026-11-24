@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createRoomTransport } from './websocket.ts';
 
 const RESET_AT = Date.parse('2026-11-25T00:00:00Z');
-const CODE = 'ABCDEF';
+const CODE = 'BCDF';
 const BUILD = 'test-build';
 const sockets: BrowserSocket[] = [];
 
