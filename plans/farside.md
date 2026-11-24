@@ -209,6 +209,7 @@ Test cases (the scaffold writes them; lanes treat them as read-only):
 
 ### Phase 3: Slingshot Alley
 Scaffold: 549277b
+Tag: farside/phase-3
 
 Demo: `/games/rush-racers/?course=slingshot-alley` (ocean art until phase 5): the full course against three rivals on each level; `pnpm arcade test rush-racers src/logic/difficulty/slingshot-alley-rudy.test.ts` green.
 Depends on: phase 2
@@ -253,6 +254,7 @@ Test cases (the scaffold writes them; lanes treat them as read-only):
 
 ### Phase 4: Farside's look and sound
 Scaffold: 549277b
+Tag: farside/phase-4
 
 Demo: `/games/rush-racers/?course=drift-test`: the Farside cast, pods, stardust, mines, orbs, rays, worms and mites in a starfield with asteroid terrain, planets and a black hole, to Farside's song.
 Depends on: phase 2
@@ -319,6 +321,7 @@ Every lane: art is pixel text drawn the way the file it replaces draws it (`engi
 
 ### Phase 5: list it
 
+Tag: farside/phase-5
 Demo: course select shows Slingshot Alley last; picking it races Farside in its own art and song; `pnpm arcade smoke rush-racers` green on all three browser projects with the drift hash pinned.
 Depends on: phase 3, phase 4
 
