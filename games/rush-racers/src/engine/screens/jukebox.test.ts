@@ -133,6 +133,19 @@ describe('stepping through sections', () => {
     expect(pressJukebox(jukebox, 'dash')).toEqual({ kind: 'leave' });
   });
 
+  it('ignores an announcement made before the song it names was restarted', () => {
+    const jukebox = armedJukebox();
+    pressJukebox(jukebox, 'fire', 10);
+    pressJukebox(jukebox, 'right', 20);
+    hearJukebox(jukebox, `${firstTrack}:${firstSections[3]}`, 19);
+    hearJukebox(jukebox, `${firstTrack}:end`, 19);
+
+    expect(jukebox.section).toBe(firstSections[1]);
+    expect(jukebox.playing).toBe(firstTrack);
+    hearJukebox(jukebox, `${firstTrack}:${firstSections[2]}`, 20);
+    expect(jukebox.section).toBe(firstSections[2]);
+  });
+
   it('does nothing on left or right while nothing plays', () => {
     const jukebox = armedJukebox();
 

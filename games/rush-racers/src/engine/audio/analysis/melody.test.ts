@@ -25,6 +25,14 @@ describe('leadFacts', () => {
   it('finds a second-pulse note that starts above a sounding lead note', () => {
     expect(leadFacts(song).crossings).toEqual([{ bar: 2, beat: 2 }]);
   });
+
+  it('leaves an echo above the lead out of the crossings', () => {
+    const echoed = {
+      ...song,
+      notes: song.notes.map((note) => (note.channel === 'pulse2' ? { ...note, echo: true as const } : note)),
+    };
+    expect(leadFacts(echoed).crossings).toEqual([]);
+  });
 });
 
 describe('motifStatements', () => {

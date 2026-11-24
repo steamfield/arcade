@@ -3,7 +3,7 @@
  * asteroid belt. The raised fourth (A#) is the mode's colour: the lead leans on it over the II
  * chord, which never resolves the way a dominant would, so the song hangs in the air.
  *
- * Form: intro (2 bars, outside the loop) | A (8) | B (8) | lift (6) | breakdown (4) |
+ * Form: intro (2 bars, outside the loop) | A (8) | B (8) | rise (6) | breakdown (4) |
  * turnaround (2). The loop is the last five sections, 28 bars, about 76 seconds, from A.
  *
  * Chords:
@@ -11,28 +11,28 @@
  * - A: E | F# | G#m | F# | E | F# | C#m | B (I and the lydian II, a lift to iii, then down to V)
  * - B: C#m | G#m | F# | B | C#m | D#m | E | F# (the minor chords, the lead lower, breathing at
  *   the end of each two-bar phrase)
- * - lift: G | A | Bm | A | C | D (the tune moved up a minor third, then bVI and bVII of E carry
+ * - rise: G | A | Bm | A | C | D (the tune moved up a minor third, then bVI and bVII of E carry
  *   it home)
  * - breakdown: E | F# | E | F#
  * - turnaround: E | F# (I to II, which floats back into A instead of pulling)
  *
  * The hook is A's first two bars: B5 (dotted half) G#5 | A#5 (whole). Its cell, a held note that
- * falls a minor third, returns as E5 C#5 and F#5 D#5 in B and as D6 B5 at the top of the lift.
+ * falls a minor third, returns as E5 C#5 and F#5 D#5 in B and as D6 B5 at the top of the rise.
  *
  * The lead floats, so the band underneath races. The lead holds whole and dotted-half notes with
- * vibrato, round 50% in A and the lift, a brighter 25% in B where it sits lower; in the
+ * vibrato, round 50% in A and the rise, a brighter 25% in B where it sits lower; in the
  * turnaround it climbs E5 F#5 G#5 B5 C#6 and turns on A#5, a step under the hook's B5. Pulse 2,
  * thin and quiet, plays a 3+3+2 motor of chord tones in A's first four bars (its top note
  * climbing B4 C#5 D#5) and again in the turnaround; in A's second half and through B it is a
- * counter-line below the lead that moves where the lead holds or breathes. In the lift it turns
+ * counter-line below the lead that moves where the lead holds or breathes. In the rise it turns
  * into a long echo of the lead, and in the breakdown, where the lead rests, it plays short
  * arpeggio bursts and then the hook cell an octave down, far away. The triangle pushes root,
  * fifth and octave on a dotted-eighth rhythm in A and the turnaround, walking down into bar 5 and
  * the turnaround's end, walks in half notes and quarters in B, bounces in octave eighths through
- * the lift, and kicks with pitch drops under the breakdown. The drums run double time in A
+ * the rise, and kicks with pitch drops under the breakdown. The drums run double time in A
  * (sixteenth hats, snare on 2 and 4, a kick doubled on 3), go half time with sixteenth hats and
- * a tom pickup in B, open hats on the off-beats of the lift, thin out in the breakdown, with a
- * crash at the top of A, B and the lift and a fill at the end of every section.
+ * a tom pickup in B, open hats on the off-beats of the rise, thin out in the breakdown, with a
+ * crash at the top of A, B and the rise and a fill at the end of every section.
  */
 import { parseSong, type Song } from '../notation.ts';
 
@@ -91,7 +91,7 @@ triangle: C#2/2 G#1/4 C#2/4 | D#2/2 A#1/4 D#2/4 | E2/2 B1/4 E2/4 | F#2/2 C#2/4 F
 noise: c/8@0.4 h/16@0.2 h/16@0.15 h/8@0.25 k/16@0.8 h/16@0.15 s/4@0.4 h/8@0.25 h/16@0.2 h/16@0.15 | [k/8 h/16@0.2 h/16@0.15 h/8@0.25 k/16@0.8 h/16@0.15 s/4@0.4 h/8@0.25 h/16@0.2 h/16@0.15 |]x2 k/8 h/16@0.2 h/16@0.15 h/8@0.25 k/16@0.8 h/16@0.15 s/4@0.4 h/8@0.25 t/16@0.3 t/16@0.35
 noise: [k/8 h/16@0.2 h/16@0.15 h/8@0.25 k/16@0.8 h/16@0.15 s/4@0.4 h/8@0.25 h/16@0.2 h/16@0.15 |]x3 k/4 s/8@0.4 s/8@0.4 s/16@0.4 s/16@0.5 s/16@0.6 s/16@0.7 s/4@0.8
 
-section: lift
+section: rise
 chords: G | A | Bm | A | C | D
 // the hook's shape a minor third up, then bVI and bVII fall back towards E
 duty pulse1: voice

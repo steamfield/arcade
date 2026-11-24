@@ -116,8 +116,11 @@ describe.each(tracks)('race track %s', (_name, song) => {
     const lead = leadFacts(song);
     expect(lead.range, why(song, 'lead range in semitones')).toBeLessThanOrEqual(18);
     expect(lead.restShare, why(song, 'share of the loop where the lead rests')).toBeGreaterThanOrEqual(0.1);
-    const secondNotes = chordFit(song, 'pulse2').notes;
-    expect(share(lead.crossings.length, secondNotes), why(song, 'pulse2 notes above the lead')).toBeLessThan(0.02);
+    const secondNotes = song.notes.filter((note) => note.channel === 'pulse2' && !note.echo).length;
+    expect(
+      share(lead.crossings.length, secondNotes),
+      why(song, 'pulse2 notes of its own (echoes aside) above the lead'),
+    ).toBeLessThan(0.02);
   });
 
   it('uses at least three chip techniques and shapes its pulses', () => {

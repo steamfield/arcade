@@ -42,9 +42,9 @@ Harmony
 - At least one borrowed chord (bVI, bVII, a secondary dominant) or a clear modal colour per track. The chart shows it.
 
 Melody
-- The hook is the lead's first two bars of the first looped section. It, or a transposition of it, is stated at least three times in the loop, and its rhythm at least four times.
+- The hook is the lead's first two bars of the first looped section. Its first bar, at any pitch, is stated at least three times, and that bar's rhythm at least four times; the test measures the first bar so an answer phrase is free to change.
 - The lead spans at most 18 semitones and rests for at least 10% of the loop. One section gives the lead a real rest.
-- Pulse 2 stays under the lead: fewer than 2% of its notes start above a sounding lead note.
+- Pulse 2 stays under the lead: fewer than 2% of its own notes start above a sounding lead note. Echoes are not counted: an echo of a falling line always sits above the lead for a moment.
 
 Sound
 - Each track uses at least three of: arpeggio chords, a duty change, triangle drops (kick or tom), the open hat, crash or noise tom, echo. Echo and detune are the cheapest depth; use arpeggios in bursts with a short envelope, never as wall-to-wall triads.
@@ -68,7 +68,7 @@ To read a track's report, run the conformance test for it; a failing rule prints
 
 To hear it: `pnpm arcade dev rush-racers`, then `/games/rush-racers/?scene=jukebox`.
 
-To check its mix without speakers, render it: `node games/rush-racers/scripts/render-songs.ts <track name>` writes a WAV under `games/rush-racers/.arcade/songs/` and prints its peak and RMS. The synth halves the mix at its master gain and limits what is left, so a peak near 1 or an RMS far from the other tracks' (about 0.25) means the voice levels need another look.
+To check its mix without speakers, render it: `node games/rush-racers/scripts/render-songs.ts <track name>` writes a WAV under `games/rush-racers/.arcade/songs/` and prints its peak and RMS. The synth scales the mix at its master gain so the loudest bar of a song sits just under 0.9, and soft-clips only what goes above that, so a peak over 0.9 or an RMS far from the other tracks' (about 0.2) means the voice levels need another look.
 
 ## Research notes
 

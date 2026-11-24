@@ -45,8 +45,14 @@ export interface MusicCues {
   audition(name: SongName | null, section?: string): void;
 }
 
-/** The key suffix `audio.played` carries when a one-shot song has finished sounding, as `<song>:end`. */
+/**
+ * The key suffix `audio.played` carries when a one-shot song has finished sounding, as `<song>:end`.
+ * Section announcements share the `<song>:<name>` form, so the notation reserves both marks
+ * (`RESERVED_SECTION_NAMES`) and no section can be mistaken for one.
+ */
 export const SONG_ENDED = 'end';
+/** The key suffix for the final-stretch tempo lift, as `<song>:lift`. */
+export const SONG_LIFTED = 'lift';
 
 /** The song for `name`. The single place songs are chosen. */
 export function songFor(name: SongName): Song {
@@ -160,7 +166,7 @@ export function createMusicCues(options: MusicCueOptions): MusicCues {
       if (lifted || fraction < FINAL_STRETCH_AT || started === null || started !== raceTrack || !running()) return;
       lifted = true;
       sequencer.setTempoScale(LIFT_TEMPO);
-      announce(`${started}:lift`, 'song');
+      announce(`${started}:${SONG_LIFTED}`, 'song');
     },
     audition(name, section) {
       const beat = name !== null && section !== undefined ? sectionStartBeat(songFor(name), section) : 0;

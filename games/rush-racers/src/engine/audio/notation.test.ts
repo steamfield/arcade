@@ -186,8 +186,8 @@ describe('parseSong', () => {
     ['a section with no bars before another', 'section: a\nsection: b\npulse1: C5/1', 'section "a" has no bars'],
     [
       'a loop at an empty last section',
-      'loop: end\nsection: a\npulse1: C5/1\nsection: end',
-      'section "end" has no bars',
+      'loop: coda\nsection: a\npulse1: C5/1\nsection: coda',
+      'section "coda" has no bars',
     ],
     [
       'a loop at a missing section',
@@ -536,5 +536,9 @@ describe('parseSong source whitespace', () => {
     ];
     const messy = clean.map((line) => `${line.replace(': ', ':\t').replaceAll(' ', ' \t')}  \t`).join('\r\n');
     expect(parseSong(messy)).toEqual(parseSong(clean.join('\n')));
+  });
+
+  it.each(['end', 'lift'])('refuses a section named %s, which the music announces itself', (name) => {
+    expect(() => parseSong(song(`section: ${name}\npulse1: C5/1`))).toThrow(`section "${name}" uses a reserved name`);
   });
 });

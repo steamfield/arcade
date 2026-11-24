@@ -3,6 +3,7 @@
  * playing and which of its sections is sounding, and what each press does. The runtime feeds it a
  * press every tick and acts on the outcome (audition a song, stop, leave); the scene only draws it.
  */
+import { formOf } from '../audio/analysis/form.ts';
 import { SONG_ENDED } from '../audio/music-cues.ts';
 import type { Song } from '../audio/notation.ts';
 import { RACE_TRACKS, type SongName, type SongSet, songs } from '../audio/songs/index.ts';
@@ -23,6 +24,8 @@ export interface Jukebox {
   playing: SongName | null;
   /** The playing song's section sounding now, or null when it is not known (or nothing plays). */
   section: string | null;
+  /** The tick the playing song was last started on; announcements stamped before it are about what played before. */
+  auditionedAt: number;
   /** Ticks left before fire is taken, so a fire still held from the screen before can't start a song unseen. */
   armIn: number;
 }
@@ -64,7 +67,7 @@ export function soundtrackTracks(): JukeboxTrack[] {
 
 /** A sound test over `tracks` with the cursor on the first, nothing playing and fire not yet armed. */
 export function createJukebox(tracks: readonly JukeboxTrack[]): Jukebox {
-  return { tracks, cursor: 0, playing: null, section: null, armIn: JUKEBOX_ARM_TICKS };
+  return { tracks, cursor: 0, playing: null, section: null, auditionedAt: 0, armIn: JUKEBOX_ARM_TICKS };
 }
 
 /**
@@ -72,9 +75,15 @@ export function createJukebox(tracks: readonly JukeboxTrack[]): Jukebox {
  * the screen shows, since the arming counts ticks. Up and down move the cursor, stopping at the
  * ends; fire plays the highlighted song from its start; left and right restart the playing song at
  * its previous or next section, stopping at the first and last; dash stops the music, or leaves
- * when nothing plays.
+ * when nothing plays. `tick` is the tick of the press, remembered when it starts a song.
  */
-export function pressJukebox(jukebox: Jukebox, press: JukeboxPress | null): JukeboxOutcome {
+export function pressJukebox(jukebox: Jukebox, press: JukeboxPress | null, tick = 0): JukeboxOutcome {
+  const outcome = takePress(jukebox, press);
+  if (outcome.kind === 'play') jukebox.auditionedAt = tick;
+  return outcome;
+}
+
+function takePress(jukebox: Jukebox, press: JukeboxPress | null): JukeboxOutcome {
   const armed = jukebox.armIn === 0;
   if (!armed) jukebox.armIn--;
   switch (press) {
@@ -97,9 +106,12 @@ export function pressJukebox(jukebox: Jukebox, press: JukeboxPress | null): Juke
 /**
  * Takes the key of an `audio.played` song event: a `name:section` key for the playing song makes
  * that section the one sounding, and `name:end` (a one-shot ran out) leaves nothing playing. Keys
- * for other songs, and song starts, change nothing.
+ * for other songs, song starts, and announcements stamped before the playing song was started
+ * (`tick`) change nothing.
  */
-export function hearJukebox(jukebox: Jukebox, key: string): void {
+export function hearJukebox(jukebox: Jukebox, key: string, tick = Number.POSITIVE_INFINITY): void {
+  // An announcement drained after a press but made before it describes the music the press replaced.
+  if (tick < jukebox.auditionedAt) return;
   const prefix = `${jukebox.playing}:`;
   if (jukebox.playing === null || !key.startsWith(prefix)) return;
   const heard = key.slice(prefix.length);
@@ -170,8 +182,7 @@ export function firstShownLine(lines: readonly JukeboxLine[], cursor: number, sh
  * whole seconds, the loop for a looping song and the whole song for a one-shot.
  */
 export function trackDetail(song: Song): string {
-  const loopBeats = song.lengthBeats - (song.loopStart ?? 0);
-  const seconds = Math.round((loopBeats * 60) / song.bpm);
+  const seconds = Math.round(formOf(song).loopSeconds);
   const length = song.loopStart === null ? `${seconds} S ONCE` : `${seconds} S LOOP`;
   const key = song.key ? `${PITCH_CLASS_NAMES[song.key.tonic]} ${song.key.mode.toUpperCase()}` : null;
   return [key, `${song.bpm} BPM`, song.meter, length].filter((part) => part !== null).join('  ');

@@ -17,7 +17,7 @@
  *   only), `level`, the envelope's `attack`, `decay`, `sustain`, `release`, `detune` in cents
  *   (-50..50, pulse and triangle) and `arp`, the sixtieths of a second per arpeggio step
  *   (1, 2 or 3; the synth uses 2 when it is left out).
- * - `section: <name>` starts a named section at the current bar.
+ * - `section: <name>` starts a named section at the current bar. `end` and `lift` are reserved.
  * - `<channel>: <tokens>` appends to `pulse1`, `pulse2`, `triangle` or `noise`. A channel
  *   may have several lines per section. A channel with no lines in a section rests through
  *   it; channels that do play must all fill the same number of bars.
@@ -96,6 +96,12 @@ export type {
 
 const CHANNELS: readonly Channel[] = ['pulse1', 'pulse2', 'triangle', 'noise'];
 const DIRECTIVE = /^(?<key>[a-z0-9]+)(?:\s+(?<arg>\S+))?\s*:\s*(?<value>.*)$/i;
+
+/**
+ * Names no section may take: the music announces a song's end and its final-stretch lift as
+ * `<song>:end` and `<song>:lift`, the same form a section's start takes.
+ */
+export const RESERVED_SECTION_NAMES: readonly string[] = ['end', 'lift'];
 
 /** Everything parsed so far. */
 interface ParseState extends OpenSection {
@@ -231,6 +237,11 @@ function isChannel(key: string): key is Channel {
 }
 
 function startSection(state: ParseState, name: string): void {
+  if (RESERVED_SECTION_NAMES.includes(name)) {
+    throw new Error(
+      `section "${name}" uses a reserved name (${RESERVED_SECTION_NAMES.join(', ')}); the music announces those itself`,
+    );
+  }
   if (state.sections.some((section) => section.name === name)) {
     throw new Error(`section "${name}" is declared twice; section names must be unique`);
   }

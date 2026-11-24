@@ -79,9 +79,14 @@ const VIBRATO_DELAY = 0.12;
 const MUTE_FADE = 0.02;
 /**
  * The master gain when unmuted. Four voices at their song levels sum to nearly twice full scale
- * at their loudest instants, and the output clips anything past it, so the mix is halved here.
+ * at their loudest instants, and the output clips anything past it, so the mix is scaled to leave
+ * the loudest song bar just under `CLIP_KNEE`.
  */
-const MASTER_LEVEL = 0.5;
+const MASTER_LEVEL = 0.45;
+/** The output level above which the soft clip starts to bend the signal. */
+const CLIP_KNEE = 0.9;
+/** Points in the soft clip's curve across -1..1; odd, so 0 maps to 0 exactly. */
+const CLIP_CURVE_POINTS = 2049;
 /** Fixed seed for the noise buffer: the hiss is the same every run, like the hardware's LFSR. */
 const NOISE_SEED = 0x6e6f6973;
 
@@ -107,7 +112,7 @@ export const DRUM_RING_OUT = Math.max(...Object.values(DRUMS).map((d) => d.lengt
 export function createSynth(context: BaseAudioContext, muted: boolean): Synth {
   const master = context.createGain();
   master.gain.value = muted ? 0 : MASTER_LEVEL;
-  master.connect(createLimiter(context)).connect(context.destination);
+  master.connect(createSoftClip(context)).connect(context.destination);
   const pulses = new Map(DUTIES.map((duty) => [duty, pulseWave(context, duty)]));
   const noiseBuffer = whiteNoise(context);
 
@@ -154,17 +159,25 @@ export function createSynth(context: BaseAudioContext, muted: boolean): Synth {
 }
 
 /**
- * A limiter between the master gain and the output: it only acts on the rare peaks left after
- * `MASTER_LEVEL`, such as several effects landing on a loud bar, which would otherwise clip.
+ * A soft clip between the master gain and the output. It passes everything under `CLIP_KNEE`
+ * untouched and bends what is above it toward full scale, so a loud bar with several effects on
+ * top rounds off where the output would otherwise clip hard. A wave shaper adds no gain and no
+ * delay, which a compressor would.
  */
-function createLimiter(context: BaseAudioContext): DynamicsCompressorNode {
-  const limiter = context.createDynamicsCompressor();
-  limiter.threshold.value = -2;
-  limiter.knee.value = 0;
-  limiter.ratio.value = 20;
-  limiter.attack.value = 0.002;
-  limiter.release.value = 0.08;
-  return limiter;
+function createSoftClip(context: BaseAudioContext): WaveShaperNode {
+  const shaper = context.createWaveShaper();
+  const curve = new Float32Array(CLIP_CURVE_POINTS);
+  for (let i = 0; i < curve.length; i++) curve[i] = softClip((i / (curve.length - 1)) * 2 - 1);
+  shaper.curve = curve;
+  return shaper;
+}
+
+/** `sample` unchanged up to the knee, then eased so that no input reaches past full scale. */
+function softClip(sample: number): number {
+  const size = Math.abs(sample);
+  if (size <= CLIP_KNEE) return sample;
+  const room = 1 - CLIP_KNEE;
+  return Math.sign(sample) * (CLIP_KNEE + room * Math.tanh((size - CLIP_KNEE) / room));
 }
 
 /** Converts a MIDI note number to Hz (A4 = 69 = 440 Hz). */

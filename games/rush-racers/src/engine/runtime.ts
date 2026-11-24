@@ -316,7 +316,7 @@ export class Runtime {
         localRacer: () => this.localRacer,
         raceWorld: () => this.world,
       },
-      () => this.raceTrack ?? RACE_TRACKS[this.raceCourse.song][0],
+      () => this.trackOfRace(),
     );
     this.rotation = createTrackRotation({ startAt: options.save?.races ?? 0, pinned: pinnedTrackFor(this.search) });
     this.flow = createOnlineFlow({
@@ -799,9 +799,20 @@ export class Runtime {
     }
   }
 
+  /**
+   * The track the race in hand plays.
+   *
+   * @throws {Error} When no race has picked one, which means a race started without `beginRace`.
+   */
+  private trackOfRace(): SongName {
+    if (this.raceTrack === null)
+      throw new Error('A race started before its track was picked; start races through beginRace()');
+    return this.raceTrack;
+  }
+
   /** Hands the sound test this tick's press and does what it asks: audition a song, stop, or leave for the title. */
   private tickJukebox(jukebox: Jukebox): void {
-    const outcome = pressJukebox(jukebox, readJukeboxPress());
+    const outcome = pressJukebox(jukebox, readJukeboxPress(), this.step.tick);
     if (outcome.kind === 'play') this.audio.audition(outcome.song, outcome.section);
     else if (outcome.kind === 'stop') this.audio.audition(null);
     else if (outcome.kind === 'leave') this.goTo('title');
@@ -871,12 +882,12 @@ export class Runtime {
     for (const listener of this.listeners) listener(events);
   }
 
-  private react(event: RuntimeEvent): void {
+  private react(event: Stamped<RuntimeEvent>): void {
     if (event.type === 'race.finished') this.finishRace(event);
     else if (event.type === 'save.failed' && this.lastResult)
       this.lastResult = { ...this.lastResult, saveFailed: true };
     else if (event.type === 'audio.played' && event.kind === 'song' && this.jukebox)
-      hearJukebox(this.jukebox, event.key);
+      hearJukebox(this.jukebox, event.key, event.tick);
   }
 
   private finishRace({ standings }: RaceResult): void {
