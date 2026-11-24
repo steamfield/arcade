@@ -3,7 +3,7 @@
  * they ran into (`MoveContacts`), and the rules a world's medium moves bodies by (`moveRulesFor`):
  * extra solid tiles, an open floor below the last row, and ledges that hold only from above.
  */
-import { blocksBody, bodyTiles, isLedge, overlapsTile, tileIndex } from '../level/query.ts';
+import { blocksBody, bodyTiles, ledgeHolds, overlapsTile, tileIndex } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { type Body, type Level, type MoveContacts, type MoveRules, TILE, type World } from '../types.ts';
 
@@ -140,7 +140,7 @@ function landOnFloor(body: Body, move: TileMove): void {
 /** Whether the tile stops a body coming down onto it: anything blocking, or a ledge it was above. */
 function holdsFromAbove(move: TileMove, tx: number, ty: number): boolean {
   if (blocksBody(move.level, move.broken, move.rules, tx, ty)) return true;
-  return isLedge(move.level, tx, ty) && move.bottomAtStart <= ty * TILE + LEDGE_TOLERANCE;
+  return ledgeHolds(move.level, move.rules, tx, ty) && move.bottomAtStart <= ty * TILE + LEDGE_TOLERANCE;
 }
 
 /** Stops a rising body under the row over it, listing every blocking tile its head spans there. */

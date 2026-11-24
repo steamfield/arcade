@@ -4,11 +4,12 @@
  * flowing cells such as kelp and currents as animated sprites, the theme's wave crest along the
  * top of the water under open sky, the finish gate, and inert placeholders for pearls, clams, urchins
  * and jellies. The pickup and hazard views take over those placeholders. Broken coral is removed
- * when its `coral.broken` event arrives.
+ * when its `coral.broken` event arrives. Crumbling branch tiles follow the world's fallen set.
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
-import type { Cell, Level } from '../../logic/types.ts';
+import { tileIndex } from '../../logic/level/query.ts';
+import type { Cell, Level, World } from '../../logic/types.ts';
 import { TILE, type Vec } from '../../logic/types.ts';
 import { Frame, type FrameKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
@@ -36,6 +37,33 @@ interface LevelView {
 
 const TILESET_NAME = 'reef';
 
+interface CrumbleTile {
+  tile: Phaser.Tilemaps.Tile;
+  index: number;
+  branch: number;
+}
+
+// The race builds the shared level before the theme's extra layers, which sync on every frame.
+const crumbleTiles = new WeakMap<Phaser.Scene, CrumbleTile[]>();
+
+/** Keeps the branch in the tilemap, so making it visible restores its original art. */
+export function syncCrumbleTile(
+  tile: Pick<Phaser.Tilemaps.Tile, 'visible' | 'x' | 'pixelX'>,
+  index: number,
+  fallen: ReadonlySet<number>,
+  offset: number,
+): void {
+  tile.visible = !fallen.has(index);
+  tile.pixelX = tile.x * TILE + offset;
+}
+
+/** Sync shared terrain tiles from the current world when the forest's extra layer syncs. */
+export function syncCrumbleTiles(scene: Phaser.Scene, world: World, offsetOf: (branch: number) => number): void {
+  for (const { tile, index, branch } of crumbleTiles.get(scene) ?? []) {
+    syncCrumbleTile(tile, index, world.fallen, offsetOf(branch));
+  }
+}
+
 /**
  * Builds every course object for `level` in `scene`, drawn with `theme` and the world's `skin`
  * (its pearl, clam, urchin and jelly stand-ins). `legend` is the course's own glyph legend, so its glyphs can draw with their own art.
@@ -50,6 +78,17 @@ export function createLevelView(
   legend: Legend = {},
 ): LevelView {
   const layer = createTileLayer(scene, level, theme.terrain, legend);
+  crumbleTiles.set(
+    scene,
+    level.crumbles.flatMap(({ col, row, length }, branch) => {
+      const tiles: CrumbleTile[] = [];
+      for (let x = col; x < col + length; x++) {
+        const tile = layer.getTileAt(x, row);
+        if (tile) tiles.push({ tile, index: tileIndex(level, x, row), branch });
+      }
+      return tiles;
+    }),
+  );
   addFlowingCells(scene, level, theme.terrain);
   addWaterline(scene, level, theme.terrain);
   addFinishGate(scene, level, theme.terrain);

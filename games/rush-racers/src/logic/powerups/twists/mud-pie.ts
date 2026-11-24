@@ -11,7 +11,7 @@
  */
 import { mayAttack } from '../../difficulty-level.ts';
 import { squareAt } from '../../hazards/boxes.ts';
-import { blocksBody, isLedge } from '../../level/query.ts';
+import { blocksBody, ledgeHolds } from '../../level/query.ts';
 import { moveBody, moveRulesFor } from '../../race/move.ts';
 import { centreOf } from '../../racers.ts';
 import { type Body, type Racer, TILE, type Twist, type Vec, type World } from '../../types.ts';
@@ -179,7 +179,8 @@ function standsOnGround(world: World, racer: Racer): boolean {
   if (Math.abs(bottom - below * TILE) > GROUND_TOLERANCE) return false;
   const col = Math.floor(centreOf(racer).x / TILE);
   const { level, broken } = world;
-  return blocksBody(level, broken, moveRulesFor(world), col, below) || isLedge(level, col, below);
+  const rules = moveRulesFor(world);
+  return blocksBody(level, broken, rules, col, below) || ledgeHolds(level, rules, col, below);
 }
 
 /** The tile row a racer's feet are in. */

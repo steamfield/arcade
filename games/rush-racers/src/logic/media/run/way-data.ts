@@ -44,6 +44,8 @@ export interface RunNav extends MediumNav, GridSize {
   anchor: Int32Array;
   /** The link to follow from each stand tile (null off stand tiles, at the finish and where unreachable). */
   best: readonly (RunLink | null)[];
+  /** All static choices from each stand tile, so the pilot can skip a missing landing. */
+  links: ReadonlyMap<number, readonly RunLink[]>;
   /** Ticks a hop over another racer (Up held `HOP_HOLD_TICKS`, `nav.ts`) spends in the air on flat ground. */
   hopAirTicks: number;
 }

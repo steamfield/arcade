@@ -3,12 +3,13 @@
  * `forest/`; this file says how the views use them. Air barely slows particles, so dust and leaves
  * rise slowly, debris falls fast and a splash is a short burst of dust. Its extra layers draw
  * Thornwood's rolling Boulders (`view/boulder-view.ts`) and its Mud Pies and their mud patches
- * (`view/mud-pie-view.ts`).
+ * (`view/mud-pie-view.ts`), and crumbling branches (`view/set-pieces/crumble-view.ts`).
  */
 
 import { FxFrame } from '../fx/textures.ts';
 import { createBoulderView } from '../view/boulder-view.ts';
 import { createMudPieView } from '../view/mud-pie-view.ts';
+import { createCrumbleView } from '../view/set-pieces/crumble-view.ts';
 import { defineTheme } from './define.ts';
 import { ForestAnim, ForestTex, ForestTile } from './forest/keys.ts';
 import { CanopyLight, ForestBackdropPalette, WOOD_BANDS } from './forest/palettes.ts';
@@ -63,5 +64,6 @@ export const FOREST_THEME = defineTheme({
   extraLayers: (scene, world, reducedMotion) => [
     createBoulderView(scene, world),
     createMudPieView(scene, reducedMotion),
+    createCrumbleView(scene, world, reducedMotion),
   ],
 });
