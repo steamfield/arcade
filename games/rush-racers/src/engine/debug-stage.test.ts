@@ -84,7 +84,7 @@ describe('applying a stage', () => {
     expect(world.level.cells[(surface?.row ?? 0) - 1]?.[tile?.x ?? 0]).toBe('air');
   });
 
-  it("puts the player at rest in Drift Test's black hole's column, two tiles outside its reach", () => {
+  it("puts the player at rest in Drift Test's black hole's column, two tiles below its reach", () => {
     const course = COURSES['drift-test'];
     const world = createWorld(course, new EventLog<GameEvent>(100), { seed: 1 });
     applyStage(world, 'hole');
@@ -93,7 +93,7 @@ describe('applying a stage', () => {
     const centre = player && { x: player.body.x + player.body.w / 2, y: player.body.y + player.body.h / 2 };
 
     expect(centre?.x).toBe(hole?.centre.x);
-    expect(Math.abs((centre?.y ?? 0) - (hole?.centre.y ?? 0))).toBe((hole?.reach ?? 0) + 2 * 16);
+    expect((centre?.y ?? 0) - (hole?.centre.y ?? 0)).toBe((hole?.reach ?? 0) + 2 * 16);
     expect(player?.body).toMatchObject({ vx: 0, vy: 0 });
   });
 

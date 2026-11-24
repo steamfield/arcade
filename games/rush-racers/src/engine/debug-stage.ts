@@ -184,9 +184,19 @@ function stageOutsideHole(world: World, player: Racer): void {
   if (!hole) throw new Error('The hole stage needs a black hole, and this course has none');
   const offset = hole.reach + HOLE_STAGE_GAP_TILES * TILE;
   const tx = Math.floor(hole.centre.x / TILE);
+  const { w, h } = player.body;
+  // Every tile the placed body would overlap must be open, since a reach need not be whole tiles.
   const y = [hole.centre.y + offset, hole.centre.y - offset].find((candidate) => {
-    const ty = Math.floor(candidate / TILE);
-    return ty >= 0 && ty < world.level.height && !isSolid(world.level, world.broken, tx, ty);
+    for (let ty = Math.floor((candidate - h / 2) / TILE); ty <= Math.floor((candidate + h / 2 - 1) / TILE); ty += 1) {
+      for (
+        let x = Math.floor((hole.centre.x - w / 2) / TILE);
+        x <= Math.floor((hole.centre.x + w / 2 - 1) / TILE);
+        x += 1
+      ) {
+        if (ty < 0 || ty >= world.level.height || isSolid(world.level, world.broken, x, ty)) return false;
+      }
+    }
+    return true;
   });
   if (y === undefined) {
     throw new Error(

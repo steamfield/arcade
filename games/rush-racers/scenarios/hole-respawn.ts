@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { COURSES, levelOf } from '../src/logic/courses/index.ts';
 import { DRIFT_TUNING } from '../src/logic/media/drift/tuning.ts';
-import { HARD_SAVE, hold, scenario, TITLE_TO_RACE, wait } from './kit.ts';
+import { HARD_SAVE, hold, scenario, TITLE_TO_SELECT, wait } from './kit.ts';
 
 /** Drift Test's black hole, the one well with a horizon: centre and reach in px. */
 const HOLE = (() => {
@@ -26,8 +26,8 @@ function playerSize(state: unknown): { w: number; h: number } {
 export default scenario({
   description: 'a racer who flies into the black hole is swallowed and comes back a second later outside its reach',
   start: { save: HARD_SAVE, seed: 1, query: { course: 'drift-test', stage: 'hole' } },
-  // Drift Test is unlisted, so Race skips course select; the wait runs out the countdown.
-  input: [...TITLE_TO_RACE, wait(180), hold('up', 40), wait(DRIFT_TUNING.extra.respawnTicks + 20)],
+  // Drift Test is unlisted, so the second fire starts the race; the wait runs out the countdown.
+  input: [...TITLE_TO_SELECT, wait(180), hold('up', 40), wait(DRIFT_TUNING.extra.respawnTicks + 20)],
   expect({ events, state }) {
     const falls = events.filter((e) => e.type === 'racer.fell' && e.id === 'player');
     const respawns = events.filter((e) => e.type === 'racer.respawned' && e.id === 'player');

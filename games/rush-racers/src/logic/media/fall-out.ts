@@ -70,10 +70,11 @@ export function holdParked(racer: Racer): void {
 }
 
 /**
- * Puts a fallen racer back with its top-left on `spot`, at rest with no dash running (an item dash
- * fired just before the fall would otherwise drive it straight back in), invulnerable for
- * `invulnTicks`, and emits `racer.respawned` with where it came back. The medium resets its own
- * motion state.
+ * Puts a fallen racer back with its top-left on `spot`, at rest and with nothing left running that
+ * could outlast the wait and move or resize it: an item dash (fired just before the fall, it would
+ * drive the racer straight back in), a Cannonball and its inflation, a latched squid and an Undertow.
+ * It is invulnerable for `invulnTicks`, and `racer.respawned` says where it came back. The medium
+ * resets its own motion state.
  */
 export function respawnAt(racer: Racer, spot: Vec, invulnTicks: number, events: EventSink<GameEvent>): void {
   const { body } = racer;
@@ -82,6 +83,10 @@ export function respawnAt(racer: Racer, spot: Vec, invulnTicks: number, events: 
   body.vx = 0;
   body.vy = 0;
   racer.status.dashing = 0;
+  racer.status.cannonball = 0;
+  racer.status.inflated = 0;
+  racer.status.latched = 0;
+  racer.status.undertow = 0;
   racer.status.invulnerable = invulnTicks;
   events.emit({ type: 'racer.respawned', id: racer.id, x: body.x, y: body.y });
 }

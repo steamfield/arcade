@@ -148,7 +148,7 @@ describe('a black hole', () => {
     expect(ticksOfRacer(log, 'racer.fell')).toEqual([world.tick]);
   });
 
-  it('swallows a racer that fires a Comet inside its reach once, and puts it back at rest with the stick held away', () => {
+  it('swallows a racer that fires a Comet inside its reach once, even with the stick held away afterwards', () => {
     const { world, log, player, respawnTicks } = roomWith(HOLE);
     giveItems(player, ['cannonball']);
     // Last free just outside the reach, then fired at the hole from just outside the horizon.
@@ -166,19 +166,23 @@ describe('a black hole', () => {
 
     expect(ticksOfRacer(log, 'racer.respawned')).toHaveLength(1);
     expect(ticksOfRacer(log, 'racer.fell')).toHaveLength(1);
-    expect(respawnsOf(log)[0]).toBeDefined();
   });
 
-  it('puts a racer back with no dash running', () => {
+  it('puts a racer back at rest with no dash, Comet, latched probe or Tractor Beam still running', () => {
     const { world, log, player, respawnTicks } = roomWith(HOLE);
     placeOnTile(player, HOLE.col, LEVEL_ROW);
     player.status.dashing = 300;
     player.dashDir = { x: 1, y: 0 };
     player.dashSpeed = 200;
+    player.status.cannonball = 300;
+    player.status.inflated = 300;
+    player.status.latched = 300;
+    player.status.undertow = 300;
     step(world, log, respawnTicks + 1, IDLE);
 
     expect(ticksOfRacer(log, 'racer.respawned')).toHaveLength(1);
-    expect(player.status.dashing).toBe(0);
+    expect(player.status).toMatchObject({ dashing: 0, cannonball: 0, inflated: 0, latched: 0, undertow: 0 });
+    expect(player.body).toMatchObject({ vx: 0, vy: 0 });
   });
 
   it('lets a swallowed racer collect nothing while it is out', () => {

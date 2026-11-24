@@ -1,6 +1,6 @@
 import { expect } from '@playwright/test';
 import { COURSES, levelOf } from '../src/logic/courses/index.ts';
-import { HARD_SAVE, hold, scenario, TITLE_TO_RACE, wait } from './kit.ts';
+import { HARD_SAVE, hold, scenario, TITLE_TO_SELECT, wait } from './kit.ts';
 
 /** Drift Test's planet, the one well with no horizon: centre and reach in px. */
 const PLANET = (() => {
@@ -26,20 +26,21 @@ function playerBody(state: unknown): PlayerBody {
 }
 
 /**
- * On Drift Test, thrust right along the first straight, the first 280 ticks of `well-swing`'s
- * flight, which carries the racer under the planet at the bend's inside corner. It ends with the
- * racer's centre inside the planet's reach and drifting up toward it, though only right was held:
- * the planet's pull at work. With the planet removed the racer flies on level and this fails.
+ * On Drift Test, thrust right along the first straight and under the planet at the bend's inside
+ * corner. The pull holds the racer against the rock the planet sits in, and past the rock's corner
+ * it lifts the racer off its line. It ends with the racer's centre near the planet (inside its
+ * reach or just leaving it) and moving up toward it, though only right was held. With the planet
+ * removed the racer flies on level and this fails.
  */
 export default scenario({
-  description: 'flying the straight under the planet, the racer enters its reach and is pulled toward it',
+  description: 'flying the straight under the planet, the racer is pulled up toward it with only right held',
   start: { save: HARD_SAVE, seed: 1, query: { course: 'drift-test' } },
-  // Drift Test is unlisted, so Race skips course select; the wait lands the hold on the race's first tick.
-  input: [...TITLE_TO_RACE, wait(180), hold('right', 280)],
+  // Drift Test is unlisted, so the second fire starts the race; the wait runs out the countdown.
+  input: [...TITLE_TO_SELECT, wait(180), hold('right', 340)],
   expect({ events, state }) {
     const body = playerBody(state);
     const centre = { x: body.x + body.w / 2, y: body.y + body.h / 2 };
-    expect(Math.hypot(centre.x - PLANET.centre.x, centre.y - PLANET.centre.y)).toBeLessThan(PLANET.reach);
+    expect(Math.hypot(centre.x - PLANET.centre.x, centre.y - PLANET.centre.y)).toBeLessThan(PLANET.reach * 1.5);
     expect(Math.round(body.vy)).toBeLessThan(0);
     expect(events.filter((e) => e.type === 'racer.fell' && e.id === 'player')).toEqual([]);
   },

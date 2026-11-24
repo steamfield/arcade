@@ -36,8 +36,8 @@ const PLANET = { x: 190, y: 30, radius: 6, colour: 0x9fb8e8 } as const;
  * The black hole on the third pass: its centre on the racer's line, where the pulled-in racer ends
  * its beat, the radius of its bright rim and the colours of rim and disc.
  */
-const HOLE = { x: 222, y: DRIFTER.y, radius: 5, rim: 0xffd27f, disc: 0x000000 } as const;
-/** How far left the planet sits on the still page, so it is over the racer and clear of the four-line caption. */
+const HOLE = { x: DRIFTER.fromX + 90, y: DRIFTER.y, radius: 5, rim: 0xffd27f, disc: 0x000000 } as const;
+/** How far left the planet sits on the still page, so it is over the racer and clear of the five-line caption. */
 const STILL_PLANET_SHIFT = 45;
 /**
  * How the planet bends the second pass: the path starts curving up at `fromX`, is `depthAtPlanet`
