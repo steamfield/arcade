@@ -67,14 +67,35 @@ describe('the space theme', () => {
 
   it('lays the tileset out in SpaceTile order on the 16 px grid, and points terrain at it', () => {
     const tiles = sheetFor(SpaceTex.tiles);
-    expect(tiles?.frames.map((frame) => frame.name)).toEqual(['rock', 'coral', 'ledge', 'rockBuried']);
-    expect(Object.keys(SpaceTile)).toEqual(['rock', 'coral', 'ledge', 'rockBuried']);
+    const tileNames = [
+      'rock',
+      'coral',
+      'ledge',
+      'rockBuried',
+      'gasGiant',
+      'debrisShield',
+      'archCrown',
+      'archShoulderLeft',
+      'archShoulderRight',
+      'archPillarLeft',
+      'archPillarRight',
+    ];
+    expect(tiles?.frames.map((frame) => frame.name)).toEqual(tileNames);
+    expect(Object.keys(SpaceTile)).toEqual(tileNames);
     expect(measureFrames(SpaceTex.tiles, tiles?.frames ?? [])).toEqual({ width: 16, height: 16 });
     expect(SPACE_THEME.terrain).toMatchObject({
       tileset: 'space-tiles',
       tiles: { rock: 0, coral: 1, ledge: 2 },
       buriedTiles: { rock: 3 },
-      glyphTiles: {},
+      glyphTiles: {
+        gasGiant: 4,
+        debrisShield: 5,
+        archCrown: 6,
+        archShoulderLeft: 7,
+        archShoulderRight: 8,
+        archPillarLeft: 9,
+        archPillarRight: 10,
+      },
     });
   });
 
