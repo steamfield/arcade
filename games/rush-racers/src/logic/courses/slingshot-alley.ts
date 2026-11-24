@@ -317,20 +317,16 @@ const LEVEL: LevelDef = {
 const PAR_TICKS = 9140;
 
 /**
- * Normal rivals hover this many tiles behind the player here, not the table's 2. On the short layout,
- * at 2 the novice placed top 3 in 4 of 10 as Baron, with the rivals a few ticks ahead of it; at 4
- * the no-dash bot won 7 of 10 as Streak, leaving the expert only 3 more wins. At 3 every character
- * passes the Normal bars (seeds 1-10): no-dash top 3 in 7-10, the expert 5-10 more wins than it, the
- * novice top 3 in 6-10 and winning 0-2.
+ * Normal rivals target a gap of three tiles behind the player. On seeds 1-10 as Rudy, Baron and
+ * Streak, the no-dash bot placed top three in 8-10 races per character and the expert won 7-9 more
+ * races than it. The novice placed top three in 8-9 races and won 2-4 per character.
  */
 const NORMAL_LAG_TILES = 3;
 
 /**
- * The floor of the Easy rivals' catch-up multiplier here, not the table's 0.6. In drift the
- * multiplier scales thrust fully but cruise by only half of what it takes away, so at 0.6 a rival
- * ahead of a child still coasts at about 90 px/s. On the short layout, a child who stopped for 10 s
- * placed top 2 in 1 of 3 scripted races. At 0.3 it wins all of seeds 1-5, rivals still flying at
- * 62-89 px/s while it waits.
+ * The floor of the Easy rivals' catch-up multiplier. On seeds 1-10 as Rudy, Baron and Streak,
+ * the toddler bot won 29 of 30 races and came second in the other. Mean finish times ranged
+ * from 251.4 to 255.5 s across the three characters.
  */
 const EASY_CATCH_UP_MIN = 0.3;
 

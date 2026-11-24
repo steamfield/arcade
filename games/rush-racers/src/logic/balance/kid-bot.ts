@@ -5,10 +5,11 @@
  * Easy guide is measured on. Races run on the real course; the result is the time spent stuck and
  * the finish place. Test and measurement only; nothing in the game imports it.
  */
+
 import { EventLog, TICK_DT } from '@arcade/core';
-import { tileOf } from '../ai/steer.ts';
 import { DEFAULT_COURSE } from '../courses/index.ts';
 import type { GameEvent } from '../events.ts';
+import { tileOf } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';
 import { RACE_LIMIT_TICKS } from '../race/standings.ts';
 import { centreOf, playerOf } from '../racers.ts';

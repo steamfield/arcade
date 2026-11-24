@@ -18,6 +18,7 @@ import type { HazardSkin, ObjectSkin } from '../worlds/object-skin.ts';
 import type { WorldSkin } from '../worlds/types.ts';
 import { addHazardSprite } from './hazard-view.ts';
 import { Layer } from './layers.ts';
+import { crumbleLook } from './set-pieces/crumble-view.ts';
 import { type Legend, tileAt } from './terrain-tile.ts';
 
 /** Course objects drawn as stand-ins until the pickup and hazard views replace them. */
@@ -28,40 +29,43 @@ interface LevelPlaceholders {
   jellies: Phaser.GameObjects.Sprite[];
 }
 
-/** The drawn course: its placeholders and a hook for course-changing events. */
+/** The drawn course, with hooks for events and per-frame branch state. */
 interface LevelView {
   placeholders: LevelPlaceholders;
   /** Applies a tick's drained events to the course (today only `coral.broken`). */
   onEvents(events: readonly Stamped<RuntimeEvent>[]): void;
+  /** Shows, hides and shakes crumbling-branch tiles to match `world.crumbles` and `world.fallen`; call every frame. */
+  syncFallen(world: World): void;
 }
 
 const TILESET_NAME = 'reef';
 
-interface CrumbleTile {
-  tile: Phaser.Tilemaps.Tile;
-  index: number;
-  branch: number;
-}
+type CrumbleTile = Pick<Phaser.Tilemaps.Tile, 'visible' | 'x' | 'pixelX'>;
 
-// The race builds the shared level before the theme's extra layers, which sync on every frame.
-const crumbleTiles = new WeakMap<Phaser.Scene, CrumbleTile[]>();
-
-/** Keeps the branch in the tilemap, so making it visible restores its original art. */
-export function syncCrumbleTile(
-  tile: Pick<Phaser.Tilemaps.Tile, 'visible' | 'x' | 'pixelX'>,
-  index: number,
-  fallen: ReadonlySet<number>,
-  offset: number,
-): void {
-  tile.visible = !fallen.has(index);
-  tile.pixelX = tile.x * TILE + offset;
-}
-
-/** Sync shared terrain tiles from the current world when the forest's extra layer syncs. */
-export function syncCrumbleTiles(scene: Phaser.Scene, world: World, offsetOf: (branch: number) => number): void {
-  for (const { tile, index, branch } of crumbleTiles.get(scene) ?? []) {
-    syncCrumbleTile(tile, index, world.fallen, offsetOf(branch));
-  }
+/** Keeps branch tiles in the tilemap so regrowth restores their original art. */
+export function createCrumbleTileSync(
+  layer: { getTileAt(x: number, y: number): CrumbleTile | null },
+  level: Level,
+  reducedMotion: boolean,
+): LevelView['syncFallen'] {
+  const branches = level.crumbles.map(({ col, row, length }) => {
+    const tiles: { tile: CrumbleTile; index: number }[] = [];
+    for (let x = col; x < col + length; x++) {
+      const tile = layer.getTileAt(x, row);
+      if (tile) tiles.push({ tile, index: tileIndex(level, x, row) });
+    }
+    return tiles;
+  });
+  return ({ crumbles, fallen }) => {
+    branches.forEach((tiles, branch) => {
+      const state = crumbles[branch];
+      const offset = state ? crumbleLook(state, reducedMotion).offset : 0;
+      for (const { tile, index } of tiles) {
+        tile.visible = !fallen.has(index);
+        tile.pixelX = tile.x * TILE + offset;
+      }
+    });
+  };
 }
 
 /**
@@ -75,26 +79,18 @@ export function createLevelView(
   level: Level,
   theme: Theme,
   skin: WorldSkin,
+  reducedMotion: boolean,
   legend: Legend = {},
 ): LevelView {
   const layer = createTileLayer(scene, level, theme.terrain, legend);
-  crumbleTiles.set(
-    scene,
-    level.crumbles.flatMap(({ col, row, length }, branch) => {
-      const tiles: CrumbleTile[] = [];
-      for (let x = col; x < col + length; x++) {
-        const tile = layer.getTileAt(x, row);
-        if (tile) tiles.push({ tile, index: tileIndex(level, x, row), branch });
-      }
-      return tiles;
-    }),
-  );
+  const syncFallen = createCrumbleTileSync(layer, level, reducedMotion);
   addFlowingCells(scene, level, theme.terrain);
   addWaterline(scene, level, theme.terrain);
   addFinishGate(scene, level, theme.terrain);
   const placeholders = addPlaceholders(scene, level, skin.objects);
   return {
     placeholders,
+    syncFallen,
     onEvents(events) {
       for (const event of events) {
         if (event.type === 'coral.broken') layer.removeTileAt(event.tx, event.ty);

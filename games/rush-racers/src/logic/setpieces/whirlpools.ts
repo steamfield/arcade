@@ -7,6 +7,7 @@ import { length } from '../num.ts';
 import { centreOf } from '../racers.ts';
 import { type Cell, type Racer, TILE, type Vec, type WhirlpoolDef, type World } from '../types.ts';
 
+/** Radius and push bounds for `parseWhirlpools` and caps for the tangential and inward push. */
 export const WHIRLPOOL = {
   /** Smallest allowed radius, in tiles. */
   minRadius: 2,

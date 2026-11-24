@@ -2,9 +2,8 @@
  * Wormholes, Farside's set piece: paired mouths that carry a racer from one to the other with its
  * velocity kept (`LevelDef.wormholes`). Cooldowns live in `World.warps`.
  */
-import { tileCentre, tileOf } from '../ai/steer.ts';
 import { errorAt, requireTile } from '../level/level-error.ts';
-import { isOpenCell } from '../level/query.ts';
+import { isOpenCell, tileCentre, tileOf } from '../level/query.ts';
 import { length } from '../num.ts';
 import { centreOf } from '../racers.ts';
 import { type Cell, type Racer, type RacerId, TILE, type World, type WormholeDef } from '../types.ts';

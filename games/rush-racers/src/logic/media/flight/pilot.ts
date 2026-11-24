@@ -9,8 +9,9 @@
  * hazards (`avoidHazards`), and dashes through puff clouds and on straights (`dashes.ts`). On
  * `forceRecover` it backs off and flaps up for a beat. Its memory is a `FlightPilot` (`way-data.ts`).
  */
+
 import { avoidHazards } from '../../ai/avoid.ts';
-import { tileOf } from '../../ai/steer.ts';
+import { tileOf } from '../../level/query.ts';
 import { length } from '../../num.ts';
 import { centreOf } from '../../racers.ts';
 import { activeCannonRide } from '../../setpieces/cannons.ts';

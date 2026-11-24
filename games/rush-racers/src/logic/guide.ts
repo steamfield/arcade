@@ -12,8 +12,8 @@
  * Deterministic: no rng, every number comes from the world.
  */
 
-import { tileOf } from './ai/steer.ts';
 import { tuningOf } from './difficulty-level.ts';
+import { tileOf } from './level/query.ts';
 import { mediumOf } from './media/index.ts';
 import { length } from './num.ts';
 import { centreOf, playerOf } from './racers.ts';

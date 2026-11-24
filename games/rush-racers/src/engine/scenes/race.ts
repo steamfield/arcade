@@ -72,10 +72,10 @@ export class RaceScene extends Phaser.Scene {
     const theme = themeFor(course);
     const backdrop = createBackdrop(this, world.level, theme, this.rt.settings);
     const skin = skinFor(course);
-    const level = createLevelView(this, world.level, theme, skin, course.level.legend);
+    const { reducedMotion } = this.rt.settings;
+    const level = createLevelView(this, world.level, theme, skin, reducedMotion, course.level.legend);
     // The pickup and hazard views draw the course objects from world state, so the level's inert stand-ins go.
     for (const stand of Object.values(level.placeholders).flat()) stand.destroy();
-    const { reducedMotion } = this.rt.settings;
     createWellView(this, world.level);
     const pickups = createPickupView(this, world.level, skin, reducedMotion);
     const hazards = createHazardView(this, world.level, skin, reducedMotion);
@@ -135,6 +135,7 @@ export class RaceScene extends Phaser.Scene {
 
     const sync = (current: World) => {
       backdrop.update(current.tick);
+      level.syncFallen(current);
       pickups.sync(current, current.tick);
       hazards.sync(current, current.tick);
       rings.sync(current, current.tick);

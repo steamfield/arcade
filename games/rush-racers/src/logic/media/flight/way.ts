@@ -5,9 +5,9 @@
  * the bounce pads.
  */
 import { downhillPath, openTiles, steerDirection } from '../../ai/steer.ts';
-import { cellAt, isSolid, tileIndex } from '../../level/query.ts';
+import { cellAt, cornerIsClear, isSolid, NEIGHBOURS, tileIndex } from '../../level/query.ts';
 import { length } from '../../num.ts';
-import { cornerIsClear, fieldAt, NEIGHBOURS } from '../../race/flowfield.ts';
+import { fieldAt } from '../../race/flowfield.ts';
 import type { Box, Vec, World } from '../../types.ts';
 import { flightEnterCost, flightRamEnterCost } from './nav.ts';
 import { type FlightRoute, flightNav } from './way-data.ts';

@@ -3,9 +3,8 @@
  * aim for a set time (`LevelDef.cannons`). Rides live in `World.cannonRides`.
  */
 import { TICK_DT } from '@arcade/core';
-import { tileCentre, tileOf } from '../ai/steer.ts';
 import { errorAt, requireTile } from '../level/level-error.ts';
-import { isOpenCell } from '../level/query.ts';
+import { isOpenCell, tileCentre, tileOf } from '../level/query.ts';
 import { length } from '../num.ts';
 import { moveBody, moveRulesFor } from '../race/move.ts';
 import { centreOf } from '../racers.ts';
@@ -25,7 +24,10 @@ import {
   type World,
 } from '../types.ts';
 
-/** Hold and reload in ticks, launch speed in px/s. */
+/**
+ * Hold and reload durations in ticks. `parseCannons` enforces `minSpeed` and `maxSpeed` in px/s
+ * and `maxFlightTicks` in ticks.
+ */
 export const CANNON = {
   holdTicks: 18,
   reloadTicks: 60,

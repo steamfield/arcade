@@ -5,10 +5,10 @@
  * may step into unbroken coral, so a racer able to break it aims at it. Media with flow-field
  * navigation (`logic/media/`) walk their fields with these; the sweep is plain geometry.
  */
-import { cellAt, isSolid } from '../level/query.ts';
+import { cellAt, cornerIsClear, isSolid, NEIGHBOURS, tileCentre, tileOf } from '../level/query.ts';
 import { length } from '../num.ts';
-import { cornerIsClear, fieldAt, NEIGHBOURS } from '../race/flowfield.ts';
-import { type Box, type GridSize, type Level, TILE, type Vec } from '../types.ts';
+import { fieldAt } from '../race/flowfield.ts';
+import type { Box, GridSize, Level, Vec } from '../types.ts';
 
 /** Pixels between samples when checking that a straight slide stays in open water. */
 const SIGHT_STEP_PX = 1;
@@ -23,10 +23,6 @@ export type StepPrice = (tile: Vec, move: Vec) => number;
 const CORNER_SIGNS = NEIGHBOURS.filter((offset) => offset.x !== 0 && offset.y !== 0);
 
 const centreOf = (body: Box): Vec => ({ x: body.x + body.w / 2, y: body.y + body.h / 2 });
-/** The tile holding a point in world px. */
-export const tileOf = (point: Vec): Vec => ({ x: Math.floor(point.x / TILE), y: Math.floor(point.y / TILE) });
-/** A tile's centre in world px. */
-export const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE });
 
 /**
  * Unit direction from a body's centre toward the tile `lookahead` steps down `field`,

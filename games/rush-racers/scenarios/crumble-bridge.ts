@@ -6,7 +6,8 @@ const HIGH_ACORN = 7;
 const LOW_ACORN = 8;
 
 export default scenario({
-  description: 'the player crosses a shaking branch and the following rival finishes by the low road',
+  description:
+    'the player crosses a shaking branch, the following rival finishes by the low road, and the branch regrows',
   start: { save: HARD_SAVE, seed: 1, query: { course: 'run-test' } },
   input: [
     wait(25),
@@ -39,13 +40,14 @@ export default scenario({
     hold('right', 17),
     hold(['right', 'up'], 8),
     hold('right', 110),
-    wait(145),
+    wait(343),
   ],
   expect({ events, summary }) {
     const branchEvents = events.filter((event) => event.type.startsWith('crumble.'));
-    expect(branchEvents.map(({ type }) => type)).toEqual(['crumble.shook', 'crumble.fell']);
-    const [shook, fell] = branchEvents;
+    expect(branchEvents.map(({ type }) => type)).toEqual(['crumble.shook', 'crumble.fell', 'crumble.regrew']);
+    const [shook, fell, regrew] = branchEvents;
     expect((fell?.tick ?? 0) - (shook?.tick ?? 0)).toBe(40);
+    expect((regrew?.tick ?? 0) - (fell?.tick ?? 0)).toBe(300);
     const crossed = events.find((event) => event.type === 'pearl.collected' && event.index === HIGH_ACORN);
     expect(crossed).toMatchObject({ id: 'player' });
     expect(crossed?.tick).toBeGreaterThan(shook?.tick ?? 0);

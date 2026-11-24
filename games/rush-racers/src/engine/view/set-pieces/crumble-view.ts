@@ -8,7 +8,6 @@ import { type CrumbleDef, type CrumbleState, TILE, type World } from '../../../l
 import { CrumblePalette } from '../../themes/forest/palettes.ts';
 import type { ThemeLayer } from '../../themes/types.ts';
 import { Layer } from '../layers.ts';
-import { syncCrumbleTiles } from '../level-view.ts';
 
 const BARK_FALL_TICKS = 14;
 const REST = { offset: 0, barkAge: null, warning: false, sproutHeight: 0 };
@@ -38,14 +37,13 @@ export function crumbleLook(state: CrumbleState, reducedMotion: boolean): Crumbl
   return REST;
 }
 
-/** Adds the forest theme's branch layer. Visibility comes from the world even on the first frame. */
+/** Adds the forest theme's branch effects over the shared tilemap. */
 export function createCrumbleView(scene: Phaser.Scene, world: World, reducedMotion: boolean): ThemeLayer {
   if (world.level.crumbles.length === 0) return { sync() {} };
   const graphics = scene.add.graphics().setDepth(Layer.tiles + 0.5);
   return {
     sync(current) {
       const looks = current.crumbles.map((state) => crumbleLook(state, reducedMotion));
-      syncCrumbleTiles(scene, current, (branch) => looks[branch]?.offset ?? 0);
       graphics.clear();
       current.level.crumbles.forEach((branch, index) => {
         const look = looks[index];

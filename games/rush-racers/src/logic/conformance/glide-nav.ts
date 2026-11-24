@@ -5,10 +5,10 @@
  * Its nav is a `GlideNav` (`glide-data.ts`). Test-only.
  */
 
-import { isRockLike, isSolid } from '../level/query.ts';
+import { cornerIsClear, isRockLike, isSolid, NEIGHBOURS } from '../level/query.ts';
 import type { LevelProblem, MediumNav } from '../media/types.ts';
 import { length } from '../num.ts';
-import { cornerIsClear, distancesToFinish, fieldAt, NEIGHBOURS } from '../race/flowfield.ts';
+import { distancesToFinish, fieldAt } from '../race/flowfield.ts';
 import { type Box, type Cell, type Level, TILE, type Vec, type World } from '../types.ts';
 import { type GlideNav, glideNav } from './glide-data.ts';
 
