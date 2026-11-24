@@ -26,15 +26,13 @@ interface Wording {
   rivalsMove: string;
   /** How the child is described while idle. */
   idle: string;
-  /** The novice bot's burst of speed. */
-  burst: string;
 }
 
 function wordingFor(courseId: string): Wording {
   if (mediumIdOf(courseOf({ course: courseId })) === SWIM_MEDIUM) {
-    return { rivalsMove: 'swimming', idle: 'sits still', burst: 'kicks' };
+    return { rivalsMove: 'swimming', idle: 'sits still' };
   }
-  return { rivalsMove: 'running', idle: 'stands still', burst: 'dashes' };
+  return { rivalsMove: 'running', idle: 'stands still' };
 }
 
 /** The course's name for a describe title: empty for the default course, so its titles stay short. */
@@ -74,7 +72,12 @@ export function describeEasyLevel(courseId: string = DEFAULT_COURSE.id): void {
 
 /**
  * Registers the Easy bars for the weakest child (the toddler bot, then a scripted race with a 10 s
- * pause) racing Rudy on the course with `courseId`.
+ * pause) racing Rudy on the course with `courseId`: the toddler bot wobbles hard, reacts late and
+ * never dashes or uses items, and the scripted race has the child stop for 10 s and then hold right.
+ *
+ * Measured at v2 phase 4 on Sunlit Shallows, seeds 1-9 as Rudy: the toddler finishes all 9 and places
+ * top two in 8; the slowest rival finishes within 1.10x the toddler's time; a median 1 stun a race;
+ * no rival power-up lands on it. The scripted races are measured in their own describe.
  *
  * @throws {Error} When `courseId` is neither a shipped nor a registered course.
  */

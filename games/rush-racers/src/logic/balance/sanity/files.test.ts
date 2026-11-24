@@ -4,11 +4,12 @@
  * this cheap check runs in `unit`, so a course added without all its files fails `arcade check`.
  */
 import { readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { LISTED_COURSES } from '../../courses/index.ts';
 import { CHARACTER_IDS } from '../../types.ts';
 
-const BARS_DIR = new URL('..', import.meta.url).pathname;
+const BARS_DIR = fileURLToPath(new URL('..', import.meta.url));
 const BAR_SUFFIXES = ['', '-novice', '-normal'];
 const EASY_NAMES = ['easy-level', 'easy-toddler'];
 
