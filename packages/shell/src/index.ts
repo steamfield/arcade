@@ -1,8 +1,8 @@
 import { configureLogging, createLogger, type Drained, type EventLog, type LogEntry } from '@arcade/core';
 import type { Input } from '@arcade/input';
-import { createErrorReporter, type ReportError } from './report-error.ts';
+import { createErrorReporter, type RecordedError, type ReportError } from './report-error.ts';
 
-export type { ReportError, ReportErrorOptions } from './report-error.ts';
+export type { RecordedError, ReportError, ReportErrorOptions } from './report-error.ts';
 
 /**
  * Boots every game the same way: container sizing and mobile hygiene, starting
@@ -80,7 +80,7 @@ export interface BootOptions<A extends string> {
 export interface ArcadeHook {
   ready: boolean;
   gameId: string;
-  errors: { source: string; message: string }[];
+  errors: RecordedError[];
   logs: LogEntry[];
   tick: number;
   /** Runs up to `ticks`; returns how many ran (fewer if a load started). */

@@ -26,7 +26,7 @@ async function startRuntime(saves: Awaited<ReturnType<typeof openStore>>, option
   const held = { input: STILL, ready: true, notices: [] as string[] };
   const runtime = await Runtime.start({
     saves,
-    gameId: 'three-3d',
+    gameId: 'orb-test',
     seed: 1,
     notice: (message) => held.notices.push(message),
     readInput: () => held.input,
@@ -138,7 +138,7 @@ describe('runtime', () => {
     held.input = FORWARD;
     runtime.advance(TICKS_TO_FIRST_ORB);
     await runtime.settled();
-    expect(logged).toEqual([{ level: 'warn', namespace: 'three-3d', message: 'orb progress not saved: disk full' }]);
+    expect(logged).toEqual([{ level: 'warn', namespace: 'orb-test', message: 'orb progress not saved: disk full' }]);
   });
 });
 

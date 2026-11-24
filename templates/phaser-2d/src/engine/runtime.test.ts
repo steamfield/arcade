@@ -208,7 +208,10 @@ describe('an unknown capture stage', () => {
   });
 
   it('says nothing outside debug and test mode', async () => {
-    bootedRuntime(await realStore(), { search: '?stage=nowhere', testMode: false });
+    const { rt } = bootedRuntime(await realStore(), { search: '?stage=near-goal', testMode: false });
+    press(rt, 'jump');
+    expect(rt.scene).toBe('play');
+    expect(rt.staged).toBe(false);
     expect(logged).toEqual([]);
   });
 });

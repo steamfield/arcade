@@ -124,7 +124,7 @@ Tests in `tools/arcade/` guard the guardrails. They run in `@arcade/cli`'s test 
 | Logic | Vitest | Rules and state through `createWorld`/`stepWorld`, ASCII views, save round-trip, every committed save fixture (`checkSaveFixtures`) |
 | Runtime | Vitest | Both templates' Phaser- or three-free `src/engine/runtime.ts`: scene flow, save queue, capture-stage gate |
 | Scenarios | Playwright, shell-stepped | Start state plus input plus semantic assertions on summary, state and events; also run by `see --scenario` |
-| Smoke | Playwright on the assembled production build: desktop Chromium, a phone, WebKit | Loads, no errors, right renderer, input, save survives reload, touch controls (`GameDriver.touch`), the pinned world hash |
+| Smoke | Playwright on the assembled production build: desktop Chromium, a phone, and WebKit for Phaser (2D) games | Loads, no errors, right renderer, input, save survives reload, touch controls (`GameDriver.touch`), the pinned world hash |
 
 Scenarios use one typed format for tests and `see`. Action names are typed per game, so a typo fails typecheck:
 

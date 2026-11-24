@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineGameConfig } from '@arcade/config/vite';
 
@@ -18,6 +18,8 @@ const API_ORIGIN = `http://127.0.0.1:${process.env.ARCADE_API_PORT ?? '8788'}`;
  * The folders whose code every peer in an online race must share, relative to this file: the rules,
  * the core helpers they use, and the net modules that decide what peers simulate or send. Every
  * non-test `.ts` file under them counts, so a new net file is hashed without anyone listing it.
+ * That means every file on disk, tracked or not: a scratch `.ts` file left in one of these folders
+ * changes a local build's id, so a dev server with it can't join rooms with one without it.
  */
 const SIMULATION_FOLDERS = ['src/logic', '../../packages/core/src', 'src/net'];
 
@@ -40,10 +42,12 @@ function leftOut(path: string): boolean {
 
 /** The simulation `.ts` files under `folder`, sorted, as paths relative to `root`. */
 function sourceFilesUnder(root: string, folder: string): string[] {
+  // POSIX separators, so the id (and the exclusions) are the same on every OS.
   return readdirSync(join(root, folder), { recursive: true, encoding: 'utf8' })
+    .map((file) => file.split(sep).join('/'))
     .filter((file) => file.endsWith('.ts'))
     .sort()
-    .map((file) => join(folder, file))
+    .map((file) => `${folder}/${file}`)
     .filter((path) => !leftOut(path));
 }
 

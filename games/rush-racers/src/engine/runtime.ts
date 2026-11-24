@@ -237,6 +237,8 @@ export class Runtime {
   private readonly prefersReducedMotion: boolean;
   private readonly startScene: (scene: SceneKey) => void;
   private readonly search: string;
+  /** The `?stage=` every local race is staged with, resolved once at launch so an unknown name warns once. */
+  private readonly stage: ReturnType<typeof stageFor>;
   /** The slot an accepted `?local=` asks this screen to follow, or null when it names none or `?debug=1` is missing. */
   readonly localSlot: RacerId | null;
   private readonly listeners = new Set<EventListener>();
@@ -268,6 +270,7 @@ export class Runtime {
     this.startScene = options.startScene;
     this.art = options.art ?? ART_ALWAYS_READY;
     this.search = options.search ?? '';
+    this.stage = stageFor(options.ctx.params, this.search);
     this.localSlot = options.ctx.params.debug ? localSlotFor(this.search) : null;
     this.listedCourses = options.listedCourses ?? LISTED_COURSES;
     this.courseSelectShown = this.listedCourses.length > 1;
@@ -475,9 +478,8 @@ export class Runtime {
     this.onlineRace = false;
     this.onlineLocal = null;
     setLocalRacer(this.world, this.localRacer);
-    const stage = stageFor(this.ctx.params, this.search);
-    if (stage) applyStage(this.world, stage);
-    this.debugRace = stage !== null || this.localSlot !== null;
+    if (this.stage) applyStage(this.world, this.stage);
+    this.debugRace = this.stage !== null || this.localSlot !== null;
     this.beginRace(this.world);
   }
 
