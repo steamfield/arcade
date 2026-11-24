@@ -126,8 +126,14 @@ describe("How to Play's pages per medium", () => {
     expect(headings).toHaveLength(HOW_TO_PLAY_PAGES);
   });
 
-  it('names one drift move at a time while animating, and all four on the still page under reduced motion', () => {
-    const moves = ['HOLD TO BURN', 'LET GO TO DRIFT', 'BURN BACK TO BRAKE', 'PLANETS PULL YOU IN'];
+  it('names one drift move at a time while animating, and all five on the still page under reduced motion', () => {
+    const moves = [
+      'HOLD TO BURN',
+      'LET GO TO DRIFT',
+      'BURN BACK TO BRAKE',
+      'PLANETS PULL YOU IN',
+      'BLACK HOLES SWALLOW YOU',
+    ];
     const shownOverALoop = new Set(Array.from({ length: 900 }, (_, tick) => moveWordsShown('drift', tick, false)));
 
     expect(moveWordsShown('drift', 0, false)).toBe('HOLD TO BURN');

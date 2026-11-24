@@ -79,16 +79,7 @@ test('a Bramble Run race starts from the menus and runs 600 ticks on foot', asyn
   expect(summary.raceTick).toBeGreaterThanOrEqual(600);
 });
 
-/**
- * `debugState().worldHash` 600 ticks into a Slingshot Alley race on Hard, holding Right from the
- * start line. It covers the drift medium, its gravity wells included, the way `TOP_ROUTE_BROWSER_HASH`
- * covers swimming: every browser project must compute the same number.
- */
-const SLINGSHOT_BROWSER_HASH = 3665128705;
-
-test('a Slingshot Alley race starts from the menus and drifts 600 ticks to one hash on every browser', async ({
-  game,
-}) => {
+test('a Slingshot Alley race starts from the menus and drifts 600 ticks', async ({ game }) => {
   await game.open();
   await game.loadState(HARD_SAVE);
   // Title Race, then down twice to Slingshot Alley on course select once it has armed.
@@ -98,7 +89,34 @@ test('a Slingshot Alley race starts from the menus and drifts 600 ticks to one h
   const summary = await game.summary();
   expect(summary).toMatchObject({ scene: 'race', phase: 'racing', course: 'slingshot-alley', medium: 'drift' });
   expect(summary.raceTick).toBeGreaterThanOrEqual(600);
-  expect(await game.state()).toMatchObject({ worldHash: SLINGSHOT_BROWSER_HASH });
+});
+
+/**
+ * `debugState().worldHash` after a Drift Test race on Hard that swings round the planet bend, flies
+ * the top corridor into the black hole, is swallowed and comes back (the flight `well-swing` and
+ * the old hand-flown `hole-respawn` recorded). It covers the drift medium with both kinds of
+ * gravity well and the fall-out timer, the way `TOP_ROUTE_BROWSER_HASH` covers swimming: every
+ * browser project must compute the same number.
+ */
+const DRIFT_WELLS_BROWSER_HASH = 963384121;
+
+test('a Drift Test race swings past the planet, is swallowed by the black hole and comes back, to one hash on every browser', async ({
+  game,
+}) => {
+  await game.open({ query: { course: 'drift-test' } });
+  await game.loadState(HARD_SAVE);
+  // Drift Test is unlisted, so Race skips course select; the wait lands the first hold on the race's first tick.
+  await game.play(
+    parseInput(
+      '_*25 fire _*25 fire _*180 right*290 up*60 left+up*40 right+down*40 right*60 right+up*3 right*190 up*40 _*80',
+    ),
+  );
+  const summary = await game.summary();
+  expect(summary).toMatchObject({ scene: 'race', phase: 'racing', course: 'drift-test', medium: 'drift' });
+  const events = await game.events();
+  const player = events.filter((e) => (e.type === 'racer.fell' || e.type === 'racer.respawned') && e.id === 'player');
+  expect(player.map((e) => e.type)).toEqual(['racer.fell', 'racer.respawned']);
+  expect(await game.state()).toMatchObject({ worldHash: DRIFT_WELLS_BROWSER_HASH });
 });
 
 test('on Bramble Run the on-screen Up button jumps @touch', async ({ game, page }) => {

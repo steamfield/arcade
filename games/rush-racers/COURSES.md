@@ -176,7 +176,7 @@ The medium's own code reads its data only through these (`swimNav(world.nav)`, `
 | `distanceAt(world, tile)` | Distance to the finish from a tile; Infinity when unreachable. | Steer field value. |
 | `validateLevel(level, nav)` | Located problems that make the level unraceable in this medium; empty when fine. `createWorld` throws one `LevelError` listing them all, located at the first. | A start that can't reach the finish without breaking coral. |
 | `coralAhead(world, tile, steps)` | Whether unbroken coral lies within `steps` tiles along the medium's way from `tile`; the Puffer item choice asks it. Return false in a medium without breakable coral. | Walks the smash field. |
-| `afterMove(world, racer, contacts, events)` | Runs once per unfinished racer per tick right after the generic move, with what it ran into (`MoveContacts`: floor, ceiling and the tiles bumped, walls). | Nothing. Run sets grounded, the last safe spot and falls here. |
+| `afterMove(world, racer, contacts, events)` | Runs once per unfinished racer per tick right after the generic move, with what it ran into (`MoveContacts`: floor, ceiling and the tiles bumped, walls, and `lost`, the velocity each axis had when a tile stopped it, since `moveBody` has already zeroed the body's own; a medium whose racers bounce reads it, as drift's `bounce.ts` does). | Nothing. Run sets grounded, the last safe spot and falls here; drift bounces and runs its black holes here. |
 | `racerCollision` | `'solid'` racers bump each other; `'ghost'` pass through; `'horizontal'` push apart along x only, so one can land through another. | `'solid'` (run: `'horizontal'`) |
 | `effects` | Data the generic push rules read (below). | `dashAxes: 'both'`, bubbles and loose power-ups float up. |
 | `kickRules` | How generic counters read a kick (below). | Every counter on; Gil's spring kick applies when kicking upward. |
@@ -190,10 +190,17 @@ The medium's own code reads its data only through these (`swimNav(world.nav)`, `
 - `effects.solidClams`: shut clams are solid and open only from below (a head bump).
 - `effects.pitBelow`: the bottom edge of the level is open, so a body can fall out; the medium decides what happens then (run respawns it in `afterMove`).
 - `effects.allowsLedges`: the level may use `=` ledges; `createWorld` rejects one otherwise.
+- `effects.gravityWells`: the level may have gravity wells (`LevelDef.wells`, parsed by `level/wells.ts`), and the medium says what they do to a racer (drift samples `pullAt` into its environment and swallows racers at a horizon in `afterMove`). `createWorld` throws a `LevelError` for a level with wells in a medium without the flag, and for any start whose centre is inside a black hole's reach.
 - `kickRules.dodgesSquid`: a kick just before contact makes a Homing Squid miss.
 - `kickRules.shakesLatch`: kicks while latched take ticks off the latch.
 - `kickRules.countersUndertow`: a kick against an Undertow cuts its pull that tick.
 - `kickRules.springKick(aim)`: whether Gil's spring kick applies to a kick along `aim`.
+
+### Putting a racer out of play
+
+A medium that can take a racer out (run and flight through a pit, drift into a black hole) uses the shared timer in `logic/media/fall-out.ts` from its `afterMove`. Its racer motion extends `ParkingMotion`, which keeps `parkedAt`, the spot an out racer waits on. `fallOut(racer, events, respawnTicks)` stops the racer, parks it, sets `status.fallen` and emits `racer.fell`; each later tick `waitOut(racer)` holds it parked at rest and counts `fallen` down (`tickStatuses` leaves that counter alone), returning true when the wait ends; then `respawnAt(racer, spot, invulnTicks, events)` puts it back on the spot the medium chose, at rest with no dash running, invulnerable, and emits `racer.respawned`. The medium keeps its own rule for which spots are safe (run's last safe ground, drift's last spot outside every hole's reach) and resets its own motion.
+
+While `status.fallen > 0` the generic rules treat the racer as gone: its intent is cut to nothing (`controlledIntent`), it can't fire an item (`canFire`, which also covers the tick it falls, after its intent was read), it opens no clam and collects no pearl or loose item, a hit doesn't land on it (`landHit`), a squid won't pick it, and it passes through other racers (`isDowned`). The views hide its item overlays and the latched DASH! prompt.
 
 The progress for placing (`World.progress`) is generic and the same in every medium; only navigation is the medium's.
 

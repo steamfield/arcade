@@ -26,8 +26,9 @@ function playerBody(state: unknown): PlayerBody {
 /**
  * On Drift Test, fly the first straight, turn up the bend past the planet in its inside corner,
  * and run out along the top corridor. This is an end-to-end flight of the planet bend: it ends in the
- * corridor past col 50, still moving, without having fallen. That the planet's pull works is the
- * logic tests' job, not this scenario's.
+ * corridor past col 50, still moving, without having fallen. Scenarios see only the state at the
+ * end, so `well-pull` stops this flight under the planet and checks the pull there; that the pull
+ * bends a path is the logic tests' job (`src/logic/media/drift/wells.test.ts`).
  */
 export default scenario({
   description: 'a racer can fly the planet bend into the top corridor without falling',

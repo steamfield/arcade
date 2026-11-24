@@ -1,10 +1,12 @@
 /**
- * Page 1 on a drift course, THRUST AND DRIFT. The player's racer crosses open space twice, with a
- * caption naming each beat. The first pass has three: holding Right burns it up to speed with a flame
- * behind it, letting go leaves the arrows dark while it keeps drifting on at almost the same speed,
- * and holding Left burns against its motion, flame ahead, until it stops. On the second pass it
- * drifts past a small planet and its path bends up toward it. Under reduced motion the racer holds
- * still mid-burn with the planet above and ahead of it, and one caption lists all four moves.
+ * Page 1 on a drift course, THRUST AND DRIFT. The player's racer crosses open space three times, with
+ * a caption naming each beat. The first pass has three: holding Right burns it up to speed with a
+ * flame behind it, letting go leaves the arrows dark while it keeps drifting on at almost the same
+ * speed, and holding Left burns against its motion, flame ahead, until it stops. On the second pass
+ * it drifts past a small planet and its path bends up toward it. On the third it drifts toward a
+ * small black disc with a bright rim on its line, speeds up as the hole pulls it in, and vanishes
+ * into it; the hole stays a moment with the racer gone. Under reduced motion the racer holds still
+ * mid-burn with the planet above and ahead of it, and one caption lists all five lines.
  */
 import { Frame } from '../../art/keys.ts';
 import type { Direction } from '../control-glyphs.ts';
@@ -25,10 +27,16 @@ const BURN = 'HOLD TO BURN';
 const DRIFT = 'LET GO TO DRIFT';
 const BRAKE = 'BURN BACK TO BRAKE';
 const PULL = 'PLANETS PULL YOU IN';
-const ALL_MOVES = [BURN, DRIFT, BRAKE, PULL].join('\n');
+const SWALLOW = 'BLACK HOLES SWALLOW YOU';
+const ALL_MOVES = [BURN, DRIFT, BRAKE, PULL, SWALLOW].join('\n');
 
 /** The planet on the second pass: its centre, above the racer's line and right of the caption, and radius. */
 const PLANET = { x: 190, y: 30, radius: 6, colour: 0x9fb8e8 } as const;
+/**
+ * The black hole on the third pass: its centre on the racer's line, where the pulled-in racer ends
+ * its beat, the radius of its bright rim and the colours of rim and disc.
+ */
+const HOLE = { x: 222, y: DRIFTER.y, radius: 5, rim: 0xffd27f, disc: 0x000000 } as const;
 /** How far left the planet sits on the still page, so it is over the racer and clear of the four-line caption. */
 const STILL_PLANET_SHIFT = 45;
 /**
@@ -39,8 +47,8 @@ const BEND = { fromX: 140, depthAtPlanet: 10 } as const;
 
 /**
  * One beat: how long it lasts, the arrow lit (none while drifting), the caption, the speed (px a
- * tick) it ends at, whether the racer leaves a drifting trail, and whether the planet is out and
- * bending its path.
+ * tick) it ends at, whether the racer leaves a drifting trail, whether the planet is out and
+ * bending its path, whether the black hole is out, and whether the racer is gone into it.
  */
 interface Beat {
   ticks: number;
@@ -49,6 +57,8 @@ interface Beat {
   speedTo: number;
   trail: boolean;
   planet: boolean;
+  hole: boolean;
+  gone: boolean;
 }
 
 /** One run across the page from `DRIFTER.fromX`: the speed it starts at and its beats. */
@@ -57,24 +67,36 @@ interface Pass {
   beats: readonly Beat[];
 }
 
+/** A beat's flags with nothing out: no trail, no planet, no hole, the racer in play. */
+const IN_PLAY = { trail: false, planet: false, hole: false, gone: false } as const;
+
 /**
  * The loop. First pass: a burn from rest to speed, a long drift that barely slows (thin dust is the
  * only drag), a burn back that stops it, then a moment at rest. Second pass: the racer drifts in at
- * speed and past the planet, which bends its path. Then it is back at the start.
+ * speed and past the planet, which bends its path. Third pass: it drifts at the black hole, speeding
+ * up as it is pulled in (60 ticks from 0.8 to 2.2 px a tick is 90 px, to the hole's centre), and is
+ * gone for a moment. Then it is back at the start.
  */
 const PASSES: readonly Pass[] = [
   {
     speedFrom: 0,
     beats: [
-      { ticks: 40, arrow: 'right', caption: BURN, speedTo: 1, trail: false, planet: false },
-      { ticks: 60, arrow: null, caption: DRIFT, speedTo: 0.9, trail: true, planet: false },
-      { ticks: 30, arrow: 'left', caption: BRAKE, speedTo: 0, trail: false, planet: false },
-      { ticks: 30, arrow: null, caption: BRAKE, speedTo: 0, trail: false, planet: false },
+      { ticks: 40, arrow: 'right', caption: BURN, speedTo: 1, ...IN_PLAY },
+      { ticks: 60, arrow: null, caption: DRIFT, speedTo: 0.9, ...IN_PLAY, trail: true },
+      { ticks: 30, arrow: 'left', caption: BRAKE, speedTo: 0, ...IN_PLAY },
+      { ticks: 30, arrow: null, caption: BRAKE, speedTo: 0, ...IN_PLAY },
     ],
   },
   {
     speedFrom: 1,
-    beats: [{ ticks: 90, arrow: null, caption: PULL, speedTo: 1, trail: true, planet: true }],
+    beats: [{ ticks: 90, arrow: null, caption: PULL, speedTo: 1, ...IN_PLAY, trail: true, planet: true }],
+  },
+  {
+    speedFrom: 0.8,
+    beats: [
+      { ticks: 60, arrow: null, caption: SWALLOW, speedTo: 2.2, ...IN_PLAY, trail: true, hole: true },
+      { ticks: 30, arrow: null, caption: SWALLOW, speedTo: 0, ...IN_PLAY, hole: true, gone: true },
+    ],
   },
 ];
 const passTicks = (pass: Pass): number => pass.beats.reduce((total, beat) => total + beat.ticks, 0);
@@ -145,12 +167,17 @@ export const buildDriftMovePage: PageBuilder = (kit) => {
     const row = kit.bar(PLANET.x, PLANET.y + dy, width, 1, PLANET.colour);
     return { row, x: row.x };
   });
+  // The rim first, then the disc a pixel smaller over it, so only the rim's edge shows.
+  const hole = [
+    ...planetRows(HOLE.radius).map(({ dy, width }) => kit.bar(HOLE.x, HOLE.y + dy, width, 1, HOLE.rim)),
+    ...planetRows(HOLE.radius - 1).map(({ dy, width }) => kit.bar(HOLE.x, HOLE.y + dy, width, 1, HOLE.disc)),
+  ];
 
   return (tick, reducedMotion) => {
     const t = reducedMotion ? STILL_TICK : tick % DRIFT_PERIOD;
     const { beat, travelled } = driftAt(t);
     const x = DRIFTER.fromX + Math.round(travelled);
-    drifter.setPosition(x, pathY(x, beat)).setFrame(stroke(tick, reducedMotion));
+    drifter.setPosition(x, pathY(x, beat)).setFrame(stroke(tick, reducedMotion)).setVisible(!beat.gone);
     arrows.setPressed(beat.arrow);
     caption.setText(beat.caption).setVisible(!reducedMotion);
     stillCaption.setVisible(reducedMotion);
@@ -162,6 +189,7 @@ export const buildDriftMovePage: PageBuilder = (kit) => {
       const dotX = x - TRAIL.offset - i * TRAIL.gap;
       dot.setVisible(beat.trail).setPosition(dotX, pathY(dotX, beat));
     });
+    for (const row of hole) row.setVisible(beat.hole);
     for (const { row, x: rowX } of planet) {
       row.setVisible(beat.planet || reducedMotion).setX(reducedMotion ? rowX - STILL_PLANET_SHIFT : rowX);
     }

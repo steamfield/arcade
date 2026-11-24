@@ -286,6 +286,14 @@ describe('SWAP', () => {
     expect(run(1)).toEqual(NO_HINTS);
   });
 
+  it('shows no latched DASH! prompt while the player is out of play', () => {
+    const { world, player } = firedOnce();
+    player.status.latched = 60;
+    expect(latchPromptShows(world)).toBe(true);
+    player.status.fallen = 30;
+    expect(latchPromptShows(world)).toBe(false);
+  });
+
   it('pauses while a squid takes the spot, then comes back for the rest of its time', () => {
     const { world, player, run } = firedOnce();
     gainItem(world, player, 'inkSac', 3);

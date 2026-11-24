@@ -6,7 +6,8 @@
  * a ring that expands from a Glow Lantern flash, a Homing Squid wrapped round a racer it
  * has latched on to and speed lines behind a racer Undertow is pulling back. Everything is an overlay: the
  * racer's own sprite (including its invulnerability flicker) belongs to
- * `racer-view.ts`. Overlays are created once and only reconfigured each frame.
+ * `racer-view.ts`. Overlays are created once and only reconfigured each frame. A racer that is out
+ * of play (`status.fallen`, after a pit or a black hole) shows none.
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
@@ -22,7 +23,7 @@ import { Layer } from './layers.ts';
 export interface PowerupView {
   /** Starts the flash ring when `flash.fired` names this racer. `tick` is the world tick the events were drained at. */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
-  /** Positions and shows or hides every overlay from `racer`'s state at `tick`. */
+  /** Positions and shows or hides every overlay from `racer`'s state at `tick`; hides them all while it is out of play. */
   sync(racer: Racer, tick: number): void;
 }
 
@@ -59,6 +60,7 @@ export function createPowerupView(
   const flashRing = overlay(attack.looseGlow, Layer.player + 0.25).setTint(FLASH_TINT);
   const latch = overlay(attack.homer, Layer.player + 0.6).setAlpha(0.95);
   const pullLines = overlay(attack.undertowStreak, Layer.racers - 0.25).setAlpha(PULL_LINE_ALPHA);
+  const overlays = [shield, inflated, streak, flashRing, latch, pullLines];
   let flashedAt = Number.NEGATIVE_INFINITY;
 
   return {
@@ -66,6 +68,10 @@ export function createPowerupView(
       for (const event of events) if (event.type === 'flash.fired' && event.id === racerId) flashedAt = tick;
     },
     sync(racer, tick) {
+      if (racer.status.fallen > 0) {
+        for (const image of overlays) image.setVisible(false);
+        return;
+      }
       const x = Math.round(racer.body.x + racer.body.w / 2);
       const y = Math.round(racer.body.y + racer.body.h / 2);
       const { status } = racer;

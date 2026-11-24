@@ -1,9 +1,11 @@
 /**
  * A racer that is out of play (`status.fallen > 0`, waiting to be put back after a pit or a black
- * hole) collects nothing, however long it waits on top of a pickup.
+ * hole) collects nothing, however long it waits on top of a pickup, and fires nothing, even on the
+ * tick it is swallowed.
  */
 import { describe, expect, it } from 'vitest';
-import { eventsIn, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
+import { driftWorld, RIVAL_LANE_ROWS } from '../media/drift/test-kit.ts';
+import { eventsIn, giveItems, hold, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
 import { spawnLoose } from './loose.ts';
 
 const POOL = `
@@ -52,5 +54,27 @@ describe('a racer that is out of play', () => {
     step(world, log, 90);
 
     expect(eventsIn(log, 'loose.grabbed', 'loosePearl.collected')).toEqual([]);
+  });
+});
+
+/** An open drift room with the player's start on row 1; the test's black hole sits rows below it. */
+const SPACE = [
+  '#'.repeat(20),
+  `#1${'.'.repeat(17)}F`,
+  ...Array.from({ length: 9 }, () => `#${'.'.repeat(18)}F`),
+  '#'.repeat(20),
+];
+
+describe('a racer swallowed by a black hole', () => {
+  it('fires nothing on the tick it goes in, and keeps the item', () => {
+    const hole = { col: 10, row: 7, reach: 4, pull: 300, horizon: 1.5 };
+    const { world, log, player } = driftWorld(SPACE, { wells: [hole] });
+    giveItems(player, ['inkSac']);
+    placeOnTile(player, hole.col, hole.row + RIVAL_LANE_ROWS);
+    step(world, log, 1, hold({ x: 1, y: 0 }, { use: true }));
+
+    expect(eventsIn(log, 'racer.fell')).toEqual([{ type: 'racer.fell', id: 'player' }]);
+    expect(eventsIn(log, 'item.used')).toEqual([]);
+    expect(player.items[0]).toEqual({ kind: 'inkSac', charges: 3 });
   });
 });

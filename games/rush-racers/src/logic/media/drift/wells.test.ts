@@ -107,6 +107,34 @@ describe('the pull on a drifter', () => {
 
     expect(world.loose[0]).toMatchObject({ x: CENTRE.x + 40, y: CENTRE.y + 24 });
   });
+
+  /** The same 30 ticks stepped in the room with the planet and without it, after `prepare` adds something to each. */
+  function withAndWithout(prepare: (world: ReturnType<typeof roomWith>['world']) => void) {
+    return [[PLANET], []].map((wells) => {
+      const { world, log } = roomWith(wells);
+      prepare(world);
+      step(world, log, 30, IDLE);
+      return world;
+    });
+  }
+
+  it('does nothing to a Homing Probe in flight', () => {
+    const [pulled, free] = withAndWithout((world) => {
+      world.squids.push({ x: CENTRE.x - 40, y: CENTRE.y + 24, vx: 110, vy: 0, ttl: 300, owner: 'tess', target: null });
+    });
+
+    expect(pulled?.squids).toHaveLength(1);
+    expect(pulled?.squids).toEqual(free?.squids);
+  });
+
+  it('does nothing to a Hologram decoy', () => {
+    const [pulled, free] = withAndWithout((world) => {
+      world.decoys.push({ x: CENTRE.x - 40, y: CENTRE.y + 24, vx: 66, vy: 0, ttl: 300, owner: 'tess' });
+    });
+
+    expect(pulled?.decoys).toHaveLength(1);
+    expect(pulled?.decoys).toEqual(free?.decoys);
+  });
 });
 
 describe('a planet on the inside of a turn', () => {

@@ -19,11 +19,14 @@
  * player on the floor with a crab on the floor 3 tiles ahead walking away from them and a shark about 6 tiles
  * ahead facing them, and moves the rivals up out of the way;
  * `enemy-modes` lines up each enemy kind in each of its modes ahead of the player on the floor, for reviewing
- * their look (the logic moves them on from there once the race starts).
+ * their look (the logic moves them on from there once the race starts); `surface` puts the player
+ * 3 tiles under the first surface; `hole` puts the player at rest in the first black hole's column,
+ * two tiles outside its reach (below it, or above when below is rock or off the map), so a short
+ * flight at it is swallowed.
  */
 import { guideDistanceAt, guideFor } from '../logic/guide.ts';
 import { createEnemies } from '../logic/hazards/enemies/index.ts';
-import { cellAt } from '../logic/level/query.ts';
+import { cellAt, isSolid } from '../logic/level/query.ts';
 import { CHARGES } from '../logic/powerups/charges.ts';
 import { setItems, slotItems } from '../logic/powerups/inventory.ts';
 import {
@@ -57,6 +60,7 @@ export const STAGES = [
   'enemies',
   'enemy-modes',
   'surface',
+  'hole',
 ] as const;
 
 /** A name from `STAGES`. */
@@ -160,7 +164,39 @@ export function applyStage(world: World, stage: StageName): void {
     case 'surface':
       stageUnderSurface(world, player);
       return;
+    case 'hole':
+      stageOutsideHole(world, player);
+      return;
   }
+}
+
+/** Tiles between a black hole's reach and where the `hole` stage puts the player. */
+const HOLE_STAGE_GAP_TILES = 2;
+
+/**
+ * Puts the player at rest in the first black hole's column, `HOLE_STAGE_GAP_TILES` outside its
+ * reach: below the hole when that spot is open, else above it.
+ *
+ * @throws {Error} When the course has no black hole, or both spots are rock or off the map.
+ */
+function stageOutsideHole(world: World, player: Racer): void {
+  const hole = world.level.wells.find((well) => well.horizon !== null);
+  if (!hole) throw new Error('The hole stage needs a black hole, and this course has none');
+  const offset = hole.reach + HOLE_STAGE_GAP_TILES * TILE;
+  const tx = Math.floor(hole.centre.x / TILE);
+  const y = [hole.centre.y + offset, hole.centre.y - offset].find((candidate) => {
+    const ty = Math.floor(candidate / TILE);
+    return ty >= 0 && ty < world.level.height && !isSolid(world.level, world.broken, tx, ty);
+  });
+  if (y === undefined) {
+    throw new Error(
+      `The hole stage needs an open tile ${offset / TILE} tiles above or below the black hole in column ${tx}`,
+    );
+  }
+  player.body.x = hole.centre.x - player.body.w / 2;
+  player.body.y = y - player.body.h / 2;
+  player.body.vx = 0;
+  player.body.vy = 0;
 }
 
 /**

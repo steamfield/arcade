@@ -34,12 +34,13 @@ import { BUBBLE, CANNONBALL, DASH, INFLATE, INK, USE_COOLDOWN_TICKS } from './tu
 import { fireUndertow } from './undertow.ts';
 
 /**
- * True when `fireItem` would fire `slot` now: the slot holds an item, the use cooldown is 0, and it
- * isn't Jet Fins or a Cannonball while a dash is running.
+ * True when `fireItem` would fire `slot` now: the slot holds an item, the racer is in play (not
+ * `status.fallen`, which also covers the tick a black hole swallows it, after its intent was read),
+ * the use cooldown is 0, and it isn't Jet Fins or a Cannonball while a dash is running.
  */
 export function canFire(racer: Racer, slot: number): boolean {
   const item = itemAt(racer, slot);
-  if (!item || racer.useCooldown > 0) return false;
+  if (!item || racer.status.fallen > 0 || racer.useCooldown > 0) return false;
   const startsDash = item.kind === 'jetFin' || item.kind === 'cannonball';
   return !(startsDash && racer.status.dashing > 0);
 }

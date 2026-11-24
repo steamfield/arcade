@@ -8,7 +8,7 @@ import type { GameEvent } from '../../events.ts';
 import { isSolid } from '../../level/query.ts';
 import { centreOf } from '../../racers.ts';
 import { isDowned } from '../../status.ts';
-import { IDLE, placeOnTile, racerOf, step } from '../../test-world.ts';
+import { giveItems, hold, IDLE, placeOnTile, racerOf, step } from '../../test-world.ts';
 import { type Racer, type RacerId, TILE, type Vec, type WellDef } from '../../types.ts';
 import { effectiveTuning } from '../index.ts';
 import { driftWorld, RIVAL_LANE_ROWS, ticksOfRacer } from './test-kit.ts';
@@ -146,6 +146,39 @@ describe('a black hole', () => {
     step(world, log, 1, IDLE);
 
     expect(ticksOfRacer(log, 'racer.fell')).toEqual([world.tick]);
+  });
+
+  it('swallows a racer that fires a Comet inside its reach once, and puts it back at rest with the stick held away', () => {
+    const { world, log, player, respawnTicks } = roomWith(HOLE);
+    giveItems(player, ['cannonball']);
+    // Last free just outside the reach, then fired at the hole from just outside the horizon.
+    placeOnTile(player, HOLE.col - HOLE.reach - 1, LEVEL_ROW);
+    step(world, log, 1, IDLE);
+    placeOnTile(player, HOLE.col - 2, LEVEL_ROW);
+    step(world, log, 1, hold({ x: 1, y: 0 }, { use: true }));
+    const away = hold({ x: -1, y: 0 });
+    step(world, log, 40, away);
+
+    expect(ticksOfRacer(log, 'item.used')).toHaveLength(1);
+    expect(ticksOfRacer(log, 'racer.fell')).toHaveLength(1);
+
+    step(world, log, respawnTicks + 60, away);
+
+    expect(ticksOfRacer(log, 'racer.respawned')).toHaveLength(1);
+    expect(ticksOfRacer(log, 'racer.fell')).toHaveLength(1);
+    expect(respawnsOf(log)[0]).toBeDefined();
+  });
+
+  it('puts a racer back with no dash running', () => {
+    const { world, log, player, respawnTicks } = roomWith(HOLE);
+    placeOnTile(player, HOLE.col, LEVEL_ROW);
+    player.status.dashing = 300;
+    player.dashDir = { x: 1, y: 0 };
+    player.dashSpeed = 200;
+    step(world, log, respawnTicks + 1, IDLE);
+
+    expect(ticksOfRacer(log, 'racer.respawned')).toHaveLength(1);
+    expect(player.status.dashing).toBe(0);
   });
 
   it('lets a swallowed racer collect nothing while it is out', () => {
