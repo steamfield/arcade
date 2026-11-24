@@ -89,9 +89,10 @@ test('a Slingshot Alley race starts from the menus and drifts 600 ticks', async 
  * the old hand-flown `hole-respawn` recorded). It covers the drift medium with both kinds of
  * gravity well and the fall-out timer, the way `TOP_ROUTE_BROWSER_HASH` covers swimming: every
  * browser project must compute the same number. Re-pinned when Drift Test gained its drifting
- * asteroid and Farside rivals took up the Comet, and again when the world gained `twists`.
+ * asteroid and Farside rivals took up the Comet, again when the world gained `twists`, and again
+ * when Drift Test gained its wormholes and standings began counting a wormhole as a way through.
  */
-const DRIFT_WELLS_BROWSER_HASH = 4257636157;
+const DRIFT_WELLS_BROWSER_HASH = 453518422;
 
 test('a Drift Test race swings past the planet, is swallowed by the black hole and comes back, to one hash on every browser', async ({
   game,
