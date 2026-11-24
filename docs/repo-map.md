@@ -117,6 +117,8 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | Path | Exports |
 | --- | --- |
 | `packages/config/src/index.ts` | Re-exports the manifest schema. |
+| `packages/config/src/game-html-plugin.ts` | Vite plugin that injects the title, description and Open Graph tags from `game.json`. |
+| `packages/config/src/test-config.ts` | Vitest defaults for a game, and the `slowTests` option that splits tests into `unit` and a slow project. |
 | `packages/config/src/manifest-file.ts` | `readManifest(dir)`, `readManifestsIn(parent)`: read `game.json` from disk for Node tools. Imported as `@arcade/config/manifest-file`. |
 | `packages/config/src/manifest.ts` | `gameManifestSchema`, `GameManifest`, `parseManifest`: the `game.json` format. |
 | `packages/config/src/vite.ts` | `defineGameConfig(import.meta.url)`: base path `/games/<slug>/`, hashed assets, dev server, share tags. `readManifest`. Imported as `@arcade/config/vite`. |
