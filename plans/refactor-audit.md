@@ -231,11 +231,12 @@ Depends on: phase 4
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/engine/worlds/, games/rush-racers/src/engine/themes/, games/rush-racers/COURSES.md, games/rush-racers/DESIGN.md, games/rush-racers/src/engine/art/index.test.ts, games/rush-racers/src/engine/art/sprites/sprites.test.ts, games/rush-racers/src/engine/view/hazard-view.test.ts | | | opus | running | deliver/refactor-audit-5a | |
+| a | M | games/rush-racers/src/engine/worlds/, games/rush-racers/src/engine/themes/, games/rush-racers/COURSES.md, games/rush-racers/DESIGN.md, games/rush-racers/src/engine/art/index.test.ts, games/rush-racers/src/engine/art/sprites/sprites.test.ts, games/rush-racers/src/engine/view/hazard-view.test.ts | | | opus | merged | deliver/refactor-audit-5a | |
 
 Each world and theme keeps its synchronous data (keys, frame names, ability and item words, glints, terrain, backdrop specs) in its wiring module, and moves everything that draws (sheet imports, `registerTextures`) into `worlds/<id>/art.ts` and `themes/<id>/art.ts`, each exporting one `registerArt(scene)`. Boot still calls all of them, so behaviour is unchanged.
 
 Scaffold: 8946cfa9ac0a (no contract commit: the brief names the interface; lane branches from phase 4's tag)
+Tag: refactor-audit/phase-5
 
 #### Lane 5a brief
 
@@ -258,7 +259,7 @@ Test cases (written in phase 5): `ensureCourseArt` loads a world's and theme's a
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/engine/worlds/load.ts, games/rush-racers/src/engine/worlds/load.test.ts, games/rush-racers/src/engine/worlds/index.ts, games/rush-racers/src/engine/themes/index.ts, games/rush-racers/src/engine/scenes/, games/rush-racers/src/engine/runtime.ts, games/rush-racers/src/engine/runtime.test.ts, games/rush-racers/src/engine/online/flow.ts, games/rush-racers/src/engine/debug.ts, games/rush-racers/src/engine/game.ts, games/rush-racers/tests/boot-art.spec.ts | | | opus | pending | | |
+| a | M | games/rush-racers/src/engine/worlds/load.ts, games/rush-racers/src/engine/worlds/load.test.ts, games/rush-racers/src/engine/worlds/index.ts, games/rush-racers/src/engine/themes/index.ts, games/rush-racers/src/engine/scenes/, games/rush-racers/src/engine/runtime.ts, games/rush-racers/src/engine/runtime.test.ts, games/rush-racers/src/engine/online/flow.ts, games/rush-racers/src/engine/debug.ts, games/rush-racers/src/engine/game.ts, games/rush-racers/tests/boot-art.spec.ts, games/rush-racers/src/engine/worlds/art-boundary.test.ts, games/rush-racers/DESIGN.md, docs/repo-map.md | | | opus | pending | | |
 
 #### Lane 6a brief
 
@@ -272,6 +273,7 @@ Test cases (written in phase 5): `ensureCourseArt` loads a world's and theme's a
   - `debugSummary()` gains `textures: number` (count of Phaser texture keys, excluding Phaser's own `__DEFAULT`/`__MISSING`/`__WHITE`) and `art: string[]` (loaded world and theme ids).
   - `vite build` emits one chunk per world and per theme; boot's entry chunk no longer contains their sprite rows.
 - Test cases (all must be written and seen failing once): the six listed under Phase 6 above, as Vitest rows in `worlds/load.test.ts` and `runtime.test.ts` where a fake loader can stand in for `import()` (concurrency, retry, error naming, idle while loading, room loads all), and `tests/boot-art.spec.ts` (Playwright, through `window.__arcade`) for the browser paths: boot texture count and `art` on title with the default save; boot with `?course=bramble-run` and a Sunlit save shows both worlds in `art`; picking a course of an unloaded world reaches select with that world's cast textures present and no console error; a failed chunk (route the chunk URL to 404 with `page.route`) shows the message and reports a game error (the fixture's game-error check must be told to expect it for that one test, in the way the testing package allows; if it can't, say so rather than suppressing it).
+- Phase 5 as landed: `WORLD_ART`/`THEME_ART` are private to `worlds/index.ts`/`themes/index.ts`, consumed only by `registerSkinTextures`/`registerThemeTextures`; tests import `registerArt` from `<id>/art.ts` directly. `worlds/art-boundary.test.ts` allows only the two index files and other `art.ts` files to import an `art.ts` (static or dynamic): export the async maps from the index files for `load.ts` to use rather than importing art from `load.ts`, or add `worlds/load.ts` to that allow list (the test file is in your Owns) and say which. Boot imports `worlds/reef/sprites/icons.ts` for the UI kit's icon frames; that file must stay free of Reef's sheets.
 - Decisions already made: key strings and frames unchanged; boot order within what loads is unchanged (global, UI kit, themes, skins); determinism untouched (art loading never gates a logic tick in test mode except through `idle()`).
 - Out of scope: preloading on hover, a loading spinner beyond the `idle()` gate, splitting audio.
 - Done when: `pnpm arcade test rush-racers @worlds @engine src/engine/worlds/load.test.ts src/engine/runtime.test.ts` passes; `pnpm --filter game-rush-racers exec playwright test tests/boot-art.spec.ts` passes on all projects; `pnpm arcade check rush-racers --skip-tests` clean; `pnpm arcade see rush-racers --scenario race-to-finish --at 200,400 --compare <baseline captured on your base>` identical; one `see --scene title --query course=bramble-run` capture looks right; the build output lists the per-world and per-theme chunks (paste the lines in your report); check-lane ok.
