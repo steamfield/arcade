@@ -10,8 +10,8 @@
  * 5. Rotten Bridges (780-960 m): three short gaps in a row, a narrow bridge over a wide pit, a last gap.
  * 6. The Clearing (960-1140 m): downhill to the finish past a log and mud on both verges.
  *
- * Crates are inert until phase 3. Par is a first estimate (clean run without dashes, about 88 s);
- * lane 1/a sets it from the fairness run.
+ * Crates are inert until phase 3. Par is rounded up from the clean run without dashes in the
+ * fairness test, about 82 s.
  */
 import type { Course } from '../types.ts';
 
@@ -23,7 +23,7 @@ export const THORNWOOD_TRAIL: Course = {
   halfWidth: 6,
   startS: 5,
   finishS: 1140,
-  parTicks: 5300,
+  parTicks: 4900,
   path: [
     { kind: 'straight', length: 120 },
     { kind: 'turn', angleDeg: 60, radius: 60 },
@@ -67,7 +67,7 @@ export const THORNWOOD_TRAIL: Course = {
     { kind: 'crate', s: 300, d: -4 },
     { kind: 'gust', s0: 340, s1: 380, ...FULL, push: 3 },
     // 3. The Ravine
-    { kind: 'pit', s0: 410, s1: 418, ...FULL },
+    { kind: 'pit', s0: 410, s1: 417, ...FULL },
     { kind: 'pit', s0: 450, s1: 470, d0: -6, d1: -1 },
     { kind: 'crate', s: 480, d: 3 },
     { kind: 'pit', s0: 490, s1: 510, d0: 1, d1: 6 },
