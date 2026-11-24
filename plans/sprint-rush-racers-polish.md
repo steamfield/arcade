@@ -167,6 +167,7 @@ Rules every lane follows:
 Demo: each reworked item used from a debug stage or a scenario in its world.
 Depends on: phase 2
 Scaffold: eb1a647d4b (`polish-phase-2` is its parent).
+Tag: polish-phase-3
 Test cases: per lane below.
 
 Contracts in the scaffold (read-only to lanes): `ItemTwistStyle`, `Twist {style, owner, x, y, vx, vy, ttl, phase}` and `World.twists` in `logic/types.ts`; events `twist.launched`, `twist.landed`, `twist.ended` in `logic/events.ts`; `WorldDef.itemTwists?: Partial<Record<PowerUpKind, ItemTwistStyle>>`; `powerups/twists/index.ts` (`TwistRules { fire, advance, rivalWants }`, `twistStyleOf(world, kind)`, `twistRules`, `advanceTwists` after `advanceShots` in `world.ts`); `powerups/use.ts` and `ai/items.ts` ask the world's twist first. Stubs throw only when used.
@@ -212,3 +213,4 @@ Set `itemTwists: { inkSac: 'gravityBomb' }` in `logic/worlds/farside.ts` (its na
 - 3c merged (8e69523). Accepted: bomb pulls 239 ticks (fired after the env samples that tick; review nit, left); no twist.landed; pull not skipped for invulnerable racers, as wells; rivals' pilots ignore bombs. Open: a twist alive at the finish never emits twist.ended (world.ts stops advancing), harmless today.
 - 3a merged (189314e, review fixes 8773f25). Accepted: pie carries the thrower's speed; rivals throw at a grounded (or crate-standing) target 3-6 tiles ahead, narrowed from 3-10 since the patch can't catch a full-pace target further out; mud ignores invulnerability; patch fades and shrinks.
 - 3b merged (9722740, retune 599551a): front 6 tiles, 180 px/s, gust -2, a flyer loses about 3 tiles (a -3 gust cost 5-7; width 5 at 160 failed a Normal bar). Orchestrator capped the rivals' aim at 16 tiles (the front can't catch further) and tied the scenario to HEADWIND_SWEEP_TICKS.
+- Phase 3 tagged polish-phase-3 (f0361a9): check, smoke (110) and all 109 difficulty files green, no hash changes.
