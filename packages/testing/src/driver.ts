@@ -32,6 +32,9 @@ type ArcadeEvent = ScenarioResult['events'][number];
 
 const IDLE_TIMEOUT_MS = 15_000;
 
+/** The pointer a single finger reports, for touch-button presses. */
+const TOUCH_POINTER = { pointerId: 1, isPrimary: true } as const;
+
 export class GameDriver {
   private cursor = 0;
   private readonly collected: ArcadeEvent[] = [];
@@ -107,6 +110,17 @@ export class GameDriver {
         for (const a of actions) window.__arcade?.inject(a, false);
       }, step.actions);
     }
+  }
+
+  /**
+   * Hold the on-screen touch button for `action` for `ticks` logic ticks, through the pointer
+   * events a finger sends. The touch controls must be showing (a touch device or `touch: true`).
+   */
+  async touch(action: string, ticks: number): Promise<void> {
+    const button = this.page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
+    await button.dispatchEvent('pointerdown', TOUCH_POINTER);
+    await this.advance(ticks);
+    await button.dispatchEvent('pointerup', TOUCH_POINTER);
   }
 
   async loadState(save: unknown): Promise<void> {
