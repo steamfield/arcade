@@ -17,9 +17,9 @@ afterEach(() => {
 });
 
 test('passes the API Worker’s response through unchanged', async () => {
-  const response = await forwardWith(async () => Response.json({ code: 'ABCDEF' }, { status: 201 }));
+  const response = await forwardWith(async () => Response.json({ code: 'ABCD' }, { status: 201 }));
 
-  expect([response.status, await response.json()]).toEqual([201, { code: 'ABCDEF' }]);
+  expect([response.status, await response.json()]).toEqual([201, { code: 'ABCD' }]);
 });
 
 test('answers 503 with a message the page can show when the binding throws, and logs it once', async () => {

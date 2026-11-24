@@ -102,7 +102,7 @@ test.describe('players leaving an online room', () => {
   });
 
   test('a link to a room nobody created lands on the title saying so', async ({ game }) => {
-    await game.open({ query: { room: 'ZZZZZZ' } });
+    await game.open({ query: { room: 'ZZZZ' } });
     await turnsUntil([game], (summary) => summary.scene === 'title');
 
     const summary = await summaryOf(game);

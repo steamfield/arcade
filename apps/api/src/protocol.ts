@@ -20,11 +20,14 @@ export const MAX_PEERS = 4;
 /** Peer ids are join sequence numbers and travel in one byte; a room that has used them all refuses joins. */
 export const MAX_PEER_ID = 255;
 
-/** Room code characters: digits and capitals without 0, O, 1, I and L, which read alike. */
-export const ROOM_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+/**
+ * Room code characters: capital letters without I, L and O, which read like 1 and 0. Letters only,
+ * so a code is quick to say aloud and to spell with a d-pad.
+ */
+export const ROOM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ';
 
 /** Characters in a room code. */
-export const ROOM_CODE_LENGTH = 6;
+export const ROOM_CODE_LENGTH = 4;
 
 const ROOM_CODE_PATTERN = new RegExp(`^[${ROOM_CODE_ALPHABET}]{${ROOM_CODE_LENGTH}}$`);
 

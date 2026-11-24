@@ -25,7 +25,7 @@ import { WAITING_AFTER_MS, waitingLine } from './race-hud.ts';
 const STEP_MS = 16;
 /** Rounds after which a condition that has not come true counts as stuck. */
 const ROUND_LIMIT = 6000;
-const CODE = 'ABCDEF';
+const CODE = 'ABCD';
 const COURSES = ['sunlit-shallows', 'bramble-run', 'run-test'] as const;
 
 type Screen = 'friends' | 'room' | 'race' | 'results' | 'title';
