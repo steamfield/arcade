@@ -5,11 +5,15 @@ describe('hashState', () => {
   it('keeps an array, an object with that index and a string apart', () => {
     const hashes = [hashState([1]), hashState({ 0: 1 }), hashState('1'), hashState(1)];
     expect(new Set(hashes).size).toBe(hashes.length);
+    expect(hashState([1])).not.toBe(hashState(new Set([1])));
   });
 
   it('keeps null, undefined and a missing array item apart', () => {
     expect(hashState(null)).not.toBe(hashState(undefined));
     expect(hashState([undefined])).not.toBe(hashState([]));
+    const holed: unknown[] = [undefined, 1];
+    delete holed[0];
+    expect(hashState(holed)).toBe(hashState([undefined, 1]));
   });
 
   it('ignores the order object keys were added in', () => {
@@ -22,7 +26,8 @@ describe('hashState', () => {
 
   it('tells -0 from 0 and hashes every NaN alike', () => {
     expect(hashState(-0)).not.toBe(hashState(0));
-    expect(hashState(Number.NaN)).toBe(hashState(0 / 0));
+    const oddNaN = new Float64Array(new Uint32Array([1, 0x7ff80000]).buffer)[0] as number;
+    expect(hashState(oddNaN)).toBe(hashState(Number.NaN));
     expect(hashState(Number.NaN)).not.toBe(hashState(0));
   });
 
