@@ -41,6 +41,7 @@ export async function defineScenarioTests(dir: URL): Promise<void> {
     if (!scenario) throw new Error(`${file} must default-export a scenario(...)`);
     const register = scenario.todo ? test.fail : test;
     register(`scenarios/${file}: ${scenario.description}`, async ({ game }) => {
+      test.slow(scenario.slow === true, 'plays a long stretch of the game');
       await game.open({
         ...(scenario.start?.seed !== undefined && { seed: scenario.start.seed }),
         ...(scenario.start?.scene !== undefined && { scene: scenario.start.scene }),
@@ -94,7 +95,10 @@ export async function gamePlaywrightConfig(configUrl: string): Promise<Playwrigh
     outputDir: './test-results',
     fullyParallel: true,
     forbidOnly: Boolean(process.env.CI),
-    retries: process.env.CI ? 2 : 0,
+    // One retry on CI, and a test that passes only on it still fails the run: a flaky test is a
+    // determinism bug to fix, and the retry's report says whether the failure repeats.
+    retries: process.env.CI ? 1 : 0,
+    failOnFlakyTests: Boolean(process.env.CI),
     reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'line',
     use: {
       baseURL,

@@ -27,6 +27,7 @@ CI runs the same `arcade` commands, so "passes locally" and "passes in CI" mean 
 | `arcade check [slug]`      | Typecheck, lint and Vitest for the game plus every dependent of any changed package (Turbo `...[base]`) | One line per failure with `file:line` and the fix hint. A line like "packages/input changed: also checked 6 games" |
 | `arcade see <slug> [opts]` | Headless run to a state, then capture                                                                   | A short summary plus artifact paths                                                                                |
 | `arcade smoke [slug]`      | Production build, assemble, Playwright smoke; also the file-size and file-count limits                  | Pass/fail per game, artifact paths on failure                                                                      |
+| `arcade affected --base <ref>` | Which packages and games the commits since `<ref>` need tested; CI's job matrices (`--json`)        | Packages, games, or "everything" with the file that forced it                                                      |
 
 Everything else is a plain `package.json` script until it earns a place in the CLI:
 
@@ -301,7 +302,7 @@ The scaffold implements this plan with these differences, found while building a
 - **One clock in Phaser games.** The 2D template keeps tile physics in `src/logic/` instead of using Phaser arcade physics. A game that wants arcade physics sets `arcade.customUpdate: true` and calls `physics.world.singleStep()` once per logic tick, never from Phaser's loop.
 - **`see` starts its own Vite server for each run,** from the current worktree, on a free port, and closes it afterwards (about 1-2 s overhead). This removes the cross-worktree reuse risk and the orphan-server problem. Server reuse is a possible later optimization.
 - **CLI surface:**
-  - Commands: `check`, `test`, `see`, `smoke`, `dev`, `new`, `assemble`, `list`.
+  - Commands: `check`, `test`, `see`, `smoke`, `affected`, `dev`, `new`, `assemble`, `list`.
   - `see` options include `--events`, `--field`, `--ascii`, `--crop`, `--mobile`, `--at` (ticks past the input wait idle), `--query`, `--out` and `--compare`.
   - `new` replaces the Turbo generator. It formats the copied files and registers the game in `.claude/launch.json`.
   - `pnpm arcade` is a bin, so pnpm adds no echo or ELIFECYCLE lines.

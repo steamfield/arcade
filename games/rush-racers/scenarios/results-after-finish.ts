@@ -14,6 +14,8 @@ export default scenario({
   description:
     'finishing the race shows the results with the player placed and timed, after one save, and ignores a fire press in their first moments',
   start: { save: HARD_SAVE },
+  // Swims the whole course, about 250 input steps.
+  slow: true,
   input: [...TITLE_TO_RACE, ...TOP_ROUTE.slice(0, -1), hold('right', TOP_ROUTE_LAST_HOLD + 64), tap('fire'), wait(25)],
   expect({ summary, events }) {
     const finish = events.find((e) => e.type === 'race.finished');

@@ -26,6 +26,8 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/docs/repo-map.md",
+        "$TURBO_ROOT$/.github/workflows/ci.yml",
+        "$TURBO_ROOT$/pnpm-workspace.yaml",
         "$TURBO_ROOT$/packages/*/src/**",
         "$TURBO_ROOT$/tools/*/src/**",
         "$TURBO_ROOT$/apps/*/src/**",

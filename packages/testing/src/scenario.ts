@@ -43,6 +43,12 @@ export interface Scenario<A extends string = string> {
   expect?(result: ScenarioResult): void | Promise<void>;
   /** A known bug. Runs and must still fail; flip to a normal scenario when fixed. */
   todo?: boolean;
+  /**
+   * The scenario plays a long stretch (a whole race, say), several times the ticks of a typical one,
+   * so its test gets Playwright's `test.slow()` budget: triple the timeout. A slow CI runner takes a
+   * long scenario past the default while the rest stay well inside it.
+   */
+  slow?: boolean;
 }
 
 export function scenarioKit<A extends string>() {

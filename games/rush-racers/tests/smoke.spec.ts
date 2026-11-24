@@ -111,6 +111,7 @@ test('on Bramble Run the on-screen Up button jumps @touch', async ({ game, page 
 const TOP_ROUTE_BROWSER_HASH = 3893755221;
 
 test('a finished race is saved and its best time shows on the title after a reload', async ({ game }) => {
+  test.slow(true, 'swims the whole course, about 250 input steps');
   // TOP_ROUTE was recorded on Hard; a fresh save races on Easy.
   await game.open();
   await game.loadState(HARD_SAVE);

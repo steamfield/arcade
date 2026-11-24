@@ -4,6 +4,8 @@ import { HARD_SAVE, scenario, TITLE_TO_RACE, TOP_ROUTE } from './kit.ts';
 export default scenario({
   description: 'swimming the top route over the pillar crosses the finish, ends the race and saves',
   start: { save: HARD_SAVE },
+  // Swims the whole course, about 250 input steps.
+  slow: true,
   input: [...TITLE_TO_RACE, ...TOP_ROUTE],
   expect({ summary, events }) {
     expect(summary).toMatchObject({ scene: 'race', phase: 'finished', finished: true });
