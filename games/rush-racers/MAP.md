@@ -22,7 +22,7 @@ Three rules hold the layout together. Logic (`src/logic/`) compiles without DOM 
 | `src/logic/powerups/` | Inventory, charges, the dash meter, passives and what each item does when fired (`use.ts`). | Change an item. |
 | `src/logic/powerups/cannonball/` | Each world's own Cannonball shot (Boulder, Meteor, Comet) and the registry `shotRules` / `shotStyleOf`. | Change a world's Cannonball. |
 | `src/logic/powerups/twists/` | Each world's reworked item (Mud Pie, Headwind, gravity bomb) and the registry `twistRules` / `twistStyleOf`. | Change a world's reworked item. |
-| `src/logic/setpieces/` | Course set pieces with their own timers: geyser vents, shifting wind zones and drifting asteroids. | Change a course's set piece. |
+| `src/logic/setpieces/` | Course set pieces and their parsers: geyser vents, shifting wind zones, drifting asteroids, whirlpools, crumbling branches, cloud cannons and wormholes. | Change a course's set piece. |
 | `src/logic/race/` | Generic movement, separation, coral, flow fields, catch-up, standings and seats. | Change race-wide physics or how a race ends. |
 | `src/logic/worlds/` | One `WorldDef` per world (medium, cast names, item and enemy names) and the registry `WORLDS`. | Rename things in a world or add a world. |
 | `src/net/` | Online play's game side: the lockstep session, wire codec, JSON messages, lobby, hash ledger and the client flow. Everything but `client.ts` and `transport/` is in the simulation build id. | Change a net message or lockstep. |
@@ -42,7 +42,7 @@ Three rules hold the layout together. Logic (`src/logic/`) compiles without DOM 
 | `src/engine/themes/<id>/`, `src/engine/themes/<id>/sprites/` | One theme's keys, palettes and `art.ts`, which draws its sprite sheets; a chunk of its own. | Change a theme's art. |
 | `src/engine/view/` | Everything drawn in a scene: level, racers, HUD, hints, power-ups, enemies, hazards, menus, online views, camera and layout. | Change how something looks or moves on screen. |
 | `src/engine/view/how-to-play/` | How to Play's page builders and `MEDIUM_PAGES`. | Add a medium's pages. |
-| `src/engine/view/set-pieces/` | Views for course set pieces: rings, lightning, wells and the storm reach measure. | Add a set piece's view. |
+| `src/engine/view/set-pieces/` | Views for course set pieces: rings, lightning, wells, the storm reach measure, and the whirlpool, crumbling branch, cloud cannon and wormhole layers. | Add a set piece's view. |
 | `src/engine/worlds/` | World skins (`<id>.ts`), the skin interfaces, the registry `SKINS` with lazy `WORLD_ART`, the art loader `load.ts`, and the skin conformance suite. | Add a world skin or change art loading. |
 | `src/engine/worlds/<id>/`, `src/engine/worlds/<id>/sprites/` | One world's keys, cast and object skins, palettes and `art.ts`, which draws its sprite sheets; a chunk of its own. | Change a world's racers, items, enemies or hazards art. |
 | `scenarios/` | One Playwright scenario per file, plus `kit.ts` (saves, menu walks, `TOP_ROUTE`). | Add a scenario (`DESIGN.md` "Scenarios"). |

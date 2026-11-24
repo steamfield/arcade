@@ -68,6 +68,13 @@ Rivals (flight's pilot) take a bounce cloud only when it saves at least 0.1 s ov
 
 A drift course can place **gravity wells**: `wells: [{ col, row, reach, pull, horizon? }]`, each centred on its tile, `reach` and `horizon` in tiles and `pull` in px/s² at the centre, fading to nothing at the reach (`level/wells.ts`). One without a `horizon` is a planet to swing round; one with it is a black hole that swallows a racer whose centre crosses the horizon. `parseLevel` throws `LevelError` for a centre off the map, a `reach` or `pull` that isn't positive, or a `horizon` that isn't positive and smaller than the reach. Put a planet's centre inside rock on the inside of a turn so its disc doesn't cover open tiles, and keep the main way clear of a hole's reach or price the lane through it: rivals fly a lane inside a reach when it is shorter by more than the nav surcharge.
 
+Each world has one set piece of its own (DESIGN.md "World shots and course set pieces"), declared on the `LevelDef` and checked by its parser in `logic/setpieces/`, which throws `LevelError` with the position and the bad value:
+
+- Reef: `whirlpools: [{ col, row, radius, spin: 1 | -1, push }]`, centred on an open-water tile, `radius` 2-10 tiles, `push` up to 480 px/s², discs not overlapping. Put pearls along a pool's forward side and hazards on its drag side; leave a way round.
+- Thornwood: `crumbles: [{ col, row, length }]`, a run of 1-12 existing ledge (`=`) tiles, no tile in two runs. Give every crumbling span a way on if it falls (a lower road, a mushroom), since rivals reroute onto it.
+- Cloudreach: `cannons: [{ col, row, dir: [dx, dy], speed, flightTicks }]` on an open tile, a nonzero aim with each component -1, 0 or 1, 60-1200 px/s and 1-120 whole ticks. Leave room to land after the shot and clearance round barrels rivals are meant to pass.
+- Farside: `wormholes: [{ a: [col, row], b: [col, row], oneWay }]` on open tiles, a pair's mouths at least 4 tiles apart and mouths of different pairs at least 3. Leave room past an exit for the speed a racer comes out with.
+
 The medium checks the level too: `createWorld` throws `LevelError` (with row and column) for anything `medium.validateLevel` reports, such as a start that can't reach the finish in swim without breaking coral.
 
 ### parTicks
@@ -327,7 +334,7 @@ pnpm arcade test rush-racers src/logic/hazards/enemies src/engine/view/enemy-loo
 
 ## Add a set piece
 
-A set piece is a course feature any medium could carry: bounce clouds, boost rings and lightning (DESIGN.md "Sky set pieces"), and gravity wells.
+A set piece is a course feature any medium could carry: bounce clouds, boost rings and lightning (DESIGN.md "Sky set pieces"), and gravity wells. A world's own set piece (vents, wind, asteroids, whirlpools, crumbling branches, cloud cannons, wormholes) lives in `logic/setpieces/` with its parser, and its view is a theme extra layer in `engine/view/set-pieces/`; a forced jump (a cannon shot, a warp) reaches rivals as `NavLink`s in the medium's nav (`race/flowfield.ts`).
 
 1. The level: a glyph in `logic/level/parse.ts`, or a `LevelDef` field parsed and checked in a file of its own in `logic/level/` (as `lightning-zones.ts` and `wells.ts` are), throwing `LevelError` with its position for a bad entry.
 2. If only some media may carry it, a `MediumEffects` field every medium answers (as `bounceSpeed` and `gravityWells` are), and a `LevelError` from `createWorld` for a level that uses it in a medium without it.
