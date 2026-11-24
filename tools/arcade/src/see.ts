@@ -16,10 +16,10 @@ import {
   type Scenario,
   type ScenarioResult,
 } from '@arcade/testing';
-import type { Page } from '@playwright/test';
 import { createServer } from 'vite';
 import { findGame, ROOT, UsageError } from './games.ts';
 import { elapsed } from './run.ts';
+import { type Comparison, compareFrames, contactSheet } from './see-images.ts';
 
 export interface SeeOptions {
   scenario?: string;
@@ -353,129 +353,6 @@ function makeRunDir(slug: string): string {
   for (const old of all.slice(0, Math.max(0, all.length - 50)))
     rmSync(join(runs, old), { recursive: true, force: true });
   return dir;
-}
-
-/** One image with every captured frame side by side, labeled by tick, capped so pixel art stays legible. */
-async function contactSheet(
-  page: Page,
-  frames: { tick: number; file: string }[],
-  out: string,
-  crop?: string,
-): Promise<void> {
-  const { readFileSync } = await import('node:fs');
-  const images = frames.map((f) => ({
-    tick: f.tick,
-    src: `data:image/png;base64,${readFileSync(f.file).toString('base64')}`,
-  }));
-  const [cx, cy, cw, ch] = crop ? crop.split(',').map(Number) : [];
-  const sheet = await page.context().newPage();
-  const cell = crop ? `width:${cw}px;height:${ch}px;overflow:hidden;position:relative` : 'max-width:600px';
-  const img = crop ? `position:absolute;left:-${cx}px;top:-${cy}px` : 'max-width:600px;display:block';
-  await sheet.setContent(
-    `<body style="margin:0;background:#222"><div id="sheet" style="background:#222;color:#fff;font:14px monospace;display:flex;flex-wrap:wrap;gap:8px;padding:8px;width:max-content;max-width:1880px">${images
-      .map(
-        (i) =>
-          `<figure style="margin:0"><div style="${cell}"><img src="${i.src}" style="${img};image-rendering:pixelated"></div><figcaption>tick ${i.tick}</figcaption></figure>`,
-      )
-      .join('')}</div></body>`,
-  );
-  await sheet.locator('#sheet').screenshot({ path: out });
-  await sheet.close();
-}
-
-interface Comparison {
-  tick: number;
-  differs: boolean;
-  result: string;
-}
-
-/**
- * Diff each captured frame against `<dir>/frame-<tick>.png` in the browser (no image libraries), writing
- * `diff-<tick>.png` with changed pixels in red over a faded copy of the new frame. A channel must move by more
- * than 8 to count, which ignores encoder noise but not a moved sprite or a recoloured tile.
- */
-async function compareFrames(
-  page: Page,
-  frames: { tick: number; file: string }[],
-  dir: string,
-  runDir: string,
-): Promise<Comparison[]> {
-  const { readFileSync } = await import('node:fs');
-  const out: Comparison[] = [];
-  const sheet = await page.context().newPage();
-  try {
-    for (const f of frames) {
-      const base = join(dir, `frame-${f.tick}.png`);
-      if (!existsSync(base)) {
-        out.push({ tick: f.tick, differs: true, result: `no baseline frame-${f.tick}.png` });
-        continue;
-      }
-      const toUrl = (file: string) => `data:image/png;base64,${readFileSync(file).toString('base64')}`;
-      const r = await sheet.evaluate(
-        async ([a, b]) => {
-          const load = (src: string) =>
-            new Promise<HTMLImageElement>((ok, fail) => {
-              const img = new Image();
-              img.onload = () => ok(img);
-              img.onerror = () => fail(new Error('could not decode a frame'));
-              img.src = src;
-            });
-          const [x, y] = await Promise.all([load(a as string), load(b as string)]);
-          if (x.width !== y.width || x.height !== y.height) {
-            return {
-              size: `${x.width}x${x.height} vs baseline ${y.width}x${y.height}`,
-              changed: -1,
-              total: 0,
-              png: '',
-            };
-          }
-          const read = (img: HTMLImageElement) => {
-            const c = document.createElement('canvas');
-            c.width = img.width;
-            c.height = img.height;
-            const g = c.getContext('2d') as CanvasRenderingContext2D;
-            g.drawImage(img, 0, 0);
-            return { c, g, d: g.getImageData(0, 0, img.width, img.height) };
-          };
-          const now = read(x);
-          const was = read(y).d.data;
-          const px = now.d.data;
-          let changed = 0;
-          for (let i = 0; i < px.length; i += 4) {
-            const moved =
-              Math.abs((px[i] ?? 0) - (was[i] ?? 0)) > 8 ||
-              Math.abs((px[i + 1] ?? 0) - (was[i + 1] ?? 0)) > 8 ||
-              Math.abs((px[i + 2] ?? 0) - (was[i + 2] ?? 0)) > 8;
-            if (moved) {
-              changed++;
-              px[i] = 255;
-              px[i + 1] = 0;
-              px[i + 2] = 0;
-            } else {
-              px[i] = ((px[i] ?? 0) + 510) / 3;
-              px[i + 1] = ((px[i + 1] ?? 0) + 510) / 3;
-              px[i + 2] = ((px[i + 2] ?? 0) + 510) / 3;
-            }
-          }
-          now.g.putImageData(now.d, 0, 0);
-          return { size: '', changed, total: px.length / 4, png: changed ? now.c.toDataURL('image/png') : '' };
-        },
-        [toUrl(f.file), toUrl(base)],
-      );
-      if (r.changed < 0) {
-        out.push({ tick: f.tick, differs: true, result: `size differs: ${r.size}` });
-      } else if (r.changed === 0) {
-        out.push({ tick: f.tick, differs: false, result: 'identical' });
-      } else {
-        writeFileSync(join(runDir, `diff-${f.tick}.png`), Buffer.from(r.png.split(',')[1] ?? '', 'base64'));
-        const pct = ((100 * r.changed) / r.total).toFixed(2);
-        out.push({ tick: f.tick, differs: true, result: `${r.changed} px differ (${pct}%), diff-${f.tick}.png` });
-      }
-    }
-  } finally {
-    await sheet.close();
-  }
-  return out;
 }
 
 function summarizeEvents(events: { type: string }[]): string {
