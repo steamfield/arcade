@@ -198,7 +198,7 @@ Depends on: phase 3
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/rush-racers/src/engine/themes/, games/rush-racers/src/engine/worlds/types.ts, games/rush-racers/src/engine/worlds/reef/objects.ts, games/rush-racers/src/engine/worlds/thornwood/objects.ts, games/rush-racers/src/engine/worlds/farside/objects.ts, games/rush-racers/src/engine/worlds/cloudreach/objects.ts, games/rush-racers/src/engine/worlds/reef/sprites/hazards.ts, games/rush-racers/src/engine/worlds/thornwood/sprites/hazards.ts, games/rush-racers/src/engine/worlds/farside/sprites/hazards.ts, games/rush-racers/src/engine/worlds/cloudreach/sprites/hazards.ts, games/rush-racers/src/engine/scenes/race.ts, games/rush-racers/src/engine/view/hazard-view.ts, games/rush-racers/src/engine/view/level-view.ts, games/rush-racers/src/engine/view/hazard-view.test.ts, games/rush-racers/src/engine/view/level-view.test.ts | | | opus | running | deliver/refactor-audit-4a | |
-| b | M | games/rush-racers/src/engine/worlds/skins.test.ts, games/rush-racers/src/engine/worlds/thornwood/cast.test.ts, games/rush-racers/src/engine/worlds/thornwood/objects.test.ts, games/rush-racers/src/engine/worlds/farside/cast.test.ts, games/rush-racers/src/engine/worlds/farside/objects.test.ts, games/rush-racers/src/engine/worlds/cloudreach/cast.test.ts, games/rush-racers/src/engine/worlds/cloudreach/objects.test.ts, games/rush-racers/src/engine/worlds/thornwood.test.ts, games/rush-racers/src/engine/worlds/reef/cast.test.ts, games/rush-racers/src/engine/worlds/reef/objects.test.ts, games/rush-racers/src/engine/worlds/reef/skin.test.ts, games/rush-racers/src/engine/worlds/skin-conformance.ts | | | sonnet | running | deliver/refactor-audit-4b | |
+| b | M | games/rush-racers/src/engine/worlds/skins.test.ts, games/rush-racers/src/engine/worlds/thornwood/cast.test.ts, games/rush-racers/src/engine/worlds/thornwood/objects.test.ts, games/rush-racers/src/engine/worlds/farside/cast.test.ts, games/rush-racers/src/engine/worlds/farside/objects.test.ts, games/rush-racers/src/engine/worlds/cloudreach/cast.test.ts, games/rush-racers/src/engine/worlds/cloudreach/objects.test.ts, games/rush-racers/src/engine/worlds/thornwood.test.ts, games/rush-racers/src/engine/worlds/reef/cast.test.ts, games/rush-racers/src/engine/worlds/reef/objects.test.ts, games/rush-racers/src/engine/worlds/reef/skin.test.ts, games/rush-racers/src/engine/worlds/skin-conformance.ts, games/rush-racers/src/engine/worlds/cast-conformance.ts, games/rush-racers/src/engine/worlds/object-conformance.ts, games/rush-racers/src/engine/worlds/drawn-skin.ts, games/rush-racers/src/engine/worlds/recording-scene.ts | | | sonnet | merged | deliver/refactor-audit-4b | |
 
 Scaffold: eb621d6527d9 (shared `mirroredRows`, `transposeRows` in `art/rows.ts`; `castFrames` in `art/sprites/sheet.ts`; `bySlot`/`byItem` in `art/keys.ts`; owner names folded into keys by lane 3a)
 
@@ -233,6 +233,19 @@ Depends on: phase 4
 | a | M | games/rush-racers/src/engine/worlds/, games/rush-racers/src/engine/themes/ | | | opus | pending | | |
 
 Each world and theme keeps its synchronous data (keys, frame names, ability and item words, glints, terrain, backdrop specs) in its wiring module, and moves everything that draws (sheet imports, `registerTextures`) into `worlds/<id>/art.ts` and `themes/<id>/art.ts`, each exporting one `registerArt(scene)`. Boot still calls all of them, so behaviour is unchanged.
+
+#### Lane 5a brief
+
+- Goal: a world's or theme's data module can be imported without pulling in a single pixel row, so phase 6 can load art with `import()` per world and theme.
+- Interface:
+  - New `worlds/<id>/art.ts` (reef, thornwood, cloudreach, farside) and `themes/<id>/art.ts` (ocean, forest, sky, space), each exporting `registerArt(scene: Phaser.Scene): void` holding what that module's `registerTextures` does today (cast, object and hazard sheets, loops). Each world's `cast.ts`/`objects.ts` and each theme's wiring module keeps only data and stops importing `sprites/`.
+  - `WorldSkin.registerTextures`, `ObjectSkin`/cast registration methods and `Theme.registerTextures` go away. `worlds/index.ts` and `themes/index.ts` keep their boot functions (same names, same order: global art, UI kit, themes, skins) and call the `registerArt` of each module through one exported map, `WORLD_ART: Record<WorldId, (scene) => void>` and `THEME_ART: Record<ThemeId, ...>`, each imported statically for now. Phase 6 swaps the static imports for `import()`.
+  - Data the views need that lives under `sprites/` today (palettes read by glints or contrast bands, frame name lists) moves next to the keys (`<id>/palettes.ts` or `keys.ts`), so the rule below holds.
+  - New `worlds/art-boundary.test.ts`: reads every non-test `.ts` file under `worlds/` and `themes/` and fails, naming the file and import, when a file other than `*/art.ts` or a file inside a `sprites/` folder imports from a `sprites/` path. Watch it fail by adding one such import, then restore.
+  - Tests and helpers that call `registerTextures` (the conformance suites, `drawn-skin.ts`, recording scenes) call `WORLD_ART[id]`/`THEME_ART[id]` instead. `git grep registerTextures -- games/rush-racers` must be empty when you're done, including outside `worlds/` and `themes/`; if a caller outside your Owns needs a one-line change, make it and list it.
+- Decisions already made: key strings, boot order and every frame unchanged; no lazy loading yet.
+- Out of scope: `worlds/load.ts`, dynamic imports, `debugSummary` texture counts (phase 6).
+- Done when: `pnpm arcade test rush-racers @worlds @engine src/engine/themes src/engine/view` passes; `pnpm arcade check rush-racers --skip-tests` clean; `pnpm arcade see rush-racers --scenario race-to-finish --at 200,400 --out .arcade/runs/5a-after --compare <baseline captured first on your base commit>` is identical; check-lane is ok.
 
 ### Phase 6: load only the art a screen needs
 
@@ -304,7 +317,7 @@ Depends on: phase 7
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | templates/phaser-2d/ | | | opus | running | deliver/refactor-audit-8a | |
-| b | M | templates/three-3d/ | | | sonnet | running | deliver/refactor-audit-8b | |
+| b | M | templates/three-3d/ | | | sonnet | merged | deliver/refactor-audit-8b | |
 
 Both template lanes adopt the same patterns, in their engine's idiom. Read Rush Racers for each one before writing it; keep the template small (a template that needs a page of explanation has gone too far).
 

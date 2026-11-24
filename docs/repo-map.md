@@ -236,11 +236,16 @@ The 3D template (`templates/three-3d/`) has the same files with these difference
 | `templates/three-3d/src/logic/world.ts` | Arena, orbs, player movement; `ARENA`, `ORB_COUNT`. No `toAscii`. |
 | `templates/three-3d/src/logic/events.ts` | `GameEvent` union. |
 | `templates/three-3d/src/logic/save.ts` | Save shape (seed, collected orbs). |
-| `templates/three-3d/src/engine/game.ts` | `startThree`: renderer, scene, rAF loop (off in test mode), `FixedStep` tick, `GameHandle`. |
+| `templates/three-3d/src/engine/game.ts` | `startThree`: renderer, rAF loop (off in test mode), lazy physics, `GameHandle` (`idle()` waits for physics and save writes, `worldHash` in debug state). |
+| `templates/three-3d/src/engine/runtime.ts` | Three- and Rapier-free `Runtime`: `FixedStep` tick, orb autosave queue (`saving`, `settled()`, one `failWrite` that emits `save.failed`), `loadSave`. |
+| `templates/three-3d/src/engine/runtime.test.ts` | Vitest test of the runtime: collect, autosave, restore, staged runs never save, failed and thrown writes. |
+| `templates/three-3d/src/engine/world-view.ts` | `createWorldView`: meshes for arena, player, orbs and crates, synced from logic state. |
+| `templates/three-3d/src/engine/debug-stage.ts` | `?stage=` capture stages (`nearly-cleared`), only with `?debug=1` or in test mode; a staged run is never saved. |
 | `templates/three-3d/src/engine/physics.ts` | Lazy Rapier: `loadPhysics`, kinematic player, `CRATE_SPAWNS`. `idle()` is false until it loads. |
 | `templates/three-3d/src/engine/camera-rig.ts` | `CameraRig`: follow camera smoothed per tick. |
 | `templates/three-3d/src/engine/input.ts` | Actions, keys, touch layout. |
-| `templates/three-3d/scenarios/kit.ts` | Typed scenario kit. |
+| `templates/three-3d/scenarios/kit.ts` | Typed scenario kit and presets shared by scenarios. |
+| `templates/three-3d/scenarios/nearly-cleared.ts` | Scenario: the `nearly-cleared` capture stage, and that it writes no save. |
 | `templates/three-3d/scenarios/collect-first-orb.ts` | Scenario: walk to the first orb. |
 | `templates/three-3d/scenarios/push-crate.ts` | Scenario: Rapier pushes a crate. |
 | `templates/three-3d/scenarios/restore-save.ts` | Scenario: start from a save fixture. |
