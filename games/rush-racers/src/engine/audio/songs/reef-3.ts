@@ -21,17 +21,21 @@
  * answer keeps the call's rhythm and falls from A5 instead of rising.
  *
  * Voices: the lead is a 25% pulse, a round 50% one for the B release and a thin 12.5% one in C.
- * Pulse 2 chugs chord tones in a 3-3-2 rhythm in A, echoes the lead an off-beat later in A',
- * plays arpeggio bursts in B and the breakdown, states the world motif in C (on a 25% duty, with
- * the lead's answers played softer so the two trade as equals) and in the turnaround, and
- * harmonises the hook in A''. The triangle bounces in octaves (with pitch-drop kicks in A' and
- * the breakdown), walks in B and gallops in sixteenths in A''. Drums: a crash opening A, A', C
- * and A'', open hats in A' and C, a half-time B, toms in the breakdown, sixteenth hats in A''.
+ * Pulse 2 chugs in a 3-3-2 rhythm in A, its short third hit stepping so the chug carries a line,
+ * echoes the lead an off-beat later in A', plays arpeggio bursts in B and the breakdown, states
+ * the world motif in C (on a 25% duty, with the lead's answers played softer so the two trade as
+ * equals) and in the turnaround, and harmonises the hook in A'' with a slow counter-line under
+ * its first answer. In C the lead answers the motif upside down (up a step, back, down a third:
+ * "G A G E", "A B A F#", "B C B G"), climbing bar by bar to D6. In the turnaround the lead climbs
+ * a step per bar in the hook's stuttered rhythm ("G G G A C", "A A A B D"). The triangle bounces
+ * in octaves (with pitch-drop kicks in A' and the breakdown, and a walk through C's second E
+ * minor bar), walks in B and gallops in sixteenths in A''. Drums: a crash opening A, A', C and
+ * A'', open hats in A' and C, a half-time B, toms in the breakdown, sixteenth hats in A''.
  *
  * World motif: the Reef hook's opening "B A B D" (down a step, back, up a minor third, in three
  * eighths and a quarter) is the bass's pickup in bar 4 of A and A' ("E D E G"), the pulse 2 riff
- * that opens every bar of C ("E D E G", "F# E F# A") with the lead answering it, and the first
- * two bars of pulse 2 in the turnaround.
+ * that opens every bar of C ("E D E G", "F# E F# A", and once at the hook's own pitch, "B A B D")
+ * with the lead answering it, and the first two bars of pulse 2 in the turnaround.
  */
 import { parseSong, type Song } from '../notation.ts';
 
@@ -46,7 +50,7 @@ loop: A
 voice pulse1: duty=0.25 level=0.5 attack=0.003 decay=0.08 sustain=0.6 release=0.05
 voice pulse2: duty=0.125 level=0.3 attack=0.003 decay=0.06 sustain=0.45 release=0.04
 voice triangle: level=0.65 attack=0.002 decay=0.04 sustain=0.9 release=0.03
-voice noise: level=0.32 attack=0.001 decay=0.06 sustain=0 release=0.02
+voice noise: level=0.3 attack=0.001 decay=0.06 sustain=0 release=0.02
 
 section: intro
 chords: Em | C D
@@ -62,9 +66,11 @@ pulse1: A5/8 A5/16 A5/16 F#5/8 D5/4 E5/8 F#5/8 A5/8 | G5/4. F#5/8 E5/4 r/4
 // call, harmonic-minor ending
 pulse1: E5/8 E5/16 E5/16 G5/8 B5/4 A5/8 G5/8 F#5/8 | G5/4 E5/4 r/8 B4/8 D5/8 E5/8
 pulse1: C6/8 C6/16 C6/16 B5/8 A5/4 G5/8 F#5/8 E5/8 | D#5/4 F#5/4 B5/4 r/4
-// chord tones chugged in 3-3-2
-pulse2: [G4/8.@0.7 G4/8.@0.7 G4/8@0.7]x2 | [E4/8.@0.7 E4/8.@0.7 E4/8@0.7]x2 | [F#4/8.@0.7 F#4/8.@0.7 F#4/8@0.7]x2 | [G4/8.@0.7 G4/8.@0.7 G4/8@0.7]x2
-pulse2: [G4/8.@0.7 G4/8.@0.7 G4/8@0.7]x2 | [E4/8.@0.7 E4/8.@0.7 E4/8@0.7]x2 | [A4/8.@0.7 A4/8.@0.7 A4/8@0.7]x2 | [F#4/8.@0.7 F#4/8.@0.7 F#4/8@0.7]x2
+// a 3-3-2 chug whose short third hit steps, so the chug carries a line of its own
+pulse2: G4/8.@0.7 G4/8.@0.7 F#4/8@0.7 G4/8.@0.7 G4/8.@0.7 B4/8@0.7 | G4/8.@0.7 G4/8.@0.7 E4/8@0.7 E4/8.@0.7 E4/8.@0.7 D4/8@0.7
+pulse2: F#4/8.@0.7 F#4/8.@0.7 E4/8@0.7 F#4/8.@0.7 F#4/8.@0.7 A4/8@0.7 | G4/8.@0.7 G4/8.@0.7 F#4/8@0.7 E4/8.@0.7 E4/8.@0.7 D4/8@0.7
+pulse2: B4/8.@0.7 B4/8.@0.7 A4/8@0.7 G4/8.@0.7 G4/8.@0.7 F#4/8@0.7 | G4/8.@0.7 G4/8.@0.7 E4/8@0.7 E4/8.@0.7 E4/8.@0.7 G4/8@0.7
+pulse2: A4/8.@0.7 A4/8.@0.7 B4/8@0.7 C5/8.@0.7 C5/8.@0.7 B4/8@0.7 | F#4/8.@0.7 F#4/8.@0.7 A4/8@0.7 B4/8.@0.7 B4/8.@0.7 A4/8@0.7
 triangle: [E2/8 E3/8]x4 | [C2/8 C3/8]x4 | [D2/8 D3/8]x4 | E2/8 E3/8 E2/8 E3/8 D3/8 E3/8 G3/4
 triangle: [E2/8 E3/8]x4 | [C2/8 C3/8]x4 | [A1/8 A2/8]x4 | B1/8 B2/8 B1/8 B2/8 A2/8 B2/8 C3/8 D#3/8
 noise: c/8 h/8@0.4 s/8 h/8@0.4 k/8 h/8@0.4 s/8 h/8@0.4 | [k/8 h/8@0.4 s/8 h/8@0.4 k/8 h/8@0.4 s/8 h/8@0.4 |]x6
@@ -98,16 +104,18 @@ noise: [k/8 h/8@0.4 h/8@0.4 h/8@0.4 s/8 h/8@0.4 h/8@0.4 h/8@0.4 |]x7 k/8 h/8@0.4
 
 section: C
 chords: C | D | Em | Em | C | D | B | B
-// pulse 2 states the world motif at the top of each bar; the thin lead answers
+// pulse 2 states the world motif at the top of each bar (down a step, back, up a third); the thin
+// lead answers with it upside down (up a step, back, down a third), climbing bar by bar
 duty pulse1: 0.125
 duty pulse2: 0.25
 // the answers are played softer so the riff on the quieter pulse comes through
-pulse1: r/2 r/8 C6/8@0.75 B5/8@0.75 G5/8@0.75 | r/2 r/8 A5/8@0.75 F#5/8@0.75 D5/8@0.75
-pulse1: r/2 r/8 B5/8@0.75 G5/8@0.75 E5/8@0.75 | r/2 r/8 E5/8@0.75 G5/8@0.75 B5/8@0.75
-pulse1: r/2 r/8 E5/8@0.8 G5/8@0.8 C6/8@0.8 | r/2 r/8 F#5/8@0.8 A5/8@0.8 C6/8@0.8 | B5/4. A5/8 F#5/4 D#5/4 | B5/2 r/8 F#5/8 G5/8 A5/8
-pulse2: E4/8 D4/8 E4/8 G4/4 r/4. | F#4/8 E4/8 F#4/8 A4/4 r/4. | E4/8 D4/8 E4/8 G4/4 r/4. | E4/8 D4/8 E4/8 G4/4 r/4.
-pulse2: E4/8 D4/8 E4/8 G4/4 r/4. | F#4/8 E4/8 F#4/8 A4/4 r/4. | F#4/8 E4/8 F#4/8 A4/4 r/4. | F#4/8 E4/8 F#4/8 A4/4 r/4.
-triangle: [C2/8 C3/8]x4 | [D2/8 D3/8]x4 | [E2/8 E3/8]x4 | [E2/8 E3/8]x4
+pulse1: r/2 r/8 G5/16@0.75 A5/16@0.75 G5/8@0.75 E5/8@0.75 | r/2 r/8 A5/16@0.75 B5/16@0.75 A5/8@0.75 F#5/8@0.75
+pulse1: r/2 r/8 B5/16@0.75 C6/16@0.75 B5/8@0.75 G5/8@0.75 | r/2 G5/8@0.75 A5/8@0.75 B5/8@0.75 D6/8@0.75
+pulse1: r/2 r/8 C6/16@0.8 D6/16@0.8 C6/8@0.8 G5/8@0.8 | r/2 r/8 D6/16@0.8 C6/16@0.8 A5/8@0.8 F#5/8@0.8 | B5/4. A5/8 F#5/4 D#5/4 | B5/2 r/8 F#5/8 G5/8 A5/8
+pulse2: E4/8 D4/8 E4/8 G4/4 r/4. | F#4/8 E4/8 F#4/8 A4/4 r/4. | E4/8 D4/8 E4/8 G4/4 r/4. | B3/8 A3/8 B3/8 D4/4 r/4.
+pulse2: E4/8 D4/8 E4/8 G4/4 r/4. | F#4/8 E4/8 F#4/8 A4/4 r/4. | F#4/8 E4/8 F#4/8 A4/4 r/4. | F#4/8 E4/8 F#4/8 A4/8 B4/4 r/4
+// the octave bounce walks down and back up through the second E minor bar into C
+triangle: [C2/8 C3/8]x4 | [D2/8 D3/8]x4 | [E2/8 E3/8]x4 | E2/8 E3/8 E2/8 D3/8 B2/8 G2/8 A2/8 B2/8
 triangle: [C2/8 C3/8]x4 | [D2/8 D3/8]x4 | [B1/8 B2/8]x4 | [B1/8 B2/8]x3 C3/8 D#3/8
 noise: c/8 o/8@0.3 s/8 h/8@0.4 k/8 k/8 s/8 o/8@0.3 | [k/8 o/8@0.3 s/8 h/8@0.4 k/8 k/8 s/8 o/8@0.3 |]x6
 noise: k/8 o/8@0.3 s/8 k/8 s/16 s/16 s/16 s/16 s/16 s/16 s/16 s/16
@@ -123,13 +131,13 @@ noise: [k/8 r/8 t/8 t/8 k/8 r/8 t/16 t/16 t/8 |]x3 k/8 t/16 t/16 s/16 s/16 t/16 
 
 section: A''
 chords: Em | C | D | Em | Em | C | Am | B7
-// the hook harmonised from below, over a galloping bass
+// the hook harmonised from below over a galloping bass; the answer gets a slow counter-line instead
 pulse1: E5/8 E5/16 E5/16 G5/8 B5/4 A5/8 G5/8 F#5/8 | G5/4 E5/4 r/8 B4/8 D5/8 E5/8
 pulse1: A5/8 A5/16 A5/16 F#5/8 D5/4 E5/8 F#5/8 A5/8 | G5/4. F#5/8 E5/4 r/4
 pulse1: E5/8 E5/16 E5/16 G5/8 B5/4 A5/8 G5/8 F#5/8 | G5/4 E5/4 r/8 B4/8 D5/8 E5/8
 pulse1: A5/8 A5/16 A5/16 C6/8 B5/4 A5/8 G5/8 E5/8 | F#5/4 A5/4 B5/4. r/8
 pulse2: B4/8 B4/16 B4/16 E5/8 G5/4 F#5/8 E5/8 D5/8 | E5/4 C5/4 r/8 G4/8 B4/8 C5/8
-pulse2: F#5/8 F#5/16 F#5/16 D5/8 A4/4 C5/8 D5/8 F#5/8 | E5/4. D5/8 B4/4 r/4
+pulse2: F#4/2 A4/2 | B4/4. A4/8 G4/4 B4/4
 pulse2: B4/8 B4/16 B4/16 E5/8 G5/4 F#5/8 E5/8 D5/8 | E5/4 C5/4 r/8 G4/8 B4/8 C5/8
 pulse2: E5/8 E5/16 E5/16 E5/8 G5/4 F#5/8 E5/8 C5/8 | D#5/4 F#5/4 F#5/4. r/8
 triangle: [E2/8 E3/16 E3/16]x4 | [C2/8 C3/16 C3/16]x4 | [D2/8 D3/16 D3/16]x4 | [E2/8 E3/16 E3/16]x4
@@ -139,8 +147,8 @@ noise: k/8 h/16@0.3 h/16@0.3 s/8 k/8 s/16 s/16 s/16 s/16 s/16 s/16 s/8
 
 section: turnaround
 chords: C | D | B7 | B7
-// bVI-bVII-V: the lead climbs in arpeggios while pulse 2 restates the motif
-pulse1: E5/8 G5/8 C6/8 B5/8 G5/8 E5/8 G5/8 C6/8 | F#5/8 A5/8 C6/8 A5/8 F#5/8 D5/8 F#5/8 A5/8
+// bVI-bVII-V: the lead climbs a step per bar in the hook's stuttered rhythm while pulse 2 restates the motif
+pulse1: G5/8 G5/16 G5/16 A5/8 C6/4 B5/8 A5/8 G5/8 | A5/8 A5/16 A5/16 B5/8 D6/4 C6/8 B5/8 A5/8
 pulse1: B5/4 A5/8 F#5/8 D#5/4 F#5/4 | B5/2. r/4
 pulse2: E4/8 D4/8 E4/8 G4/4 r/4. | F#4/8 E4/8 F#4/8 A4/4 r/4. | D#4/4 F#4/4 A4/4 F#4/4 | B3/8 D#4/8 F#4/8 A4/8 B4/4 r/4
 triangle: [C2/8 C3/8]x4 | [D2/8 D3/8]x4 | [B1/8 B2/8]x4 | B1/8 B2/8 B1/8 B2/8 A2/8 G2/8 F#2/8 D#2/8

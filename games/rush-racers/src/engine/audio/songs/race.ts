@@ -8,7 +8,7 @@
  * Chords:
  * - intro: G | D
  * - A: G | Bm | C | D | G | Bm | Am D | G (hook, answer, hook, rising resolve)
- * - A': as A, with a higher answer and a climb to B5 at the end
+ * - A': as A, with a higher answer, a counter-line under it and a climb to B5 at the end
  * - B: Em | C | Am | B | Em | C | F | D (relative minor, a major B and a borrowed F for colour)
  * - C: C | D | Bm | Em | Am | D7 | F | D (the pulses trade phrases; F is the borrowed bVII)
  * - breakdown: Cmaj7 | Am7 | Cmaj7 | D (the lead rests)
@@ -17,14 +17,19 @@
  * The hook (A, bars 1-2) is "B A B D~ C B | F#. E D B": a syncopated cell (three eighths, a
  * held note on the off-beat of 2) answered by a leap up a fifth to F#.
  *
- * Voices: the lead is a 25% pulse, rounded to 50% for B. Pulse 2 plays off-beat stabs in A,
- * thirds under the lead in A' and the turnaround, an eighth-note arpeggio in B, the answers to
- * the lead's calls in C (the call keeps the hook's rhythm, the answer the rhythm of its second
- * bar; the calls are played softer so the two voices trade as equals, and climb to C6 over the
- * F), and short arpeggio chords in a 3-3-2 rhythm in the breakdown that quicken in its last
- * bar. The triangle bounces in octaves in A, walks in B, bounces root and fifth in C, and kicks
- * with pitch drops in the breakdown. Drums: a crash opens A, A' and C, open hats lift A' and C,
- * B is half-time, toms carry the breakdown, and every section ends with a snare fill.
+ * Voices: the lead is a 25% pulse, rounded to 50% for B. Pulse 2 plays off-beat stabs in A; in
+ * A' a counter-line that holds under the hook's moving eighths and steps where the lead holds,
+ * joining it in thirds only for the climb of the last two bars; in B a counter-line that holds
+ * under the lead's first half and answers in the half note it holds, with the eighth-note
+ * arpeggio saved for the F and D bars; the answers to the lead's calls in C (the call keeps the
+ * hook's rhythm, the answer the rhythm of its second bar; the calls are played softer so the two
+ * voices trade as equals, and climb to C6 over the F); short arpeggio chords in a 3-3-2 rhythm in
+ * the breakdown that quicken in its last bar; and in the turnaround long notes rising against
+ * the lead (B C D, E D B, C# D E) before D7 arpeggio bursts. The triangle bounces in octaves in A,
+ * walks in B, bounces root and fifth in C, and kicks with pitch drops in the breakdown. Drums: a
+ * crash opens A, A' and C, open hats and sixteenth hats lift A', A and A' fill at bar 4 as well as
+ * at their ends, B is half-time, toms carry the breakdown, the turnaround adds kicks and snares
+ * bar by bar into a roll, and every section ends with a snare fill.
  */
 import { parseSong, type Song } from '../notation.ts';
 
@@ -57,7 +62,8 @@ pulse2: [r/8 B3/8 r/8 D4/8]x2 | [r/8 D4/8 r/8 F#4/8]x2 | [r/8 E4/8 r/8 G4/8]x2 |
 pulse2: [r/8 B3/8 r/8 D4/8]x2 | [r/8 D4/8 r/8 F#4/8]x2 | r/8 C4/8 r/8 E4/8 r/8 F#4/8 r/8 A4/8 | [r/8 B3/8 r/8 D4/8]x2
 triangle: [G2/8 G3/8]x3 G2/8 A2/8 | [B2/8 B3/8]x3 B2/8 D3/8 | [C3/8 C4/8]x3 C3/8 C#3/8 | [D3/8 D4/8]x3 D3/8 F#2/8
 triangle: [G2/8 G3/8]x3 G2/8 A2/8 | [B2/8 B3/8]x4 | A2/8 A3/8 A2/8 A3/8 D3/8 D4/8 D3/8 F#2/8 | [G2/8 G3/8]x3 D3/8 F#2/8
-noise: c/8 h/8@0.4 s/8 h/8@0.4 k/8 k/8 s/8 h/8@0.4 | [k/8 h/8@0.4 s/8 h/8@0.4 k/8 k/8 s/8 h/8@0.4 |]x6
+noise: c/8 h/8@0.4 s/8 h/8@0.4 k/8 k/8 s/8 h/8@0.4 | [k/8 h/8@0.4 s/8 h/8@0.4 k/8 k/8 s/8 h/8@0.4 |]x2
+noise: k/8 h/8@0.4 s/8 h/8@0.4 k/8 k/8 s/16 s/16 s/8 | [k/8 h/8@0.4 s/8 h/8@0.4 k/8 k/8 s/8 h/8@0.4 |]x3
 noise: k/8 h/8@0.4 s/8 h/8@0.4 s/16 s/16 s/16 s/16 s/8 s/8
 
 section: A'
@@ -66,12 +72,14 @@ chords: G | Bm | C | D | G | Bm | Am D | G
 pulse1: B4/8 A4/8 B4/8 D5/4 C5/8 B4/4 | F#5/4.v E5/8 D5/4 B4/4 | E5/8 D5/8 E5/8 G5/4 A5/8 G5/4 | F#5/4. G5/8 A5/4 F#5/4
 // hook, climb to the high ending
 pulse1: B4/8 A4/8 B4/8 D5/4 C5/8 B4/4 | F#5/4.v E5/8 D5/4 B4/4 | C5/8 D5/8 E5/8 F#5/4 G5/8 A5/4 | B5/4. A5/8 G5/2
-pulse2: G4/8 F#4/8 G4/8 B4/4 A4/8 G4/4 | D5/4. C5/8 B4/4 F#4/4 | C5/8 B4/8 C5/8 E5/4 F#5/8 E5/4 | D5/4. E5/8 F#5/4 D5/4
-pulse2: G4/8 F#4/8 G4/8 B4/4 A4/8 G4/4 | D5/4. C5/8 B4/4 F#4/4 | A4/8 B4/8 C5/8 D5/4 E5/8 F#5/4 | G5/4. F#5/8 D5/2
+// a counter-line that holds while the hook moves and steps where it holds, then thirds for the climb
+pulse2: D4/2. B3/8 C4/8 | D4/2. F#4/8 E4/8 | E4/2. C4/8 E4/8 | F#4/2 E4/4 C4/4
+pulse2: B3/2. G3/8 A3/8 | B3/2. C4/8 D4/8 | A4/8 B4/8 C5/8 D5/4 E5/8 F#5/4 | G5/4. F#5/8 D5/2
 triangle: [G2/8 G3/8]x3 G2/8 A2/8 | [B2/8 B3/8]x3 B2/8 D3/8 | [C3/8 C4/8]x3 C3/8 C#3/8 | [D3/8 D4/8]x3 D3/8 F#2/8
 triangle: [G2/8 G3/8]x3 G2/8 A2/8 | [B2/8 B3/8]x4 | A2/8 A3/8 A2/8 A3/8 D3/8 D4/8 D3/8 F#2/8 | [G2/8 G3/8]x3 G2/8 F#2/8
-noise: c/8 h/8@0.4 s/8 o/8@0.3 k/8 k/8 s/8 h/8@0.4 | [k/8 h/8@0.4 s/8 o/8@0.3 k/8 k/8 s/8 h/8@0.4 |]x6
-noise: k/8 h/8@0.4 s/8 h/8@0.4 s/16 s/16 s/16 s/16 s/8 s/8
+noise: c/8 h/16@0.3 h/16@0.3 s/8 o/8@0.3 k/8 k/8 s/8 h/8@0.4 | [k/8 h/16@0.3 h/16@0.3 s/8 o/8@0.3 k/8 k/8 s/8 h/8@0.4 |]x2
+noise: k/8 h/16@0.3 h/16@0.3 s/8 o/8@0.3 k/8 s/16 s/16 k/8 s/16 s/16 | [k/8 h/16@0.3 h/16@0.3 s/8 o/8@0.3 k/8 k/8 s/8 h/8@0.4 |]x3
+noise: k/8 h/8@0.4 s/16 s/16 k/8 s/16 s/16 s/16 s/16 s/8 s/8
 
 section: B
 chords: Em | C | Am | B | Em | C | F | D
@@ -79,8 +87,9 @@ chords: Em | C | Am | B | Em | C | F | D
 duty pulse1: 0.5
 pulse1: G4/4. A4/8 B4/2 | C5/4. B4/8 G4/2 | A4/4. B4/8 C5/4 E5/4 | D#5/2v B4/2
 pulse1: G4/4. A4/8 B4/2 | C5/4. D5/8 E5/2 | A4/4. C5/8 F5/2 | F#5/2.v r/4
-pulse2: [G3/8 B3/8 E4/8 B3/8]x2 | [G3/8 C4/8 E4/8 C4/8]x2 | [A3/8 C4/8 E4/8 C4/8]x2 | [B3/8 D#4/8 F#4/8 D#4/8]x2
-pulse2: [G3/8 B3/8 E4/8 B3/8]x2 | [G3/8 C4/8 E4/8 C4/8]x2 | [A3/8 C4/8 F4/8 C4/8]x2 | [A3/8 D4/8 F#4/8 D4/8]x2
+// pulse 2 holds under the lead's moving first half and answers in the half note it holds
+pulse2: B3/2 E4/8 D4/8 B3/4 | E4/2 C4/8 D4/8 E4/4 | E4/4. D4/8 C4/2 | B3/2 F#4/8 E4/8 D#4/4
+pulse2: E4/2 G4/8 F#4/8 E4/4 | C4/2 D4/8 E4/8 G4/4 | [A3/8 C4/8 F4/8 C4/8]x2 | [A3/8 D4/8 F#4/8 D4/8]x2
 // walking bass
 triangle: E2/4 B2/4 E3/4 D3/4 | C3/4 G2/4 C3/4 B2/4 | A2/4 C3/4 E3/4 A#2/4 | B2/4 D#3/4 F#3/4 D#2/4
 triangle: E2/4 B2/4 E3/4 D3/4 | C3/4 G2/4 C3/4 E2/4 | F2/4 A2/4 C3/4 C#3/4 | D3/4 A2/4 D3/4 F#2/4
@@ -118,9 +127,11 @@ section: turnaround
 chords: G | Em | A | D7
 duty pulse2: voice
 pulse1: D5/8 E5/8 D5/8 B4/4 D5/8 G5/4 | E5/8 F#5/8 E5/8 B4/4 E5/8 G5/4 | E5/8 F#5/8 E5/8 C#5/4 E5/8 A5/4 | F#5/4 E5/4 D5/4 C5/4
-pulse2: B4/8 C5/8 B4/8 G4/4 B4/8 D5/4 | B4/8 D5/8 B4/8 G4/4 B4/8 E5/4 | C#5/8 D5/8 C#5/8 A4/4 C#5/8 E5/4 | D5/4 C5/4 A4/4 F#4/4
+pulse2: B3/2 C4/4 D4/4 | E4/2 D4/4 B3/4 | C#4/2 D4/4 E4/4
+pulse2: D4:047a/8 r/8 D4:047a/8 r/8 D4:047a/16 D4:047a/16 D4:047a/16 D4:047a/16 D4:047a/8 r/8
 triangle: [G2/8 G3/8]x4 | [E2/8 E3/8]x4 | [A2/8 A3/8]x4 | D3/8 D4/8 D3/8 D4/8 C3/8 B2/8 A2/8 F#2/8
-noise: [k/8 h/8@0.4 s/8 h/8@0.4 k/8 k/8 s/8 h/8@0.4 |]x3 k/8 s/16 s/16 k/8 s/16 s/16 s/8 s/8 s/8 s/8
+noise: k/8 h/8@0.4 s/8 h/8@0.4 k/8 k/8 s/8 h/8@0.4 | k/8 h/8@0.4 s/8 k/8 k/8 h/8@0.4 s/8 s/8
+noise: k/8 s/8 k/8 s/8 k/8 s/8 s/16 s/16 s/8 | k/8 s/16 s/16 k/8 s/16 s/16 s/8 s/8 s/8 s/8
 `;
 
 /** "Reef Rush", the race theme and track 1 of the Reef set, parsed. */
