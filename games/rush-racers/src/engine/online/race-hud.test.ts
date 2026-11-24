@@ -5,7 +5,7 @@ import type { GameEvent } from '../../logic/events.ts';
 import type { World } from '../../logic/types.ts';
 import { createWorld, stepRace } from '../../logic/world.ts';
 import { IDLE_INPUT } from '../../net/codec.ts';
-import { racerTags, waitingLine } from './race-hud.ts';
+import { HUD_ROWS_BOTTOM, racerTags, tagTop, waitingLine } from './race-hud.ts';
 
 /** A world on Run Test with `humans` driven by people. */
 function worldWith(humans: World['humans']): World {
@@ -42,10 +42,29 @@ describe('the waiting line', () => {
     ['on time', { stalledMs: 0, waitingOn: [] }, null],
     ['stalled under half a second', { stalledMs: 499, waitingOn: ['P2'] }, null],
     ['stalled half a second on one player', { stalledMs: 500, waitingOn: ['P2'] }, 'WAITING FOR P2'],
-    ['stalled on three players', { stalledMs: 2000, waitingOn: ['P2', 'P3', 'P4'] }, 'WAITING FOR P2 P3 P4'],
+    ['stalled on three players', { stalledMs: 2000, waitingOn: ['P2', 'P3', 'P4'] }, 'WAITING FOR\nP2 P3 P4'],
+    ['stalled on two players', { stalledMs: 2000, waitingOn: ['P2', 'P3'] }, 'WAITING FOR P2 P3'],
     ['stalled with no one named', { stalledMs: 900, waitingOn: [] }, null],
     ['stepping again after a stall', { stalledMs: 0, waitingOn: ['P2'] }, null],
   ])('reads %s', (_case, race, line) => {
     expect(waitingLine(race)).toBe(line);
+  });
+});
+
+describe('where a player tag sits', () => {
+  it('sits 2 px above a racer well clear of the HUD', () => {
+    expect(tagTop({ top: 100, bottom: 116 })).toBe(91);
+  });
+
+  it('stays above while its outline just clears the HUD rows', () => {
+    expect(tagTop({ top: HUD_ROWS_BOTTOM + 10, bottom: HUD_ROWS_BOTTOM + 26 })).toBe(HUD_ROWS_BOTTOM + 1);
+  });
+
+  it('moves under a racer near the top of the screen, so it never covers a well', () => {
+    expect(tagTop({ top: 40, bottom: 56 })).toBe(58);
+  });
+
+  it('hides when the racer itself is up among the HUD rows', () => {
+    expect(tagTop({ top: 10, bottom: 26 })).toBeNull();
   });
 });

@@ -106,8 +106,8 @@ function containerStage(container: HTMLElement): Stage {
 /**
  * A view that fills the container at integer zoom and follows its size (a new view size restarts
  * the screens showing so they lay out again), the logic clock fed once per game step (not per
- * scene, so a scene switch mid-step can't tick twice), plus the context-loss hookup once
- * Phaser is ready.
+ * scene, so a scene switch mid-step can't tick twice), the tab showing again, plus the
+ * context-loss hookup once Phaser is ready.
  */
 function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
   game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => rt.frame(deltaMs));
@@ -121,6 +121,11 @@ function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
     game.scale.setZoom(stage.zoom);
   };
   new ResizeObserver(fitToContainer).observe(ctx.container);
+  // The shell's `onHide` fires in test mode too, but it skips `resume` there; listening here keeps
+  // a player who hid in the room from staying away for good.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) rt.show();
+  });
   game.events.once(Phaser.Core.Events.READY, () => {
     fitToContainer();
     game.canvas.addEventListener('webglcontextlost', () => ctx.reportError('webgl', 'WebGL context lost'));
@@ -151,10 +156,7 @@ function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>
       rt.goTo('title');
     },
     pause: () => game.loop.sleep(),
-    resume: () => {
-      game.loop.wake();
-      rt.show();
-    },
+    resume: () => game.loop.wake(),
     onHide: () => rt.hide(),
   };
 }
