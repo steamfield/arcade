@@ -279,6 +279,7 @@ Demo: course select lists Sunlit Shallows, Bramble Run and Thunderhead Pass; rac
 Depends on: phase 3, phase 4
 
 Scaffold: a4463d5
+Tag: cloudreach/phase-5
 
 Scaffold (inline, by the orchestrator, after phases 3 and 4 tag; done): `'thunderhead-pass'` in `ShippedCourseId`; `logic/courses/thunderhead-pass.ts` registered in `COURSES` after Bramble Run, `listed: true`, world cloudreach, theme sky, song cloudreach, with a first-draft level (sky-test's ideas stretched to Bramble Run's length, 26 rows) and a guessed `parTicks`; every spec or scenario that asserts course select's rows or walks to Bramble Run by row index gets the third row. The gate passes on the scaffold (203 s). The draft repeats Sky Test's cols 9-117 four times (447 cols) with four lightning zones offset 40 ticks apart, par guessed at 4400. Listing it in the scaffold lets lane b test course select with three courses while lane a tunes the level.
 
