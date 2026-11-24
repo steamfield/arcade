@@ -15,17 +15,17 @@ import type { CourseSection, ShippedCourse } from './types.ts';
  *   two-tile plateau (112-126), beetles at 58 and 164, a tailwind at 74-84, cracked stone at 90 and
  *   a boar on the flat at 102. Spring mushrooms (`B`) sit in the floor at the lips of the pits at 66
  *   and 172 (cols 65 and 171): a runner who reaches one is launched clean over the pit.
- * - Cols 180-319, the treetops: a trunk of rock steps (180-199, two tiles up each) hangs over the
- *   floor and climbs to a branch path of ledges on row 8 (200-290) with gaps at 205, 223, 240, 259
- *   and 277, wasps over three of them, a tailwind along the branch (211-220) and updrafts in two
- *   gaps. Below, the floor path is slower: mud (194-204, 266-274), a headwind (212-222), a
- *   downdraft (228-236), a stump two tiles high at 238 beside a three-high one capped with a spring
- *   mushroom at 239, a two-deep trench with a beetle (242-258) and a boar at 284. The mushroom's
+ * - Cols 180-319, the treetops: a one-tile step at col 178 leads into a trunk of two-tile rock
+ *   steps (180-199) over the floor. The trunk climbs to ledges on row 8 (200-290) with gaps at
+ *   205, 223, 240, 259 and 277, wasps over three of them, a tailwind along the branch (211-220)
+ *   and updrafts in two gaps. Below, the floor path is slower: mud (194-204, 266-274), a headwind
+ *   (212-222), a downdraft (228-236), a stump two tiles high at 238 beside a three-high one capped
+ *   with a spring mushroom at 239, a two-deep trench with a beetle (242-258) and a boar at 284. The mushroom's
  *   launch with Up held rises through the branch above it, back onto the treetops; without, it
  *   drops into the trench. Both paths meet on the floor at 291; a crate over a block sits at 300.
- * - Cols 320-509, the millstream: stepping stones across a mud valley, with pearl arcs over the gaps
- *   and crates along the way. At col 460 a mushroom launches runners onto the upper bank. The mud
- *   road has one snake and rejoins by the lower bank.
+ * - Cols 320-509, the millstream: stepping stones across a mud valley, with pearl arcs over the
+ *   two-tile gaps and crates along the way. At col 460 a mushroom launches runners onto the upper
+ *   bank. The mud road has one snake and rejoins by the lower bank.
  * - Cols 510-679, the hollow oak: ledges spiral up the hollow from col 552, with pearls and
  *   mushrooms to skip steps. The top crate marks the knothole at cols 602-613. The branch outside
  *   slopes down to the floor. Break the cracked stone at col 607 for a wind-assisted root tunnel.
@@ -35,10 +35,11 @@ import type { CourseSection, ShippedCourse } from './types.ts';
  *   and up from the floor (726), pits at 716 and 762, mud (734-740, 788-800), a beetle at 746, a
  *   crate over the stone at 754 and a root hanging to row 12 at 772-775.
  * - Cols 810-1089, the rotten bridges: a short span at col 830 drops into a shallow dip. Three
- *   high spans start at 882, 890 and 898, over mud and snakes on the gorge floor. At 938 short
- *   crumbling steps climb to a windy pearl road. The span at col 984 falls onto the mushroom at 986,
- *   which springs runners back up to a recovery shelf. Mushrooms on the lower road launch runners
- *   onto the roots over the pits at cols 922 and 1025. The lower road then steps up to meet the high road.
+ *   high spans start at 882, 890 and 898, over a floor road of mud, firm ground and snakes. At 938
+ *   short crumbling steps climb to a windy pearl road. The span at col 984 falls onto the mushroom
+ *   at 986, which springs runners back up to a recovery shelf. Mushrooms on the lower road launch
+ *   runners onto the roots over the pits at cols 922 and 1025. The lower road then meets the high
+ *   road and runs through one last mud patch (1081-1087).
  * - Cols 1090-1129, the clearing: a pearl line and the finish at col 1126.
  */
 const FOREST_FLOOR_AND_TREETOPS = `
@@ -57,7 +58,7 @@ const FOREST_FLOOR_AND_TREETOPS = `
   #........................o.........................................o......................................................o...............................................................##############............................vvvvvvvvv...................................................................................
   #...........o.o.o...............................?.........................>>>>>>>>>>>.....................................................................?...............................##############............<<<<<<<<<<<................B............................................................?...................
   #.........................................................................>>>>>>>>>>>...........................###############.....................................................####################............<<<<<<<<<<<...............##................................................................................
-  #1.2.3.4..........................~~~~~~~~......#.........K...............>>>>>>>>>>>.....C...........S.........###############.............~~~~~~~~......#.........K.............................~~~~~~~~~~~.......<<<<<<<<<<<...............##..........................~~~~~~~~~.........S...............#...................
+  #1.2.3.4..........................~~~~~~~~......#.........K...............>>>>>>>>>>>.....C...........S.........###############.............~~~~~~~~......#.........K.............#...............~~~~~~~~~~~.......<<<<<<<<<<<...............##..........................~~~~~~~~~.........S...............#...................
   ########################...######################################B...##############################################################...#####################################B...###################################################################.................#############################################################
   ########################...#######################################...##############################################################...######################################...###################################################################........K........#############################################################
   ########################.*.#######################################...##############################################################.*.######################################...#################################################################################################################################################
@@ -82,7 +83,7 @@ const MILLSTREAM = `
   ...................o..o.....o..o.....o..o.....o..o.....o..o.....o..o.....o..o.....o..o.....o..o.....o..o.....o..o.....o..o.....o..o...............>>>>>>>>?>>>................................
   ........................................?............................................?........................................................o................o..............................
   ...............................................................................................................................................ssssssssssssssssss..............<<<............
-  .............ssssss...ssssss...ssssss...ssssss...ssssss...ssssss...ssssss...ssssss...ssssss...ssssss...ssssss...ssssss...ssssss...ssssss....................~~~~~~~~.ossssssssssssss..........
+  .............sssssss..sssssss..sssssss..sssssss..sssssss..sssssss..sssssss..sssssss..sssssss..sssssss..sssssss..sssssss..sssssss..ssssss....................~~~~~~~~.ossssssssssssss..........
   ##############............................................sssss.........................................sssss.............................................####################################
   ################~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.....~~~~~~~~~~~~~~~~~~~~~~~~~~~~E~~~~~~~~~~~~~.....~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~########################################
   ############################################################################################################################################B#################################################
@@ -157,9 +158,9 @@ const ROTTEN_BRIDGES = `
   .....................................................=========..............................................=========.....................rrrrr...........................====rrrrrr.o.p.................................................==========.....................................
   ..............................?........................................................................................................o..........................................==========............................................................................................
   ..............................................=========..............................................................======..........rrrrr...........................................................................................................=======............................
-  ...................p....p.........................................................................................................o.................................................................................................................................~~~~~~~~~~~~~~~~~~..
+  ...................p....p.........................................................................................................o............................................................................................................................................~~~~~~~..
   ####################rrrr===========....###################....................................................p.....p...........rrrrr................................................................................p.....p..................................##########################
-  ####################..............########################.....~~~~~~~~~~~~<<<<E<<<<<<<<<<<<~~~~~~~~~~~~~~~~~~=======..~~~~~~~~~~~~~~~~~~~~~E~~~<<<<<<<<<~~~~~~~~~~~~~~~~~~~~...B...<<<<<<<<~~~~~~~~~~~~~E~~~~~~~~~<<=======~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.....##########################
+  ####################..............########################.....~~~~~~~~~~~~....E............~~~~~~~~~~~~~~~~~~=======..~~~~~~~~~~~~~~~~~~~~~E~~~<<<<<<<<<~~~~~~~~~~~~~~~~~~~~...B...<<<<<<<<~~~~~~~~~~~~~E~~~~~~~~~<<=======~~~~~~~~~~~~~~~~~~~~~~~~~~~~~.....##########################
   #############################################################################################################B##...#################################################################################################B##...##############################################################
   ################################################################################################################...####################################################################################################...##############################################################
 `
@@ -218,21 +219,21 @@ const LEVEL: LevelDef = {
 };
 
 /**
- * The expert bot's mean Hard finish (150.7 s) over seeds 1-200 and all eight characters, measured as
- * COURSES.md "parTicks" says: 1600 races, every one finished. Re-measured after tuning the Treetops
- * approach and Hard catch-up; it was 9033 (150.6 s) before that tuning.
+ * The expert bot's mean Hard finish (151.3 s) over seeds 1-200 and all eight characters, measured as
+ * COURSES.md "parTicks" says: 1600 races, every one finished. Re-measured after adding the Treetops
+ * step, widening the Millstream stones and easing the low road through the Rotten Bridges. It was
+ * 4119 (68.7 s) before the Millstream, the Hollow Oak and the Rotten Bridges.
  */
-const PAR_TICKS = 9040;
+const PAR_TICKS = 9078;
 
 /**
- * Normal rivals hover this many tiles behind the player here, not the table's 2. On foot a rival
- * feels half of its force multiplier (`FORCE_SHARE` in `media/run/physics.ts`), so Normal's 0.95
- * slows it only 2.5 % and the catch-up holds it half as firmly. At 2 the player who never dashes
- * placed top 3 in only 2-5 of 10 races as Baron, Nib and Streak, and at 7 in 5 as Selene. At 9 it
- * places top 3 in 7-9 for every character, the expert still wins all 10 (7-10 more than it), and the
- * novice wins 1-6 (v2 phase 5, seeds 1-10).
+ * Normal rivals pace themselves seven tiles behind the player here (the table uses two). On foot,
+ * `FORCE_SHARE` in `media/run/physics.ts` turns Normal's 0.95 force multiplier into 97.5 % of nominal
+ * pace at that gap, with catch-up caps of 78.5-109.4 % before character and item modifiers. On this
+ * layout, Onyx's novice won 9 of 10 at nine and eight tiles of lag, and 8 at seven. At seven, the
+ * no-dash bot placed top 3 in 8-10 seeds, the expert won all 10 and the novice won 3-8 across the roster.
  */
-const NORMAL_LAG_TILES = 9;
+const NORMAL_LAG_TILES = 7;
 
 /** The zones the race screen calls out, one per part of the list above. */
 const SECTIONS: readonly CourseSection[] = [
@@ -256,11 +257,5 @@ export const BRAMBLE_RUN: ShippedCourse = {
   listed: true,
   parTicks: PAR_TICKS,
   sections: SECTIONS,
-  // A runner that backs away from the first Treetops step needs to turn forward before it lands.
-  tuning: { extra: { airAccel: 650 } },
-  catchUp: {
-    // Keep Hard rivals moving through the jumps when ahead and let them close the gap when behind.
-    hard: { min: 0.8, max: 1.4 },
-    normal: { lagTiles: NORMAL_LAG_TILES },
-  },
+  catchUp: { normal: { lagTiles: NORMAL_LAG_TILES } },
 };
