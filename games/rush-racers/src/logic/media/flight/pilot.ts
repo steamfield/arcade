@@ -13,6 +13,7 @@ import { avoidHazards } from '../../ai/avoid.ts';
 import { tileOf } from '../../ai/steer.ts';
 import { length } from '../../num.ts';
 import { centreOf } from '../../racers.ts';
+import { activeCannonRide } from '../../setpieces/cannons.ts';
 import { type MoveModifiers, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
@@ -32,7 +33,7 @@ import {
   verticalStick,
 } from './stick.ts';
 import { readTraffic, type Traffic } from './traffic.ts';
-import { flightPuffInDashLine } from './way.ts';
+import { flightPuffInDashLine, isCannonTile } from './way.ts';
 import { type FlightPilot, flightPilot } from './way-data.ts';
 
 /** Tiles from its target past which it replans at once (it was knocked or put somewhere else). */
@@ -88,6 +89,17 @@ export function steerFlyer(
   const ai = racer.ai;
   if (!ai) throw new Error(`flight.steer needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
   const memory = flightPilot(ai.pilot);
+  if (activeCannonRide(world, racer.id)) {
+    // Start a fresh plan at the exit rather than flying back to the mouth, ring or bounce.
+    memory.waypoint = null;
+    memory.replanIn = 0;
+    memory.recoverTicks = 0;
+    memory.puffDash = null;
+    memory.bounce = null;
+    memory.ring = null;
+    memory.pass = null;
+    return letGo(memory);
+  }
   // Physics saw the stick that reached it, which a stun or trap zeroes: a press must start from that.
   memory.upHeld = flightMotion(racer.motion).upWasHeld;
   const numbers = flightPilotNumbers(effectiveTuning(world), mods, sampleFlightEnvironment(world, racer));
@@ -163,6 +175,11 @@ function flyToTarget(
   const canRam = memory.route === 'ram' && dashReady(racer);
   const puff = canRam ? flightPuffInDashLine(world, tile, racer.facing, numbers.dashReachTiles) : null;
   if (puff) return dashAtPuff(racer, memory, numbers, puff);
+  if (memory.waypoint && isCannonTile(world, memory.waypoint) && !memory.stormHold) {
+    const x = stopStick(racer, numbers, memory.target.x - centre.x);
+    const y = verticalStick(racer, memory, numbers, memory.target.y - centre.y);
+    return { move: { x, y }, kick: false, kickHeld: false, aim: memory.aim, recovering: false };
+  }
   const traffic = trafficAround(world, racer, memory, numbers);
   if (traffic.kind === 'oncoming' && memory.route === 'ram') {
     // A flyer coming back out of the ram way means its puff cloud held: go the long way, now.

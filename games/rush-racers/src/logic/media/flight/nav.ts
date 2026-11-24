@@ -4,16 +4,21 @@
  * a price), the bounce pads a flyer can spring off, and the level check that every start can reach
  * the finish without popping one. Its nav is a `FlightNav` (`way-data.ts`); `way.ts` reads it.
  */
+import { TICK_DT } from '@arcade/core';
 import { cellAt, isRockLike, isSolid } from '../../level/query.ts';
 import {
   alongCost,
   distancesToFinish,
   type EntryCost,
   type FlowPrices,
+  type NavLink,
   unreachableStarts,
 } from '../../race/flowfield.ts';
-import type { Cell, Level, Vec } from '../../types.ts';
+import { CANNON, traceCannonShot } from '../../setpieces/cannons.ts';
+import { type CannonDef, type Cell, type Level, type MoveRules, TILE, type Vec } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
+import { flightExtra } from './physics.ts';
+import { FLIGHT_EFFECTS } from './tuning.ts';
 import { type FlightNav, flightNav } from './way-data.ts';
 
 /** A fog bank slows a flyer to well under cruise. */
@@ -66,15 +71,32 @@ const ramCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
  * Flight's nav for `level` with `broken` puff clouds open: the steer and ram fields, each kept off
  * the bottom over open sky, and the bounce pads.
  */
-export function buildFlightNav(level: Level, broken: ReadonlySet<number>, _tuning: MediumTuning): FlightNav {
+export function buildFlightNav(level: Level, broken: ReadonlySet<number>, tuning: MediumTuning): FlightNav {
+  const rules: MoveRules = { pitBelow: FLIGHT_EFFECTS.pitBelow, solidTiles: new Set(), openLedges: new Set() };
+  const links = level.cannons.map((cannon) => cannonLink(level, cannon, broken, rules, flightExtra(tuning).cruise));
   return {
     kind: 'flight',
     width: level.width,
     height: level.height,
-    steer: distancesToFinish(level, broken, keptOffLowSky(level, flightCost)),
-    ram: distancesToFinish(level, broken, keptOffLowSky(level, ramCost)),
+    steer: distancesToFinish(level, broken, keptOffLowSky(level, flightCost), links),
+    ram: distancesToFinish(level, broken, keptOffLowSky(level, ramCost), links),
     bouncePads: bouncePads(level, broken),
   };
+}
+
+/** Trace a racer-sized shot, then price the hold and time in flight in tiles at cruise speed. */
+function cannonLink(
+  level: Level,
+  cannon: CannonDef,
+  broken: ReadonlySet<number>,
+  rules: MoveRules,
+  cruise: number,
+): NavLink {
+  const from = { x: cannon.col, y: cannon.row };
+  const { exit, ticks } = traceCannonShot(cannon, level, broken, rules);
+  // Pricing an out-of-bounds shot as a self-link makes the field route around the mouth.
+  const to = exit.y >= level.height ? from : { x: Math.min(exit.x, level.finishX), y: exit.y };
+  return { from, to, cost: ((CANNON.holdTicks + ticks) * TICK_DT * cruise) / TILE };
 }
 
 /** Every bounce cloud tile of `level` whose tile above is open, in reading order. */
@@ -94,6 +116,10 @@ function bouncePads(level: Level, broken: ReadonlySet<number>): Vec[] {
  */
 export const flightEnterCost = (cell: Cell, isBroken: boolean, move: Vec, tile: Vec, level: Level): number =>
   withLowSky(level, tile, flightCost(cell, isBroken, move));
+
+/** What the ram field charges to enter `tile`. */
+export const flightRamEnterCost = (cell: Cell, isBroken: boolean, move: Vec, tile: Vec, level: Level): number =>
+  withLowSky(level, tile, ramCost(cell, isBroken, move));
 
 /** `cost` with the low-sky price added (`withLowSky`). */
 function keptOffLowSky(level: Level, cost: (cell: Cell, isBroken: boolean, move: Vec) => number): EntryCost {

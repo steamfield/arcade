@@ -11,13 +11,17 @@
  * idle flyer put back there would drift along it as it falls, possibly into the gap.
  */
 import type { EventSink } from '@arcade/core';
+import { tileOf } from '../../ai/steer.ts';
 import type { GameEvent } from '../../events.ts';
 import { bodyTiles, cellAt } from '../../level/query.ts';
+import { centreOf } from '../../racers.ts';
+import { activeCannonRide } from '../../setpieces/cannons.ts';
 import type { Box, Level, MoveContacts, Racer, World } from '../../types.ts';
 import { fallOut, isBelowLevel, respawnAt, waitOut } from '../fall-out.ts';
 import { effectiveTuning } from '../index.ts';
 import { type FlightMotion, flightMotion } from './data.ts';
 import { flightExtra } from './physics.ts';
+import { isCannonTile } from './way.ts';
 
 /** Columns either side of a flyer that must also have rock below for its spot to count as safe. */
 const SAFE_MARGIN_TILES = 2;
@@ -34,17 +38,32 @@ export function afterFlightMove(
   events: EventSink<GameEvent>,
 ): void {
   const motion = flightMotion(racer.motion);
-  const extra = flightExtra(effectiveTuning(world));
   if (racer.status.fallen > 0) {
     if (waitOut(racer)) {
+      const extra = flightExtra(effectiveTuning(world));
       respawnAt(racer, motion.lastSafe, extra.respawnInvulnTicks, events);
       resetAfterRespawn(motion);
     }
     return;
   }
+  if (activeCannonRide(world, racer.id)) {
+    // Like respawn, require a fresh Up press once flight can see the stick again.
+    motion.upWasHeld = true;
+    motion.diving = false;
+    motion.dashWindow = 0;
+    motion.flapCooldown = Math.max(0, motion.flapCooldown - 1);
+    racer.kickCooldown = Math.max(0, racer.kickCooldown - 1);
+  }
   const { body } = racer;
-  if (isSafeSpot(world.level, body)) motion.lastSafe = { x: body.x, y: body.y };
-  if (isBelowLevel(world.level, body)) fallOut(racer, events, extra.respawnTicks);
+  // A barrel that fires into a pit would catch a racer respawning inside it.
+  const onBarrel = world.level.cannons.length > 0 && isCannonTile(world, tileOf(centreOf(racer)));
+  if (!onBarrel && isSafeSpot(world.level, body)) {
+    motion.lastSafe = { x: body.x, y: body.y };
+  }
+  if (isBelowLevel(world.level, body)) {
+    const { respawnTicks } = flightExtra(effectiveTuning(world));
+    fallOut(racer, events, respawnTicks);
+  }
 }
 
 /**
