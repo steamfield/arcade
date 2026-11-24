@@ -14,7 +14,7 @@ import type { WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
 
 /** Draws every squid, lane and decoy in `world`. */
-export interface AttackView {
+interface AttackView {
   sync(world: World, tick: number): void;
 }
 
@@ -102,7 +102,7 @@ function showSquid(
  * The rotation for a squid heading (vx, vy): the sprite points right, and a left-heading squid is
  * flipped (so it is never upside down) and turned the other way. A squid at rest points right.
  */
-export function squidRotation(vx: number, vy: number): number {
+function squidRotation(vx: number, vy: number): number {
   if (vx === 0 && vy === 0) return 0;
   const angle = vx < 0 ? Math.atan2(-vy, -vx) : Math.atan2(vy, vx);
   return Math.round(angle / SQUID_TURN_STEP) * SQUID_TURN_STEP;
@@ -170,7 +170,7 @@ function showLane(lane: LaneSprites | undefined, riptide: Riptide, tick: number,
 }
 
 /** The tile rotation that points its streaks along the lane's flow: right, down, left or up. */
-export function laneRotation(riptide: Pick<Riptide, 'dir'>): number {
+function laneRotation(riptide: Pick<Riptide, 'dir'>): number {
   const { x, y } = riptide.dir;
   if (Math.abs(x) >= Math.abs(y)) return x >= 0 ? 0 : Math.PI;
   return y >= 0 ? Math.PI / 2 : -Math.PI / 2;
@@ -198,7 +198,7 @@ function showDecoy(
 }
 
 /** A decoy's opacity: a slow shimmer, blinking over its last ticks; steady under reduced motion. */
-export function decoyAlpha(ttl: number, tick: number, reducedMotion: boolean): number {
+function decoyAlpha(ttl: number, tick: number, reducedMotion: boolean): number {
   const expiring = ttl <= DECOY_EXPIRY_TICKS;
   if (reducedMotion) return expiring ? DECOY_EXPIRING_ALPHA : DECOY_ALPHA.steady;
   if (expiring && Math.floor(tick / DECOY_BLINK_TICKS) % 2 === 1) return DECOY_EXPIRING_ALPHA;

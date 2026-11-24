@@ -9,7 +9,7 @@ import type { NoteEvent, Song } from './notation.ts';
 import { midiToHz, type Synth } from './synth.ts';
 
 /** What changed since the last poll, reported on the game's tick rather than the timer's. */
-export interface SequencerNews {
+interface SequencerNews {
   /** Names of song sections that started playing, in order. */
   sections: string[];
   /** True once a one-shot song has finished sounding. */

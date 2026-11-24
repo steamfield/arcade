@@ -20,7 +20,7 @@ export interface AnimLoop {
 }
 
 /** The owner name of the global art in `keys.ts`; a theme owns keys under its theme id, a world under `worldArtOwner(id)`. */
-export const GLOBAL_ART = 'global';
+const GLOBAL_ART = 'global';
 
 const WORLD_OWNER_PREFIX = 'world:';
 

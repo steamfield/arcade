@@ -24,7 +24,7 @@ export interface EnemyMoments {
 }
 
 /** The enemy's own sprite. `fill` turns it solid white for a flash; `tint` multiplies it. */
-export interface BodyLook {
+interface BodyLook {
   texture: string;
   frame: FrameKey;
   x: number;
@@ -53,7 +53,7 @@ export interface EnemyLook {
 }
 
 /** A defeat's pop ring and the pearls flying out of it, at a given age. */
-export interface BurstLook {
+interface BurstLook {
   ring: (Vec & { scale: number; alpha: number }) | null;
   pearls: (Vec & { alpha: number })[];
 }

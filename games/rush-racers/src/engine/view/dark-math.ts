@@ -10,8 +10,8 @@ import { TILE } from '../../logic/types.ts';
 /** Light pool radii in px: the player sees furthest; a rival's glow is smaller; a lantern adds reach. */
 export const LIGHT_RADIUS = { player: 64, rival: 28, lanternBonus: 32 } as const;
 /** A pool's edge is this many rings, each this wide, each letting through less light. */
-export const LIGHT_RING_PX = 4;
-export const LIGHT_RINGS = 4;
+const LIGHT_RING_PX = 4;
+const LIGHT_RINGS = 4;
 /** The flicker changes a pool's radius at most once per this many ticks (three times a second). */
 export const FLICKER_TICKS = 20;
 /** How far a flicker may shrink a pool, in px. */
@@ -22,8 +22,8 @@ export const FADE = { steps: 4, px: 8 } as const;
  * The player's pool shifts ahead by this many seconds of their velocity, capped at LEAD_MAX_PX
  * each way, so at top speed (180 px/s) a hazard ahead is lit about 0.35 s before contact.
  */
-export const LEAD_SECONDS = 0.12;
-export const LEAD_MAX_PX = 16;
+const LEAD_SECONDS = 0.12;
+const LEAD_MAX_PX = 16;
 
 /** A fixed shuffle of shrink amounts, so the light wavers without a visible rhythm. */
 const FLICKER_PATTERN = [0, 1, 0, 2, 1, 0, 0, 1, 2, 0, 1] as const;

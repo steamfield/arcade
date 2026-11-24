@@ -10,7 +10,7 @@ import type { Theme, TrailLook } from '../themes/types.ts';
 import type { Bursts } from './bursts.ts';
 
 /** Per-racer distance counters that turn movement into trail particles. */
-export interface Trail {
+interface Trail {
   /** Counts one tick of movement for every racer still racing and sheds the particles it earned. */
   step(world: World, bursts: Bursts): void;
 }
@@ -32,7 +32,7 @@ export function trailFor(theme: Pick<Theme, 'trail'>, racerCount: number, reduce
 }
 
 /** Creates counters for up to `racerCount` racers, in `world.racers` order, shedding particles drawn as `look`. */
-export function createTrail(racerCount: number, look: TrailLook, reducedMotion: boolean): Trail {
+function createTrail(racerCount: number, look: TrailLook, reducedMotion: boolean): Trail {
   const travelled = new Float64Array(racerCount);
   const spacing = reducedMotion ? REDUCED_SPACING_PX : SPACING_PX;
 

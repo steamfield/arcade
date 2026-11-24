@@ -7,7 +7,7 @@ import type Phaser from 'phaser';
 import type { TextureLookup } from './index.ts';
 
 /** One filled run of pixels, as the pixel builder draws them: a rect in one colour. */
-export interface DrawnPixel {
+interface DrawnPixel {
   x: number;
   y: number;
   /** Pixels wide. */

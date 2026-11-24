@@ -20,7 +20,7 @@ import { Layer } from './layers.ts';
 import { type Legend, tileAt } from './terrain-tile.ts';
 
 /** Course objects drawn as stand-ins until the pickup and hazard views replace them. */
-export interface LevelPlaceholders {
+interface LevelPlaceholders {
   pearls: Phaser.GameObjects.Image[];
   clams: Phaser.GameObjects.Image[];
   urchins: Phaser.GameObjects.Sprite[];
@@ -28,7 +28,7 @@ export interface LevelPlaceholders {
 }
 
 /** The drawn course: its placeholders and a hook for course-changing events. */
-export interface LevelView {
+interface LevelView {
   placeholders: LevelPlaceholders;
   /** Applies a tick's drained events to the course (today only `coral.broken`). */
   onEvents(events: readonly Stamped<RuntimeEvent>[]): void;

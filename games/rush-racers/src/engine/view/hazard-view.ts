@@ -13,7 +13,7 @@ import type { WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
 
 /** The course's hazards; `sync` redraws them from the world. */
-export interface HazardView {
+interface HazardView {
   sync(world: World, tick: number): void;
 }
 

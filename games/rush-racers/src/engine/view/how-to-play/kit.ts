@@ -28,7 +28,7 @@ export interface Page {
 }
 
 /** What a page builder returns: its animation, called with ticks since the page opened. */
-export type PageAnimation = (tick: number, reducedMotion: boolean) => void;
+type PageAnimation = (tick: number, reducedMotion: boolean) => void;
 
 /** Builds the page's objects through `kit` and returns how it moves. */
 export type PageBuilder = (kit: PageKit) => PageAnimation;
@@ -68,7 +68,7 @@ export interface PageKit {
 }
 
 /** Creates a kit for one page. */
-export function createPageKit(scene: Phaser.Scene, touch: boolean, character: CharacterId, skin: WorldSkin): PageKit {
+function createPageKit(scene: Phaser.Scene, touch: boolean, character: CharacterId, skin: WorldSkin): PageKit {
   const owned: Showable[] = [];
   const own = <T extends Showable>(item: T): T => {
     owned.push(item);

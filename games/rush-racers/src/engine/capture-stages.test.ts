@@ -4,7 +4,7 @@ import { COURSES, courseById, DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { GameEvent } from '../logic/events.ts';
 import { raceOn } from '../logic/test-world.ts';
 import { createWorld } from '../logic/world.ts';
-import { applyStage, STAGES, stageFor } from './debug-stage.ts';
+import { applyStage, STAGES, stageFor } from './capture-stages.ts';
 
 describe('which stage a launch gets', () => {
   const search = '?stage=squid-lockon';

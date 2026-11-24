@@ -5,7 +5,7 @@
  */
 
 /** The cursor fin holds each of its two positions this many ticks. */
-export const CURSOR_STEP_TICKS = 16;
+const CURSOR_STEP_TICKS = 16;
 
 /** How far right the cursor fin sits at `tick`: 0 or 1 px, always 0 under reduced motion. */
 export function cursorNudge(tick: number, reducedMotion: boolean): number {

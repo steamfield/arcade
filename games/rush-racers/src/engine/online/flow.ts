@@ -34,7 +34,7 @@ export interface OnlinePorts {
 }
 
 /** Everything the flow is built from: the page's ports and what the runtime knows. */
-export interface OnlineFlowDeps extends OnlinePorts {
+interface OnlineFlowDeps extends OnlinePorts {
   /** Builds this peer's world for a start; the client calls it when a race begins. */
   createRace(start: StartMessage, local: RacerId): World;
   /** The course ids a host may pick from, in menu order. */

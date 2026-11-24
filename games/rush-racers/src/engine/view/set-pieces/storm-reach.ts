@@ -5,8 +5,8 @@
  * what "on screen" and "nearby" mean.
  */
 import type Phaser from 'phaser';
-import { type LightningZone, TILE, type World } from '../../logic/types.ts';
-import { localOf } from '../local-racer.ts';
+import { type LightningZone, TILE, type World } from '../../../logic/types.ts';
+import { localOf } from '../../local-racer.ts';
 
 /** The part of the world the camera shows this frame, in world px. */
 export interface CameraSpan {
@@ -16,7 +16,7 @@ export interface CameraSpan {
 }
 
 /** Where a zone sits across from the camera's view: on it, within one view width of an edge, or farther. */
-export type ZoneSide = 'on screen' | 'left' | 'right' | 'far';
+type ZoneSide = 'on screen' | 'left' | 'right' | 'far';
 
 /**
  * What `camera` shows this frame, read from its scroll rather than `worldView`: the race camera

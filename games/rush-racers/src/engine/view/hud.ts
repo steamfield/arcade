@@ -37,7 +37,7 @@ import { createThreatHud } from './threat-hud.ts';
 import { squidHuntingLocal } from './threat-math.ts';
 
 /** The race HUD; `sync` redraws it from the world. */
-export interface Hud {
+interface Hud {
   /** The right edge in px of the HUD's last top-left piece, the pearl counter. */
   readonly right: number;
   /** The bottom edge in px of the HUD's top-left row: the well and pearl counter. */
@@ -274,7 +274,7 @@ function createProgressStrip(scene: Phaser.Scene, world: World, headArt: CastSki
 }
 
 /** The parts of the camera's view the caption reads. */
-export type CaptionView = Pick<Phaser.Geom.Rectangle, 'contains' | 'centerX' | 'centerY'>;
+type CaptionView = Pick<Phaser.Geom.Rectangle, 'contains' | 'centerX' | 'centerY'>;
 
 /**
  * The caption line: nothing while the local racer has fallen, else its status (trapped, stunned, or a squid locked on) first, else a

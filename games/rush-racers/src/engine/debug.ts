@@ -9,11 +9,11 @@ import { NEW_GAME } from '../logic/save.ts';
 import type { World } from '../logic/types.ts';
 import { summarize, toAscii } from '../logic/world.ts';
 import { mediumIdOf } from '../logic/worlds/index.ts';
-import { HOW_TO_PLAY_PAGES } from './how-to-play.ts';
 import { localOf } from './local-racer.ts';
 import { friendsSummary, netSummary } from './online/net-summary.ts';
 import type { Runtime } from './runtime.ts';
 import { rowText } from './scenes/course.ts';
+import { HOW_TO_PLAY_PAGES } from './screens/how-to-play.ts';
 import { formatBest, levelBanner, racerName } from './view/race-text.ts';
 import { squidHuntingLocal } from './view/threat-math.ts';
 

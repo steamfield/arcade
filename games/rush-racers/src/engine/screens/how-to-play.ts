@@ -13,7 +13,7 @@ export const HOW_TO_PLAY_PAGES = 7;
 export type PagePress = 'fire' | 'dash' | 'right' | 'left';
 
 /** Where a press leads: another page (or the same one), or out of How to Play to the title. */
-export type PageOutcome = { kind: 'page'; page: number } | { kind: 'leave' };
+type PageOutcome = { kind: 'page'; page: number } | { kind: 'leave' };
 
 /**
  * The outcome of `press` on page `page` (0-based). Fire (A) and right go forward, dash (B) and

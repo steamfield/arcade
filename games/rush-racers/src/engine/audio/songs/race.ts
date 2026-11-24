@@ -19,7 +19,7 @@
 import { parseSong, type Song } from '../notation.ts';
 
 /** The race theme in the game's notation. */
-export const raceSource = `
+const raceSource = `
 name: race
 tempo: 144
 time: 4/4

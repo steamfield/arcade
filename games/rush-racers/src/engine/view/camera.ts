@@ -8,7 +8,7 @@ import type Phaser from 'phaser';
 import { type Body, type Level, TILE, type Vec } from '../../logic/types.ts';
 
 /** A camera following one body; `update` moves it on by logic time. */
-export interface CameraRig {
+interface CameraRig {
   /**
    * Eases the camera toward the body.
    *

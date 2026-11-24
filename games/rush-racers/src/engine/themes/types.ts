@@ -10,7 +10,7 @@ import type { ThemeId } from '../../logic/courses/types.ts';
 import type { Cell } from '../../logic/types.ts';
 
 /** A looping sprite drawn over a cell (the ocean's kelp and currents). */
-export interface FlowingArt {
+interface FlowingArt {
   texture: string;
   anim: string;
 }
@@ -83,7 +83,7 @@ export interface HazeSpec {
 }
 
 /** Small moving things in front of the backdrop. */
-export interface AmbientSpec {
+interface AmbientSpec {
   /** Specks drifting across the screen, in this colour; null for none. */
   motes: number | null;
 }
@@ -101,7 +101,7 @@ export interface ParticleMotion {
  * sink (debris), `drift` things hang where they were let go (ink), `splash` is a burst of droplets.
  * The `Still` forms are for reduced motion: slower, so they inform without large motion.
  */
-export interface ParticlePhysics {
+interface ParticlePhysics {
   rise: ParticleMotion;
   riseStill: ParticleMotion;
   fall: ParticleMotion;

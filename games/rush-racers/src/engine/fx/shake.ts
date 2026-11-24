@@ -20,7 +20,7 @@ export interface Shake {
 /** Largest offset at full trauma, in px. A few px reads as a jolt on a 320x180 screen. */
 export const SHAKE_MAX_PX = 4;
 /** Trauma drained per tick: full trauma is gone in 20 ticks (a third of a second). */
-export const SHAKE_DECAY_PER_TICK = 0.05;
+const SHAKE_DECAY_PER_TICK = 0.05;
 
 /** Creates a shake with no trauma. */
 export function createShake(): Shake {

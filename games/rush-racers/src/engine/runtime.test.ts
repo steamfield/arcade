@@ -18,10 +18,10 @@ import { IDLE_INPUT } from '../net/codec.ts';
 import { createOnlineWorld } from '../net/race-world.ts';
 import { createMemoryRoom, type MemoryRoom } from '../net/transport/memory.ts';
 import { type Action, input } from './input.ts';
-import { selectedOption } from './menu.ts';
 import type { OnlinePorts } from './online/flow.ts';
 import { netSummary } from './online/net-summary.ts';
 import { Runtime, type SceneKey } from './runtime.ts';
+import { selectedOption } from './screens/menu.ts';
 
 /** Title rows: Race, Friends, How to play, Level, Sound, Motion. Sound is four down. */
 const SOUND_ROW = 4;

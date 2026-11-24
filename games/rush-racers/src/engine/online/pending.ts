@@ -5,7 +5,7 @@
  */
 
 /** A request that may be waiting for its answer. */
-export interface Pending<T> {
+interface Pending<T> {
   /** True from `start` until the answer arrives or the request is cancelled. */
   readonly waiting: boolean;
   /**
