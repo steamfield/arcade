@@ -105,8 +105,6 @@ const JUMP_ON = 30;
  * runs at about real time (one tick per animation frame), as it would in play.
  */
 const MIN_TICK_MS = 15;
-/** Run Test ends within about 1500 ticks however the pilot fares (the rivals finish, then the grace runs out): 25 s at 60 a second. */
-const RACE_TIMEOUT_MS = 60_000;
 
 /** How far `raceTogether` plays: to GO (the countdown over), or to the end of the race. */
 export type RaceUntil = 'go' | 'over';
@@ -141,7 +139,9 @@ async function pilot(game: GameDriver, until: RaceUntil): Promise<void> {
       return done(arcade.debugSummary() as Read);
     },
     { until, columns: JUMP_COLUMNS, period: JUMP_PERIOD, on: JUMP_ON, minTickMs: MIN_TICK_MS },
-    { polling: 'raf', timeout: RACE_TIMEOUT_MS },
+    // No wait of its own: the test's timeout bounds the race. Run Test ends within about 1500 ticks
+    // however the pilot fares (the rivals finish, then the grace runs out), about 25 s at 60 a second.
+    { polling: 'raf', timeout: 0 },
   );
 }
 

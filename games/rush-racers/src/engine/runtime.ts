@@ -53,7 +53,7 @@ import {
 } from './online/flow.ts';
 import type { ScreenPress } from './online/friends-screen.ts';
 import { createOnlineWorld } from './online/race-world.ts';
-import { roomLinkParam } from './online/room-link.ts';
+import { onlineCourses } from './online/room-courses.ts';
 import type { OnlineState } from './online/state.ts';
 import { raceProgress } from './race-progress.ts';
 import { assertCourseAssets } from './themes/course-assets.ts';
@@ -221,6 +221,8 @@ export class Runtime {
   private resultsIn: number | null = null;
   /** Ticks left before the current menu or the select screen accepts fire. */
   private menuArmIn = 0;
+  /** Set by a tick that sent the player into an online race: that tick's events go out on the race scene's first tick instead. */
+  private holdEvents = false;
 
   constructor(options: RuntimeOptions) {
     this.ctx = options.ctx;
@@ -246,8 +248,7 @@ export class Runtime {
         enemyAudible: (index) => (this.world ? enemyWithinHearing(this.world, index) : true),
         localRacer: () => this.localRacer,
       },
-      // An online race may run on the host's course rather than this player's.
-      () => (this.onlineRace && this.world ? courseOf(this.world) : this.course).song,
+      () => this.raceCourse.song,
     );
     this.flow = createOnlineFlow({
       ...options.online,
@@ -260,6 +261,11 @@ export class Runtime {
       }),
       warn: (message) => log.warn(message),
     });
+  }
+
+  /** The course the race in hand runs on: an online race's may be the host's pick rather than this player's `course`. */
+  get raceCourse(): Course {
+    return this.onlineRace && this.world ? courseOf(this.world) : this.course;
   }
 
   /** What the friends and room screens draw. */
@@ -408,10 +414,7 @@ export class Runtime {
    * when there is no `?room=`; an invalid one is warned about and ignored the same way.
    */
   openRoomLink(): boolean {
-    const param = roomLinkParam(this.search);
-    if (param.kind === 'invalid') log.warn(`?room=${param.value} is not a room code, so no room was joined`);
-    if (param.kind !== 'room') return false;
-    this.flow.join(param.code);
+    if (!this.flow.openLink(this.search)) return false;
     this.goTo('room');
     return true;
   }
@@ -494,14 +497,26 @@ export class Runtime {
     else if (this.scene === 'select') this.tickSelect();
     else if (this.scene === 'howToPlay') this.tickHowToPlay();
     else if (this.scene === 'race') this.tickRace(dt);
-    this.dispatchEvents();
+    if (this.holdEvents) this.holdEvents = false;
+    else this.dispatchEvents();
   }
 
-  /** Does what the online flow asked for: another screen, or an online race in the client's world. */
+  /**
+   * Does what the online flow asked for: another screen, or an online race in the client's world.
+   * Going to the title leaves online play, so the flow lets go of its room. A race the client
+   * already stepped gets that step's per-step work here, and the tick's events wait for the race
+   * scene, so its countdown is never heard over the screen it replaces.
+   */
   private follow(next: FlowNext): void {
     if (next.kind === 'room') this.goTo('room');
-    else if (next.kind === 'title') this.goTo('title');
-    else if (next.kind === 'race') this.adoptOnlineRace(next.world, next.local);
+    else if (next.kind === 'title') {
+      this.flow.release();
+      this.goTo('title');
+    } else if (next.kind === 'race') {
+      this.adoptOnlineRace(next.world, next.local);
+      if (next.stepped > 0) this.afterRaceStep(next.world);
+      this.holdEvents = true;
+    }
   }
 
   /**
@@ -752,15 +767,6 @@ function nextDifficulty(current: Difficulty): Difficulty {
 
 /** The presses the friends and room screens take, in the order one is picked when several land on one tick. */
 const SCREEN_PRESSES: readonly ScreenPress[] = ['up', 'down', 'left', 'right', 'fire', 'dash'];
-
-/**
- * The course ids a host may pick in a room: the listed courses, plus `current` when it is an
- * unlisted one (a `?course=` such as Run Test), so a test can race it online.
- */
-function onlineCourses(listed: readonly Course[], current: Course): readonly string[] {
-  const ids = listed.map((course) => course.id);
-  return ids.includes(current.id) ? ids : [...ids, current.id];
-}
 
 /** The page button pressed this tick, if any. */
 function readPagePress(): PagePress | null {

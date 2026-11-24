@@ -21,12 +21,13 @@ import { squidHuntingLocal } from './view/threat-math.ts';
  * Scene, save status, the character slot 1 races as (the select cursor while picking), the
  * course and its medium, the difficulty in force and the world summary of the local racer (with the difficulty the race was built on, the
  * `levelBanner` the countdown shows, null once it ends, and the in-race `hints` showing), plus the menu on
- * menu screens, the best line as shown on the title (for the level now selected), on course select each row as
+ * menu screens, the best line as shown on the title (for the level now selected) and, after online play ended with a notice, that `onlineNotice`, on course select each row as
  * shown (`courseSelect.rows`: id, name and best time on the level in force) and the cursor's row
  * (`courseSelect.selected`), on select the highlighted racer's name as the card shows it in the course's
  * world (`selectName`), the 1-based page on How to Play, the friends screen (`friends`) on Friends, and the race outcome on results. `local` names the slot the screen follows, and is present only when
  * a `?local=` was accepted (a debug race, never saved). `net` describes the online room and race
- * whenever a room has been opened (see `netSummary`).
+ * while a room is open, until the player leaves online play (see `netSummary`). During an online
+ * race `course` and `medium` are the race's, which the host picked.
  *
  * @param sceneRunning Whether Phaser is actually running `rt.scene`. When it isn't, the
  * scene reads 'none', so a runtime that believes in a scene Phaser stopped is visible.
@@ -38,8 +39,8 @@ export function debugSummary(rt: Runtime, saveStatus: SaveStatus, sceneRunning: 
     scene: sceneRunning ? rt.scene : 'none',
     save: saveStatus,
     character: rt.selectedCharacter,
-    course: rt.course.id,
-    medium: mediumIdOf(rt.course),
+    course: rt.raceCourse.id,
+    medium: mediumIdOf(rt.raceCourse),
     difficulty: rt.settings.difficulty,
     ...(world
       ? {
@@ -64,7 +65,11 @@ function threatOf(world: World) {
 
 function sceneDetails(rt: Runtime): Record<string, unknown> {
   const best = rt.save ? bestFor(rt.save, rt.course.id, rt.settings.difficulty) : null;
-  if (rt.scene === 'title') return { best: best ? formatBest(best) : null };
+  if (rt.scene === 'title') {
+    // Why online play ended, kept after the room is let go of (the title does not show it yet).
+    const notice = rt.online.notice;
+    return { best: best ? formatBest(best) : null, ...(notice ? { onlineNotice: notice } : {}) };
+  }
   if (rt.scene === 'course') return { courseSelect: courseSelectOf(rt) };
   if (rt.scene === 'select') return { selectName: racerName(rt.selectedCharacter, rt.course).toUpperCase() };
   if (rt.scene === 'friends') return { friends: friendsSummary(rt.online) };

@@ -12,6 +12,7 @@ import { RACER_IDS, type RacerId, type TickInput, type World } from '../../logic
 import { IDLE_INPUT } from '../../net/codec.ts';
 import type { StartMessage } from '../../net/messages.ts';
 import { createMemoryRoom, type MemoryRoom } from '../../net/transport/memory.ts';
+import type { RoomConnection } from '../../net/transport/types.ts';
 import type { CreateRoomResult } from '../../net/transport/websocket.ts';
 import { createOnlineFlow, type FlowNext, type OnlineFlow, type ResultsChoice } from './flow.ts';
 import type { ScreenPress } from './friends-screen.ts';
@@ -51,6 +52,24 @@ function scriptedInput(slot: RacerId, tick: number): TickInput {
 interface PlayerOptions {
   createRoom?: () => Promise<CreateRoomResult>;
   copyLink?: () => Promise<boolean>;
+  /** Replaces the table's room for this player's connections. */
+  connect?: () => RoomConnection;
+}
+
+/** A connection to a room that never answers: the player stays connecting. */
+const silentConnection = (): RoomConnection => ({ send() {}, poll: () => [], close() {} });
+
+/** Lets every answer already given to a port reach the flow. */
+const flushAnswers = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+/**
+ * A port answered by hand: every ask gets the one answer `give` supplies, whether it is given
+ * before or after the flow gets round to asking.
+ */
+function answerByHand<T>() {
+  let give: (value: T) => void = () => {};
+  const promise = new Promise<T>((resolve) => (give = resolve));
+  return { port: () => promise, give: (value: T) => give(value) };
 }
 
 /** A table of players around one room. */
@@ -70,7 +89,7 @@ function createTable() {
       warnings: [],
     };
     player.flow = createOnlineFlow({
-      connect: () => room.connect(),
+      connect: options.connect ?? (() => room.connect()),
       createRoom: options.createRoom ?? (() => Promise.resolve({ ok: true, code: CODE })),
       copyLink: options.copyLink ?? (() => Promise.resolve(true)),
       seed: () => 5,
@@ -173,9 +192,9 @@ const outcomeOf = (player: Player) => ({
 
 describe('Friends', () => {
   it('creates a room: busy while asking, then into the room, with the notices in order', async () => {
-    let answer: (result: CreateRoomResult) => void = () => {};
+    const created = answerByHand<CreateRoomResult>();
     const table = createTable();
-    const host = table.seat({ createRoom: () => new Promise((resolve) => (answer = resolve)) });
+    const host = table.seat({ createRoom: created.port });
 
     table.tick(host, 'fire');
     table.tick(host, 'down');
@@ -183,7 +202,7 @@ describe('Friends', () => {
     expect(host.screen).toBe('friends');
     expect(host.flow.state.friends.selected).toBe(0);
 
-    answer({ ok: true, code: CODE });
+    created.give({ ok: true, code: CODE });
     await vi.waitFor(() => expect(host.flow.busy).toBe(false));
     table.until(() => host.flow.client?.view.status === 'lobby');
 
@@ -219,6 +238,44 @@ describe('Friends', () => {
       ['P1', true],
       ['P2', false],
     ]);
+  });
+
+  it.each([
+    ['rejects', () => Promise.reject(new Error('offline'))],
+    [
+      'throws at once',
+      () => {
+        throw new Error('offline');
+      },
+    ],
+  ])('stays on Friends, not busy, with one warning, when creating a room %s', async (_how, createRoom) => {
+    const table = createTable();
+    const host = table.seat({ createRoom });
+
+    table.tick(host, 'fire');
+    await vi.waitFor(() => expect(host.flow.busy).toBe(false));
+    table.tick(host);
+
+    expect(host.screen).toBe('friends');
+    expect(host.notices).toEqual([null, 'Creating room...', 'Rooms are unavailable']);
+    expect(host.warnings).toEqual(['online: creating a room failed: offline']);
+  });
+
+  it('goes back to the title on B while a room is being created, and drops the room that arrives after', async () => {
+    const created = answerByHand<CreateRoomResult>();
+    const table = createTable();
+    const host = table.seat({ createRoom: created.port });
+    table.tick(host, 'fire');
+    expect(host.flow.busy).toBe(true);
+
+    table.tick(host, 'dash');
+    expect([host.screen, host.flow.busy, host.flow.state.notice]).toEqual(['title', false, null]);
+
+    created.give({ ok: true, code: CODE });
+    await flushAnswers();
+    host.screen = 'friends';
+    table.tick(host);
+    expect([host.screen, host.flow.client]).toEqual(['friends', null]);
   });
 
   it('goes back to the title on Back', () => {
@@ -261,6 +318,42 @@ describe('the room', () => {
 
     expect(host.flow.state.notice).toBe('Link copied');
     expect(refused.flow.state.notice).toBe('Could not copy the link');
+  });
+
+  it('drops the answer to a copy asked for in a room the player has since left', async () => {
+    const copied = answerByHand<boolean>();
+    const table = createTable();
+    const host = table.seat({ copyLink: copied.port });
+    table.tick(host, 'fire');
+    await vi.waitFor(() => expect(host.flow.busy).toBe(false));
+    table.until(() => host.flow.client?.view.status === 'lobby');
+    pressAll(table, host, ['up', 'up', 'fire']);
+    expect(host.flow.busy).toBe(true);
+
+    host.flow.openFriends();
+    host.flow.join(CODE);
+    host.screen = 'room';
+    expect(host.flow.busy).toBe(false);
+    copied.give(true);
+    await flushAnswers();
+    table.until(() => host.flow.client?.view.status === 'lobby');
+
+    expect(host.flow.state.notice).toBeNull();
+    expect(host.notices).not.toContain('Link copied');
+  });
+
+  it('goes to the title on B before the room has answered', () => {
+    const table = createTable();
+    const player = table.seat({ connect: silentConnection });
+    player.flow.join(CODE);
+    player.screen = 'room';
+    table.tick(player);
+    expect(player.flow.client?.view.status).toBe('connecting');
+
+    table.tick(player, 'dash');
+
+    expect(player.screen).toBe('title');
+    expect(player.flow.state.notice).toBeNull();
   });
 
   it('leaves for the title on Leave, and the other player sees them gone', async () => {
