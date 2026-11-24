@@ -20,15 +20,21 @@
  *
  * The hook is A's first two bars: B4 F#5, B5 held across the beat, G#5 F#5 | C#6 A5 held. Its
  * first bar is a syncopated cell (eighth, eighth, rest, a note tied over beat two, then two
- * eighths) that comes back a fourth lower as D5 A5 D6 B5 A5 over G.
+ * eighths) that comes back a minor third higher as D5 A5 D6 B5 A5 over G.
  *
  * Voices: the lead is a thin 12.5% pulse in A and A', a round 50% in B where its notes grow long,
  * and 25% in C. Pulse 2 echoes the lead three sixteenths later in A, plays a counter-line and
- * arpeggio bursts under it in A', and in C answers the lead's calls. The
- * triangle bounces in octave eighths with a pitch-dropped kick on each bar (two in A'), holds half
- * notes in B, pulses straight eighths in C, and leaves gaps in the breakdown, where the lead rests.
- * The drums drive kick and snare with hats in A, add a crash and open hats in A', go half time in
- * B and use toms in C, with a fill at the end of every section.
+ * arpeggio bursts under it in A', in B alternates the world's motif with a stepwise line that
+ * falls while the lead holds and climbs back, and in C answers the lead's calls. The triangle
+ * bounces in octave eighths with a pitch-dropped kick on each bar (two in A'), turning down
+ * E2 C#2 A#1 at A's half and climbing A#1 C#2 E2 at its end; it walks in quarters in B, kicks on
+ * the 3+3+2 of the lead's cell in C (root, root, octave, root, root, octave, then the fifth), and
+ * leaves gaps in the breakdown, where the lead rests. The drums drive a straight backbeat with a
+ * doubled kick and closed hats in A, turn on a snare and open-hat pickup at its half, switch to
+ * open hats on every off-beat in A' with a tom turn at its half, go half time in B with a tom
+ * pickup in its fourth bar, and use toms in C, with a fill at the end of every section. Event
+ * Horizon runs only 8 BPM faster, so the feel is kept apart there: half time and a galloping bass
+ * against Slingshot's straight bounce.
  *
  * The world's motif: Far Light's opening cell, a held note that falls a minor third and steps up
  * a tone (dotted half, quarter, whole), is pulse 2's counter-line in B, as A4 F#4 G#4 over D and E
@@ -63,9 +69,10 @@ pulse1: B4/8 F#5/8 r/8 B5/8~ B5/4 G#5/8 F#5/8 | C#6/4. A5/8~ A5/4 r/4 | D5/8 A5/
 pulse1: B4/8 F#5/8 r/8 B5/8~ B5/4 G#5/8 F#5/8 | C#6/4. A5/8~ A5/4 r/4 | B4/8 E5/8 r/8 G#5/8~ G#5/4 B5/8 G#5/8 | A#5/4. F#5/8~ F#5/4 r/4
 // a long echo tail on the second pulse
 echo pulse2: pulse1 delay=0.75 level=0.45
-triangle: B1/8! B2/8 [B1/8 B2/8]x3 | A1/8! A2/8 [A1/8 A2/8]x3 | G1/8! G2/8 [G1/8 G2/8]x3 | F#1/8! F#2/8 [F#1/8 F#2/8]x3
-triangle: B1/8! B2/8 [B1/8 B2/8]x3 | A1/8! A2/8 [A1/8 A2/8]x3 | E2/8! E3/8 [E2/8 E3/8]x3 | F#1/8! F#2/8 [F#1/8 F#2/8]x3
-noise: [k/8 h/8@0.3 s/8@0.6 h/8@0.3 k/8 k/8 s/8@0.6 h/8@0.3 |]x7 k/8 h/8@0.3 s/8@0.6 h/8@0.3 s/16@0.4 s/16@0.5 s/16@0.6 s/16@0.7 s/8@0.8 o/8@0.4
+// the octave bounce turns down E2 C#2 A#1 C#2 into B at the half, and climbs A#1 C#2 E2 at the end
+triangle: B1/8! B2/8 [B1/8 B2/8]x3 | A1/8! A2/8 [A1/8 A2/8]x3 | G1/8! G2/8 [G1/8 G2/8]x3 | F#1/8! F#2/8 F#1/8 F#2/8 E2/8 C#2/8 A#1/8 C#2/8
+triangle: B1/8! B2/8 [B1/8 B2/8]x3 | A1/8! A2/8 [A1/8 A2/8]x3 | E2/8! E3/8 [E2/8 E3/8]x3 | F#1/8! F#2/8 F#1/8 F#2/8 F#1/8 A#1/8 C#2/8 E2/8
+noise: [k/8 h/8@0.3 s/8@0.6 h/8@0.3 k/8 k/8 s/8@0.6 h/8@0.3 |]x3 k/8 h/8@0.3 s/8@0.6 h/8@0.3 k/8 k/8 s/16@0.5 s/16@0.6 o/8@0.4 | [k/8 h/8@0.3 s/8@0.6 h/8@0.3 k/8 k/8 s/8@0.6 h/8@0.3 |]x3 k/8 h/8@0.3 s/8@0.6 h/8@0.3 s/16@0.4 s/16@0.5 s/16@0.6 s/16@0.7 s/8@0.8 o/8@0.4
 
 section: A'
 chords: Bm6 | A | G | F# | Bm6 | A | G | A
@@ -77,7 +84,8 @@ pulse2: D4/2 F#4/4 G#4/4 | A4/2. E4/4 | B4/2 G4/4 D4/4 | A#4/2. C#4/4
 pulse2: B3:0379/8@0.8 r/8 r/4 B3:0379/8@0.5 r/8 r/4 | A3:047/8@0.8 r/8 r/4 A3:047/8@0.5 r/8 r/4 | G4/2 B4/4 D5/4 | C#5/2 A4/4 E4/4
 triangle: B1/8! B2/8 B1/8 B2/8 B1/8! B2/8 B1/8 B2/8 | A1/8! A2/8 A1/8 A2/8 A1/8! A2/8 A1/8 A2/8 | G1/8! G2/8 G1/8 G2/8 G1/8! G2/8 G1/8 G2/8 | F#1/8! F#2/8 F#1/8 F#2/8 F#1/8! F#2/8 F#1/8 F#2/8
 triangle: B1/8! B2/8 B1/8 B2/8 B1/8! B2/8 B1/8 B2/8 | A1/8! A2/8 A1/8 A2/8 A1/8! A2/8 A1/8 A2/8 | G1/8! G2/8 G1/8 G2/8 G1/8! G2/8 G1/8 G2/8 | A1/8! A2/8 A1/8 A2/8 A1/8! A2/8 A1/8 A2/8
-noise: c/8@0.6 h/8@0.3 s/8@0.6 h/8@0.3 k/8 k/8 s/8@0.6 o/8@0.35 | [k/8 h/8@0.3 s/8@0.6 h/8@0.3 k/8 k/8 s/8@0.6 o/8@0.35 |]x6 k/8 h/8@0.3 s/8@0.6 h/8@0.3 t/16@0.5 t/16@0.5 t/16@0.6 t/16@0.6 s/8@0.7 s/8@0.8
+// open hats on every off-beat lift the repeat, with a tom turn at the half
+noise: c/8@0.6 o/8@0.25 s/8@0.6 o/8@0.25 k/8 o/8@0.25 s/8@0.6 o/8@0.25 | [k/8 o/8@0.25 s/8@0.6 o/8@0.25 k/8 o/8@0.25 s/8@0.6 o/8@0.25 |]x2 k/8 o/8@0.25 s/8@0.6 o/8@0.25 k/8 t/8@0.5 t/8@0.55 t/8@0.6 | [k/8 o/8@0.25 s/8@0.6 o/8@0.25 k/8 o/8@0.25 s/8@0.6 o/8@0.25 |]x3 k/8 h/8@0.3 s/8@0.6 h/8@0.3 t/16@0.5 t/16@0.5 t/16@0.6 t/16@0.6 s/8@0.7 s/8@0.8
 
 section: B
 chords: D | E | D | E | G | A | Em | F#
@@ -86,10 +94,13 @@ duty pulse1: 0.5
 pulse1: F#5/1v | G#5/2. B5/4 | A5/1v | G#5/2. E5/4
 pulse1: B5/1v | C#6/2. A5/4 | B5/2 G5/4 E5/4 | C#6/2>-3 r/4 F#5/4
 // the world's motif on the counter-line: a held note, down a minor third, up a tone
-pulse2: A4/2. F#4/4 | G#4/1 | D4/4 F#4/4 A4/4 F#4/4 | E4/4 G#4/4 B4/4 G#4/4
-pulse2: D5/2. B4/4 | C#5/1 | G4/4 B4/4 E5/4 B4/4 | F#4/4 A#4/4 C#5/4 A#4/4
-triangle: D2/2 A1/2 | E2/2 B1/2 | D2/2 A1/2 | E2/2 B1/2 | G1/2 D2/2 | A1/2 E2/2 | E2/2 B1/2 | F#1/2 C#2/2
-noise: c/4@0.5 h/8@0.25 h/8@0.2 s/4@0.6 h/8@0.25 h/8@0.2 | [k/4 h/8@0.25 h/8@0.2 s/4@0.6 h/8@0.25 h/8@0.2 |]x6 k/4 h/8@0.25 s/8@0.5 s/16@0.4 s/16@0.5 s/16@0.6 s/16@0.7 s/4@0.8
+// and in between, a line that steps down while the lead holds and climbs back
+pulse2: A4/2. F#4/4 | G#4/1 | F#4/4. E4/8 D4/4 C#4/4 | B3/4 C#4/8 D4/8 E4/4 G#4/4
+pulse2: D5/2. B4/4 | C#5/1 | G4/4. F#4/8 E4/4 B3/4 | A#3/4 C#4/8 E4/8 F#4/4 C#4/4
+// a walking bass in quarters
+triangle: D2/4 A1/4 D2/4 F#2/4 | E2/4 B1/4 E2/4 G#2/4 | D2/4 A1/4 B1/4 C#2/4 | E2/4 B1/4 E2/4 F#2/4
+triangle: G2/4 D2/4 B1/4 G1/4 | A1/4 E2/4 A2/4 F#2/4 | E2/4 G2/4 B1/4 G1/4 | F#1/4 A#1/4 C#2/4 E2/4
+noise: c/4@0.5 h/8@0.25 h/8@0.2 s/4@0.6 h/8@0.25 h/8@0.2 | [k/4 h/8@0.25 h/8@0.2 s/4@0.6 h/8@0.25 h/8@0.2 |]x2 k/4 h/8@0.25 k/8 s/4@0.6 t/8@0.4 t/8@0.45 | [k/4 h/8@0.25 h/8@0.2 s/4@0.6 h/8@0.25 h/8@0.2 |]x3 k/4 h/8@0.25 s/8@0.5 s/16@0.4 s/16@0.5 s/16@0.6 s/16@0.7 s/4@0.8
 
 section: C
 chords: D | A | E | E | D | A | G | F#
@@ -99,7 +110,9 @@ pulse1: F#5/4. A5/4. D6/4 | C#6/2.>-4 r/4 | r/1 | r/1
 pulse1: A5/4. F#5/4. D5/4 | E5/2.>+5 r/4 | B5/2 D6/2 | C#6/2. A#5/4
 pulse2: D4:047/8@0.6 r/8 r/4 r/2 | A3:047/8@0.6 r/8 r/4 r/2 | G#4/4. B4/4. E5/4 | B4/2.>-3 r/4
 pulse2: D4:047/8@0.6 r/8 r/4 r/2 | A3:047/8@0.6 r/8 r/4 r/2 | G4/4 B4/4 D5/4 B4/4 | F#4/4 A#4/4 C#5/4 F#5/4
-triangle: D2/8! [D2/8]x7 | A1/8! [A1/8]x7 | E2/8! [E2/8]x7 | E2/8! [E2/8]x7 | D2/8! [D2/8]x7 | A1/8! [A1/8]x7 | G1/8! [G1/8]x7 | F#1/8! [F#1/8]x7
+// the bass kicks on the 3+3+2 of the lead's cell: root, octave, then the fifth
+triangle: D2/8! D2/8 D3/8 D2/8! D2/8 D3/8 A1/8 A2/8 | A1/8! A1/8 A2/8 A1/8! A1/8 A2/8 E2/8 E3/8 | E2/8! E2/8 E3/8 E2/8! E2/8 E3/8 B1/8 B2/8 | E2/8! E2/8 E3/8 E2/8! E2/8 E3/8 B1/8 C#2/8
+triangle: D2/8! D2/8 D3/8 D2/8! D2/8 D3/8 A1/8 A2/8 | A1/8! A1/8 A2/8 A1/8! A1/8 A2/8 E2/8 E3/8 | G1/8! G1/8 G2/8 G1/8! G1/8 G2/8 D2/8 D3/8 | F#1/8! F#1/8 F#2/8 F#1/8! A#1/8 C#2/8 E2/8 A#1/8
 noise: c/8@0.6 h/8@0.3 t/8@0.5 h/8@0.3 k/8 h/8@0.3 s/8@0.6 h/8@0.3 | [k/8 h/8@0.3 t/8@0.5 h/8@0.3 k/8 h/8@0.3 s/8@0.6 h/8@0.3 |]x6 k/8 t/8@0.5 t/8@0.5 t/8@0.6 s/16@0.5 s/16@0.6 s/16@0.7 s/16@0.8 s/4@0.8
 
 section: breakdown
