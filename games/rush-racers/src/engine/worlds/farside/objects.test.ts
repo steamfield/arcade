@@ -1,6 +1,6 @@
 /**
  * Farside's object art: every key `keys.ts` names is built with the frames the views ask for, at
- * Reef's sizes, and the enemies and the stardust stand out from the space's canopy.
+ * Reef's sizes, and the enemies and the stardust stand out from the space bands and backdrop.
  */
 import { describe, expect, it } from 'vitest';
 import { ENEMY_KINDS, POWER_UP_KINDS } from '../../../logic/types.ts';
@@ -91,14 +91,14 @@ describe('Farside object art', () => {
     [enemies.marks, REEF_OBJECTS.enemies.marks],
   ];
 
-  it.each(counterparts)("sizes %s like its Reef counterpart's %s", (thorn, reefKey) => {
-    expect(sizeOf(farSheet(thorn))).toEqual(sizeOf(reefSheet(reefKey)));
+  it.each(counterparts)("sizes %s like its Reef counterpart's %s", (farKey, reefKey) => {
+    expect(sizeOf(farSheet(farKey))).toEqual(sizeOf(reefSheet(reefKey)));
   });
 
   it.each(counterparts)(
     'gives %s the frames its Reef counterpart %s has, since views ask for them by name',
-    (thorn, reefKey) => {
-      expect(frameNames(farSheet(thorn))).toEqual(frameNames(reefSheet(reefKey)));
+    (farKey, reefKey) => {
+      expect(frameNames(farSheet(farKey))).toEqual(frameNames(reefSheet(reefKey)));
     },
   );
 
@@ -144,8 +144,8 @@ describe("Farside's own object art", () => {
 });
 
 describe('Farside object colours', () => {
-  const canopy = [...VOID_BANDS, ...Object.values(SpaceBackdropPalette).flat()];
-  const weakest = (colour: number) => Math.min(...canopy.map((band) => contrast(colour, band)));
+  const bands = [...VOID_BANDS, ...Object.values(SpaceBackdropPalette).flat()];
+  const weakest = (colour: number) => Math.min(...bands.map((band) => contrast(colour, band)));
 
   it.each(ENEMY_KINDS.map((kind) => [kind, FARSIDE_OBJECTS.enemies.bodies[kind]] as const))(
     'the %s body colour stands 3:1 off the space bands',
