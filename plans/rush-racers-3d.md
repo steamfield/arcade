@@ -115,8 +115,8 @@ Test cases (lane a writes these; every line needs a test):
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers-3d/src/logic/, games/rush-racers-3d/src/engine/runtime.ts, games/rush-racers-3d/src/engine/runtime.test.ts | contracts, templates/three-3d/src/engine/runtime.ts | | gpt-6.2-sol | running | foreman/rr3d-1a | every phase 1 test case has a passing test; typecheck and lint pass |
-| b | M | games/rush-racers-3d/src/engine/track-geometry.ts, games/rush-racers-3d/src/engine/track-geometry.test.ts, games/rush-racers-3d/src/engine/track-view.ts, games/rush-racers-3d/src/engine/racer-view.ts, games/rush-racers-3d/src/engine/camera-rig.ts, games/rush-racers-3d/src/engine/hud.ts, games/rush-racers-3d/src/engine/game.ts | contracts, .claude/skills/threejs-game/SKILL.md | | gpt-6.2-sol | running | foreman/rr3d-1b | track-geometry tests pass; `see` frames at the start line and every capture stage look right on desktop and `--mobile` |
+| a | L | games/rush-racers-3d/src/logic/, games/rush-racers-3d/src/engine/runtime.ts, games/rush-racers-3d/src/engine/runtime.test.ts | contracts, templates/three-3d/src/engine/runtime.ts | | gpt-6.2-sol | merged | foreman/rr3d-1a | every phase 1 test case has a passing test; typecheck and lint pass |
+| b | M | games/rush-racers-3d/src/engine/track-geometry.ts, games/rush-racers-3d/src/engine/track-geometry.test.ts, games/rush-racers-3d/src/engine/track-view.ts, games/rush-racers-3d/src/engine/track-terrain.ts, games/rush-racers-3d/src/engine/forest.ts, games/rush-racers-3d/src/engine/landmarks.ts, games/rush-racers-3d/src/engine/gust-leaves.ts, games/rush-racers-3d/src/engine/racer-view.ts, games/rush-racers-3d/src/engine/camera-rig.ts, games/rush-racers-3d/src/engine/hud.ts, games/rush-racers-3d/src/engine/game.ts | contracts, .claude/skills/threejs-game/SKILL.md | | gpt-6.2-sol | merged | foreman/rr3d-1b | track-geometry tests pass; `see` frames at the start line and every capture stage look right on desktop and `--mobile` |
 
 #### Lane a brief
 
@@ -138,15 +138,44 @@ Test cases (lane a writes these; every line needs a test):
 
 ### Phase 2: rivals, places and menus
 
-Demo: title, pick one of eight characters, race three rivals, see places live and on results.
+Demo: title, pick one of eight characters, race three rivals, see your place live and every place on results.
 Depends on: phase 1
+
+Scaffold (orchestrator, before dispatch): `FrameInput` gains `menu: { left, right, up, down, back }` fresh presses (dash is back); `RuntimeOptions` gains `startScene: 'title' | 'race'` (`?scene=race` or any stage gives `race`); `Scene` gains `title` and `select`; `RacerContext` gains `speedMul` (1 for the player); `World` gains `rngState: number` (rival draws and AI noise, hashed) and `endTick: number | null`; `GameEvent` gains `racer.finished.place`, `racer.bumped.by` (RacerId or null for a log) and `race.ended.reason` (`'player-finished' | 'rivals-finished' | 'limit'`); new stubs `src/logic/characters.ts` (`CAST`, `RIVAL_PROFILES`, `drawRivals`), `src/logic/ai.ts` (`rivalInput`), `src/logic/standings.ts` (`places`, `placeOf`), `src/logic/bump.ts` (`bumpRacers`), `src/engine/screens.ts` (`createScreens`); tuning `RIVAL` (catch-up bounds, look-ahead, dash clearance) and `RACE.rivalsDoneGraceTicks` (600). Scenarios and smoke get `scene=race`; new scenarios `title-to-race` and `rivals-race`.
+
+Test cases (lane a writes these; every line needs a test):
+- Grid: `createWorld` with `rivals` gives four racers in slot order player, r1, r2, r3 at d = -1.25, 1.25, -3.75, 3.75; the three rival characters are distinct, never the player's, drawn from the seed (same seed same draw; seeds 1..20 produce more than one draw).
+- Rival driving: rivals ignore any `inputs` entry for their slot. On inline courses a rival jumps a full-width log and a full-width pit without a bump or fall, steers into the dry lane past a half-width pit and past half-width mud, and stays within the track edges.
+- Rival dash: a rival dashes only with a charge and with no pit or log in the next RIVAL.dashClearance meters.
+- Rival race: with the player idle, every rival finishes Thornwood Trail within 1.25x `parTicks` for seeds 1..5, with at most two falls each.
+- Catch-up: a rival RIVAL.catchUpRange or more behind the player gets `speedMul` 1 + RIVAL.catchUp, one that far ahead 1 - RIVAL.catchUp, linear between, measured against the unfinished player; the player's is always 1.
+- Bumps: two racers overlapping in s and d with `|Δy| < 1` are pushed apart in d on that tick and swap part of their `vd` (`racer.bumped` with `by`); neither passes through the other; a racer more than 1 m above another doesn't bump; fallen and finished racers never bump; two rivals respawning on the same spot separate within a few ticks.
+- Standings: finished racers by `finishTicks`, then unfinished by `s`, ties by slot order; `racer.finished.place` is that place at the finish and never changes.
+- Race end: the player finishing ends the race (`reason: 'player-finished'`) with every place set; three rivals finishing first ends it RACE.rivalsDoneGraceTicks later (`'rivals-finished'`) with the player's `finishTicks` null unless they finish in the grace; the limit still ends it (`'limit'`).
+- Determinism: a four-racer race with a fixed player script gives the same `hashWorld` twice, and a different seed gives a different one.
+- Runtime scenes: boots to `title` unless `startScene` is `race`; fire on title goes to `select` with the cursor on the save's character; menu arrows move the cursor in a 4x2 grid and clamp at the edges; fire on select saves the character and starts a race; back on select returns to title; results accept fire (race again, same character) and back (to select) after the delay; a best is recorded only on a player finish; `summary()` adds `place` (the player's) and `cursor` on select.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers-3d/src/logic/characters.ts, games/rush-racers-3d/src/logic/ai.ts, games/rush-racers-3d/src/logic/standings.ts, games/rush-racers-3d/src/logic/bump.ts, games/rush-racers-3d/src/logic/world.ts, games/rush-racers-3d/src/engine/runtime.ts | contracts | | gpt-6.2-sol | pending | | |
-| b | M | games/rush-racers-3d/src/engine/screens.ts, games/rush-racers-3d/src/engine/racer-view.ts, games/rush-racers-3d/src/engine/hud.ts, games/rush-racers-3d/src/engine/game.ts | contracts | | gpt-6.2-sol | pending | | |
+| a | L | games/rush-racers-3d/src/logic/characters.ts, games/rush-racers-3d/src/logic/ai.ts, games/rush-racers-3d/src/logic/standings.ts, games/rush-racers-3d/src/logic/bump.ts, games/rush-racers-3d/src/logic/world.ts, games/rush-racers-3d/src/logic/racer.ts, games/rush-racers-3d/src/logic/tuning.ts, games/rush-racers-3d/src/logic/courses/, games/rush-racers-3d/src/engine/runtime.ts, games/rush-racers-3d/src/engine/runtime.test.ts, games/rush-racers-3d/src/logic/characters.test.ts, games/rush-racers-3d/src/logic/ai.test.ts, games/rush-racers-3d/src/logic/standings.test.ts, games/rush-racers-3d/src/logic/bump.test.ts, games/rush-racers-3d/src/logic/world.test.ts | contracts | | gpt-6.2-sol | pending | | every phase 2 test case has a passing test; typecheck and lint pass |
+| b | M | games/rush-racers-3d/src/engine/screens.ts, games/rush-racers-3d/src/engine/racer-view.ts, games/rush-racers-3d/src/engine/hud.ts, games/rush-racers-3d/src/engine/game.ts | contracts | | gpt-6.2-sol | pending | | title, select, race with rivals and results look right in `see` on desktop and `--mobile` |
 
-(Test cases and briefs written during phase 1.)
+#### Lane 2a brief
+
+- Goal: three AI rivals that race Thornwood Trail competently and fairly, racer bumps, live places, the race's end rules, and the runtime's title and select scenes.
+- Interface: implement the phase 2 stubs (`drawRivals`, `rivalInput`, `places`, `placeOf`, `bumpRacers`), extend `createWorld` for `rivals: true`, `stepWorld` for rivals (AI input, catch-up `speedMul`, bumps after every racer has moved, end rules), `stepRacer` to honour `ctx.speedMul` on run speed, accel and dash, and the Runtime's `title`/`select` scenes. Keep every scaffold export.
+- Behavior: the phase 2 test-case list. AI noise (steer wobble, jump timing jitter per profile) comes only from `world.rngState` via `createRng`. Rivals see only what a player could: course features and other racers' track positions.
+- Decisions already made: one difficulty; cosmetic cast plus rival profiles, no abilities; catch-up against the player only.
+- Out of scope: items, crates, anything under `src/engine/` except `runtime.ts` and its test.
+- Done when: `pnpm arcade test rush-racers-3d src/logic src/engine/runtime.test.ts` and `pnpm arcade check rush-racers-3d --skip-tests` pass.
+
+#### Lane 2b brief
+
+- Goal: the title and select screens, eight distinct racers on the trail, live place in the HUD and places on results.
+- Interface: `createScreens(container)` in `src/engine/screens.ts` renders `runtime.scene` `title` and `select` as DOM over the 3D scene (the trail as a slow fly-by behind the title); `racer-view.ts` builds each `CharacterId` as its own silhouette from primitives (Grit badger with a miner's lamp, Skip lanky hare, Blaze red fox, Shade black panther cub, Cheeks chipmunk in goggles, Duke huge tortoise with a mossy crown, Dusk little owl in a scarf, Fang grey wolf); the HUD adds the player's place (`2nd`) and a progress strip with all four racers; results list all four places with names and times.
+- Behavior: select is a 4x2 grid of cards (name, look, colour swatch) with the highlighted character turning on a pedestal; controls hints on every screen; everything readable at phone width and clear of the touch controls and back link; DOM updates only on change.
+- Out of scope: logic, runtime, items, sound.
+- Done when: `pnpm arcade check rush-racers-3d --skip-tests` passes and `see` frames of title, select, mid-race with rivals in view and results look right on desktop and `--mobile`.
 
 ### Phase 3: crates and items
 

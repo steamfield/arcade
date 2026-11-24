@@ -4,9 +4,9 @@ import { expect, test } from '@arcade/testing/playwright';
 /**
  * `debugState().worldHash` after the countdown and a run down the first straight with a steer, a
  * jump and a dash. The hash covers logic state only. Every browser project must compute the same
- * number. Pinned by the orchestrator when phase 1 lands (0 until then).
+ * number.
  */
-const RUN_HASH = 0;
+const RUN_HASH = 951541475;
 
 const COUNTDOWN = '_*180';
 

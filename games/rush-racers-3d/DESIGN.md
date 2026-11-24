@@ -4,7 +4,7 @@ A forest foot race seen from behind the runner. Run Thornwood Trail, jump logs a
 
 ## Core loop
 
-A 3-2-1 countdown, then the race. Hold forward to run, steer across the trail, jump over logs and pits, dash when it pays. Cross the finish line to see your time and best; press fire to race again. The best time per course is saved.
+A 3-2-1 countdown (steps 0, 60, 120; GO and the first racing step at 180), then the race. Hold forward to run, steer across the trail, jump over logs and pits, dash when it pays. Cross the finish line to see your time and best; press fire to race again. The best time per course is saved.
 
 ## Controls
 
@@ -37,6 +37,7 @@ Thornwood Trail (`src/logic/courses/thornwood-trail.ts`), about 1.1 km in six se
 
 - `?seed=<n>`: the race seed.
 - `?stage=mid-course|near-finish|before-pit|before-log`: start the race already running at that spot (only with `?debug=1` or in test mode; a staged session never saves). Positions derive from the course in `src/engine/capture-stages.ts`.
+- `?character=grit|skip|blaze|shade|cheeks|duke|dusk|fang`: race as that character instead of the saved one; an unknown id logs a warning listing the valid ones.
 - `?debug=1`: allows stages.
 
 ## Scenarios

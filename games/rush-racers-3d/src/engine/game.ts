@@ -3,13 +3,14 @@
  * shell and tests drive. Gameplay lives in `Runtime`; this file reads input, renders its state and
  * nothing else.
  */
-import { createLogger } from '@arcade/core';
+import { createLogger, type Logger } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import { type GameContext, type GameHandle, renderPixelRatio } from '@arcade/shell';
 import * as THREE from 'three';
 import { THORNWOOD_TRAIL } from '../logic/courses/thornwood-trail.ts';
 import type { SaveData } from '../logic/save.ts';
 import type { RacerId, World } from '../logic/types.ts';
+import { CHARACTER_IDS, type CharacterId } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
 import { CameraRig } from './camera-rig.ts';
 import { stageFor } from './capture-stages.ts';
@@ -39,14 +40,15 @@ function reconcileRacerViews(scene: THREE.Scene, views: Map<RacerId, RacerView>,
 
 /** Starts the game in `ctx.container` and returns the handle the shell drives. */
 export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): Promise<GameHandle> {
+  const log = createLogger(ctx.manifest.id);
   let syncViews = () => {};
   const runtime = await Runtime.start({
     saves,
     course: THORNWOOD_TRAIL,
     seed: ctx.params.seed,
-    character: null,
+    character: characterFor(window.location.search, log),
     notice: ctx.notice,
-    stage: stageFor(ctx.params, window.location.search, createLogger(ctx.manifest.id)),
+    stage: stageFor(ctx.params, window.location.search, log),
     gameId: ctx.manifest.id,
     readInput: () => {
       input.update();
@@ -167,4 +169,16 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     },
     onHide: () => runtime.settled(),
   };
+}
+
+/**
+ * The `?character=` the page was opened with, or null to race as the saved character. An unknown id
+ * is logged as a warning that lists the valid ones.
+ */
+function characterFor(search: string, log: Logger): CharacterId | null {
+  const name = new URLSearchParams(search).get('character');
+  if (name === null) return null;
+  const character = CHARACTER_IDS.find((id) => id === name);
+  if (!character) log.warn(`unknown ?character=${name}; valid characters: ${CHARACTER_IDS.join(', ')}`);
+  return character ?? null;
 }
