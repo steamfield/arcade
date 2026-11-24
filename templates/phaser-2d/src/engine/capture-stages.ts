@@ -6,6 +6,7 @@
  *
  * Add a name to `STAGES` and a case to `applyStage` for each moment worth reviewing.
  */
+import type { Logger } from '@arcade/core';
 import { TILE } from '../logic/level.ts';
 import { PHYSICS, type World } from '../logic/world.ts';
 
@@ -26,12 +27,14 @@ export interface StageGate {
 
 /**
  * The stage `search` (a `location.search` string) asks for, or null when it names none, names an
- * unknown one, or the page is neither in debug nor test mode.
+ * unknown one (which is logged as a warning that lists the valid names), or the page is neither in debug nor test mode.
  */
-export function stageFor(gate: StageGate, search: string): StageName | null {
+export function stageFor(gate: StageGate, search: string, log: Logger): StageName | null {
   if (!gate.debug && !gate.testMode) return null;
   const name = new URLSearchParams(search).get('stage');
-  return STAGES.find((stage) => stage === name) ?? null;
+  const stage = STAGES.find((candidate) => candidate === name);
+  if (name !== null && !stage) log.warn(`unknown ?stage=${name}; valid stages: ${STAGES.join(', ')}`);
+  return stage ?? null;
 }
 
 /**

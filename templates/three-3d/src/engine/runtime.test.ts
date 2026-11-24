@@ -1,9 +1,10 @@
 import 'fake-indexeddb/auto';
+import { configureLogging, createLogger, type LogEntry } from '@arcade/core';
 import { createSaveStore } from '@arcade/save';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { migrations, SAVE_VERSION, SaveSchema } from '../logic/save.ts';
 import type { TickInput } from '../logic/world.ts';
-import type { StageName } from './debug-stage.ts';
+import { type StageName, stageFor } from './capture-stages.ts';
 import { Runtime } from './runtime.ts';
 
 const STILL: TickInput = { move: { x: 0, y: 0 }, jumpPressed: false };
@@ -25,6 +26,7 @@ async function startRuntime(saves: Awaited<ReturnType<typeof openStore>>, option
   const held = { input: STILL, ready: true, notices: [] as string[] };
   const runtime = await Runtime.start({
     saves,
+    gameId: 'three-3d',
     seed: 1,
     notice: (message) => held.notices.push(message),
     readInput: () => held.input,
@@ -34,6 +36,15 @@ async function startRuntime(saves: Awaited<ReturnType<typeof openStore>>, option
   });
   return { runtime, held };
 }
+
+let logged: LogEntry[] = [];
+beforeEach(() => {
+  logged = [];
+  configureLogging((entry) => logged.push(entry));
+});
+afterEach(() => {
+  configureLogging(() => {});
+});
 
 describe('runtime', () => {
   it('starts a new game, collects an orb, writes the save and restores it in the next session', async () => {
@@ -118,5 +129,33 @@ describe('runtime', () => {
     await runtime.settled();
     expect(runtime.saving).toBe(false);
     expect(runtime.events.all()).toContainEqual(expect.objectContaining({ type: 'save.failed', reason: 'disk full' }));
+  });
+
+  it('logs a failed save under the game id it was given', async () => {
+    const saves = await openStore();
+    const { runtime, held } = await startRuntime(saves);
+    saves.save = () => Promise.reject(new Error('disk full'));
+    held.input = FORWARD;
+    runtime.advance(TICKS_TO_FIRST_ORB);
+    await runtime.settled();
+    expect(logged).toEqual([{ level: 'warn', namespace: 'three-3d', message: 'orb progress not saved: disk full' }]);
+  });
+});
+
+describe('an unknown capture stage', () => {
+  const log = createLogger('three-3d');
+  const open = { debug: false, testMode: true };
+
+  it('is not applied, and warns with the valid stage names when the gate is open', () => {
+    expect(stageFor(open, '?stage=nowhere', log)).toBeNull();
+    expect(logged.map((entry) => `${entry.level} ${entry.message}`)).toEqual([
+      'warn unknown ?stage=nowhere; valid stages: nearly-cleared',
+    ]);
+  });
+
+  it('says nothing outside debug and test mode, or when no stage is asked for', () => {
+    expect(stageFor({ debug: false, testMode: false }, '?stage=nowhere', log)).toBeNull();
+    expect(stageFor(open, '', log)).toBeNull();
+    expect(logged).toEqual([]);
   });
 });

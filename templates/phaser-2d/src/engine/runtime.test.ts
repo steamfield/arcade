@@ -196,6 +196,23 @@ describe('a capture stage', () => {
   });
 });
 
+describe('an unknown capture stage', () => {
+  it('plays normally and warns with the valid stage names when the gate is open', async () => {
+    const { rt } = bootedRuntime(await realStore(), { search: '?stage=nowhere' });
+    press(rt, 'jump');
+
+    expect(rt.staged).toBe(false);
+    expect(logged.map((entry) => `${entry.level} ${entry.message}`)).toEqual([
+      'warn unknown ?stage=nowhere; valid stages: near-goal',
+    ]);
+  });
+
+  it('says nothing outside debug and test mode', async () => {
+    bootedRuntime(await realStore(), { search: '?stage=nowhere', testMode: false });
+    expect(logged).toEqual([]);
+  });
+});
+
 describe('overlapping save writes', () => {
   it('land in the order asked for, however the store finishes them, leaving the newest progress saved', async () => {
     const store = await realStore();

@@ -6,6 +6,7 @@
  * The names: `nearly-cleared` leaves only the orb straight ahead of the spawn, so one walk forward
  * clears the field.
  */
+import type { Logger } from '@arcade/core';
 import type { World } from '../logic/world.ts';
 
 /** Every stage name `applyStage` knows. */
@@ -22,12 +23,15 @@ export interface StageGate {
 
 /**
  * The `?stage=` the page was opened with: null unless it names a known stage and the launch is a
- * debug or test-mode one, so a stray or shared link cannot stage a real game.
+ * debug or test-mode one, so a stray or shared link cannot stage a real game. An unknown name is logged as a warning that
+ * lists the valid ones.
  */
-export function stageFor(gate: StageGate, search: string): StageName | null {
+export function stageFor(gate: StageGate, search: string, log: Logger): StageName | null {
   if (!gate.debug && !gate.testMode) return null;
   const name = new URLSearchParams(search).get('stage');
-  return STAGES.find((stage) => stage === name) ?? null;
+  const stage = STAGES.find((candidate) => candidate === name);
+  if (name !== null && !stage) log.warn(`unknown ?stage=${name}; valid stages: ${STAGES.join(', ')}`);
+  return stage ?? null;
 }
 
 /** Writes the stage's state into `world`. Call it once, right after the world is built. */

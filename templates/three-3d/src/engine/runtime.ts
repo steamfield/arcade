@@ -4,16 +4,16 @@
  * drives it directly. The engine supplies three hooks: where input comes from, whether it is ready
  * to tick (physics loaded), and what to do after each tick (step physics, move the camera).
  */
-import { createLogger, createRng, EventLog, FixedStep, hashState } from '@arcade/core';
+import { createLogger, createRng, EventLog, FixedStep, type Logger } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import type { GameEvent } from '../logic/events.ts';
+import { hashWorld } from '../logic/hash.ts';
 import type { SaveData } from '../logic/save.ts';
 import { createWorld, stepWorld, summarize, type TickInput, toSave, type World } from '../logic/world.ts';
-import { applyStage, type StageName } from './debug-stage.ts';
+import { applyStage, type StageName } from './capture-stages.ts';
 
 const SAVE_SLOT = 'main';
 const NEW_GAME_SEED_MAX = 1_000_000;
-const log = createLogger('three-3d');
 
 /** Events the engine adds to the logic's own. */
 export type EngineEvent =
@@ -23,6 +23,8 @@ export type EngineEvent =
 
 /** What a `Runtime` needs from the engine around it. */
 export interface RuntimeOptions {
+  /** The game's manifest id, the namespace its log lines carry. */
+  gameId: string;
   saves: SaveStore<SaveData>;
   /** Seed for a new game's orb layout (`?seed=`). A saved game keeps its own. */
   seed: number;
@@ -43,6 +45,7 @@ export class Runtime {
   readonly events = new EventLog<GameEvent | EngineEvent>();
   world: World;
   private readonly options: RuntimeOptions;
+  private readonly log: Logger;
   private readonly step: FixedStep;
   private staged: boolean;
   /** The last queued save write. New writes chain onto it so they never overlap. */
@@ -51,6 +54,7 @@ export class Runtime {
 
   private constructor(options: RuntimeOptions, save: SaveData) {
     this.options = options;
+    this.log = createLogger(options.gameId);
     this.world = createWorld(this.events, save);
     this.staged = options.stage !== null;
     if (options.stage) applyStage(this.world, options.stage);
@@ -128,7 +132,7 @@ export class Runtime {
 
   /** One number for the whole logic state, equal across runs and browsers that played the same ticks. */
   worldHash(): number {
-    return hashState(this.world, { skipKeys: new Set(['events']) });
+    return hashWorld(this.world);
   }
 
   private tickOnce(dt: number): void {
@@ -152,7 +156,7 @@ export class Runtime {
   }
 
   private failWrite(what: string, reason: string): void {
-    log.warn(`${what} not saved: ${reason}`);
+    this.log.warn(`${what} not saved: ${reason}`);
     this.events.emit({ type: 'save.failed', reason });
   }
 }
