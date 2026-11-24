@@ -45,6 +45,9 @@ export interface MusicCues {
   audition(name: SongName | null, section?: string): void;
 }
 
+/** The key suffix `audio.played` carries when a one-shot song has finished sounding, as `<song>:end`. */
+export const SONG_ENDED = 'end';
+
 /** The song for `name`. The single place songs are chosen. */
 export function songFor(name: SongName): Song {
   return songs[name];
@@ -107,6 +110,8 @@ export function createMusicCues(options: MusicCueOptions): MusicCues {
     if (!running() || started === null) return;
     const news = sequencer.poll();
     for (const section of news.sections) announce(`${started}:${section}`, 'song');
+    // A one-shot that ran out is news too: the sound test shows it as no longer playing.
+    if (news.ended) announce(`${started}:${SONG_ENDED}`, 'song');
     if (news.ended && jingleLeadsToResults && isJingle(started)) {
       jingleLeadsToResults = false;
       wanted = 'results';

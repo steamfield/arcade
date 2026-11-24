@@ -123,6 +123,16 @@ describe('stepping through sections', () => {
     expect(pressJukebox(jukebox, 'right')).toEqual({ kind: 'play', song: firstTrack, section: firstSections[3] });
   });
 
+  it('shows nothing playing once a one-shot runs out, so the next dash leaves', () => {
+    const jukebox = armedJukebox();
+    pressAll(jukebox, ['fire']);
+    hearJukebox(jukebox, `${firstTrack}:end`);
+
+    expect(jukebox.playing).toBeNull();
+    expect(jukebox.section).toBeNull();
+    expect(pressJukebox(jukebox, 'dash')).toEqual({ kind: 'leave' });
+  });
+
   it('does nothing on left or right while nothing plays', () => {
     const jukebox = armedJukebox();
 

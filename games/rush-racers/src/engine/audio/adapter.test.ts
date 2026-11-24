@@ -412,7 +412,7 @@ describe('the adapter and the sound test', () => {
     rig.drain();
     rig.drain();
     expect(rig.calls).toEqual(['play win from 0']);
-    expect(rig.announced()).toEqual(['win']);
+    expect(rig.announced()).toEqual(['win', 'win:end']);
   });
 
   it('never chains an auditioned jingle into the results loop after leaving for another screen', () => {
