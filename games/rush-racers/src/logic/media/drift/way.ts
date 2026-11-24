@@ -2,10 +2,10 @@
  * The way to the finish as drift answers it, from its fields: an aim from a body on any of the three
  * routes, the next tile from a tile, the distance left, and whether ice lies just ahead.
  */
-import { downhillPath, hasClearSweep, openTiles, steerDirection, tileCentre, tileOf } from '../../ai/steer.ts';
-import { cellAt, isSolid, tileIndex } from '../../level/query.ts';
+import { downhillPath, hasClearSweep, openTiles, steerDirection } from '../../ai/steer.ts';
+import { cellAt, cornerIsClear, isSolid, NEIGHBOURS, tileCentre, tileIndex, tileOf } from '../../level/query.ts';
 import { length } from '../../num.ts';
-import { cornerIsClear, fieldAt, NEIGHBOURS } from '../../race/flowfield.ts';
+import { fieldAt } from '../../race/flowfield.ts';
 import { centreOf } from '../../racers.ts';
 import { isWarpCoolingDown } from '../../setpieces/wormholes.ts';
 import type { Box, Racer, Vec, World } from '../../types.ts';

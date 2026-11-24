@@ -11,12 +11,18 @@ const freshStore = () =>
   createSaveStore({ gameId: `fixture-${store++}`, version: SAVE_VERSION, schema: SaveSchema, migrate: migrations });
 
 const NO_BEST = { easy: null, normal: null, hard: null };
-/**
- * What a pre-v6 save's bests become: v5 files them under Sunlit Shallows, the one course there was,
- * and v7 drops them again because it lengthened that course, so none reach the current version.
- * `best` is what v5 filed, checked step by step in the v5 test.
- */
-const onSunlit = (_best: typeof NO_BEST | Record<string, unknown>) => ({ bests: {}, lastCourse: null });
+const NO_COURSE_RECORDS = { bests: {}, lastCourse: null };
+
+/** Stops at v6 so the test can see Sunlit Shallows records before v7 drops them. */
+function fixtureAtV6(from: number): unknown {
+  let data: unknown = JSON.parse(readFileSync(new URL(`save-v${from}.json`, fixturesDir), 'utf8')).data;
+  for (let version = from; version <= 5; version++) {
+    const migrate = migrations[version];
+    if (!migrate) throw new Error(`Missing migration from save v${version}`);
+    data = migrate(data);
+  }
+  return data;
+}
 
 /** Imports a committed fixture into a fresh store, as a player's old save file would load. */
 async function load(file: string) {
@@ -35,16 +41,20 @@ describe('save compatibility', () => {
     expect(await load('save-v1.json')).toEqual({
       kind: 'ok',
       migratedFrom: 1,
-      data: { ...NEW_GAME, ...onSunlit(NO_BEST) },
+      data: { ...NEW_GAME, ...NO_COURSE_RECORDS },
     });
   });
 
-  it("upgrades a v2 save to race as Rudy on Easy, keeping its best (now Easy's), races and settings", async () => {
+  it("files a v2 save's best under Easy at v6 and loads the current save as Rudy on Easy", async () => {
+    expect(fixtureAtV6(2)).toMatchObject({
+      bests: { 'sunlit-shallows': { ...NO_BEST, easy: { ticks: 2712, place: 2 } } },
+      lastCourse: null,
+    });
     expect(await load('save-v2.json')).toEqual({
       kind: 'ok',
       migratedFrom: 2,
       data: {
-        ...onSunlit({ ...NO_BEST, easy: { ticks: 2712, place: 2 } }),
+        ...NO_COURSE_RECORDS,
         races: 3,
         settings: { muted: false, reducedMotion: null, difficulty: 'easy' },
         character: 'rudy',
@@ -52,12 +62,16 @@ describe('save compatibility', () => {
     });
   });
 
-  it('upgrades a v3 save to the easy difficulty, keeping everything else', async () => {
+  it("files a v3 save's best under Easy at v6 and loads the current save on Easy", async () => {
+    expect(fixtureAtV6(3)).toMatchObject({
+      bests: { 'sunlit-shallows': { ...NO_BEST, easy: { ticks: 2712, place: 2 } } },
+      lastCourse: null,
+    });
     expect(await load('save-v3.json')).toEqual({
       kind: 'ok',
       migratedFrom: 3,
       data: {
-        ...onSunlit({ ...NO_BEST, easy: { ticks: 2712, place: 2 } }),
+        ...NO_COURSE_RECORDS,
         races: 3,
         settings: { muted: false, reducedMotion: null, difficulty: 'easy' },
         character: 'selene',
@@ -65,12 +79,16 @@ describe('save compatibility', () => {
     });
   });
 
-  it('upgrades a v4 save by filing its one best under the level the save was on', async () => {
+  it("files a v4 save's best under its Normal difficulty at v6 and loads the current save on Normal", async () => {
+    expect(fixtureAtV6(4)).toMatchObject({
+      bests: { 'sunlit-shallows': { ...NO_BEST, normal: { ticks: 2712, place: 2 } } },
+      lastCourse: null,
+    });
     expect(await load('save-v4.json')).toEqual({
       kind: 'ok',
       migratedFrom: 4,
       data: {
-        ...onSunlit({ ...NO_BEST, normal: { ticks: 2712, place: 2 } }),
+        ...NO_COURSE_RECORDS,
         races: 3,
         settings: { muted: false, reducedMotion: null, difficulty: 'normal' },
         character: 'selene',
@@ -79,8 +97,7 @@ describe('save compatibility', () => {
   });
 
   it("files a v5 save's bests under Sunlit Shallows, with no last course yet", () => {
-    const v5 = JSON.parse(readFileSync(new URL('save-v5.json', fixturesDir), 'utf8')).data;
-    expect(migrations[5]?.(v5)).toMatchObject({
+    expect(fixtureAtV6(5)).toMatchObject({
       bests: { 'sunlit-shallows': { easy: { ticks: 3100, place: 3 }, normal: null, hard: { ticks: 2650, place: 1 } } },
       lastCourse: null,
     });
@@ -91,12 +108,33 @@ describe('save compatibility', () => {
       kind: 'ok',
       migratedFrom: 5,
       data: {
-        ...onSunlit({ easy: { ticks: 3100, place: 3 }, normal: null, hard: { ticks: 2650, place: 1 } }),
+        ...NO_COURSE_RECORDS,
         races: 7,
         settings: { muted: true, reducedMotion: true, difficulty: 'hard' },
         character: 'baron',
       },
     });
+  });
+
+  it('drops bests for all four lengthened courses in v7 and keeps the rest of the save', () => {
+    const record = { ...NO_BEST, normal: { ticks: 4000, place: 2 } };
+    const unchanged: Omit<SaveData, 'bests'> = {
+      lastCourse: 'bramble-run',
+      races: 9,
+      settings: { muted: true, reducedMotion: false, difficulty: 'hard' },
+      character: 'selene',
+    };
+    const v6: SaveData = {
+      ...unchanged,
+      bests: {
+        'sunlit-shallows': record,
+        'bramble-run': record,
+        'thunderhead-pass': record,
+        'slingshot-alley': record,
+        'retired-course': record,
+      },
+    };
+    expect(migrations[6]?.(v6)).toEqual({ ...unchanged, bests: { 'retired-course': record } });
   });
 
   it('drops v6 bests on the lengthened courses, keeping bests for a course the game no longer has', async () => {

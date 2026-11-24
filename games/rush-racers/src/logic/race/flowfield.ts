@@ -13,8 +13,6 @@ import { type Box, type Cell, type GridSize, type Level, type ProgressField, TIL
 import { PriorityQueue } from './priority-queue.ts';
 import { wormholeLinks } from './wormhole-links.ts';
 
-export { cornerIsClear, NEIGHBOURS } from '../level/query.ts';
-
 /**
  * Cost multiplier for moving into a tile along `move` (-1, 0 or 1 per axis); Infinity means closed.
  * `tile` is where the tile is, for a medium whose price depends on it (flight keeps flyers off the

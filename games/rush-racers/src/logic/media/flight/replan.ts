@@ -7,7 +7,7 @@
  * which side the point lies on and whether the way carries on past it, so the pilot flies through a
  * point on a straight rather than stopping on it. The next read comes `reactionTicks` later.
  */
-import { tileCentre, tileOf } from '../../ai/steer.ts';
+import { tileCentre, tileOf } from '../../level/query.ts';
 import { centreOf } from '../../racers.ts';
 import { type Racer, TILE, type Vec, type World } from '../../types.ts';
 import type { AiDraws } from '../types.ts';

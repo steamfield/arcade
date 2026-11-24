@@ -1,6 +1,6 @@
 /** Cloudreach's cloud cannons, drawn from their ride counters on the current world tick. */
 import type Phaser from 'phaser';
-import { tileCentre } from '../../../logic/ai/steer.ts';
+import { tileCentre } from '../../../logic/level/query.ts';
 import { moveRulesFor } from '../../../logic/race/move.ts';
 import { centreOf } from '../../../logic/racers.ts';
 import { CANNON, traceCannonShot } from '../../../logic/setpieces/cannons.ts';

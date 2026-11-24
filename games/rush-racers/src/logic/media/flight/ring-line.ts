@@ -6,7 +6,9 @@
  * way), its height is reachable in those columns, and it is in clear sight. Whether the rival takes a
  * ring is a skill roll against `1 - wobble`, judged once per ring, so a loose flyer skips more.
  */
-import { hasClearSweep, tileCentre } from '../../ai/steer.ts';
+
+import { hasClearSweep } from '../../ai/steer.ts';
+import { tileCentre } from '../../level/query.ts';
 import { centreOf } from '../../racers.ts';
 import { type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { flightRouteDistanceAt } from './way.ts';

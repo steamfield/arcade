@@ -11,9 +11,8 @@
  * idle flyer put back there would drift along it as it falls, possibly into the gap.
  */
 import type { EventSink } from '@arcade/core';
-import { tileOf } from '../../ai/steer.ts';
 import type { GameEvent } from '../../events.ts';
-import { bodyTiles, cellAt } from '../../level/query.ts';
+import { bodyTiles, cellAt, tileOf } from '../../level/query.ts';
 import { centreOf } from '../../racers.ts';
 import { activeCannonRide } from '../../setpieces/cannons.ts';
 import type { Box, Level, MoveContacts, Racer, World } from '../../types.ts';

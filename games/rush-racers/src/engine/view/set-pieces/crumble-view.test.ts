@@ -1,22 +1,62 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import type { GameEvent } from '../../../logic/events.ts';
 import { CRUMBLE } from '../../../logic/setpieces/crumbles.ts';
+import { courseFromLevel, placeOnTile, racerOf, step } from '../../../logic/test-world.ts';
 import { TILE } from '../../../logic/types.ts';
-import { syncCrumbleTile } from '../level-view.ts';
+import { createWorld } from '../../../logic/world.ts';
+import { createCrumbleTileSync } from '../level-view.ts';
 import { crumbleLook } from './crumble-view.ts';
 
-describe('a crumble tile', () => {
-  it('disappears and returns with the fallen set alone, including when first synced after falling', () => {
-    const tile = { x: 2, pixelX: 2 * TILE, visible: true };
-    const fallen = new Set([12]);
-    syncCrumbleTile(tile, 12, fallen, 0);
-    expect(tile.visible).toBe(false);
+describe('the branch tiles', () => {
+  it('hide on the first sync if the branch already fell, then return when it regrows', () => {
+    const branch = { col: 5, row: 3, length: 2 };
+    const course = courseFromLevel(
+      {
+        name: 'branch next to a ledge',
+        crumbles: [branch],
+        ascii: `
+          ############
+          #..........#
+          #.........F#
+          #....===..F#
+          #.........F#
+          #1234.....F#
+          ############
+        `,
+      },
+      'run',
+    );
+    const log = new EventLog<GameEvent>();
+    const world = createWorld(course, log, { seed: 1 });
+    world.race.phase = 'racing';
+    const player = racerOf(world, 'player');
+    const tiles = [5, 6, 7].map((x) => ({ x, pixelX: x * TILE, visible: true }));
+    const layer = { getTileAt: (x: number, y: number) => (y === branch.row ? (tiles[x - branch.col] ?? null) : null) };
+    const syncFallen = createCrumbleTileSync(layer, world.level, false);
+    const visibility = () => tiles.map(({ visible }) => visible);
+    const positions = () => tiles.map(({ pixelX }) => pixelX);
 
-    syncCrumbleTile(tile, 12, new Set([11]), -1);
-    expect(tile.visible).toBe(true);
-    expect(tile.pixelX).toBe(2 * TILE - 1);
+    placeOnTile(player, branch.col, branch.row - 1);
+    step(world, log, CRUMBLE.shakeTicks + 12);
+    expect(world.crumbles[0]?.phase).toBe('fallen');
+    syncFallen(world);
+    expect(visibility()).toEqual([false, false, true]);
 
-    syncCrumbleTile(tile, 12, new Set(), 0);
-    expect(tile.pixelX).toBe(2 * TILE);
+    step(world, log, CRUMBLE.fallenTicks);
+    expect(world.crumbles[0]?.phase).toBe('solid');
+    syncFallen(world);
+    expect(visibility()).toEqual([true, true, true]);
+    expect(positions()).toEqual([5 * TILE, 6 * TILE, 7 * TILE]);
+
+    placeOnTile(player, branch.col, branch.row - 1);
+    step(world, log, 12);
+    expect(world.crumbles[0]?.phase).toBe('shaking');
+    syncFallen(world);
+    expect([
+      [5 * TILE - 1, 6 * TILE - 1, 7 * TILE],
+      [5 * TILE + 1, 6 * TILE + 1, 7 * TILE],
+    ]).toContainEqual(positions());
   });
 });
 

@@ -7,9 +7,9 @@
  * bars fit a longer or shorter course. The per-seed table prints when a bar is missed.
  *
  * Measured at v2 phase 4 (rivals at par, a metered dash, two clam rolls for rivals), Sunlit
- * Shallows, seeds 1-30 unless said: expert wins 21-27 of 30 per character, close wins (lead rival
- * within 8 s, now CLOSE_WIN_PAR_SHARE of par) 21-27; mean expert finish 106.9-115.0 s, 0.95-1.03 of par; the novice places 3rd or
- * 4th in 21-28 of 30 and finishes within 1.3x the winner every time. Test-only.
+ * Shallows, seeds 1-30 unless said. The expert wins 21-27 of 30 per character, with 21-27 close wins
+ * (lead rival within 8 s). Mean expert finish is 106.9-115.0 s, 0.95-1.03 of par. The novice places
+ * 3rd or 4th in 21-28 of 30 and finishes within 1.3x the winner every time. Test-only.
  *
  * Open balance problem: the cast's expert win rates are no longer within a few points of each other.
  * Over seeds 1-100: Baron 67%, Gil 73, Rook 75, Nib 76, Onyx 77, Rudy 85, Streak 89, Selene 91, a

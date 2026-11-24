@@ -3,7 +3,9 @@
  * on runs straight. A tile whose centre is inside a black hole's horizon counts as a wall. Only the
  * pilot reads these; the `Medium` members live in `way.ts`.
  */
-import { downhillPath, openTiles, tileOf } from '../../ai/steer.ts';
+
+import { downhillPath, openTiles } from '../../ai/steer.ts';
+import { tileOf } from '../../level/query.ts';
 import { holeAt } from '../../level/wells.ts';
 import { length } from '../../num.ts';
 import { type Box, TILE, type Vec, type World } from '../../types.ts';

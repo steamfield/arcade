@@ -5,7 +5,9 @@
  * takes one is a skill roll against `1 - wobble`; turning one down, and every bounce, rests the plan
  * for BOUNCE_REST_TICKS, so it judges a pad once and never bounces again in place.
  */
-import { hasClearSweep, tileCentre } from '../../ai/steer.ts';
+
+import { hasClearSweep } from '../../ai/steer.ts';
+import { tileCentre } from '../../level/query.ts';
 import { centreOf } from '../../racers.ts';
 import type { Racer, Vec, World } from '../../types.ts';
 import { mediumOf } from '../index.ts';

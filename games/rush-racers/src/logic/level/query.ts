@@ -39,6 +39,12 @@ export function cornerIsClear(tile: Vec, offset: Vec, isOpen: (tx: number, ty: n
   return isOpen(tile.x + offset.x, tile.y) && isOpen(tile.x, tile.y + offset.y);
 }
 
+/** The tile holding a point in world px. */
+export const tileOf = (point: Vec): Vec => ({ x: Math.floor(point.x / TILE), y: Math.floor(point.y / TILE) });
+
+/** A tile's centre in world px. */
+export const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE });
+
 /** The cell at a tile; anything outside the grid is rock. */
 export function cellAt(level: Level, tx: number, ty: number): Cell {
   return level.cells[ty]?.[tx] ?? 'rock';
