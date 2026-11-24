@@ -1,6 +1,9 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_COURSE } from '../logic/courses/index.ts';
+import { courseById, DEFAULT_COURSE } from '../logic/courses/index.ts';
+import type { GameEvent } from '../logic/events.ts';
 import { raceOn } from '../logic/test-world.ts';
+import { createWorld } from '../logic/world.ts';
 import { applyStage, STAGES, stageFor } from './debug-stage.ts';
 
 describe('which stage a launch gets', () => {
@@ -123,6 +126,55 @@ describe('applying a stage', () => {
       'shark charge',
       'shark stagger',
     ]);
+  });
+
+  it('moves an enemy-modes enemy to the nearest column with a floor when its own has none', () => {
+    // Columns 10-12 of the floor are a bounce cloud, not rock, as on Sky Test: the crab staged 9
+    // tiles ahead of the player in column 1 stands in column 9 instead, the nearest column with rock under it.
+    const { world } = raceOn(`
+      ####################
+      #.................F#
+      #.................F#
+      #1................F#
+      #2................F#
+      #3................F#
+      #4................F#
+      ####################
+    `);
+    world.level.cells[7] = world.level.cells[7]?.map((cell, x) => (x >= 10 && x <= 12 ? 'bounce' : cell)) ?? [];
+    applyStage(world, 'enemy-modes');
+    expect(world.enemies.filter((enemy) => enemy.kind === 'crab').map(({ home, mode }) => ({ home, mode }))).toEqual([
+      { home: { x: 8, y: 6 }, mode: 'patrol' },
+      { home: { x: 9, y: 6 }, mode: 'stagger' },
+    ]);
+  });
+
+  it('moves an enemy-modes enemy ahead rather than behind when columns either side of its own both have a floor', () => {
+    // A one-column hole in the floor at column 10: the crab staged 9 tiles ahead of the player in
+    // column 1 stands in column 11, ahead, where column 9 behind is just as near.
+    const { world } = raceOn(`
+      ####################
+      #.................F#
+      #.................F#
+      #1................F#
+      #2................F#
+      #3................F#
+      #4................F#
+      ####################
+    `);
+    world.level.cells[7] = world.level.cells[7]?.map((cell, x) => (x === 10 ? 'bounce' : cell)) ?? [];
+    applyStage(world, 'enemy-modes');
+    expect(world.enemies.filter((enemy) => enemy.kind === 'crab').map(({ home, mode }) => ({ home, mode }))).toEqual([
+      { home: { x: 8, y: 6 }, mode: 'patrol' },
+      { home: { x: 11, y: 6 }, mode: 'stagger' },
+    ]);
+  });
+
+  it('stages enemy-modes on Sky Test, whose floor has a bounce cloud in it', () => {
+    const skyTest = courseById('sky-test');
+    if (!skyTest) throw new Error('Sky Test is not registered');
+    const world = createWorld(skyTest, new EventLog<GameEvent>(100), { seed: 1 });
+    expect(() => applyStage(world, 'enemy-modes')).not.toThrow();
   });
 
   it('names the column when a stage needs a floor the course does not have', () => {
