@@ -69,7 +69,7 @@ Inside a game:
 - Every `pnpm arcade` command runs from the repo root (or a worktree's root), so you never need to `cd` into a game.
 - Other sessions often work in the same checkout. Stage files by path, never `git add -A` or `git add .`, and check `git status` for edits that aren't yours before blaming a failure on your change.
 - `.claude/worktrees/` holds other sessions' checkouts of this repo. `git grep` and ripgrep skip it (it's gitignored), but `grep -r`, `find` and searches with ignore files off read their copies too: exclude it.
-- Pushing main deploys the site (Cloudflare Workers Builds), and `pnpm deploy:api` deploys the multiplayer API. Do either only when the user asked for it in this session; "finish the feature" isn't a go-ahead to deploy. To get CI before main, push the branch and open a draft PR. Find the run for a commit with `gh run list --commit <sha>`.
+- Pushing main deploys the site (Cloudflare Workers Builds), and `pnpm deploy:api` deploys the multiplayer API. Do either only when the user asked in this session to push, merge to main or deploy; "finish the feature" isn't that ask. Here this rule decides when to push, ahead of any general "done means pushed" rule: once the user has asked, push and see CI green on that SHA. To get CI before main, push the branch and open a draft PR. Find the run for a commit with `gh run list --commit <sha>`.
 - Every game is original. Genre conventions are fine; other games' names, characters, art, music or levels are not.
 
 ## Versions (use these, not what you remember)

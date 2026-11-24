@@ -10,8 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../../ai/profiles.ts';
 import { DEFAULT_COURSE } from '../../courses/index.ts';
 import type { CharacterId } from '../../types.ts';
-import { parBand } from '../hard-bars.ts';
-import { meanPlayerFinish, race, seconds, table } from '../race-bots.ts';
+import { meanPlayerFinish, parBand, race, seconds, table } from '../race-bots.ts';
 
 const SEEDS = [13, 14, 15, 16, 17];
 /** The default character and Baron, v2's weakest Hard expert (67% over seeds 1-100). */

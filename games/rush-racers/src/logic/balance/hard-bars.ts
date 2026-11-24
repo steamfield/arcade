@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../ai/profiles.ts';
 import { courseOf, DEFAULT_COURSE } from '../courses/index.ts';
 import type { CharacterId } from '../types.ts';
-import { meanPlayerFinish, RIVAL_IDS, type Run, race, racesTimeoutMs, seconds, table } from './race-bots.ts';
+import { meanPlayerFinish, parBand, RIVAL_IDS, type Run, race, racesTimeoutMs, seconds, table } from './race-bots.ts';
 
 const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
 
@@ -39,13 +39,6 @@ const EXPERT_WINS_MIN = 17;
  */
 const CLOSE_WINS_MIN = 16;
 
-/**
- * A good race's mean expert finish as fractions of the course's par. Per-character means measure
- * 0.95-1.03 of Sunlit's par and five-seed means 0.97-1.06, so this catches a tuning that moves
- * race length by more than about 9 s.
- */
-const PAR_BAND = { min: 0.92, max: 1.08 } as const;
-
 /** Novice 3rd or 4th places needed of the 30 seeds: measured 21 (Selene) to 28. */
 const NOVICE_BEHIND_MIN = 18;
 
@@ -54,16 +47,6 @@ const NOVICE_IN_TOUCH_MIN = 27;
 
 /** Each test races at most the 30 seeds once (`race` memoises across the expert's three). */
 const RACES_TIMEOUT_MS = racesTimeoutMs(SEEDS.length);
-
-/**
- * The mean expert finish, in ticks, that counts as a good race on the course with `courseId`.
- *
- * @throws {Error} When `courseId` is neither a shipped nor a registered course.
- */
-export function parBand(courseId: string): { min: number; max: number } {
-  const { parTicks } = courseOf({ course: courseId });
-  return { min: PAR_BAND.min * parTicks, max: PAR_BAND.max * parTicks };
-}
 
 function rivalBest(run: Run): number | null {
   const times = RIVAL_IDS.map((id) => run.finish[id]).filter((t) => t !== null);
