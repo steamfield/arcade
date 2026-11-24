@@ -50,10 +50,11 @@ const TOP_ROUTE_HASH = 381524321;
  * The world now always hashes `whirlpoolRiders`, even on courses without whirlpools.
  * Re-pinned with the Maelstrom layout and its new top route.
  * Re-pinned after the Jelly Field steering fix changed rival encounters and the route was re-recorded.
+ * Re-pinned Normal after Sunlit Shallows capped Normal rivals at their unboosted swim force.
  */
 const BUSY_RACE_HASHES: readonly [Difficulty, number][] = [
   ['easy', 3122243653],
-  ['normal', 2875068262],
+  ['normal', 3841609866],
   ['hard', 1671608300],
 ];
 

@@ -24,7 +24,7 @@ const VENTS: LevelDef['vents'] = [
 ];
 
 /**
- * Sunlit Shallows, the ocean course: about 157 s for a good swimmer. Each section
+ * Sunlit Shallows, the ocean course: about 155 s for a good swimmer. Each section
  * shows one idea gently, then tests it.
  *
  * - Cols 0-94, the reef: a start bay, a current tunnel over a kelp bed, a pillar
@@ -126,9 +126,17 @@ const LEVEL: LevelDef = {
  * The expert bot's mean Hard finish (154.5 s) over seeds 1-200 and all eight characters, measured as
  * COURSES.md "parTicks" says. All 1600 races finished, with the slowest player finish in 11075 ticks.
  * The previous 7920 ticks covered seeds 1-30 before The Maelstrom added 160 columns. This measurement
- * includes the new stretch and the steering fix for the Jelly Field stalls.
+ * includes the new stretch and the steering fix for the Jelly Field stalls. The full Hard rerun
+ * after Normal catch-up tuning returned 9271 ticks with all 1600 expert runs finishing.
  */
 const PAR_TICKS = 9271;
+
+/**
+ * Normal rivals pace 1.5 tiles behind the player and cap their catch-up at their unboosted force.
+ * On seeds 1–10, novice Baron, Onyx and Rudy place top three in 5, 7 and 7 races respectively.
+ * The expert wins all 10 for every character, at least four more than the no-dash bot.
+ */
+const NORMAL_CATCH_UP = { lagTiles: 1.5, max: 1 };
 
 /** The zones the race screen calls out, from the section list above; the cave starts with its dark zone. */
 const SECTIONS: readonly CourseSection[] = [
@@ -152,4 +160,5 @@ export const SUNLIT_SHALLOWS: ShippedCourse = {
   listed: true,
   parTicks: PAR_TICKS,
   sections: SECTIONS,
+  catchUp: { normal: NORMAL_CATCH_UP },
 };
