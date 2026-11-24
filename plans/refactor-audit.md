@@ -256,3 +256,4 @@ Depends on: phase 6, phase 8
 - 1/a accepted choices: lint probes lint a temp copy of biome.json and tools/biome under `.arcade/guardrail-probe-*` with `--vcs-enabled=false` (stdin mode shows no rule diagnostics); the import regex also sees `from '...'` inside comments, accepted; owner folder is the first two path segments.
 - 1/b lane review: fixed in lane: attract error text printed [object Object]; Vite server leaked when Chromium fails to launch; run() error line merged into last output line; driver.problems() branches got tests (driver.test.ts added to Owns). Deferred: attract() split into recordFrames/encode, to phase 7 which reworks see/attract sessions.
 - 1/a lane review: fixed in lane: repo scan could pass on an empty file list; template-literal dynamic imports were not scanned.
+- 2026-11-23: user: "When this is production ready, merge to main, clean up, push to deploy". Push main after the final gate passes.
