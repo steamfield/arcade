@@ -223,6 +223,8 @@ Test cases (written in phase 5): `ensureCourseArt` loads a world's and theme's a
 
 ### Phase 7: shared tooling and config
 
+Scaffold: ca8685e34c14
+
 Demo: `pnpm arcade check --all` passes; `see` and `attract` share `openGameSession`; Rush Racers' `vite.config.ts` has no cast.
 Depends on: phase 2
 
