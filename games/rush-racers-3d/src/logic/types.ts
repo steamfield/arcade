@@ -126,11 +126,15 @@ export interface World {
   raceTicks: number;
   /** Stepped in this order every tick. `racers[0]` is always the player. */
   racers: Racer[];
+  /** The `createRng` state rival draws and AI noise come from; starts from `seed`. Hashed. */
+  rngState: number;
+  /** The tick the race will end on once every rival has finished (the grace period), else null. */
+  endTick: number | null;
   /** Not state; not hashed. */
   events: EventSink<GameEvent>;
 }
 
-/** What `createWorld` needs. `rivals` stays false until phase 2. */
+/** What `createWorld` needs. With `rivals`, three rivals line up beside the player. */
 export interface WorldOptions {
   course: Course;
   seed: number;

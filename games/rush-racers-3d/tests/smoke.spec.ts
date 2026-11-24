@@ -6,12 +6,12 @@ import { expect, test } from '@arcade/testing/playwright';
  * jump and a dash. The hash covers logic state only. Every browser project must compute the same
  * number.
  */
-const RUN_HASH = 951541475;
+const RUN_HASH = 2301819633;
 
 const COUNTDOWN = '_*180';
 
 test('starts on WebGL2 in the countdown, then runs once it ends', async ({ game }) => {
-  await game.open();
+  await game.open({ query: { scene: 'race' } });
   expect(await game.renderer()).toBe('webgl2');
   expect(await game.summary()).toMatchObject({ phase: 'countdown', scene: 'race' });
 
@@ -22,7 +22,7 @@ test('starts on WebGL2 in the countdown, then runs once it ends', async ({ game 
 });
 
 test('the same run reaches the same world on every browser', async ({ game }) => {
-  await game.open();
+  await game.open({ query: { scene: 'race' } });
   await game.play(
     parseInput(`${COUNTDOWN} forward*40 forward+right*20 forward+jump*10 forward*20 forward+dash forward*30`),
   );
@@ -30,7 +30,7 @@ test('the same run reaches the same world on every browser', async ({ game }) =>
 });
 
 test('on-screen controls run the player @touch', async ({ game }) => {
-  await game.open();
+  await game.open({ query: { scene: 'race' } });
   await game.play(parseInput(COUNTDOWN));
   await game.touch('forward', 30);
   const summary = (await game.summary()) as { player: { speed: number } };

@@ -55,4 +55,17 @@ export const RACE = {
   limitTicks: 4 * 60 * 60,
   /** Meters between racers on the start line, side by side across the track. */
   gridSpacing: 2.5,
+  /** Ticks the race goes on after every rival has finished, for the player to finish too. */
+  rivalsDoneGraceTicks: 600,
+} as const;
+
+/** How rivals drive. Lane 2a tunes these. */
+export const RIVAL = {
+  /** Catch-up: a rival this many meters or more behind the player runs at 1 + catchUp, as far ahead at 1 - catchUp. */
+  catchUpRange: 60,
+  catchUp: 0.1,
+  /** How far ahead along `s` a rival looks for pits, logs, mud and other racers, m. */
+  lookAhead: 25,
+  /** A rival dashes only with no pit or log within this many meters ahead, m. */
+  dashClearance: 30,
 } as const;

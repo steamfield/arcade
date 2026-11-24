@@ -18,6 +18,7 @@ import { Hud } from './hud.ts';
 import { input } from './input.ts';
 import { RacerView } from './racer-view.ts';
 import { Runtime } from './runtime.ts';
+import { createScreens } from './screens.ts';
 import { buildTrackFrames } from './track-geometry.ts';
 import { createTrackView } from './track-view.ts';
 
@@ -42,13 +43,15 @@ function reconcileRacerViews(scene: THREE.Scene, views: Map<RacerId, RacerView>,
 export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): Promise<GameHandle> {
   const log = createLogger(ctx.manifest.id);
   let syncViews = () => {};
+  const stage = stageFor(ctx.params, window.location.search, log);
   const runtime = await Runtime.start({
     saves,
     course: THORNWOOD_TRAIL,
     seed: ctx.params.seed,
     character: characterFor(window.location.search, log),
     notice: ctx.notice,
-    stage: stageFor(ctx.params, window.location.search, log),
+    stage,
+    startScene: stage !== null || ctx.params.scene === 'race' ? 'race' : 'title',
     gameId: ctx.manifest.id,
     readInput: () => {
       input.update();
@@ -66,6 +69,13 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
           prevPressed: input.justPressed('prev'),
         },
         confirmPressed: input.justPressed('fire'),
+        menu: {
+          left: input.justPressed('left'),
+          right: input.justPressed('right'),
+          up: input.justPressed('forward'),
+          down: input.justPressed('back'),
+          back: input.justPressed('dash'),
+        },
       };
     },
     afterTick: () => syncViews(),
@@ -89,6 +99,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const trail = createTrackView(course, frames, seed);
   const rig = new CameraRig(frames);
   const hud = new Hud(ctx.container);
+  const screens = createScreens(ctx.container);
   scene.add(trail.root);
 
   let drawnWorld: World | undefined;
@@ -121,6 +132,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     const { world, scene: screen, bests } = runtime;
     trail.tick(world.tick);
     hud.sync(world, screen, bests, screen === 'race' && world.tick < goUntil, newBest);
+    screens.sync({ scene: screen, cursor: runtime.cursor, character: runtime.character });
     renderer.render(scene, rig.camera);
   };
   const resize = () => {

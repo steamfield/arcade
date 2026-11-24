@@ -37,6 +37,7 @@ Thornwood Trail (`src/logic/courses/thornwood-trail.ts`), about 1.1 km in six se
 
 - `?seed=<n>`: the race seed.
 - `?stage=mid-course|near-finish|before-pit|before-log`: start the race already running at that spot (only with `?debug=1` or in test mode; a staged session never saves). Positions derive from the course in `src/engine/capture-stages.ts`.
+- `?scene=race`: skip the title and select screens and open on the race (any `?stage=` does too).
 - `?character=grit|skip|blaze|shade|cheeks|duke|dusk|fang`: race as that character instead of the saved one; an unknown id logs a warning listing the valid ones.
 - `?debug=1`: allows stages.
 

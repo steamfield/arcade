@@ -12,6 +12,7 @@ import { assertCourse, groundY } from './course.ts';
 import type { GameEvent } from './events.ts';
 import { NO_INPUT, stepRacer } from './racer.ts';
 import type { SaveData } from './save.ts';
+import { placeOf } from './standings.ts';
 import { DASH, RACE } from './tuning.ts';
 import type { Racer, RacerId, TickInputs, World, WorldOptions } from './types.ts';
 
@@ -48,7 +49,17 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
   });
   const racers = [racer('player', 0)];
   if (options.rivals) throw new Error('rivals: not implemented until phase 2');
-  return { seed: options.seed, course, phase: 'countdown', tick: 0, raceTicks: 0, racers, events };
+  return {
+    seed: options.seed,
+    course,
+    phase: 'countdown',
+    tick: 0,
+    raceTicks: 0,
+    racers,
+    rngState: options.seed >>> 0,
+    endTick: null,
+    events,
+  };
 }
 
 /** Advances the world by one tick. */
@@ -72,11 +83,16 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
     const wasFinished = racer.state === 'finished';
     stepRacer(racer, inputs[racer.id] ?? NO_INPUT, { course, events, raceTicks, speedMul: 1 }, dt);
     if (!wasFinished && racer.state === 'finished')
-      events.emit({ type: 'racer.finished', id: racer.id, ticks: raceTicks });
+      events.emit({ type: 'racer.finished', id: racer.id, ticks: raceTicks, place: placeOf(world, racer.id) });
   }
-  if (playerOf(world).state === 'finished' || world.raceTicks >= RACE.limitTicks) {
+  const playerFinished = playerOf(world).state === 'finished';
+  if (playerFinished || world.raceTicks >= RACE.limitTicks) {
     world.phase = 'finished';
-    world.events.emit({ type: 'race.ended', ticks: world.raceTicks });
+    world.events.emit({
+      type: 'race.ended',
+      ticks: world.raceTicks,
+      reason: playerFinished ? 'player-finished' : 'limit',
+    });
   }
 }
 

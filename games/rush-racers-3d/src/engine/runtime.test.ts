@@ -21,9 +21,13 @@ const course: Course = {
   parTicks: 300,
   features: [],
 };
-const idle: FrameInput = { race: NO_INPUT, confirmPressed: false };
+const idle: FrameInput = {
+  race: NO_INPUT,
+  confirmPressed: false,
+  menu: { left: false, right: false, up: false, down: false, back: false },
+};
 const forward: FrameInput = { ...idle, race: { ...NO_INPUT, forward: true } };
-const fire: FrameInput = { confirmPressed: true, race: { ...NO_INPUT, firePressed: true } };
+const fire: FrameInput = { ...idle, confirmPressed: true, race: { ...NO_INPUT, firePressed: true } };
 const FINISH_TICKS = 192;
 const STAGED_FINISH_TICKS = 150;
 let storeCount = 0;
@@ -40,6 +44,7 @@ async function start(saves: SaveStore<SaveData>, options: Partial<Pick<RuntimeOp
     seed: 1,
     character: null,
     stage: null,
+    startScene: 'race',
     notice: (message) => held.notices.push(message),
     readInput: () => {
       held.reads++;

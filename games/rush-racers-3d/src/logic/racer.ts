@@ -165,7 +165,7 @@ function resolveLogs(
       d = contactD;
       racer.vd = 0;
     }
-    if (hit.time > 0) events.emit({ type: 'racer.bumped', id: racer.id, s: contactS });
+    if (hit.time > 0) events.emit({ type: 'racer.bumped', id: racer.id, s: contactS, by: null });
     from = { s: contactS, d: contactD, y: from.y + (y - from.y) * hit.time };
   }
   return { s, d };

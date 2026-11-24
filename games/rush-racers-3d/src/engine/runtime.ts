@@ -1,6 +1,6 @@
 /**
  * The state the engine shares and the only place logic ticks. `Runtime` owns the event log, the
- * world, the fixed step, the scene flow (race, then results, then a fresh race on confirm), the
+ * world, the fixed step, the scene flow (title, select, race, results), the select cursor, the
  * saved character and bests, and the save queue. It has no three.js or DOM in it, so Vitest drives
  * it directly. The engine supplies where input comes from and what to do after each tick.
  */
@@ -22,13 +22,23 @@ export type EngineEvent =
   | { type: 'save.written' }
   | { type: 'save.failed'; reason: string };
 
-/** Which screen is up. Phase 2 adds `title` and `select`. */
-export type Scene = 'race' | 'results';
+/** Which screen is up. */
+export type Scene = 'title' | 'select' | 'race' | 'results';
 
-/** One tick's input: the racer's controls, and a fresh press of the confirm button (fire) for screens. */
+/** Fresh presses that move around the menus. `back` is the dash button. */
+export interface MenuInput {
+  left: boolean;
+  right: boolean;
+  up: boolean;
+  down: boolean;
+  back: boolean;
+}
+
+/** One tick's input: the racer's controls, a fresh press of the confirm button (fire), and menu presses for screens. */
 export interface FrameInput {
   race: TickInput;
   confirmPressed: boolean;
+  menu: MenuInput;
 }
 
 /** Ticks after `race.ended` before results accept confirm, so a button held across the line doesn't skip them. */
@@ -52,6 +62,8 @@ export interface RuntimeOptions {
   afterTick: (world: World) => void;
   /** A capture stage to put each race's world in. A staged session never writes a save. */
   stage: StageName | null;
+  /** The screen the session opens on: `race` for `?scene=race` or any stage, else `title`. */
+  startScene: 'title' | 'race';
 }
 
 /** The game's state and clock. Create one with {@link Runtime.start}. */
@@ -59,8 +71,10 @@ export class Runtime {
   readonly events = new EventLog<GameEvent | EngineEvent>();
   world!: World;
   scene: Scene = 'race';
-  /** The character every race in this session uses. */
+  /** The character races use: the save's (or `?character=`) until the player picks one on select. */
   character!: CharacterId;
+  /** On `select`, the highlighted card's index in `CHARACTER_IDS` (a 4x2 grid, row by row). */
+  cursor = 0;
   /** Best finish per course id, race ticks: the save's, updated as races finish. */
   bests: SaveData['bests'] = {};
   /** True when the loaded save was unreadable or newer than this code: it is never overwritten. */
@@ -95,6 +109,7 @@ export class Runtime {
     runtime.character = options.character ?? save.character;
     runtime.bests = { ...save.bests };
     runtime.newRace();
+    runtime.scene = options.startScene;
     return runtime;
   }
 
@@ -146,6 +161,10 @@ export class Runtime {
     this.events.tick = tick;
     const frame = this.options.readInput();
     switch (this.scene) {
+      case 'title':
+      case 'select':
+        // Phase 2 lane a: title goes to select on confirm; select moves the cursor, saves and races.
+        break;
       case 'race':
         stepWorld(this.world, { player: frame.race }, dt);
         if (this.world.phase === 'finished') this.showResults(tick);
