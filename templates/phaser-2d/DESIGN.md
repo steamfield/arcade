@@ -21,7 +21,7 @@ Jump height depends on how long jump is held (released early = lower jump).
 - `title`: menu with Continue (only when a save has progress) and New game.
 - `play`: the level. `?scene=play` skips the title (continues the save if there is one).
 - `?debug=1` draws the player hitbox plus tick and tile in the HUD.
-- `?stage=<name>` (only with `?debug=1` or in test mode) puts the world in a known state right after it is built, for captures: `near-goal` stands the player two tiles left of the flag. A staged run is never saved. Add stages in `src/engine/debug-stage.ts`.
+- `?stage=<name>` (only with `?debug=1` or in test mode) puts the world in a known state right after it is built, for captures: `near-goal` stands the player two tiles left of the flag. A staged run is never saved. Add stages in `src/engine/capture-stages.ts`.
 
 ## Structure
 

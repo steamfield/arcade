@@ -16,7 +16,7 @@ Walk the field, collect six orbs (one straight ahead, five placed by the seed), 
 ## Launch parameters
 
 - `?seed=<n>` changes the orb layout for a new game (a saved game keeps its own seed).
-- `?stage=nearly-cleared` leaves one orb to collect, for captures (only with `?debug=1` or in test mode; a staged game is never saved). Add stages in `src/engine/debug-stage.ts`.
+- `?stage=nearly-cleared` leaves one orb to collect, for captures (only with `?debug=1` or in test mode; a staged game is never saved). Add stages in `src/engine/capture-stages.ts`.
 - `?debug=1` is accepted; this template has no debug overlay yet.
 
 ## Structure
@@ -25,7 +25,7 @@ Walk the field, collect six orbs (one straight ahead, five placed by the seed), 
 - `src/engine/runtime.ts`: no three.js or Rapier. Owns the world, the fixed step, the serialized save writes and `worldHash()` (logic state only, never Rapier's crates). Tested in `runtime.test.ts`.
 - `src/engine/game.ts`: renderer, real-time loop, GameHandle for the shell; steps physics after each tick.
 - `src/engine/world-view.ts`: the three.js scene, drawn from the world.
-- `src/engine/debug-stage.ts`: `?stage=` capture stages.
+- `src/engine/capture-stages.ts`: `?stage=` capture stages.
 - `src/engine/physics.ts`: Rapier, lazy-loaded after the first frame. The player is a kinematic body driven by logic; crates are dynamic. `idle()` is false until physics is ready.
 - `src/engine/camera-rig.ts`: third-person follow camera (visual-only smoothing).
 

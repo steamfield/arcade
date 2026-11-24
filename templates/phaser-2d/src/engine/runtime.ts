@@ -14,7 +14,7 @@ import type { GameEvent } from '../logic/events.ts';
 import { LEVEL_1, parseLevel } from '../logic/level.ts';
 import { NEW_GAME, type SaveData } from '../logic/save.ts';
 import { createWorld, stepWorld, toSave, type World } from '../logic/world.ts';
-import { applyStage, stageFor } from './debug-stage.ts';
+import { applyStage, stageFor } from './capture-stages.ts';
 import { input } from './input.ts';
 
 /** Phaser scene keys, one per screen. */
@@ -119,7 +119,7 @@ export class Runtime {
   /** Builds the level's world from `save`, applies any `?stage=`, and starts the play scene. */
   startPlay(save: SaveData): void {
     this.world = createWorld(parseLevel(LEVEL_1), this.events, save);
-    const stage = stageFor(this.ctx.params, this.search);
+    const stage = stageFor(this.ctx.params, this.search, this.log);
     if (stage) applyStage(this.world, stage);
     this.staged = stage !== null;
     this.goTo('play');

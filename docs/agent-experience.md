@@ -43,7 +43,7 @@ Output is kept small. `pnpm arcade` is a bin, so pnpm adds no echo or ELIFECYCLE
 - **One clock per game.** The 2D template keeps tile physics in `src/logic/`. A Phaser game that wants arcade physics sets `arcade.customUpdate: true` and calls `physics.world.singleStep()` once per logic tick, never from Phaser's loop.
 - **Seeded randomness.** It comes from `createRng(seed)` in `@arcade/core`. `Math.random`, `Date.now` and `new Date()` are lint errors in `src/logic/` and `src/net/`.
 - **Semantic assertions.** Scenarios assert on scene, counts, status and events, or on positions with tolerances, never raw floats.
-- **A world hash.** Both templates and Rush Racers put `worldHash` (`hashState` from `@arcade/core` over logic state) in `debugState()`, and smoke pins one hash for a fixed input across desktop Chromium, the phone project and WebKit. Rush Racers' lockstep races depend on it holding bit for bit, which is why its logic also bans inexact `Math` (`tools/biome/no-inexact-math.grit`).
+- **A world hash.** Both templates and Rush Racers put `worldHash` (`hashState` from `@arcade/core` over logic state) in `debugState()`, and smoke pins one hash for a fixed input across desktop Chromium and the phone project, plus WebKit for Phaser (2D) games only (`browserProjects` in `packages/testing/src/playwright.ts` adds it only for them). Rush Racers' lockstep races depend on it holding bit for bit, which is why its logic also bans inexact `Math` (`tools/biome/no-inexact-math.grit`).
 
 ## Seeing the game
 

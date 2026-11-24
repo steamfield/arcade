@@ -3,12 +3,13 @@
  * shell and tests drive. Gameplay lives in `Runtime`; this file renders its state, steps Rapier
  * after each logic tick and reads input.
  */
+import { createLogger } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import { type GameContext, type GameHandle, renderPixelRatio } from '@arcade/shell';
 import * as THREE from 'three';
 import type { SaveData } from '../logic/save.ts';
 import { CameraRig } from './camera-rig.ts';
-import { stageFor } from './debug-stage.ts';
+import { stageFor } from './capture-stages.ts';
 import { input } from './input.ts';
 import { loadPhysics, type Physics } from './physics.ts';
 import { Runtime } from './runtime.ts';
@@ -25,7 +26,8 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     saves,
     seed: ctx.params.seed,
     notice: ctx.notice,
-    stage: stageFor(ctx.params, window.location.search),
+    stage: stageFor(ctx.params, window.location.search, createLogger(ctx.manifest.id)),
+    gameId: ctx.manifest.id,
     isReady: () => physics !== null,
     readInput: () => {
       input.update();

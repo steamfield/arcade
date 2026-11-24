@@ -225,7 +225,7 @@ Every game has the same shape. The 2D template is the reference; the 3D template
 | `templates/phaser-2d/src/engine/runtime.ts` | Phaser-free `Runtime`: scene flow, title menu, in-order save write queue, per-tick logic step; `idle()` is false while a scene loads or a save is written. |
 | `templates/phaser-2d/src/engine/runtime.test.ts` | Vitest test of the runtime: start, play to a coin, save order, restore, capture stage gate, loading guard, failed writes. |
 | `templates/phaser-2d/src/engine/debug.ts` | `debugSummary()` and `debugState()`, both with `worldHash`. |
-| `templates/phaser-2d/src/engine/debug-stage.ts` | `?stage=` capture stages (`near-goal`), only with `?debug=1` or in test mode; a staged run is never saved. |
+| `templates/phaser-2d/src/engine/capture-stages.ts` | `?stage=` capture stages (`near-goal`), only with `?debug=1` or in test mode; a staged run is never saved. |
 | `templates/phaser-2d/src/engine/input.ts` | Action names, key bindings, touch layout. |
 | `templates/phaser-2d/src/engine/textures.ts` | `Tex` keys and placeholder textures drawn at boot. |
 | `templates/phaser-2d/scenarios/kit.ts` | The game's typed `scenario`, `hold`, `tap`, `wait`, and presets (`TITLE_TO_PLAY`, `TWO_COINS_SAVE`). |
@@ -244,12 +244,13 @@ The 3D template (`templates/three-3d/`) has the same files with these difference
 | `templates/three-3d/src/main.ts` | Boot with `startThree`. |
 | `templates/three-3d/src/logic/world.ts` | Arena, orbs, player movement; `ARENA`, `ORB_COUNT`. No `toAscii`. |
 | `templates/three-3d/src/logic/events.ts` | `GameEvent` union. |
+| `templates/three-3d/src/logic/hash.ts`, `templates/three-3d/src/logic/hash.test.ts` | `hashWorld`: the world hash without the event log. |
 | `templates/three-3d/src/logic/save.ts` | Save shape (seed, collected orbs). |
 | `templates/three-3d/src/engine/game.ts` | `startThree`: renderer, rAF loop (off in test mode), lazy physics, `GameHandle` (`idle()` waits for physics and save writes, `worldHash` in debug state). |
 | `templates/three-3d/src/engine/runtime.ts` | Three- and Rapier-free `Runtime`: `FixedStep` tick, orb autosave queue (`saving`, `settled()`, one `failWrite` that emits `save.failed`), `loadSave`. |
 | `templates/three-3d/src/engine/runtime.test.ts` | Vitest test of the runtime: collect, autosave, restore, staged runs never save, failed and thrown writes. |
 | `templates/three-3d/src/engine/world-view.ts` | `createWorldView`: meshes for arena, player, orbs and crates, synced from logic state. |
-| `templates/three-3d/src/engine/debug-stage.ts` | `?stage=` capture stages (`nearly-cleared`), only with `?debug=1` or in test mode; a staged run is never saved. |
+| `templates/three-3d/src/engine/capture-stages.ts` | `?stage=` capture stages (`nearly-cleared`), only with `?debug=1` or in test mode; a staged run is never saved. |
 | `templates/three-3d/src/engine/physics.ts` | Lazy Rapier: `loadPhysics`, kinematic player, `CRATE_SPAWNS`. `idle()` is false until it loads. |
 | `templates/three-3d/src/engine/camera-rig.ts` | `CameraRig`: follow camera smoothed per tick. |
 | `templates/three-3d/src/engine/input.ts` | Actions, keys, touch layout. |
