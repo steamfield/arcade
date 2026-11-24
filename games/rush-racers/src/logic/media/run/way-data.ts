@@ -9,8 +9,8 @@ import type { GridSize } from '../../types.ts';
 import type { MediumNav, PilotMemory } from '../types.ts';
 import { wrongKind } from './data.ts';
 
-/** How a runner gets from one stand tile to another. */
-export type LinkKind = 'walk' | 'drop' | 'jump';
+/** How a runner gets from one stand tile to another; a bounce is a spring mushroom's launch. */
+export type LinkKind = 'walk' | 'drop' | 'jump' | 'bounce';
 
 /** One way from a stand tile to another, with the time it takes. */
 export interface RunLink {
@@ -21,7 +21,7 @@ export interface RunLink {
   dir: -1 | 1;
   /** Ticks from leaving the stand tile to standing on `to`. */
   ticks: number;
-  /** Ticks Up is held from the press, counting it; 0 unless the link is a jump. */
+  /** Ticks Up is held from the press, counting it: a jump's hold, or a bounce's for the higher launch; 0 otherwise. */
   holdTicks: number;
   /** True for a jump over a gap or off an edge: the runner takes off from the far edge of the stand tile for the most reach. */
   takeOffAtEdge: boolean;

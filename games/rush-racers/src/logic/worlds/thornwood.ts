@@ -1,5 +1,6 @@
 /**
- * Thornwood, the forest world: racers run and jump. Data only; only `worlds/index.ts` imports this file.
+ * Thornwood, the forest world: racers run and jump, and its Cannonball rolls a Boulder along the
+ * ground (`powerups/cannonball/boulder.ts`). Data only; only `worlds/index.ts` imports this file.
  */
 import type { WorldDef } from './types.ts';
 
@@ -33,4 +34,5 @@ export const THORNWOOD: WorldDef = {
   pickups: { clam: 'Crate', pearl: 'Acorn' },
   enemies: { shark: 'Boar', eel: 'Snake', crab: 'Beetle' },
   hazards: { urchin: 'Thorn Bush', jelly: 'Wasp' },
+  cannonball: 'boulder',
 };

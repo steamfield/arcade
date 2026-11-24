@@ -1,15 +1,23 @@
 /**
- * How a runner gets from one stand tile to another: the walk, drop and jump links that `nav.ts`
- * solves for the least time to the finish. Walks and drops follow the terrain (`terrain.ts`); jumps
- * come from tracing each hold length through it (`arc.ts`), so a link exists only where a real jump
- * with that hold lands.
+ * How a runner gets from one stand tile to another: the walk, drop, jump and bounce links that
+ * `nav.ts` solves for the least time to the finish. Walks and drops follow the terrain (`terrain.ts`);
+ * jumps come from tracing each hold length through it, and bounces from tracing a spring mushroom's
+ * launch (`arc.ts`), so a link exists only where a real jump or launch lands.
  */
 import { TICK_DT } from '@arcade/core';
 import { type Level, RACER_SIZE, TILE } from '../../types.ts';
 import type { MediumTuning } from '../types.ts';
-import { arcsFor, type Flight, SAMPLE_TICKS, traceJump, traceReachPx } from './arc.ts';
+import { arcsFor, type Flight, SAMPLE_TICKS, traceJump, traceReachPx, traceSpring } from './arc.ts';
 import { runExtra } from './physics.ts';
-import { holdsRunner, isSolidTile, isStandTile, standIndices, type Terrain, terrainOf } from './terrain.ts';
+import {
+  holdsRunner,
+  isSolidTile,
+  isSpringTile,
+  isStandTile,
+  standIndices,
+  type Terrain,
+  terrainOf,
+} from './terrain.ts';
 import type { RunLink } from './way-data.ts';
 
 const HALF_BODY_WIDTH = RACER_SIZE.width / 2;
@@ -65,13 +73,18 @@ function dropLink(flight: Flight, from: number, dir: -1 | 1): RunLink | null {
   return null;
 }
 
-/** True when `to` is on `from`'s row with stand tiles all the way between, so walking gets there and a jump adds nothing. */
+/**
+ * True when `to` is on `from`'s row with stand tiles all the way between and no spring mushroom, so
+ * walking gets there and a jump adds nothing. A mushroom on the way would launch a walker, so a jump
+ * over it is a way of its own.
+ */
 function isWalkable(terrain: Terrain, from: number, to: number): boolean {
   const row = Math.floor(from / terrain.width);
   if (Math.floor(to / terrain.width) !== row) return false;
   const [first, last] = from < to ? [from, to] : [to, from];
   for (let tile = first; tile <= last; tile++) {
-    if (!isStandTile(terrain, tile % terrain.width, row)) return false;
+    const col = tile % terrain.width;
+    if (!isStandTile(terrain, col, row) || isSpringTile(terrain, col, row)) return false;
   }
   return true;
 }
@@ -113,8 +126,36 @@ function jumpLinks(flight: Flight, from: number, alreadyLinked: Set<number>): Ru
   return links;
 }
 
-/** Every link out of stand tile `from`: walks and drops left and right, then jumps to tiles they don't reach. */
+/** Ticks of Up a bounce link holds as the runner lands on its mushroom, for the higher launch. */
+export const BOUNCE_HOLD_TICKS = 1;
+
+/**
+ * The bounce links out of stand tile `from` on a spring mushroom: the quickest launch, Up held or
+ * not, to each other stand tile one lands on, either way. None lead back to `from`, which would only
+ * launch again.
+ */
+function bounceLinks(flight: Flight, from: number): RunLink[] {
+  const quickest = new Map<number, RunLink>();
+  for (const dir of DIRECTIONS) {
+    for (const held of [false, true]) {
+      const landing = traceSpring(flight, from, held, dir);
+      if (!landing || landing.to === from) continue;
+      const known = quickest.get(landing.to);
+      if (known && known.ticks <= landing.ticks) continue;
+      const holdTicks = held ? BOUNCE_HOLD_TICKS : 0;
+      quickest.set(landing.to, { kind: 'bounce', ...landing, dir, holdTicks, takeOffAtEdge: false });
+    }
+  }
+  return [...quickest.values()];
+}
+
+/**
+ * Every link out of stand tile `from`: on a spring mushroom only its bounces, since a runner there is
+ * launched at once; elsewhere walks and drops left and right, then jumps to tiles they don't reach.
+ */
 function linksFrom(flight: Flight, from: number): RunLink[] {
+  const { terrain } = flight;
+  if (isSpringTile(terrain, from % terrain.width, Math.floor(from / terrain.width))) return bounceLinks(flight, from);
   const onFoot = DIRECTIONS.flatMap((dir) => [walkLink(flight, from, dir) ?? dropLink(flight, from, dir)]);
   const known = onFoot.filter((link): link is RunLink => link !== null);
   const taken = new Set([from, ...known.map((link) => link.to)]);
@@ -150,7 +191,7 @@ function staleColumns(level: Level, before: ReadonlySet<number>, after: Readonly
 
 /**
  * Every link out of every stand tile of `level` with `broken` coral gone: walks and drops left and
- * right, and jumps to each stand tile a held jump reaches. A 3-tile pit is jumped, a 5-tile one isn't.
+ * right, jumps to each stand tile a held jump reaches, and bounces off spring mushrooms. A 3-tile pit is jumped, a 5-tile one isn't.
  *
  * Coral breaks mid-race and the whole table used to be re-traced each time, which is most of a run
  * race's cost. So the last table built for `level` is kept, and only stand tiles within a jump's

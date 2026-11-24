@@ -34,6 +34,8 @@ export const ForestTile = {
   ledge: 2,
   /** Earth under earth or stone: no grass top. */
   rockBuried: 3,
+  /** A spring mushroom (bounce cell). */
+  bounce: 4,
 } as const;
 
 /** Forest animation keys: mud bubbles, the four wind flows and the wasp's wings. */

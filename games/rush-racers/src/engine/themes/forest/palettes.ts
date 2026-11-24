@@ -16,6 +16,11 @@ export const ForestTerrainPalette = {
   crackedStone: [0x24242c, 0x6a6a78, 0x9a9aa8, 0x6e9a4a],
   /** Branch: bark shadow, bark, lit bark. Thin and warm, a platform you jump up through. */
   branch: [0x2a160c, 0x6b4423, 0x9a6a3a],
+  /**
+   * Spring mushroom: outline and the soil round its stem (earth's deep soil), red cap, cream spots
+   * and stem, the cap's shaded rim. Bright, so a spring reads as a toy.
+   */
+  mushroom: [0x1e140e, 0xd0402c, 0xf2e2c4, 0x8a2418],
   /** Mud: dark, body, wet shine. Muted so racers inside it still read. */
   mud: [0x1c120a, 0x3a2614, 0x5e4228],
   /** Wind streaks and leaves: faint and bright, so gusts and drafts read without hiding racers. */
