@@ -2,7 +2,8 @@
  * The music half of the audio adapter: which song each screen wants (title theme, race theme from GO
  * with a tempo lift on the final stretch, a win or lose jingle into the results loop), starting it once
  * the AudioContext is running and announcing each song and section as `audio.played`. It remembers
- * whether the local racer won, since the results screen's jingle depends on it.
+ * whether the local racer won, since the results screen's jingle depends on it, and lets the sound
+ * test audition any song in place of the screen's own until the next scene.
  */
 import type { RacerId } from '../../logic/types.ts';
 import { FINAL_STRETCH_AT } from '../race-progress.ts';
@@ -23,7 +24,7 @@ export interface MusicCueOptions {
   announce(key: string, kind: 'song'): void;
   /** The slot the screen follows, whose finish decides the win or lose jingle. */
   localRacer(): RacerId;
-  /** The song the current race plays; read when each race starts. */
+  /** The song the current race plays; read once when each race starts. */
   raceSong(): SongName;
 }
 
@@ -35,11 +36,35 @@ export interface MusicCues {
   sync(): void;
   /** Lifts the race theme's tempo once the leader reaches the final stretch (`fraction` of the way round). */
   onRaceProgress(fraction: number): void;
+  /**
+   * Plays `name` at once from its start, or from the first beat of `section`, holding it until the
+   * next audition or `scene.started`; null stops the music. A one-shot jingle ends in silence.
+   *
+   * @throws {Error} When `section` is not one of the song's sections; the music is left as it was.
+   */
+  audition(name: SongName | null, section?: string): void;
 }
 
 /** The song for `name`. The single place songs are chosen. */
 export function songFor(name: SongName): Song {
   return songs[name];
+}
+
+/**
+ * The beat `section` of `song` starts on.
+ *
+ * @throws {Error} When `song` has no section called `section`.
+ */
+function sectionStartBeat(song: Song, section: string): number {
+  const found = song.sections.find((candidate) => candidate.name === section);
+  if (found) return found.bar * song.beatsPerBar;
+  const known = song.sections.map((candidate) => `"${candidate.name}"`).join(', ') || 'none';
+  throw new Error(`Song "${song.name}" has no section "${section}"; its sections are ${known}.`);
+}
+
+/** The jingle that ends a race on the results screen, kept until the results loop takes over. */
+function isJingle(name: SongName | null): boolean {
+  return name === 'win' || name === 'lose';
 }
 
 /** Creates music cues that want silence until a scene starts. */
@@ -49,19 +74,30 @@ export function createMusicCues(options: MusicCueOptions): MusicCues {
   let wanted: SongName | null = null;
   /** The music actually started, which lags `wanted` while the context is suspended. */
   let started: SongName | null = null;
+  /** The beat the next start plays from; only an audition of a section moves it off 0. */
+  let fromBeat = 0;
+  /** Whether the next start replays `wanted` even when it is already playing, as an audition does. */
+  let restart = false;
+  /** Whether an audition holds the music until the next scene. */
+  let auditioning = false;
+  /** The track this race plays, read once at GO; null outside a race. */
+  let raceTrack: SongName | null = null;
   let lifted = false;
   let won: boolean | null = null;
   /** Whether the local racer crossed the line this race; `race.finished` only says whether slot 1 did. */
   let localFinished = false;
 
   const start = () => {
-    if (!running() || wanted === started) return;
+    if (!running() || (wanted === started && !restart)) return;
     started = wanted;
+    restart = false;
+    const beat = fromBeat;
+    fromBeat = 0;
     if (wanted === null) {
       sequencer.stop();
       return;
     }
-    sequencer.play(songFor(wanted));
+    sequencer.play(songFor(wanted), beat);
     announce(wanted, 'song');
   };
 
@@ -69,26 +105,34 @@ export function createMusicCues(options: MusicCueOptions): MusicCues {
     if (!running() || started === null) return;
     const news = sequencer.poll();
     for (const section of news.sections) announce(`${started}:${section}`, 'song');
-    if (news.ended && (started === 'win' || started === 'lose')) {
+    if (news.ended && isJingle(started) && !auditioning) {
       wanted = 'results';
       start();
     }
+  };
+
+  const onSceneStarted = (scene: string) => {
+    auditioning = false;
+    fromBeat = 0;
+    restart = false;
+    if (scene === 'title') wanted = 'title';
+    else if (scene === 'race') {
+      wanted = null;
+      raceTrack = null;
+      lifted = false;
+      won = null;
+      localFinished = false;
+    } else if (scene === 'results') wanted = won === null ? 'results' : won ? 'win' : 'lose';
   };
 
   return {
     onEvent(event) {
       switch (event.type) {
         case 'scene.started':
-          if (event.scene === 'title') wanted = 'title';
-          else if (event.scene === 'race') {
-            wanted = null;
-            lifted = false;
-            won = null;
-            localFinished = false;
-          } else if (event.scene === 'results') wanted = won === null ? 'results' : won ? 'win' : 'lose';
-          return;
+          return onSceneStarted(event.scene);
         case 'race.started':
-          wanted = options.raceSong();
+          raceTrack = options.raceSong();
+          if (!auditioning) wanted = raceTrack;
           return;
         case 'racer.finished':
           if (event.id === options.localRacer()) localFinished = true;
@@ -104,10 +148,18 @@ export function createMusicCues(options: MusicCueOptions): MusicCues {
       followSequencer();
     },
     onRaceProgress(fraction) {
-      if (lifted || fraction < FINAL_STRETCH_AT || started !== options.raceSong() || !running()) return;
+      if (lifted || fraction < FINAL_STRETCH_AT || started === null || started !== raceTrack || !running()) return;
       lifted = true;
       sequencer.setTempoScale(LIFT_TEMPO);
       announce(`${started}:lift`, 'song');
+    },
+    audition(name, section) {
+      const beat = name !== null && section !== undefined ? sectionStartBeat(songFor(name), section) : 0;
+      auditioning = true;
+      wanted = name;
+      fromBeat = beat;
+      restart = true;
+      start();
     },
   };
 }

@@ -273,3 +273,132 @@ describe('the adapter schedules each effect through the synth', () => {
     expect(scheduled([{ type: 'racer.kicked', id: 'player' }])).toEqual(['noise 600']);
   });
 });
+
+/** A sequencer that records what it is asked to play, and reports the sections and endings a test queues. */
+function recordingSequencer() {
+  const calls: string[] = [];
+  let news = { sections: [] as string[], ended: false };
+  const sequencer: Sequencer = {
+    playing: null,
+    play(song, fromBeat) {
+      calls.push(`play ${song.name} from ${fromBeat ?? 0}`);
+    },
+    stop() {
+      calls.push('stop');
+    },
+    setTempoScale(scale) {
+      calls.push(`tempo ${scale}`);
+    },
+    poll() {
+      const reported = news;
+      news = { sections: [], ended: false };
+      return reported;
+    },
+    dispose() {},
+  };
+  const report = (sections: string[], ended: boolean) => {
+    news = { sections, ended };
+  };
+  return { sequencer, calls, report };
+}
+
+/** An adapter on a running synth with a recording sequencer, and the songs it announces. */
+function musicRig(raceSong: AdapterOptions['raceSong']) {
+  const log = new EventLog<RuntimeEvent>();
+  const { sequencer, calls, report } = recordingSequencer();
+  const adapter = createAdapter({
+    synth: runningSynth(),
+    sequencer,
+    sfxBus: {} as AudioNode,
+    events: log,
+    rng: { next: () => 0.5 } as never,
+    onError(error) {
+      throw error;
+    },
+    raceSong,
+  });
+  const drain = (...events: RuntimeEvent[]) =>
+    adapter.onEvents(events.map((event, seq) => ({ ...event, tick: 0, seq })));
+  const announced = () =>
+    log
+      .all()
+      .filter((e) => e.type === 'audio.played' && e.kind === 'song')
+      .map((e) => (e as { key: string }).key);
+  return { adapter, calls, report, drain, announced };
+}
+
+describe('the adapter and the race music', () => {
+  it('plays and lifts the track it was given at GO, even if the answer changes later', () => {
+    let track: 'thornwood' | 'farside' = 'thornwood';
+    const rig = musicRig(() => track);
+    rig.drain({ type: 'scene.started', scene: 'race' }, { type: 'race.started' });
+    track = 'farside';
+    rig.adapter.onRaceProgress(0.95);
+    expect(rig.calls).toEqual(['play thornwood from 0', 'tempo 1.1']);
+    expect(rig.announced()).toEqual(['thornwood', 'thornwood:lift']);
+  });
+});
+
+describe('the adapter and the sound test', () => {
+  it('plays an auditioned song from its start at once, replacing the screen’s music', () => {
+    const rig = musicRig(() => 'race');
+    rig.drain({ type: 'scene.started', scene: 'title' });
+    rig.adapter.audition('farside');
+    expect(rig.calls).toEqual(['play title from 0', 'play farside from 0']);
+    expect(rig.announced()).toEqual(['title', 'farside']);
+  });
+
+  it('starts an audition from the first beat of a named section, and keeps announcing sections', () => {
+    const rig = musicRig(() => 'race');
+    rig.adapter.audition('race', 'B');
+    rig.report(['turnaround'], false);
+    rig.drain();
+    // B starts on bar 18 of the race song, in 4/4.
+    expect(rig.calls).toEqual(['play race from 72']);
+    expect(rig.announced()).toEqual(['race', 'race:turnaround']);
+  });
+
+  it('replays a song auditioned twice', () => {
+    const rig = musicRig(() => 'race');
+    rig.adapter.audition('title');
+    rig.adapter.audition('title');
+    expect(rig.calls).toEqual(['play title from 0', 'play title from 0']);
+  });
+
+  it('stops the music when nothing is auditioned', () => {
+    const rig = musicRig(() => 'race');
+    rig.drain({ type: 'scene.started', scene: 'title' });
+    rig.adapter.audition(null);
+    rig.drain();
+    expect(rig.calls).toEqual(['play title from 0', 'stop']);
+    expect(rig.announced()).toEqual(['title']);
+  });
+
+  it('rejects a section the song does not have, naming the song and its sections', () => {
+    const rig = musicRig(() => 'race');
+    rig.drain({ type: 'scene.started', scene: 'title' });
+    expect(() => rig.adapter.audition('race', 'bridge')).toThrow(
+      'Song "race" has no section "bridge"; its sections are "intro", "A", "A\'", "B", "turnaround".',
+    );
+    rig.drain();
+    expect(rig.calls).toEqual(['play title from 0']);
+  });
+
+  it('holds an audition until the next scene, which brings back that scene’s music', () => {
+    const rig = musicRig(() => 'race');
+    rig.adapter.audition('farside');
+    rig.drain({ type: 'race.started' });
+    rig.drain({ type: 'scene.started', scene: 'title' });
+    expect(rig.calls).toEqual(['play farside from 0', 'play title from 0']);
+  });
+
+  it('lets an auditioned jingle end in silence instead of moving on to the results loop', () => {
+    const rig = musicRig(() => 'race');
+    rig.adapter.audition('win');
+    rig.report([], true);
+    rig.drain();
+    rig.drain();
+    expect(rig.calls).toEqual(['play win from 0']);
+    expect(rig.announced()).toEqual(['win']);
+  });
+});

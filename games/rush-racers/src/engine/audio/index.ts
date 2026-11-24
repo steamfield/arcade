@@ -83,9 +83,6 @@ export function createAudio(
   log.debug('audio ready', { state: context.state, muted: settings.muted });
   return {
     ...adapter,
-    audition() {
-      throw new Error('not implemented');
-    },
     setMuted: (muted) => synth.setMuted(muted),
     dispose() {
       stopUnlocking();

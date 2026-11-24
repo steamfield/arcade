@@ -52,7 +52,7 @@ export interface AdapterOptions {
   stormAudible?(zone: number, reachPx: number): boolean;
   /** The slot the screen follows, whose own moments sound; 'player' when omitted. */
   localRacer?(): RacerId;
-  /** The song the current race plays: the course's own (`Course.song`). Read when each race starts. */
+  /** The track the current race plays from the course's set. Read once when each race starts. */
   raceSong(): SongName;
   /**
    * The world being raced, or null off the race screen. Read once a drain for the local racer's
@@ -96,8 +96,8 @@ function flavourOf(world: World | null): WorldFlavour {
   return world ? flavourFor(courseOf(world)) : NEUTRAL_FLAVOUR;
 }
 
-/** Builds the event-to-sound half of the `AudioPort`. */
-export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvents' | 'onRaceProgress'> {
+/** Builds the event-to-sound half of the `AudioPort`, and the sound test's auditions. */
+export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvents' | 'onRaceProgress' | 'audition'> {
   const { synth, sequencer, events } = options;
   const running = () => synth.context.state === 'running';
   /**
@@ -225,5 +225,6 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       music.sync();
     },
     onRaceProgress: music.onRaceProgress,
+    audition: music.audition,
   };
 }
