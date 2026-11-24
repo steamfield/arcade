@@ -2,26 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { Tex } from '../art/keys.ts';
 import { measureFrames } from '../art/pixel.ts';
 import { ReefItemTex, ReefRacerTex, ReefTex } from '../worlds/reef/keys.ts';
+import { REEF_HAZARD_LOOPS, REEF_HAZARD_SHEETS } from '../worlds/reef/sprites/hazards.ts';
 import { ThornItemTex, ThornRacerTex, ThornTex } from '../worlds/thornwood/keys.ts';
+import { THORN_HAZARD_LOOPS, THORN_HAZARD_SHEETS } from '../worlds/thornwood/sprites/hazards.ts';
 import { ForestAnim, ForestTex, ForestTile } from './forest/keys.ts';
-import { ForestHazardPalette } from './forest/palettes.ts';
 import { FOREST_SHEETS } from './forest/sprites/index.ts';
 import { FOREST_THEME } from './forest.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import { OCEAN_THEME } from './ocean.ts';
-
-/** WCAG contrast ratio of two 0xRRGGBB colours. */
-function contrast(a: number, b: number): number {
-  const luminance = (colour: number) => {
-    const [r = 0, g = 0, bl = 0] = [16, 8, 0].map((shift) => {
-      const c = ((colour >> shift) & 0xff) / 255;
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
-  };
-  const [hi = 0, lo = 0] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
 
 const sheetFor = (key: string) => FOREST_SHEETS.find((sheet) => sheet.key === key);
 const frameNames = (key: string) => sheetFor(key)?.frames.map((frame) => frame.name);
@@ -46,19 +34,20 @@ describe('the forest theme', () => {
       ...Object.values(ThornTex),
       ...Object.values(ThornRacerTex),
       ...Object.values(ThornItemTex),
+      ...[...REEF_HAZARD_SHEETS, ...THORN_HAZARD_SHEETS].map((sheet) => sheet.key),
     ];
     const otherAnims = [
       ...Object.values(OCEAN_THEME.terrain.flowing).map((art) => art.anim),
-      OCEAN_THEME.hazards.jelly.anim,
+      ...[...REEF_HAZARD_LOOPS, ...THORN_HAZARD_LOOPS].map((loop) => loop.key),
     ];
     const forestTextures: string[] = Object.values(ForestTex);
     const forestAnims: string[] = Object.values(ForestAnim);
     expect(otherTextures.filter((key) => forestTextures.includes(key))).toEqual([]);
-    expect(otherAnims.filter((key) => key !== null && forestAnims.includes(key))).toEqual([]);
+    expect(otherAnims.filter((key) => forestAnims.includes(key))).toEqual([]);
   });
 
   it('gives every looping texture the two frames its animation asks for', () => {
-    const loops = [ForestTex.mud, ForestTex.wasp, ForestTex.windRight, ForestTex.windLeft];
+    const loops = [ForestTex.mud, ForestTex.windRight, ForestTex.windLeft];
     for (const key of [...loops, ForestTex.windUp, ForestTex.windDown])
       expect(frameNames(key), key).toEqual(['a', 'b']);
   });
@@ -90,18 +79,6 @@ describe('the forest theme', () => {
     const sizeOf = (key: string) => measureFrames(key, sheetFor(key)?.frames ?? []);
     expect(sizeOf(far?.texture ?? '').height).toBe(far?.height);
     expect(sizeOf(near?.texture ?? '').height).toBe(near?.height);
-  });
-
-  it('animates the wasp and leaves the thorn bush still, in the hazard slots the views read', () => {
-    expect(FOREST_THEME.hazards.urchin).toEqual({ texture: ForestTex.thornBush, frame: 'a', anim: null });
-    expect(FOREST_THEME.hazards.jelly).toMatchObject({ texture: ForestTex.wasp, anim: ForestAnim.waspBuzz });
-  });
-
-  it("keeps the thorn bush's body 3:1 off every forest contrast band, so it reads in the darkest and lightest canopy", () => {
-    const weakest = Math.min(
-      ...FOREST_THEME.contrastBands.map((band) => contrast(ForestHazardPalette.thornBush[1], band.colour)),
-    );
-    expect(weakest).toBeGreaterThanOrEqual(3);
   });
 
   it('drops air particles faster than the ocean and with less drag', () => {

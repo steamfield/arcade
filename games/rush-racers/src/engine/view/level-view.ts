@@ -12,9 +12,8 @@ import type { Cell, Level } from '../../logic/types.ts';
 import { TILE, type Vec } from '../../logic/types.ts';
 import { Frame, type FrameKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import type { HazardSkin, TerrainArt, Theme } from '../themes/types.ts';
-import type { ObjectSkin } from '../worlds/object-skin.ts';
-import type { WorldSkin } from '../worlds/types.ts';
+import type { TerrainArt, Theme } from '../themes/types.ts';
+import type { HazardSkin, WorldObjects, WorldSkin } from '../worlds/types.ts';
 import { addHazardSprite } from './hazard-view.ts';
 import { Layer } from './layers.ts';
 import { type Legend, tileAt } from './terrain-tile.ts';
@@ -38,7 +37,7 @@ const TILESET_NAME = 'reef';
 
 /**
  * Builds every course object for `level` in `scene`, drawn with `theme` and the world's `skin`
- * (its pearl and clam stand-ins). `legend` is the course's own glyph legend, so its glyphs can draw with their own art.
+ * (its pearl, clam, urchin and jelly stand-ins). `legend` is the course's own glyph legend, so its glyphs can draw with their own art.
  *
  * @throws {Error} When Phaser rejects the generated tileset or layer, which means the theme's textures were not registered.
  */
@@ -53,7 +52,7 @@ export function createLevelView(
   addFlowingCells(scene, level, theme.terrain);
   addWaterline(scene, level, theme.terrain);
   addFinishGate(scene, level, theme.terrain);
-  const placeholders = addPlaceholders(scene, level, theme.hazards, skin.objects.pickups);
+  const placeholders = addPlaceholders(scene, level, skin.objects);
   return {
     placeholders,
     onEvents(events) {
@@ -140,8 +139,7 @@ function addFinishGate(scene: Phaser.Scene, level: Level, terrain: TerrainArt): 
 function addPlaceholders(
   scene: Phaser.Scene,
   level: Level,
-  hazards: Theme['hazards'],
-  pickups: ObjectSkin['pickups'],
+  { hazards, pickups }: Pick<WorldObjects, 'hazards' | 'pickups'>,
 ): LevelPlaceholders {
   const imagesAt = (tiles: Vec[], texture: string, frame?: FrameKey) =>
     tiles.map((tile) => scene.add.image(centre(tile.x), centre(tile.y), texture, frame).setDepth(Layer.objects));

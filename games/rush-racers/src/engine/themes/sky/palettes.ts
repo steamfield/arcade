@@ -1,6 +1,6 @@
 /**
- * The sky theme's colours: Cloudreach's thunderheads, puff, bounce and fog clouds, wind, spark clouds
- * and static wisps, the far and near cloud banks and the setting sun, the sky's bands, the evening
+ * The sky theme's colours: Cloudreach's thunderheads, puff, bounce and fog clouds, wind, the far and
+ * near cloud banks and the setting sun, the sky's bands, the evening
  * haze across them and the storm cell's tint. A sky at dusk, twilight indigo overhead and dusky rose
  * at the horizon, held no lighter than the racers allow: every racer's main colour and all global art
  * hold 3:1 off every sky band, every band seen through the haze, and every cloud bank and the sun
@@ -26,14 +26,6 @@ export const SkyTerrainPalette = {
   wind: [0x7a9ac8, 0xe4eeff],
   /** Finish banner: post, dark check, light check, flag cloth. */
   finish: [0x16161e, 0x2a2a3a, 0xf2f2f2, 0xffcc33],
-} as const satisfies Record<string, Palette>;
-
-/** Hazard palettes: dark outlines with bright bodies, so danger reads by shape and value, not hue alone. */
-export const SkyHazardPalette = {
-  /** Spark cloud (the urchin's slot): outline, a lit violet body that holds 3:1 off the sky, yellow sparks. */
-  sparkCloud: [0x1a1030, 0xc0a8e8, 0xfff060],
-  /** Static wisp (the jelly's slot): outline, ice-blue body, white crackle. */
-  staticWisp: [0x1a2448, 0x9ad8ff, 0xf4fcff],
 } as const satisfies Record<string, Palette>;
 
 /** Backdrop palettes: cloud banks a step away from the bands behind them, kept as dark as the bands allow. */

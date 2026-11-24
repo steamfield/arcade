@@ -4,7 +4,6 @@ import { ART_SHEETS } from '../art/sprites/index.ts';
 import { REEF_OBJECT_SHEETS } from '../worlds/reef/objects.ts';
 import { REEF_RACER_SHEETS } from '../worlds/reef/sprites/racers.ts';
 import { OceanTex, OceanTile } from './ocean/keys.ts';
-import { HazardPalette } from './ocean/palettes.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import { OCEAN_THEME } from './ocean.ts';
 
@@ -63,19 +62,6 @@ const PHASE_7_KEYS = [
   'cave-wall',
 ];
 
-/** WCAG contrast ratio of two 0xRRGGBB colours. */
-function contrast(a: number, b: number): number {
-  const luminance = (colour: number) => {
-    const [r = 0, g = 0, bl = 0] = [16, 8, 0].map((shift) => {
-      const c = ((colour >> shift) & 0xff) / 255;
-      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
-  };
-  const [hi = 0, lo = 0] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-}
-
 const sheetFor = (key: string) => OCEAN_SHEETS.find((sheet) => sheet.key === key);
 const frameNames = (key: string) => sheetFor(key)?.frames.map((frame) => frame.name);
 
@@ -96,7 +82,7 @@ describe('the ocean theme', () => {
   });
 
   it('gives every looping texture the two frames its animation asks for', () => {
-    const loops = [OceanTex.kelp, OceanTex.jelly, OceanTex.currentRight, OceanTex.currentLeft, OceanTex.waterline];
+    const loops = [OceanTex.kelp, OceanTex.currentRight, OceanTex.currentLeft, OceanTex.waterline];
     for (const key of [...loops, OceanTex.currentUp, OceanTex.currentDown])
       expect(frameNames(key), key).toEqual(['a', 'b']);
   });
@@ -138,12 +124,5 @@ describe('the ocean theme', () => {
   it('counts the sky and the cave wall as contrast bands, since racers swim in front of both', () => {
     const names = OCEAN_THEME.contrastBands.map((band) => band.name);
     expect(names).toEqual(expect.arrayContaining(['sky 0', 'cave wall 0', 'cave wall 1', 'cave wall 2']));
-  });
-
-  it("keeps the urchin's body 3:1 off every ocean contrast band, so it reads in the deepest water", () => {
-    const weakest = Math.min(
-      ...OCEAN_THEME.contrastBands.map((band) => contrast(HazardPalette.urchin[1], band.colour)),
-    );
-    expect(weakest).toBeGreaterThanOrEqual(3);
   });
 });

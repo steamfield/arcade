@@ -7,7 +7,6 @@ import type { OceanTexKey } from '../keys.ts';
 import { BACKDROP_SHEETS } from './backdrop.ts';
 import { CAVE_SHEETS } from './cave.ts';
 import { CURRENT_SHEETS } from './currents.ts';
-import { HAZARD_SHEETS } from './hazards.ts';
 import { SURFACE_SHEETS } from './surface.ts';
 import { TERRAIN_SHEETS } from './terrain.ts';
 
@@ -15,7 +14,6 @@ import { TERRAIN_SHEETS } from './terrain.ts';
 export const OCEAN_SHEETS: readonly ArtSheet<OceanTexKey>[] = [
   ...TERRAIN_SHEETS,
   ...CURRENT_SHEETS,
-  ...HAZARD_SHEETS,
   ...BACKDROP_SHEETS,
   ...SURFACE_SHEETS,
   ...CAVE_SHEETS,

@@ -1,6 +1,6 @@
 /**
  * Everything that hurts, drawn from world state each frame: urchins and jellies in the course
- * theme's skins (jellies bobbing, greyed and still while stunned), ink clouds that fade as their time
+ * world's hazard art (jellies bobbing, greyed and still while stunned), ink clouds that fade as their time
  * runs out, bubbles in flight and the bubble around a trapped racer. Sprite pools
  * grow only when more clouds or bubbles are in play than ever before.
  */
@@ -8,8 +8,7 @@ import type Phaser from 'phaser';
 import { JELLY } from '../../logic/hazards/tuning.ts';
 import { type Level, RACER_IDS, TILE, type World } from '../../logic/types.ts';
 import { Frame } from '../art/keys.ts';
-import type { HazardSkin, Theme } from '../themes/types.ts';
-import type { WorldSkin } from '../worlds/types.ts';
+import type { HazardSkin, WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
 
 /** The course's hazards; `sync` redraws them from the world. */
@@ -29,16 +28,16 @@ const TRAP_WOBBLE_PX = 1;
 const TRAP_WOBBLE_PERIOD_TICKS = 24;
 
 /**
- * Adds urchin and jelly sprites for `level` in the skins of `hazards` (the course theme's), and the
- * pools for transient hazards (ink and bubbles drawn with `skin`'s attack art), to `scene`.
+ * Adds urchin and jelly sprites for `level` in `skin`'s hazard art, and the pools for transient
+ * hazards (ink and bubbles drawn with `skin`'s attack art), to `scene`.
  */
 export function createHazardView(
   scene: Phaser.Scene,
   level: Level,
-  hazards: Theme['hazards'],
   skin: WorldSkin,
   reducedMotion: boolean,
 ): HazardView {
+  const { hazards } = skin.objects;
   const { inkCloud, bubble: bubbleTexture } = skin.objects.attack;
   for (const tile of level.urchins) addHazardSprite(scene, centre(tile.x), centre(tile.y), hazards.urchin);
   const jellies = level.jellies.map((tile) => addHazardSprite(scene, centre(tile.x), centre(tile.y), hazards.jelly));
@@ -93,7 +92,7 @@ export function createHazardView(
   };
 }
 
-/** A hazard drawn in its theme's skin at (x, y), playing its loop when it has one. */
+/** A hazard drawn in its world's art at (x, y), playing its loop when it has one. */
 export function addHazardSprite(
   scene: Phaser.Scene,
   x: number,

@@ -4,7 +4,7 @@
  * views get them through the theme.
  */
 
-/** Space texture keys: the tileset, dust, wind, finish banner, hazards and backdrop layers. */
+/** Space texture keys: the tileset, dust, wind, finish banner and backdrop layers. */
 export const SpaceTex = {
   /** Tileset for the tilemap: one frame per entry in `SpaceTile`. */
   tiles: 'space-tiles',
@@ -15,8 +15,6 @@ export const SpaceTex = {
   windUp: 'space-wind-up',
   windDown: 'space-wind-down',
   finishGate: 'space-finish-gate',
-  mine: 'space-mine',
-  orb: 'space-orb',
   backdropFar: 'space-backdrop-far',
   backdropNear: 'space-backdrop-near',
 } as const;
@@ -36,12 +34,11 @@ export const SpaceTile = {
   rockBuried: 3,
 } as const;
 
-/** Space animation keys: the dust's sway, the four wind flows and the orb's pulse. */
+/** Space animation keys: the dust's sway and the four wind flows. */
 export const SpaceAnim = {
   dustSwirl: 'space-dust-swirl',
   windRight: 'space-wind-right-flow',
   windLeft: 'space-wind-left-flow',
   windUp: 'space-wind-up-flow',
   windDown: 'space-wind-down-flow',
-  orbPulse: 'space-orb-pulse',
 } as const;

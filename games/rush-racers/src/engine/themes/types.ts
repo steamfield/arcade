@@ -1,12 +1,13 @@
 /**
- * A theme is how a course looks: its textures, terrain, backdrop, ambient effects, particle physics,
- * hazard skins, dark tint, racer trail and the colours sprites must stand off. Logic names a theme by id
- * (`Course.theme`); the engine maps the id to one of these, never the reverse. Racers, pickups,
- * power-ups, the HUD and the UI are global art and never part of a theme.
+ * A theme is the look of a course's place: its terrain, backdrop, ambient effects, particle physics,
+ * dark tint, racer trail and the colours sprites must stand off. Logic names a theme by id
+ * (`Course.theme`); the engine maps the id to one of these, never the reverse. The things that live
+ * in a world (racers, items, pickups, enemies and hazards) are its world skin's art (`worlds/`), and
+ * the HUD and the UI are global art; neither is part of a theme.
  */
 import type Phaser from 'phaser';
 import type { ThemeId } from '../../logic/courses/types.ts';
-import type { Cell, World } from '../../logic/types.ts';
+import type { Cell } from '../../logic/types.ts';
 
 /** A looping sprite drawn over a cell (the ocean's kelp and currents). */
 export interface FlowingArt {
@@ -109,15 +110,6 @@ export interface ParticlePhysics {
   splash: ParticleMotion;
 }
 
-/** How a hazard looks: a texture with a still frame, or a looping animation. */
-export interface HazardSkin {
-  texture: string;
-  /** The frame shown when `anim` is null. */
-  frame: string;
-  /** A looping animation the sprite plays; null for a still image. */
-  anim: string | null;
-}
-
 /** The veil over a dark zone. */
 export interface DarkTint {
   colour: number;
@@ -149,11 +141,6 @@ export interface BubbleFrames {
   small: string;
 }
 
-/** A view layer a theme adds on top of the shared ones; the race scene syncs it every frame. */
-export interface ThemeLayer {
-  sync(world: World): void;
-}
-
 /** A course's whole look, as the views read it. Build one with `defineTheme`. */
 export interface Theme {
   id: ThemeId;
@@ -163,7 +150,6 @@ export interface Theme {
   backdrop: BackdropSpec;
   ambient: AmbientSpec;
   particles: ParticlePhysics;
-  hazards: { urchin: HazardSkin; jelly: HazardSkin };
   dark: DarkTint;
   /** What racers shed as they move (bubbles in water); null for no trail. */
   trail: TrailLook | null;
@@ -177,12 +163,9 @@ export interface Theme {
    * rows sit above play (the reef's air, the forest canopy).
    */
   hudOverSky?: boolean;
-  /** Extra layers for this theme's race scene, built once per race. */
-  extraLayers(scene: Phaser.Scene, world: World): ThemeLayer[];
 }
 
-/** What a theme file writes; `defineTheme` fills `terrain.glyphTiles` and `extraLayers` when left out. */
-export type ThemeSpec = Omit<Theme, 'extraLayers' | 'terrain'> & {
+/** What a theme file writes; `defineTheme` fills `terrain.glyphTiles` when left out. */
+export type ThemeSpec = Omit<Theme, 'terrain'> & {
   terrain: Omit<TerrainArt, 'glyphTiles'> & Partial<Pick<TerrainArt, 'glyphTiles'>>;
-  extraLayers?: Theme['extraLayers'];
 };
