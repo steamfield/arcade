@@ -1,5 +1,7 @@
 # Plan: Rush Racers chip music, three race tracks per course
 
+Status: done
+
 Skill: sprint. Profile: sprint. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.4/shared/scripts/plan_graph.py
 Started: 1795512032 (epoch s). Timebox: none. Landing branch: sprint/chip-music.
@@ -219,3 +221,8 @@ Test cases: the same conformance and pin tests as phase 2; this phase changes mu
 - Phase 1 tagged `chip-music-phase-1`: check and smoke green. Lane 1a review: all five findings fixed. Lane 1e review: both bass-root findings fixed; rejected making `chordFit` return an empty fit for noise (the stub's doc says it throws).
 - Found with the offline render: the existing songs peaked at 1.6 to 1.9 times full scale and clipped at the output. The synth's master gain is now 0.5 with a limiter after it; rendered peaks are 0.89 to 0.97.
 - Phase 2 tagged `chip-music-phase-2`: twelve tracks, check and smoke green. No lane reviews in phase 2: the files are music, and phase 3 is a second musician's pass over every track. Accepted lane choices: titles, keys and chord charts added to the four existing songs; sections named A2/A3 where a prime would not parse as a new name; Thornwood 2 nods to track 1's rocking third at the end of A2. Rendered loops run 65 to 77 s, peaks under 0.99, RMS 0.21 to 0.24.
+- Phase 3 tagged `chip-music-phase-3`: every track revised by a second musician; check and smoke green.
+- Final review (7 findings). Fixed: stale announcements overwriting the sound test's section and playing mark; section names clashing with the `lift` and `end` marks (both reserved in the parser, Far Light's section renamed `rise`); the compressor's makeup gain and delay (replaced by a master gain of 0.45 into a soft clip; rendered peaks 0.68 to 0.91, RMS 0.165 to 0.192); the crossing share's mismatched denominator, with a test for echoes; the silent track fallback in the runtime (now throws); the sound test's duplicate loop-length formula. Rejected: widening the hook check to two bars, since one bar was the intent so answer phrases can vary; MUSIC.md now says so. Left open: no runtime test that an online race picks its track from the host's course (the path goes through the same `beginRace` as the tested ones).
+- Decision recorded late: echoed notes are marked `NoteEvent.echo` and left out of crossings (phase 1 fixes), which overrides the lane e brief's "echoed notes get no special treatment".
+- Status: done. Tagged `chip-music-final`.
+
