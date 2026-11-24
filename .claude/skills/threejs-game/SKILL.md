@@ -116,4 +116,4 @@ These are starting points until `game.json` budgets exist. Measure with `rendere
 - [ ] Assets are compressed glTF/KTX2, imported with `?url`, with load errors routed to `ctx.reportError`.
 - [ ] Draw calls and triangles checked in `debugSummary` or `renderer.info` for a busy view.
 - [ ] Camera motion is frame-rate independent and reproducible in `arcade see`.
-- [ ] `pnpm arcade check <slug>`, `see` (desktop and `--mobile`), and `smoke` pass (`verify-game`).
+- [ ] `pnpm arcade test <slug>` on the tests covering your files and `pnpm arcade check <slug> --skip-tests` pass, and `see` (desktop and `--mobile`) looks right. Whoever merges runs the full `check` and `smoke` (`verify-game`, AGENTS.md "Test scope").

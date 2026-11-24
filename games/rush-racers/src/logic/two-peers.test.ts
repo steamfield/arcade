@@ -16,6 +16,12 @@ import { createWorld, stepRace } from './world.ts';
 
 type Inputs = Partial<Record<RacerId, TickInput>>;
 
+/**
+ * Each test steps two whole races: about 2 s on an idle laptop, and it has overrun Vitest's 5 s
+ * default under a loaded run. 6 s a race, as the difficulty bars budget (`racesTimeoutMs`).
+ */
+const TWO_RACES_TIMEOUT_MS = 12_000;
+
 /** Ticks between the hash checks peers will exchange. */
 const HASH_EVERY = 60;
 /** World tick after which the second player's input stops arriving. */
@@ -57,29 +63,37 @@ function runPeer(inputsAt: (tick: number) => Inputs) {
 }
 
 describe('two peers stepping the same race from the same inputs', () => {
-  it('stay in the same state at every check, through an AI takeover, to the same result', () => {
-    const host = runPeer(scriptedInputs);
-    const guest = runPeer(scriptedInputs);
+  it(
+    'stay in the same state at every check, through an AI takeover, to the same result',
+    () => {
+      const host = runPeer(scriptedInputs);
+      const guest = runPeer(scriptedInputs);
 
-    expect(host.takeovers).toEqual([{ type: 'racer.takeover', id: 'tess' }]);
-    expect(host.finished).toHaveLength(1);
-    expect(host.hashes.length).toBeGreaterThan(TESS_LEAVES_AT / HASH_EVERY);
-    expect(guest.hashes).toEqual(host.hashes);
-    expect(guest.finalHash).toBe(host.finalHash);
-    expect(guest.finished).toEqual(host.finished);
-    expect(guest.takeovers).toEqual(host.takeovers);
-  });
+      expect(host.takeovers).toEqual([{ type: 'racer.takeover', id: 'tess' }]);
+      expect(host.finished).toHaveLength(1);
+      expect(host.hashes.length).toBeGreaterThan(TESS_LEAVES_AT / HASH_EVERY);
+      expect(guest.hashes).toEqual(host.hashes);
+      expect(guest.finalHash).toBe(host.finalHash);
+      expect(guest.finished).toEqual(host.finished);
+      expect(guest.takeovers).toEqual(host.takeovers);
+    },
+    TWO_RACES_TIMEOUT_MS,
+  );
 
-  it('show a mismatch at the first check after one input differs on one peer', () => {
-    const differsAt = 900;
-    const host = runPeer(scriptedInputs);
-    const guest = runPeer((tick) => {
-      const inputs = scriptedInputs(tick);
-      return tick === differsAt ? { ...inputs, tess: { ...(inputs.tess ?? IDLE), kick: true } } : inputs;
-    });
+  it(
+    'show a mismatch at the first check after one input differs on one peer',
+    () => {
+      const differsAt = 900;
+      const host = runPeer(scriptedInputs);
+      const guest = runPeer((tick) => {
+        const inputs = scriptedInputs(tick);
+        return tick === differsAt ? { ...inputs, tess: { ...(inputs.tess ?? IDLE), kick: true } } : inputs;
+      });
 
-    const checksBefore = differsAt / HASH_EVERY - 1;
-    expect(guest.hashes.slice(0, checksBefore)).toEqual(host.hashes.slice(0, checksBefore));
-    expect(guest.hashes[checksBefore]).not.toBe(host.hashes[checksBefore]);
-  });
+      const checksBefore = differsAt / HASH_EVERY - 1;
+      expect(guest.hashes.slice(0, checksBefore)).toEqual(host.hashes.slice(0, checksBefore));
+      expect(guest.hashes[checksBefore]).not.toBe(host.hashes[checksBefore]);
+    },
+    TWO_RACES_TIMEOUT_MS,
+  );
 });
