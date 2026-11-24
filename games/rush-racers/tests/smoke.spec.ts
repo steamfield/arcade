@@ -41,28 +41,19 @@ test('starts on WebGL, races from the title through course select and the select
   expect(events.map((e) => e.type)).toContain('race.started');
 });
 
-test('on-screen controls pick a course and a racer, start the race and swim the player @touch', async ({
-  game,
-  page,
-}) => {
+test('on-screen controls pick a course and a racer, start the race and swim the player @touch', async ({ game }) => {
   await game.open();
-  const hold = async (action: string, ticks: number) => {
-    const button = page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
-    await button.dispatchEvent('pointerdown', { pointerId: 1, isPrimary: true });
-    await game.advance(ticks);
-    await button.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
-  };
   await game.advance(20);
-  await hold('fire', 1);
+  await game.touch('fire', 1);
   // Course select: fire keeps the course in force.
   await game.advance(21);
-  await hold('fire', 1);
+  await game.touch('fire', 1);
   await game.advance(21);
-  await hold('right', 1);
+  await game.touch('right', 1);
   await game.advance(1);
-  await hold('fire', 1);
+  await game.touch('fire', 1);
   await game.advance(182);
-  await hold('right', 60);
+  await game.touch('right', 60);
   const summary = await game.summary();
   expect(summary).toMatchObject({ scene: 'race', phase: 'racing', character: 'gil' });
   expect((summary.player as { tile: number[] }).tile[0]).toBeGreaterThan(4);
@@ -120,24 +111,18 @@ test('a Drift Test race swings past the planet, is swallowed by the black hole a
   expect(await game.state()).toMatchObject({ worldHash: DRIFT_WELLS_BROWSER_HASH });
 });
 
-test('on Bramble Run the on-screen Up button jumps @touch', async ({ game, page }) => {
+test('on Bramble Run the on-screen Up button jumps @touch', async ({ game }) => {
   await game.open();
-  const hold = async (action: string, ticks: number) => {
-    const button = page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
-    await button.dispatchEvent('pointerdown', { pointerId: 1, isPrimary: true });
-    await game.advance(ticks);
-    await button.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
-  };
   await game.advance(20);
-  await hold('fire', 1);
+  await game.touch('fire', 1);
   // Course select: down to Bramble Run, then pick it; then race as the saved pick.
   await game.advance(21);
-  await hold('down', 1);
-  await hold('fire', 1);
+  await game.touch('down', 1);
+  await game.touch('fire', 1);
   await game.advance(21);
-  await hold('fire', 1);
+  await game.touch('fire', 1);
   await game.advance(190);
-  await hold('up', 10);
+  await game.touch('up', 10);
   expect(await game.summary()).toMatchObject({ scene: 'race', phase: 'racing', course: 'bramble-run' });
   const events = await game.events();
   expect(events.filter((e) => e.type === 'racer.jumped' && e.id === 'player')).toHaveLength(1);
@@ -159,26 +144,20 @@ test('a Thunderhead Pass race starts from the menus and runs 600 ticks in flight
   expect(events.filter((e) => e.type === 'racer.flapped' && e.id === 'player').length).toBeGreaterThan(0);
 });
 
-test('on Thunderhead Pass a tap of the on-screen Up button flaps @touch', async ({ game, page }) => {
+test('on Thunderhead Pass a tap of the on-screen Up button flaps @touch', async ({ game }) => {
   await game.open();
-  const hold = async (action: string, ticks: number) => {
-    const button = page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
-    await button.dispatchEvent('pointerdown', { pointerId: 1, isPrimary: true });
-    await game.advance(ticks);
-    await button.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
-  };
   await game.advance(20);
-  await hold('fire', 1);
+  await game.touch('fire', 1);
   // Course select: down twice to Thunderhead Pass, then pick it; then race as the saved pick.
   await game.advance(21);
-  await hold('down', 1);
+  await game.touch('down', 1);
   await game.advance(1);
-  await hold('down', 1);
-  await hold('fire', 1);
+  await game.touch('down', 1);
+  await game.touch('fire', 1);
   await game.advance(21);
-  await hold('fire', 1);
+  await game.touch('fire', 1);
   await game.advance(190);
-  await hold('up', 1);
+  await game.touch('up', 1);
   await game.advance(5);
   expect(await game.summary()).toMatchObject({ scene: 'race', phase: 'racing', course: 'thunderhead-pass' });
   const events = await game.events();

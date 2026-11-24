@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { createServer } from 'node:net';
+import { freePort } from '@arcade/testing';
 import { assemble, selectGames } from './assemble.ts';
 import { ROOT } from './games.ts';
 import { elapsed, run } from './run.ts';
@@ -111,17 +111,6 @@ function failureDetail(output: string): string {
     .slice(firstFailure === -1 ? 0 : firstFailure)
     .slice(0, 60)
     .join('\n');
-}
-
-function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const srv = createServer();
-    srv.once('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const a = srv.address();
-      srv.close(() => (typeof a === 'object' && a ? resolve(a.port) : reject(new Error('no port'))));
-    });
-  });
 }
 
 async function waitFor(url: string, timeoutMs: number, log: () => string): Promise<void> {

@@ -32,6 +32,9 @@ type ArcadeEvent = ScenarioResult['events'][number];
 
 const IDLE_TIMEOUT_MS = 15_000;
 
+/** The pointer a single finger reports, for touch-button presses. */
+const TOUCH_POINTER = { pointerId: 1, isPrimary: true } as const;
+
 export class GameDriver {
   private cursor = 0;
   private readonly collected: ArcadeEvent[] = [];
@@ -106,6 +109,24 @@ export class GameDriver {
       await this.page.evaluate((actions) => {
         for (const a of actions) window.__arcade?.inject(a, false);
       }, step.actions);
+    }
+  }
+
+  /**
+   * Hold the on-screen touch button for `action` for `ticks` logic ticks, through the pointer
+   * events a finger sends. The touch controls must be showing (a touch device or `touch: true`).
+   * The finger is lifted even when advancing fails, so later steps don't run with it held.
+   *
+   * @throws {Error} When the overlay or the action's button isn't on the page (Playwright's
+   *   timeout error once the test's action timeout runs out), or advancing the game fails.
+   */
+  async touch(action: string, ticks: number): Promise<void> {
+    const button = this.page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
+    await button.dispatchEvent('pointerdown', TOUCH_POINTER);
+    try {
+      await this.advance(ticks);
+    } finally {
+      await button.dispatchEvent('pointerup', TOUCH_POINTER);
     }
   }
 
