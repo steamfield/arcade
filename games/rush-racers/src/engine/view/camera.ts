@@ -10,7 +10,7 @@ import { type Body, type Level, TILE, type Vec } from '../../logic/types.ts';
 /** A camera following one body; `update` moves it on by logic time. */
 interface CameraRig {
   /**
-   * Eases the camera toward the body.
+   * Eases toward the body or cuts when it jumps more than two screens.
    *
    * @param seconds Logic time since the last update. Zero leaves the camera where it is.
    */
@@ -24,6 +24,8 @@ const LOOKAHEAD_SECONDS = 0.45;
 const LOOKAHEAD_MAX = { x: 56, y: 28 } as const;
 /** Fraction of the remaining distance closed per second is 1 - e^(-rate). */
 const SMOOTHING_RATE = 6;
+/** A one-update jump this far in viewport units is a warp or long respawn. */
+const CUT_SCREENS = 2;
 
 /**
  * Points `camera` at `body` now and returns the rig that keeps following it. `body` is read live each update.
@@ -35,16 +37,26 @@ export function followRacer(camera: Phaser.Cameras.Scene2D.Camera, body: Body, l
   const half = { x: camera.width / 2, y: camera.height / 2 };
   const least = { x: half.x, y: half.y - headroom };
   const limit = { x: level.width * TILE - half.x, y: level.height * TILE - half.y };
-  const centre = clampToLevel(lookTarget(body), least, limit);
+  let centre = clampToLevel(lookTarget(body), least, limit);
+  let lastX = body.x;
+  let lastY = body.y;
   applyScroll(camera, centre, half);
 
   return {
     update(seconds) {
       if (seconds <= 0) return;
-      const wanted = clampToLevel(outOfDeadzone(centre, lookTarget(body)), least, limit);
-      const blend = 1 - Math.exp(-SMOOTHING_RATE * seconds);
-      centre.x += (wanted.x - centre.x) * blend;
-      centre.y += (wanted.y - centre.y) * blend;
+      const jump = Math.hypot((body.x - lastX) / camera.width, (body.y - lastY) / camera.height);
+      lastX = body.x;
+      lastY = body.y;
+      const target = lookTarget(body);
+      if (jump > CUT_SCREENS) {
+        centre = clampToLevel(target, least, limit);
+      } else {
+        const wanted = clampToLevel(outOfDeadzone(centre, target), least, limit);
+        const blend = 1 - Math.exp(-SMOOTHING_RATE * seconds);
+        centre.x += (wanted.x - centre.x) * blend;
+        centre.y += (wanted.y - centre.y) * blend;
+      }
       applyScroll(camera, centre, half);
     },
   };

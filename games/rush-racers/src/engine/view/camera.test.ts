@@ -48,3 +48,32 @@ describe('the race camera', () => {
     expect(roomy.scroll).toEqual(plain.scroll);
   });
 });
+
+describe('camera cuts', () => {
+  it('centres on the exit on the same update when the body jumps more than two screens', () => {
+    const { camera, scroll } = fakeCamera();
+    const body = { ...racerAt(10), x: 32 };
+    const rig = followRacer(camera, body, LEVEL);
+
+    body.x = 720;
+    body.vx = 40;
+    rig.update(1 / 60);
+
+    expect(scroll.x).toBe(584);
+    rig.update(1 / 60);
+    expect(scroll.x).toBe(584);
+  });
+
+  it('eases a move within one screen', () => {
+    const { camera, scroll } = fakeCamera();
+    const body = racerAt(10);
+    const rig = followRacer(camera, body, LEVEL);
+    const before = scroll.x;
+
+    body.x += 100;
+    rig.update(1 / 60);
+
+    expect(scroll.x).toBeGreaterThan(before);
+    expect(scroll.x).toBeLessThan(before + 76);
+  });
+});

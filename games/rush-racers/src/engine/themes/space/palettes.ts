@@ -45,3 +45,9 @@ export const StarLight = {
   dapple: 0xe0e8ff,
   mote: 0xf4f6ff,
 } as const;
+
+/** Bright rims for the paired mouths, plus a dark centre against the starfield. */
+export const WormholePalette = {
+  rims: [0x80ddff, 0xffbb75, 0xcfadff, 0x8ff3c5, 0xff9eb8, 0xf5e891],
+  centre: 0x080816,
+} as const;
