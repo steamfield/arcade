@@ -97,7 +97,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 
 | Path | Exports |
 | --- | --- |
-| `packages/input/src/index.ts` | `createInput({ actions, vectors, touch })`: `isDown`, `justPressed`, `vector`, `update` (once per tick), `on`, `inject` (tests), `mount` (keyboard plus touch overlay), `destroy`. Taps shorter than a tick are latched. |
+| `packages/input/src/index.ts` | `createInput({ actions, vectors, touch })`: `isDown`, `justPressed`, `vector`, `update` (once per tick), `on`, `inject` (tests), `mount` (keyboard plus touch overlay), `destroy`, and text entry (`setTextEntry`, `takeText`, `injectText`): while on, typed keys and pastes become text instead of actions. Taps shorter than a tick are latched. |
 
 ### `@arcade/shell`
 
