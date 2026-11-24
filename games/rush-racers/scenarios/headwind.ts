@@ -8,8 +8,8 @@ import { HARD_SAVE, hold, scenario, tap, wait } from './kit.ts';
 /** Ticks the player waits on the grid after GO, so the rivals are a few tiles ahead when it fires. */
 const LET_THEM_LEAD = 60;
 
-/** Ticks the player follows the front after firing: its 144-tick sweep and a little more. */
-const FOLLOW_THE_FRONT = 160;
+/** Ticks the player follows the front after firing: its 160-tick sweep and a little more. */
+const FOLLOW_THE_FRONT = 200;
 
 /** Tiles the front sweeps before it dies away. */
 const SWEEP_TILES = 30;
@@ -50,7 +50,7 @@ export default scenario({
     expect(fronts[0]).toMatchObject({ style: 'headwind' });
     const used = events.find((e) => e.type === 'item.used' && e.id === 'player');
     const ended = fronts[1];
-    expect((ended?.tick ?? 0) - (used?.tick ?? 0), 'it sweeps for 144 ticks').toBe(143);
+    expect((ended?.tick ?? 0) - (used?.tick ?? 0), 'it sweeps for 160 ticks').toBe(159);
     expect(Number(ended?.x) / TILE, 'it sweeps 30 tiles from the grid').toBeGreaterThan(SWEEP_TILES);
   },
 });

@@ -135,8 +135,8 @@ describe('who a Headwind front holds back', () => {
     const calm = flyRightAfter(false, HEADWIND_SWEEP_TICKS);
     const windy = flyRightAfter(true, HEADWIND_SWEEP_TICKS);
     expect(windy.player).toBe(calm.player);
-    // The front crosses a flyer holding right in about half a second and costs it about a tile.
-    expect((calm.tess - windy.tess) / TILE).toBeGreaterThan(1);
+    // The front is only a little faster than a flyer holding right, so it holds one back about three tiles.
+    expect((calm.tess - windy.tess) / TILE).toBeGreaterThan(2.5);
   });
 
   it('keeps an updraft lifting a flyer inside the front while replacing its sideways wind', () => {
@@ -155,7 +155,7 @@ describe('who a Headwind front holds back', () => {
     fire();
     const [tess, squib, bo] = (['tess', 'squib', 'bo'] as const).map((id) => racerOf(world, id));
     if (!tess || !squib || !bo) throw new Error('three rivals');
-    expect([tess, squib, bo].map((racer) => headwindAt(world, racer))).toEqual([-2, -2, -2]);
+    expect([tess, squib, bo].map((racer) => headwindAt(world, racer))).toEqual(Array(3).fill(HEADWIND_TUNING.gust));
     tess.status.invulnerable = 30;
     squib.status.fallen = 30;
     bo.finished = { tick: 100, place: 1, overshoot: 0 };

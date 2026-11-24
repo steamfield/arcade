@@ -5,8 +5,8 @@
  * Fired, a front `HEADWIND_TUNING.widthTiles` wide starts with its back edge at the owner's centre and
  * sweeps toward +x at `speed` for `sweepTiles`, spanning the sky's whole height, then ends. It is not a
  * hit: while a racer is inside it, its medium feels a strong headwind (`headwindAt`, which flight reads
- * in `media/flight/env.ts`). A cruising flyer is slower than the front, so the front catches it, holds
- * it for about a second and passes on.
+ * in `media/flight/env.ts`). A cruising flyer is a little slower than the front, so the front catches
+ * it, holds it back for about a second and passes on.
  *
  * A Headwind twist's fields: `x` is the front's centre, px, moving at `vx` px/s; `y` is the owner's
  * centre height when fired, which only the events report, since the front has no height; `vy` is 0;
@@ -23,9 +23,12 @@ import type { TwistRules } from './index.ts';
 /** The Headwind's numbers. */
 export const HEADWIND_TUNING = {
   /** The front's width, tiles. */
-  widthTiles: 4,
-  /** How fast the front sweeps toward +x, px/s: faster than a flyer cruises, so it catches them. */
-  speed: 200,
+  widthTiles: 6,
+  /**
+   * How fast the front sweeps toward +x, px/s: a little faster than a flyer's 120 px/s cruise, so it
+   * catches a flyer and stays over it for about a second, costing one holding right about 3 tiles.
+   */
+  speed: 180,
   /** How far the front sweeps before it dies away, tiles. */
   sweepTiles: 30,
   /** The wind a racer inside the front feels along x: twice a `<` cell's. */
