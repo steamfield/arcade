@@ -98,7 +98,7 @@ export class RaceScene extends Phaser.Scene {
     const guide = createGuideView(this, reducedMotion, layout);
     const fireIcon = createFireButtonIcon(this, skin.objects.itemIcons);
     const fx = createFx(this, world, theme, reducedMotion);
-    const camera = followRacer(this.cameras.main, localOf(world).body, world.level);
+    const camera = followRacer(this.cameras.main, localOf(world).body, world.level, theme.hudOverSky ? hud.bottom : 0);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
     // Lobby tags and the waiting line belong to online races only.
     const online = this.rt.onlineRace ? createOnlineRaceView(this, layout) : null;

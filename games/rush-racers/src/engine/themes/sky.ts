@@ -115,4 +115,5 @@ export const SKY_THEME = defineTheme({
   trail: CONTRAIL,
   bubbleFrames: VAPOUR,
   contrastBands: SKY_CONTRAST_BANDS,
+  hudOverSky: true,
 });

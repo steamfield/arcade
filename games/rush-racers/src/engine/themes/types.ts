@@ -171,6 +171,12 @@ export interface Theme {
   bubbleFrames?: BubbleFrames;
   /** Every colour behind play: racers' main colours hold 3:1 off each, off-panel text 4.5:1 (UI.md). */
   contrastBands: readonly ContrastBand[];
+  /**
+   * Racers move in the level's top rows (open sky), so the race camera scrolls up past the level's
+   * top edge by the HUD row's height and the HUD covers sky rather than them. Leave out when the top
+   * rows sit above play (the reef's air, the forest canopy).
+   */
+  hudOverSky?: boolean;
   /** Extra layers for this theme's race scene, built once per race. */
   extraLayers(scene: Phaser.Scene, world: World): ThemeLayer[];
 }
