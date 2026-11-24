@@ -4,6 +4,7 @@
  * to the same checks (console errors, failed requests, game errors, dropped events). The helpers
  * advance the pages and read their summaries; nothing here sleeps.
  */
+import { isRoomCode } from '@arcade/api/protocol';
 import { GameDriver } from '@arcade/testing';
 import { test as base, expect } from '@arcade/testing/playwright';
 import { tap, wait } from '../scenarios/kit.ts';
@@ -76,7 +77,7 @@ export async function createRoom(host: GameDriver): Promise<string> {
   await host.play([wait(ARMED_TICKS), tap('fire')]);
   await turnsUntil([host], (summary) => summary.net?.status === 'lobby');
   const code = (await summaryOf(host)).net?.code;
-  expect(code, 'the host summary names the room').toMatch(/^[2-9A-Z]{6}$/);
+  expect(isRoomCode(code ?? ''), `the host summary names the room, not ${code}`).toBe(true);
   return code as string;
 }
 
