@@ -26,6 +26,8 @@ import type { ShippedCourse } from './types.ts';
  * - Cols 89-117: the run home: a line of four boost rings stepping down from the tower top (cols
  *   91-100, rows 5-8), then a balloon, a static wisp and feathers, and the storm cell, a lightning
  *   zone over cols 107-111 around a spark cloud; the finish is col 118.
+ * - Cols 112-116: a shifting wind zone between the storm cell and the finish, blowing toward the
+ *   line for 2 s and back against it for 2 s, with a warning before each turn.
  */
 const LEVEL: LevelDef = {
   name: 'Sky Test',
@@ -57,6 +59,8 @@ const LEVEL: LevelDef = {
   `,
   // The storm cell: warns, then strikes, every 2.5 s from the start signal.
   lightning: [{ cols: [107, 111], periodTicks: 150, offsetTicks: 0 }],
+  // The turning wind on the run home, a gust's strength each way.
+  shiftingWind: [{ cols: [112, 116], periodTicks: 240, offsetTicks: 0, push: 70 }],
 };
 
 /**
