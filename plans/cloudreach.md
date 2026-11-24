@@ -247,6 +247,7 @@ Demo: rivals on `sky-test` pop puff clouds with a dash when it pays, follow ring
 Depends on: phase 2
 
 Scaffold: 4b45545
+Tag: cloudreach/phase-4
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -293,3 +294,4 @@ Depends on: phase 3, phase 4
 - 2026-11-23 lane 3/c review: the sky read as Reef (shared slanted rays and motes, bubble contrail, bursts in bubbles, scale-patterned thunderheads). Sent back with an opt-in backdrop haze, a puff fx frame and per-theme burst frames, all left out by ocean and forest so their captures don't move; the upper bands shift from navy to twilight indigo. Lightning zones keep phase 2's shade (`SHADE_COLOUR` in lightning-view); the sky's `dark` tint veils only `level.dark`. Lane 3/c now also owns view/backdrop.ts, fx/textures.ts, fx/bursts.ts, art/rows.ts and the forest flow.ts import.
 - 2026-11-23 phase 3 gate: check 18.9 s, 142 bars, smoke 71/72 in 184 s. `scenarios/course-select.ts` (desktop) read `scene: 'none'` after dash back from select, once, while lane 4/a's fix agent was also running; two full smoke reruns passed 72/72. A deterministic resize probe showed a resize doesn't open that window, so the cause is unknown; left for the final review (the scenario's last 5-tick wait after a scene change is the place to look).
 - 2026-11-23 lane 4/a merged after review fixes (a following rival pushed a storm-waiting one into the strike; near-equal passes re-armed and ground; one skill roll judged bounce and ring together; tile centre copied thrice). The expert's sky-test mean moved 851 -> 916 (+7.6 %), so sky-test's par is re-pinned at 1191 (916 + 30 %). sky-skill: expert ahead in 99.4 % of pairs, means 15.3 s vs 20.9 s.
+- 2026-11-23 phase 4 gate green: check 20.5 s, 143 bars, smoke 72/72.
