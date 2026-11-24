@@ -58,7 +58,7 @@
         "src/logic/conformance/course.test.ts",
         "src/logic/level",
         "src/logic/difficulty-level.test.ts",
-        "src/logic/difficulty/sanity"
+        "src/logic/balance/sanity"
       ],
       "media": [
         "src/logic/media",
@@ -76,7 +76,7 @@
       "bars": {
         "project": "difficulty",
         "paths": [
-          "src/logic/difficulty/"
+          "src/logic/balance/"
         ]
       },
       "platform": [

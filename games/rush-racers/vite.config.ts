@@ -8,9 +8,9 @@ import { configDefaults } from 'vitest/config';
 /**
  * The 30-seed difficulty bars race thousands of whole races, so they run in their own `difficulty`
  * project (`pnpm test:difficulty`: the deliver gate and CI) and `arcade check` runs the `unit`
- * project. Folders under `src/logic/difficulty/` (a fast sanity bar) stay in `unit`.
+ * project. Folders under `src/logic/balance/` (a fast sanity bar) stay in `unit`.
  */
-const DIFFICULTY_BARS = 'src/logic/difficulty/*.test.ts';
+const DIFFICULTY_BARS = 'src/logic/balance/*.test.ts';
 /** The shared config's own test files; repeated here because a project's `include` adds to the root's. */
 const ALL_TESTS = ['src/**/*.test.ts', 'tests/**/*.test.ts'];
 
