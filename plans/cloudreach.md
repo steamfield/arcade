@@ -309,8 +309,8 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/logic/difficulty/ | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | pending | | Thunderhead Pass bars pass |
-| b | M | games/rush-racers/scenarios/, games/rush-racers/tests/, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md, games/rush-racers/src/engine/debug-stage.ts, games/rush-racers/src/engine/debug-stage.test.ts | contracts | games/rush-racers/tests/smoke.spec.ts | opus | pending | | scenarios and smoke pass |
+| a | L | games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/logic/difficulty/ | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | running | deliver/cloudreach-5a | Thunderhead Pass bars pass |
+| b | M | games/rush-racers/scenarios/, games/rush-racers/tests/, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md, games/rush-racers/src/engine/debug-stage.ts, games/rush-racers/src/engine/debug-stage.test.ts | contracts | games/rush-racers/tests/smoke.spec.ts | opus | running | deliver/cloudreach-5b | scenarios and smoke pass |
 
 ## Log
 
