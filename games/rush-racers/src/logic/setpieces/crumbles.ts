@@ -6,8 +6,8 @@ import { errorAt } from '../level/level-error.ts';
 import { tileIndex } from '../level/query.ts';
 import { type Cell, type CrumbleDef, type CrumbleState, type Level, type Racer, TILE, type World } from '../types.ts';
 
-/** About two thirds of a second of warning and five seconds to regrow. */
-export const CRUMBLE = { shakeTicks: 40, fallenTicks: 300 } as const;
+/** Warning, fallen, and sprout durations in logic ticks. */
+export const CRUMBLE = { shakeTicks: 40, fallenTicks: 300, sproutTicks: 18 } as const;
 
 const MAX_LENGTH = 12;
 
@@ -55,6 +55,7 @@ export function crumbleBranches(world: World, racing: readonly Racer[]): void {
     const top = branch.row * TILE;
     const acrossBranch = ({ body, status }: Racer) => status.fallen === 0 && body.x < right && body.x + body.w > left;
 
+    if (state.ticks > 0) state.ticks--;
     if (state.phase === 'solid') {
       const supported = racing.some(
         (racer) =>
@@ -68,7 +69,6 @@ export function crumbleBranches(world: World, racing: readonly Racer[]): void {
       world.events.emit({ type: 'crumble.shook', crumble });
       return;
     }
-    if (state.ticks > 0) state.ticks--;
     if (state.ticks > 0) return;
     if (state.phase === 'shaking') {
       setFallen(world, branch, true);
@@ -80,8 +80,7 @@ export function crumbleBranches(world: World, racing: readonly Racer[]): void {
       );
       if (occupied) return;
       setFallen(world, branch, false);
-      // Solid branches have no countdown. Record when this one grew back for the sprout animation.
-      world.crumbles[crumble] = { phase: 'solid', ticks: world.tick };
+      world.crumbles[crumble] = { phase: 'solid', ticks: CRUMBLE.sproutTicks };
       world.events.emit({ type: 'crumble.regrew', crumble });
     }
   });

@@ -1,6 +1,6 @@
 /**
  * Loose bark and new shoots on Thornwood's crumbling branches. The shared tilemap draws the wood,
- * and this layer ages the shake and bark from the phase countdown and the sprout from its regrow tick.
+ * and this layer ages the shake, bark and sprout from the phase countdown.
  */
 import type Phaser from 'phaser';
 import { CRUMBLE } from '../../../logic/setpieces/crumbles.ts';
@@ -10,7 +10,6 @@ import type { ThemeLayer } from '../../themes/types.ts';
 import { Layer } from '../layers.ts';
 import { syncCrumbleTiles } from '../level-view.ts';
 
-const SPROUT_TICKS = 18;
 const BARK_FALL_TICKS = 14;
 const REST = { offset: 0, barkAge: null, warning: false, sproutHeight: 0 };
 
@@ -22,7 +21,7 @@ interface CrumbleLook {
 }
 
 /** The branch's appearance is independent of how many frames were drawn before this tick. */
-export function crumbleLook(state: CrumbleState, tick: number, reducedMotion: boolean): CrumbleLook {
+export function crumbleLook(state: CrumbleState, reducedMotion: boolean): CrumbleLook {
   if (state.phase === 'shaking') {
     const age = CRUMBLE.shakeTicks - state.ticks;
     const offset = reducedMotion ? 0 : Math.floor(age / 4) % 2 === 0 ? -1 : 1;
@@ -32,8 +31,8 @@ export function crumbleLook(state: CrumbleState, tick: number, reducedMotion: bo
     const age = CRUMBLE.fallenTicks - state.ticks;
     return !reducedMotion && age < BARK_FALL_TICKS ? { ...REST, barkAge: CRUMBLE.shakeTicks + age } : REST;
   }
-  const age = tick - state.ticks;
-  if (state.ticks > 0 && age < SPROUT_TICKS) {
+  if (state.ticks > 0) {
+    const age = CRUMBLE.sproutTicks - state.ticks;
     return { ...REST, sproutHeight: reducedMotion ? 7 : Math.min(7, 2 + Math.floor(age / 2)) };
   }
   return REST;
@@ -45,7 +44,7 @@ export function createCrumbleView(scene: Phaser.Scene, world: World, reducedMoti
   const graphics = scene.add.graphics().setDepth(Layer.tiles + 0.5);
   return {
     sync(current) {
-      const looks = current.crumbles.map((state) => crumbleLook(state, current.tick, reducedMotion));
+      const looks = current.crumbles.map((state) => crumbleLook(state, reducedMotion));
       syncCrumbleTiles(scene, current, (branch) => looks[branch]?.offset ?? 0);
       graphics.clear();
       current.level.crumbles.forEach((branch, index) => {

@@ -114,9 +114,13 @@ describe('a crumbling branch', () => {
     step(world, log);
 
     expect(ticksOf(log, 'crumble.regrew')).toEqual([fell + FALLEN_TICKS]);
-    expect(world.crumbles[0]?.phase).toBe('solid');
+    expect(world.crumbles[0]).toEqual({ phase: 'solid', ticks: 18 });
     expect(world.fallen.size).toBe(0);
     expect(world.nav).toBe(nav);
+    step(world, log, 17);
+    expect(world.crumbles[0]).toEqual({ phase: 'solid', ticks: 1 });
+    step(world, log, 2);
+    expect(world.crumbles[0]).toEqual({ phase: 'solid', ticks: 0 });
   });
 
   it('waits to regrow while part of a racer overlaps, then regrows as soon as it clears', () => {

@@ -12,15 +12,14 @@ import { TICK_DT } from '@arcade/core';
 import { isSolid, ledgeHolds } from '../../level/query.ts';
 import { canDash } from '../../powerups/dash-meter.ts';
 import { moveRulesFor } from '../../race/move.ts';
-import { PriorityQueue } from '../../race/priority-queue.ts';
 import { isDowned } from '../../status.ts';
 import { type MoveModifiers, type MoveRules, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { runMotion } from './data.ts';
+import { availableLink, supportRemains } from './detour.ts';
 import { sampleRunEnvironment } from './env.ts';
 import { type AirRules, type Flying, feetOnRow, landingX } from './landing.ts';
-import { plannedSpeed } from './links.ts';
 import { HOP_HOLD_TICKS } from './nav.ts';
 import { runExtra } from './physics.ts';
 import { springUnderFeet } from './spring.ts';
@@ -184,63 +183,6 @@ function followedStand(world: World, nav: RunNav, racer: Racer, memory: RunPilot
     memory.planTile = anchor;
   }
   return memory.planTile;
-}
-
-/** A stand tile in the static graph may have lost the branch directly beneath it. */
-function supportRemains(world: World, nav: RunNav, stand: number): boolean {
-  return !world.fallen.has(stand + nav.width);
-}
-
-/** Follow the precomputed route until one of its landings has lost support. */
-function availableLink(world: World, nav: RunNav, stand: number): RunLink | null {
-  const best = nav.best[stand] ?? null;
-  if (world.fallen.size === 0) return best;
-  for (let link = best; link; link = nav.best[link.to] ?? null) {
-    if (!supportRemains(world, nav, link.to)) return detourLink(world, nav, stand);
-  }
-  return best;
-}
-
-interface DetourStep {
-  stand: number;
-  ticks: number;
-  first: RunLink | null;
-}
-
-/**
- * Finds a route over the existing links with live support, including drops through missing
- * landings. A lower way can start by turning back, so the intact route's distance can't rank it.
- */
-function detourLink(world: World, nav: RunNav, stand: number): RunLink | null {
-  const visited = new Set<number>();
-  const pending = new PriorityQueue<DetourStep>();
-  const ticksPerTile = TILE / (plannedSpeed(effectiveTuning(world)) * TICK_DT);
-  pending.push(0, { stand, ticks: 0, first: null });
-  for (let step = pending.pop(); step; step = pending.pop()) {
-    if (visited.has(step.stand)) continue;
-    if (step.stand % nav.width >= world.level.finishX) return step.first;
-    visited.add(step.stand);
-    for (const planned of nav.links.get(step.stand) ?? []) {
-      const link = supportRemains(world, nav, planned.to) ? planned : dropPastBranch(world, nav, planned, ticksPerTile);
-      if (!link || visited.has(link.to)) continue;
-      const ticks = step.ticks + link.ticks;
-      pending.push(ticks, { stand: link.to, ticks, first: step.first ?? link });
-    }
-  }
-  return null;
-}
-
-/** A blocked walk or drop can still walk off its lip to the low road below the missing landing. */
-function dropPastBranch(world: World, nav: RunNav, link: RunLink, ticksPerTile: number): RunLink | null {
-  if (link.kind !== 'walk' && link.kind !== 'drop') return null;
-  for (let to = link.to + nav.width; to < nav.distance.length; to += nav.width) {
-    if (nav.anchor[to] === -1) return null;
-    if (nav.anchor[to] === to && supportRemains(world, nav, to)) {
-      // Price the extra fall at the same scale as travel over one tile of ground.
-      return { ...link, kind: 'drop', to, ticks: link.ticks + ((to - link.to) / nav.width) * ticksPerTile };
-    }
-  }
-  return null;
 }
 
 /** True when the runner has run up to where its jump link takes off, or past it: the middle of the stand tile, or its far edge for a jump over a gap. */
