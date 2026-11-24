@@ -46,6 +46,14 @@ describe('course tuning', () => {
     });
   });
 
+  it('lowers dust cruise on Slingshot Alley while Drift Test keeps the drift default', () => {
+    const slingshot = effectiveTuning({ course: 'slingshot-alley', medium: 'drift', difficulty: 'hard' });
+    const driftTest = effectiveTuning({ course: 'drift-test', medium: 'drift', difficulty: 'hard' });
+
+    expect(driftTest.extra.dustCruiseMul).toBe(0.6);
+    expect(slingshot.extra).toEqual({ ...driftTest.extra, dustCruiseMul: 0.45 });
+  });
+
   it('rejects an extra the medium does not have when the race is set up, naming the course, the key and the valid extras', () => {
     const course = courseFromLevel(POOL, 'swim', { tuning: { extra: { kelpDrag: 0.5 } } });
 

@@ -1,5 +1,6 @@
 /** What Slingshot Alley has to contain to be Farside's course: its size, its set pieces (wells, asteroids) and where nothing may lie. */
 import { describe, expect, it } from 'vitest';
+import { JELLY } from '../hazards/tuning.ts';
 import { holeAt, inHoleReach, pullAt } from '../level/wells.ts';
 import { type Cell, TILE, type Vec } from '../types.ts';
 import { COURSES, levelOf } from './index.ts';
@@ -59,9 +60,18 @@ describe('Slingshot Alley', () => {
 
   it('leaves the Debris Storm dust channel clear for racers to pass the shield', () => {
     const orbs = level.jellies.filter(({ x }) => x >= 603 && x <= 846);
+    // avoid.ts gives the orb's hitbox another 24 px above and below for its bob.
+    const halfSize = JELLY.size / 2;
+    const colClearance = Math.ceil(halfSize / TILE);
+    const rowClearance = Math.ceil((halfSize + 24) / TILE);
 
     expect(orbs.length).toBeGreaterThan(0);
-    expect(orbs.filter(({ x, y }) => x >= 737 && x <= 743 && y >= 21 && y <= 25)).toEqual([]);
+    expect(
+      orbs.filter(
+        ({ x, y }) =>
+          x >= 737 - colClearance && x <= 743 + colClearance && y >= 21 - rowClearance && y <= 25 + rowClearance,
+      ),
+    ).toEqual([]);
   });
 
   it('has drifting asteroids out of step in the opening, dust field and debris corridor', () => {
