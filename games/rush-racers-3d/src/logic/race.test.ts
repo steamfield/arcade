@@ -1,11 +1,13 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { expect, it } from 'vitest';
 import { groundY } from './course.ts';
+import { THORNWOOD_TRAIL } from './courses/thornwood-trail.ts';
 import type { GameEvent } from './events.ts';
 import { hashWorld } from './hash.ts';
 import { NO_INPUT } from './racer.ts';
+import { placeOf, places } from './standings.ts';
 import { RACE } from './tuning.ts';
-import type { Course, TickInput } from './types.ts';
+import { CHARACTER_IDS, type Course, type TickInput } from './types.ts';
 import { createWorld, playerOf, stepWorld } from './world.ts';
 
 const course: Course = {
@@ -137,5 +139,166 @@ it('replays a script to the same hash and excludes the course and event sink', (
       course: { ...course, id: 'other', name: 'Other', parTicks: 1100 },
       events: new EventLog<GameEvent>(),
     }),
+  );
+});
+
+it('lines up four distinct characters and draws rivals from the seed', () => {
+  function grid(seed: number) {
+    return createWorld(new EventLog<GameEvent>(), { course, seed, character: 'shade', rivals: true });
+  }
+  const world = grid(1);
+  expect(world.racers.map(({ id, d }) => [id, d])).toEqual([
+    ['player', -1.25],
+    ['r1', 1.25],
+    ['r2', -3.75],
+    ['r3', 3.75],
+  ]);
+  expect(world.racers[0]).toMatchObject({ character: 'shade', s: course.startS, safeD: -1.25 });
+  const draws = Array.from({ length: 20 }, (_, i) => {
+    const racers = grid(i + 1).racers;
+    const characters = racers.map(({ character }) => character);
+    expect(new Set(characters).size).toBe(4);
+    expect(characters.every((character) => CHARACTER_IDS.includes(character))).toBe(true);
+    return characters.slice(1).join(',');
+  });
+  expect(new Set(draws).size).toBeGreaterThan(1);
+  expect(grid(1).racers).toEqual(world.racers);
+  expect(grid(1).rngState).toBe(world.rngState);
+  expect(world.rngState).not.toBe(1);
+});
+
+function pack(finishS = 200) {
+  const events = new EventLog<GameEvent>();
+  const world = createWorld(events, { course: { ...course, finishS }, seed: 4, character: 'grit', rivals: true });
+  for (let i = 0; i <= RACE.countdownTicks; i++) stepWorld(world, {}, TICK_DT);
+  const [player, r1, r2, r3] = world.racers;
+  if (!player || !r1 || !r2 || !r3) throw new Error('expected four racers');
+  return { world, events, player, r1, r2, r3 };
+}
+
+it('ranks finishers by time, then unfinished racers by distance, with ties in slot order', () => {
+  const { world, r1, r2, r3, player } = pack();
+  player.s = 20;
+  r1.s = 20;
+  r2.s = 40;
+  r3.s = 40;
+  expect(places(world)).toEqual(['r2', 'r3', 'player', 'r1']);
+  expect(placeOf(world, 'player')).toBe(3);
+  r1.s = 199.99;
+  r1.vs = 14;
+  stepWorld(world, {}, TICK_DT);
+  expect(places(world)).toEqual(['r1', 'r2', 'r3', 'player']);
+  r2.s = 199.99;
+  r3.s = 199.99;
+  r2.vs = 14;
+  r3.vs = 15;
+  stepWorld(world, {}, TICK_DT);
+  expect(places(world)).toEqual(['r1', 'r2', 'r3', 'player']);
+  expect(placeOf(world, 'r3')).toBe(3);
+  expect(world.endTick).toBe(world.tick + RACE.rivalsDoneGraceTicks);
+});
+
+it('ends on the player crossing, with same-tick places and one finish event per racer', () => {
+  const { world, events, player, r1, r2, r3 } = pack();
+  r2.s = 199.99;
+  r2.vs = 14;
+  stepWorld(world, {}, TICK_DT);
+  player.s = 199.99;
+  player.vs = 14;
+  r1.s = 199.99;
+  r1.vs = 14;
+  r3.s = 120;
+  stepWorld(world, { player: forward }, TICK_DT);
+  expect(world.phase).toBe('finished');
+  expect(places(world)).toEqual(['r2', 'player', 'r1', 'r3']);
+  stepWorld(world, { player: forward }, TICK_DT);
+  expect(events.all().filter((event) => event.type === 'racer.finished' || event.type === 'race.ended')).toMatchObject([
+    { type: 'racer.finished', id: 'r2', ticks: 2, place: 1 },
+    { type: 'racer.finished', id: 'player', ticks: 3, place: 2 },
+    { type: 'racer.finished', id: 'r1', ticks: 3, place: 3 },
+    { type: 'race.ended', ticks: 3, reason: 'player-finished' },
+  ]);
+  expect(r3.finishTicks).toBeNull();
+});
+
+it.each([false, true])('allows the full rival grace period for a player crossing: %s', (crosses) => {
+  const { world, events, player, r1, r2, r3 } = pack(40);
+  for (const rival of [r1, r2]) {
+    rival.s = 39.99;
+    rival.vs = 14;
+  }
+  stepWorld(world, {}, TICK_DT);
+  expect(world.endTick).toBeNull();
+  r3.s = 39.99;
+  r3.vs = 14;
+  stepWorld(world, {}, TICK_DT);
+  const deadline = world.tick + RACE.rivalsDoneGraceTicks;
+  expect(world.endTick).toBe(deadline);
+  for (let i = 1; i < RACE.rivalsDoneGraceTicks; i++) stepWorld(world, {}, TICK_DT);
+  expect(world).toMatchObject({ phase: 'racing', tick: deadline - 1, endTick: deadline });
+  if (crosses) {
+    player.s = 39.99;
+    player.vs = 14;
+  }
+  stepWorld(world, { player: forward }, TICK_DT);
+  expect(world).toMatchObject({ phase: 'finished', tick: deadline });
+  expect(player.finishTicks).toBe(crosses ? 3 + RACE.rivalsDoneGraceTicks : null);
+  expect(events.all().at(-1)).toMatchObject({
+    type: 'race.ended',
+    ticks: 3 + RACE.rivalsDoneGraceTicks,
+    reason: crosses ? 'player-finished' : 'rivals-finished',
+  });
+});
+
+it('enforces the race limit even if the third rival has just finished', () => {
+  const { world, events, r1, r2, r3 } = pack();
+  world.raceTicks = RACE.limitTicks - 1;
+  world.tick = world.raceTicks + RACE.countdownTicks;
+  for (const rival of [r1, r2, r3]) {
+    rival.s = 199.99;
+    rival.vs = 14;
+  }
+  stepWorld(world, {}, TICK_DT);
+  expect(events.all().at(-1)).toMatchObject({ type: 'race.ended', ticks: RACE.limitTicks, reason: 'limit' });
+  expect(world.phase).toBe('finished');
+});
+
+it('replays the same four-racer script and hash, with seed-dependent rival movement', () => {
+  function play(seed: number) {
+    const world = createWorld(new EventLog<GameEvent>(), {
+      course: THORNWOOD_TRAIL,
+      seed,
+      character: 'grit',
+      rivals: true,
+    });
+    for (let tick = 0; tick < 850; tick++) {
+      stepWorld(
+        world,
+        {
+          player: {
+            ...forward,
+            steer: tick < 210 ? -0.4 : 0,
+            jumpPressed: tick === 425,
+            jumpHeld: tick >= 425 && tick < 470,
+            dashPressed: tick === 245,
+          },
+        },
+        TICK_DT,
+      );
+    }
+    return world;
+  }
+  const first = play(1);
+  const other = play(2);
+  expect(hashWorld(first)).toBe(hashWorld(play(1)));
+  expect(hashWorld(first)).not.toBe(hashWorld(other));
+  expect(first.racers.slice(1).map(({ s, d }) => [s, d])).not.toEqual(other.racers.slice(1).map(({ s, d }) => [s, d]));
+  expect(first.rngState).not.toBe(
+    createWorld(new EventLog<GameEvent>(), {
+      course: THORNWOOD_TRAIL,
+      seed: 1,
+      character: 'grit',
+      rivals: true,
+    }).rngState,
   );
 });
