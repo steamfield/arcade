@@ -2,22 +2,24 @@
  * Flight's rival pilot: the profile's `wobble` changes the path it flies, `reactionTicks` changes
  * how late it turns, every flap is a real press (Up let go between flaps), it glides down to a
  * target a little below after a flap, and it dashes through a puff cloud only sideways and keeps at
- * it until the cloud pops. Raced through
+ * it until the cloud pops; when a dash can't pop it, two rivals go the long way round without
+ * jamming the tunnel. Raced through
  * `createWorld` on sky-test and small inline courses, or steered one call at a time through
  * `FLIGHT_MEDIUM.steer` where the test needs to count ticks of its reaction.
  */
 import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { courseById } from '../../courses/index.ts';
-import type { Course } from '../../courses/types.ts';
+import type { Course, CourseTuning } from '../../courses/types.ts';
 import type { GameEvent } from '../../events.ts';
 import { courseFromLevel, IDLE, placeOnTile, racerOf, step } from '../../test-world.ts';
-import { type Racer, type RacerId, TILE, type World } from '../../types.ts';
+import { type Racer, type RacerId, type RivalProfile, TILE, type World } from '../../types.ts';
 import { createWorld } from '../../world.ts';
 import { effectiveTuning } from '../index.ts';
 import type { AiDraws } from '../types.ts';
 import { flightMotion } from './data.ts';
 import { FLIGHT_MEDIUM } from './index.ts';
+import { benchRace, raceUntilFinished, STEADY_FLYER } from './rival-test-kit.ts';
 
 function skyTest(): Course {
   const course = courseById('sky-test');
@@ -207,4 +209,44 @@ describe('the flight pilot', () => {
 
     expect([flap.move.y, glide.move.y]).toEqual([-1, -1]);
   });
+
+  it('with no dash window to pop it, two rivals at a puff-plugged tunnel go round and finish within 2x par', () => {
+    const par = tunnelFinishes({ kickSkill: 0 }, {}).tess;
+    const finishes = tunnelFinishes({ kickSkill: 1 }, { extra: { dashTicks: 0 } });
+
+    expect(par).not.toBeNull();
+    expect(finishes.tess).not.toBeNull();
+    expect(finishes.squib).not.toBeNull();
+    expect(Math.max(finishes.tess ?? Number.POSITIVE_INFINITY, finishes.squib ?? 0)).toBeLessThanOrEqual(
+      2 * (par ?? 0),
+    );
+  });
 });
+
+/**
+ * PLUGGED_TUNNEL with only tess (2) and squib (3) in it, the others benched (`withBench`), so the
+ * idle player doesn't sit in the shaft up to the long way round.
+ */
+const PLUGGED_TUNNEL_PAIR = [
+  '###################',
+  '#..................',
+  '#.################.',
+  '#.################.',
+  '#..2.3....C.......F',
+  '###################',
+];
+
+/**
+ * The race ticks at which tess and squib, never wobbling and with `profile` on top, finish
+ * PLUGGED_TUNNEL_PAIR with `tuning` on flight's (null when not within 1200 ticks). Par is tess's
+ * finish never dashing, so flying the long way round from the start.
+ */
+function tunnelFinishes(profile: Partial<RivalProfile>, tuning: CourseTuning): Record<'tess' | 'squib', number | null> {
+  const { world, log } = benchRace(
+    PLUGGED_TUNNEL_PAIR,
+    { tess: { ...STEADY_FLYER, ...profile }, squib: { ...STEADY_FLYER, ...profile } },
+    { tuning },
+  );
+  raceUntilFinished(world, log, ['tess', 'squib'], 1200);
+  return { tess: racerOf(world, 'tess').finished?.tick ?? null, squib: racerOf(world, 'squib').finished?.tick ?? null };
+}

@@ -1,7 +1,8 @@
 /**
  * Reading flight's nav: the distance at a tile, the next tile on the way (8-way, so the Easy guide
  * points up and down), a full 2D aim along it, the tiles ahead on either field for the pilot (all
- * of them, or up to the next turn), and the puff cloud ahead for a flyer that would dash through it.
+ * of them, or up to the next turn), the puff cloud ahead for a flyer that would dash through it, and
+ * the bounce pads.
  */
 import { downhillPath, openTiles, steerDirection } from '../../ai/steer.ts';
 import { cellAt, isSolid } from '../../level/query.ts';
@@ -112,4 +113,13 @@ export function flightPuffInDashLine(world: World, tile: Vec, facing: -1 | 1, re
  */
 export function flightCoralAhead(world: World, tile: Vec, steps: number): boolean {
   return flightPuffAhead(world, tile, steps) !== null;
+}
+
+/**
+ * Every bounce cloud tile with open sky right above it, in reading order.
+ *
+ * @throws {Error} When the world's nav was built by another medium.
+ */
+export function flightBouncePads(world: World): readonly Vec[] {
+  return flightNav(world.nav).bouncePads;
 }
