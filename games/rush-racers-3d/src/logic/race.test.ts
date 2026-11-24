@@ -1,5 +1,6 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { expect, it } from 'vitest';
+import { groundY } from './course.ts';
 import type { GameEvent } from './events.ts';
 import { hashWorld } from './hash.ts';
 import { NO_INPUT } from './racer.ts';
@@ -25,33 +26,30 @@ function start(layout = course) {
   const world = createWorld(events, { course: layout, seed: 4, character: 'grit', rivals: false });
   function advance(ticks: number, input?: TickInput) {
     for (let i = 0; i < ticks; i++) {
-      events.tick = world.tick === 0 ? 0 : world.tick + 1;
+      events.tick = world.tick;
       stepWorld(world, input ? { player: input } : {}, TICK_DT);
     }
   }
   return { world, events, player: playerOf(world), advance };
 }
 
-it('counts down at ticks 0, 60 and 120 and starts at 180 without moving', () => {
+it('counts down at steps 0, 60 and 120 and holds the start line until step 180', () => {
   const { world, events, player, advance } = start();
   const startPlayer = { ...player };
   const eager = { ...forward, steer: 1, jumpPressed: true, dashPressed: true };
   expect(world.phase).toBe('countdown');
-  advance(179, eager);
-  expect(world).toMatchObject({ phase: 'countdown', tick: 179, raceTicks: 0 });
+  advance(RACE.countdownTicks, eager);
+  expect(world).toMatchObject({ phase: 'countdown', tick: 180, raceTicks: 0 });
   expect(player).toEqual(startPlayer);
-  advance(1, eager);
-  expect(world).toMatchObject({ phase: 'racing', tick: 180, raceTicks: 0 });
-  expect(player).toEqual(startPlayer);
+  advance(1, forward);
+  expect(world).toMatchObject({ phase: 'racing', tick: 181, raceTicks: 1 });
+  expect(player.s).toBeGreaterThan(course.startS);
   expect(events.all()).toEqual([
     { type: 'race.countdown', tick: 0, seq: 0, n: 3 },
     { type: 'race.countdown', tick: 60, seq: 1, n: 2 },
     { type: 'race.countdown', tick: 120, seq: 2, n: 1 },
     { type: 'race.started', tick: RACE.countdownTicks, seq: 3 },
   ]);
-  advance(1, forward);
-  expect(world.raceTicks).toBe(1);
-  expect(player.s).toBeGreaterThan(course.startS);
 });
 
 it('finishes on the crossing tick, clamps to the line and freezes the world', () => {
@@ -62,13 +60,40 @@ it('finishes on the crossing tick, clamps to the line and freezes the world', ()
   expect(player).toMatchObject({ state: 'finished', finishTicks: 42, s: 5, vs: 0, vd: 0, vy: 0 });
   expect(world).toMatchObject({ phase: 'finished', raceTicks: 42 });
   expect(events.all().slice(-2)).toMatchObject([
-    { type: 'racer.finished', id: 'player', ticks: 42, tick: 222 },
-    { type: 'race.ended', ticks: 42, tick: 222 },
+    { type: 'racer.finished', id: 'player', ticks: 42, tick: 221 },
+    { type: 'race.ended', ticks: 42, tick: 221 },
   ]);
   const finished = hashWorld(world);
   advance(32, { ...forward, steer: -1, jumpPressed: true, dashPressed: true });
   expect(hashWorld(world)).toBe(finished);
   expect(events.all().filter((event) => event.type === 'race.ended')).toHaveLength(1);
+});
+
+it('grounds the racer on the finish line after crossing it in the air', () => {
+  const uphill: Course = {
+    ...course,
+    finishS: 20,
+    hills: [
+      { s: 0, y: 0 },
+      { s: 20, y: 2 },
+    ],
+  };
+  const { advance, player, world } = start(uphill);
+  const held = { ...forward, jumpHeld: true };
+  advance(RACE.countdownTicks + 89, forward);
+  advance(1, { ...held, jumpPressed: true });
+  advance(16, held);
+  expect(player).toMatchObject({ grounded: false, state: 'racing' });
+  expect(player.y).toBeGreaterThan(groundY(uphill, uphill.finishS));
+  advance(1, held);
+  expect(world.phase).toBe('finished');
+  expect(player).toMatchObject({
+    s: uphill.finishS,
+    y: groundY(uphill, uphill.finishS),
+    grounded: true,
+    state: 'finished',
+    finishTicks: 107,
+  });
 });
 
 it('ends at the race limit with no finish time for a stationary player', () => {

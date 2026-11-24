@@ -59,6 +59,36 @@ async function start(saves: SaveStore<SaveData>, options: Partial<Pick<RuntimeOp
 
 afterEach(() => configureLogging(() => {}));
 
+it('uses consecutive step numbers and starts the next countdown on the step after restart', async () => {
+  const { runtime, advance } = await start(await openStore());
+  const firstSteps: number[] = [];
+  for (let i = 0; i < 3; i++) {
+    advance(1, forward);
+    firstSteps.push(runtime.events.tick);
+  }
+  const endTick = RACE.countdownTicks + FINISH_TICKS - 1;
+  const restartTick = endTick + RESULTS_CONFIRM_DELAY_TICKS;
+  advance(endTick + 1 - firstSteps.length, forward);
+  advance(RESULTS_CONFIRM_DELAY_TICKS - 1);
+  advance(1, fire);
+  advance(1);
+  expect({ firstSteps, events: runtime.events.all() }).toMatchObject({
+    firstSteps: [0, 1, 2],
+    events: [
+      { type: 'race.countdown', tick: 0, n: 3 },
+      { type: 'race.countdown', tick: 60, n: 2 },
+      { type: 'race.countdown', tick: 120, n: 1 },
+      { type: 'race.started', tick: 180 },
+      { type: 'racer.finished', tick: endTick },
+      { type: 'race.ended', tick: endTick },
+      { type: 'best.new', tick: endTick },
+      { type: 'race.restarted', tick: restartTick },
+      { type: 'race.countdown', tick: restartTick + 1, n: 3 },
+    ],
+  });
+  await runtime.settled();
+});
+
 it('shows results on the finish tick, records a best, and restores it from IndexedDB', async () => {
   const saves = await openStore();
   const { runtime, advance } = await start(saves);
@@ -68,8 +98,8 @@ it('shows results on the finish tick, records a best, and restores it from Index
   expect(runtime.summary()).toMatchObject({ scene: 'results', finishTicks: FINISH_TICKS });
   expect(runtime.bests).toEqual({ [course.id]: FINISH_TICKS });
   expect(runtime.events.all().slice(-2)).toMatchObject([
-    { type: 'race.ended', ticks: FINISH_TICKS, tick: RACE.countdownTicks + FINISH_TICKS },
-    { type: 'best.new', course: course.id, ticks: FINISH_TICKS, tick: RACE.countdownTicks + FINISH_TICKS },
+    { type: 'race.ended', ticks: FINISH_TICKS, tick: RACE.countdownTicks + FINISH_TICKS - 1 },
+    { type: 'best.new', course: course.id, ticks: FINISH_TICKS, tick: RACE.countdownTicks + FINISH_TICKS - 1 },
   ]);
   expect(runtime.saving).toBe(true);
   await runtime.settled();
@@ -106,7 +136,7 @@ it('replaces a slower stored best and keeps the other course record', async () =
   const improved = { ...stored, [course.id]: FINISH_TICKS };
   expect(runtime.bests).toEqual(improved);
   expect(runtime.events.all().filter((event) => event.type === 'best.new')).toMatchObject([
-    { course: course.id, ticks: FINISH_TICKS, tick: RACE.countdownTicks + FINISH_TICKS },
+    { course: course.id, ticks: FINISH_TICKS, tick: RACE.countdownTicks + FINISH_TICKS - 1 },
   ]);
   await runtime.settled();
   expect((await start(saves)).runtime.bests).toEqual(improved);
@@ -134,12 +164,12 @@ it('ignores fire in a race and before the results delay, then restarts at the ex
   expect(runtime.world).not.toBe(world);
   expect(playerOf(runtime.world).character).toBe('fang');
   expect(runtime.summary()).toMatchObject({ scene: 'race', phase: 'countdown', tick: 0, finishTicks: null });
-  const endTick = RACE.countdownTicks + FINISH_TICKS + 1;
+  const endTick = RACE.countdownTicks + FINISH_TICKS;
   expect(runtime.events.all().at(-1)).toMatchObject({
     type: 'race.restarted',
     tick: endTick + RESULTS_CONFIRM_DELAY_TICKS,
   });
-  expect(held.reads).toBe(endTick + RESULTS_CONFIRM_DELAY_TICKS);
+  expect(held.reads).toBe(endTick + RESULTS_CONFIRM_DELAY_TICKS + 1);
   expect(held.afterTicks).toBe(held.reads);
   await runtime.settled();
 });

@@ -142,10 +142,9 @@ export class Runtime {
   }
 
   protected tickOnce(dt: number): void {
+    const tick = this.step.tick;
+    this.events.tick = tick;
     const frame = this.options.readInput();
-    const tick = this.step.tick + 1;
-    // The first countdown event describes the start line at tick zero of this race.
-    this.events.tick = this.world.tick === 0 ? tick - 1 : tick;
     if (this.scene === 'race') {
       stepWorld(this.world, { player: frame.race }, dt);
       if (this.world.phase === 'finished') this.showResults(tick);

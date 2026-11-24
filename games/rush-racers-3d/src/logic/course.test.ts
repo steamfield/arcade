@@ -17,36 +17,36 @@ const straight: Course = {
   features: [],
 };
 
-it.each<{ rule: string; patch: Partial<Course>; problem: RegExp }>([
+it.each<{ rule: string; patch: Partial<Course>; problem: string }>([
   {
     rule: 'feature before the start',
     patch: { features: [{ kind: 'crate', s: 4, d: 0 }] },
-    problem: /feature 0.*start.*finish/,
+    problem: 'feature 0 (crate) is at s 4, outside [5, 190]',
   },
   {
     rule: 'log extending past the finish',
     patch: { features: [{ kind: 'log', s: 189.5, d0: 0, d1: 1, height: 1 }] },
-    problem: /feature 0.*start.*finish/,
+    problem: 'feature 0 (log) spans s 189.5-190.5, outside [5, 190]',
   },
   {
     rule: 'zero-length span',
     patch: { features: [{ kind: 'mud', s0: 30, s1: 30, d0: 0, d1: 1 }] },
-    problem: /feature 0.*s0.*s1/,
+    problem: 'feature 0 (mud) has s0 30, s1 30 and must satisfy s0 < s1',
   },
   {
     rule: 'reversed lateral span',
     patch: { features: [{ kind: 'gust', s0: 30, s1: 40, d0: 1, d1: 0, push: 1 }] },
-    problem: /feature 0.*d0.*d1/,
+    problem: 'feature 0 (gust) has d0 1, d1 0 and must satisfy d0 < d1',
   },
   {
     rule: 'span outside the track width',
     patch: { features: [{ kind: 'mud', s0: 30, s1: 40, d0: -6, d1: 0 }] },
-    problem: /feature 0.*width/,
+    problem: 'feature 0 (mud) spans d -6 to 0, outside track width [-5, 5]',
   },
   {
     rule: 'pit within 20 m of the start',
     patch: { features: [{ kind: 'pit', s0: 24, s1: 35, d0: -1, d1: 1 }] },
-    problem: /feature 0.*20 m/,
+    problem: 'feature 0 (pit) starts at s 24, less than 20 m after startS 5 (minimum s 25)',
   },
   {
     rule: 'hills out of order',
@@ -56,12 +56,12 @@ it.each<{ rule: string; patch: Partial<Course>; problem: RegExp }>([
         { s: 25, y: 1 },
       ],
     },
-    problem: /hill 1.*sorted/,
+    problem: 'hill 1 at s 25 comes before hill 0 at s 30',
   },
   {
     rule: 'turn radius equal to half width plus one',
     patch: { path: [...straight.path, { kind: 'turn', radius: 6, angleDeg: 90 }] },
-    problem: /segment 1.*radius/,
+    problem: 'segment 1 radius 6 must exceed halfWidth + 1 = 6',
   },
   {
     rule: 'overlapping log and pit',
@@ -71,19 +71,27 @@ it.each<{ rule: string; patch: Partial<Course>; problem: RegExp }>([
         { kind: 'log', s: 29.5, d0: 0, d1: 2, height: 0.5 },
       ],
     },
-    problem: /feature 1.*overlap.*pit.*0/,
+    problem: 'feature 1 (log) at s 29.5-30.5, d 0 to 2 overlaps feature 0 (pit) at s 30-45, d -1 to 1',
   },
-  { rule: 'finish past the path', patch: { finishS: 201 }, problem: /startS.*finishS.*course length/ },
-  { rule: 'start on the finish', patch: { startS: 190 }, problem: /startS.*finishS.*course length/ },
+  {
+    rule: 'finish past the path',
+    patch: { finishS: 201 },
+    problem: 'startS 5, finishS 201 must satisfy startS < finishS <= course length 200',
+  },
+  {
+    rule: 'start on the finish',
+    patch: { startS: 190 },
+    problem: 'startS 190, finishS 190 must satisfy startS < finishS <= course length 200',
+  },
 ])('reports $rule', ({ patch, problem }) => {
-  expect(validateCourse({ ...straight, ...patch })).toEqual([expect.stringMatching(problem)]);
+  expect(validateCourse({ ...straight, ...patch })).toEqual([problem]);
 });
 
 it('throws a course error naming the course and the bad feature when building a race', () => {
   const course = { ...straight, features: [{ kind: 'crate', s: 210, d: 0 }] } satisfies Course;
   const build = () => createWorld(new EventLog(), { course, seed: 1, character: 'grit', rivals: false });
   expect(build).toThrow(CourseError);
-  expect(build).toThrow(/validation-straight[\s\S]*feature 0/);
+  expect(build).toThrow('course validation-straight is invalid:\nfeature 0 (crate) is at s 210, outside [5, 190]');
 });
 
 it('queries pits, mud, gusts and log footprints at their boundaries', () => {

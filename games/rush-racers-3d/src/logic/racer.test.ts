@@ -260,6 +260,33 @@ it('caps running speed in mud and accelerates back up after leaving', () => {
   expect(racer.vs).toBe(RUN.runSpeed);
 });
 
+it('keeps run speed above mud and slows on the tick it lands', () => {
+  const { racer, events, advance } = start(
+    { features: [{ kind: 'mud', s0: 1, s1: 15, d0: -5, d1: 5 }] },
+    { s: 0.9, vs: RUN.runSpeed },
+  );
+  for (let tick = 1; tick <= 46; tick++) {
+    advance(1, tick === 1 ? jump : held);
+    expect(racer.grounded).toBe(false);
+    expect(racer.s).toBeGreaterThan(1);
+    expect(racer.s).toBeLessThan(15);
+    expect(racer.vs, `airborne tick ${tick}`).toBe(RUN.runSpeed);
+  }
+  advance(1, held);
+  expect(racer).toMatchObject({ grounded: true, vs: RUN.runSpeed * RUN.mudSpeedMul });
+  expect(events.all().at(-1)).toMatchObject({ type: 'racer.landed', tick: 47 });
+});
+
+it('keeps run speed on a log above mud', () => {
+  const { racer, advance } = start(
+    { features: [log, { kind: 'mud', s0: 30, s1: 31, d0: -5, d1: 5 }] },
+    { s: 30.2, y: log.height, vs: RUN.runSpeed },
+  );
+  advance(2, forward);
+  expect(racer.s).toBeLessThan(31);
+  expect(racer).toMatchObject({ grounded: true, y: log.height, vs: RUN.runSpeed });
+});
+
 it('can steer away from the track edge against a gust', () => {
   const edge = straight.halfWidth - RUN.radius;
   const { racer, advance } = start(

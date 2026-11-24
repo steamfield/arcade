@@ -89,34 +89,56 @@ function contains(span: Span, s: number, d: number): boolean {
  */
 export function validateCourse(course: Course): string[] {
   const { startS, finishS, halfWidth } = course;
+  const length = courseLength(course);
   const problems: string[] = [];
-  if (!(startS < finishS && finishS <= courseLength(course))) {
-    problems.push('expected startS < finishS <= course length');
+  if (!(startS < finishS && finishS <= length)) {
+    problems.push(`startS ${startS}, finishS ${finishS} must satisfy startS < finishS <= course length ${length}`);
   }
   let previousS = -Infinity;
   for (const [index, hill] of course.hills.entries()) {
-    if (!(hill.s >= previousS)) problems.push(`hill ${index} is out of order (hills must be sorted by s)`);
+    if (!(hill.s >= previousS)) {
+      problems.push(
+        index === 0
+          ? `hill ${index} has invalid s ${hill.s}`
+          : `hill ${index} at s ${hill.s} comes before hill ${index - 1} at s ${previousS}`,
+      );
+    }
     previousS = hill.s;
   }
+  const minTurnRadius = halfWidth + 1;
   for (const [index, segment] of course.path.entries()) {
-    if (segment.kind === 'turn' && !(segment.radius > halfWidth + 1)) {
-      problems.push(`segment ${index} radius must exceed halfWidth + 1`);
+    if (segment.kind === 'turn' && !(segment.radius > minTurnRadius)) {
+      problems.push(`segment ${index} radius ${segment.radius} must exceed halfWidth + 1 = ${minTurnRadius}`);
     }
   }
+  const minPitStart = startS + 20;
   for (const [index, feature] of course.features.entries()) {
+    const label = `feature ${index} (${feature.kind})`;
     const s0 = 's0' in feature ? feature.s0 : feature.s;
     const s1 = 's1' in feature ? feature.s1 : s0 + (feature.kind === 'log' ? RUN.logDepth : 0);
     const d0 = feature.kind === 'crate' ? feature.d : feature.d0;
     const d1 = feature.kind === 'crate' ? feature.d : feature.d1;
-    if (!(s0 >= startS && s1 <= finishS)) problems.push(`feature ${index} is outside the start and finish`);
-    if (!(d0 >= -halfWidth && d1 <= halfWidth)) problems.push(`feature ${index} is outside the track width`);
-    if ('s0' in feature && !(s0 < s1)) problems.push(`feature ${index} requires s0 < s1`);
-    if (feature.kind !== 'crate' && !(d0 < d1)) problems.push(`feature ${index} requires d0 < d1`);
-    if (feature.kind === 'pit' && s0 < startS + 20) problems.push(`feature ${index} is a pit within 20 m of the start`);
+    if (!(s0 >= startS && s1 <= finishS)) {
+      const position = feature.kind === 'crate' ? `is at s ${s0}` : `spans s ${s0}-${s1}`;
+      problems.push(`${label} ${position}, outside [${startS}, ${finishS}]`);
+    }
+    if (!(d0 >= -halfWidth && d1 <= halfWidth)) {
+      const position = feature.kind === 'crate' ? `is at d ${d0}` : `spans d ${d0} to ${d1}`;
+      problems.push(`${label} ${position}, outside track width [${-halfWidth}, ${halfWidth}]`);
+    }
+    if ('s0' in feature && !(s0 < s1)) problems.push(`${label} has s0 ${s0}, s1 ${s1} and must satisfy s0 < s1`);
+    if (feature.kind !== 'crate' && !(d0 < d1)) {
+      problems.push(`${label} has d0 ${d0}, d1 ${d1} and must satisfy d0 < d1`);
+    }
+    if (feature.kind === 'pit' && s0 < minPitStart) {
+      problems.push(`${label} starts at s ${s0}, less than 20 m after startS ${startS} (minimum s ${minPitStart})`);
+    }
     if (feature.kind !== 'log') continue;
     for (const [pitIndex, pit] of course.features.entries()) {
       if (pit.kind === 'pit' && s0 < pit.s1 && s1 > pit.s0 && d0 < pit.d1 && d1 > pit.d0) {
-        problems.push(`feature ${index} overlaps pit ${pitIndex}`);
+        problems.push(
+          `${label} at s ${s0}-${s1}, d ${d0} to ${d1} overlaps feature ${pitIndex} (pit) at s ${pit.s0}-${pit.s1}, d ${pit.d0} to ${pit.d1}`,
+        );
       }
     }
   }

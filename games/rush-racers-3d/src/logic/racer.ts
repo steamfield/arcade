@@ -43,8 +43,10 @@ export function stepRacer(racer: Racer, input: TickInput, ctx: RacerContext, dt:
   if (racer.bufferTicks > 0 && (racer.grounded || racer.coyoteTicks > 0)) jump(racer, ctx);
   racer.coyoteTicks = Math.max(0, racer.coyoteTicks - 1);
 
-  const surface = surfaceAt(ctx.course, racer.s, racer.d);
-  run(racer, input, ctx, surface.kind === 'mud', dt);
+  const { course } = ctx;
+  const surface = surfaceAt(course, racer.s, racer.d);
+  const inMud = surface.kind === 'mud' && isOnGround(racer, groundY(course, racer.s));
+  run(racer, input, ctx, inMud, dt);
   const steer = Math.max(-1, Math.min(1, input.steer)) * RUN.steerSpeed;
   const steerStep = RUN.steerAccel * dt;
   racer.vd += Math.max(-steerStep, Math.min(steerStep, steer - racer.vd));
@@ -52,14 +54,21 @@ export function stepRacer(racer: Racer, input: TickInput, ctx: RacerContext, dt:
   move(racer, ctx, surface.push, input.jumpHeld, dt);
   if (racer.state !== 'racing') return;
   const mudSpeed = RUN.runSpeed * RUN.mudSpeedMul;
-  if (racer.vs > mudSpeed && racer.vs <= RUN.runSpeed && surfaceAt(ctx.course, racer.s, racer.d).kind === 'mud') {
+  if (
+    racer.vs > mudSpeed &&
+    racer.vs <= RUN.runSpeed &&
+    isOnGround(racer, groundY(course, racer.s)) &&
+    surfaceAt(course, racer.s, racer.d).kind === 'mud'
+  ) {
     racer.vs = mudSpeed;
   }
   if (racer.grounded && racer.bufferTicks > 0) jump(racer, ctx);
   if (!input.jumpPressed) racer.bufferTicks = Math.max(0, racer.bufferTicks - 1);
-  if (racer.s >= ctx.course.finishS) {
+  if (racer.s >= course.finishS) {
     racer.state = 'finished';
     racer.finishTicks = ctx.raceTicks;
+    racer.y = groundY(course, racer.s);
+    racer.grounded = true;
     racer.vs = 0;
     racer.vd = 0;
     racer.vy = 0;
@@ -102,14 +111,41 @@ function jump(racer: Racer, ctx: RacerContext): void {
 function move(racer: Racer, ctx: RacerContext, push: number, jumpHeld: boolean, dt: number): void {
   const { course } = ctx;
   const ground = groundY(course, racer.s);
-  const followsGround = racer.grounded && racer.y === ground;
   const gravity = RUN.gravity * (racer.vy > 0 && !jumpHeld ? RUN.cutGravityMul : 1);
   const vy = Math.max(-RUN.maxFall, racer.vy - gravity * dt);
   const y = racer.y + vy * dt;
   const edge = Math.max(0, course.halfWidth - RUN.radius);
   const rawD = racer.d + (racer.vd + push) * dt;
-  let d = Math.max(-edge, Math.min(edge, rawD));
-  let s = Math.min(course.finishS, racer.s + racer.vs * dt);
+  const targetD = Math.max(-edge, Math.min(edge, rawD));
+  const targetS = Math.min(course.finishS, racer.s + racer.vs * dt);
+  const blocked = resolveLogs(racer, ctx, targetS, targetD, y, isOnGround(racer, ground));
+  if (Math.abs(blocked.d) === edge && blocked.d * racer.vd >= 0) racer.vd = 0;
+
+  const { s, d, pit, support, grounded, onLog } = resolveSupport(racer, course, blocked, y, ground);
+  racer.s = s;
+  racer.d = d;
+  racer.y = grounded ? support : y;
+  racer.vy = grounded ? 0 : vy;
+  if (grounded && !racer.grounded) ctx.events.emit({ type: 'racer.landed', id: racer.id });
+  if (!grounded && racer.grounded) racer.coyoteTicks = RUN.coyoteTicks;
+  racer.grounded = grounded;
+
+  updateSafeSpot(racer, course, onLog);
+  if (pit && y <= support - RUN.fallDepth) fall(racer, ctx);
+}
+
+function isOnGround(racer: Racer, ground: number): boolean {
+  return racer.grounded && racer.y === ground;
+}
+
+function resolveLogs(
+  racer: Racer,
+  { course, events }: RacerContext,
+  s: number,
+  d: number,
+  y: number,
+  followsGround: boolean,
+): { s: number; d: number } {
   let from: Pick<Racer, 's' | 'd' | 'y'> = racer;
   // Each contact blocks one axis. Check for a second contact along the face of the first log.
   for (let contacts = 0; contacts < 2; contacts++) {
@@ -124,36 +160,38 @@ function move(racer: Racer, ctx: RacerContext, push: number, jumpHeld: boolean, 
       d = contactD;
       racer.vd = 0;
     }
-    if (hit.time > 0) ctx.events.emit({ type: 'racer.bumped', id: racer.id, s: contactS });
+    if (hit.time > 0) events.emit({ type: 'racer.bumped', id: racer.id, s: contactS });
     from = { s: contactS, d: contactD, y: from.y + (y - from.y) * hit.time };
   }
-  if (Math.abs(d) === edge && d * racer.vd >= 0) racer.vd = 0;
+  return { s, d };
+}
 
-  let nextGround = groundY(course, s);
+function resolveSupport(
+  racer: Racer,
+  course: Course,
+  { s, d }: { s: number; d: number },
+  y: number,
+  ground: number,
+): { s: number; d: number; pit: ReturnType<typeof pitAt>; support: number; grounded: boolean; onLog: boolean } {
+  const nextGround = groundY(course, s);
   const fromPit = pitAt(course, racer.s, racer.d);
-  let pit = pitAt(course, s, d);
+  const pit = pitAt(course, s, d);
   // The pit wall holds a racer below the rim in the gap until they fall or jump high enough.
   if (fromPit && !pit && Math.max(racer.y, y) < nextGround) {
-    s = racer.s;
-    d = racer.d;
-    nextGround = ground;
-    pit = fromPit;
+    return { s: racer.s, d: racer.d, pit: fromPit, support: ground, grounded: false, onLog: false };
   }
+  if (pit) return { s, d, pit, support: nextGround, grounded: false, onLog: false };
   const log = logAt(course, s, d);
   const logTop = log ? topOf(course, log) : -Infinity;
   const onLog = logTop > nextGround && racer.y >= logTop;
   const support = onLog ? logTop : nextGround;
   const aboveSupport = racer.y >= (onLog || fromPit ? support : ground);
-  const grounded = !pit && ((followsGround && !onLog) || (aboveSupport && y <= support));
+  const grounded = (isOnGround(racer, ground) && !onLog) || (aboveSupport && y <= support);
+  return { s, d, pit, support, grounded, onLog };
+}
 
-  racer.s = s;
-  racer.d = d;
-  racer.y = grounded ? support : y;
-  racer.vy = grounded ? 0 : vy;
-  if (grounded && !racer.grounded) ctx.events.emit({ type: 'racer.landed', id: racer.id });
-  if (!grounded && racer.grounded) racer.coyoteTicks = RUN.coyoteTicks;
-  racer.grounded = grounded;
-
+function updateSafeSpot(racer: Racer, course: Course, onLog: boolean): void {
+  const { s, d, grounded } = racer;
   if (
     grounded &&
     !onLog &&
@@ -169,12 +207,13 @@ function move(racer: Racer, ctx: RacerContext, push: number, jumpHeld: boolean, 
     racer.safeS = s;
     racer.safeD = d;
   }
-  if (pit && y <= nextGround - RUN.fallDepth) fall(racer, ctx);
 }
 
 function topOf(course: Course, log: LogFeature): number {
   return groundY(course, log.s) + log.height;
 }
+
+type LogHit = { log: LogFeature; front: boolean; side: number; time: number };
 
 /** The first log face crossed while the racer's feet are below its top. */
 function logHit(
@@ -184,10 +223,10 @@ function logHit(
   d: number,
   y: number,
   followsGround: boolean,
-) {
+): LogHit | undefined {
   const ds = s - racer.s;
   const dd = d - racer.d;
-  let hit: { log: LogFeature; front: boolean; side: number; time: number } | undefined;
+  let hit: LogHit | undefined;
   for (const log of course.features) {
     if (log.kind !== 'log' || s < log.s || racer.s >= log.s + RUN.logDepth) continue;
     const frontTime = ds > 0 ? (log.s - racer.s) / ds : -Infinity;

@@ -2,11 +2,10 @@
  * The race: building the world, the countdown, stepping every racer in slot order, the finish and
  * the race limit, and the small summary scenarios assert on.
  *
- * Tick order: `tick` counts up; during the countdown `race.countdown` fires at ticks 0, 60 and 120
- * and `race.started` at `RACE.countdownTicks`, after which the phase is `racing`. While racing,
- * `raceTicks` counts up, then each racer in `racers` order takes `stepRacer` with its input; then the
- * race ends (`race.ended`, phase `finished`) when the player has finished (phase 1) or at
- * `RACE.limitTicks`. A finished world ignores input.
+ * `race.countdown` fires on steps 0, 60 and 120. Step `RACE.countdownTicks` starts the race and
+ * runs its first racing tick. On each racing tick, `raceTicks` counts up, then each racer in
+ * `racers` order takes `stepRacer` with its input. The race ends (`race.ended`, phase `finished`)
+ * when the player finishes (phase 1) or at `RACE.limitTicks`. A finished world ignores input.
  */
 import { type EventSink, TICK_HZ } from '@arcade/core';
 import { assertCourse, groundY } from './course.ts';
@@ -57,14 +56,14 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
   if (world.phase === 'finished') return;
   if (world.phase === 'countdown') {
     if (world.tick === 0) world.events.emit({ type: 'race.countdown', n: 3 });
-    world.tick++;
     if (world.tick === TICK_HZ) world.events.emit({ type: 'race.countdown', n: 2 });
     if (world.tick === 2 * TICK_HZ) world.events.emit({ type: 'race.countdown', n: 1 });
-    if (world.tick === RACE.countdownTicks) {
-      world.phase = 'racing';
-      world.events.emit({ type: 'race.started' });
+    if (world.tick < RACE.countdownTicks) {
+      world.tick++;
+      return;
     }
-    return;
+    world.phase = 'racing';
+    world.events.emit({ type: 'race.started' });
   }
   world.tick++;
   world.raceTicks++;
