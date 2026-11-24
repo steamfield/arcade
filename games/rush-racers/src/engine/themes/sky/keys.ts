@@ -35,6 +35,9 @@ export const SkyThemeTile = {
   rockBuried: 3,
   /** A springy cloud with a coiled rim. */
   bounce: 4,
+  sunlitBank: 5,
+  crowRoost: 6,
+  cannonRigging: 7,
 } as const;
 
 /** Sky animation keys: fog drift and the four winds. */

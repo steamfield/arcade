@@ -62,6 +62,11 @@ export const SKY_THEME = defineTheme({
       bounce: SkyThemeTile.bounce,
     },
     buriedTiles: { rock: SkyThemeTile.rockBuried },
+    glyphTiles: {
+      'sunlit-bank': SkyThemeTile.sunlitBank,
+      'crow-roost': SkyThemeTile.crowRoost,
+      'cannon-rigging': SkyThemeTile.cannonRigging,
+    },
     flowing: {
       kelp: { texture: SkyThemeTex.fog, anim: SkyThemeAnim.fogDrift },
       'current-right': { texture: SkyThemeTex.windRight, anim: SkyThemeAnim.windRight },
