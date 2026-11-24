@@ -300,3 +300,6 @@ Depends on: phase 6, phase 8
 - 1/b lane review: fixed in lane: attract error text printed [object Object]; Vite server leaked when Chromium fails to launch; run() error line merged into last output line; driver.problems() branches got tests (driver.test.ts added to Owns). Deferred: attract() split into recordFrames/encode, to phase 7 which reworks see/attract sessions.
 - 1/a lane review: fixed in lane: repo scan could pass on an empty file list; template-literal dynamic imports were not scanned.
 - 2026-11-23: user: "When this is production ready, merge to main, clean up, push to deploy". Push main after the final gate passes.
+- 2026-11-23: user approved push after merge: "When this is production ready, merge to main, clean up, push to deploy".
+- 2026-11-23: phase tags namespaced `refactor-audit/phase-N`; the bare `phase-1` tag belongs to an older plan and was restored to 8628f05.
+- 2c review triage: accepted the toddler measurement note, `fileURLToPath` in files.test.ts, unused `Wording.burst`; rejected moving easy helpers into normal-bars.ts (the brief allowed `easy-bars.ts`); stale `difficulty/` comments and four outside imports fixed at landing.
