@@ -1,5 +1,5 @@
 /**
- * Farside's cast is drawn at boot: every slot has a racer with two stride frames, a portrait and
+ * Farside's cast is drawn at boot: every slot has a racer with two motion frames, a portrait and
  * a head, in its own palette, and the skin points at textures that were really built.
  */
 import type Phaser from 'phaser';
@@ -84,7 +84,7 @@ function builtCast() {
 }
 
 describe('Farside cast textures', () => {
-  it.each(CHARACTER_IDS)('draws %s as a 16x12 racer with run-stride frames a and b', (slot) => {
+  it.each(CHARACTER_IDS)('draws %s as a 16x12 racer with motion frames a and b', (slot) => {
     const texture = builtCast().built.get(FarRacerTex[slot]);
     expect(texture?.frames).toEqual([Frame.a, Frame.b]);
     expect([texture?.frameWidth, texture?.height]).toEqual([16, 12]);
@@ -134,7 +134,7 @@ describe('Farside cast skin', () => {
     expect(new Set(portraits).size).toBe(CHARACTER_IDS.length);
   });
 
-  it('draws each slot in its own palette at all three sizes, so a critter looks the same everywhere', () => {
+  it('draws each slot in its own palette at all three sizes, so a racer looks the same everywhere', () => {
     const { built } = builtCast();
     for (const slot of CHARACTER_IDS) {
       const palette = new Set<number>(FarsidePalette[slot]);
@@ -165,6 +165,13 @@ describe('Farside cast skin', () => {
 
   it("colours every slot in a palette of its own, not Thornwood's", () => {
     for (const slot of CHARACTER_IDS) expect(FarsidePalette[slot], slot).not.toEqual(ThornwoodPalette[slot]);
+  });
+
+  it.each(CHARACTER_IDS)('moves %s between its two racer frames, so a and b are not the same drawing', (slot) => {
+    const racer = FARSIDE_RACER_SHEETS.find((sheet) => sheet.key === FarRacerTex[slot]);
+    const [a, b] = (racer?.frames ?? []).map((frame) => frame.rows.join('\n'));
+    expect(a).toBeDefined();
+    expect(a).not.toEqual(b);
   });
 
   it('gives every slot four colours and its own main colour', () => {
