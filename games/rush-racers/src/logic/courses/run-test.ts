@@ -15,9 +15,11 @@ import type { ShippedCourse } from './types.ts';
  * - Cols 29-31: a three-tile pit, open out of the bottom of the level, with a pearl over it.
  * - Cols 38-43: a ledge (`=`) run two tiles up, the only way onto the plateau beside it.
  * - Cols 44-50: a plateau four tiles high, then a drop back to the floor and the finish at col 57.
+ * - Col 53: a spring mushroom (`B`) in the floor, which launches a runner about five tiles up as
+ *   it runs over it, higher with Up held.
  *
  * No jump needs more than 2 tiles of height or crosses more than 3 tiles of gap, so a held jump has
- * room to spare.
+ * room to spare. The mushroom leads nowhere new: past it is the finish either way.
  */
 const LEVEL: LevelDef = {
   name: 'Run Test',
@@ -31,7 +33,7 @@ const LEVEL: LevelDef = {
     #.......................?...................#######......F.#
     #.........o.o.........................======#######......F.#
     #1.2.3.4.......C....K...#...................#######......F.#
-    #############################...############################
+    #############################...#####################B######
     #############################...############################
     #############################...############################
   `,

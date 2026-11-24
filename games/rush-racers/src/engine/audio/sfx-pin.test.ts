@@ -92,31 +92,40 @@ describe('the sound of a race on Sunlit Shallows', () => {
     for (const race of RACES) listen(race, counts);
     // Re-pinned when the course gained its surface section, cave, 17 eels and a third shark. This
     // harness hears every enemy; the game's own `enemyAudible` keeps far-off eels quiet.
+    // Re-pinned again when each item kind got its own fire sound: the nine `item.use` fires are now
+    // two Bubble Shields, an Ink Sac, three Jet Fins and three Mimics.
+    // Re-pinned when Sunlit gained geyser vents: they move every racer, so the counts shift and one
+    // of the two Hard expert races now places second. This harness has no race world, so the vents'
+    // own rumble and rush stay silent here (`setpiece-cues.test.ts` covers them).
     expect(counts).toEqual({
-      'sfx:bump': 70,
-      'sfx:coral': 2,
+      'sfx:bump': 75,
+      'sfx:coral': 4,
       'sfx:countdown': 9,
       'sfx:decoy.pop': 4,
       'sfx:decoy.spawn': 4,
-      'sfx:eel.warn': 2720,
+      'sfx:eel.warn': 2767,
+      'sfx:enemy.bite': 1,
       'sfx:enemy.bonk': 4,
-      'sfx:enemy.defeat': 6,
+      'sfx:enemy.defeat': 5,
       'sfx:finish': 3,
+      'sfx:fire.bubbleShield': 2,
+      'sfx:fire.inkSac': 4,
+      'sfx:fire.mimic': 3,
       'sfx:go': 3,
-      'sfx:item.use': 9,
-      'sfx:kick': 192,
-      'sfx:pearl': 21,
-      'sfx:pearl.drop': 2,
-      'sfx:place.down': 22,
-      'sfx:place.up': 27,
+      'sfx:kick': 194,
+      'sfx:pearl': 22,
+      'sfx:pearl.drop': 5,
+      'sfx:place.down': 25,
+      'sfx:place.up': 28,
       'sfx:riptide': 12,
       'sfx:shark.windup': 13,
-      'sfx:squid.fire': 12,
+      'sfx:squid.fire': 15,
       'sfx:squid.latch': 1,
       'sfx:squid.lock': 1,
       'sfx:undertow': 3,
+      'song:lose': 1,
       'song:race': 3,
-      'song:win': 3,
+      'song:win': 2,
     });
     // Three whole races: about 1.5 s alone, several times that while the difficulty bars share the CPU.
   }, 30_000);

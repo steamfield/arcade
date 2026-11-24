@@ -9,7 +9,8 @@
  * "a rival" is slot 2, or slot 1 when the local racer is slot 2.
  *
  * The names: `icons-a`, `icons-b` and `icons-c` (a lone Undertow, gone once fired) fill the player's well; `cannonball`
- * holds a Cannonball three tiles before the first coral gate, facing it; `squid-flight` sends squids at rivals;
+ * holds a Cannonball three tiles before the first coral gate, facing it; `ink-sac` holds an Ink Sac (a
+ * world's Mud Pie or gravity bomb where it reworks one); `squid-flight` sends squids at rivals;
  * `squid-lockon` locks one on the player from in view and `squid-lockon-far` from off-screen;
  * `squid-latched` latches squids on the player and a rival; `riptide` lays a lane over a current
  * with a rival riding it; `decoy` leaves a rival's decoy beside it; `undertow` pulls two racers back;
@@ -49,6 +50,7 @@ export const STAGES = [
   'icons-b',
   'icons-c',
   'cannonball',
+  'ink-sac',
   'squid-flight',
   'squid-lockon',
   'squid-lockon-far',
@@ -77,6 +79,7 @@ const STAGED_ITEMS: Partial<Record<StageName, readonly PowerUpKind[]>> = {
   'icons-b': ['mimic', 'cannonball'],
   'icons-c': ['undertow'],
   cannonball: ['cannonball'],
+  'ink-sac': ['inkSac'],
 };
 
 /** Ticks a staged effect lasts; long enough to still be showing when a capture is taken. */
@@ -125,6 +128,7 @@ export function applyStage(world: World, stage: StageName): void {
     case 'icons-a':
     case 'icons-b':
     case 'icons-c':
+    case 'ink-sac':
       return;
     case 'cannonball':
       faceFirstCoral(world, player);

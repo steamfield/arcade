@@ -6,8 +6,9 @@
  * the HUD and the UI are global art; neither is part of a theme. A theme is data only; the textures
  * it names are drawn by its `art.ts`, through `THEME_ART`.
  */
+import type Phaser from 'phaser';
 import type { ThemeId } from '../../logic/courses/types.ts';
-import type { Cell } from '../../logic/types.ts';
+import type { Cell, World } from '../../logic/types.ts';
 
 /** A looping sprite drawn over a cell (the ocean's kelp and currents). */
 interface FlowingArt {
@@ -141,6 +142,11 @@ export interface BubbleFrames {
   small: string;
 }
 
+/** A view layer a theme adds on top of the shared ones; the race scene syncs it every frame. */
+export interface ThemeLayer {
+  sync(world: World): void;
+}
+
 /** A course's whole look, as the views read it. Build one with `defineTheme`. */
 export interface Theme {
   id: ThemeId;
@@ -161,6 +167,11 @@ export interface Theme {
    * rows sit above play (the reef's air, the forest canopy).
    */
   hudOverSky?: boolean;
+  /**
+   * Layers this theme adds to the race scene for its courses' own set pieces and world items, built
+   * once per race; `reducedMotion` is the player's Motion setting. None when left out.
+   */
+  extraLayers?(scene: Phaser.Scene, world: World, reducedMotion: boolean): ThemeLayer[];
 }
 
 /** What a theme file writes; `defineTheme` fills `terrain.glyphTiles` when left out. */

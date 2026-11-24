@@ -1,7 +1,9 @@
 /**
- * Bounce clouds (`B`): a racer coming down onto one leaves upward at the medium's
- * `effects.bounceSpeed`. To the tiles a bounce cloud is rock (`isRockLike`), so meeting one from the
- * side or below just blocks; only a floor contact springs.
+ * Bounce cells (`B`, a bounce cloud in the sky, a spring mushroom in the forest): a racer coming
+ * down onto one leaves upward at the medium's `effects.bounceSpeed`. To the tiles a bounce cell is
+ * rock (`isRockLike`), so meeting one from the side or below just blocks; only a floor contact
+ * springs. A medium may take the launch further on its next tick: run raises it while Up is held
+ * (`media/run/spring.ts`).
  */
 import { bodyTiles, cellAt } from '../level/query.ts';
 import { mediumOf } from '../media/index.ts';

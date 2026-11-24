@@ -1,14 +1,15 @@
 /**
- * A jump traced through the level: the feet heights each hold length gives (from the physics' own
- * vertical step), and a sampled box flown along them at running speed to find where it lands. A
- * jump lands only where a real jump with that hold would; the trace is a sampled box, not the
- * physics itself, and starts from the middle of the take-off tile.
+ * A jump or a spring mushroom's launch traced through the level: the feet heights each hold length
+ * (or each launch) gives, from the physics' own vertical step, and a sampled box flown along them at
+ * running speed to find where it lands. A jump lands only where a real jump with that hold would;
+ * the trace is a sampled box, not the physics itself, and starts from the middle of the take-off tile.
  */
 import { TICK_DT } from '@arcade/core';
 import { RACER_SIZE, TILE } from '../../types.ts';
 import type { MediumTuning } from '../types.ts';
 import { jumpPeak, runExtra, stepFallSpeed } from './physics.ts';
 import { holdsRunner, isSolidTile, isStandTile, type Terrain } from './terrain.ts';
+import { RUN_BOUNCE_SPEED, RUN_HELD_BOUNCE_SPEED } from './tuning.ts';
 
 const HALF_BODY_WIDTH = RACER_SIZE.width / 2;
 /**
@@ -25,10 +26,12 @@ interface Arc {
   risingSamples: number;
 }
 
-/** Every arc a runner can fly, from the vertical physics: one per hold length, and a fall from rest. */
+/** Every arc a runner can fly, from the vertical physics: one per hold length, the spring launches, and a fall from rest. */
 export interface Arcs {
   /** `byHold[h - 1]` is the arc of a jump with Up held for `h` ticks; the last is a full jump. */
   byHold: readonly Arc[];
+  /** A spring mushroom's launch with Up let go (`free`) and held (`held`) as the runner lands on it. */
+  spring: { free: Arc; held: Arc };
   /** A fall from rest, for a runner that bumps its head or walks off an edge. */
   fromRest: Arc;
 }
@@ -71,7 +74,12 @@ export function arcsFor(tuning: MediumTuning, limitPx: number): Arcs {
   const byHold = Array.from({ length: fullHoldTicks(tuning) }, (_, index) =>
     arcOf(tuning, -jumpSpeed, index + 1, limitPx),
   );
-  return { byHold, fromRest: arcOf(tuning, 0, 0, limitPx) };
+  // A spring launch is no jump, so gravity is never cut: it holds "Up" for good.
+  const spring = {
+    free: arcOf(tuning, -RUN_BOUNCE_SPEED, Number.POSITIVE_INFINITY, limitPx),
+    held: arcOf(tuning, -RUN_HELD_BOUNCE_SPEED, Number.POSITIVE_INFINITY, limitPx),
+  };
+  return { byHold, spring, fromRest: arcOf(tuning, 0, 0, limitPx) };
 }
 
 /**
@@ -80,8 +88,9 @@ export function arcsFor(tuning: MediumTuning, limitPx: number): Arcs {
  * box and the catch margin. A tile farther than this from a take-off can't change where it lands.
  */
 export function traceReachPx(flight: Flight): number {
-  const { byHold, fromRest } = flight.arcs;
-  const samples = Math.max(...byHold.map((arc) => Math.max(arc.feet.length, arc.risingSamples + fromRest.feet.length)));
+  const { byHold, spring, fromRest } = flight.arcs;
+  const arcs = [...byHold, spring.free, spring.held];
+  const samples = Math.max(...arcs.map((arc) => Math.max(arc.feet.length, arc.risingSamples + fromRest.feet.length)));
   return samples * flight.stepPx + HALF_BODY_WIDTH + CATCH_MARGIN_PX;
 }
 
@@ -168,17 +177,31 @@ function advance(flight: Flight, trace: Trace, dir: -1 | 1): Step {
   return next > terrain.height * TILE ? 'lost' : 'flying';
 }
 
+/** Where a traced flight lands: the stand tile, and the ticks from take-off until it stands there. */
+export interface Landing {
+  to: number;
+  ticks: number;
+}
+
 /** Flies a jump held `hold` ticks from the middle of stand tile `from`, running `dir`; null when it doesn't land on a stand tile. */
-export function traceJump(
-  flight: Flight,
-  from: number,
-  hold: number,
-  dir: -1 | 1,
-): { to: number; ticks: number } | null {
+export function traceJump(flight: Flight, from: number, hold: number, dir: -1 | 1): Landing | null {
+  const arc = flight.arcs.byHold[hold - 1];
+  return arc ? traceArc(flight, from, arc, dir) : null;
+}
+
+/**
+ * Flies a spring mushroom's launch from the middle of stand tile `from` (the tile on top of the
+ * mushroom), Up `held` or not as the runner lands, running `dir`; null when it doesn't land on a stand tile.
+ */
+export function traceSpring(flight: Flight, from: number, held: boolean, dir: -1 | 1): Landing | null {
+  const { spring } = flight.arcs;
+  return traceArc(flight, from, held ? spring.held : spring.free, dir);
+}
+
+/** Flies `arc` from the middle of stand tile `from`, running `dir`; null when it doesn't land on a stand tile. */
+function traceArc(flight: Flight, from: number, arc: Arc, dir: -1 | 1): Landing | null {
   const { width } = flight.terrain;
   const feet = (Math.floor(from / width) + 1) * TILE;
-  const arc = flight.arcs.byHold[hold - 1];
-  if (!arc) return null;
   const trace: Trace = { x: ((from % width) + 0.5) * TILE, feet, origin: feet, arc, tick: 0, elapsed: 0 };
   while (trace.tick < trace.arc.feet.length) {
     const step = advance(flight, trace, dir);

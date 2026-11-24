@@ -12,4 +12,6 @@ export const CLOUDREACH_SKIN: WorldSkin = {
   id: 'cloudreach',
   cast: CLOUDREACH_CAST,
   objects: CLOUDREACH_OBJECTS,
+  moveMoments: ['dive'],
+  fireFlavour: { semitones: 2, noiseScale: 1.6, squareTones: false },
 };

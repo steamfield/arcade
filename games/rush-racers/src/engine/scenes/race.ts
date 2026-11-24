@@ -1,11 +1,11 @@
 /**
  * The race screen. It assembles the views (backdrop, course, pickups, hazards, enemies, the attack
  * power-ups in the water, racers and their power-up effects, the darkness over dark zones, HUD, the
- * hints for young players, an online race's player tags and waiting line, camera, debug overlay)
- * over the runtime's world, drawn in the course's theme and its world's skin, and syncs them every
- * rendered frame.
- * Event-driven visuals arrive through the runtime's per-tick listener.
- * Ticking, input and the move to results all happen in the runtime.
+ * course intro card and section callouts, the hints for young players, an online race's player tags
+ * and waiting line, camera, debug overlay, and any layers the theme adds) over the runtime's world,
+ * drawn in the course's theme and its world's skin, and syncs them every rendered frame.
+ * Event-driven visuals, and the section callout's view of the racer's progress, arrive through the
+ * runtime's per-tick listener. Ticking, input and the move to results all happen in the runtime.
  */
 import { TICK_HZ } from '@arcade/core';
 import Phaser from 'phaser';
@@ -20,6 +20,7 @@ import { createAttackView } from '../view/attack-view.ts';
 import { createBackdrop } from '../view/backdrop.ts';
 import { besidePlayerY } from '../view/beside-player.ts';
 import { followRacer } from '../view/camera.ts';
+import { createCourseIntro } from '../view/course-intro.ts';
 import { createDarkView } from '../view/dark-view.ts';
 import { createDebugOverlay } from '../view/debug-overlay.ts';
 import { createEnemyView } from '../view/enemy-view.ts';
@@ -34,6 +35,7 @@ import { createPickupView } from '../view/pickup-view.ts';
 import { createPowerupView } from '../view/powerup-view.ts';
 import { createRacerView } from '../view/racer-view.ts';
 import { screenLayout } from '../view/screen-layout.ts';
+import { createSectionCallout } from '../view/section-callout.ts';
 import { createLightningView } from '../view/set-pieces/lightning-view.ts';
 import { createRingView } from '../view/set-pieces/ring-view.ts';
 import { createWellView } from '../view/set-pieces/well-view.ts';
@@ -86,9 +88,12 @@ export class RaceScene extends Phaser.Scene {
       view: createRacerView(this, racer, reducedMotion, skin.cast, localIdOf(world)),
       effects: createPowerupView(this, racer.id, skin, reducedMotion),
     }));
+    const themeLayers = theme.extraLayers?.(this, world, reducedMotion) ?? [];
     const dark = createDarkView(this, world, theme.dark, reducedMotion);
     const layout = screenLayout(this.scale);
     const hud = createHud(this, world, reducedMotion, layout);
+    const intro = createCourseIntro(this, course, this.scale.width);
+    const sectionCallout = createSectionCallout(this, world, reducedMotion);
     const hints = createHintView(
       this,
       reducedMotion,
@@ -110,6 +115,7 @@ export class RaceScene extends Phaser.Scene {
     let lastTick = world.tick;
     const stopListening = this.rt.listen((events) => {
       const tick = this.rt.world?.tick ?? 0;
+      if (this.rt.world) sectionCallout.step(this.rt.world);
       camera.update((tick - lastTick) / TICK_HZ);
       lastTick = tick;
       level.onEvents(events);
@@ -135,11 +141,14 @@ export class RaceScene extends Phaser.Scene {
       lightning.sync(current, current.tick);
       enemies.sync(current);
       attacks.sync(current, current.tick);
+      for (const layer of themeLayers) layer.sync(current);
       for (const { racer, view, effects } of racers) {
         view.sync(racer, current.tick);
         effects.sync(racer, current.tick);
       }
       hud.sync(current);
+      intro.sync(current);
+      sectionCallout.sync(current);
       hints.sync(current, this.rt.hints, this.cameras.main.worldView);
       guide.sync(current, this.rt.hints.guide, this.cameras.main.worldView);
       fireIcon.sync(selectedItem(localOf(current))?.kind ?? null);

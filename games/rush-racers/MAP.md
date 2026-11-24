@@ -20,6 +20,9 @@ Three rules hold the layout together. Logic (`src/logic/`) compiles without DOM 
 | `src/logic/media/<id>/` | One medium (swim, run, flight, drift): physics, navigation, pilot and `tuning.ts`. | Change how a world moves. |
 | `src/logic/pickups/` | Clams, loose items, pearls and boost rings. | Change clam rolls or pickups. |
 | `src/logic/powerups/` | Inventory, charges, the dash meter, passives and what each item does when fired (`use.ts`). | Change an item. |
+| `src/logic/powerups/cannonball/` | Each world's own Cannonball shot (Boulder, Meteor, Comet) and the registry `shotRules` / `shotStyleOf`. | Change a world's Cannonball. |
+| `src/logic/powerups/twists/` | Each world's reworked item (Mud Pie, Headwind, gravity bomb) and the registry `twistRules` / `twistStyleOf`. | Change a world's reworked item. |
+| `src/logic/setpieces/` | Course set pieces with their own timers: geyser vents, shifting wind zones and drifting asteroids. | Change a course's set piece. |
 | `src/logic/race/` | Generic movement, separation, coral, flow fields, catch-up, standings and seats. | Change race-wide physics or how a race ends. |
 | `src/logic/worlds/` | One `WorldDef` per world (medium, cast names, item and enemy names) and the registry `WORLDS`. | Rename things in a world or add a world. |
 | `src/net/` | Online play's game side: the lockstep session, wire codec, JSON messages, lobby, hash ledger and the client flow. Everything but `client.ts` and `transport/` is in the simulation build id. | Change a net message or lockstep. |

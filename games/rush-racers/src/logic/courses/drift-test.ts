@@ -24,6 +24,11 @@ import type { ShippedCourse } from './types.ts';
  * shortcut's mouth (col 78 row 2). Its horizon swallows a racer that flies into rows 2-3 at cols
  * 77-79, and its reach holds the supply pod at col 77 row 4, while the corridor from row 5 down,
  * where the main way turns down and the tunnel opens, stays outside the reach.
+ *
+ * One drifting asteroid sweeps the run home's upper lane at col 96, rows 2-8, just past the
+ * shortcut's exit, there and back every 2 s. Its offset puts it mid-lane about 115 race ticks in,
+ * when the racer the `asteroid-hit` scenario flies through the tunnel from the `cannonball` stage
+ * comes out.
  */
 const LEVEL: LevelDef = {
   name: 'Drift Test',
@@ -57,6 +62,7 @@ const LEVEL: LevelDef = {
     { col: 37, row: 11, reach: 6, pull: 160 },
     { col: 78, row: 2, reach: 3, pull: 300, horizon: 1.5 },
   ],
+  asteroids: [{ from: [96, 2], to: [96, 8], periodTicks: 120, offsetTicks: 32, radius: 1 }],
 };
 
 /**

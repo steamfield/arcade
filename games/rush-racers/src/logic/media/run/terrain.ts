@@ -1,9 +1,9 @@
 /**
  * The level as a runner meets it: what blocks it, what holds it up, and which open tiles are stand
- * tiles (open, with something to stand on under them). Built from a level with the broken coral
- * gone; crates count as solid.
+ * tiles (open, with something to stand on under them), and which of those stand on a spring
+ * mushroom. Built from a level with the broken coral gone; crates count as solid.
  */
-import { isLedge, isSolid } from '../../level/query.ts';
+import { cellAt, isLedge, isSolid } from '../../level/query.ts';
 import type { Level } from '../../types.ts';
 
 /** The level's tiles as a runner meets them: what blocks it and what holds it up. */
@@ -14,6 +14,8 @@ export interface Terrain {
   solid: Uint8Array;
   /** 1 for ledges, which hold a runner landing on them from above. */
   ledge: Uint8Array;
+  /** 1 for spring mushrooms (bounce cells): solid, and they launch a runner that stands on them. */
+  spring: Uint8Array;
 }
 
 /** The terrain of `level` with `broken` coral gone. A crate, ready or shut, is solid. */
@@ -24,11 +26,13 @@ export function terrainOf(level: Level, broken: ReadonlySet<number>): Terrain {
     height,
     solid: new Uint8Array(width * height),
     ledge: new Uint8Array(width * height),
+    spring: new Uint8Array(width * height),
   };
   for (let row = 0; row < height; row++) {
     for (let col = 0; col < width; col++) {
       terrain.solid[row * width + col] = isSolid(level, broken, col, row) ? 1 : 0;
       terrain.ledge[row * width + col] = isLedge(level, col, row) ? 1 : 0;
+      terrain.spring[row * width + col] = cellAt(level, col, row) === 'bounce' ? 1 : 0;
     }
   }
   for (const crate of level.clams) terrain.solid[crate.y * width + crate.x] = 1;
@@ -51,6 +55,12 @@ export function holdsRunner(terrain: Terrain, col: number, row: number): boolean
 /** True for an open tile with something to stand on under it. */
 export function isStandTile(terrain: Terrain, col: number, row: number): boolean {
   return !isSolidTile(terrain, col, row) && holdsRunner(terrain, col, row + 1);
+}
+
+/** True for a stand tile on a spring mushroom: a runner there is launched at once, so it can't stand or walk on. */
+export function isSpringTile(terrain: Terrain, col: number, row: number): boolean {
+  if (col < 0 || col >= terrain.width || row + 1 < 0 || row + 1 >= terrain.height) return false;
+  return isStandTile(terrain, col, row) && terrain.spring[(row + 1) * terrain.width + col] === 1;
 }
 
 /** Indices (`y * width + x`) of every stand tile in `terrain`, in reading order. */

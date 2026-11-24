@@ -39,7 +39,7 @@ function levelErrorIn(medium: string): LevelError {
 }
 
 describe('a medium without bounce clouds', () => {
-  it.each(['swim', 'run', 'glide'])('rejects a %s course with one, at its row and col', (medium) => {
+  it.each(['swim', 'glide'])('rejects a %s course with one, at its row and col', (medium) => {
     expect(levelErrorIn(medium)).toMatchObject({
       message: expect.stringMatching(
         new RegExp(`^Bounce cloud "B" at row 1, col 5: medium '${medium}' has no bounce clouds`),
@@ -49,14 +49,14 @@ describe('a medium without bounce clouds', () => {
     });
   });
 
-  it('says which media have bounce clouds: flight only, at 300 px/s to start', () => {
+  it('says which media have bounce clouds: run mushrooms at 360 px/s and flight clouds at 300 px/s to start', () => {
     const speeds = [...Object.values(MEDIA), GLIDE_MEDIUM, PLATFORM_MEDIUM].map((medium) => [
       medium.id,
       medium.effects.bounceSpeed,
     ]);
     expect(speeds).toEqual([
       ['swim', null],
-      ['run', null],
+      ['run', 360],
       ['flight', 300],
       ['drift', null],
       ['glide', null],

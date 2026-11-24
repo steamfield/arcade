@@ -33,4 +33,6 @@ export const CLOUDREACH: WorldDef = {
   pickups: { clam: 'Balloon', pearl: 'Feather' },
   enemies: { shark: 'Storm Crow', eel: 'Sky Eel', crab: 'Cloud Crab' },
   hazards: { urchin: 'Spark Cloud', jelly: 'Static Wisp' },
+  cannonball: 'meteor',
+  itemTwists: { undertow: 'headwind' },
 };

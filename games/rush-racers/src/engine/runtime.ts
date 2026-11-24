@@ -288,6 +288,7 @@ export class Runtime {
         enemyAudible: (index) => (this.world ? enemyWithinHearing(this.world, index) : true),
         stormAudible: (zone, reachPx) => (this.world ? stormWithinReach(this.world, zone, reachPx) : true),
         localRacer: () => this.localRacer,
+        raceWorld: () => this.world,
       },
       () => this.raceCourse.song,
     );

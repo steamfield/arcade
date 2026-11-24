@@ -22,9 +22,11 @@ const TOP_ROUTE_MARGIN_TICKS = 300;
  * `hashWorld` of the world on the tick the route crosses the line, on seed 1. A world created the
  * default way must keep racing exactly as it did when this was recorded, so a change that moves
  * this number changed the simulation. The smoke test pins its own number for the browsers, whose
- * replay feeds diagonals differently and steps on past the finish.
+ * replay feeds diagonals differently and steps on past the finish. Re-pinned with the route itself
+ * when the course gained its geyser vents, which push whoever is in an eruption and so move the rivals,
+ * and again when the world gained `twists` for the world item twists (with it left out, every pin hashes to the values before it).
  */
-const TOP_ROUTE_HASH = 1324527001;
+const TOP_ROUTE_HASH = 2829996515;
 
 /**
  * `hashWorld` at the end of `busyRace` on each level. The top route never dashes or uses an item,
@@ -35,12 +37,16 @@ const TOP_ROUTE_HASH = 1324527001;
  * section and cave, again when racers gained `status.fallen` (with it left out, all four pins
  * hash to the values before it, so the swim simulation did not change), and again with all five
  * when racers gained `status.ringBoost` and the world `ringsPassed` (with both left out, every pin
- * here and the smoke test's hash to the values before them).
+ * here and the smoke test's hash to the values before them), and again when the world gained `shots`
+ * for the world-specific Cannonballs (with it left out, every pin hashes to the values before it), and
+ * again when the course gained its geyser vents and `TOP_ROUTE` was re-recorded for them: eruptions push
+ * the racers in their columns, so every race here plays out differently from then on, and again
+ * when the world gained `twists` for the world item twists (with it left out, every pin hashes to the values before it).
  */
 const BUSY_RACE_HASHES: readonly [Difficulty, number][] = [
-  ['easy', 408151228],
-  ['normal', 3612446006],
-  ['hard', 3683695234],
+  ['easy', 2143177433],
+  ['normal', 3602805522],
+  ['hard', 728899752],
 ];
 
 const KICK_EVERY_TICKS = 45;

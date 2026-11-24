@@ -45,9 +45,9 @@ describe('engine conformance', () => {
   });
 
   it('names the course, the cell, the theme and where it first appears when the theme has no tile for a base cell', () => {
-    const course = courseFromLevel('#1234.F#\n#BBBBBF#', 'swim', { theme: 'forest' });
+    const course = courseFromLevel('#1234.F#\n#BBBBBF#', 'swim', { theme: 'space' });
     expect(() => assertCourseAssets(course)).toThrow(
-      `Course '${course.id}' uses cell 'bounce' (first at row 1, col 1), which theme 'forest' has no tile for`,
+      `Course '${course.id}' uses cell 'bounce' (first at row 1, col 1), which theme 'space' has no tile for`,
     );
   });
 

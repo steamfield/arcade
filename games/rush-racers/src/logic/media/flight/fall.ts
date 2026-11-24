@@ -7,8 +7,8 @@
  * A safe spot has rock somewhere below it in the flyer's own columns and in every column within
  * `SAFE_MARGIN_TILES` either side, so a flyer put back there with no input falls onto rock and never
  * drifts off the lip into the gap it fell through. Puff clouds (coral) don't count: a dash can pop
- * them for good. Nor does a spot in a sideways gust (`<` `>`): an idle flyer put back there would
- * drift along it as it falls, possibly into the gap.
+ * them for good. Nor does a spot in a sideways gust (`<` `>`) or a shifting wind zone's columns: an
+ * idle flyer put back there would drift along it as it falls, possibly into the gap.
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../../events.ts';
@@ -60,9 +60,10 @@ function isSafeSpot(level: Level, body: Box): boolean {
   return true;
 }
 
-/** True when `body` overlaps a gust cell (`<` or `>`), which pushes a flyer sideways. */
+/** True when `body` overlaps a gust cell (`<` or `>`) or a shifting wind zone's columns, which push a flyer sideways. */
 function inSidewaysGust(level: Level, body: Box): boolean {
   const { left, right, top, bottom } = bodyTiles(body);
+  if (level.shiftingWind.some(({ cols: [from, to] }) => from <= right && left <= to)) return true;
   for (let row = top; row <= bottom; row++) {
     for (let column = left; column <= right; column++) {
       const cell = cellAt(level, column, row);

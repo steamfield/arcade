@@ -13,6 +13,7 @@ import type { Body, Intent, MoveModifiers, Racer } from '../../types.ts';
 import type { MediumEnv, MediumTuning } from '../types.ts';
 import { coolDownKick, dashOrCoolDown } from './dash.ts';
 import { type RunEnv, type RunMotion, runEnv, runMotion } from './data.ts';
+import { isSprung, rideSpring } from './spring.ts';
 
 /** Up counts as held past this far up the stick. */
 const UP_THRESHOLD = -0.5;
@@ -39,7 +40,8 @@ export function createRunMotion(body: Body): RunMotion {
 /**
  * One tick of run, jump, dash and gravity. A jump fires when a press is buffered and the runner is
  * grounded or inside coyote time, and emits `racer.jumped`; releasing Up while a jump rises
- * multiplies gravity. Horizontal speed never passes `tuning.maxSpeed`, however strong the
+ * multiplies gravity. On the tick after a spring mushroom launched it no jump fires, and Up held
+ * launches it higher (`spring.ts`). Horizontal speed never passes `tuning.maxSpeed`, however strong the
  * modifiers; vertical speed is capped only by `maxFall` on the way down. A fallen racer
  * (`status.fallen`) is held still with no gravity.
  *
@@ -67,8 +69,10 @@ export function applyRunIntent(
   const upHeld = intent.move.y < UP_THRESHOLD;
   const pressed = upHeld && !motion.upWasHeld;
   motion.upWasHeld = upHeld;
-  const jumpNow = jumpReady(motion, surroundings.grounded, pressed);
+  const sprung = isSprung(surroundings.grounded, racer.body);
+  const jumpNow = !sprung && jumpReady(motion, surroundings.grounded, pressed);
   advanceJumpTimers(motion, surroundings.grounded, pressed, extra);
+  if (sprung) rideSpring(racer.body, motion, upHeld);
   updateFacing(racer, intent.move.x);
 
   stepRunSpeed(racer.body, motion, intent.move.x, surroundings, tuning, extra, mods, dt);

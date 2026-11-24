@@ -2,8 +2,20 @@
  * Slingshot Alley, Farside's listed course. Data only: the level format is documented in
  * `level/parse.ts`. Only `courses/index.ts` imports this file.
  */
-import type { LevelDef } from '../types.ts';
-import type { ShippedCourse } from './types.ts';
+import type { AsteroidDef, LevelDef } from '../types.ts';
+import type { CourseSection, ShippedCourse } from './types.ts';
+
+/**
+ * The drifting asteroids, one tile in radius, as the layout below describes. Their offsets put
+ * neighbours at different points of their sweeps, so the gaps between them move.
+ */
+const ASTEROIDS: readonly AsteroidDef[] = [
+  { from: [30, 17], to: [30, 26], periodTicks: 240, offsetTicks: 120, radius: 1 },
+  { from: [62, 26], to: [62, 17], periodTicks: 240, offsetTicks: 80, radius: 1 },
+  { from: [238, 9], to: [238, 16], periodTicks: 180, offsetTicks: 0, radius: 1 },
+  { from: [247, 16], to: [247, 23], periodTicks: 200, offsetTicks: 100, radius: 1 },
+  { from: [256, 16], to: [256, 9], periodTicks: 180, offsetTicks: 60, radius: 1 },
+];
 
 /**
  * An asteroid belt flown left to right. Drift reads `#` as asteroid rock, `C` as ice, `~` as nebula
@@ -30,6 +42,11 @@ import type { ShippedCourse } from './types.ts';
  *   From col 418 row 8 the shortcut is 13 tiles shorter on the plain distance field.
  * - Cols 496-577: the run home, entered only above row 13, past an asteroid (cols 520-525) and a
  *   space mine; the finish is col 576.
+ *
+ * Five drifting asteroids (`ASTEROIDS`) glide across the way on timers, out of step with each other:
+ * two sweep the opening straight from wall to wall (cols 30 and 62), and three cross the dust
+ * field's lanes (col 238 over the middle lane at rows 12-13, col 247 over the low lane at row 18,
+ * col 256 over the middle lane again), so a pilot times a lane crossing or takes the dust.
  */
 const LEVEL: LevelDef = {
   name: 'Slingshot Alley',
@@ -74,6 +91,7 @@ const LEVEL: LevelDef = {
     { col: 467, row: 12, reach: 4.5, pull: 300, horizon: 1.5 },
   ],
   dark: [[339, 430]],
+  asteroids: ASTEROIDS,
 };
 
 /**
@@ -100,6 +118,19 @@ const NORMAL_LAG_TILES = 3;
  */
 const EASY_CATCH_UP_MIN = 0.3;
 
+/**
+ * The zones the race screen calls out. The S-bend and the run home belong to the zones before them,
+ * so a callout comes every 50-170 columns.
+ */
+const SECTIONS: readonly CourseSection[] = [
+  { fromCol: 0, name: 'LAUNCH LANE' },
+  { fromCol: 170, name: 'THE ICE GATE' },
+  { fromCol: 217, name: 'THE DUST FIELD' },
+  { fromCol: 279, name: 'SOLAR WIND LANE' },
+  { fromCol: 339, name: 'MOON SHADOW' },
+  { fromCol: 419, name: 'BLACK HOLE SPLIT' },
+];
+
 /** Slingshot Alley: a flight through an asteroid belt, the listed course of Farside. */
 export const SLINGSHOT_ALLEY: ShippedCourse = {
   id: 'slingshot-alley',
@@ -110,5 +141,6 @@ export const SLINGSHOT_ALLEY: ShippedCourse = {
   song: 'farside',
   listed: true,
   parTicks: PAR_TICKS,
+  sections: SECTIONS,
   catchUp: { normal: { lagTiles: NORMAL_LAG_TILES }, easy: { min: EASY_CATCH_UP_MIN } },
 };

@@ -22,16 +22,20 @@ export const SKINS: Readonly<Record<ShippedWorldId, WorldSkin>> = {
   farside: FARSIDE_SKIN,
 };
 
+/** The skin a course's world has, or null for a world the engine has none for, such as one a test registers. */
+export function findSkin(course: Pick<Course, 'world'>): WorldSkin | null {
+  return Object.hasOwn(SKINS, course.world) ? SKINS[course.world as ShippedWorldId] : null;
+}
+
 /**
  * The skin a course is drawn with: its world's.
  *
  * @throws {Error} When the course's world has no skin, naming the course and the world.
  */
 export function skinFor(course: Pick<Course, 'id' | 'world'>): WorldSkin {
-  if (!Object.hasOwn(SKINS, course.world)) {
-    throw new Error(`Course '${course.id}' names world '${course.world}', which the engine has no skin for`);
-  }
-  return SKINS[course.world as ShippedWorldId];
+  const skin = findSkin(course);
+  if (!skin) throw new Error(`Course '${course.id}' names world '${course.world}', which the engine has no skin for`);
+  return skin;
 }
 
 /**

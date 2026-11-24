@@ -3,7 +3,7 @@
  * Only `courses/index.ts` imports this file.
  */
 import type { LevelDef } from '../types.ts';
-import type { ShippedCourse } from './types.ts';
+import type { CourseSection, ShippedCourse } from './types.ts';
 
 /**
  * Thunderhead Pass, flown left to right. Rows 0 and 25 are the ceiling and the floor; flight reads
@@ -22,7 +22,8 @@ import type { ShippedCourse } from './types.ts';
  * - Cols 192-410, the high road over the low road: a thunderhead shelf on rows 12-13 splits the sky.
  *   Above it, under a thunderhead ceiling on rows 1-2 (200-405), a tailwind on rows 5-7 with two
  *   boost-ring lines on row 6 (206-222, 316-332), where the way runs, so a flyer who holds altitude
- *   takes them; balloons at 236, 300 and 356, and storm crows and static wisps patrol it.
+ *   takes them; balloons at 236, 300 and 356, and storm crows and static wisps patrol it. Between
+ *   the ring lines a shifting wind zone (250-289) over both roads turns the gust round every 3 s.
  *   Below it, the sheltered low road: fog banks and updrafts lifting over thunderhead mounds,
  *   slower and with no enemies or gaps.
  * - Cols 412-615, the storm cell: three lightning zones with offset periods (426-429, 450-455,
@@ -68,6 +69,11 @@ const LEVEL: LevelDef = {
     { cols: [450, 455], periodTicks: 150, offsetTicks: 50 },
     { cols: [498, 502], periodTicks: 180, offsetTicks: 100 },
   ],
+  // The turning wind over both roads mid-way along them, a gust's strength each way: 3 s back
+  // against everyone, then 3 s on with the high road's tailwind. Half a period in, so it blows
+  // against from the GO; at offset 0 the Easy child who stops for 10 s placed top two in 0 of 3
+  // scripted races (the bar is 2), and in 2 of 3 here.
+  shiftingWind: [{ cols: [250, 289], periodTicks: 360, offsetTicks: 180, push: 70 }],
 };
 
 /**
@@ -102,6 +108,14 @@ const HARD_LAG_TILES = -1;
  */
 const EASY_MIN = 0.3;
 
+/** The zones the race screen calls out, one per part of the list above. */
+const SECTIONS: readonly CourseSection[] = [
+  { fromCol: 0, name: 'THE CLOUD BANK' },
+  { fromCol: 192, name: 'THE TWO ROADS' },
+  { fromCol: 412, name: 'THE STORM CELL' },
+  { fromCol: 616, name: 'CLEAR SKIES' },
+];
+
 /** Thunderhead Pass: Cloudreach's listed course, flown through a storm-front sky. */
 export const THUNDERHEAD_PASS: ShippedCourse = {
   id: 'thunderhead-pass',
@@ -112,5 +126,6 @@ export const THUNDERHEAD_PASS: ShippedCourse = {
   song: 'cloudreach',
   listed: true,
   parTicks: PAR_TICKS,
+  sections: SECTIONS,
   catchUp: { hard: { lagTiles: HARD_LAG_TILES }, easy: { min: EASY_MIN } },
 };

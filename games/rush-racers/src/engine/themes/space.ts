@@ -1,11 +1,15 @@
 /**
- * The space look: Farside's asteroid rock, ice, nebula dust, solar wind and starfield. Its art, keys
+ * The space look: Farside's asteroid rock, ice, nebula dust, solar wind and starfield, plus its
+ * drifting asteroids, Comets and gravity bombs as extra layers. Its art, keys
  * and colours live in `space/`; this file says how the views use them. Nothing has weight in a
  * vacuum, so no particle rises or falls: they coast to a stop, and reduced motion only stops them
  * sooner.
  */
 
 import { FxFrame } from '../fx/textures.ts';
+import { createCometView } from '../view/comet-view.ts';
+import { createGravityBombView } from '../view/gravity-bomb-view.ts';
+import { createAsteroidView } from '../view/set-pieces/asteroid-view.ts';
 import { defineTheme } from './define.ts';
 import { FAR_HEIGHT, NEAR_HEIGHT, SpaceAnim, SpaceTex, SpaceTile } from './space/keys.ts';
 import { SpaceBackdropPalette, StarLight, VOID_BANDS } from './space/palettes.ts';
@@ -65,4 +69,10 @@ export const SPACE_THEME = defineTheme({
   // Thruster exhaust: pale blue specks.
   trail: { frame: FxFrame.chip, tint: 0x9fc8ff, alpha: 0.45 },
   contrastBands: SPACE_CONTRAST_BANDS,
+  // Farside's own toys: the drifting asteroids of a course that has them, Comets in flight and gravity bombs.
+  extraLayers: (scene, world, reducedMotion) => [
+    createAsteroidView(scene, world),
+    createCometView(scene),
+    createGravityBombView(scene, reducedMotion),
+  ],
 });

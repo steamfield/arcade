@@ -42,7 +42,8 @@ const SILENT: AudioPort = {
  * resumed after a gesture or an iOS interruption. `hearing.audibleFromLocal` says which racers are near enough
  * for their attacks to be heard, `hearing.enemyAudible` which enemies (by index in `world.enemies`),
  * `hearing.stormAudible` which storm zones (by index in `level.lightning`) are within a reach, and
- * `hearing.localRacer` which slot the screen follows. `events` is the runtime's log, where
+ * `hearing.localRacer` which slot the screen follows, and `hearing.raceWorld` the world being raced, which the
+ * local racer's movement sounds and the world's item flavour need (neither plays without it). `events` is the runtime's log, where
  * `audio.played` is emitted once a sound actually starts. `settings.muted` applies at once.
  * When WebAudio can't be set up the failure goes to `ctx.reportError` and the game runs silent.
  */
@@ -50,7 +51,7 @@ export function createAudio(
   ctx: GameContext,
   settings: Settings,
   events: EventSink<RuntimeEvent>,
-  hearing: Pick<AdapterOptions, 'audibleFromLocal' | 'enemyAudible' | 'stormAudible' | 'localRacer'>,
+  hearing: Pick<AdapterOptions, 'audibleFromLocal' | 'enemyAudible' | 'stormAudible' | 'localRacer' | 'raceWorld'>,
   raceSong: () => SongName,
 ): AudioPort {
   const reportError = (error: unknown) => ctx.reportError('audio', error);

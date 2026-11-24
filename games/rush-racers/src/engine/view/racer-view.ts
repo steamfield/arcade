@@ -1,7 +1,8 @@
 /**
  * One racer's sprite, synced from logic state: whole-pixel position, a flip for
  * facing, a two-frame swim stroke that quickens with speed, a squash-then-stretch
- * when a kick fires, a squash against the wall on a bounce, a flicker while invulnerable (3 Hz, the WCAG ceiling) and,
+ * when a kick fires, a squash against the wall on a bounce, a stretch tall on a jump, a squat on
+ * landing (read from the racer's body between ticks, see `fx/movement-sense.ts`), a flicker while invulnerable (3 Hz, the WCAG ceiling) and,
  * for the local racer (the slot the screen follows), a one-off white flash on gaining a place. A
  * racer that has fallen out of the level (`status.fallen > 0`) is hidden until it respawns. All timing is counted
  * in logic ticks so captures repeat. Under reduced motion the sprite holds its
@@ -12,6 +13,7 @@ import type { Stamped } from '@arcade/core';
 import Phaser from 'phaser';
 import type { Racer, RacerId } from '../../logic/types.ts';
 import { Frame } from '../art/keys.ts';
+import { hasLanded, isMovingFreely } from '../fx/movement-sense.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { CastSkin } from '../worlds/cast-skin.ts';
 import { Layer } from './layers.ts';
@@ -20,8 +22,10 @@ import { createRacerMoments } from './racer-moments.ts';
 /** One racer's sprite, kept in step with its logic state. */
 interface RacerView {
   /**
-   * Starts the kick squash on this racer's `racer.kicked`, the bounce squash on its `racer.rebounded` and, for the local racer, the flash on its
-   * `player.place` that gains a place, from world tick `tick` (the drain's world tick).
+   * Starts the kick squash on this racer's `racer.kicked`, the bounce squash on its `racer.rebounded`,
+   * the jump stretch on its `racer.jumped`, the landing squat when its body came to rest on the ground
+   * since the last tick and, for the local racer, the flash on its `player.place` that gains a place,
+   * from world tick `tick` (the drain's world tick). Called once per world tick.
    */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
   /**
@@ -67,10 +71,13 @@ export function createRacerView(
   // Kicks fire along the input, so the squash follows whichever axis the racer is moving on.
   let kickVertical = false;
   let kickAxisFor = Number.NaN;
+  let lastVy = racer.body.vy;
 
   return {
     onEvents(events, tick) {
       moments.onEvents(events, tick);
+      if (isMovingFreely(racer) && hasLanded(lastVy, racer.body.vy)) moments.onLanded(tick);
+      lastVy = racer.body.vy;
       for (const event of events) if (event.type === 'racer.kicked' && event.id === racer.id) kickedAt = tick;
     },
     sync(current, tick) {

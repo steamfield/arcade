@@ -6,25 +6,28 @@
  * wind-up and an eel's warning, a bonk and a defeat; an enemy getting the local racer always is.
  * The sky set pieces sound too: the local racer's flaps, bounces and rings, a storm zone's warning
  * when the zone is near the camera, and its strike from a little farther (one strike per drain, so
- * zones striking together don't stack). Every sound that actually starts is announced once as `audio.played`,
+ * zones striking together don't stack). Item fires sound by kind and in the world's flavour; the
+ * local racer's own movement sounds by medium (`move-cues.ts`). Every sound that actually starts is announced once as `audio.played`,
  * on the game's tick, so tests can hear the game. Nothing plays or is announced
  * while the AudioContext is not running (before the first gesture).
  */
 import type { EventSink, Rng, Stamped } from '@arcade/core';
+import { courseOf } from '../../logic/courses/index.ts';
 import { ENEMY_KINDS, type EnemyKind, type HitCause, type RacerId, type World } from '../../logic/types.ts';
 import { localOf } from '../local-racer.ts';
-import { FINAL_STRETCH_AT } from '../race-progress.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import { createAttackSfx, HEARING_PX } from './attack-sfx.ts';
+import { type EffectKey, playEffect } from './effects.ts';
 import type { AudioPort } from './index.ts';
-import type { Song } from './notation.ts';
+import { isItemSfx, itemSfxKey } from './item-sfx.ts';
+import { createMoveCues } from './move-cues.ts';
+import { createMusicCues } from './music-cues.ts';
 import type { Sequencer } from './sequencer.ts';
-import { playSfx, type SfxKey } from './sfx.ts';
-import { isSkySfx, playSkySfx, type SkySfxKey } from './sky-sfx.ts';
-import { type SongName, songs } from './songs/index.ts';
+import { setPieceCue } from './setpiece-cues.ts';
+import type { SfxKey } from './sfx.ts';
+import type { SongName } from './songs/index.ts';
 import type { Synth } from './synth.ts';
-
-/** Every piece of music the game plays. */
+import { flavourFor, NEUTRAL_FLAVOUR, type WorldFlavour } from './world-flavour.ts';
 
 /** What the adapter drives. */
 export interface AdapterOptions {
@@ -51,14 +54,17 @@ export interface AdapterOptions {
   localRacer?(): RacerId;
   /** The song the current race plays: the course's own (`Course.song`). Read when each race starts. */
   raceSong(): SongName;
+  /**
+   * The world being raced, or null off the race screen. Read once a drain for the local racer's
+   * movement sounds and once a fire for the world's flavour; without it neither plays.
+   */
+  raceWorld?(): World | null;
 }
 
-/** Final-stretch tempo, as a multiple of the race theme's own. */
-const LIFT_TEMPO = 1.1;
 /** Random pitch spread for effects: ±5%. */
 const PITCH_SPREAD = 0.05;
 /** Musical cues that must stay in tune with each other, so they skip the random pitch. */
-const STEADY: ReadonlySet<SfxKey> = new Set(['countdown', 'go']);
+const STEADY: ReadonlySet<EffectKey> = new Set<SfxKey>(['countdown', 'go']);
 
 /** A storm zone's warning is heard within about a screen, like a rival's attack. */
 const STORM_WARN_REACH_PX = HEARING_PX;
@@ -85,45 +91,38 @@ function isEnemy(cause: HitCause): cause is EnemyKind {
   return (ENEMY_KINDS as readonly HitCause[]).includes(cause);
 }
 
-/** The song for `name`. The single place songs are chosen. */
-function songFor(name: SongName): Song {
-  return songs[name];
+/** The flavour item fires take in `world`'s world, the neutral one off the race screen. */
+function flavourOf(world: World | null): WorldFlavour {
+  return world ? flavourFor(courseOf(world)) : NEUTRAL_FLAVOUR;
 }
 
 /** Builds the event-to-sound half of the `AudioPort`. */
 export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvents' | 'onRaceProgress'> {
   const { synth, sequencer, events } = options;
   const running = () => synth.context.state === 'running';
-  /** The music the current screen wants, or null for silence. */
-  let wanted: SongName | null = null;
-  /** The music actually started, which lags `wanted` while the context is suspended. */
-  let started: SongName | null = null;
-  let lifted = false;
   /**
    * The local racer's last announced place. Null until the race's first announcement, which only
    * replaces the grid order at GO, so it sets the baseline silently instead of sounding a drop.
    */
   let place: number | null = null;
-  let won: boolean | null = null;
-  /** Whether the local racer crossed the line this race; `race.finished` only says whether slot 1 did. */
-  let localFinished = false;
   /** Whether a strike has sounded in the drain being heard, so zones striking together sound once. */
   let strikeHeard = false;
 
   const local = options.localRacer ?? (() => 'player');
   const attacks = createAttackSfx(options.audibleFromLocal, local);
+  const moves = createMoveCues(local);
+  const raceWorld = options.raceWorld ?? (() => null);
   const enemyAudible = options.enemyAudible ?? (() => true);
   const stormAudible = options.stormAudible ?? (() => true);
   const announce = (key: string, kind: 'sfx' | 'song') => events.emit({ type: 'audio.played', key, kind });
+  const music = createMusicCues({ sequencer, running, announce, localRacer: local, raceSong: options.raceSong });
 
-  const sfx = (key: SfxKey | SkySfxKey) => {
+  const sfx = (key: EffectKey) => {
     if (!running()) return;
-    const steady = !isSkySfx(key) && STEADY.has(key);
-    const pitch = steady ? 1 : 1 + (options.rng.next() * 2 - 1) * PITCH_SPREAD;
-    const at = synth.context.currentTime;
+    const pitch = STEADY.has(key) ? 1 : 1 + (options.rng.next() * 2 - 1) * PITCH_SPREAD;
+    const flavour = isItemSfx(key) ? flavourOf(raceWorld()) : NEUTRAL_FLAVOUR;
     try {
-      if (isSkySfx(key)) playSkySfx(synth, options.sfxBus, key, at, { pitch });
-      else playSfx(synth, options.sfxBus, key, at, { pitch });
+      playEffect(synth, options.sfxBus, key, synth.context.currentTime, { pitch, flavour });
     } catch (error) {
       options.onError(new Error(`Sound effect "${key}" could not be scheduled`, { cause: error }));
       return;
@@ -131,43 +130,21 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
     announce(key, 'sfx');
   };
 
-  const syncMusic = () => {
-    if (!running() || wanted === started) return;
-    started = wanted;
-    if (wanted === null) {
-      sequencer.stop();
-      return;
-    }
-    sequencer.play(songFor(wanted));
-    announce(wanted, 'song');
-  };
-
-  const followSequencer = () => {
-    if (!running() || started === null) return;
-    const news = sequencer.poll();
-    for (const section of news.sections) announce(`${started}:${section}`, 'song');
-    if (news.ended && (started === 'win' || started === 'lose')) {
-      wanted = 'results';
-      syncMusic();
-    }
+  const hearLocalMotion = () => {
+    const world = raceWorld();
+    const cue = world && moves.forWorld(world);
+    if (cue) sfx(cue);
   };
 
   const onEvent = (event: RuntimeEvent, tick: number) => {
+    music.onEvent(event);
     switch (event.type) {
       case 'scene.started':
-        if (event.scene === 'title') wanted = 'title';
-        else if (event.scene === 'race') {
-          wanted = null;
-          lifted = false;
-          place = null;
-          won = null;
-          localFinished = false;
-        } else if (event.scene === 'results') wanted = won === null ? 'results' : won ? 'win' : 'lose';
+        if (event.scene === 'race') place = null;
         return;
       case 'race.countdown':
         return sfx('countdown');
       case 'race.started':
-        wanted = options.raceSong();
         return sfx('go');
       case 'racer.kicked':
         if (event.id === local()) sfx('kick');
@@ -192,13 +169,10 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
         if (event.id === local()) sfx('pearl.drop');
         return;
       case 'item.used':
-        if (event.id === local()) sfx('item.use');
+        if (event.id === local()) sfx(itemSfxKey(event.kind));
         return;
       case 'racer.bumped':
         if (event.a === local() || event.b === local()) sfx('bump');
-        return;
-      case 'racer.rebounded':
-        if (event.id === local()) sfx('rebound');
         return;
       // Shared by every medium that takes racers out of play (Cloudreach's pits, Farside's black holes).
       case 'racer.fell':
@@ -214,11 +188,7 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
         return;
       case 'racer.finished':
         if (event.id !== local()) return;
-        localFinished = true;
         return sfx('finish');
-      case 'race.finished':
-        won = event.standings[0] === local() && localFinished;
-        return;
       case 'coral.broken':
         return sfx('coral');
       case 'enemy.telegraphed': {
@@ -241,8 +211,8 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       case 'howToPlay.page':
         return sfx('menu.move');
       default: {
-        const attack = attacks.forEvent(event, tick);
-        if (attack) sfx(attack);
+        const cue = attacks.forEvent(event, tick) ?? moves.forEvent(event) ?? setPieceCue(event, raceWorld(), local());
+        if (cue) sfx(cue);
       }
     }
   };
@@ -251,14 +221,9 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
     onEvents(drained: readonly Stamped<RuntimeEvent>[]) {
       strikeHeard = false;
       for (const event of drained) onEvent(event, event.tick);
-      syncMusic();
-      followSequencer();
+      hearLocalMotion();
+      music.sync();
     },
-    onRaceProgress(fraction: number) {
-      if (lifted || fraction < FINAL_STRETCH_AT || started !== options.raceSong() || !running()) return;
-      lifted = true;
-      sequencer.setTempoScale(LIFT_TEMPO);
-      announce(`${started}:lift`, 'song');
-    },
+    onRaceProgress: music.onRaceProgress,
   };
 }

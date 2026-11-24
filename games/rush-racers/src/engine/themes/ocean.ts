@@ -2,13 +2,15 @@
  * The ocean look: Sunlit Shallows' reef, water, bubbles and light, the sky and rolling waterline
  * where the sea opens to the air, and cave stone and walls for dark stretches. Its art, keys and
  * colours live in `ocean/`; this file says how the views use them. Water slows particles hard,
- * bubbles rise and sway, and debris sinks.
+ * bubbles rise and sway, and debris sinks. A course with geyser vents gets them as an extra layer.
  */
 
 import { FxFrame } from '../fx/textures.ts';
+import { createVentView } from '../view/set-pieces/vent-view.ts';
 import { defineTheme } from './define.ts';
 import { OceanAnim, OceanTex, OceanTile } from './ocean/keys.ts';
 import { BackdropPalette, TerrainPalette, WATER_BANDS, WaterLight } from './ocean/palettes.ts';
+import { OCEAN_VENT_ART } from './ocean/vent-art.ts';
 import type { ContrastBand } from './types.ts';
 
 /** Every water band, sky and backdrop colour: everything a racer or off-panel text can sit in front of. */
@@ -72,4 +74,5 @@ export const OCEAN_THEME = defineTheme({
   dark: { colour: 0x020616, alpha: 0.9 },
   trail: { frame: FxFrame.bubbleSmall, tint: 0xffffff, alpha: 0.6 },
   contrastBands: OCEAN_CONTRAST_BANDS,
+  extraLayers: (scene, world, reducedMotion) => [createVentView(scene, world, OCEAN_VENT_ART, reducedMotion)],
 });

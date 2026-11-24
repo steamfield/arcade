@@ -12,4 +12,7 @@ export const FARSIDE_SKIN: WorldSkin = {
   id: 'farside',
   cast: FARSIDE_CAST,
   objects: FARSIDE_OBJECTS,
+  moveSound: 'burns',
+  moveMoments: ['thrust'],
+  fireFlavour: { semitones: 0, noiseScale: 1, squareTones: true },
 };

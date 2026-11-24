@@ -17,8 +17,8 @@
  * a dash charge spent for each `racer.kicked` that movement emitted; one pass of separation over
  * unfinished racers when the medium's racers collide (`racerCollision`: 'solid' along the shallower
  * overlap, 'horizontal' sideways only, 'ghost' not at all); then the phase 3 systems for unfinished
- * racers only: items (cycle, then use, from intents), projectiles and inks, squids, riptides, decoys, jellies,
- * enemies, lightning, contacts (hits), pickups (clams, pearls, rings, loose), status counters and dash recharge; then abilities
+ * racers only: items (cycle, then use, from intents), projectiles and inks, world-specific Cannonball shots and reworked items, squids, riptides, decoys, jellies,
+ * enemies, lightning, the course set pieces (vents, shifting wind, asteroids), contacts (hits), pickups (clams, pearls, rings, loose), status counters and dash recharge; then abilities
  * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
  * then progress, finishes, places, race end. Finished racers are out of play:
  * they stay where they crossed the line, nobody bumps them, and they never
@@ -55,10 +55,12 @@ import { openClams, openClamsFromBelow } from './pickups/clams.ts';
 import { updateLoose } from './pickups/loose.ts';
 import { collectLoosePearls, collectPearls } from './pickups/pearls.ts';
 import { passRings } from './pickups/rings.ts';
+import { advanceShots } from './powerups/cannonball/index.ts';
 import { canDash, DASH_METER, rechargeDash, spendDash } from './powerups/dash-meter.ts';
 import { advanceDecoys } from './powerups/decoys.ts';
 import { selectedSlot, slotItems } from './powerups/inventory.ts';
 import { advanceRiptides } from './powerups/riptides.ts';
+import { advanceTwists } from './powerups/twists/index.ts';
 import { applyUndertow } from './powerups/undertow.ts';
 import { driveDash, sustainItems, useItems } from './powerups/use.ts';
 import { bounceOffClouds } from './race/bounce.ts';
@@ -69,6 +71,9 @@ import { rivalProfileOf, type Seat, seatsFor } from './race/seats.ts';
 import { separateRacers } from './race/separate.ts';
 import { advanceClock, checkRaceEnd, recordFinishes, updatePlaces, updateProgress } from './race/standings.ts';
 import { activeHumans, activeRacers, centreOf, noItems } from './racers.ts';
+import { strikeAsteroids } from './setpieces/asteroids.ts';
+import { blowShiftingWind } from './setpieces/shifting-wind.ts';
+import { eruptVents } from './setpieces/vents.ts';
 import { controlledIntent, floatTrapped, tickStatuses } from './status.ts';
 import {
   type Cell,
@@ -183,6 +188,8 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     squids: [],
     riptides: [],
     decoys: [],
+    shots: [],
+    twists: [],
     guide: { bestSteer: Number.POSITIVE_INFINITY, stuckTicks: 0, helpTicks: 0 },
   };
   // Catch-up reads progress on the first racing tick, before stepWorld updates it.
@@ -340,12 +347,17 @@ export function stepRace(world: World, inputs: Partial<Record<RacerId, TickInput
   useItems(world, racing, intents);
   sustainItems(world, racing);
   advanceProjectiles(world, racing, dt);
+  advanceShots(world, racing, dt);
+  advanceTwists(world, racing, dt);
   advanceSquids(world, racing, dt);
   advanceRiptides(world);
   advanceDecoys(world, dt);
   moveJellies(world);
   stepEnemies(world, racing);
   strikeLightning(world, racing);
+  eruptVents(world, racing, dt);
+  blowShiftingWind(world, racing, dt);
+  strikeAsteroids(world, racing);
   resolveContacts(world, racing);
   // A racer that is out (waiting to be put back after a pit or a black hole) collects nothing.
   const collecting = racing.filter((racer) => racer.status.fallen === 0);

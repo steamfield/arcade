@@ -51,7 +51,7 @@ const OUTLINE = [
 ] as const;
 
 /** The text sizes a label can use. */
-type LabelSize = keyof typeof SIZES;
+export type LabelSize = keyof typeof SIZES;
 
 /** How a label looks and where it is anchored; every field is optional. */
 export interface LabelOptions {

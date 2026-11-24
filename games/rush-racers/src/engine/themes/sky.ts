@@ -7,6 +7,9 @@
  */
 
 import { FxFrame } from '../fx/textures.ts';
+import { createHeadwindView } from '../view/headwind-view.ts';
+import { createMeteorView } from '../view/meteor-view.ts';
+import { createWindView } from '../view/set-pieces/wind-view.ts';
 import { defineTheme } from './define.ts';
 import { SkyThemeAnim, SkyThemeTex, SkyThemeTile } from './sky/keys.ts';
 import { EVENING_HAZE, SKY_BANDS, SkyBackdropPalette, STORM_TINT } from './sky/palettes.ts';
@@ -93,4 +96,10 @@ export const SKY_THEME = defineTheme({
   bubbleFrames: VAPOUR,
   contrastBands: SKY_CONTRAST_BANDS,
   hudOverSky: true,
+  // Thunderhead Pass' shifting wind, Cloudreach's Meteor and its Headwind, drawn from world state every frame.
+  extraLayers: (scene, world, reducedMotion) => [
+    createWindView(scene, world),
+    createMeteorView(scene),
+    createHeadwindView(scene, reducedMotion),
+  ],
 });

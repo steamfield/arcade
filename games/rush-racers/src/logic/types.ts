@@ -147,6 +147,47 @@ export interface LevelDef {
   wells?: readonly WellDef[];
   /** Storm zones where lightning strikes on a timer (`hazards/lightning.ts`); none when left out. */
   lightning?: readonly LightningZone[];
+  /** Geyser vents that erupt on a timer and push racers up (`setpieces/vents.ts`); none when left out. */
+  vents?: readonly VentDef[];
+  /** Wind zones whose gust flips direction on a timer (`setpieces/shifting-wind.ts`); none when left out. */
+  shiftingWind?: readonly ShiftingWindDef[];
+  /** Asteroids drifting back and forth on straight tracks (`setpieces/asteroids.ts`); none when left out. */
+  asteroids?: readonly AsteroidDef[];
+}
+
+/**
+ * A geyser vent on the floor at tile (`col`, `row`): every `periodTicks` (shifted by `offsetTicks`)
+ * it warns, then erupts, pushing racers in its column up to `height` tiles above it.
+ */
+export interface VentDef {
+  col: number;
+  row: number;
+  height: number;
+  periodTicks: number;
+  offsetTicks: number;
+}
+
+/**
+ * A wind zone over columns `cols[0]..cols[1]` (inclusive) whose gust pushes racers along x at
+ * `push` px/s², flipping direction every half `periodTicks` (shifted by `offsetTicks`) after a warning.
+ */
+export interface ShiftingWindDef {
+  cols: readonly [from: number, to: number];
+  periodTicks: number;
+  offsetTicks: number;
+  push: number;
+}
+
+/**
+ * An asteroid gliding from tile `from` to tile `to` and back once every `periodTicks` (shifted by
+ * `offsetTicks`); a racer it touches (within `radius` tiles of its centre) is hit with cause 'asteroid'.
+ */
+export interface AsteroidDef {
+  from: readonly [col: number, row: number];
+  to: readonly [col: number, row: number];
+  periodTicks: number;
+  offsetTicks: number;
+  radius: number;
 }
 
 /**
@@ -216,6 +257,12 @@ export interface Level {
   wells: Well[];
   /** Storm zones (`LevelDef.lightning`), checked to be on the map, apart and long enough to warn before they strike. */
   lightning: LightningZone[];
+  /** Geyser vents (`LevelDef.vents`), checked by `parseVents`; empty for a level without any. */
+  vents: VentDef[];
+  /** Shifting wind zones (`LevelDef.shiftingWind`), checked by `parseShiftingWind`; empty for a level without any. */
+  shiftingWind: ShiftingWindDef[];
+  /** Drifting asteroids (`LevelDef.asteroids`), checked by `parseAsteroids`; empty for a level without any. */
+  asteroids: AsteroidDef[];
 }
 
 /** An axis-aligned box in world pixels: top-left corner and size. */
@@ -329,7 +376,70 @@ export interface HeldItem {
  * What hurt a racer. Urchins, jellies, enemies and lightning have no owner; the rest come from
  * another racer's item. Lightning stuns like a flash.
  */
-export type HitCause = 'urchin' | 'jelly' | 'bubble' | 'puffer' | 'flash' | 'squid' | 'lightning' | EnemyKind;
+export type HitCause =
+  | 'urchin'
+  | 'jelly'
+  | 'bubble'
+  | 'puffer'
+  | 'flash'
+  | 'squid'
+  | 'lightning'
+  | 'asteroid'
+  | CannonballShotStyle
+  | EnemyKind;
+
+/** A world's reworked item, used in place of the shared effect (`powerups/twists/`). */
+export type ItemTwistStyle = 'mudPie' | 'headwind' | 'gravityBomb';
+
+/**
+ * A world's reworked item in play (`powerups/twists/`). One shape for every style so the world
+ * holds them in one list; each style's module says what its fields mean for it.
+ */
+export interface Twist {
+  style: ItemTwistStyle;
+  owner: RacerId;
+  /** Centre in px. */
+  x: number;
+  y: number;
+  /** Velocity in px/s. */
+  vx: number;
+  vy: number;
+  /** Ticks left before it ends on its own. */
+  ttl: number;
+  /** A per-style stage, such as 0 while a Mud Pie flies and 1 once it has landed as a splat. */
+  phase: number;
+}
+
+/** How a world's Cannonball fires when it isn't the swim dash (`powerups/cannonball/`). */
+export type CannonballShotStyle = 'boulder' | 'meteor' | 'comet';
+
+/**
+ * Why a shot ended: it hit a racer, met the ground or a wall (a meteor landing, a boulder smashing,
+ * a comet striking rock or ice), fizzled with no one to aim at, or ran out (time, the level's
+ * bottom, a black hole).
+ */
+export type ShotEndReason = 'hit' | 'landed' | 'fizzled' | 'expired';
+
+/**
+ * A world-specific Cannonball in flight (`powerups/cannonball/`). One shape for every style so
+ * the world holds them in one list; each style's module says what its fields mean for it.
+ */
+export interface Shot {
+  style: CannonballShotStyle;
+  owner: RacerId;
+  /** Centre in px. */
+  x: number;
+  y: number;
+  /** Velocity in px/s. */
+  vx: number;
+  vy: number;
+  /** Ticks left before it ends on its own. */
+  ttl: number;
+  /** The racer it is aimed at, if its style aims (the Meteor). */
+  target: RacerId | null;
+  /** A per-style countdown or stage, such as a Meteor's warning ticks left. */
+  phase: number;
+}
 
 /** Creatures on the course that a racer can beat with a dash bonk (`hazards/enemies/`). */
 export type EnemyKind = 'shark' | 'eel' | 'crab';
@@ -697,6 +807,10 @@ export interface World {
   riptides: Riptide[];
   /** Mimic decoys swimming. */
   decoys: Decoy[];
+  /** World-specific Cannonballs in flight (`powerups/cannonball/`). */
+  shots: Shot[];
+  /** World-specific reworked items in play (`powerups/twists/`). */
+  twists: Twist[];
   /** The player's way-finding record for the Easy guide. */
   guide: GuideMemory;
 }

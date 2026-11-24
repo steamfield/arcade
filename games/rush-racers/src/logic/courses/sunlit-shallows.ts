@@ -3,7 +3,25 @@
  * Only `courses/index.ts` imports this file; everything else asks the registry.
  */
 import type { LevelDef } from '../types.ts';
-import type { ShippedCourse } from './types.ts';
+import type { CourseSection, ShippedCourse } from './types.ts';
+
+/**
+ * Geyser vents (`setpieces/vents.ts`), each two columns wide from its `col`. Three sit on the floor
+ * of the surface section between its ridges and reach 6 tiles above the waterline, so a racer
+ * who rides an eruption up breaches high: the one at 402 throws you over the shark's water. One sits
+ * on the jelly room's floor under its last high jelly column (333), so an eruption there flings a
+ * racer on the middle line up into the jellies; with a second one under column 313 the toddler bot's
+ * median stuns on Easy rose to 4, past its bar of 3. The surface vents go off in turn, 402, then
+ * 436, then 388, so neighbours never erupt together. Vents move the rivals, so the offsets were
+ * picked from a sweep for the Hard bars: with these every character's expert wins at least 18 of
+ * 30 (Baron, the tightest), where other phasings left Baron at 14-16.
+ */
+const VENTS: LevelDef['vents'] = [
+  { col: 332, row: 16, height: 14, periodTicks: 300, offsetTicks: 234 },
+  { col: 388, row: 15, height: 12, periodTicks: 240, offsetTicks: 25 },
+  { col: 402, row: 15, height: 12, periodTicks: 240, offsetTicks: 159 },
+  { col: 436, row: 15, height: 12, periodTicks: 240, offsetTicks: 85 },
+];
 
 /**
  * Sunlit Shallows, the ocean course: about 132 s for a good swimmer. Each section
@@ -78,6 +96,7 @@ const LEVEL: LevelDef = {
   `,
   dark: [[628, 706]],
   surface: [{ from: 371, to: 453, row: 9 }],
+  vents: VENTS,
   legend: {
     R: { cell: 'rock', art: 'caveRock' },
     T: { cell: 'rock', art: 'stalactite' },
@@ -92,6 +111,17 @@ const LEVEL: LevelDef = {
  */
 const PAR_TICKS = 7920;
 
+/** The zones the race screen calls out, from the section list above; the cave starts with its dark zone. */
+const SECTIONS: readonly CourseSection[] = [
+  { fromCol: 0, name: 'THE REEF' },
+  { fromCol: 95, name: 'CURRENT HIGHWAY' },
+  { fromCol: 247, name: 'JELLY FIELD' },
+  { fromCol: 365, name: 'THE SURFACE' },
+  { fromCol: 461, name: 'URCHIN GAUNTLET' },
+  { fromCol: 563, name: 'CORAL GATE' },
+  { fromCol: 628, name: 'THE DARK CAVE' },
+];
+
 export const SUNLIT_SHALLOWS: ShippedCourse = {
   id: 'sunlit-shallows',
   name: 'Sunlit Shallows',
@@ -101,4 +131,5 @@ export const SUNLIT_SHALLOWS: ShippedCourse = {
   song: 'race',
   listed: true,
   parTicks: PAR_TICKS,
+  sections: SECTIONS,
 };

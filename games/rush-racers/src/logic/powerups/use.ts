@@ -16,8 +16,11 @@
  * - riptide: `layRiptide` along the aim.
  * - undertow: `fireUndertow`.
  * - mimic: `spawnDecoy`.
- * Jet Fins and Cannonball do nothing while a dash is already running: no charge is spent and
- * nothing is emitted.
+ * A world with a shot style (Boulder, Meteor, Comet: `shotRules`) fires that shot for the Cannonball
+ * instead, and a world with a twist style (`twistRules`) fires its twist for the item it replaces;
+ * neither dashes.
+ * Jet Fins, and the Cannonball where it dashes (Reef, no shot style), do nothing while a dash is
+ * already running: no charge is spent and nothing is emitted.
  */
 import { flashAround } from '../hazards/contacts.ts';
 import { launchSquid } from '../hazards/squids.ts';
@@ -27,21 +30,24 @@ import { length } from '../num.ts';
 import { breakCoral } from '../race/coral.ts';
 import { centreOf, hitbox } from '../racers.ts';
 import type { Intent, PowerUpKind, Racer, Vec, World } from '../types.ts';
+import { shotRules, shotStyleOf } from './cannonball/index.ts';
 import { spawnDecoy } from './decoys.ts';
 import { cycleSelection, itemAt, selectedSlot, selectSlot, spendCharge } from './inventory.ts';
 import { layRiptide } from './riptides.ts';
 import { BUBBLE, CANNONBALL, DASH, INFLATE, INK, USE_COOLDOWN_TICKS } from './tuning.ts';
+import { twistRules, twistStyleOf } from './twists/index.ts';
 import { fireUndertow } from './undertow.ts';
 
 /**
  * True when `fireItem` would fire `slot` now: the slot holds an item, the racer is in play (not
  * `status.fallen`, which also covers the tick a black hole swallows it, after its intent was read),
- * the use cooldown is 0, and it isn't Jet Fins or a Cannonball while a dash is running.
+ * the use cooldown is 0, and it isn't a dash (Jet Fins, or a Cannonball in a world with no shot
+ * style) while a dash is running. A shot-style Cannonball never dashes, so it fires mid-dash.
  */
-export function canFire(racer: Racer, slot: number): boolean {
+export function canFire(world: World, racer: Racer, slot: number): boolean {
   const item = itemAt(racer, slot);
   if (!item || racer.status.fallen > 0 || racer.useCooldown > 0) return false;
-  const startsDash = item.kind === 'jetFin' || item.kind === 'cannonball';
+  const startsDash = item.kind === 'jetFin' || (item.kind === 'cannonball' && shotStyleOf(world) === null);
   return !(startsDash && racer.status.dashing > 0);
 }
 
@@ -70,7 +76,7 @@ export function useItems(world: World, racers: readonly Racer[], intents: readon
  */
 export function fireItem(world: World, racer: Racer, slot: number, move: Vec): boolean {
   const item = itemAt(racer, slot);
-  if (!item || !canFire(racer, slot)) return false;
+  if (!item || !canFire(world, racer, slot)) return false;
   selectSlot(world, racer, slot);
   racer.useCooldown = USE_COOLDOWN_TICKS;
   world.events.emit({ type: 'item.used', id: racer.id, kind: item.kind, slot, chargesLeft: item.charges - 1 });
@@ -81,6 +87,11 @@ export function fireItem(world: World, racer: Racer, slot: number, move: Vec): b
 
 /** One kind's effect on firing, as the module doc lists. */
 function applyEffect(world: World, racer: Racer, kind: PowerUpKind, aim: Vec): void {
+  const twist = twistStyleOf(world, kind);
+  if (twist) {
+    twistRules(twist).fire(world, racer, aim);
+    return;
+  }
   switch (kind) {
     case 'jetFin':
       startDash(world, racer, aim, DASH);
@@ -153,6 +164,11 @@ function startDash(world: World, racer: Racer, aim: Vec, dash: { ticks: number; 
 }
 
 function fireCannonball(world: World, racer: Racer, aim: Vec): void {
+  const style = shotStyleOf(world);
+  if (style) {
+    shotRules(style).fire(world, racer, aim);
+    return;
+  }
   startDash(world, racer, aim, CANNONBALL);
   racer.status.inflated = Math.max(racer.status.inflated, CANNONBALL.ticks);
   racer.status.cannonball = CANNONBALL.ticks;

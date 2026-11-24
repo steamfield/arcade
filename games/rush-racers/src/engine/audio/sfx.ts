@@ -2,7 +2,8 @@
  * The game's sound effects as data: each key is a few synth parts (a blip, a
  * slide, a noise burst) offset in time, and `playSfx` schedules them. Every
  * effect is under half a second so repeats never pile up into mush. The part notation (`pulse`,
- * `tri`, `hiss`) and `playParts` are exported so other effect sets, such as `sky-sfx.ts`, use them too.
+ * `tri`, `hiss`) and `playParts` are exported so the other effect sets (`sky-sfx.ts`, `item-sfx.ts`,
+ * `move-sfx.ts`) use them too.
  */
 import type { Duty, Envelope } from './notation.ts';
 import { env, midiToHz, type Synth } from './synth.ts';
@@ -20,7 +21,6 @@ export type SfxKey =
   | 'clam'
   | 'powerup.gain'
   | 'powerup.lost'
-  | 'item.use'
   | 'squid.fire'
   | 'squid.lock'
   | 'squid.latch'
@@ -42,7 +42,6 @@ export type SfxKey =
   | 'enemy.bonk'
   | 'enemy.defeat'
   | 'enemy.bite'
-  | 'rebound'
   | 'fall'
   | 'respawn';
 
@@ -145,11 +144,6 @@ const SFX: Record<SfxKey, readonly Part[]> = {
   clam: [pulse(67, 0, 0.12, 0.35, { duty: 0.25, slide: 12 }), pulse(79, 0.12, 0.08, 0.3, { duty: 0.25 })],
   'powerup.gain': arpeggio([72, 76, 79, 84], 0.045, 0.35, 0.25),
   'powerup.lost': [pulse(79, 0, 0.25, 0.35, { slide: -12 })],
-  // The player fires an item: a falling whoosh over a rising blip.
-  'item.use': [
-    hiss('bandpass', 3000, 0, 0.2, 0.4, { sweepTo: 500 }),
-    pulse(48, 0, 0.15, 0.3, { duty: 0.125, slide: 12 }),
-  ],
   // A squid fired: a quick rising hiss.
   'squid.fire': [
     hiss('bandpass', 700, 0, 0.14, 0.3, { sweepTo: 2600 }),
@@ -219,8 +213,6 @@ const SFX: Record<SfxKey, readonly Part[]> = {
   'enemy.defeat': [hiss('bandpass', 2600, 0, 0.06, 0.5), ...arpeggio([79, 84, 88, 91], 0.05, 0.3, 0.125)],
   // An enemy gets the player: a snapping chomp.
   'enemy.bite': [hiss('highpass', 1200, 0, 0.04, 0.5), tri(40, 0.03, 0.14, 0.6, { slide: -10 })],
-  // A rebound off a wall: a short dull thud, lower and shorter than a bump between racers.
-  rebound: [tri(38, 0, 0.08, 0.7, { slide: -5 }), hiss('lowpass', 300, 0, 0.05, 0.35)],
   // Falling out of play (a pit, a black hole): a two-octave downward sweep over a sinking hiss.
   fall: [
     pulse(79, 0, 0.38, 0.3, { duty: 0.25, slide: -24, envelope: env(0.005, 0.1, 0.7, 0.08) }),

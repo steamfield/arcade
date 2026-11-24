@@ -51,8 +51,21 @@ export const RUN_TUNING = {
 const RUN_STOMP_BOUNCE = 220;
 
 /**
+ * Upward speed, px/s, a spring mushroom (`B`) launches a runner landing on it: under full gravity it
+ * rises about 5 tiles (81 px), half again a held jump's 3.3.
+ */
+export const RUN_BOUNCE_SPEED = 360;
+
+/**
+ * Upward speed, px/s, a spring mushroom launches a runner holding Up as it lands: about 6 tiles
+ * (97 px). `spring.ts` raises a launch to it on the tick after the spring.
+ */
+export const RUN_HELD_BOUNCE_SPEED = 395;
+
+/**
  * Gravity keeps vertical speed through a dash or knockback; trapped racers and loose power-ups fall
- * (px/s); enemies can be stomped; crates are solid and open from below; pits are open; ledges allowed.
+ * (px/s); enemies can be stomped; crates are solid and open from below; pits are open; ledges allowed;
+ * spring mushrooms (bounce cells) launch at RUN_BOUNCE_SPEED.
  * The Easy assist slides only the horizontal stick, so it never presses Up for a jump.
  */
 export const RUN_EFFECTS: MediumEffects = {
@@ -65,7 +78,7 @@ export const RUN_EFFECTS: MediumEffects = {
   allowsLedges: true,
   assistAxes: 'horizontal',
   gravityWells: false,
-  bounceSpeed: null,
+  bounceSpeed: RUN_BOUNCE_SPEED,
 };
 
 /** No kick counter works on land, and Gil's ability is a higher jump (`jumpMulFor`), not a spring kick. */

@@ -24,9 +24,11 @@ import {
 import { castName, worldOf } from '../../logic/worlds/index.ts';
 import { createLabel } from '../art/font.ts';
 import { toneCss, UiColour, UiRamp, type UiToneName } from '../art/ui/palette.ts';
+import { DISPLAY_FACE, measureText } from '../art/ui/typeface.ts';
 import { localOf } from '../local-racer.ts';
 import { FINAL_STRETCH_AT, raceProgress } from '../race-progress.ts';
 import { Layer } from './layers.ts';
+import type { Rect } from './screen-layout.ts';
 
 /** Logic ticks as a race time, e.g. 1234 ticks reads "0:20.56". Rounds down to the hundredth. */
 export function formatRaceTime(ticks: number): string {
@@ -132,6 +134,42 @@ const COUNTDOWN_DROP = { px: 6, ticks: 6 } as const;
 const BANNER_SLIDE = { px: 12, ticks: 8 } as const;
 const BANNER_HOLD_TICKS = 45;
 const COUNTDOWN_TEXT: Partial<Record<number, string>> = { 1: '1', 2: '2', 3: '3' };
+const SPLASH_SCALE = 2;
+/** An outline is one glyph pixel wide, so it grows a label by this many px a side per scale step. */
+const OUTLINE_PX = 1;
+
+/**
+ * Where the countdown draws on a view centred on `centreX`, outlines included: the numeral over its
+ * whole drop, the level word and the level pips. Anything else on screen during the countdown stays
+ * out of these.
+ */
+export function countdownRects(centreX: number): Rect[] {
+  const numerals = Object.values(COUNTDOWN_TEXT).map((text) => measureText(DISPLAY_FACE, text ?? '', SPLASH_SCALE));
+  const words = DIFFICULTIES.map((level) => measureText(DISPLAY_FACE, level.toUpperCase()));
+  const pipSpan = DIFFICULTIES.length * LEVEL_BANNER.pip + (DIFFICULTIES.length - 1) * LEVEL_BANNER.gap;
+  const numeralRest = centredRect(centreX, SPLASH_Y, widest(numerals), numerals[0]?.height ?? 0, SPLASH_SCALE);
+  return [
+    { ...numeralRest, y: numeralRest.y - COUNTDOWN_DROP.px, h: numeralRest.h + COUNTDOWN_DROP.px },
+    centredRect(centreX, LEVEL_BANNER.wordY, widest(words), words[0]?.height ?? 0, 1),
+    // The pips' 1 px stroke straddles their edges.
+    { x: centreX - pipSpan / 2 - 1, y: LEVEL_BANNER.pipsY - 1, w: pipSpan + 2, h: LEVEL_BANNER.pip + 2 },
+  ];
+}
+
+function widest(sizes: readonly { width: number }[]): number {
+  return Math.max(...sizes.map((size) => size.width));
+}
+
+/** The rect of outlined text `width` by `height` px that a centre-aligned label puts at (x, y). */
+function centredRect(x: number, y: number, width: number, height: number, scale: number): Rect {
+  const outline = OUTLINE_PX * scale;
+  return {
+    x: x - Math.floor(width / 2) - outline,
+    y: y - Math.floor(height / 2) - outline,
+    w: width + 2 * outline,
+    h: height + 2 * outline,
+  };
+}
 
 /** One splash frame: the text (empty for none), its tone and how far it sits from its resting place. */
 interface SplashFrame {
@@ -171,7 +209,7 @@ export function noteSplashMoments(moments: SplashMoments, phase: RacePhase, tick
 export function createRaceSplash(scene: Phaser.Scene, reducedMotion: boolean, centreX: number): RaceSplash {
   const label = createLabel(scene, centreX, SPLASH_Y, '', {
     size: 'display',
-    scale: 2,
+    scale: SPLASH_SCALE,
     outline: true,
     align: 'center',
     fixed: true,

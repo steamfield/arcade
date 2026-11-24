@@ -2,8 +2,9 @@
  * The particle recipes behind every race effect: what spawns, how many, how fast and for how
  * long. How bubbles rise, debris falls and ink and droplets drift comes from the course theme's
  * particle physics (the debris chunk from its terrain, and what a kick, debris and the finish shed
- * in place of bubbles from its `bubbleFrames`); sparks, sparkles and popped icons look
- * the same everywhere. Each recipe has a reduced-motion form that keeps its information: the same
+ * in place of bubbles from its `bubbleFrames`); sparkles and popped icons look the same
+ * everywhere. Item fires, hits and movement have their own recipe tables (`item-recipes.ts`,
+ * `movement-recipes.ts`). Each recipe has a reduced-motion form that keeps its information: the same
  * shapes in the same place, fewer of them, standing still or drifting slowly, and fading out
  * instead of flying. Cosmetic randomness comes from the rng passed in, so captures repeat.
  */
@@ -22,15 +23,10 @@ export interface Bursts {
    * after it; a racer that isn't moving pushes them out behind its `facing`.
    */
   kickPuff(x: number, y: number, vx: number, vy: number, facing: 1 | -1): void;
-  /**
-   * One trail particle that moves like a bubble: a racer's trail passes its theme's `look`, and the
-   * bubble strings event effects lay leave it out to get a small white bubble.
-   */
-  trailBubble(x: number, y: number, look?: TrailLook): void;
+  /** One trail particle drawn as the theme's trail `look`, moving like a bubble. */
+  trailBubble(x: number, y: number, look: TrailLook): void;
   /** A coral tile breaking into chunks that sink, drawn behind the racers so a smashing racer stays readable. */
   coralDebris(x: number, y: number): void;
-  /** Sparks where a racer was hit. */
-  hitSparks(x: number, y: number): void;
   /** Sparkles where a pearl was taken. */
   pearlSparkle(x: number, y: number): void;
   /** The power-up's icon popping up out of a clam or a loose grab, with a ring of sparkles. */
@@ -55,7 +51,7 @@ interface Style {
 }
 
 /** Every style a recipe uses, by name. */
-type StyleName = 'bubble' | 'bubbleStill' | 'debris' | 'debrisStill' | 'ink' | 'droplet' | 'spark' | 'sparkle' | 'icon';
+type StyleName = 'bubble' | 'bubbleStill' | 'debris' | 'debrisStill' | 'ink' | 'droplet' | 'sparkle' | 'icon';
 
 /** A style that moves as `motion` says, in `tint` at `alpha`. */
 const styled = (motion: ParticleMotion, tint: number, alpha: number): Style => ({ ...motion, tint, alpha });
@@ -69,7 +65,6 @@ function stylesFor({ particles }: Pick<Theme, 'particles'>): Readonly<Record<Sty
     debrisStill: styled(particles.fallStill, 0xffffff, 1),
     ink: styled(particles.drift, 0x7a64b0, 0.9),
     droplet: styled(particles.splash, 0xffffff, 0.9),
-    spark: { drag: 0.84, ay: 0, tint: 0xffffff, alpha: 1, wobble: 0 },
     sparkle: { drag: 0.88, ay: 0, tint: 0xfff0a0, alpha: 1, wobble: 0 },
     icon: { drag: 0.9, ay: 0, tint: 0xffffff, alpha: 1, wobble: 0 },
   };
@@ -94,8 +89,6 @@ const debrisBubbles = (frames: BubbleFrames): RingShape => ({
   frame: frames.small,
   style: 'bubble',
 });
-const HIT_SPARKS: RingShape = { count: 6, radius: 3, speed: 1.8, life: 12, frame: FxFrame.spark, style: 'spark' };
-const HIT_SPARKS_STILL: RingShape = { count: 4, radius: 8, speed: 0, life: 16, frame: FxFrame.spark, style: 'spark' };
 const PEARL: RingShape = { count: 5, radius: 2, speed: 1, life: 16, frame: FxFrame.sparkle, style: 'sparkle' };
 const PEARL_STILL: RingShape = { count: 3, radius: 5, speed: 0, life: 18, frame: FxFrame.sparkle, style: 'sparkle' };
 const PICKUP: RingShape = { count: 6, radius: 4, speed: 1.1, life: 14, frame: FxFrame.sparkle, style: 'sparkle' };
@@ -106,9 +99,6 @@ const POP_STILL: RingShape = { count: 4, radius: 5, speed: 0, life: 16, frame: F
 
 /** What a theme sheds when it leaves `bubbleFrames` out: the ocean's bubbles. */
 const OCEAN_BUBBLES: BubbleFrames = { large: FxFrame.bubble, small: FxFrame.bubbleSmall };
-
-/** The look of a bubble string an event lays, such as a Riptide lane or an Undertow pull. */
-const SMALL_BUBBLE: TrailLook = { frame: FxFrame.bubbleSmall, tint: 0xffffff, alpha: 0.6 };
 
 /** How far behind a kicking racer's centre its puff starts, px. */
 const KICK_PUFF_BEHIND = 8;
@@ -168,7 +158,7 @@ export function createBursts(
         applyStyle(particle, reducedMotion ? styles.bubbleStill : styles.bubble, rng);
       }
     },
-    trailBubble(x, y, look = SMALL_BUBBLE) {
+    trailBubble(x, y, look) {
       const particle = back.spawn(x, y + jitter(2), 34 + rng.int(0, 12), FX_TEXTURE, look.frame);
       applyStyle(particle, reducedMotion ? styles.bubbleStill : styles.bubble, rng);
       particle.tint = look.tint;
@@ -184,9 +174,6 @@ export function createBursts(
         applyStyle(particle, reducedMotion ? styles.debrisStill : styles.debris, rng);
       }
       if (!reducedMotion) ring(back, x, y, debrisRing);
-    },
-    hitSparks(x, y) {
-      ring(front, x, y, reducedMotion ? HIT_SPARKS_STILL : HIT_SPARKS);
     },
     pearlSparkle(x, y) {
       ring(front, x, y, reducedMotion ? PEARL_STILL : PEARL);
