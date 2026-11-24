@@ -119,7 +119,8 @@ export function bumpMassFor(racer: Racer): number {
 
 /**
  * True when a hit of this cause does nothing to the racer, checked in `applyHit` before any effect
- * (no event, no invulnerability). Selene (Moonlight) ignores 'jelly'.
+ * (no event, no invulnerability). Selene (Moonlight) ignores 'jelly' (a static wisp in the sky), but
+ * not 'lightning': seeing in the storm cell doesn't make her proof against its strikes.
  */
 export function ignoresHazard(racer: Racer, cause: HitCause): boolean {
   return racer.character === 'selene' && cause === 'jelly';

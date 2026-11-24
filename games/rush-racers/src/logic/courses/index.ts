@@ -7,14 +7,18 @@ import { parseLevel } from '../level/parse.ts';
 import type { Level, World } from '../types.ts';
 import { BRAMBLE_RUN } from './bramble-run.ts';
 import { RUN_TEST } from './run-test.ts';
+import { SKY_TEST } from './sky-test.ts';
 import { SUNLIT_SHALLOWS } from './sunlit-shallows.ts';
+import { THUNDERHEAD_PASS } from './thunderhead-pass.ts';
 import type { Course, ShippedCourse, ShippedCourseId } from './types.ts';
 
 /** Every shipped course by id, in menu order: course select lists the `listed` ones in this order. */
 export const COURSES: Readonly<Record<ShippedCourseId, ShippedCourse>> = {
   'sunlit-shallows': SUNLIT_SHALLOWS,
   'bramble-run': BRAMBLE_RUN,
+  'thunderhead-pass': THUNDERHEAD_PASS,
   'run-test': RUN_TEST,
+  'sky-test': SKY_TEST,
 };
 
 /**

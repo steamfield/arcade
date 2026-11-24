@@ -12,18 +12,19 @@ import { PASSIVE, SQUID } from './tuning.ts';
 /**
  * `base` with the racer's selected item and statuses folded in (PASSIVE in `powerups/tuning.ts`):
  * selected Jet Fins multiply forceMul by jetForceMul and sets kickCooldownTicks to jetKickCooldownTicks;
- * the racer's pearls multiply forceMul by `pearlSpeedMul`; boost, slowed, inflated and latched multiply
- * forceMul by their factors. Bubble Shield, Puffer, Ink Sac and
+ * the racer's pearls multiply forceMul by `pearlSpeedMul`; boost, ringBoost, slowed, inflated and
+ * latched multiply forceMul by their factors. Bubble Shield, Puffer, Ink Sac and
  * Glow Lantern don't change swimming.
  */
 export function withPassives(racer: Racer, base: MoveModifiers): MoveModifiers {
-  const { boost, slowed, inflated, latched } = racer.status;
+  const { boost, ringBoost, slowed, inflated, latched } = racer.status;
   const jet = selectedItem(racer)?.kind === 'jetFin';
   const forceMul =
     base.forceMul *
     pearlSpeedMul(racer) *
     (jet ? PASSIVE.jetForceMul : 1) *
     (boost > 0 ? PASSIVE.boostForceMul : 1) *
+    (ringBoost > 0 ? PASSIVE.ringBoostForceMul : 1) *
     (slowed > 0 ? PASSIVE.slowedForceMul : 1) *
     (inflated > 0 ? PASSIVE.inflatedForceMul : 1) *
     (latched > 0 ? SQUID.latchedForceMul : 1);

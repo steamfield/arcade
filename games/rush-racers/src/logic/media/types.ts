@@ -12,7 +12,19 @@
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
-import type { Body, Box, Cell, Intent, Level, MoveContacts, MoveModifiers, Racer, Vec, World } from '../types.ts';
+import type {
+  Body,
+  Box,
+  Cell,
+  Difficulty,
+  Intent,
+  Level,
+  MoveContacts,
+  MoveModifiers,
+  Racer,
+  Vec,
+  World,
+} from '../types.ts';
 
 /** A medium's numbers. Swim's are today's `SWIM` constants with `base` as `BASE_MODIFIERS`. */
 export interface MediumTuning {
@@ -28,6 +40,12 @@ export interface MediumTuning {
   kick: number;
   /** Medium-specific extras (swim: sink, currentForce, kelpDragMul). */
   extra: Readonly<Record<string, number>>;
+  /**
+   * Multipliers over `extra` for a difficulty level, applied last (after the course's tuning) by
+   * `effectiveTuning`: flight's Easy has lighter gravity and stronger flaps for every racer. Every key
+   * must be one of `extra`'s. A level not named, or a medium without it, uses `extra` as it is.
+   */
+  byDifficulty?: Partial<Record<Difficulty, Readonly<Record<string, number>>>>;
 }
 
 /** What the medium's surroundings do to a body this tick. Opaque outside the medium that sampled it. */
@@ -103,6 +121,16 @@ export interface MediumEffects {
   pitBelow: boolean;
   /** True: the medium's levels may use ledges (`=`), which only hold a body coming down onto them. */
   allowsLedges: boolean;
+  /**
+   * Which stick axes the Easy steering assist may blend toward the way on: 'both', or 'horizontal'
+   * where Up and Down are moves of their own (a flap or a dive), so the assist never changes `move.y`.
+   */
+  assistAxes: 'both' | 'horizontal';
+  /**
+   * Upward speed, px/s, a racer leaves with after coming down onto a bounce cloud (`race/bounce.ts`).
+   * Null: the medium has no bounce clouds, and `createWorld` rejects a level with one.
+   */
+  bounceSpeed: number | null;
 }
 
 /** How the generic counters read a kick in this medium. */
@@ -151,8 +179,13 @@ export interface Medium {
    * rival's pilot memory. `forceRecover` starts a stuck recovery now (the generic progress backstop).
    */
   steer(world: World, racer: Racer, mods: MoveModifiers, draws: AiDraws, forceRecover: boolean): Steering;
-  /** Cost of entering `cell` along `move` for flow-field media; the progress field stays uniform. */
-  enterCost(cell: Cell, isBroken: boolean, move: Vec): number;
+  /**
+   * What the medium's nav charges to enter `cell` at `tile` of `level` along `move` (an `EntryCost`
+   * in `race/flowfield.ts`, given the level it reads); Infinity means closed. `tile` and `level` are
+   * for a medium that prices tiles by position, as flight keeps flyers off the bottom rows over open
+   * sky; costs that ignore them declare fewer parameters. The progress field stays uniform.
+   */
+  enterCost(cell: Cell, isBroken: boolean, move: Vec, tile: Vec, level: Level): number;
   /** Unit aim toward the finish along the medium's way from `body`; zero at the finish. */
   aimFrom(world: World, body: Box, lookaheadTiles: number): Vec;
   /** Offset (each of x and y in -1..1) of the neighbour nearer the finish; null at the finish or boxed in. */
@@ -164,6 +197,12 @@ export interface Medium {
    * that can break coral, so a Puffer or Cannonball would open the way. Rival item choice asks it.
    */
   coralAhead(world: World, tile: Vec, steps: number): boolean;
+  /**
+   * True when `racer` breaks every coral tile its body would enter this tick, as Baron's Bulldozer
+   * does, from what this tick's `applyIntent` did (flight: a dash pops puff clouds for a few ticks).
+   * `stepWorld` asks it after `applyIntent` and before the move. False in a medium without it.
+   */
+  ramsCoral(racer: Racer): boolean;
   /** Why `level` can't be raced in this medium; empty when it can. */
   validateLevel(level: Level, nav: MediumNav): LevelProblem[];
   /**

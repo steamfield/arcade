@@ -42,6 +42,7 @@ export const SWIM_MEDIUM: Medium = {
   nextTile: swimNextTile,
   distanceAt: swimDistanceAt,
   coralAhead: coralOnSmashPath,
+  ramsCoral: () => false,
   validateLevel: validateSwimLevel,
   afterMove: () => {},
   racerCollision: 'solid',

@@ -40,3 +40,18 @@ describe('createRacerMoments', () => {
     expect(moments.look(105, true).stretch).toBe(0);
   });
 });
+
+describe('a flap', () => {
+  it("gives the racer a short wing-stroke squash that settles back to rest, and none under reduced motion or for another racer's flap", () => {
+    const moments = createRacerMoments('tess', 2);
+    moments.onEvents([{ type: 'racer.flapped', id: 'tess', tick: STEP_TICK, seq: 0 }], 100);
+    const other = createRacerMoments('tess', 2);
+    other.onEvents([{ type: 'racer.flapped', id: 'player', tick: STEP_TICK, seq: 0 }], 100);
+    const shapeAt = (tick: number) => moments.look(tick, false).stretch;
+
+    expect(shapeAt(100)).not.toBe(0);
+    expect(shapeAt(130)).toBe(0);
+    expect(moments.look(100, true).stretch).toBe(0);
+    expect(other.look(100, false).stretch).toBe(0);
+  });
+});

@@ -37,6 +37,8 @@ export const OceanTile = {
   stalactite: 4,
   stalagmite: 5,
   ledge: 6,
+  /** A bounce cloud, for sky-test until the sky theme has its own. */
+  bounce: 7,
 } as const;
 
 /** Ocean animation keys: kelp sway, the four current flows, the jelly's pulse and the waterline's roll. */

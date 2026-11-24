@@ -40,6 +40,8 @@ export const SWIM_EFFECTS: MediumEffects = {
   solidClams: false,
   pitBelow: false,
   allowsLedges: false,
+  assistAxes: 'both',
+  bounceSpeed: null,
 };
 
 /**

@@ -53,6 +53,7 @@ export const RUN_STOMP_BOUNCE = 220;
 /**
  * Gravity keeps vertical speed through a dash or knockback; trapped racers and loose power-ups fall
  * (px/s); enemies can be stomped; crates are solid and open from below; pits are open; ledges allowed.
+ * The Easy assist slides only the horizontal stick, so it never presses Up for a jump.
  */
 export const RUN_EFFECTS: MediumEffects = {
   dashAxes: 'horizontal',
@@ -62,6 +63,8 @@ export const RUN_EFFECTS: MediumEffects = {
   solidClams: true,
   pitBelow: true,
   allowsLedges: true,
+  assistAxes: 'horizontal',
+  bounceSpeed: null,
 };
 
 /** No kick counter works on land, and Gil's ability is a higher jump (`jumpMulFor`), not a spring kick. */

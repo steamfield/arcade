@@ -16,8 +16,8 @@ describe('engine conformance', () => {
   );
 
   it('names the course and the missing theme', () => {
-    const course = { ...courseFromLevel('#1F#'), theme: 'sky' } as unknown as Course;
-    expect(() => assertCourseAssets(course)).toThrow(`Course '${course.id}' names theme 'sky'`);
+    const course = { ...courseFromLevel('#1F#'), theme: 'moon' } as unknown as Course;
+    expect(() => assertCourseAssets(course)).toThrow(`Course '${course.id}' names theme 'moon'`);
   });
 
   it('names the course, the glyph and the art key when the theme has no tile for legend art', () => {
@@ -34,7 +34,7 @@ describe('engine conformance', () => {
   it('draws cave rock, stalactites and stalagmites in the ocean theme', () => {
     const course = courseFromLevel({
       name: 'cave',
-      ascii: '#1RTLF#',
+      ascii: '#1234RTLF#',
       legend: {
         R: { cell: 'rock', art: 'caveRock' },
         T: { cell: 'rock', art: 'stalactite' },
@@ -42,6 +42,17 @@ describe('engine conformance', () => {
       },
     });
     expect(() => assertCourseAssets(course)).not.toThrow();
+  });
+
+  it('names the course, the cell, the theme and where it first appears when the theme has no tile for a base cell', () => {
+    const course = courseFromLevel('#1234.F#\n#BBBBBF#', 'swim', { theme: 'forest' });
+    expect(() => assertCourseAssets(course)).toThrow(
+      `Course '${course.id}' uses cell 'bounce' (first at row 1, col 1), which theme 'forest' has no tile for`,
+    );
+  });
+
+  it('draws a bounce cloud in the ocean theme', () => {
+    expect(() => assertCourseAssets(courseFromLevel('#1234BF#'))).not.toThrow();
   });
 
   it('names the course and the missing song', () => {

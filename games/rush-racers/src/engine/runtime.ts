@@ -66,6 +66,7 @@ import {
   newHintMemory,
   updateHints,
 } from './view/hints.ts';
+import { stormWithinReach } from './view/storm-reach.ts';
 import { assertSkinAssets, skinFor } from './worlds/index.ts';
 
 /** Phaser scene keys, one per screen. */
@@ -246,6 +247,7 @@ export class Runtime {
       {
         audibleFromLocal: (id) => this.audibleFromLocal(id),
         enemyAudible: (index) => (this.world ? enemyWithinHearing(this.world, index) : true),
+        stormAudible: (zone, reachPx) => (this.world ? stormWithinReach(this.world, zone, reachPx) : true),
         localRacer: () => this.localRacer,
       },
       () => this.raceCourse.song,

@@ -31,10 +31,19 @@ export function tileIndex(level: Level, tx: number, ty: number): number {
   return ty * level.width + tx;
 }
 
-/** True for rock (including outside the grid) and for coral that hasn't been broken. */
+/**
+ * True for a cell that is a wall to everything: rock, and a bounce cloud, which only adds a spring
+ * to a body landing on top of it (`race/bounce.ts`). Solid from every side, and closed in the
+ * progress field and every medium's nav.
+ */
+export function isRockLike(cell: Cell): boolean {
+  return cell === 'rock' || cell === 'bounce';
+}
+
+/** True for rock (including outside the grid), a bounce cloud, and coral that hasn't been broken. */
 export function isSolid(level: Level, broken: ReadonlySet<number>, tx: number, ty: number): boolean {
   const cell = cellAt(level, tx, ty);
-  if (cell === 'rock') return true;
+  if (isRockLike(cell)) return true;
   return cell === 'coral' && !broken.has(tileIndex(level, tx, ty));
 }
 

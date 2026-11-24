@@ -1,6 +1,7 @@
 /**
  * Smoke checks on every browser project: boot, the menus into a race on each world, touch controls
- * on the phone, a saved best surviving a reload, and the world hash agreeing across engines.
+ * on the phone (a jump on foot and a flap in flight), a saved best surviving a reload, and the world
+ * hash agreeing across engines.
  */
 import { parseInput } from '@arcade/testing';
 import { expect, test } from '@arcade/testing/playwright';
@@ -102,13 +103,55 @@ test('on Bramble Run the on-screen Up button jumps @touch', async ({ game, page 
   expect(events.filter((e) => e.type === 'racer.jumped' && e.id === 'player')).toHaveLength(1);
 });
 
+test('a Thunderhead Pass race starts from the menus and runs 600 ticks in flight', async ({ game }) => {
+  await game.open();
+  // Title Race, then down twice to Thunderhead Pass on course select once it has armed.
+  await game.play(parseInput('_*20 fire _*2 _*20 down _*1 down _*1 fire _*2'));
+  expect(await game.summary()).toMatchObject({ scene: 'select', course: 'thunderhead-pass', medium: 'flight' });
+  // Flap every 30 ticks while holding right, so the race flies rather than sitting on the floor.
+  const flapAndCoast = Array.from({ length: 20 }, () => 'right+up right*29').join(' ');
+  await game.play(parseInput(`_*20 fire _*2 _*180 ${flapAndCoast}`));
+  // The game fixture fails the test on any console error, failed request or game error along the way.
+  const summary = await game.summary();
+  expect(summary).toMatchObject({ scene: 'race', phase: 'racing', course: 'thunderhead-pass', medium: 'flight' });
+  expect(summary.raceTick).toBeGreaterThanOrEqual(600);
+  const events = await game.events();
+  expect(events.filter((e) => e.type === 'racer.flapped' && e.id === 'player').length).toBeGreaterThan(0);
+});
+
+test('on Thunderhead Pass a tap of the on-screen Up button flaps @touch', async ({ game, page }) => {
+  await game.open();
+  const hold = async (action: string, ticks: number) => {
+    const button = page.locator(`[data-testid="touch-overlay"] button[data-action="${action}"]`);
+    await button.dispatchEvent('pointerdown', { pointerId: 1, isPrimary: true });
+    await game.advance(ticks);
+    await button.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
+  };
+  await game.advance(20);
+  await hold('fire', 1);
+  // Course select: down twice to Thunderhead Pass, then pick it; then race as the saved pick.
+  await game.advance(21);
+  await hold('down', 1);
+  await game.advance(1);
+  await hold('down', 1);
+  await hold('fire', 1);
+  await game.advance(21);
+  await hold('fire', 1);
+  await game.advance(190);
+  await hold('up', 1);
+  await game.advance(5);
+  expect(await game.summary()).toMatchObject({ scene: 'race', phase: 'racing', course: 'thunderhead-pass' });
+  const events = await game.events();
+  expect(events.filter((e) => e.type === 'racer.flapped' && e.id === 'player')).toHaveLength(1);
+});
+
 /**
  * `debugState().worldHash` at the end of `TOP_ROUTE` on Hard, 30 ticks after the finish and before
  * the results screen. Online races run the
  * same simulation on each player's browser and compare this hash, so the engines must agree on it.
  * It differs from the pin in `src/logic/top-route.test.ts`, whose replay stops on the finish tick.
  */
-const TOP_ROUTE_BROWSER_HASH = 3893755221;
+const TOP_ROUTE_BROWSER_HASH = 746211979;
 
 test('a finished race is saved and its best time shows on the title after a reload', async ({ game }) => {
   test.slow(true, 'swims the whole course, about 250 input steps');

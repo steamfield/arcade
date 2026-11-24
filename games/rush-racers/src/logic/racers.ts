@@ -86,6 +86,7 @@ export function noItems(
       inflated: 0,
       dashing: 0,
       boost: 0,
+      ringBoost: 0,
       latched: 0,
       undertow: 0,
       bonking: 0,

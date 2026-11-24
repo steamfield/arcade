@@ -3,7 +3,9 @@
  * movers (swim, glide) get an overhang, a 1-tile gap, a shaft with a lip, a drop and an open arena
  * to move in eight ways. Runners skip what needs free movement (the shaft, eight-way open space and
  * the gap's mid-air starts) and get a flat run, a step up, a pit, a ledge hop, a high route and a
- * dead-end jump instead, plus open ground to run left and right on. Each course becomes a fresh registered course in the medium under
+ * dead-end jump instead, plus open ground to run left and right on. Flyers get the free movers'
+ * courses (the shaft climbed by flapping) and a gap over open sky, and move right, left and down
+ * through the open arena. Each course becomes a fresh registered course in the medium under
  * test (`courseFromLevel`), raced through `createWorld` and `stepWorld`. Test-only.
  */
 import type { Course } from '../courses/types.ts';
@@ -196,6 +198,20 @@ const DEAD_END_JUMP: Geometry = {
   `,
 };
 
+// A five-tile gap in the floor, open out of the bottom of the level: flyers keep their height over it.
+const GAP_OVER_SKY: Geometry = {
+  name: 'a gap over open sky',
+  ascii: `
+    ####################
+    #..................#
+    #..................#
+    #..................#
+    #..................#
+    #1.2.3.4..........F#
+    #########.....######
+  `,
+};
+
 /** Open water with the starts in one corner, the finish far right, and about ten tiles of room in every direction from its centre. */
 const OPEN_ARENA: Arena = {
   ascii: `
@@ -275,11 +291,27 @@ const ON_FOOT: MediumCases = {
   speedCapAxes: 'horizontal',
 };
 
+/**
+ * Media that fly under gravity: a flap on a fresh Up press, so holding Up flaps once and there is no
+ * upward case in open space; the shaft is climbed by flapping, and the gap is open to the sky below.
+ */
+const IN_FLIGHT: MediumCases = {
+  geometries: [OVERHANG, ONE_TILE_GAP, SHAFT_WITH_LIP, DROP, GAP_OVER_SKY],
+  directions: [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+  ],
+  arena: { ...OPEN_ARENA, settleTicks: 0 },
+  speedCapAxes: 'horizontal',
+};
+
 /** The cases each medium is raced on, by medium id. A new medium adds its own entry. */
 export const CASES_BY_MEDIUM: Readonly<Record<string, MediumCases>> = {
   swim: FREE_MOVEMENT,
   glide: FREE_MOVEMENT,
   run: ON_FOOT,
+  flight: IN_FLIGHT,
 };
 
 /** A fresh course on `ascii` in the medium with id `medium`. */

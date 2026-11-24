@@ -28,6 +28,7 @@ export const RUN_MEDIUM: Medium = {
   nextTile: runNextTile,
   distanceAt: runDistanceAt,
   coralAhead: () => false,
+  ramsCoral: () => false,
   validateLevel: validateRunLevel,
   afterMove: afterRunMove,
   racerCollision: 'horizontal',

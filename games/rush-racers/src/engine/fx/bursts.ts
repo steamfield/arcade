@@ -1,7 +1,8 @@
 /**
  * The particle recipes behind every race effect: what spawns, how many, how fast and for how
  * long. How bubbles rise, debris falls and ink and droplets drift comes from the course theme's
- * particle physics (and the debris chunk from its terrain); sparks, sparkles and popped icons look
+ * particle physics (the debris chunk from its terrain, and what a kick, debris and the finish shed
+ * in place of bubbles from its `bubbleFrames`); sparks, sparkles and popped icons look
  * the same everywhere. Each recipe has a reduced-motion form that keeps its information: the same
  * shapes in the same place, fewer of them, standing still or drifting slowly, and fading out
  * instead of flying. Cosmetic randomness comes from the rng passed in, so captures repeat.
@@ -9,7 +10,7 @@
 import type { Rng } from '@arcade/core';
 import type { PowerUpKind } from '../../logic/types.ts';
 import { Frame } from '../art/keys.ts';
-import type { ParticleMotion, Theme, TrailLook } from '../themes/types.ts';
+import type { BubbleFrames, ParticleMotion, Theme, TrailLook } from '../themes/types.ts';
 import type { ObjectSkin } from '../worlds/object-skin.ts';
 import type { Particle, ParticleField } from './particles.ts';
 import { FX_TEXTURE, FxFrame } from './textures.ts';
@@ -84,14 +85,15 @@ interface RingShape {
   style: StyleName;
 }
 
-const DEBRIS_BUBBLES: RingShape = {
+/** The ring of bubbles around breaking debris, in the theme's small bubble frame. */
+const debrisBubbles = (frames: BubbleFrames): RingShape => ({
   count: 3,
   radius: 3,
   speed: 0.5,
   life: 30,
-  frame: FxFrame.bubbleSmall,
+  frame: frames.small,
   style: 'bubble',
-};
+});
 const HIT_SPARKS: RingShape = { count: 6, radius: 3, speed: 1.8, life: 12, frame: FxFrame.spark, style: 'spark' };
 const HIT_SPARKS_STILL: RingShape = { count: 4, radius: 8, speed: 0, life: 16, frame: FxFrame.spark, style: 'spark' };
 const PEARL: RingShape = { count: 5, radius: 2, speed: 1, life: 16, frame: FxFrame.sparkle, style: 'sparkle' };
@@ -101,6 +103,9 @@ const INK_PUFF: RingShape = { count: 8, radius: 3, speed: 1.1, life: 22, frame: 
 const INK_PUFF_STILL: RingShape = { count: 4, radius: 6, speed: 0, life: 22, frame: FxFrame.chip, style: 'ink' };
 const POP: RingShape = { count: 6, radius: 3, speed: 1.3, life: 14, frame: FxFrame.bubbleSmall, style: 'droplet' };
 const POP_STILL: RingShape = { count: 4, radius: 5, speed: 0, life: 16, frame: FxFrame.bubbleSmall, style: 'droplet' };
+
+/** What a theme sheds when it leaves `bubbleFrames` out: the ocean's bubbles. */
+const OCEAN_BUBBLES: BubbleFrames = { large: FxFrame.bubble, small: FxFrame.bubbleSmall };
 
 /** The look of a bubble string an event lays, such as a Riptide lane or an Undertow pull. */
 const SMALL_BUBBLE: TrailLook = { frame: FxFrame.bubbleSmall, tint: 0xffffff, alpha: 0.6 };
@@ -120,11 +125,13 @@ export function createBursts(
   back: ParticleField,
   front: ParticleField,
   rng: Rng,
-  theme: Pick<Theme, 'particles' | 'terrain'>,
+  theme: Pick<Theme, 'particles' | 'terrain' | 'bubbleFrames'>,
   reducedMotion: boolean,
   itemTextures: ObjectSkin['itemTextures'],
 ): Bursts {
   const styles = stylesFor(theme);
+  const bubbles = theme.bubbleFrames ?? OCEAN_BUBBLES;
+  const debrisRing = debrisBubbles(bubbles);
   const jitter = (spread: number) => (rng.next() * 2 - 1) * spread;
 
   const ring = (field: ParticleField, x: number, y: number, shape: RingShape) => {
@@ -149,7 +156,7 @@ export function createBursts(
       const dirY = speed > 0 ? vy / speed : 0;
       const count = reducedMotion ? 2 : 4;
       for (let index = 0; index < count; index++) {
-        const frame = index % 2 === 0 ? FxFrame.bubble : FxFrame.bubbleSmall;
+        const frame = index % 2 === 0 ? bubbles.large : bubbles.small;
         const across = jitter(3);
         const px = x - dirX * KICK_PUFF_BEHIND - dirY * across;
         const py = y - dirY * KICK_PUFF_BEHIND + dirX * across;
@@ -176,7 +183,7 @@ export function createBursts(
         particle.flipX = rng.next() < 0.5;
         applyStyle(particle, reducedMotion ? styles.debrisStill : styles.debris, rng);
       }
-      if (!reducedMotion) ring(back, x, y, DEBRIS_BUBBLES);
+      if (!reducedMotion) ring(back, x, y, debrisRing);
     },
     hitSparks(x, y) {
       ring(front, x, y, reducedMotion ? HIT_SPARKS_STILL : HIT_SPARKS);
@@ -199,7 +206,7 @@ export function createBursts(
     finishBurst(x, y) {
       const count = reducedMotion ? 8 : 22;
       for (let index = 0; index < count; index++) {
-        const frame = index % 3 === 0 ? FxFrame.bubbleSmall : FxFrame.bubble;
+        const frame = index % 3 === 0 ? bubbles.small : bubbles.large;
         const particle = front.spawn(x + jitter(8), y + jitter(6), 50 + rng.int(0, 24), FX_TEXTURE, frame);
         particle.vx = reducedMotion ? 0 : jitter(1.6);
         particle.vy = reducedMotion ? -0.3 : -0.6 - rng.next() * 1.6;

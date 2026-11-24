@@ -1,6 +1,6 @@
 /**
  * Applying a hit to a racer: the one path for urchins, jellies, bubbles, puffers,
- * flashes and squids, so shields, invulnerability, knockback, stuns and loose power-ups
+ * flashes, squids, enemies and lightning, so shields, invulnerability, knockback, stuns and loose power-ups
  * behave the same whatever caused it.
  */
 
@@ -28,7 +28,7 @@ export type HitOutcome = 'absorbed' | 'stunned' | 'trapped' | 'knocked';
  * ability ignores this cause (`ignoresHazard`), ignores it entirely (returns null, nothing emitted).
  * Otherwise emits `racer.hit {id, cause, by}`, then:
  * - a Bubble Shield in any slot absorbs any cause: `popShield` empties its slot (`shield.popped`), 'absorbed';
- * - flash: stunned FLASH.stunTicks (`racer.stunned`), items kept, 'stunned';
+ * - flash and lightning: stunned FLASH.stunTicks (`racer.stunned`), items kept, 'stunned';
  * - bubble: trapped BUBBLE.trapTicks (`racer.trapped {id, by}`), items kept, 'trapped';
  * - urchin, jelly, puffer, squid: `knockSelected` knocks off the selected item, which `spawnLoose` floats at
  *   the racer's centre with all its charges, 'knocked'; with nothing held the racer is stunned
@@ -42,7 +42,7 @@ export type HitOutcome = 'absorbed' | 'stunned' | 'trapped' | 'knocked';
  * (`effects.dashAxes`: horizontal only keeps the vertical speed gravity gave it). A trapped racer's float
  * replaces that velocity on its next move, so a bubble hit doesn't knock it back.
  *
- * @param by The racer whose item caused it, or null for urchins and jellies.
+ * @param by The racer whose item caused it, or null for urchins, jellies, enemies and lightning.
  * @param from Where the hit came from, in world px (urchin tile centre, jelly centre, bubble, puffer or flasher centre, squid).
  * @returns What the landed hit did, or null when it didn't land (also for a fallen racer).
  * @throws {Error} For a bubble hit with no owner, whether or not it would land: bubbles only come
@@ -86,7 +86,7 @@ function blowOf(racer: Racer, cause: HitCause, by: RacerId | null): Blow {
 /** What the hit takes or does: a shield, a stun, a trap, or the selected item. */
 function sufferHit(world: World, racer: Racer, blow: Blow): HitOutcome {
   if (popShield(world, racer)) return 'absorbed';
-  if (blow.cause === 'flash') {
+  if (blow.cause === 'flash' || blow.cause === 'lightning') {
     stun(world, racer, FLASH.stunTicks);
     return 'stunned';
   }

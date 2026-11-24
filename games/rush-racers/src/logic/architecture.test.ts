@@ -77,8 +77,8 @@ describe('the course and medium seams', () => {
 
   it('guards every shipped medium and world id, and spots each way of branching on one', () => {
     expect([MEDIUM_IDS, WORLD_IDS]).toEqual([
-      ['swim', 'run'],
-      ['reef', 'thornwood'],
+      ['swim', 'run', 'flight'],
+      ['reef', 'thornwood', 'cloudreach'],
     ]);
     const branches = ["medium === 'run'", "'swim' !== id", "world.id == 'thornwood'", "case 'reef':"];
     expect(branches.filter((line) => !BRANCH_ON_MEDIUM.test(line) && !BRANCH_ON_WORLD.test(line))).toEqual([]);

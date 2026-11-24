@@ -43,7 +43,14 @@ export const OCEAN_THEME = defineTheme({
   },
   terrain: {
     tileset: OceanTex.tiles,
-    tiles: { rock: OceanTile.rock, coral: OceanTile.coral, air: OceanTile.sky, ledge: OceanTile.ledge },
+    // The bounce cloud lets a course with bounce cells be drawn in the ocean theme.
+    tiles: {
+      rock: OceanTile.rock,
+      coral: OceanTile.coral,
+      air: OceanTile.sky,
+      ledge: OceanTile.ledge,
+      bounce: OceanTile.bounce,
+    },
     glyphTiles: {
       caveRock: OceanTile.caveRock,
       stalactite: OceanTile.stalactite,

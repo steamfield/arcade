@@ -1,16 +1,19 @@
 /**
  * Maps one tick's drained events to effects: which burst plays where (including the attack
  * power-ups' fire, lane, pull, shake-off and pop, and the splash of a racer breaching the surface
- * or falling back in), and how much screen shake the local racer's own
- * knocks add (the slot the screen follows; see `local-racer.ts`). Positions come from the event and the world as it stands
+ * or falling back in, a puff under a racer springing off a bounce cloud, and sparkles where the local
+ * racer passes a boost ring), and how much screen shake the local racer's own
+ * knocks and a lightning strike on screen add (the slot the screen follows; see `local-racer.ts`). A
+ * strike is on screen by the same measure the lightning view uses for its flash (`view/storm-reach.ts`). Positions come from the event and the world as it stands
  * after the tick. Shake is only ever asked for through `shake`, which the caller leaves out
  * under reduced motion.
  */
 import type { Stamped } from '@arcade/core';
 import { CANNONBALL } from '../../logic/powerups/tuning.ts';
-import { type Decoy, type RacerId, type Squid, TILE, type Vec, type World } from '../../logic/types.ts';
+import { type Decoy, RACER_SIZE, type RacerId, type Squid, TILE, type Vec, type World } from '../../logic/types.ts';
 import { localIdOf, localOf } from '../local-racer.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import { type CameraSpan, zoneSide } from '../view/storm-reach.ts';
 import type { BubbleTracker } from './bubble-tracker.ts';
 import type { Bursts } from './bursts.ts';
 
@@ -25,6 +28,10 @@ const LOCAL_HIT_TRAUMA = 0.7;
 const SHIELD_POP_TRAUMA = 0.4;
 /** Added once per tick on which the local racer's cannonball smashes coral or a racer; a gate stacks up to a big jolt. */
 const CANNONBALL_TRAUMA = 0.6;
+/** A view of nothing, for effects built without a camera. */
+const NO_SCREEN: CameraSpan = { x: 0, y: 0, width: 0 };
+/** A lightning strike on screen: a jolt lighter than a hit. */
+const STRIKE_TRAUMA = 0.35;
 /** Bubbles shed along a new Riptide lane, one per this many px of its length. */
 const LANE_BUBBLE_SPACING = 12;
 /** Bubbles shed from each racer an Undertow pulls. */
@@ -34,12 +41,15 @@ const PULL_BUBBLES = 3;
  * Builds the event-to-effect mapping for `world`.
  *
  * @param shake Adds screen-shake trauma; a no-op under reduced motion.
+ * @param screen What the race camera shows when the tick's events arrive (see `cameraSpan`); with
+ *   none, as for effects built without a camera, no strike is on screen.
  */
 export function createEventEffects(
   world: World,
   bursts: Bursts,
   bubbles: BubbleTracker,
   shake: (trauma: number) => void,
+  screen: () => CameraSpan = () => NO_SCREEN,
 ): EventEffects {
   const local = localIdOf(world);
   let localPlace = localOf(world).place;
@@ -64,6 +74,7 @@ export function createEventEffects(
       // A shielded hit emits both racer.hit and shield.popped on one tick; only the lighter shake applies.
       let localHit = false;
       let localShieldPopped = false;
+      let strikeOnScreen = false;
       for (const event of events) {
         switch (event.type) {
           case 'racer.kicked': {
@@ -84,6 +95,19 @@ export function createEventEffects(
             racerAt(event.id, bursts.bubblePop);
             if (event.id === local) localShieldPopped = true;
             break;
+          case 'racer.bounced':
+            racerAt(event.id, (x, y) => bursts.bubblePop(x, y + RACER_SIZE.height / 2));
+            break;
+          case 'ring.passed': {
+            const ring = world.level.rings[event.ring];
+            if (event.id === local && ring) bursts.pearlSparkle(tileCentre(ring.x), tileCentre(ring.y));
+            break;
+          }
+          case 'lightning.struck': {
+            const zone = world.level.lightning[event.zone];
+            if (zone && zoneSide(zone, screen()) === 'on screen') strikeOnScreen = true;
+            break;
+          }
           case 'pearl.collected': {
             const pearl = world.level.pearls[event.index];
             if (pearl) bursts.pearlSparkle(tileCentre(pearl.x), tileCentre(pearl.y));
@@ -149,6 +173,7 @@ export function createEventEffects(
       if (localShieldPopped) shake(SHIELD_POP_TRAUMA);
       else if (localHit) shake(LOCAL_HIT_TRAUMA);
       if (cannonballImpact) shake(CANNONBALL_TRAUMA);
+      if (strikeOnScreen) shake(STRIKE_TRAUMA);
       if (bubblesPopped) bubbles.vanished(world, bursts.bubblePop);
       bubbles.remember(world);
       forgetGone(lastSquidAt, world.squids);

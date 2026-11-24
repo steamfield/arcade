@@ -40,6 +40,8 @@ import { squidHuntingLocal } from './threat-math.ts';
 export interface Hud {
   /** The right edge in px of the HUD's last top-left piece, the pearl counter. */
   readonly right: number;
+  /** The bottom edge in px of the HUD's top-left row: the well and pearl counter. */
+  readonly bottom: number;
   sync(world: World): void;
 }
 
@@ -92,6 +94,7 @@ export function createHud(scene: Phaser.Scene, world: World, reducedMotion: bool
 
   return {
     right: pearls.right,
+    bottom: PEARLS.y + PEARLS.h,
     sync(world) {
       place.sync(world);
       const time = raceTime(world);
