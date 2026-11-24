@@ -10,16 +10,18 @@ import { heldSlot, removeItem, selectSlot } from './inventory.ts';
 import { firePie, stepPie } from './pie.ts';
 import { fireShield, stepSap } from './shield.ts';
 
+/** Rolls a crate item using the odds for the racer's place. */
 export { rollItem };
 
 /**
  * Runs after racers move and before bumps, using the controls movement consumed.
- * `from` holds the pre-move poses in racer slot order for swept crate contacts.
+ * `from` holds pre-move poses in racer slot order for swept crate contacts. A `null` entry
+ * marks a racer who was fallen or finished before movement.
  */
 export function stepItems(
   world: World,
   inputs: TickInputs,
-  from: readonly { s: number; d: number; y: number }[],
+  from: readonly ({ s: number; d: number; y: number } | null)[],
 ): void {
   stepCrates(world, from);
   if (world.splats.length > 0) world.splats = world.splats.filter((splat) => --splat.ticksLeft > 0);

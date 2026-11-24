@@ -1,3 +1,4 @@
+/** Crate and inventory behavior through race inputs and item events. */
 import { createRng } from '@arcade/core';
 import { expect, it } from 'vitest';
 import { CRATE, ITEMS, RACE, RUN } from '../tuning.ts';
@@ -227,6 +228,17 @@ it('respawns at rest and needs a fresh fire press to use Rocket Boots', () => {
   expect(events.all().filter((event) => 'id' in event)).toMatchObject([
     { type: 'racer.respawned', id: 'player', tick: RACE.countdownTicks },
     { type: 'item.fired', id: 'player', kind: 'boots', tick: RACE.countdownTicks + 1 },
+  ]);
+});
+
+it('opens a crate when a racer started the tick racing regardless of invulnerability', () => {
+  const { player, events, advance } = start([crate]);
+  player.s = crate.s;
+  player.invulnTicks = RUN.invulnTicks + 1;
+  advance();
+  expect(player.invulnTicks).toBe(RUN.invulnTicks);
+  expect(events.all().filter((event) => event.type === 'crate.opened')).toMatchObject([
+    { id: 'player', crate: 0, tick: RACE.countdownTicks },
   ]);
 });
 

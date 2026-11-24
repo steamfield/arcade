@@ -104,9 +104,9 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
   const { course, events, raceTicks } = world;
   const player = playerOf(world);
   const playerS = player.s;
-  const from = world.racers.map(({ s, d, y }) => ({ s, d, y }));
+  const from = world.racers.map(({ s, d, y, state }) => (state === 'racing' ? { s, d, y } : null));
   const hasRivals = world.racers.length > 1;
-  const startD = hasRivals ? world.racers.map((racer) => (racer.state === 'racing' ? racer.d : null)) : undefined;
+  const startD = hasRivals ? from.map((pose) => pose?.d ?? null) : undefined;
   const lockedAtStart = hasRivals ? new Set(world.racers.filter(isImmobilized)) : undefined;
   const raceInputs: TickInputs = {};
   for (const racer of world.racers) {

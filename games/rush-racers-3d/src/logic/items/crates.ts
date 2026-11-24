@@ -1,3 +1,4 @@
+/** Crate pickups, shared reopen timing, and place-weighted item rolls. */
 import { createRng, type Rng } from '@arcade/core';
 import { groundY } from '../course.ts';
 import { placeOf } from '../standings.ts';
@@ -25,7 +26,8 @@ export function rollItem(rng: Rng, place: number): ItemKind {
   return 'pie';
 }
 
-export function stepCrates(world: World, from: readonly Point[]): void {
+/** Ages crate timers and checks each racer's path for a new contact. A null pose has no path. */
+export function stepCrates(world: World, from: readonly (Point | null)[]): void {
   let crateIndex = 0;
   for (const feature of world.course.features) {
     if (feature.kind !== 'crate') continue;
@@ -37,14 +39,12 @@ export function stepCrates(world: World, from: readonly Point[]): void {
     // Racer poses use feet height. Lower the contact point to compare both centres.
     const centre = { s: feature.s, d: feature.d, y: groundY(world.course, feature.s) + CRATE.height - RUN.radius };
     for (const [slotIndex, racer] of world.racers.entries()) {
-      const start = from[slotIndex] ?? racer;
+      const start = racer.state === 'racing' ? from[slotIndex] : null;
       const prior = crate.touching.indexOf(racer.id);
-      // A freshly respawned racer teleported here, so it has no contact path this tick.
-      const racing = racer.state === 'racing' && racer.invulnTicks !== RUN.invulnTicks;
-      const stillTouching = racing && distanceSq(centre, racer) <= TOUCH_SQ;
-      const triedThisPass = prior >= 0 && distanceSq(centre, start) <= TOUCH_SQ;
+      const stillTouching = !!start && distanceSq(centre, racer) <= TOUCH_SQ;
+      const triedThisPass = !!start && prior >= 0 && distanceSq(centre, start) <= TOUCH_SQ;
       if (prior >= 0 && (!stillTouching || !triedThisPass)) crate.touching.splice(prior, 1);
-      if (!racing || crate.shutTicks > 0 || triedThisPass) continue;
+      if (!start || crate.shutTicks > 0 || triedThisPass) continue;
       const slot = racer.slots.indexOf(null);
       if (slot < 0) continue;
       if (!stillTouching && !touchesBetween(start, racer, centre)) continue;

@@ -5,11 +5,12 @@
  * knows the standings. Knows nothing about other racers or the race phase.
  */
 import type { EventSink } from '@arcade/core';
-import { groundY, type LogFeature, logAt, pitAt, surfaceAt } from './course.ts';
+import { groundY, logAt, pitAt, surfaceAt } from './course.ts';
 import type { GameEvent } from './events.ts';
 import { bootsSpeedFloor } from './items/boots.ts';
 import { isImmobilized, stopRacer } from './items/hits.ts';
 import { hasSplatMud } from './items/pie.ts';
+import { resolveLogs, topOf } from './logs.ts';
 import { DASH, RUN } from './tuning.ts';
 import type { Course, Racer, Splat, TickInput } from './types.ts';
 
@@ -35,15 +36,12 @@ export interface RacerContext {
   events: EventSink<GameEvent>;
   raceTicks: number;
   speedMul: number;
+  /** Active Mud Pie patches to check alongside course mud. */
+  splats: readonly Splat[];
 }
 
 /** Advances `racer` by one tick of `input` while the race is running. A finished racer is left alone. */
-export function stepRacer(
-  racer: Racer,
-  input: TickInput,
-  ctx: RacerContext & { splats?: readonly Splat[] },
-  dt: number,
-): void {
+export function stepRacer(racer: Racer, input: TickInput, ctx: RacerContext, dt: number): void {
   if (racer.state === 'finished') return;
   rechargeDash(racer, ctx);
   if (racer.state === 'fallen') {
@@ -52,9 +50,11 @@ export function stepRacer(
   }
 
   racer.invulnTicks = Math.max(0, racer.invulnTicks - 1);
-  // Items age after movement so the last tick of stun or sap still holds the racer in place.
+  // Items age after movement, so the last tick of stun or sap still blocks horizontal movement.
   if (isImmobilized(racer)) {
     stopRacer(racer);
+    racer.coyoteTicks = Math.max(0, racer.coyoteTicks - 1);
+    move(racer, ctx, 0, false, dt);
     return;
   }
   if (input.jumpPressed) racer.bufferTicks = RUN.bufferTicks;
@@ -90,18 +90,23 @@ export function stepRacer(
     racer.vs = 0;
     racer.vd = 0;
     racer.vy = 0;
+    racer.stunTicks = 0;
+    racer.trappedTicks = 0;
+    racer.bootsTicks = 0;
+    racer.burrTicks = 0;
+    racer.itemCooldown = 0;
   }
 }
 
 function onMud(
   course: Course,
   racer: Racer,
-  splats: readonly Splat[] | undefined,
+  splats: readonly Splat[],
   surface: ReturnType<typeof surfaceAt>['kind'],
 ): boolean {
   return (
     isOnGround(racer, groundY(course, racer.s)) &&
-    (surface === 'mud' || (surface === 'ground' && splats !== undefined && hasSplatMud(splats, racer)))
+    (surface === 'mud' || (surface === 'ground' && hasSplatMud(splats, racer)))
   );
 }
 
@@ -168,34 +173,6 @@ function isOnGround(racer: Racer, ground: number): boolean {
   return racer.grounded && racer.y === ground;
 }
 
-function resolveLogs(
-  racer: Racer,
-  { course, events }: RacerContext,
-  s: number,
-  d: number,
-  y: number,
-  followsGround: boolean,
-): { s: number; d: number } {
-  let from: Pick<Racer, 's' | 'd' | 'y'> = racer;
-  // Each contact blocks one axis. Check for a second contact along the face of the first log.
-  for (let contacts = 0; contacts < 2; contacts++) {
-    const hit = logHit(from, course, s, d, y, followsGround);
-    if (!hit) break;
-    const contactS = hit.front ? hit.log.s : from.s + (s - from.s) * hit.time;
-    const contactD = hit.front ? from.d + (d - from.d) * hit.time : hit.side;
-    if (hit.front) {
-      s = contactS;
-      racer.vs = 0;
-    } else {
-      d = contactD;
-      racer.vd = 0;
-    }
-    if (hit.time > 0) events.emit({ type: 'racer.bumped', id: racer.id, s: contactS, by: null });
-    from = { s: contactS, d: contactD, y: from.y + (y - from.y) * hit.time };
-  }
-  return { s, d };
-}
-
 function resolveSupport(
   racer: Racer,
   course: Course,
@@ -237,42 +214,6 @@ function updateSafeSpot(racer: Racer, course: Course, onLog: boolean): void {
     racer.safeS = s;
     racer.safeD = d;
   }
-}
-
-function topOf(course: Course, log: LogFeature): number {
-  return groundY(course, log.s) + log.height;
-}
-
-type LogHit = { log: LogFeature; front: boolean; side: number; time: number };
-
-/** The first log face crossed while the racer's feet are below its top. */
-function logHit(
-  racer: Pick<Racer, 's' | 'd' | 'y'>,
-  course: Course,
-  s: number,
-  d: number,
-  y: number,
-  followsGround: boolean,
-): LogHit | undefined {
-  const ds = s - racer.s;
-  const dd = d - racer.d;
-  let hit: LogHit | undefined;
-  for (const log of course.features) {
-    if (log.kind !== 'log' || s < log.s || racer.s >= log.s + RUN.logDepth) continue;
-    const frontTime = ds > 0 ? (log.s - racer.s) / ds : -Infinity;
-    const side = dd > 0 ? log.d0 : log.d1;
-    const sideTime = dd !== 0 ? (side - racer.d) / dd : -Infinity;
-    const time = Math.max(frontTime, sideTime);
-    if (time < 0 || time > 1 || (hit && hit.time <= time)) continue;
-    const contactS = racer.s + ds * time;
-    const contactD = racer.d + dd * time;
-    const front = frontTime >= sideTime;
-    if (front && (contactD < log.d0 || contactD >= log.d1)) continue;
-    if (!front && (contactS <= log.s || contactS >= log.s + RUN.logDepth)) continue;
-    const height = followsGround ? groundY(course, contactS) : racer.y + (y - racer.y) * time;
-    if (height < topOf(course, log)) hit = { log, front, side, time };
-  }
-  return hit;
 }
 
 function fall(racer: Racer, ctx: RacerContext): void {

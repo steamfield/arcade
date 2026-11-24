@@ -1,3 +1,4 @@
+/** Inline races for item tests that drive the world one tick at a time. */
 import { EventLog, TICK_DT } from '@arcade/core';
 import type { GameEvent } from '../events.ts';
 import { NO_INPUT } from '../racer.ts';
@@ -5,6 +6,7 @@ import { RACE } from '../tuning.ts';
 import type { Course, Feature, TickInput } from '../types.ts';
 import { createWorld, playerOf, stepWorld } from '../world.ts';
 
+/** Builds a straight course and advances the world through the countdown. */
 export function start(features: Feature[] = [], withRival = false, seed = 4, finishS = 200) {
   const course: Course = {
     id: 'item-straight',
@@ -29,6 +31,7 @@ export function start(features: Feature[] = [], withRival = false, seed = 4, fin
   return { world, events, player: playerOf(world), advance };
 }
 
+/** Starts a race with the player and one rival. */
 export function startPair(features: Feature[] = []) {
   const race = start(features, true);
   race.world.racers.splice(2);

@@ -1,5 +1,7 @@
+/** Item effects, projectiles, and hit timing in live race ticks. */
 import { expect, it } from 'vitest';
 import { DASH, ITEMS, RACE, RUN } from '../tuning.ts';
+import type { Feature } from '../types.ts';
 import { start, startPair } from './item-test-kit.ts';
 
 it('holds Rocket Boots speed for 40 movement ticks, then glides without spending dash charges', () => {
@@ -50,6 +52,31 @@ it('hits on the firing tick and the last puffed tick, and stops hitting when the
     player.d = rival.d;
     advance();
   }
+});
+
+it('clears active item effects and cooldown on the finish tick', () => {
+  const { world, player, advance } = start([], false, 4, 40);
+  player.s = 39.5;
+  player.vs = ITEMS.bootsSpeed;
+  player.bootsTicks = 5;
+  player.slots[0] = { kind: 'burr', charges: 2 };
+  advance(1, { forward: true, firePressed: true });
+  expect(player).toMatchObject({
+    state: 'racing',
+    bootsTicks: 4,
+    burrTicks: ITEMS.burrTicks,
+    itemCooldown: ITEMS.cooldownTicks,
+  });
+  advance(1, { forward: true });
+  expect(world.phase).toBe('finished');
+  expect(player).toMatchObject({
+    state: 'finished',
+    bootsTicks: 0,
+    burrTicks: 0,
+    stunTicks: 0,
+    trappedTicks: 0,
+    itemCooldown: 0,
+  });
 });
 
 it('absorbs a hit with a Sap Shield in another slot, then drops all charges of the selected item', () => {
@@ -145,6 +172,37 @@ it('throws straight sap at the first eligible racer and traps them for 60 ticks'
   expect(events.all().filter((event) => event.type === 'racer.trapped')).toMatchObject([
     { id: 'r1', by: 'player', tick: RACE.countdownTicks + 1 },
   ]);
+});
+
+it.each([
+  { surface: 'ground', afterFire: 7, outcome: 'racer.landed' },
+  { surface: 'pit', afterFire: 24, outcome: 'racer.fell' },
+] as const)('keeps falling after an airborne sap hit over $surface', ({ surface, afterFire, outcome }) => {
+  const features: Feature[] = surface === 'pit' ? [{ kind: 'pit', s0: 30, s1: 40, d0: -6, d1: 6 }] : [];
+  const { player, rival, events, advance } = startPair(features);
+  Object.assign(player, { s: 29.1, d: 0, y: 1, vy: -6, grounded: false });
+  Object.assign(rival, { s: 30, d: 0, y: 1, vy: -6, grounded: false });
+  player.slots[0] = { kind: 'shield', charges: 1 };
+
+  advance(1, { firePressed: true });
+  expect(rival.trappedTicks).toBe(ITEMS.sapTrapTicks);
+  expect(events.all()).toContainEqual(
+    expect.objectContaining({ type: 'racer.trapped', id: 'r1', by: 'player', tick: RACE.countdownTicks }),
+  );
+  const { s, d } = rival;
+  advance(afterFire - 1);
+  expect(rival).toMatchObject({ s, d, state: 'racing', grounded: false });
+  advance();
+  expect(events.all()).toContainEqual(
+    expect.objectContaining({ type: outcome, id: 'r1', tick: RACE.countdownTicks + afterFire }),
+  );
+  expect(rival).toMatchObject({
+    s,
+    d,
+    state: surface === 'ground' ? 'racing' : 'fallen',
+    grounded: surface === 'ground',
+    trappedTicks: ITEMS.sapTrapTicks - afterFire,
+  });
 });
 
 it('lets sap pass through an invulnerable racer and expires it after its full range', () => {
