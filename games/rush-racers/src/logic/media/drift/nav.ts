@@ -4,13 +4,15 @@
  * finish. A black hole closes the tiles inside its horizon and makes the tiles in its reach dear, so
  * every field keeps clear of it where there is room. Walking the fields lives in `way.ts`.
  */
-import { isRockLike, isSolid } from '../../level/query.ts';
+import { cellAt, isRockLike, isSolid, tileIndex } from '../../level/query.ts';
 import { length } from '../../num.ts';
 import {
   alongCost,
+  cornerIsClear,
   distancesToFinish,
   type EntryCost,
   type FlowPrices,
+  type NavLink,
   NEIGHBOURS,
   unreachableStarts,
 } from '../../race/flowfield.ts';
@@ -31,6 +33,10 @@ const RAM_ICE_COST = 3;
  * the way keeps a tile off the walls wherever the space is wide enough to.
  */
 const BESIDE_WALL_COST = 0.5;
+/** Leave a buffer around entries the racer isn't aiming to use. */
+const BESIDE_MOUTH_COST = 2;
+/** Cost in field units of the warp itself. */
+const WARP_COST = 1;
 /** Extra price of any tile whose centre is inside a black hole's reach, enough to fly round the reach's edge. */
 const HOLE_REACH_COST = 2;
 /** Further price at the horizon, falling to nothing at the reach's edge, so the way keeps as far out as it can. */
@@ -68,26 +74,67 @@ const ramCost = (cell: Cell, isBroken: boolean, move: Vec): number =>
  * from the finish column with a surcharge on tiles beside a wall and on tiles near a black hole.
  */
 export function buildDriftNav(level: Level, broken: ReadonlySet<number>, _tuning: MediumTuning): DriftNav {
-  const surcharges = tileSurcharges(level, broken);
-  const withSurcharge =
-    (cost: (cell: Cell, isBroken: boolean, move: Vec) => number): EntryCost =>
-    (cell, isBroken, move, tile) =>
-      cost(cell, isBroken, move) + (surcharges[tile.y * level.width + tile.x] ?? 0);
+  const wormholeEntries = new Set<number>();
+  const mouths = level.wormholes.map(({ a, b, oneWay }) => {
+    const from = { x: a[0], y: a[1] };
+    const to = { x: b[0], y: b[1] };
+    if (from.x < level.finishX) wormholeEntries.add(tileIndex(level, from.x, from.y));
+    if (!oneWay && to.x < level.finishX) wormholeEntries.add(tileIndex(level, to.x, to.y));
+    return { from, to, oneWay };
+  });
+  const surcharges = tileSurcharges(level, broken, wormholeEntries);
+  const field = (cost: EntryCost) => {
+    const entry: EntryCost = (cell, isBroken, move, tile) =>
+      cost(cell, isBroken, move, tile) + (surcharges[tile.y * level.width + tile.x] ?? 0);
+    const links = mouths.flatMap(({ from, to, oneWay }) =>
+      oneWay
+        ? from.x < level.finishX
+          ? [{ from, to, cost: WARP_COST }]
+          : []
+        : [...linksThroughExit(level, broken, entry, from, to), ...linksThroughExit(level, broken, entry, to, from)],
+    );
+    return distancesToFinish(level, broken, entry, links);
+  };
   return {
     kind: 'drift',
     width: level.width,
     height: level.height,
-    steer: distancesToFinish(level, broken, withSurcharge(driftCost)),
-    smash: distancesToFinish(level, broken, withSurcharge(smashCost)),
-    ram: distancesToFinish(level, broken, withSurcharge(ramCost)),
+    wormholeEntries,
+    steer: field(driftCost),
+    smash: field(smashCost),
+    ram: field(ramCost),
   };
 }
 
 /**
- * The price added to entering each tile, indexed `y * width + x`: BESIDE_WALL_COST where any of its
- * eight neighbours is solid, plus what every black hole charges for it (`holeCost`).
+ * The cooldown lets a racer leave a two-way exit. Link to each legal step out of it, charging
+ * for the warp and the step. Linking the two entry tiles directly would only make a forced cycle.
  */
-function tileSurcharges(level: Level, broken: ReadonlySet<number>): Float64Array {
+function linksThroughExit(
+  level: Level,
+  broken: ReadonlySet<number>,
+  entry: EntryCost,
+  from: Vec,
+  exit: Vec,
+): NavLink[] {
+  if (from.x >= level.finishX) return [];
+  // Arriving on the finish column ends the race on the warp tick.
+  if (exit.x === level.finishX) return [{ from, to: exit, cost: WARP_COST }];
+  const stepCost = (tile: Vec, move: Vec) =>
+    entry(cellAt(level, tile.x, tile.y), broken.has(tileIndex(level, tile.x, tile.y)), move, tile);
+  const open = (x: number, y: number) => Number.isFinite(stepCost({ x, y }, { x: 0, y: 0 }));
+  const links = NEIGHBOURS.flatMap((move) => {
+    const to = { x: exit.x + move.x, y: exit.y + move.y };
+    const cost = stepCost(to, move);
+    if (!Number.isFinite(cost) || !cornerIsClear(exit, move, open)) return [];
+    return [{ from, to, cost: WARP_COST + length(move.x, move.y) * cost }];
+  });
+  // An enclosed exit has nowhere to go. Keep the entry forced even when no step out exists.
+  return links.length > 0 ? links : [{ from, to: from, cost: WARP_COST }];
+}
+
+/** Extra cost for tiles beside walls or entries and inside each black hole's reach. */
+function tileSurcharges(level: Level, broken: ReadonlySet<number>, entries: ReadonlySet<number>): Float64Array {
   const holes = level.wells.filter((well) => well.horizon !== null);
   const surcharges = new Float64Array(level.width * level.height);
   for (let ty = 0; ty < level.height; ty++) {
@@ -95,7 +142,15 @@ function tileSurcharges(level: Level, broken: ReadonlySet<number>): Float64Array
       const besideWall = NEIGHBOURS.some((offset) => isSolid(level, broken, tx + offset.x, ty + offset.y));
       const centre = { x: (tx + 0.5) * TILE, y: (ty + 0.5) * TILE };
       const nearHoles = holes.reduce((sum, hole) => sum + holeCost(hole, centre), 0);
-      surcharges[ty * level.width + tx] = (besideWall ? BESIDE_WALL_COST : 0) + nearHoles;
+      const besideMouth =
+        entries.size > 0 &&
+        !entries.has(tileIndex(level, tx, ty)) &&
+        NEIGHBOURS.some(({ x, y }) => {
+          const col = tx + x;
+          return col >= 0 && col < level.width && entries.has(tileIndex(level, col, ty + y));
+        });
+      surcharges[ty * level.width + tx] =
+        (besideWall ? BESIDE_WALL_COST : 0) + (besideMouth ? BESIDE_MOUTH_COST : 0) + nearHoles;
     }
   }
   return surcharges;

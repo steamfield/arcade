@@ -13,6 +13,8 @@ import { wrongKind } from './data.ts';
  */
 export interface DriftNav extends MediumNav, GridSize {
   readonly kind: 'drift';
+  /** Tile indices of all mouths that can catch a racer. */
+  wormholeEntries: ReadonlySet<number>;
   /** The way for a racer that steers round ice. */
   steer: Float32Array;
   /** The way for a racer able to break ice now (a Shock Bubble or Comet ready): through it at a price. */
