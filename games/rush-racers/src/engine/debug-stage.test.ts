@@ -1,6 +1,6 @@
 import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { courseById, DEFAULT_COURSE } from '../logic/courses/index.ts';
+import { COURSES, courseById, DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { GameEvent } from '../logic/events.ts';
 import { raceOn } from '../logic/test-world.ts';
 import { createWorld } from '../logic/world.ts';
@@ -62,8 +62,8 @@ describe('applying a stage', () => {
     expect(world.racers.find((r) => r.id === 'player')?.status.latched).toBeGreaterThan(0);
   });
 
-  it('knows every stage it names, except those that need a current, a dark zone, coral, a tall room or a surface', () => {
-    const needsMore = ['riptide', 'dark', 'cannonball', 'enemy-modes', 'surface'];
+  it('knows every stage it names, except those that need a current, a dark zone, coral, a tall room, a surface or a black hole', () => {
+    const needsMore = ['riptide', 'dark', 'cannonball', 'enemy-modes', 'surface', 'hole'];
     for (const stage of STAGES.filter((name) => !needsMore.includes(name))) {
       const { world } = raceOn(ARENA);
       expect(() => applyStage(world, stage), stage).not.toThrow();
@@ -82,6 +82,24 @@ describe('applying a stage', () => {
 
     expect(tile).toEqual({ x: (surface?.from ?? 0) + 5, y: (surface?.row ?? 0) + 3 });
     expect(world.level.cells[(surface?.row ?? 0) - 1]?.[tile?.x ?? 0]).toBe('air');
+  });
+
+  it("puts the player at rest in Drift Test's black hole's column, two tiles below its reach", () => {
+    const course = COURSES['drift-test'];
+    const world = createWorld(course, new EventLog<GameEvent>(100), { seed: 1 });
+    applyStage(world, 'hole');
+    const player = world.racers.find((r) => r.id === 'player');
+    const hole = world.level.wells.find((well) => well.horizon !== null);
+    const centre = player && { x: player.body.x + player.body.w / 2, y: player.body.y + player.body.h / 2 };
+
+    expect(centre?.x).toBe(hole?.centre.x);
+    expect((centre?.y ?? 0) - (hole?.centre.y ?? 0)).toBe((hole?.reach ?? 0) + 2 * 16);
+    expect(player?.body).toMatchObject({ vx: 0, vy: 0 });
+  });
+
+  it('names what is missing when the hole stage runs on a course with no black hole', () => {
+    const { world } = raceOn(ARENA);
+    expect(() => applyStage(world, 'hole')).toThrow('The hole stage needs a black hole');
   });
 
   it('stands the player on the floor, a crab 3 tiles ahead walking away, a shark 6 ahead facing them, rivals up top', () => {

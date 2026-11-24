@@ -61,7 +61,7 @@ function recordingKit(): { kit: PageKit; labels: RecordedLabel[] } {
 }
 
 /** The words a medium's move page shows at `tick`, joined into one string. */
-function moveWordsShown(medium: 'flight', tick: number, reducedMotion: boolean): string {
+function moveWordsShown(medium: 'flight' | 'drift', tick: number, reducedMotion: boolean): string {
   const { kit, labels } = recordingKit();
   MEDIUM_PAGES[medium].move.build(kit)(tick, reducedMotion);
   return labels
@@ -115,6 +115,30 @@ describe("How to Play's pages per medium", () => {
       'HOLD UP TO GLIDE',
       'HOLD DOWN TO DIVE',
     ]);
+  });
+
+  it('teaches thrust, drifting and braking on a drift course with its own move page, in Farside words, on the same page count', () => {
+    const headings = headingsFor('drift', 'farside');
+    expect(mediumPagesFor('drift')).toBe(MEDIUM_PAGES.drift);
+    expect(headings[0]).toBe('THRUST AND DRIFT');
+    expect(headings[1]).toBe('SUPPLY PODS');
+    expect(headings[3]).toBe('STARDUST');
+    expect(headings).toHaveLength(HOW_TO_PLAY_PAGES);
+  });
+
+  it('names one drift move at a time while animating, and all five on the still page under reduced motion', () => {
+    const moves = [
+      'HOLD TO BURN',
+      'LET GO TO DRIFT',
+      'BURN BACK TO BRAKE',
+      'PLANETS PULL YOU IN',
+      'BLACK HOLES SWALLOW YOU',
+    ];
+    const shownOverALoop = new Set(Array.from({ length: 900 }, (_, tick) => moveWordsShown('drift', tick, false)));
+
+    expect(moveWordsShown('drift', 0, false)).toBe('HOLD TO BURN');
+    expect([...shownOverALoop].sort()).toEqual([...moves].sort());
+    expect(moveWordsShown('drift', 0, true).split('\n')).toEqual(moves);
   });
 
   it("falls back to swim's pages for a medium that hasn't shipped, warning once per medium", () => {

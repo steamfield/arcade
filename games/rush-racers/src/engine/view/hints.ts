@@ -199,10 +199,12 @@ function guideArrow(world: World, dashPrompt: boolean, pressFire: boolean): Vec 
 
 /**
  * True while a squid is latched on the local racer and the course's medium lets kicks shake it
- * (`kickRules.shakesLatch`), so the threat HUD's DASH! prompt shows and holds the hint spot.
+ * (`kickRules.shakesLatch`), so the threat HUD's DASH! prompt shows and holds the hint spot. False
+ * while the local racer is out of play (`status.fallen`), when there is nothing to shake.
  */
 export function latchPromptShows(world: World): boolean {
-  return localOf(world).status.latched > 0 && mediumOf(world).kickRules.shakesLatch;
+  const { latched, fallen } = localOf(world).status;
+  return latched > 0 && fallen === 0 && mediumOf(world).kickRules.shakesLatch;
 }
 
 /**

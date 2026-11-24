@@ -11,6 +11,7 @@ import { ForestTex } from '../themes/forest/keys.ts';
 import { OceanTex } from '../themes/ocean/keys.ts';
 import { SkyItemTex, SkyRacerTex, SkyTex } from './cloudreach/keys.ts';
 import { CLOUDREACH_SKIN } from './cloudreach.ts';
+import { FARSIDE_SKIN } from './farside.ts';
 import { assertSkinAssets, assertSkinTextures, SKINS, skinFor, type TextureLookup } from './index.ts';
 import { REEF_SKIN } from './reef.ts';
 import { ThornItemTex, ThornRacerTex, ThornTex } from './thornwood/keys.ts';
@@ -170,5 +171,64 @@ describe('the Cloudreach skin', () => {
     expect(cloudreach.filter((key) => !key.startsWith('cloudreach-'))).toEqual([]);
     expect(new Set(cloudreach).size).toBe(cloudreach.length);
     expect(cloudreach.filter((key) => others.includes(key))).toEqual([]);
+  });
+});
+
+describe('the Farside skin', () => {
+  const { text } = FARSIDE_SKIN.objects;
+
+  it("words gil's ability, the items, enemies and pickups the Farside way", () => {
+    expect(FARSIDE_SKIN.id).toBe('farside');
+    expect(FARSIDE_SKIN.cast.abilities.gil.name).toBe('SPRING BURN');
+    expect(text.attackCaptions).toEqual({
+      homingSquid: 'PROBE',
+      riptide: 'ION STREAM',
+      undertow: 'TRACTOR',
+      mimic: 'HOLOGRAM',
+    });
+    expect(text.enemyCaptions).toEqual({ crab: 'MITE WALKS', shark: 'RAY CHARGES', eel: 'WORM LUNGES' });
+    expect([text.cratesHeading, text.pearlsHeading, text.slowedBy, text.trapped]).toEqual([
+      'SUPPLY PODS',
+      'STARDUST',
+      'SLOWED BY GAS',
+      'FIELD',
+    ]);
+  });
+
+  it("uses none of the Reef's or Cloudreach's words in its abilities or object text", () => {
+    const abilities = CHARACTER_IDS.flatMap((id) => [
+      FARSIDE_SKIN.cast.abilities[id].name,
+      FARSIDE_SKIN.cast.abilities[id].blurb,
+    ]);
+    const words = [
+      ...abilities,
+      text.slowedBy,
+      text.trapped,
+      text.cratesHeading,
+      text.pearlsHeading,
+      ...Object.values(text.attackCaptions),
+      ...Object.values(text.enemyCaptions),
+    ];
+
+    expect(
+      words.filter((line) =>
+        /\b(CORAL|SQUID|CLAMS?|PEARLS?|INK|SHARK|EEL|CRAB|KICKS?|BUBBLE|SWIM|FLAPS?|PUFFS?|STORMS?|ZAPS?)\b/.test(line),
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps every ability line and the HUD and How to Play words within the longest of Reef's, so they fit", () => {
+    const longest = (strings: readonly string[]) => Math.max(...strings.map((line) => line.length));
+    const groups: ((skin: WorldSkin) => string[])[] = [
+      (skin) => CHARACTER_IDS.map((id) => skin.cast.abilities[id].name),
+      (skin) => CHARACTER_IDS.map((id) => skin.cast.abilities[id].blurb),
+      (skin) => [skin.objects.text.slowedBy, skin.objects.text.trapped],
+      (skin) => Object.values(skin.objects.text.enemyCaptions),
+      (skin) => [skin.objects.text.cratesHeading, skin.objects.text.pearlsHeading],
+    ];
+    for (const group of groups) {
+      expect(longest(group(FARSIDE_SKIN))).toBeLessThanOrEqual(longest(group(REEF_SKIN)));
+    }
+    expect(longest(Object.values(text.attackCaptions))).toBeLessThanOrEqual(11);
   });
 });

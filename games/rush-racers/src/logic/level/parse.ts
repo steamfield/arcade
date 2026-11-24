@@ -30,6 +30,7 @@ import { type Cell, type EnemyKind, type Level, type LevelDef, RACER_IDS, type V
 import { errorAt, LevelError } from './level-error.ts';
 import { requireLightningZones } from './lightning-zones.ts';
 import { openToAir, requireSurfacesOnMap, requireUnderwater } from './surface.ts';
+import { parseWells } from './wells.ts';
 
 export { LevelError } from './level-error.ts';
 
@@ -94,8 +95,8 @@ interface Markers {
  *   names an unknown cell; ragged rows, unknown characters, missing or duplicate start digits,
  *   no finish tile, finish tiles in more than one column, a dark zone outside the map or reversed, a
  *   surface range reversed, off the map or with its row outside 1..height-1, an enemy or start tile
- *   in the air above a surface, or a storm zone reversed, off the map, overlapping another or with a
- *   period too short to warn before it strikes (`requireLightningZones`).
+ *   in the air above a surface, a bad gravity well (`parseWells`), or a storm zone reversed, off the map,
+ *   overlapping another or with a period too short to warn before it strikes (`requireLightningZones`).
  */
 export function parseLevel(def: LevelDef): Level {
   const legend = readLegend(def.legend ?? {});
@@ -133,6 +134,7 @@ export function parseLevel(def: LevelDef): Level {
     enemies: markers.enemies,
     dark: requireDarkZonesOnMap(def.dark ?? [], width),
     surface,
+    wells: parseWells(def.wells ?? [], width, rows.length),
     lightning: requireLightningZones(def.lightning ?? [], width),
   };
 }

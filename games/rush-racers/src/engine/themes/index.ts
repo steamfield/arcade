@@ -7,6 +7,7 @@ import type { Course, ThemeId } from '../../logic/courses/types.ts';
 import { FOREST_THEME } from './forest.ts';
 import { OCEAN_THEME } from './ocean.ts';
 import { SKY_THEME } from './sky.ts';
+import { SPACE_THEME } from './space.ts';
 import type { Theme } from './types.ts';
 
 export { defineTheme } from './define.ts';
@@ -15,6 +16,7 @@ export { defineTheme } from './define.ts';
 export const THEMES: Readonly<Record<ThemeId, Theme>> = {
   ocean: OCEAN_THEME,
   forest: FOREST_THEME,
+  space: SPACE_THEME,
   sky: SKY_THEME,
 };
 

@@ -41,7 +41,10 @@ export type SfxKey =
   | 'eel.warn'
   | 'enemy.bonk'
   | 'enemy.defeat'
-  | 'enemy.bite';
+  | 'enemy.bite'
+  | 'rebound'
+  | 'fall'
+  | 'respawn';
 
 /** A pitched part. `note` is a MIDI number; `slide` is semitones reached by the end. Times in seconds. */
 export interface TonePart {
@@ -216,6 +219,19 @@ const SFX: Record<SfxKey, readonly Part[]> = {
   'enemy.defeat': [hiss('bandpass', 2600, 0, 0.06, 0.5), ...arpeggio([79, 84, 88, 91], 0.05, 0.3, 0.125)],
   // An enemy gets the player: a snapping chomp.
   'enemy.bite': [hiss('highpass', 1200, 0, 0.04, 0.5), tri(40, 0.03, 0.14, 0.6, { slide: -10 })],
+  // A rebound off a wall: a short dull thud, lower and shorter than a bump between racers.
+  rebound: [tri(38, 0, 0.08, 0.7, { slide: -5 }), hiss('lowpass', 300, 0, 0.05, 0.35)],
+  // Falling out of play (a pit, a black hole): a two-octave downward sweep over a sinking hiss.
+  fall: [
+    pulse(79, 0, 0.38, 0.3, { duty: 0.25, slide: -24, envelope: env(0.005, 0.1, 0.7, 0.08) }),
+    hiss('bandpass', 2000, 0, 0.35, 0.2, { sweepTo: 200 }),
+  ],
+  // Back in play: a rising shimmer, two staggered octave climbs over a brightening hiss.
+  respawn: [
+    pulse(72, 0, 0.3, 0.2, { duty: 0.125, slide: 12, vibrato: true }),
+    pulse(79, 0.05, 0.3, 0.15, { duty: 0.125, slide: 12, vibrato: true }),
+    hiss('highpass', 3000, 0, 0.35, 0.12, { sweepTo: 7000, envelope: env(0.1, 0.1, 0.6, 0.1) }),
+  ],
 };
 
 /**

@@ -6,8 +6,10 @@
 import { parseLevel } from '../level/parse.ts';
 import type { Level, World } from '../types.ts';
 import { BRAMBLE_RUN } from './bramble-run.ts';
+import { DRIFT_TEST } from './drift-test.ts';
 import { RUN_TEST } from './run-test.ts';
 import { SKY_TEST } from './sky-test.ts';
+import { SLINGSHOT_ALLEY } from './slingshot-alley.ts';
 import { SUNLIT_SHALLOWS } from './sunlit-shallows.ts';
 import { THUNDERHEAD_PASS } from './thunderhead-pass.ts';
 import type { Course, ShippedCourse, ShippedCourseId } from './types.ts';
@@ -17,8 +19,10 @@ export const COURSES: Readonly<Record<ShippedCourseId, ShippedCourse>> = {
   'sunlit-shallows': SUNLIT_SHALLOWS,
   'bramble-run': BRAMBLE_RUN,
   'thunderhead-pass': THUNDERHEAD_PASS,
+  'slingshot-alley': SLINGSHOT_ALLEY,
   'run-test': RUN_TEST,
   'sky-test': SKY_TEST,
+  'drift-test': DRIFT_TEST,
 };
 
 /**

@@ -1,7 +1,7 @@
 /**
- * The shared fall, park and respawn timer for media with open pits (`effects.pitBelow`): run and
- * flight both put a fallen racer out of play for a while and bring it back on a spot the medium
- * chose. Each medium keeps its own rule for which spots are safe and calls these from `afterMove`:
+ * The shared park and respawn timer for media whose racers can be put out of play: run and
+ * flight for a fall through a pit, drift for a black hole. Each puts the racer out for a while and
+ * brings it back on a spot the medium chose. Each medium keeps its own rule for which spots are safe and calls these from `afterMove`:
  * `fallOut` once the racer `isBelowLevel`, then `waitOut` each tick it is out, and `respawnAt` on the
  * tick `waitOut` says the wait is over. A racer is out while `status.fallen` is above 0;
  * `tickStatuses` leaves that count to `waitOut`.
@@ -16,7 +16,7 @@ import type { RacerMotion } from './types.ts';
 
 /** Racer motion of a medium whose racers can fall out: it holds the spot a fallen racer waits at. */
 export interface ParkingMotion extends RacerMotion {
-  /** Top-left of where a fallen racer waits, out of the level, until it respawns. */
+  /** Top-left of where a racer that is out waits until it respawns. */
   parkedAt: Vec;
 }
 
@@ -26,7 +26,8 @@ export function isBelowLevel(level: Level, body: Box): boolean {
 }
 
 /**
- * Starts a fall: stops the racer where it is (out of the level, below its last row), remembers that
+ * Puts a racer out of play: stops it where it is (below the last row after a fall, or wherever the
+ * medium's rule caught it), remembers that
  * spot as where it waits, sets `status.fallen` to `respawnTicks` and emits `racer.fell`.
  *
  * @throws {Error} When the racer's motion keeps no `parkedAt` spot.
@@ -69,8 +70,11 @@ export function holdParked(racer: Racer): void {
 }
 
 /**
- * Puts a fallen racer back with its top-left on `spot`, at rest, invulnerable for `invulnTicks`,
- * and emits `racer.respawned` with where it came back. The medium resets its own motion state.
+ * Puts a fallen racer back with its top-left on `spot`, at rest and with nothing left running that
+ * could outlast the wait and move or resize it: an item dash (fired just before the fall, it would
+ * drive the racer straight back in), a Cannonball and its inflation, a latched squid and an Undertow.
+ * It is invulnerable for `invulnTicks`, and `racer.respawned` says where it came back. The medium
+ * resets its own motion state.
  */
 export function respawnAt(racer: Racer, spot: Vec, invulnTicks: number, events: EventSink<GameEvent>): void {
   const { body } = racer;
@@ -78,6 +82,11 @@ export function respawnAt(racer: Racer, spot: Vec, invulnTicks: number, events: 
   body.y = spot.y;
   body.vx = 0;
   body.vy = 0;
+  racer.status.dashing = 0;
+  racer.status.cannonball = 0;
+  racer.status.inflated = 0;
+  racer.status.latched = 0;
+  racer.status.undertow = 0;
   racer.status.invulnerable = invulnTicks;
   events.emit({ type: 'racer.respawned', id: racer.id, x: body.x, y: body.y });
 }

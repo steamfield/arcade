@@ -13,7 +13,7 @@ describe('the shipped worlds', () => {
     const unresolved = Object.values(WORLDS)
       .filter((world) => mediumById(world.medium) === null)
       .map((world) => `${world.id} -> ${world.medium}`);
-    expect(Object.keys(WORLDS)).toEqual(['reef', 'thornwood', 'cloudreach']);
+    expect(Object.keys(WORLDS)).toEqual(['reef', 'thornwood', 'cloudreach', 'farside']);
     expect(unresolved).toEqual([]);
   });
 

@@ -143,6 +143,34 @@ describe('the adapter and the enemies', () => {
   });
 });
 
+describe('the adapter and a racer leaving the course', () => {
+  it('plays the player’s bounce off a wall, fall out of play and return, in that order', () => {
+    expect(
+      heard(
+        [
+          { type: 'racer.rebounded', id: 'player', speed: 120, axis: 'x' },
+          { type: 'racer.fell', id: 'player' },
+          { type: 'racer.respawned', id: 'player', x: 40, y: 40 },
+        ],
+        true,
+      ),
+    ).toEqual(['rebound', 'fall', 'respawn']);
+  });
+
+  it('stays silent when it is a rival that bounces, falls or returns, even nearby', () => {
+    expect(
+      heard(
+        [
+          { type: 'racer.rebounded', id: 'tess', speed: 120, axis: 'y' },
+          { type: 'racer.fell', id: 'tess' },
+          { type: 'racer.respawned', id: 'tess', x: 40, y: 40 },
+        ],
+        true,
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe('the adapter and the sky set pieces', () => {
   it("plays the player's flap, bounce and ring", () => {
     const own: RuntimeEvent[] = [

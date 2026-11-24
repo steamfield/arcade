@@ -84,7 +84,14 @@ describe('grounded', () => {
     const { world, log, player } = runWorld(['....F', '.1..F', '#####']);
     const bump = (ceiling: boolean) => {
       player.body.vy = -200;
-      const contacts: MoveContacts = { floor: false, ceiling, wallLeft: false, wallRight: false, ceilingTiles: [] };
+      const contacts: MoveContacts = {
+        floor: false,
+        ceiling,
+        wallLeft: false,
+        wallRight: false,
+        ceilingTiles: [],
+        lost: { x: 0, y: 0 },
+      };
       afterRunMove(world, player, contacts, log);
       return player.body.vy;
     };

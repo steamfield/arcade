@@ -67,6 +67,7 @@ export const FLIGHT_EFFECTS: MediumEffects = {
   pitBelow: true,
   allowsLedges: false,
   assistAxes: 'horizontal',
+  gravityWells: false,
   bounceSpeed: 300,
 };
 

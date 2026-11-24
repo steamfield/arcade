@@ -197,6 +197,16 @@ export function createAdapter(options: AdapterOptions): Pick<AudioPort, 'onEvent
       case 'racer.bumped':
         if (event.a === local() || event.b === local()) sfx('bump');
         return;
+      case 'racer.rebounded':
+        if (event.id === local()) sfx('rebound');
+        return;
+      // Shared by every medium that takes racers out of play (Cloudreach's pits, Farside's black holes).
+      case 'racer.fell':
+        if (event.id === local()) sfx('fall');
+        return;
+      case 'racer.respawned':
+        if (event.id === local()) sfx('respawn');
+        return;
       case 'player.place':
         if (event.id !== local()) return;
         if (place !== null && event.place !== place) sfx(event.place < place ? 'place.up' : 'place.down');

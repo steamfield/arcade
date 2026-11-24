@@ -58,6 +58,7 @@ describe('a medium without bounce clouds', () => {
       ['swim', null],
       ['run', null],
       ['flight', 300],
+      ['drift', null],
       ['glide', null],
       ['platform', null],
     ]);

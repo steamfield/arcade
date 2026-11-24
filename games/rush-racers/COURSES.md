@@ -1,6 +1,6 @@
 # Courses, media and worlds
 
-How to add a course (a new level with its own look and song), a medium (a new movement style: swim, run and flight today) and a world (a medium with its own cast, names, art, theme, song and courses: Reef, Thornwood and Cloudreach today). All plug into registries; no generic race code changes. Paths below are under `games/rush-racers/src/`.
+How to add a course (a new level with its own look and song), a medium (a new movement style: swim, run, flight and drift today) and a world (a medium with its own cast, names, art, theme, song and courses: Reef, Thornwood, Cloudreach and Farside today). All plug into registries; no generic race code changes. Paths below are under `games/rush-racers/src/`.
 
 A **course** is data: a level, the world it races in (which names its medium), a theme and song id, a par time and optional tuning. A **medium** is code: physics, environment, navigation, rival steering and a few rules the generic systems read. A **world** is the medium plus everything a player reads or sees per world: the cast's names and art, and the names and art of the shared items, pickups, enemies and hazards. A **theme** is engine art for a course. Logic never imports the engine; the engine maps a course's theme and song ids to art and music.
 
@@ -65,6 +65,8 @@ Three course features any medium can carry (Cloudreach's courses use all three; 
 - `lightning: [{ cols: [from, to], periodTicks, offsetTicks }]` in the `LevelDef` is a storm zone over those columns (`level/lightning-zones.ts`). `parseLevel` throws `LevelError` naming the zone for a range that runs backwards or leaves the map, two zones sharing a column, or a period shorter than the warning plus the strike (57 ticks). Offset neighbouring zones so they strike out of step.
 
 Rivals (flight's pilot) take a bounce cloud only when it saves at least 0.1 s over flapping, so put one at the foot of a wall tall enough that bouncing wins, where the way arrives at floor level within about 2 columns of it.
+
+A drift course can place **gravity wells**: `wells: [{ col, row, reach, pull, horizon? }]`, each centred on its tile, `reach` and `horizon` in tiles and `pull` in px/s² at the centre, fading to nothing at the reach (`level/wells.ts`). One without a `horizon` is a planet to swing round; one with it is a black hole that swallows a racer whose centre crosses the horizon. `parseLevel` throws `LevelError` for a centre off the map, a `reach` or `pull` that isn't positive, or a `horizon` that isn't positive and smaller than the reach. Put a planet's centre inside rock on the inside of a turn so its disc doesn't cover open tiles, and keep the main way clear of a hole's reach or price the lane through it: rivals fly a lane inside a reach when it is shorter by more than the nav surcharge.
 
 The medium checks the level too: `createWorld` throws `LevelError` (with row and column) for anything `medium.validateLevel` reports, such as a start that can't reach the finish in swim without breaking coral.
 
@@ -185,7 +187,7 @@ The medium's own code reads its data only through these (`swimNav(world.nav)`, `
 | `validateLevel(level, nav)` | Located problems that make the level unraceable in this medium; empty when fine. `createWorld` throws one `LevelError` listing them all, located at the first. | A start that can't reach the finish without breaking coral. |
 | `coralAhead(world, tile, steps)` | Whether unbroken coral lies within `steps` tiles along the medium's way from `tile`; the Puffer item choice asks it. Return false in a medium without breakable coral. | Walks the smash field. |
 | `ramsCoral(racer)` | Whether the racer breaks every coral tile it enters this tick, asked after `applyIntent` and before the move. | False. Flight answers true in a dash's first `dashTicks`. |
-| `afterMove(world, racer, contacts, events)` | Runs once per unfinished racer per tick right after the generic move, with what it ran into (`MoveContacts`: floor, ceiling and the tiles bumped, walls). | Nothing. Run and flight set the last safe spot and falls here, through the shared fall, park and respawn timer in `logic/media/fall-out.ts`. |
+| `afterMove(world, racer, contacts, events)` | Runs once per unfinished racer per tick right after the generic move, with what it ran into (`MoveContacts`: floor, ceiling and the tiles bumped, walls, and `lost`, the velocity each axis had when a tile stopped it, since `moveBody` has already zeroed the body's own; a medium whose racers bounce reads it, as drift's `bounce.ts` does). | Nothing. Run and flight set the last safe spot and falls here, through the shared fall, park and respawn timer in `logic/media/fall-out.ts`; drift bounces and runs its black holes here. |
 | `racerCollision` | `'solid'` racers bump each other; `'ghost'` pass through; `'horizontal'` push apart along x only, so one can land through another. | `'solid'` (run: `'horizontal'`) |
 | `effects` | Data the generic push rules read (below). | `dashAxes: 'both'`, bubbles and loose power-ups float up. |
 | `kickRules` | How generic counters read a kick (below). | Every counter on; Gil's spring kick applies when kicking upward. |
@@ -201,10 +203,18 @@ The medium's own code reads its data only through these (`swimNav(world.nav)`, `
 - `effects.allowsLedges`: the level may use `=` ledges; `createWorld` rejects one otherwise.
 - `effects.assistAxes`: `'horizontal'` keeps the Easy steering assist off the vertical stick, where Up jumps or flaps.
 - `effects.bounceSpeed`: the upward speed a bounce cloud gives a body landing on it; null rejects `B` in the level.
+
+- `effects.gravityWells`: the level may have gravity wells (`LevelDef.wells`, parsed by `level/wells.ts`), and the medium says what they do to a racer (drift samples `pullAt` into its environment and swallows racers at a horizon in `afterMove`). `createWorld` throws a `LevelError` for a level with wells in a medium without the flag, and for any start whose centre is inside a black hole's reach.
 - `kickRules.dodgesSquid`: a kick just before contact makes a Homing Squid miss.
 - `kickRules.shakesLatch`: kicks while latched take ticks off the latch.
 - `kickRules.countersUndertow`: a kick against an Undertow cuts its pull that tick.
 - `kickRules.springKick(aim)`: whether Gil's spring kick applies to a kick along `aim`.
+
+### Putting a racer out of play
+
+A medium that can take a racer out (run and flight through a pit, drift into a black hole) uses the shared timer in `logic/media/fall-out.ts` from its `afterMove`. Its racer motion extends `ParkingMotion`, which keeps `parkedAt`, the spot an out racer waits on. `fallOut(racer, events, respawnTicks)` stops the racer, parks it, sets `status.fallen` and emits `racer.fell`; each later tick `waitOut(racer)` holds it parked at rest and counts `fallen` down (`tickStatuses` leaves that counter alone), returning true when the wait ends; then `respawnAt(racer, spot, invulnTicks, events)` puts it back on the spot the medium chose, at rest with no dash running, invulnerable, and emits `racer.respawned`. The medium keeps its own rule for which spots are safe (run's last safe ground, drift's last spot outside every hole's reach) and resets its own motion.
+
+While `status.fallen > 0` the generic rules treat the racer as gone: its intent is cut to nothing (`controlledIntent`), it can't fire an item (`canFire`, which also covers the tick it falls, after its intent was read), it opens no clam and collects no pearl or loose item, a hit doesn't land on it (`applyHit`), a squid won't pick it, and it passes through other racers (`isDowned`). The views hide its item overlays and the latched DASH! prompt.
 
 The progress for placing (`World.progress`) is generic and the same in every medium; only navigation is the medium's.
 

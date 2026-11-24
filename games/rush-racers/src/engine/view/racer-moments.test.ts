@@ -55,3 +55,45 @@ describe('a flap', () => {
     expect(other.look(100, false).stretch).toBe(0);
   });
 });
+
+describe('a bounce', () => {
+  it('squashes the racer along the axis the wall stopped it on, settles back, and a later kick takes the look over', () => {
+    const moments = createRacerMoments('player', 1);
+    moments.onEvents([{ type: 'racer.rebounded', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
+    const floor = createRacerMoments('player', 1);
+    floor.onEvents([{ type: 'racer.rebounded', id: 'player', speed: 120, axis: 'y', tick: STEP_TICK, seq: 0 }], 100);
+
+    expect(moments.look(100, false).stretch).toBeLessThan(0);
+    expect(moments.look(100, false).axis).toBe('x');
+    expect(floor.look(100, false).axis).toBe('y');
+    expect(moments.look(130, false)).toEqual({ stretch: 0, axis: null, flashing: false });
+
+    moments.onEvents([{ type: 'racer.kicked', id: 'player', tick: STEP_TICK, seq: 1 }], 102);
+    expect(moments.look(102, false).axis).toBeNull();
+    expect(moments.look(102, false).stretch).not.toBe(0);
+  });
+
+  it('wins over a kick fired on the same tick, since a dash into a wall bounces after it fires', () => {
+    const moments = createRacerMoments('player', 1);
+    moments.onEvents(
+      [
+        { type: 'racer.kicked', id: 'player', tick: STEP_TICK, seq: 0 },
+        { type: 'racer.rebounded', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 1 },
+      ],
+      100,
+    );
+
+    expect(moments.look(100, false)).toMatchObject({ axis: 'x' });
+    expect(moments.look(100, false).stretch).toBeLessThan(0);
+  });
+
+  it("does nothing under reduced motion or for another racer's bounce", () => {
+    const moments = createRacerMoments('tess', 2);
+    moments.onEvents([{ type: 'racer.rebounded', id: 'tess', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
+    const other = createRacerMoments('tess', 2);
+    other.onEvents([{ type: 'racer.rebounded', id: 'player', speed: 120, axis: 'x', tick: STEP_TICK, seq: 0 }], 100);
+
+    expect(moments.look(100, true)).toEqual({ stretch: 0, axis: null, flashing: false });
+    expect(other.look(100, false).stretch).toBe(0);
+  });
+});

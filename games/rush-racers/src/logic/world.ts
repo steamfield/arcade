@@ -47,6 +47,7 @@ import { strikeLightning } from './hazards/lightning.ts';
 import { advanceProjectiles } from './hazards/projectiles.ts';
 import { advanceSquids } from './hazards/squids.ts';
 import { LevelError } from './level/parse.ts';
+import { inHoleReach } from './level/wells.ts';
 import { effectiveTuning, mediumById, mediumOf } from './media/index.ts';
 import type { LevelProblem, Medium } from './media/types.ts';
 import { modifiersFor } from './modifiers.ts';
@@ -122,8 +123,9 @@ const IDLE: Intent = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 }
  * @param course A shipped course, or one registered for a test (`courseFromLevel`).
  * @param events Usually the engine's EventLog, so one stream holds race, menu and save events.
  * @throws {LevelError} When the medium can't race the level (a ledge in a medium without ledges, a
- *   bounce cloud in a medium without bounce clouds, or a problem from `Medium.validateLevel`), located
- *   at the first problem, with any others appended to the message after `; `.
+ *   bounce cloud in a medium without bounce clouds, gravity wells in a medium without them, a start
+ *   tile inside a black hole's reach, or a problem from `Medium.validateLevel`), located at the first
+ *   problem, with any others appended to the message after `; `.
  * @throws {Error} When `course` isn't the course its id is registered to (unregistered, or a copy
  *   with changes), since the world keeps only the id and reads the rest back from the registry.
  * @throws {Error} When the course names an unknown world, or its world a medium that is neither shipped nor registered.
@@ -147,6 +149,7 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
   throwOnProblems([
     ...ledgeProblems(level, medium),
     ...bounceProblems(level, medium),
+    ...wellProblems(level, medium),
     ...medium.validateLevel(level, nav),
   ]);
   const rngs = createRngs(options.seed);
@@ -234,6 +237,31 @@ function throwOnProblems(problems: readonly LevelProblem[]): void {
   throw new LevelError(message, first.row, first.col);
 }
 
+/**
+ * Problems with the level's gravity wells: one for the level when `medium` has none
+ * (`effects.gravityWells`), otherwise one per start tile whose centre is inside a black hole's
+ * reach, where a racer would be drawn in before the race begins.
+ */
+function wellProblems(level: Level, medium: Medium): LevelProblem[] {
+  if (level.wells.length === 0) return [];
+  if (!medium.effects.gravityWells) {
+    return [
+      { message: `The level has gravity wells but medium '${medium.id}' has no gravity wells`, row: null, col: null },
+    ];
+  }
+  return level.starts.flatMap((start, slot) =>
+    inHoleReach(level, { x: (start.x + 0.5) * TILE, y: (start.y + 0.5) * TILE })
+      ? [
+          {
+            message: `Start ${slot + 1} at row ${start.y}, col ${start.x} is inside a black hole's reach`,
+            row: start.y,
+            col: start.x,
+          },
+        ]
+      : [],
+  );
+}
+
 /** A racer at its start, as `seat` says, with nothing held and the dash meter full. */
 function createRacer(level: Level, medium: Medium, { id, index, character, profile, driver }: Seat): Racer {
   const start = level.starts[index];
@@ -319,11 +347,13 @@ export function stepRace(world: World, inputs: Partial<Record<RacerId, TickInput
   stepEnemies(world, racing);
   strikeLightning(world, racing);
   resolveContacts(world, racing);
-  openClams(world, racing);
-  collectPearls(world, racing);
-  passRings(world, racing);
-  collectLoosePearls(world, racing);
-  updateLoose(world, racing, dt);
+  // A racer that is out (waiting to be put back after a pit or a black hole) collects nothing.
+  const collecting = racing.filter((racer) => racer.status.fallen === 0);
+  openClams(world, collecting);
+  collectPearls(world, collecting);
+  passRings(world, collecting);
+  collectLoosePearls(world, collecting);
+  updateLoose(world, collecting, dt);
   for (const racer of racing) {
     tickStatuses(racer);
     rechargeDash(world, racer);

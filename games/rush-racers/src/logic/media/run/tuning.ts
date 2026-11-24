@@ -64,6 +64,7 @@ export const RUN_EFFECTS: MediumEffects = {
   pitBelow: true,
   allowsLedges: true,
   assistAxes: 'horizontal',
+  gravityWells: false,
   bounceSpeed: null,
 };
 

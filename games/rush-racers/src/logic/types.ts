@@ -110,6 +110,11 @@ export interface MoveContacts {
   wallRight: boolean;
   /** Tile indices (`tileIndex`) the body's head hit this tick, left to right; empty unless `ceiling`. */
   ceilingTiles: readonly number[];
+  /**
+   * The velocity, px/s, each axis had when a tile stopped it this tick; 0 on an axis nothing stopped.
+   * A medium whose racers bounce reads it, since `moveBody` has already zeroed the body's own.
+   */
+  lost: Vec;
 }
 
 /** What `moveBody` treats as solid beyond the level's own tiles, from the world's medium (`moveRulesFor`). */
@@ -138,8 +143,32 @@ export interface LevelDef {
   surface?: readonly SurfaceDef[];
   /** Extra glyphs this level uses, each behaving as a base cell but drawn its own way. */
   legend?: Readonly<Record<string, LegendEntry>>;
+  /** Gravity wells: planets and moons that pull racers in, and black holes. Only a medium with `effects.gravityWells` races them. */
+  wells?: readonly WellDef[];
   /** Storm zones where lightning strikes on a timer (`hazards/lightning.ts`); none when left out. */
   lightning?: readonly LightningZone[];
+}
+
+/**
+ * One gravity well as a course writes it, centred on tile (`col`, `row`). It pulls racers inside
+ * `reach` tiles toward its centre, hardest (`pull`, px/s²) at the centre and not at all at the
+ * reach. With a `horizon` (tiles, smaller than `reach`) it is a black hole, which swallows a racer
+ * inside it; without one it is a planet or moon, whose body the level draws in rock.
+ */
+export interface WellDef {
+  col: number;
+  row: number;
+  reach: number;
+  pull: number;
+  horizon?: number;
+}
+
+/** A parsed gravity well: centre, reach and horizon in pixels, `pull` in px/s². A null horizon is a planet. */
+export interface Well {
+  centre: Vec;
+  reach: number;
+  pull: number;
+  horizon: number | null;
 }
 
 /**
@@ -183,6 +212,8 @@ export interface Level {
   dark: [from: number, to: number][];
   /** Stretches open to the sky (`LevelDef.surface`); their water above `row` parsed as 'air'. */
   surface: SurfaceDef[];
+  /** Gravity wells (`LevelDef.wells`), in the order written; empty for a level without any. */
+  wells: Well[];
   /** Storm zones (`LevelDef.lightning`), checked to be on the map, apart and long enough to warn before they strike. */
   lightning: LightningZone[];
 }

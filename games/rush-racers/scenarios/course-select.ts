@@ -1,5 +1,5 @@
 /**
- * Course select with two listed courses: Sunlit Shallows first, then Bramble Run, each with its best
+ * Course select with its listed courses: Sunlit Shallows first, then Bramble Run, each with its best
  * on the level in force. Picking Bramble Run opens select on its world, and dash there goes back to
  * course select with the cursor on Bramble Run.
  */
@@ -44,6 +44,7 @@ export default scenario({
           { id: 'sunlit-shallows', name: 'Sunlit Shallows', best: '1:30.00' },
           { id: 'bramble-run', name: 'Bramble Run', best: '1:40.00' },
           { id: 'thunderhead-pass', name: 'Thunderhead Pass' },
+          { id: 'slingshot-alley', name: 'Slingshot Alley', best: '-:--.--' },
         ],
         selected: 1,
       },

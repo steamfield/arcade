@@ -36,6 +36,7 @@ import { createPowerupView } from '../view/powerup-view.ts';
 import { createRacerView } from '../view/racer-view.ts';
 import { createRingView } from '../view/ring-view.ts';
 import { screenLayout } from '../view/screen-layout.ts';
+import { createWellView } from '../view/well-view.ts';
 import { skinFor } from '../worlds/index.ts';
 
 /** Everything the race scene draws, rebuilt on each create(). */
@@ -73,6 +74,7 @@ export class RaceScene extends Phaser.Scene {
     // The pickup and hazard views draw the course objects from world state, so the level's inert stand-ins go.
     for (const stand of Object.values(level.placeholders).flat()) stand.destroy();
     const { reducedMotion } = this.rt.settings;
+    createWellView(this, world.level, reducedMotion);
     const pickups = createPickupView(this, world.level, skin, reducedMotion);
     const hazards = createHazardView(this, world.level, theme.hazards, skin, reducedMotion);
     const rings = createRingView(this, world, reducedMotion);

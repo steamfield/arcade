@@ -1,7 +1,7 @@
 /**
  * One racer's sprite, synced from logic state: whole-pixel position, a flip for
  * facing, a two-frame swim stroke that quickens with speed, a squash-then-stretch
- * when a kick fires, a flicker while invulnerable (3 Hz, the WCAG ceiling) and,
+ * when a kick fires, a squash against the wall on a bounce, a flicker while invulnerable (3 Hz, the WCAG ceiling) and,
  * for the local racer (the slot the screen follows), a one-off white flash on gaining a place. A
  * racer that has fallen out of the level (`status.fallen > 0`) is hidden until it respawns. All timing is counted
  * in logic ticks so captures repeat. Under reduced motion the sprite holds its
@@ -20,7 +20,7 @@ import { createRacerMoments } from './racer-moments.ts';
 /** One racer's sprite, kept in step with its logic state. */
 export interface RacerView {
   /**
-   * Starts the kick squash on this racer's `racer.kicked` and, for the local racer, the flash on its
+   * Starts the kick squash on this racer's `racer.kicked`, the bounce squash on its `racer.rebounded` and, for the local racer, the flash on its
    * `player.place` that gains a place, from world tick `tick` (the drain's world tick).
    */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
@@ -83,8 +83,10 @@ export function createRacerView(
       sprite.setVisible(current.status.fallen === 0);
       sprite.setFlipX(current.facing < 0);
       sprite.setFrame(strokeFrame(Math.hypot(body.vx, body.vy), tick));
-      const { stretch, flashing } = moments.look(tick, reducedMotion);
-      if (kickVertical) sprite.setScale(1 - stretch, 1 + stretch);
+      const { stretch, axis, flashing } = moments.look(tick, reducedMotion);
+      // A bounce names its own axis; a kick's follows the way the racer was moving when it fired.
+      const vertical = axis === null ? kickVertical : axis === 'y';
+      if (vertical) sprite.setScale(1 - stretch, 1 + stretch);
       else sprite.setScale(1 + stretch, 1 - stretch);
       sprite.setAlpha(invulnerableAlpha(current.status.invulnerable, reducedMotion));
       if (flashing) sprite.setTint(FLASH_COLOUR).setTintMode(Phaser.TintModes.FILL);
