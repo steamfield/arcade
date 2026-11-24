@@ -52,6 +52,25 @@ import type { CourseSection, ShippedCourse } from './types.ts';
  * come out of the dark one at a time. Rivals that can't see steer loosely there; Selene and
  * anyone with a Glow Lantern selected see as if lit.
  */
+
+/**
+ * Geyser vents (`setpieces/vents.ts`), each two columns wide from its `col`. Three sit on the floor
+ * of the surface section between its ridges and reach 6 tiles above the waterline, so a racer
+ * who rides an eruption up breaches high: the one at 402 throws you over the shark's water. One sits
+ * on the jelly room's floor under its last high jelly column (333), so an eruption there flings a
+ * racer on the middle line up into the jellies; with a second one under column 313 the toddler bot's
+ * median stuns on Easy rose to 4, past its bar of 3. The surface vents go off in turn, 402, then
+ * 436, then 388, so neighbours never erupt together. Vents move the rivals, so the offsets were
+ * picked from a sweep for the Hard bars: with these every character's expert wins at least 18 of
+ * 30 (Baron, the tightest), where other phasings left Baron at 14-16.
+ */
+const VENTS: LevelDef['vents'] = [
+  { col: 332, row: 16, height: 14, periodTicks: 300, offsetTicks: 234 },
+  { col: 388, row: 15, height: 12, periodTicks: 240, offsetTicks: 25 },
+  { col: 402, row: 15, height: 12, periodTicks: 240, offsetTicks: 159 },
+  { col: 436, row: 15, height: 12, periodTicks: 240, offsetTicks: 85 },
+];
+
 const LEVEL: LevelDef = {
   name: 'Sunlit Shallows',
   ascii: `
@@ -78,6 +97,7 @@ const LEVEL: LevelDef = {
   `,
   dark: [[628, 706]],
   surface: [{ from: 371, to: 453, row: 9 }],
+  vents: VENTS,
   legend: {
     R: { cell: 'rock', art: 'caveRock' },
     T: { cell: 'rock', art: 'stalactite' },
