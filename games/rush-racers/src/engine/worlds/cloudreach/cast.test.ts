@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import { CHARACTER_IDS } from '../../../logic/types.ts';
 import { Frame } from '../../art/keys.ts';
-import { WORLD_ART } from '../index.ts';
 import { framePixels, pixelCount, recordingScene } from '../recording-scene.ts';
+import { registerArt } from './art.ts';
 import { CLOUDREACH_CAST } from './cast.ts';
 import { SkyRacerTex } from './keys.ts';
 
@@ -23,7 +23,7 @@ describe('Cloudreach cast', () => {
 
   it('beats every wing up in frame a and down in frame b: more of a sits in the top half, more of b below', () => {
     const { scene, built } = recordingScene();
-    WORLD_ART.cloudreach(scene);
+    registerArt(scene);
     for (const slot of CHARACTER_IDS) {
       const texture = built.get(SkyRacerTex[slot]);
       const [upTop, upBottom, downTop, downBottom] = [Frame.a, Frame.b].flatMap((frame) => {

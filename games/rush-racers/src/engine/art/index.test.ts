@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { describe, expect, it } from 'vitest';
-import { THEME_ART } from '../themes/index.ts';
-import { WORLD_ART } from '../worlds/index.ts';
+import { registerArt as registerOceanArt } from '../themes/ocean/art.ts';
+import { registerArt as registerReefArt } from '../worlds/reef/art.ts';
 import { buildTextures, drawSheets, registerLoops } from './index.ts';
 import { sheet } from './sprites/sheet.ts';
 
@@ -32,24 +32,24 @@ describe('texture and loop ownership', () => {
   it('lets the global art and a theme register twice without change', () => {
     const { scene, textures } = recordingScene();
     buildTextures(scene);
-    THEME_ART.ocean(scene);
+    registerOceanArt(scene);
     const built = textures.size;
     buildTextures(scene);
-    THEME_ART.ocean(scene);
+    registerOceanArt(scene);
     expect(textures.size).toBe(built);
     expect(textures.has('tiles')).toBe(true);
   });
 
   it("refuses a second theme that names the ocean's tileset", () => {
     const { scene } = recordingScene();
-    THEME_ART.ocean(scene);
+    registerOceanArt(scene);
     expect(() => drawSheets(scene, [PIXEL], 'copycat')).toThrow("Texture 'tiles' is owned by theme 'ocean'");
   });
 
   it('refuses a theme texture that reuses a global key, and a loop another theme owns', () => {
     const { scene } = recordingScene();
     buildTextures(scene);
-    THEME_ART.ocean(scene);
+    registerOceanArt(scene);
     expect(() => drawSheets(scene, [{ ...PIXEL, key: 'kick-pip' }], 'copycat')).toThrow(
       "Texture 'kick-pip' is owned by the global art",
     );
@@ -60,7 +60,7 @@ describe('texture and loop ownership', () => {
 
   it("names a world skin as a world, not a theme, when a theme reuses one of the world's keys", () => {
     const { scene } = recordingScene();
-    WORLD_ART.reef(scene);
+    registerReefArt(scene);
     expect(() => drawSheets(scene, [{ ...PIXEL, key: 'pearl' }], 'copycat')).toThrow(
       "Texture 'pearl' is owned by world 'reef'; give theme 'copycat' its own key",
     );

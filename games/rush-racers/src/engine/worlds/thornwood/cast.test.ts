@@ -5,8 +5,8 @@
 import { describe, expect, it } from 'vitest';
 import { CHARACTER_IDS } from '../../../logic/types.ts';
 import { Frame } from '../../art/keys.ts';
-import { WORLD_ART } from '../index.ts';
 import { framePixels, recordingScene } from '../recording-scene.ts';
+import { registerArt } from './art.ts';
 import { THORNWOOD_CAST } from './cast.ts';
 import { ThornRacerTex } from './keys.ts';
 
@@ -20,7 +20,7 @@ describe('Thornwood cast', () => {
 
   it.each(CHARACTER_IDS)('plants both %s racer frames on the ground: lowest drawn row is row 10 of 12', (slot) => {
     const { scene, built } = recordingScene();
-    WORLD_ART.thornwood(scene);
+    registerArt(scene);
     for (const frame of [Frame.a, Frame.b]) {
       const rows = framePixels(built.get(ThornRacerTex[slot]), frame).map((pixel) => pixel.y);
       expect(Math.max(...rows), `frame ${frame}`).toBe(RACER_FOOT_ROW);

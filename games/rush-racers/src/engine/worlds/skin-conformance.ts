@@ -14,7 +14,7 @@ import { describeObjectArt } from './object-conformance.ts';
 
 /** Runs the cast and object checks for each world, then the checks that compare worlds. */
 export function describeSkinConformance(fixtures: readonly SkinFixture[]): void {
-  const drawnByWorld = fixtures.map((fixture) => ({ fixture, drawn: lazyDrawnSkin(fixture.skin) }));
+  const drawnByWorld = fixtures.map((fixture) => ({ fixture, drawn: lazyDrawnSkin(fixture) }));
 
   for (const { fixture, drawn } of drawnByWorld) {
     describe(`${fixture.skin.id} skin art`, () => {

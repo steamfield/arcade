@@ -16,9 +16,6 @@ import { REEF_PICKUP_SHEETS } from './sprites/pickups.ts';
 import { REEF_FACE_SHEETS } from './sprites/portraits.ts';
 import { REEF_RACER_SHEETS } from './sprites/racers.ts';
 
-/** Reef's ten HUD item icon frames, which boot hands the UI kit to draw into `ui-icons`. */
-export { REEF_ITEM_ICON_FRAMES } from './sprites/icons.ts';
-
 /** Every object sheet Reef draws: items, attacks, pickups, enemies, marks and hazards. */
 export const REEF_OBJECT_SHEETS: readonly ArtSheet<string>[] = [
   ...REEF_ITEM_SHEETS,

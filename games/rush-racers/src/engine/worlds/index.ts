@@ -38,7 +38,7 @@ export function skinFor(course: Pick<Course, 'id' | 'world'>): WorldSkin {
 }
 
 /** Each shipped world's `registerArt`, which draws the textures and loops its skin names; keyed like `SKINS`. */
-export const WORLD_ART: Readonly<Record<ShippedWorldId, (scene: Phaser.Scene) => void>> = {
+const WORLD_ART: Readonly<Record<ShippedWorldId, (scene: Phaser.Scene) => void>> = {
   reef: registerReefArt,
   thornwood: registerThornwoodArt,
   cloudreach: registerCloudreachArt,

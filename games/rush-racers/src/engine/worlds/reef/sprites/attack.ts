@@ -2,14 +2,14 @@
  * Reef's attack art that lives in the water rather than in the HUD well: the Homing Squid (a swim
  * cycle and a latched pose that wraps a racer), one tile of a Riptide lane, the speed lines
  * Undertow draws ahead of a racer it pulls back, the Ink Sac cloud, the trapping bubble and the
- * halo behind a loose power-up. The squid is drawn in the item palette in `items.ts`, so it keeps
+ * halo behind a loose power-up. The squid is drawn in the item palette in `item-rows.ts`, so it keeps
  * its icon's colour.
  */
 import { Frame } from '../../../art/keys.ts';
 import type { Palette } from '../../../art/pixel.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { ReefTex } from '../keys.ts';
-import { ReefItemPalette } from './items.ts';
+import { ReefItemPalette } from './item-rows.ts';
 
 /** The lane tile: a dark shadow line, foam streaks and mint tails, so the flow reads over a current. */
 const RIPTIDE_TILE_PALETTE: Palette = [0x1c9a5c, 0xd8ffe8, 0x7fe8b0];

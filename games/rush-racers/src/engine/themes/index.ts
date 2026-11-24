@@ -38,7 +38,7 @@ export function themeFor(course: Course): Theme {
 }
 
 /** Each theme's `registerArt`, which draws the textures and loops the theme names; keyed like `THEMES`. */
-export const THEME_ART: Readonly<Record<ThemeId, (scene: Phaser.Scene) => void>> = {
+const THEME_ART: Readonly<Record<ThemeId, (scene: Phaser.Scene) => void>> = {
   ocean: registerOceanArt,
   forest: registerForestArt,
   space: registerSpaceArt,
