@@ -5,7 +5,9 @@
  *
  * Everything advances once per world tick in `onEvents` (particles move, trauma drains, trail
  * bubbles are shed) and `sync` only draws, so a capture at tick N looks the same however the
- * ticks were split across rendered frames. Racer-level juice (kick squash and stretch, the
+ * ticks were split across rendered frames. Item fires and hits (`item-effects.ts`) and each medium's
+ * movement particles (`movement-effects.ts`) play recipes through one player, sharing the particle
+ * fields and the cosmetic rng with the older bursts. Racer-level juice (kick squash and stretch, the
  * invulnerability flicker, the place-up flash) lives in `view/racer-view.ts`, and held
  * power-up overlays in `view/powerup-view.ts`.
  */
@@ -22,8 +24,11 @@ import { createBubbleTracker } from './bubble-tracker.ts';
 import { createBursts } from './bursts.ts';
 import { createCameraNudge } from './camera-nudge.ts';
 import { createEventEffects } from './event-effects.ts';
+import { createItemEffects } from './item-effects.ts';
+import { createMovementEffects } from './movement-effects.ts';
 import { createParticleLayer } from './particle-layer.ts';
 import { createParticleField } from './particles.ts';
+import { createRecipePlayer } from './recipe-player.ts';
 import { createShake } from './shake.ts';
 import { ensureFxTextures } from './textures.ts';
 import { trailFor } from './trail.ts';
@@ -54,14 +59,11 @@ export function createFx(scene: Phaser.Scene, world: World, theme: Theme, reduce
     createParticleLayer(scene, back, Layer.racers - 0.75),
     createParticleLayer(scene, front, Layer.player + 0.75),
   ];
-  const bursts = createBursts(
-    back,
-    front,
-    createRng(COSMETIC_SEED),
-    theme,
-    reducedMotion,
-    skinFor(courseOf(world)).objects.itemTextures,
-  );
+  const rng = createRng(COSMETIC_SEED);
+  const bursts = createBursts(back, front, rng, theme, reducedMotion, skinFor(courseOf(world)).objects.itemTextures);
+  const recipes = createRecipePlayer(back, front, rng, theme, reducedMotion);
+  const items = createItemEffects(world, theme.id, recipes);
+  const movement = createMovementEffects(world, theme.id, recipes);
   const trail = trailFor(theme, world.racers.length, reducedMotion);
   const shake = createShake();
   const nudge = createCameraNudge(scene.cameras.main);
@@ -81,6 +83,8 @@ export function createFx(scene: Phaser.Scene, world: World, theme: Theme, reduce
       front.step();
       shake.step();
       effects.onTick(events);
+      items.onTick(events);
+      movement.onTick(events);
       trail?.step(world, bursts);
     },
     sync(current) {
