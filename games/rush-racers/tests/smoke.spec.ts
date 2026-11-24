@@ -173,9 +173,10 @@ test('on Thunderhead Pass a tap of the on-screen Up button flaps @touch', async 
  * same simulation on each player's browser and compare this hash, so the engines must agree on it.
  * It differs from the pin in `src/logic/top-route.test.ts`, whose replay stops on the finish tick.
  * Re-pinned when Sunlit gained geyser vents and `TOP_ROUTE` was re-recorded, again when the
- * world gained `twists`, and again when it gained the long courses' set-piece state.
+ * world gained `twists`, and again when it gained the long courses' set-piece state, and again when Sunlit gained The
+ * Maelstrom and `TOP_ROUTE` was re-recorded through it.
  */
-const TOP_ROUTE_BROWSER_HASH = 2523564175;
+const TOP_ROUTE_BROWSER_HASH = 1567330866;
 
 test('a finished race is saved and its best time shows on the title after a reload', async ({ game }) => {
   test.slow(true, 'swims the whole course, about 250 input steps');
