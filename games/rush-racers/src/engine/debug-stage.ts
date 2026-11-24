@@ -172,12 +172,10 @@ export function applyStage(world: World, stage: StageName): void {
 function stageEnemies(world: World, player: Racer): void {
   const column = Math.floor(centreOf(player).x / TILE);
   const start = standOnFloor(world, player);
-  const shark = openWaterAbove(world.level, start.x + 6, floorBelow(world.level, start.x + 6, start.y) - 2);
+  const sharkFloor = nearestFloor(world.level, start.x + 6, start.y);
+  const shark = openWaterAbove(world.level, sharkFloor.x, sharkFloor.y - 2);
   world.enemies.push(
-    {
-      ...stagedEnemy(world.level, 'crab', { x: start.x + 3, y: floorBelow(world.level, start.x + 3, start.y) }),
-      facing: 1,
-    },
+    { ...stagedEnemy(world.level, 'crab', nearestFloor(world.level, start.x + 3, start.y)), facing: 1 },
     { ...stagedEnemy(world.level, 'shark', shark), facing: -1 },
   );
   const rivals = world.racers.filter((racer) => racer !== player);
@@ -209,11 +207,12 @@ function openRowsFromTop(level: Level, x: number, count: number): number[] {
 /**
  * Stands the player on the floor and lines up, ahead of them: on the floor, an eel hidden, warning
  * and out (each in the floor, lunging up), a walking crab and a staggered crab; above, a shark
- * patrolling, winding up on the player and charging, and one staggered.
+ * patrolling, winding up on the player and charging, and one staggered. An enemy whose column has
+ * no floor (a bounce cloud or a pit there) stands in the nearest column that has one.
  */
 function stageEnemyModes(world: World, player: Racer): void {
   const start = standOnFloor(world, player);
-  const onFloor = (dx: number) => ({ x: start.x + dx, y: floorBelow(world.level, start.x + dx, start.y) });
+  const onFloor = (dx: number) => nearestFloor(world.level, start.x + dx, start.y);
   const above = (dx: number, rise: number) => {
     const floor = onFloor(dx);
     return openWaterAbove(world.level, floor.x, floor.y - rise);
@@ -249,8 +248,7 @@ function stagedEnemy(level: Level, kind: EnemyKind, tile: Vec): Enemy {
 /** Puts the player at rest on the floor below its start tile and returns that tile. */
 function standOnFloor(world: World, player: Racer): Vec {
   const centre = centreOf(player);
-  const x = Math.floor(centre.x / TILE);
-  const tile = { x, y: floorBelow(world.level, x, Math.floor(centre.y / TILE)) };
+  const tile = nearestFloor(world.level, Math.floor(centre.x / TILE), Math.floor(centre.y / TILE));
   player.body.x = (tile.x + 0.5) * TILE - player.body.w / 2;
   player.body.y = (tile.y + 0.5) * TILE - player.body.h / 2;
   player.body.vx = 0;
@@ -260,15 +258,32 @@ function standOnFloor(world: World, player: Racer): Vec {
 }
 
 /**
- * The first row at or below `fromY` in column `x` that isn't rock and has rock under it.
+ * The floor tile nearest column `x`: the floor row at or below `fromY` (see `floorRowIn`) in column
+ * `x`, or, when that column has none (a bounce cloud or a pit in the floor), in the closest column
+ * that has one, ahead before behind on a tie.
  *
- * @throws {Error} When the column has no such floor, naming it.
+ * @throws {Error} When no column has such a floor, naming the row and column asked for.
  */
-function floorBelow(level: Level, x: number, fromY: number): number {
+function nearestFloor(level: Level, x: number, fromY: number): Vec {
+  for (let reach = 0; reach < level.width; reach++) {
+    const columns = reach === 0 ? [x] : [x + reach, x - reach];
+    for (const column of columns) {
+      if (column < 0 || column >= level.width) continue;
+      const row = floorRowIn(level, column, fromY);
+      if (row !== null) return { x: column, y: row };
+    }
+  }
+  throw new Error(
+    `The enemy stages need a floor below row ${fromY} in column ${x} or a column near it, and there is none`,
+  );
+}
+
+/** The first row at or below `fromY` in column `x` that isn't rock and has rock under it, or null when there is none. */
+function floorRowIn(level: Level, x: number, fromY: number): number | null {
   for (let y = Math.max(0, fromY); y < level.height - 1; y++) {
     if (cellAt(level, x, y) !== 'rock' && cellAt(level, x, y + 1) === 'rock') return y;
   }
-  throw new Error(`The enemy stages need a floor below row ${fromY} in column ${x}, and there is none`);
+  return null;
 }
 
 /**

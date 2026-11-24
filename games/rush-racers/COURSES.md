@@ -1,6 +1,6 @@
 # Courses, media and worlds
 
-How to add a course (a new level with its own look and song), a medium (a new movement style: swim and run today) and a world (a medium with its own cast, names, art, theme, song and courses: Reef and Thornwood today). All plug into registries; no generic race code changes. Paths below are under `games/rush-racers/src/`.
+How to add a course (a new level with its own look and song), a medium (a new movement style: swim, run and flight today) and a world (a medium with its own cast, names, art, theme, song and courses: Reef, Thornwood and Cloudreach today). All plug into registries; no generic race code changes. Paths below are under `games/rush-racers/src/`.
 
 A **course** is data: a level, the world it races in (which names its medium), a theme and song id, a par time and optional tuning. A **medium** is code: physics, environment, navigation, rival steering and a few rules the generic systems read. A **world** is the medium plus everything a player reads or sees per world: the cast's names and art, and the names and art of the shared items, pickups, enemies and hazards. A **theme** is engine art for a course. Logic never imports the engine; the engine maps a course's theme and song ids to art and music.
 
@@ -55,6 +55,16 @@ legend: {
 `parseLevel` rejects a legend glyph that reuses a built-in character, maps to a cell that doesn't exist, is longer than one character, or is whitespace (rows are trimmed, so it could vanish). `Level.glyphs` keeps the glyph at every tile, so the theme can tell a wreck from plain rock. The theme must have a tile in `terrain.glyphTiles` for every art key the legend names: `assertCourseAssets` (`engine/themes/course-assets.ts`) throws, naming the course, glyph and art key, for one it lacks, so `engine/themes/course-assets.test.ts` fails for a shipped course and boot fails for the course a session starts on.
 
 A swim course can open stretches of the sea to the sky with a **surface**: `surface: [{ from, to, row }]` turns every open (`.`) tile above `row` in columns `from..to` into the `air` cell (`level/surface.ts`). Racers breach into it and arc back under gravity (swim's `airGravity`, `airDrag`, `airSteer`); enemies and starts may not sit in it, and pickups placed there float in the air. `parseLevel` throws `LevelError` for a range that runs backwards, leaves the map, or puts `row` outside 1..height-1. The theme draws air with `terrain.tiles.air` and the waterline with `terrain.surface`. Run rejects a surface in `validateLevel` (on foot every open tile is already air), so it is a swim feature only.
+
+### Set pieces
+
+Three course features any medium can carry (Cloudreach's courses use all three; DESIGN.md "Sky set pieces" says how they play):
+
+- `B` is a bounce cloud: solid like rock, and it springs a body coming down onto it back up. Only a medium whose `effects.bounceSpeed` is set allows one; `createWorld` throws `LevelError` at the cell otherwise.
+- `@` is a boost ring (`Level.rings`), an open tile like a pearl's. Lay ring lines across the way, not up a climb: rivals take a line only within 8 columns of their way and skip vertical ones, and a ring's boost doesn't help a climb.
+- `lightning: [{ cols: [from, to], periodTicks, offsetTicks }]` in the `LevelDef` is a storm zone over those columns (`level/lightning-zones.ts`). `parseLevel` throws `LevelError` naming the zone for a range that runs backwards or leaves the map, two zones sharing a column, or a period shorter than the warning plus the strike (57 ticks). Offset neighbouring zones so they strike out of step.
+
+Rivals (flight's pilot) take a bounce cloud only when it saves at least 0.1 s over flapping, so put one at the foot of a wall tall enough that bouncing wins, where the way arrives at floor level within about 2 columns of it.
 
 The medium checks the level too: `createWorld` throws `LevelError` (with row and column) for anything `medium.validateLevel` reports, such as a start that can't reach the finish in swim without breaking coral.
 
@@ -161,20 +171,21 @@ The medium's own code reads its data only through these (`swimNav(world.nav)`, `
 | Member | What it is | What swim does |
 | --- | --- | --- |
 | `id` | Registry key, the course's `medium`. | `'swim'` |
-| `tuning` | `base` modifiers, `force`, `drag`, `maxSpeed`, `kick`, and medium-only numbers in `extra`. `effectiveTuning(world)` (in `logic/media/index.ts`) merges `course.tuning` over it once per course, `extra` key by key; `applyIntent` and `modifiersFor` both read that result, so every override applies. | Today's swim constants; `extra` holds `sink`, `currentForce`, `kelpDragMul`. |
+| `tuning` | `base` modifiers, `force`, `drag`, `maxSpeed`, `kick`, medium-only numbers in `extra`, and optional `byDifficulty` multipliers over `extra` per level (flight's lighter Easy gravity). `effectiveTuning(world)` (in `logic/media/index.ts`) merges `course.tuning` over it, `extra` key by key, then applies the level's multipliers, once per course and level; a multiplier naming an unknown extra throws. `applyIntent` and `modifiersFor` both read that result, so every override applies. | Today's swim constants; `extra` holds `sink`, `currentForce`, `kelpDragMul`. |
 | `createMotion(body)` | Per-racer movement state the medium owns (`Racer.motion`), a `RacerMotion` with the medium's `kind`. | `{ kind: 'swim' }` |
 | `createPilot()` | Per-rival AI state for the medium's `steer`, a `PilotMemory` with the medium's `kind`. | Wobble, speed-based stuck count, recovery, aim and replan timer. |
 | `sampleEnvironment(world, racer)` | What the surroundings do to this racer this tick. Takes the racer because a held power-up can change what its holder feels. | The current under the racer (including a Riptide's lane) and whether it's in kelp. |
 | `applyIntent(racer, intent, env, tuning, mods, events, dt)` | Velocity, facing and kick cooldown for one tick, reading every number from `tuning` (the effective tuning above), never from module constants. Every `MoveModifiers` field must have a visible effect. | Thrust toward the stick, drag, idle sink, current push, kelp drag, kick with cooldown, speed cap. |
 | `buildNav(level, broken)` | Navigation over the level with broken coral gone; rebuilt when coral breaks. | Flow fields toward the finish: steer, smash, ram. |
 | `steer(world, racer, mods, draws, forceRecover)` | A rival's stick, kick, held kick, aim and whether it is recovering. Uses the four `AiDraws` the generic AI draws every tick; `forceRecover` comes from the generic progress backstop (`PROGRESS_BACKSTOP_TICKS`, 600 racing ticks without new best progress, rivals only; it resets while stunned or trapped and holds while Undertow pulls). | Aim along the steer field with wobble and avoidance, kick when aligned, recover from speed-based stalls. |
-| `enterCost(cell, isBroken, move)` | Cost of entering a cell, for flow-field media. | Today's steer costs (kelp and currents against you cost more). |
+| `enterCost(cell, isBroken, move, tile, level)` | Cost of entering a cell, for flow-field media; `tile` and `level` let a medium price by position (flight makes low sky over a gap dear). | Today's steer costs (kelp and currents against you cost more). |
 | `aimFrom(world, body, lookaheadTiles)` | Unit aim toward the finish along the medium's way; zero at the finish. | Reads the steer field. |
 | `nextTile(world, tile)` | Offset of the neighbour nearer the finish, or null. Draws the Easy guide's arrow. | Downhill step on the steer field. |
 | `distanceAt(world, tile)` | Distance to the finish from a tile; Infinity when unreachable. | Steer field value. |
 | `validateLevel(level, nav)` | Located problems that make the level unraceable in this medium; empty when fine. `createWorld` throws one `LevelError` listing them all, located at the first. | A start that can't reach the finish without breaking coral. |
 | `coralAhead(world, tile, steps)` | Whether unbroken coral lies within `steps` tiles along the medium's way from `tile`; the Puffer item choice asks it. Return false in a medium without breakable coral. | Walks the smash field. |
-| `afterMove(world, racer, contacts, events)` | Runs once per unfinished racer per tick right after the generic move, with what it ran into (`MoveContacts`: floor, ceiling and the tiles bumped, walls). | Nothing. Run sets grounded, the last safe spot and falls here. |
+| `ramsCoral(racer)` | Whether the racer breaks every coral tile it enters this tick, asked after `applyIntent` and before the move. | False. Flight answers true in a dash's first `dashTicks`. |
+| `afterMove(world, racer, contacts, events)` | Runs once per unfinished racer per tick right after the generic move, with what it ran into (`MoveContacts`: floor, ceiling and the tiles bumped, walls). | Nothing. Run and flight set the last safe spot and falls here, through the shared fall, park and respawn timer in `logic/media/fall-out.ts`. |
 | `racerCollision` | `'solid'` racers bump each other; `'ghost'` pass through; `'horizontal'` push apart along x only, so one can land through another. | `'solid'` (run: `'horizontal'`) |
 | `effects` | Data the generic push rules read (below). | `dashAxes: 'both'`, bubbles and loose power-ups float up. |
 | `kickRules` | How generic counters read a kick (below). | Every counter on; Gil's spring kick applies when kicking upward. |
@@ -188,6 +199,8 @@ The medium's own code reads its data only through these (`swimNav(world.nav)`, `
 - `effects.solidClams`: shut clams are solid and open only from below (a head bump).
 - `effects.pitBelow`: the bottom edge of the level is open, so a body can fall out; the medium decides what happens then (run respawns it in `afterMove`).
 - `effects.allowsLedges`: the level may use `=` ledges; `createWorld` rejects one otherwise.
+- `effects.assistAxes`: `'horizontal'` keeps the Easy steering assist off the vertical stick, where Up jumps or flaps.
+- `effects.bounceSpeed`: the upward speed a bounce cloud gives a body landing on it; null rejects `B` in the level.
 - `kickRules.dodgesSquid`: a kick just before contact makes a Homing Squid miss.
 - `kickRules.shakesLatch`: kicks while latched take ticks off the latch.
 - `kickRules.countersUndertow`: a kick against an Undertow cuts its pull that tick.
@@ -205,11 +218,11 @@ pnpm arcade test rush-racers @media @seams @behavior
 
 ## Add a world
 
-A world is a medium, a cast of eight on the shared character slots, the names and art of the shared items, pickups, enemies and hazards, a theme and song, and its courses. Thornwood was built in this order, and each step leaves the game green, so the next world (air, space) follows the same recipe. Step 1 is logic plus the medium's How to Play pages; step 2 is logic only; steps 3-5 are engine only; the listed course in step 6 is what puts it in front of players.
+A world is a medium, a cast of eight on the shared character slots, the names and art of the shared items, pickups, enemies and hazards, a theme and song, and its courses. Thornwood and then Cloudreach were built in this order, and each step leaves the game green, so the next world (space, say) follows the same recipe. Step 1 is logic plus the medium's How to Play pages; step 2 is logic only; steps 3-5 are engine only; the listed course in step 6 is what puts it in front of players.
 
 ### 1. The medium, if the world moves differently
 
-Follow "Add a medium" above: a folder `logic/media/<medium-id>/`, its entry in `MEDIA` and `ShippedMediumId`, and the medium's own How to Play pages (engine files in `engine/view/how-to-play/`). Start with a working baseline raced on test levels built with `courseFromLevel(level, medium)` (`logic/test-world.ts`), which races them in a registered test world for the medium, so no shipped world is needed yet. Once step 2 gives the medium a world, add an unlisted test course in it (Thornwood's `run-test`) and grow physics, falls and navigation behind the same `Medium` members, the way run went from a simple way and pilot to the jump-link nav (`links.ts`, `nav.ts`, `pilot.ts`) without the members changing. If a generic seam is missing (run needed contacts from the move, ledges, open pits, `afterMove`, stomps, solid crates and sideways-only collision), add it as a `MediumEffects` field or `Medium` member that every existing medium answers so as to keep its behaviour, and prove the old courses unchanged (`top-route.test.ts`, the sfx pin). A world that reuses a medium skips this step.
+Follow "Add a medium" above: a folder `logic/media/<medium-id>/`, its entry in `MEDIA` and `ShippedMediumId`, and the medium's own How to Play pages (engine files in `engine/view/how-to-play/`). Start with a working baseline raced on test levels built with `courseFromLevel(level, medium)` (`logic/test-world.ts`), which races them in a registered test world for the medium, so no shipped world is needed yet. Once step 2 gives the medium a world, add an unlisted test course in it (Thornwood's `run-test`) and grow physics, falls and navigation behind the same `Medium` members, the way run went from a simple way and pilot to the jump-link nav (`links.ts`, `nav.ts`, `pilot.ts`) without the members changing. If a generic seam is missing (run needed contacts from the move, ledges, open pits, `afterMove`, stomps, solid crates and sideways-only collision), add it as a `MediumEffects` field or `Medium` member that every existing medium answers so as to keep its behaviour, and prove the old courses unchanged (`top-route.test.ts`, the sfx pin). Flight needed `ramsCoral` (a dash that pops puff clouds), `byDifficulty` tuning (Easy's lighter gravity), `assistAxes` (an assist that never flaps for you), a positional `enterCost`, and pits that reuse run's timer once it moved to `media/fall-out.ts`. Add the medium's cases to the conformance suite (`CASES_BY_MEDIUM` in `conformance/medium.test.ts`: the directions it can move in open space). A world that reuses a medium skips this step.
 
 ### 2. The logic world
 
@@ -233,11 +246,11 @@ Every view reads racer art, portraits, heads, ability wording, item icons and ar
 | `engine/worlds/<world-id>.ts` | The `WorldSkin`: wiring only. |
 | `engine/worlds/index.ts` | Its entry in `SKINS`, keyed by `ShippedWorldId`, so a world without a skin fails to compile. |
 
-`assertSkinAssets` (tests and boot) fails naming the world and key for a missing character, item, pickup, enemy or glint, and `assertSkinTextures` (boot) for a texture or frame the skin names but never drew. Each racer's main colour must hold 3:1 against every theme's contrast bands (`art/sprites/sprites.test.ts`). Thornwood first shipped a placeholder skin (Reef's art under Thornwood's words) so the medium could be raced before its art existed.
+`assertSkinAssets` (tests and boot) fails naming the world and key for a missing character, item, pickup, enemy or glint, and `assertSkinTextures` (boot) for a texture or frame the skin names but never drew. Each racer's main colour must hold 3:1 against every theme's contrast bands (`art/sprites/sprites.test.ts`). Thornwood and Cloudreach first shipped a placeholder skin (Reef's art under the new world's words) so the medium could be raced before its art existed. Keep one owner constant per world (Cloudreach's `worlds/cloudreach/owner.ts`) so its key files don't import each other in a cycle.
 
 ### 4. The theme
 
-`engine/themes/<theme-id>.ts` built with `defineTheme`, its art under `engine/themes/<theme-id>/` (keys, sprites, palettes), its id in `ThemeId` and its entry in `THEMES`, as in "Add a course". A new medium may need tiles the old themes never drew (the forest's branch tile for `=`, earth with a grass top only where it meets open space). Fix the palette first: the backdrop bands are `contrastBands`, and every racer of every world and all global art must keep 3:1 against them. `forest.ts` is the land example.
+`engine/themes/<theme-id>.ts` built with `defineTheme`, its art under `engine/themes/<theme-id>/` (keys, sprites, palettes), its id in `ThemeId` and its entry in `THEMES`, as in "Add a course". A new medium may need tiles the old themes never drew (the forest's branch tile for `=`, earth with a grass top only where it meets open space). Fix the palette first: the backdrop bands are `contrastBands`, and every racer of every world and all global art must keep 3:1 against them. That caps how bright a band can be: the dimmest racer colours held the sky's bands near 0.08 luminance, so Cloudreach is a deep high-altitude blue and gets its light from sun shafts and pale foreground clouds, which are terrain, not bands. A theme that shares Reef's backdrop pieces reads as Reef; give it its own haze, burst frames and terrain patterns. `forest.ts` is the land example, `sky.ts` the air one.
 
 ### 5. The song
 
@@ -245,11 +258,19 @@ Every view reads racer art, portraits, heads, ability wording, item icons and ar
 
 ### 6. The course
 
-Follow "Add a course": `logic/courses/<course-id>.ts` with `world: '<world-id>'` and the new theme and song, its id in `ShippedCourseId` and its entry in `COURSES`, par measured, and the difficulty bars. Ship it `listed: false` until it passes the bars, then list it, which shows it on course select (and turns course select on, if it is the second listed course: every hand-written menu walk then needs the course step, as `TITLE_TO_SELECT` in `scenarios/kit.ts` has). Thornwood's unlisted `run-test` came first, to build the medium on; Bramble Run followed once the nav and art were in.
+Follow "Add a course": `logic/courses/<course-id>.ts` with `world: '<world-id>'` and the new theme and song, its id in `ShippedCourseId` and its entry in `COURSES`, par measured, and the difficulty bars. Ship it `listed: false` until it passes the bars, then list it, which shows it on course select (and turns course select on, if it is the second listed course: every hand-written menu walk then needs the course step, as `TITLE_TO_SELECT` in `scenarios/kit.ts` has). Every spec or scenario that asserts course select's rows or walks to a course by row index then needs the new row. Thornwood's unlisted `run-test` came first, to build the medium on, and Bramble Run followed once the nav and art were in; Cloudreach's `sky-test` and Thunderhead Pass did the same.
 
 ### 7. Docs and checks
 
-DESIGN.md gets the world's section (cast and names, how its medium plays) and the course's; UI.md anything that reads differently; this file anything the recipe got wrong. Mechanics scenarios run on the unlisted test course, so they don't move when the listed course is retuned.
+DESIGN.md gets the world's section (cast and names, how its medium plays, any set pieces) and the course's; UI.md anything that reads differently; this file anything the recipe got wrong.
+
+Tests, as each world has them:
+
+- Mechanics scenarios on the unlisted test course (on Hard, pinned through `HARD_SAVE`), so they don't move when the listed course is retuned: one per move and set piece (Cloudreach's `flight-*` scenarios). A debug stage such as `cannonball` starts one near the moment under test.
+- The debug stages work on the test course too: `debug-stage.test.ts` stages `enemy-modes` on `sky-test`, whose floor has a bounce cloud in it.
+- A How to Play scenario that pages through the world's pages on its listed course (`how-to-play-cloudreach`).
+- `tests/course.spec.ts`: course select lists the course with its best, picking it shows the world's cast on select, the race runs in the medium, and it becomes the last course the title's best follows.
+- `tests/smoke.spec.ts`: a race from the menus that runs 600 ticks on every browser project, and the touch Up button on the phone doing the medium's vertical move.
 
 ```
 pnpm arcade test rush-racers @worlds @media @courses @seams @platform @behavior
