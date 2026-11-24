@@ -12,7 +12,7 @@ Worktree setup: `pnpm install --frozen-lockfile --prefer-offline`.
 Rush Racers' four worlds share one item set, one race framing and similar course rhythm, so a race in Thornwood plays much like one in Cloudreach. This sprint makes each world and each course feel like its own game: distinct item and movement feel, sections that announce themselves, a signature set piece per course, and items that use their world's medium.
 
 In scope:
-- Phase 1 (engine only, no logic or hash change): section callouts and a course intro card; distinct fire and impact visuals per item kind and movement particles per medium; distinct sounds per item kind and per-medium movement sounds.
+- Phase 1 (engine plus non-hashed course data; no simulation or hash change): section callouts and a course intro card; distinct fire and impact visuals per item kind and movement particles per medium; distinct sounds per item kind and per-medium movement sounds.
 - Phase 2 (logic): one signature set piece per listed course, and a world-specific Cannonball (Thornwood rolls a Boulder, Cloudreach drops a Meteor on the leader, Farside launches a Comet that wells bend). Reef keeps its items as designed. Each changed course re-passes its own bars and re-measures par if its route length changed.
 - Phase 3 (logic, stretch): a second item twist per non-Reef world.
 
@@ -36,15 +36,16 @@ Phase 2 contracts are committed in its scaffold: per-course set piece modules un
 
 ### Phase 1: feel and framing (MVP)
 
-Demo: `pnpm arcade see rush-racers --scene race --query course=<id> --input "right*900" --at 200,500,900` on each listed course; a section callout shows on entering each zone, items and movement leave distinct particles and sounds.
+Scaffold: e044492af045b439ce1c3f338a9299448cb6fea1
+Demo: `pnpm arcade see rush-racers --scene race --query course=<id> --input "right*900" --at 200,500,900` on each listed course; a section callout shows on entering each zone after the first, items and movement leave distinct particles and sounds.
 Checkpoint: 81 min after start (epoch 1795497854).
 Test cases: listed per lane below.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/logic/courses/types.ts, games/rush-racers/src/logic/courses/sunlit-shallows.ts, games/rush-racers/src/logic/courses/bramble-run.ts, games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/logic/courses/slingshot-alley.ts, games/rush-racers/src/logic/courses/index.test.ts, games/rush-racers/src/engine/view/section-callout.ts, games/rush-racers/src/engine/view/section-callout.test.ts, games/rush-racers/src/engine/view/course-intro.ts, games/rush-racers/src/engine/view/course-intro.test.ts, games/rush-racers/src/engine/scenes/race.ts, games/rush-racers/src/engine/view/race-text.ts, games/rush-racers/src/engine/view/race-text.test.ts | games/rush-racers/DESIGN.md | | opus | pending | | callout and intro tests pass, see captures show them |
-| b | M | games/rush-racers/src/engine/fx/, games/rush-racers/src/engine/view/powerup-view.ts, games/rush-racers/src/engine/view/attack-view.ts, games/rush-racers/src/engine/view/racer-view.ts, games/rush-racers/src/engine/view/racer-moments.ts, games/rush-racers/src/engine/view/racer-moments.test.ts | games/rush-racers/src/engine/themes/types.ts | | opus | pending | | fx tests pass, see captures show distinct item and movement effects per world |
-| c | M | games/rush-racers/src/engine/audio/ | games/rush-racers/src/engine/worlds/types.ts | | opus | pending | | audio tests pass with the sfx pin deliberately updated |
+| a | M | games/rush-racers/src/logic/courses/types.ts, games/rush-racers/src/logic/courses/sunlit-shallows.ts, games/rush-racers/src/logic/courses/bramble-run.ts, games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/logic/courses/slingshot-alley.ts, games/rush-racers/src/logic/courses/index.test.ts, games/rush-racers/src/engine/view/section-callout.ts, games/rush-racers/src/engine/view/section-callout.test.ts, games/rush-racers/src/engine/view/course-intro.ts, games/rush-racers/src/engine/view/course-intro.test.ts, games/rush-racers/src/engine/scenes/race.ts, games/rush-racers/src/engine/view/race-text.ts, games/rush-racers/src/engine/view/race-text.test.ts | games/rush-racers/DESIGN.md | | opus | running | sprint/rush-racers-polish-1a | callout and intro tests pass, see captures show them |
+| b | M | games/rush-racers/src/engine/fx/, games/rush-racers/src/engine/view/powerup-view.ts, games/rush-racers/src/engine/view/attack-view.ts, games/rush-racers/src/engine/view/racer-view.ts, games/rush-racers/src/engine/view/racer-moments.ts, games/rush-racers/src/engine/view/racer-moments.test.ts | games/rush-racers/src/engine/themes/types.ts | | opus | running | sprint/rush-racers-polish-1b | fx tests pass, see captures show distinct item and movement effects per world |
+| c | M | games/rush-racers/src/engine/audio/ | games/rush-racers/src/engine/worlds/types.ts | | opus | running | sprint/rush-racers-polish-1c | audio tests pass with the sfx pin deliberately updated |
 
 #### Lane a brief
 
@@ -116,3 +117,4 @@ Depends on: phase 2
 ## Log
 
 - Phase 1 lanes write their own tests (see Assumptions); checked at landing against the brief.
+- Plan critique (sonnet), 5 findings, all applied: spec reworded to "course data only" for phase 1; demo wording fixed; race.ts wiring conflict between 1a and 1b resolved by telling 1b to keep factory signatures and report any race.ts lines for the orchestrator to apply at landing; extra reads sent to 1b and 1c; online HUD clearance and a sections-shape test sent to 1a, voice and rival-silence tests to 1c.
