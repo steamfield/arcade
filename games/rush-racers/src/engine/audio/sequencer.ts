@@ -8,7 +8,7 @@
  */
 import type { NoteEvent, Song } from './notation.ts';
 import { playNote } from './play-note.ts';
-import type { Synth } from './synth.ts';
+import { DRUM_RING_OUT, type Synth } from './synth.ts';
 
 /** What changed since the last poll, reported on the game's tick rather than the timer's. */
 interface SequencerNews {
@@ -229,9 +229,12 @@ function retime(playback: Playback, secondsPerBeat: number): void {
   if (playback.endTime !== null) playback.endTime = endTimeOf(playback);
 }
 
-/** When a one-shot stops sounding: its last bar's end plus the longest release, so the last note rings out. */
+/**
+ * When a one-shot stops sounding: its last bar's end plus the longest release or drum ring-out,
+ * so the last note or crash rings out.
+ */
 function endTimeOf(playback: Playback): number {
   const { song } = playback;
-  const release = Math.max(...Object.values(song.voices).map((voice) => voice.envelope.release));
+  const release = Math.max(DRUM_RING_OUT, ...Object.values(song.voices).map((voice) => voice.envelope.release));
   return timeOf(playback, playback.passStart + song.lengthBeats) + release;
 }

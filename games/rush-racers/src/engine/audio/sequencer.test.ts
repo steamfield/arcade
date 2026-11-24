@@ -121,3 +121,29 @@ describe('the sequencer started part-way through a song', () => {
     expect(sections).toEqual(['B']);
   });
 });
+
+/** Moves the clock and the 25 ms timer forward until `until` seconds; the time a poll first said `ended`, or null. */
+function endedAt(clock: { currentTime: number }, until: number): number | null {
+  while (clock.currentTime < until) {
+    clock.currentTime = Math.round((clock.currentTime + 0.025) * 1000) / 1000;
+    vi.advanceTimersByTime(25);
+    if (sequencer?.poll().ended) return clock.currentTime;
+  }
+  return null;
+}
+
+describe('a one-shot song', () => {
+  it('is not reported ended until a crash on its last beat has rung out', () => {
+    const { synth, clock } = clockedSynth();
+    sequencer = createSequencer(synth, (error) => {
+      throw error;
+    });
+    const crash: NoteEvent = { channel: 'noise', start: 3, length: 1, pitch: 'crash', velocity: 1 };
+    sequencer.play({ ...twoBarLoop(), lengthBeats: 4, loopStart: null, sections: [], notes: [crash] });
+
+    // The crash starts at 1.55 s and sounds for its 0.6 s length plus its 0.1 s release.
+    const ended = endedAt(clock, 4);
+    expect(ended).not.toBeNull();
+    expect(ended).toBeGreaterThanOrEqual(1.55 + 0.6 + 0.1);
+  });
+});
