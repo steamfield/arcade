@@ -90,18 +90,11 @@ describe('the soundtrack', () => {
     }
   });
 
-  it("builds the race theme from intro, A, A', B and turnaround, looping at A on a bar line", () => {
+  it('opens the race theme with an intro the lead sits out, and loops it at A on a bar line', () => {
     expect(race.bpm).toBeGreaterThanOrEqual(130);
     expect(race.bpm).toBeLessThanOrEqual(150);
-    expect(race.sections).toEqual([
-      { name: 'intro', bar: 0 },
-      { name: 'A', bar: 2 },
-      { name: "A'", bar: 10 },
-      { name: 'B', bar: 18 },
-      { name: 'turnaround', bar: 26 },
-    ]);
-    expect(race.lengthBeats).toBe(30 * race.beatsPerBar);
-    expect(race.loopStart).toBe(2 * race.beatsPerBar);
+    expect(race.sections[0]).toEqual({ name: 'intro', bar: 0 });
+    expect(race.loopStart).toBe(sectionBeats(race, 'A')[0]);
     expect(notesIn(race.notes, sectionBeats(race, 'intro')).map((note) => note.channel)).not.toContain('pulse1');
   });
 

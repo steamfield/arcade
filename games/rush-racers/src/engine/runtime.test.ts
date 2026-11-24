@@ -17,29 +17,12 @@ import { createClient, type OnlineClient } from '../net/client.ts';
 import { IDLE_INPUT } from '../net/codec.ts';
 import { createOnlineWorld } from '../net/race-world.ts';
 import { createMemoryRoom, type MemoryRoom } from '../net/transport/memory.ts';
+import { RACE_TRACKS } from './audio/songs/index.ts';
 import { type Action, input } from './input.ts';
 import type { OnlinePorts } from './online/flow.ts';
 import { netSummary } from './online/net-summary.ts';
 import { ART_LOAD_FAILED, type ArtNeed, type ArtPort, Runtime, type SceneKey } from './runtime.ts';
 import { selectedOption } from './screens/menu.ts';
-
-/**
- * Lane c's rotation, to its contract, over three tracks per set (`<set>`, `<set>-2`, `<set>-3`), so
- * these tests see rotation however many tracks the real sets hold.
- */
-vi.mock('./audio/track-rotation.ts', () => ({
-  createTrackRotation({ startAt, pinned }: { startAt: number; pinned: number | null }) {
-    const asked = new Map<string, number>();
-    return {
-      next(set: string) {
-        const tracks = [set, `${set}-2`, `${set}-3`];
-        const count = asked.get(set) ?? 0;
-        asked.set(set, count + 1);
-        return tracks[(pinned ?? startAt + count) % tracks.length];
-      },
-    };
-  },
-}));
 
 /** Title rows: Race, Friends, How to play, Level, Sound, Motion. Sound is four down. */
 const SOUND_ROW = 4;
@@ -1057,7 +1040,7 @@ describe('an online race', () => {
 });
 
 describe('race tracks', () => {
-  const set = DEFAULT_COURSE.song;
+  const [first, second, third] = RACE_TRACKS[DEFAULT_COURSE.song];
 
   /** The track each of `races` races in a row on the default course plays, on a runtime opened at `search`. */
   async function tracksRaced(races: number, options: { search?: string; save?: SaveData } = {}) {
@@ -1072,23 +1055,23 @@ describe('race tracks', () => {
   const warnings = () => logged.filter((entry) => entry.level === 'warn').map((entry) => entry.message);
 
   it('plays the next track of the course set each race', async () => {
-    expect(await tracksRaced(3)).toEqual([set, `${set}-2`, `${set}-3`]);
+    expect(await tracksRaced(3)).toEqual([first, second, third]);
   });
 
   it('starts the rotation at the save race count', async () => {
-    expect(await tracksRaced(2, { save: { ...NEW_GAME, races: 1 } })).toEqual([`${set}-2`, `${set}-3`]);
+    expect(await tracksRaced(2, { save: { ...NEW_GAME, races: 1 } })).toEqual([second, third]);
   });
 
   it('pins every race to the 1-based ?track=', async () => {
-    expect(await tracksRaced(3, { search: '?track=2' })).toEqual([`${set}-2`, `${set}-2`, `${set}-2`]);
+    expect(await tracksRaced(3, { search: '?track=2' })).toEqual([second, second, second]);
   });
 
   it('wraps a ?track= past the end of the set round to its first track', async () => {
-    expect(await tracksRaced(2, { search: '?track=4' })).toEqual([set, set]);
+    expect(await tracksRaced(2, { search: '?track=4' })).toEqual([first, first]);
   });
 
   it.each(['0', '-1', '2.5', 'abc', ''])('warns once about ?track=%s and keeps rotating', async (value) => {
-    expect(await tracksRaced(3, { search: `?track=${value}` })).toEqual([set, `${set}-2`, `${set}-3`]);
+    expect(await tracksRaced(3, { search: `?track=${value}` })).toEqual([first, second, third]);
     expect(warnings()).toEqual([`?track=${value} is not a track number (1, 2, 3 and so on), so race tracks rotate`]);
   });
 });
