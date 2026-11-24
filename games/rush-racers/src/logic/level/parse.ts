@@ -121,6 +121,7 @@ export function parseLevel(def: LevelDef): Level {
   const cells = openToAir(water, surface);
   const starts = requireAllStarts(markers.starts);
   requireUnderwater(cells, markers.enemies, starts);
+  const lightning = requireLightningZones(def.lightning ?? [], width);
 
   return {
     name: def.name,
@@ -139,9 +140,9 @@ export function parseLevel(def: LevelDef): Level {
     dark: requireDarkZonesOnMap(def.dark ?? [], width),
     surface,
     wells: parseWells(def.wells ?? [], width, rows.length),
-    lightning: requireLightningZones(def.lightning ?? [], width),
+    lightning,
     vents: parseVents(def.vents ?? [], width, rows.length),
-    shiftingWind: parseShiftingWind(def.shiftingWind ?? [], width),
+    shiftingWind: parseShiftingWind(def.shiftingWind ?? [], width, lightning),
     asteroids: parseAsteroids(def.asteroids ?? [], width, rows.length),
   };
 }
