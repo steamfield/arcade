@@ -29,7 +29,7 @@ export class BootScene extends Phaser.Scene {
     buildUiTextures(this, REEF_ITEM_ICON_FRAMES);
     registerThemeTextures(this);
     registerSkinTextures(this);
-    for (const skin of Object.values(SKINS)) assertSkinTextures(this.textures, skin);
+    for (const skin of Object.values(SKINS)) assertSkinTextures(this.textures, skin, this.anims);
     if (RACE_SCENE_PARAMS.includes(this.rt.ctx.params.scene)) this.rt.startRace();
     // A room link joins its room at once; otherwise Friends when asked for, else the title.
     else if (!this.rt.openRoomLink()) this.rt.goTo(this.rt.ctx.params.scene === 'friends' ? 'friends' : 'title');

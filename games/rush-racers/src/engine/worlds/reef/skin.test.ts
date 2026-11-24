@@ -36,6 +36,7 @@ function recordingScene() {
   const scene = {
     textures,
     make: { graphics: () => graphics },
+    anims: { exists: () => false, create: () => {} },
     cache: { bitmapFont: { exists: (key: string) => fonts.has(key), add: (key: string) => fonts.add(key) } },
   } as unknown as Phaser.Scene;
   return { scene, textures, built };

@@ -159,9 +159,7 @@ describe.each(WORLD_HAZARD_ART.map((art) => [art.skin.id, art] as const))('%s ha
     const { scene, textures, anims } = recordingScene();
     buildUiTextures(scene, REEF_ITEM_ICON_FRAMES);
     art.skin.registerTextures(scene);
-    expect(() => assertSkinTextures(textures, art.skin)).not.toThrow();
-    const missingLoops = looping.map((slot) => hazards[slot].anim).filter((anim) => anim !== null && !anims.has(anim));
-    expect(missingLoops).toEqual([]);
+    expect(() => assertSkinTextures(textures, art.skin, { exists: (key) => anims.has(key) })).not.toThrow();
   });
 });
 

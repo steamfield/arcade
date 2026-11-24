@@ -44,10 +44,14 @@ export function describeSkinConformance(fixtures: readonly SkinFixture[]): void 
     });
 
     it.each(fixtures.filter((fixture) => fixture.keyPrefix))(
-      'names every $skin.id texture under its prefix',
+      'names every $skin.id texture but its hazards under its prefix',
       (fixture) => {
         const drawn = drawnByWorld.find((entry) => entry.fixture === fixture)?.drawn;
-        const unprefixed = [...(drawn?.().skinKeys ?? [])].filter((key) => !key.startsWith(fixture.keyPrefix ?? ''));
+        // Hazard art keeps the key it had when themes drew it, so existing captures don't change.
+        const hazardKeys = new Set(Object.values(fixture.skin.objects.hazards).map((hazard) => hazard.texture));
+        const unprefixed = [...(drawn?.().skinKeys ?? [])].filter(
+          (key) => !key.startsWith(fixture.keyPrefix ?? '') && !hazardKeys.has(key),
+        );
         expect(unprefixed).toEqual([]);
       },
     );

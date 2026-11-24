@@ -248,7 +248,7 @@ Every view reads racer art, portraits, heads, ability wording, item icons and ar
 | `engine/worlds/<world-id>.ts` | The `WorldSkin`: wiring only. |
 | `engine/worlds/index.ts` | Its entry in `SKINS`, keyed by `ShippedWorldId`, so a world without a skin fails to compile. |
 
-`assertSkinAssets` (tests and boot) fails naming the world and key for a missing character, item, pickup, enemy or glint, and `assertSkinTextures` (boot) for a texture or frame the skin names but never drew, hazards included. Each racer's main colour must hold 3:1 against every theme's contrast bands (`art/sprites/sprites.test.ts`), and both hazard bodies against the bands of every listed course's theme (`view/hazard-view.test.ts`). Ship a placeholder skin first (Reef's art under the new world's words), so the medium can be raced before its art exists. Keep one owner constant per world (Cloudreach's `worlds/cloudreach/owner.ts`) so its key files don't import each other in a cycle.
+`assertSkinAssets` (tests and boot) fails naming the world and key for a missing character, item, pickup, enemy or glint, and `assertSkinTextures` (boot) for a texture or frame the skin names but never drew, hazards included. Each racer's main colour must hold 3:1 against every theme's contrast bands (`art/sprites/sprites.test.ts`), and both hazard bodies against the bands of every listed course's theme (`view/hazard-view.test.ts`). Ship a placeholder skin first (Reef's art under the new world's words), so the medium can be raced before its art exists. Each world's owner label is one constant in its `keys.ts` (`CLOUDREACH_ART_OWNER = worldArtOwner('cloudreach')`), which its sprite and skin files import.
 
 ### 4. The theme
 

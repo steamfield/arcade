@@ -76,13 +76,18 @@ export interface TextureLookup {
 /**
  * Throws unless every texture and frame `skin` names was built: the racers with both stride frames,
  * portraits, heads, item icons and sprites, attack art, the pearl and the clam's open and shut
- * frames, enemy bodies and marks, and each hazard's frame. Boot runs it for every skin once textures are registered, so a key
- * a skin names but never draws fails at boot rather than as a missing-texture square mid-race.
+ * frames, enemy bodies and marks, and each hazard's frame, plus each looping hazard's animation
+ * when `anims` is given. Boot runs it for every skin once textures are registered, so a key a skin
+ * names but never draws fails at boot rather than as a missing-texture square mid-race.
  *
  * @throws {Error} Naming the world and the first missing texture or frame, e.g.
  *   "World 'thornwood' skin names texture 'thornwood-acorn', which was never built".
  */
-export function assertSkinTextures(textures: TextureLookup, skin: WorldSkin): void {
+export function assertSkinTextures(
+  textures: TextureLookup,
+  skin: WorldSkin,
+  anims?: { exists(key: string): boolean },
+): void {
   const need = (texture: string, frame?: string): void => {
     if (!textures.exists(texture)) {
       throw new Error(`World '${skin.id}' skin names texture '${texture}', which was never built`);
@@ -109,5 +114,10 @@ export function assertSkinTextures(textures: TextureLookup, skin: WorldSkin): vo
   for (const kind of ENEMY_KINDS) need(objects.enemies.bodies[kind]);
   need(objects.enemies.eelBody);
   need(objects.enemies.marks);
-  for (const hazard of Object.values(objects.hazards)) need(hazard.texture, hazard.frame);
+  for (const hazard of Object.values(objects.hazards)) {
+    need(hazard.texture, hazard.frame);
+    if (anims && hazard.anim && !anims.exists(hazard.anim)) {
+      throw new Error(`World '${skin.id}' skin names animation '${hazard.anim}', which was never registered`);
+    }
+  }
 }
