@@ -60,7 +60,14 @@ export function expandEcho(source: readonly NoteEvent[], request: EchoRequest): 
     const note = source[index] as NoteEvent;
     const end = Math.min(start + note.length, starts[index + 1] ?? request.sectionEnd, request.sectionEnd);
     const { duty: _ownDuty, ...kept } = note;
-    return { ...kept, channel: request.channel, start, length: end - start, velocity: note.velocity * request.level };
+    return {
+      ...kept,
+      channel: request.channel,
+      start,
+      length: end - start,
+      velocity: note.velocity * request.level,
+      echo: true,
+    };
   });
 }
 

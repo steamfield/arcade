@@ -93,6 +93,7 @@ export function testSong(spec: TestSongSpec): Song {
     voices: { pulse1: voice(0.5), pulse2: voice(0.4), triangle: voice(0.6), noise: voice(0.3) },
     ...rest,
     beatsPerBar,
+    meter: `${beatsPerBar}/4`,
     lengthBeats: bars * beatsPerBar,
   };
 }

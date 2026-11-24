@@ -42,6 +42,8 @@ export interface NoteEvent {
    * length, one step every `ChannelVoice.arpFrames` sixtieths of a second. Two to six offsets.
    */
   arp?: readonly number[];
+  /** True for a note an `echo` directive wrote: a delayed copy of the other pulse's note. */
+  echo?: true;
   /** Triangle only: a pitch-dropped thump, a kick on a low note and a tom on a higher one. */
   drop?: boolean;
 }
@@ -95,6 +97,8 @@ export interface Song {
   bpm: number;
   /** Beats per bar (time signature numerator over a quarter-note beat). */
   beatsPerBar: number;
+  /** The time signature as written, e.g. `6/8`; `4/4` without a `time:` header. */
+  meter: string;
   /** Total length in beats. */
   lengthBeats: number;
   /** Beat the song jumps back to when it loops, or null for one-shot jingles. */

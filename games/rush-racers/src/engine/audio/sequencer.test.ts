@@ -55,6 +55,7 @@ function twoBarLoop(): Song {
     chords: [],
     bpm: 120,
     beatsPerBar: 4,
+    meter: '4/4',
     lengthBeats: 8,
     loopStart: 0,
     sections: [

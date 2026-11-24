@@ -174,7 +174,7 @@ export function trackDetail(song: Song): string {
   const seconds = Math.round((loopBeats * 60) / song.bpm);
   const length = song.loopStart === null ? `${seconds} S ONCE` : `${seconds} S LOOP`;
   const key = song.key ? `${PITCH_CLASS_NAMES[song.key.tonic]} ${song.key.mode.toUpperCase()}` : null;
-  return [key, `${song.bpm} BPM`, `${song.beatsPerBar}/4`, length].filter((part) => part !== null).join('  ');
+  return [key, `${song.bpm} BPM`, song.meter, length].filter((part) => part !== null).join('  ');
 }
 
 function clamp(value: number, low: number, high: number): number {

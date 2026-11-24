@@ -25,7 +25,7 @@ export interface LeadFacts {
   longestUnbrokenBeats: number;
   /** The largest interval between consecutive notes, in semitones. */
   maxLeap: number;
-  /** Where a pulse2 note starts above a sounding pulse1 note; bar and beat are 1-based. */
+  /** Where a pulse2 note that is not an echo starts above a sounding pulse1 note; bar and beat are 1-based. */
   crossings: BarBeat[];
 }
 
@@ -65,10 +65,14 @@ function largestLeap(notes: PitchedNote[]): number {
   }, 0);
 }
 
-/** Pulse2 onsets in `span` that start above a pulse1 note sounding at that instant. */
+/**
+ * Pulse2 onsets in `span` that start above a pulse1 note sounding at that instant. Echoes are left
+ * out: an echo of a falling line always sits above the lead for a moment, and reads as space.
+ */
 function crossingsIn(song: Song, span: BeatSpan): BarBeat[] {
   const lead = pitchedNotes(song, 'pulse1');
   return startingIn(pitchedNotes(song, 'pulse2'), span)
+    .filter((counter) => !counter.echo)
     .filter((counter) => lead.some((note) => isSoundingAt(note, counter.start) && counter.pitch > note.pitch))
     .map((counter) => positionOf(song, counter.start));
 }

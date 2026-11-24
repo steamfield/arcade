@@ -39,6 +39,7 @@ function songWith(overrides: Partial<Record<keyof Song['voices'], Partial<Channe
     chords: [],
     bpm: 120,
     beatsPerBar: 4,
+    meter: '4/4',
     lengthBeats: 4,
     loopStart: 0,
     sections: [],

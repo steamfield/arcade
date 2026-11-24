@@ -53,7 +53,7 @@ function headerLines(song: Song): string[] {
   const key = song.key ? `${PITCH_NAMES[song.key.tonic]} ${song.key.mode}` : 'none';
   return [
     song.title,
-    `Key ${key}, ${song.bpm} bpm, ${song.beatsPerBar}/4`,
+    `Key ${key}, ${song.bpm} bpm, ${song.meter}`,
     `Intro ${form.introSeconds.toFixed(1)} s, loop ${form.loopSeconds.toFixed(1)} s (${form.loopBars} bars)`,
   ];
 }

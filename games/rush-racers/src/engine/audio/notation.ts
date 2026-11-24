@@ -103,6 +103,8 @@ interface ParseState extends OpenSection {
   title: string | null;
   key: SongKey | null;
   bpm: number | null;
+  /** The time signature as written. */
+  meter: string;
   /** Whether a note or chord line has placed bars yet, after which the meter is fixed. */
   barsStarted: boolean;
   loop: { section: string; line: number } | null;
@@ -130,6 +132,7 @@ const DIRECTIVES: Readonly<Record<string, DirectiveReader>> = {
   time: (state, value, line) => {
     if (state.barsStarted) failLine(line, 'the time signature must come before the first note or chord line');
     state.beatsPerBar = parseTime(value, line);
+    state.meter = value;
   },
   loop: (state, value, line) => {
     state.loop = { section: requireText(value, line), line: line.number };
@@ -170,6 +173,7 @@ function createState(): ParseState {
     key: null,
     bpm: null,
     beatsPerBar: 4,
+    meter: '4/4',
     barsStarted: false,
     loop: null,
     sections: [],
@@ -247,6 +251,7 @@ function finishSong(state: ParseState): Song {
     chords: state.chart.spans,
     bpm: state.bpm,
     beatsPerBar: state.beatsPerBar,
+    meter: state.meter,
     lengthBeats: bars * state.beatsPerBar,
     loopStart: resolveLoop(state),
     sections: state.sections,
