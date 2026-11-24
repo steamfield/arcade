@@ -103,8 +103,7 @@ describe('import boundaries', () => {
           "import type { Car } from '../../../beta/src/logic/car';",
           "import '../../../../templates/phaser-2d/src/styles';",
           "const level = await import('../levels/one');",
-          // biome-ignore lint/suspicious/noTemplateCurlyInString: this line is source text holding a template literal
-          'const track = await import(`../../../beta/src/tracks/${level.name}.ts`);',
+          `const track = await import(\`../../../beta/src/tracks/\${level.name}.ts\`);`,
         ].join('\n'),
       },
     ];
