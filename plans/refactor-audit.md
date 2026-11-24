@@ -224,16 +224,16 @@ Test cases (written in phase 5): `ensureCourseArt` loads a world's and theme's a
 
 ### Phase 7: shared tooling and config
 
-Scaffold: ca8685e34c14
+Scaffold: 4318c749405a (manifest-file contract in ca8685e34c14; lanes start after phase 2 landed)
 
 Demo: `pnpm arcade check --all` passes; `see` and `attract` share `openGameSession`; Rush Racers' `vite.config.ts` has no cast.
 Depends on: phase 2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | packages/testing/src/, tools/arcade/src/see.ts, tools/arcade/src/attract.ts, tools/arcade/src/smoke.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/hints.spec.ts, games/rush-racers/tests/save.test.ts, games/rush-racers/playwright.config.ts | | | opus | pending | | |
-| b | M | packages/config/src/, tools/arcade/src/games.ts, apps/site/vite.config.ts, games/rush-racers/vite.config.ts | | | sonnet | pending | | |
-| c | S | packages/core/src/, games/rush-racers/src/logic/hash.ts | | | sonnet | pending | | |
+| a | M | packages/testing/src/, tools/arcade/src/see.ts, tools/arcade/src/attract.ts, tools/arcade/src/smoke.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/hints.spec.ts, games/rush-racers/tests/save.test.ts, games/rush-racers/playwright.config.ts | | | opus | running | deliver/refactor-audit-7a | |
+| b | M | packages/config/src/, tools/arcade/src/games.ts, apps/site/vite.config.ts, games/rush-racers/vite.config.ts | | | sonnet | running | deliver/refactor-audit-7b | |
+| c | S | packages/core/src/, games/rush-racers/src/logic/hash.ts | | | sonnet | running | deliver/refactor-audit-7c | |
 
 Scaffold contract: `@arcade/config/manifest-file` exports `readManifest(gameDir)` and `readManifestsIn(parentDir)` (Node only, so browser code importing the schema never pulls in `node:fs`). Lanes 7a and 7b switch their copies of "read game.json" to it.
 
