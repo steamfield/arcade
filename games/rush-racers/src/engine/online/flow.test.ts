@@ -16,7 +16,7 @@ import { createOnlineWorld } from '../../net/race-world.ts';
 import { createMemoryRoom, type MemoryRoom, type MemoryRoomOptions } from '../../net/transport/memory.ts';
 import type { CloseReason, ConnectionEvent, RoomConnection } from '../../net/transport/types.ts';
 import type { CreateRoomResult } from '../../net/transport/websocket.ts';
-import { createOnlineFlow, type FlowNext, type OnlineFlow, type ResultsChoice } from './flow.ts';
+import { createOnlineFlow, type FlowNext, type LinkShared, type OnlineFlow, type ResultsChoice } from './flow.ts';
 import type { ScreenPress } from './friends-screen.ts';
 import { closedNotice, NOTICE_MAX_CHARS, NOTICES } from './notices.ts';
 import { WAITING_AFTER_MS, waitingLine } from './race-hud.ts';
@@ -60,7 +60,7 @@ function scriptedInput(slot: RacerId, tick: number): TickInput {
 interface PlayerOptions {
   createRoom?: () => Promise<CreateRoomResult>;
   quotaBlockedUntil?: () => number | null;
-  copyLink?: () => Promise<boolean>;
+  shareLink?: () => Promise<LinkShared>;
   /** Replaces the table's room for this player's connections. */
   connect?: () => RoomConnection;
   /** Stall before this player's client asks the room to kick a silent racer; never by default. */
@@ -104,7 +104,7 @@ function createTable(roomOptions: MemoryRoomOptions = {}) {
       connect: options.connect ?? (() => room.connect()),
       createRoom: options.createRoom ?? (() => Promise.resolve({ ok: true, code: CODE })),
       quotaBlockedUntil: options.quotaBlockedUntil,
-      copyLink: options.copyLink ?? (() => Promise.resolve(true)),
+      shareLink: options.shareLink ?? (() => Promise.resolve('copied')),
       seed: () => 5,
       kickAfterMs: options.kickAfterMs ?? null,
       createRace(start, local) {
@@ -376,25 +376,36 @@ describe('the room', () => {
     }
   });
 
-  it('copies the link with a notice, and says so when the browser refuses', async () => {
-    const { table, host } = await seatedRoom();
-    const refused = table.seat({ copyLink: () => Promise.reject(new Error('NotAllowedError')) });
-    pressAll(table, refused, spell(CODE));
-    table.until(() => peerCount(refused) === 3);
+  it('shares the link with a notice for how it went, none for a closed share sheet, and says so when the browser refuses', async () => {
+    const table = createTable();
+    const host = table.seat();
+    table.tick(host, 'fire');
+    await vi.waitFor(() => expect(host.flow.busy).toBe(false));
+    table.until(() => host.flow.client?.view.status === 'lobby');
+    const sharer = table.seat({ shareLink: () => Promise.resolve('shared') });
+    const dismisser = table.seat({ shareLink: () => Promise.resolve('dismissed') });
+    const refused = table.seat({ shareLink: () => Promise.reject(new Error('NotAllowedError')) });
+    const everyone = [host, sharer, dismisser, refused];
+    for (const player of everyone.slice(1)) pressAll(table, player, spell(CODE));
+    table.until(() => everyone.every((player) => peerCount(player) === everyone.length));
 
-    pressAll(table, host, ['up', 'up', 'fire']);
-    pressAll(table, refused, ['up', 'up', 'fire']);
-    await vi.waitFor(() => expect(host.flow.busy || refused.flow.busy).toBe(false));
+    // Copy link is the second row from the bottom for host and guests alike.
+    for (const player of everyone) pressAll(table, player, ['up', 'up', 'fire']);
+    await vi.waitFor(() => expect(everyone.some((player) => player.flow.busy)).toBe(false));
     table.round();
 
-    expect(host.flow.state.notice).toBe('Link copied');
-    expect(refused.flow.state.notice).toBe('Could not copy the link');
+    expect(everyone.map((player) => player.flow.state.notice)).toEqual([
+      'Link copied',
+      'Link shared',
+      null,
+      'Could not copy the link',
+    ]);
   });
 
   it('drops the answer to a copy asked for in a room the player has since left', async () => {
-    const copied = answerByHand<boolean>();
+    const copied = answerByHand<LinkShared>();
     const table = createTable();
-    const host = table.seat({ copyLink: copied.port });
+    const host = table.seat({ shareLink: copied.port });
     table.tick(host, 'fire');
     await vi.waitFor(() => expect(host.flow.busy).toBe(false));
     table.until(() => host.flow.client?.view.status === 'lobby');
@@ -405,7 +416,7 @@ describe('the room', () => {
     host.flow.join(CODE);
     host.screen = 'room';
     expect(host.flow.busy).toBe(false);
-    copied.give(true);
+    copied.give('copied');
     await flushAnswers();
     table.until(() => host.flow.client?.view.status === 'lobby');
 

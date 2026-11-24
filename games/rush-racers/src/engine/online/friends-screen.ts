@@ -1,9 +1,10 @@
 /**
  * The friends screen as plain state, with no Phaser in it: a short menu (Create room, Join, Back)
- * and, under Join, four cells that spell a room code with the d-pad. The online flow feeds it
- * presses; `scenes/friends.ts` draws it.
+ * and, under Join, four cells that spell a room code with the d-pad or the keyboard. The online
+ * flow feeds it presses and typing; `scenes/friends.ts` draws it.
  */
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@arcade/api/protocol';
+import { roomLinkParam } from './room-link.ts';
 
 /** The menu's options, top to bottom. */
 export const FRIENDS_OPTIONS = ['Create room', 'Join', 'Back'] as const;
@@ -22,6 +23,9 @@ export interface FriendsScreen {
   /** The cell the cursor is on. */
   cell: number;
 }
+
+/** One edit typed on the keyboard: a key or a paste, or a Backspace. `@arcade/input`'s `TextEdit`. */
+export type CodeEdit = { text: string } | { backspace: true };
 
 /** What a press asks the online flow to do. */
 export type FriendsAction = { kind: 'create' } | { kind: 'join'; code: string } | { kind: 'back' };
@@ -99,4 +103,36 @@ function pressCells(screen: FriendsScreen, press: ScreenPress): FriendsAction | 
 function stepCharacter(screen: FriendsScreen, step: number): void {
   const current = ROOM_CODE_ALPHABET.indexOf(screen.cells[screen.cell] ?? '');
   screen.cells[screen.cell] = ROOM_CODE_ALPHABET[wrapIndex(current, step, ROOM_CODE_ALPHABET.length)] as string;
+}
+
+/**
+ * Applies `edit` to the cells; does nothing on the menu. Each typed letter of the alphabet, either
+ * case, fills the cursor's cell and moves to the next, staying on the last cell so the player
+ * can check the code before joining; other characters are skipped. A pasted room link fills every
+ * cell with its code. Backspace steps back a cell and stops at the first.
+ */
+export function typeFriends(screen: FriendsScreen, edit: CodeEdit): void {
+  if (screen.mode !== 'code') return;
+  if ('backspace' in edit) {
+    screen.cell = Math.max(0, screen.cell - 1);
+    return;
+  }
+  const linked = linkedCode(edit.text);
+  if (linked) {
+    screen.cells = [...linked];
+    screen.cell = ROOM_CODE_LENGTH - 1;
+    return;
+  }
+  for (const char of edit.text.toUpperCase()) {
+    if (!ROOM_CODE_ALPHABET.includes(char)) continue;
+    screen.cells[screen.cell] = char;
+    screen.cell = Math.min(screen.cell + 1, ROOM_CODE_LENGTH - 1);
+  }
+}
+
+/** The room code in `text` when it is a room link, else null. */
+function linkedCode(text: string): string | null {
+  if (!URL.canParse(text.trim())) return null;
+  const param = roomLinkParam(new URL(text.trim()).search);
+  return param.kind === 'room' ? param.code : null;
 }

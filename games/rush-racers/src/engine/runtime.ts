@@ -648,7 +648,7 @@ export class Runtime {
     if (this.loading) return;
     this.events.tick = this.step.tick;
     input.update();
-    if (this.scene === 'friends') this.follow(this.flow.friends(this.readScreenPress()));
+    if (this.scene === 'friends') this.follow(this.flow.friends(this.readScreenPress(), input.takeText()));
     else if (this.scene === 'room') this.follow(this.flow.room(this.readScreenPress(), dt * 1000));
     else if (this.scene === 'results' && this.onlineRace && this.menu) this.tickOnlineResults(this.menu, dt);
     else if (this.menu) this.tickMenu(this.menu);
@@ -660,6 +660,8 @@ export class Runtime {
     else if (this.scene === 'boot') this.tickBoot();
     if (this.holdEvents) this.holdEvents = false;
     else this.dispatchEvents();
+    // The code cells take typing, so letter keys that are also bindings (WASD, Z, X) type there instead.
+    input.setTextEntry(this.scene === 'friends' && this.flow.state.friends.mode === 'code');
   }
 
   /**

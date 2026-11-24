@@ -285,11 +285,11 @@ Create a room or join one by its code, over the title's backdrop. Drawn by `view
 | Heading | centred on (160, 12) | "FRIENDS", display, sun, outlined |
 | Notice | centred on (160, 40) | `online.notice` ("CREATING ROOM...", "ROOMS ARE UNAVAILABLE RIGHT NOW"), text, foam, outlined, in menu mode only; 40 characters span x 41-279, above the d-pad zone and under the back link |
 | Menu buttons | 120, 62, 80, 15; pitch 17 | CREATE ROOM, JOIN, BACK; fin at x 109-117 as on the title. Hidden while the cells show |
-| Hint | centred on (160, 28) | UP AND DOWN CHANGE A LETTER, text, foam, outlined; wider than the safe column, so it stays above y 76 |
+| Hint | centred on (160, 28) | UP AND DOWN CHANGE A LETTER on touch, TYPE IT OR USE UP AND DOWN on a keyboard, text, foam, outlined; wider than the safe column, so it stays above y 76 |
 | Code cells | from 121, 44; 18x20, 2 px apart | four `raised` cells (x 121-199), each one display character centred; the cursor's cell `accent` with its character in sun. The menu cursor fin turned to point up 1 px above the cursor's cell (y 34-42) and turned down 1 px below it (y 65-73), not the HUD's place-change arrows; the block ends at y 73, above the d-pad zone. A cell with no character draws empty |
 | Footer | 114, 159, 92, 15 | as on course select: PICK / BACK on the menu, NEXT / BACK in the cells, JOIN / BACK on the last cell |
 
-Menu: up and down wrap, A picks, B goes back. Cells: up and down step the cursor's character through the room-code alphabet, right or A moves on (A on the last cell joins), left or B steps back, and B from the first cell returns to the menu keeping the code.
+Menu: up and down wrap, A picks, B goes back. Cells: typing a letter fills the cursor's cell and moves on, Backspace steps back; up and down step the cursor's character through the room-code alphabet, right or A moves on (A on the last cell joins), left or B steps back, and B from the first cell returns to the menu keeping the code.
 
 ```
                     FRIENDS                  (back link)
@@ -309,7 +309,7 @@ The room before and between races, over the title's backdrop. Drawn by `view/roo
 | Code | from 6, 6 | the room code, display at 2x, sun, outlined (at most 106 wide) |
 | Race card | 146, 6, 98, 24 | `raised`: the course's name in foam at (150, 10), the level in sun at (150, 19). Everyone sees it; only the host can change it. Ends at x 244, clear of the back link |
 | Players | 6, 32, 238, 42 | `raised`, one text row per peer in join order at y 36 + 9n: label (x 10), character's short name (x 26; `-` before their first lobby message), ping right-aligned at x 160 (`45MS`, or `-`), HOST in sun (x 168), YOU (x 196), AWAY in coral (x 216) while not ready. This peer's label and name are in sun. Ends at y 74, above the d-pad zone, and at x 244, left of the status strip |
-| Rows | 120, 76, 106, 15; pitch 15 | one button per row this peer has, frames touching: Character (the pick's short name), and for the host Course (its name), Level (NORMAL or HARD) and Start (START, or RACE IN PROGRESS while the room is racing), then COPY LINK and LEAVE. Fin at x 109-117; the right edge (x 226) stays out of the A/B zone. Six rows end at y 166 |
+| Rows | 120, 76, 106, 15; pitch 15 | one button per row this peer has, frames touching: Character (the pick's short name), and for the host Course (its name), Level (NORMAL or HARD) and Start (START, or RACE IN PROGRESS while the room is racing), then COPY LINK (SHARE LINK on touch) and LEAVE. Fin at x 109-117; the right edge (x 226) stays out of the A/B zone. Six rows end at y 166 |
 | Hints | 232, 82, 64, 36 | `inset`, under the status strip and above the A/B zone: fire PICK, dash LEAVE, `<>` CHANGE (left and right step a value), lines 10 px apart from y 86; on touch the letters A and B in sun |
 | Status | from 248, 28; x 248-313 | `online.notice` ("LINK COPIED"), text, foam, outlined, word-wrapped at 11 characters a line (`wrapLines` in `view/wrap-lines.ts`; a longer word is split), 9 px lines. A 40-character notice takes at most six lines, ending at y 80, above the hints panel and under the back link. With no notice, a peer without a Start row shows RACE IN PROGRESS here while the room is racing |
 

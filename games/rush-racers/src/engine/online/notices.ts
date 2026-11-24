@@ -12,6 +12,7 @@ export const NOTICES = {
   joining: 'Joining room...',
   unavailable: 'Rooms are unavailable right now',
   copied: 'Link copied',
+  shared: 'Link shared',
   notCopied: 'Could not copy the link',
   outOfSync: 'The race went out of sync',
   /** The tab was hidden during a race, which leaves it. */

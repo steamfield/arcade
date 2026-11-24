@@ -14,7 +14,7 @@ export const input = createInput<Action, 'move'>({
     up: ['ArrowUp', 'KeyW'],
     down: ['ArrowDown', 'KeyS'],
     fire: ['Space', 'KeyZ', 'Enter'],
-    dash: ['KeyX', 'ShiftLeft', 'ShiftRight'],
+    dash: ['KeyX', 'ShiftLeft', 'ShiftRight', 'Escape'],
     prev: ['KeyQ'],
     next: ['KeyE', 'Tab'],
   },

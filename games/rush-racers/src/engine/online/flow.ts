@@ -12,12 +12,25 @@ import type { LobbyOptions } from '../../net/lobby.ts';
 import type { StartMessage } from '../../net/messages.ts';
 import type { RoomConnection } from '../../net/transport/types.ts';
 import type { CreateRoomResult } from '../../net/transport/websocket.ts';
-import { createFriendsScreen, type FriendsAction, pressFriends, type ScreenPress } from './friends-screen.ts';
+import {
+  type CodeEdit,
+  createFriendsScreen,
+  type FriendsAction,
+  pressFriends,
+  type ScreenPress,
+  typeFriends,
+} from './friends-screen.ts';
 import { closedNotice, NOTICES, quotaNotice } from './notices.ts';
 import { createPending } from './pending.ts';
 import { roomLinkParam } from './room-link.ts';
 import { createRoomScreen, pressRoom, type RoomAction } from './room-screen.ts';
 import type { OnlineState } from './state.ts';
+
+/**
+ * How sharing a room's link went: put on the clipboard, handed to the system share sheet, the
+ * share sheet closed without sharing, or the browser refused.
+ */
+export type LinkShared = 'copied' | 'shared' | 'dismissed' | 'failed';
 
 /** What the flow needs from the page: the network, the clipboard and a seed. `page-ports.ts` supplies the real ones. */
 export interface OnlinePorts {
@@ -27,8 +40,8 @@ export interface OnlinePorts {
   createRoom(): Promise<CreateRoomResult>;
   /** The next reset while the transport is blocking room requests. */
   quotaBlockedUntil?(): number | null;
-  /** Puts room `code`'s link on the clipboard; resolves false when the browser refuses. */
-  copyLink(code: string): Promise<boolean>;
+  /** Shares room `code`'s link: the share sheet on a touch screen that has one, else the clipboard. */
+  shareLink(code: string): Promise<LinkShared>;
   /** A seed for a race this peer starts as host. */
   seed(): number;
   /** Milliseconds of stall before asking the room to kick the silent racer; null never asks (test mode). */
@@ -91,8 +104,8 @@ export interface OnlineFlow {
   hide(): FlowNext;
   /** The tab shows again: back in the room or after a race, this peer is ready again. */
   show(): void;
-  /** One tick on the friends screen with this tick's press. */
-  friends(press: ScreenPress | null): FlowNext;
+  /** One tick on the friends screen with this tick's press and what was typed since the last tick, typing first. */
+  friends(press: ScreenPress | null, typed?: readonly CodeEdit[]): FlowNext;
   /** One tick on the room screen with this tick's press; `elapsedMs` is the wall time the tick stands for. */
   room(press: ScreenPress | null, elapsedMs: number): FlowNext;
   /**
@@ -128,7 +141,7 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
   let raced: World | null = null;
   const creation = createPending<CreateRoomResult>();
   /** A copy belongs to the room it was asked in: leaving that room cancels it, so its answer never shows in another. */
-  const copy = createPending<boolean>();
+  const copy = createPending<LinkShared>();
 
   const quotaBlockedUntil = () => deps.quotaBlockedUntil?.() ?? null;
 
@@ -275,8 +288,8 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
         const code = state.code;
         if (code !== null)
           copy.start(
-            () => deps.copyLink(code),
-            () => false,
+            () => deps.shareLink(code),
+            () => 'failed',
           );
         break;
       }
@@ -331,18 +344,19 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
     show() {
       if (client && waitsBetweenRaces(client)) client.setReady(true);
     },
-    friends(press) {
+    friends(press, typed = []) {
       const created = creation.take();
       if (created) return applyCreated(created.value);
       // While a room is being created the menu holds still; only B (Back) acts, and abandons it.
       if (creation.waiting) return press === 'dash' ? actOnFriends({ kind: 'back' }) : STAY;
+      for (const edit of typed) typeFriends(state.friends, edit);
       if (press === null) return STAY;
       const action = pressFriends(state.friends, press);
       return action ? actOnFriends(action) : STAY;
     },
     room(press, elapsedMs) {
       const copied = copy.take();
-      if (copied) state.notice = copied.value ? NOTICES.copied : NOTICES.notCopied;
+      if (copied) state.notice = LINK_NOTICES[copied.value];
       const current = requireClient('room');
       const next = drain(current, elapsedMs);
       if (next) return next;
@@ -374,3 +388,11 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
     },
   };
 }
+
+/** The notice for each way sharing a link can go; closing the share sheet says nothing. */
+const LINK_NOTICES: Readonly<Record<LinkShared, string | null>> = {
+  copied: NOTICES.copied,
+  shared: NOTICES.shared,
+  dismissed: null,
+  failed: NOTICES.notCopied,
+};

@@ -58,6 +58,8 @@ export interface Summary {
   net?: NetSummary;
   /** On the title, why online play ended. */
   onlineNotice?: string;
+  /** On Friends: the mode, the code cells as one string, and the cursor's cell. */
+  friends?: { mode: string; cells: string; cell: number };
 }
 
 export const summaryOf = async (game: GameDriver) => (await game.summary()) as unknown as Summary;
