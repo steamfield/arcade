@@ -2,8 +2,8 @@
  * How a song's notes fit its chord chart and key.
  */
 import type { Channel, ChordSpan, Song } from '../notation.ts';
-import { type PitchedNote, pitchClassOf, pitchedNotes, soundingPitches } from './sounding.ts';
-import { barCount, inSpan, isStrongBeat, positionOf } from './timeline.ts';
+import { isSoundingAt, type PitchedNote, pitchClassOf, pitchedNotes, soundingPitches } from './sounding.ts';
+import { type BeatSpan, barCount, inSpan, isStrongBeat, positionOf } from './timeline.ts';
 
 const PITCHED_CHANNELS: readonly Channel[] = ['pulse1', 'pulse2', 'triangle'];
 
@@ -34,12 +34,25 @@ export interface ChordFit {
 
 /** Whether the bass states each charted bar's chord. */
 export interface BassRoots {
-  /** Bars whose downbeat the chord chart covers. */
+  /**
+   * Bars where the bass is heard and the chart covers the judged instant: the start of the bar's
+   * first pitched, non-drop triangle note, or the downbeat when the only bass in the bar is a note
+   * held over the bar line. Bars where the bass rests throughout are left out, not missed.
+   */
   bars: number;
-  /** Of those, how many have the chord's root as the bass's first pitched note in the bar. */
+  /** Of those, how many have the root of the chord under the judged instant. */
   rootOnDownbeat: number;
-  /** The first bass note of each charted bar that isn't the root; silent bars have none. */
+  /**
+   * The judged bass note of each counted bar that isn't the root, against the chord under it. A
+   * held note is reported at the downbeat it was judged on.
+   */
   offenders: Offender[];
+}
+
+/** Where a bar's bass is judged: the note and the beat it is judged at. */
+interface BassJudgement {
+  note: PitchedNote;
+  beat: number;
 }
 
 /** The chord span covering `beat`, or null where the chart is silent. */
@@ -79,19 +92,28 @@ export function chordFit(song: Song, channel: Channel, options: { strongBeatsOnl
   return fit;
 }
 
-/** Whether the bass states each charted bar's chord: the triangle's first pitched, non-drop note of the bar is the root. */
+/**
+ * The bass note a bar is judged by: the first one starting in it, else one held over its
+ * downbeat, else none when the bass rests all bar.
+ */
+function judgedBass(bass: PitchedNote[], barSpan: BeatSpan): BassJudgement | null {
+  const first = bass.find((note) => inSpan(note.start, barSpan));
+  if (first) return { note: first, beat: first.start };
+  const held = bass.find((note) => isSoundingAt(note, barSpan.from));
+  return held ? { note: held, beat: barSpan.from } : null;
+}
+
+/** Whether the bass states each charted bar's chord: the bar's judged bass note is the root of the chord under it. */
 export function bassRoots(song: Song): BassRoots {
   const bass = pitchedNotes(song, 'triangle');
   const roots: BassRoots = { bars: 0, rootOnDownbeat: 0, offenders: [] };
   for (let bar = 0; bar < barCount(song); bar++) {
-    const barSpan = { from: bar * song.beatsPerBar, to: (bar + 1) * song.beatsPerBar };
-    const chord = chordAt(song, barSpan.from);
-    if (!chord) continue;
+    const judged = judgedBass(bass, { from: bar * song.beatsPerBar, to: (bar + 1) * song.beatsPerBar });
+    const chord = judged && chordAt(song, judged.beat);
+    if (!judged || !chord) continue;
     roots.bars += 1;
-    const first = bass.find((note) => inSpan(note.start, barSpan));
-    if (!first) continue;
-    if (pitchClassOf(first.pitch) === chord.root) roots.rootOnDownbeat += 1;
-    else roots.offenders.push(offenderAt(song, first, first.pitch, chord));
+    if (pitchClassOf(judged.note.pitch) === chord.root) roots.rootOnDownbeat += 1;
+    else roots.offenders.push({ ...positionOf(song, judged.beat), pitch: judged.note.pitch, chord: chord.symbol });
   }
   return roots;
 }

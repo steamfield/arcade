@@ -90,10 +90,37 @@ describe('bassRoots', () => {
       ],
     });
 
+    // Bar 3 is charted but the bass rests through it, so it is left out rather than missed.
     expect(bassRoots(song)).toEqual({
-      bars: 3,
+      bars: 2,
       rootOnDownbeat: 1,
       offenders: [{ bar: 2, beat: 1, pitch: midi('D3'), chord: 'G' }],
     });
+  });
+
+  it('judges a bass note held over the bar line at the next downbeat', () => {
+    const held = testSong({ bars: 2, chords: [chord('C', 0, 8)], notes: line('triangle', 0, 'C2:8') });
+    const heldIntoG = testSong({
+      bars: 2,
+      chords: [chord('C', 0, 4), chord('G', 4, 4)],
+      notes: line('triangle', 0, 'C2:8'),
+    });
+
+    expect(bassRoots(held)).toEqual({ bars: 2, rootOnDownbeat: 2, offenders: [] });
+    expect(bassRoots(heldIntoG)).toEqual({
+      bars: 2,
+      rootOnDownbeat: 1,
+      offenders: [{ bar: 2, beat: 1, pitch: midi('C2'), chord: 'G' }],
+    });
+  });
+
+  it('judges a bass entry against the chord under it, not the downbeat chord', () => {
+    const song = testSong({
+      bars: 1,
+      chords: [chord('Am', 0, 2), chord('F', 2, 2)],
+      notes: line('triangle', 2, 'F2:2'),
+    });
+
+    expect(bassRoots(song)).toEqual({ bars: 1, rootOnDownbeat: 1, offenders: [] });
   });
 });
