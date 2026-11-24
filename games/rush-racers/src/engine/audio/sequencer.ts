@@ -3,10 +3,12 @@
  * timer schedules every note due in the next 100 ms on the AudioContext clock,
  * so timing is sample-accurate however late the timer fires. Loops jump back
  * to the song's loop point without a gap, the tempo can lift mid-song, and a
- * new song crossfades over the old one. Audio clock only: gameplay never reads it.
+ * new song crossfades over the old one, from its top or from any beat. Audio clock only:
+ * gameplay never reads it.
  */
 import type { NoteEvent, Song } from './notation.ts';
-import { midiToHz, type Synth } from './synth.ts';
+import { playNote } from './play-note.ts';
+import type { Synth } from './synth.ts';
 
 /** What changed since the last poll, reported on the game's tick rather than the timer's. */
 interface SequencerNews {
@@ -58,6 +60,8 @@ interface Playback {
   cues: Cue[];
   bus: GainNode;
   next: number;
+  /** Beat of the first pass the song started at; sections at or before it are not announced. */
+  fromBeat: number;
   /** Timeline beat at which the current pass of the song began (grows by a loop's length each loop). */
   passStart: number;
   /** Beat-to-time anchor: `anchorBeat` (timeline beats) sounds at `anchorTime`. */
@@ -102,9 +106,9 @@ export function createSequencer(synth: Synth, onError: (error: unknown) => void)
     get playing() {
       return current?.song.name ?? null;
     },
-    play(song) {
+    play(song, fromBeat = 0) {
       if (current) fadeOut(current);
-      current = startPlayback(synth, song);
+      current = startPlayback(synth, song, fromBeat);
       pump();
     },
     stop() {
@@ -137,19 +141,26 @@ export function createSequencer(synth: Synth, onError: (error: unknown) => void)
   };
 }
 
-/** A fresh playback of `song` starting shortly after now, fading in over the crossfade. */
-function startPlayback(synth: Synth, song: Song): Playback {
+/**
+ * A fresh playback of `song` whose beat `fromBeat` (clamped to the song) sounds shortly after
+ * now, fading in over the crossfade.
+ */
+function startPlayback(synth: Synth, song: Song, fromBeat: number): Playback {
   const now = synth.context.currentTime;
+  const start = Math.min(Math.max(fromBeat, 0), song.lengthBeats);
+  const cues = cuesOf(song);
+  const first = cues.findIndex((cue) => cue.beat >= start);
   const bus = synth.createBus(0);
   bus.gain.setValueAtTime(0, now);
   bus.gain.linearRampToValueAtTime(1, now + CROSSFADE);
   return {
     song,
-    cues: cuesOf(song),
+    cues,
     bus,
-    next: 0,
+    next: first < 0 ? cues.length : first,
+    fromBeat: start,
     passStart: 0,
-    anchorBeat: 0,
+    anchorBeat: start,
     anchorTime: now + START_DELAY,
     secondsPerBeat: 60 / song.bpm,
     marks: [],
@@ -169,7 +180,10 @@ function schedule(synth: Synth, playback: Playback, now: number): void {
   const { song, cues } = playback;
   const horizon = now + SCHEDULE_AHEAD;
   for (;;) {
-    if (playback.next >= cues.length && !wrap(playback)) return;
+    if (playback.next >= cues.length && !wrap(playback)) {
+      if (song.loopStart === null && playback.endTime === null) playback.endTime = endTimeOf(playback);
+      return;
+    }
     const cue = cues[playback.next];
     if (!cue) return;
     let time = timeOf(playback, playback.passStart + cue.beat);
@@ -180,16 +194,14 @@ function schedule(synth: Synth, playback: Playback, now: number): void {
       time = now;
     }
     if (time > horizon) return;
-    // The song's start is announced as a song start, so a section on its first beat isn't news.
-    if (cue.section && !(playback.passStart === 0 && cue.beat === 0)) playback.marks.push({ name: cue.section, time });
-    if (cue.note) playNote(synth, playback, cue.note, time);
+    // The song's start is announced as a song start, so a section where it started isn't news.
+    const atStart = playback.passStart === 0 && cue.beat <= playback.fromBeat;
+    if (cue.section && !atStart) playback.marks.push({ name: cue.section, time });
+    if (cue.note) playNote(synth, playback.bus, song, cue.note, time, playback.secondsPerBeat);
     // Re-anchoring on each scheduled cue lets a tempo change apply from the next cue without moving this one.
     playback.anchorBeat = playback.passStart + cue.beat;
     playback.anchorTime = time;
     playback.next++;
-    if (playback.next >= cues.length && song.loopStart === null) {
-      playback.endTime = endTimeOf(playback);
-    }
   }
 }
 
@@ -215,28 +227,6 @@ function timeOf(playback: Playback, beat: number): number {
 function retime(playback: Playback, secondsPerBeat: number): void {
   playback.secondsPerBeat = secondsPerBeat;
   if (playback.endTime !== null) playback.endTime = endTimeOf(playback);
-}
-
-/** Plays one note event at `time` on its channel's voice. */
-function playNote(synth: Synth, playback: Playback, note: NoteEvent, time: number): void {
-  const voice = playback.song.voices[note.channel];
-  const level = voice.level * note.velocity;
-  if (typeof note.pitch !== 'number') {
-    synth.drum(playback.bus, note.pitch, time, level);
-    return;
-  }
-  const frequency = midiToHz(note.pitch);
-  synth.tone(playback.bus, {
-    wave: note.channel === 'triangle' ? 'triangle' : 'pulse',
-    duty: voice.duty ?? 0.5,
-    frequency,
-    at: time,
-    length: note.length * playback.secondsPerBeat,
-    envelope: voice.envelope,
-    level,
-    ...(note.slideTo !== undefined && { slideTo: midiToHz(note.pitch + note.slideTo) }),
-    ...(note.vibrato && { vibrato: true }),
-  });
 }
 
 /** When a one-shot stops sounding: its last bar's end plus the longest release, so the last note rings out. */
