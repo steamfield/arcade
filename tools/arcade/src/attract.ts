@@ -74,63 +74,69 @@ export async function attract(slug: string): Promise<number> {
       logLevel: 'error',
       server: { port: 0, host: '127.0.0.1' },
     });
-    const browser = await chromium.launch({ args: ['--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
     try {
-      await server.listen();
-      const address = server.httpServer?.address();
-      if (!address || typeof address === 'string') throw new Error('Vite did not report a port');
-      const context = await browser.newContext({
-        viewport: { width: 960, height: 540 },
-        baseURL: `http://127.0.0.1:${address.port}`,
-      });
-      const page = await context.newPage();
-      const driver = new GameDriver(page, `/games/${slug}/`);
-      const seed = scenario.start?.seed;
-      await driver.open({
-        query: { ...scenario.start?.query },
-        ...(seed !== undefined && { seed: Number(seed) }),
-        ...(scenario.start?.scene !== undefined && { scene: scenario.start.scene }),
-        debug: false,
-        touch: false,
-      });
-      if (scenario.start?.save !== undefined) await driver.loadState(scenario.start.save);
-      // The shell's back link sits over the canvas; it isn't part of the game.
-      await page.addStyleTag({ content: '.arcade-back{display:none!important}' });
+      const browser = await chromium.launch({ args: ['--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+      try {
+        await server.listen();
+        const address = server.httpServer?.address();
+        if (!address || typeof address === 'string') throw new Error('Vite did not report a port');
+        const context = await browser.newContext({
+          viewport: { width: 960, height: 540 },
+          baseURL: `http://127.0.0.1:${address.port}`,
+        });
+        const page = await context.newPage();
+        const driver = new GameDriver(page, `/games/${slug}/`);
+        const seed = scenario.start?.seed;
+        await driver.open({
+          query: { ...scenario.start?.query },
+          ...(seed !== undefined && { seed: Number(seed) }),
+          ...(scenario.start?.scene !== undefined && { scene: scenario.start.scene }),
+          debug: false,
+          touch: false,
+        });
+        if (scenario.start?.save !== undefined) await driver.loadState(scenario.start.save);
+        // The shell's back link sits over the canvas; it isn't part of the game.
+        await page.addStyleTag({ content: '.arcade-back{display:none!important}' });
 
-      const loopSet = new Set(loop);
-      let tick = 0;
-      let n = 0;
-      const capture = async () => {
-        if (loopSet.has(tick)) await driver.screenshot(join(work, `loop-${String(n++).padStart(5, '0')}.png`));
-        if (tick === cover) await driver.screenshot(join(work, 'cover.png'));
-      };
-      for (const step of steps) {
-        await page.evaluate((a) => {
-          for (const x of a) window.__arcade?.inject(x, true);
-        }, step.actions);
-        let left = step.ticks;
-        while (left > 0) {
-          while (wanted[0] === tick) {
-            wanted.shift();
-            await capture();
+        const loopSet = new Set(loop);
+        let tick = 0;
+        let n = 0;
+        const capture = async () => {
+          if (loopSet.has(tick)) await driver.screenshot(join(work, `loop-${String(n++).padStart(5, '0')}.png`));
+          if (tick === cover) await driver.screenshot(join(work, 'cover.png'));
+        };
+        for (const step of steps) {
+          await page.evaluate((a) => {
+            for (const x of a) window.__arcade?.inject(x, true);
+          }, step.actions);
+          let left = step.ticks;
+          while (left > 0) {
+            while (wanted[0] === tick) {
+              wanted.shift();
+              await capture();
+            }
+            const next = wanted[0] !== undefined && wanted[0] < tick + left ? wanted[0] - tick : left;
+            await driver.advance(next);
+            tick += next;
+            left -= next;
           }
-          const next = wanted[0] !== undefined && wanted[0] < tick + left ? wanted[0] - tick : left;
-          await driver.advance(next);
-          tick += next;
-          left -= next;
+          await page.evaluate((a) => {
+            for (const x of a) window.__arcade?.inject(x, false);
+          }, step.actions);
         }
-        await page.evaluate((a) => {
-          for (const x of a) window.__arcade?.inject(x, false);
-        }, step.actions);
+        while (wanted[0] === tick) {
+          wanted.shift();
+          await capture();
+        }
+        const problems = await driver.problems();
+        if (problems.length > 0)
+          throw new Error(
+            `the game reported problems while recording:\n${problems.map((p) => `  ${p.kind}: ${p.message}`).join('\n')}`,
+          );
+      } finally {
+        await browser.close();
       }
-      while (wanted[0] === tick) {
-        wanted.shift();
-        await capture();
-      }
-      const problems = await driver.problems();
-      if (problems.length > 0) throw new Error(`the game reported problems while recording:\n${problems.join('\n')}`);
     } finally {
-      await browser.close();
       await server.close();
     }
 
