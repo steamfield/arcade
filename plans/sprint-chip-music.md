@@ -181,15 +181,16 @@ Test cases: `songs/race-tracks.test.ts` (in this phase's scaffold) holds every t
 ### Phase 3: critique, revise and mix
 
 Scaffold: cae2135fc8b2873e9bca45b03946505ad2ad320c
+Tag: chip-music-phase-3
 Demo: `games/rush-racers/.arcade/songs/*.wav` rendered from the final tracks; every track passes conformance and the level check.
 Depends on: phase 2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/engine/audio/songs/race.ts, games/rush-racers/src/engine/audio/songs/reef-2.ts, games/rush-racers/src/engine/audio/songs/reef-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | running | sprint/chip-music-3a | critique findings applied, conformance passes |
-| b | M | games/rush-racers/src/engine/audio/songs/thornwood.ts, games/rush-racers/src/engine/audio/songs/thornwood-2.ts, games/rush-racers/src/engine/audio/songs/thornwood-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | running | sprint/chip-music-3b | critique findings applied, conformance passes |
-| c | M | games/rush-racers/src/engine/audio/songs/cloudreach.ts, games/rush-racers/src/engine/audio/songs/cloudreach-2.ts, games/rush-racers/src/engine/audio/songs/cloudreach-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | running | sprint/chip-music-3c | critique findings applied, conformance passes |
-| d | M | games/rush-racers/src/engine/audio/songs/farside.ts, games/rush-racers/src/engine/audio/songs/farside-2.ts, games/rush-racers/src/engine/audio/songs/farside-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | running | sprint/chip-music-3d | critique findings applied, conformance passes |
+| a | M | games/rush-racers/src/engine/audio/songs/race.ts, games/rush-racers/src/engine/audio/songs/reef-2.ts, games/rush-racers/src/engine/audio/songs/reef-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | merged | sprint/chip-music-3a | critique findings applied, conformance passes |
+| b | M | games/rush-racers/src/engine/audio/songs/thornwood.ts, games/rush-racers/src/engine/audio/songs/thornwood-2.ts, games/rush-racers/src/engine/audio/songs/thornwood-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | merged | sprint/chip-music-3b | critique findings applied, conformance passes |
+| c | M | games/rush-racers/src/engine/audio/songs/cloudreach.ts, games/rush-racers/src/engine/audio/songs/cloudreach-2.ts, games/rush-racers/src/engine/audio/songs/cloudreach-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | merged | sprint/chip-music-3c | critique findings applied, conformance passes |
+| d | M | games/rush-racers/src/engine/audio/songs/farside.ts, games/rush-racers/src/engine/audio/songs/farside-2.ts, games/rush-racers/src/engine/audio/songs/farside-3.ts | games/rush-racers/MUSIC.md | games/rush-racers/src/engine/audio/songs/race-tracks.test.ts, games/rush-racers/src/engine/audio/songs/songs.test.ts | opus | merged | sprint/chip-music-3d | critique findings applied, conformance passes |
 
 Test cases: the same conformance and pin tests as phase 2; this phase changes music, not rules.
 
