@@ -1,8 +1,9 @@
 /**
- * How each world colours the item fire sounds, so one item sounds a little different in every world
- * without a table per world (each skin names its own, `WorldSkin.fireFlavour`): Thornwood's are lower and duller (darker noise), Cloudreach's higher
- * and airier (brighter noise), Farside's square-edged (every tone a square wave). The reef's are the
- * fire sounds as written, and so is any world this file doesn't name, such as one a test registers.
+ * How each world colours the item fire sounds, so one item sounds a little different in every world.
+ * Each skin names its own (`WorldSkin.fireFlavour`): Thornwood's are lower and duller (darker noise),
+ * Cloudreach's higher and airier (brighter noise), Farside's square-edged (every tone a square wave).
+ * The reef's are the fire sounds as written, and so is any world whose skin names none or that has no
+ * skin, such as one a test registers.
  */
 import type { Course } from '../../logic/courses/types.ts';
 import { findSkin } from '../worlds/index.ts';
