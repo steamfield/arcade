@@ -14,7 +14,7 @@ import { dashReachPx, flapReadyNextTick, flightExtra } from './physics.ts';
 import type { FlightPilot } from './way-data.ts';
 
 /** Px the target may sit above the flyer's centre before it flaps. */
-const CLIMB_MARGIN = 4;
+export const CLIMB_MARGIN = 4;
 /** It flaps again only once a flap's rise has slowed to this, as a share of the flap's lift. */
 const FLAP_AGAIN_RISE = 0.4;
 /** Target this far below, in tiles, and it dives. */
@@ -74,6 +74,14 @@ export function verticalStick(racer: Racer, memory: FlightPilot, numbers: Flight
 }
 
 /**
+ * Up (-1) only while Up is already held, else nothing: it glides on a flap it has made but never
+ * presses afresh, so it never flaps.
+ */
+export function glideStick(memory: FlightPilot): number {
+  return memory.upHeld ? -1 : 0;
+}
+
+/**
  * Whether to hold Up this tick to climb toward a target `dy` px below the flyer's centre: press once
  * the flap is ready and the last flap's rise has slowed, let go the tick before so the press is
  * fresh, and keep gliding while waiting. Records the answer in `memory.upHeld`.
@@ -94,6 +102,11 @@ export function climbPress(racer: Racer, memory: FlightPilot, { flapLift }: Flig
  */
 export function flapClimbSpeed({ flapLift }: FlightPilotNumbers): number {
   return (flapLift * (1 + FLAP_AGAIN_RISE)) / 2;
+}
+
+/** Px one flap lifts the flyer from where it was pressed to the top of its rise. */
+export function flapRise({ flapLift, gravity }: FlightPilotNumbers): number {
+  return (flapLift * flapLift) / (2 * gravity);
 }
 
 /** The upward speed, px/s, at or below which `climbPress` flaps again. */

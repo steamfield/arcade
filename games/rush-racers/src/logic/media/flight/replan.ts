@@ -6,7 +6,7 @@
  * it can't cross before the strike the point is pulled back to the wait spot (`storm.ts`). The next
  * read comes `reactionTicks` later.
  */
-import { tileOf } from '../../ai/steer.ts';
+import { tileCentre, tileOf } from '../../ai/steer.ts';
 import { centreOf } from '../../racers.ts';
 import { type Racer, TILE, type Vec, type World } from '../../types.ts';
 import type { AiDraws } from '../types.ts';
@@ -14,7 +14,7 @@ import { planBounce } from './bounce-plan.ts';
 import { choosesRam } from './dashes.ts';
 import { ringAimPoint, ringToFly } from './ring-line.ts';
 import type { FlightPilotNumbers } from './stick.ts';
-import { stormWaitX } from './storm.ts';
+import { stormWait } from './storm.ts';
 import { flightCornerAhead, flightRouteDistanceAt } from './way.ts';
 import type { FlightPilot, FlightRoute } from './way-data.ts';
 
@@ -49,14 +49,15 @@ export function replan(
   const point = setPiecePoint(world, racer, memory, numbers, tile, draws.side) ?? tileCentre(memory.waypoint);
   const jitter = (draws.wobble * 2 - 1) * racer.profile.wobble * WOBBLE_TILES * TILE;
   memory.target = { x: point.x + jitter * WOBBLE_REACH_SHARE, y: point.y + jitter };
-  memory.stormHoldX = stormWaitX(world, racer, route, tile, numbers);
-  if (memory.stormHoldX !== null) memory.target.x = memory.stormHoldX;
+  memory.stormHold = stormWait(world, racer, route, tile, numbers);
+  if (memory.stormHold) memory.target.x = memory.stormHold.x;
   memory.replanIn = Math.max(0, racer.profile.reactionTicks - 1);
 }
 
 /**
  * The point a set piece wants it to fly at from `tile` on its route: a bounce pad's centre when it
- * plans a bounce, else the next ring of a ring line; null when neither. `roll` is the skill draw.
+ * plans a bounce, else the next ring of a ring line; null when neither. `roll` is the skill draw,
+ * spent on one set piece per replan.
  */
 function setPiecePoint(
   world: World,
@@ -67,12 +68,15 @@ function setPiecePoint(
   roll: number,
 ): Vec | null {
   memory.ring = null;
+  const restBefore = memory.bounceRestTicks;
   const pad = planBounce(world, racer, memory, tile, numbers, roll);
   if (pad) {
     // Up let go, so it falls onto the pad rather than gliding down to it.
     memory.upHeld = false;
     return tileCentre(pad);
   }
+  // A pad turned down spent this replan's roll; the next replan judges the ring with a fresh draw.
+  if (memory.bounceRestTicks > restBefore) return null;
   memory.ring = ringToFly(world, racer, memory, tile, roll);
   return memory.ring === null ? null : ringAimPoint(world, racer, memory.ring);
 }
@@ -86,9 +90,4 @@ function furtherAlong(world: World, route: FlightRoute, old: Vec | null, ahead: 
   if (!old) return null;
   const oldDistance = flightRouteDistanceAt(world, old, route);
   return oldDistance < flightRouteDistanceAt(world, ahead, route) ? old : null;
-}
-
-/** A tile's centre in world px. */
-function tileCentre(tile: Vec): Vec {
-  return { x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE };
 }

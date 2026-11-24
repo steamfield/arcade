@@ -6,7 +6,7 @@
  * way), its height is reachable in those columns, and it is in clear sight. Whether the rival takes a
  * ring is a skill roll against `1 - wobble`, judged once per ring, so a loose flyer skips more.
  */
-import { hasClearSweep } from '../../ai/steer.ts';
+import { hasClearSweep, tileCentre } from '../../ai/steer.ts';
 import { centreOf } from '../../racers.ts';
 import { type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { flightRouteDistanceAt } from './way.ts';
@@ -40,7 +40,7 @@ export function ringToFly(world: World, racer: Racer, memory: FlightPilot, tile:
     if (passed.includes(index) || columns >= nextColumns || !reachable(tile, ring)) continue;
     const progress = here - flightRouteDistanceAt(world, ring, memory.route);
     if (!(progress > 0 && progress >= columns - RING_DETOUR_TILES)) continue;
-    if (!hasClearSweep(world.level, world.broken, racer.body, ringCentre(ring))) continue;
+    if (!hasClearSweep(world.level, world.broken, racer.body, tileCentre(ring))) continue;
     next = index;
     nextColumns = columns;
   }
@@ -56,7 +56,7 @@ export function ringToFly(world: World, racer: Racer, memory: FlightPilot, tile:
 export function ringAimPoint(world: World, racer: Racer, index: number): Vec {
   const ring = world.level.rings[index];
   if (!ring) throw new Error(`Level has ${world.level.rings.length} rings, so it has no ring ${index}`);
-  const centre = ringCentre(ring);
+  const centre = tileCentre(ring);
   const travel = Math.sign(centre.x - centreOf(racer).x) || racer.facing;
   return { x: centre.x + travel * RING_THROUGH_PX, y: centre.y };
 }
@@ -73,9 +73,4 @@ function reachable(tile: Vec, ring: Vec): boolean {
 function takesRing(racer: Racer, memory: FlightPilot, ring: number, roll: number): boolean {
   if (memory.ringRoll?.ring !== ring) memory.ringRoll = { ring, takes: roll < 1 - racer.profile.wobble };
   return memory.ringRoll.takes;
-}
-
-/** A ring tile's centre in world px. */
-function ringCentre(ring: Vec): Vec {
-  return { x: (ring.x + 0.5) * TILE, y: (ring.y + 0.5) * TILE };
 }

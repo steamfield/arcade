@@ -23,6 +23,7 @@ import {
   climbPress,
   type FlightPilotNumbers,
   flightPilotNumbers,
+  glideStick,
   horizontalStick,
   speedStick,
   stopStick,
@@ -57,8 +58,9 @@ export function createFlightPilot(): FlightPilot {
     bounceRestTicks: 0,
     ring: null,
     ringRoll: null,
-    stormHoldX: null,
+    stormHold: null,
     pass: null,
+    passRest: null,
   };
 }
 
@@ -129,7 +131,7 @@ function flyToTarget(
   const canRam = memory.route === 'ram' && dashReady(racer);
   const puff = canRam ? flightPuffInDashLine(world, tile, racer.facing, numbers.dashReachTiles) : null;
   if (puff) return dashAtPuff(racer, memory, numbers, puff);
-  const traffic = trafficAround(world, racer, memory);
+  const traffic = trafficAround(world, racer, memory, numbers);
   if (traffic.kind === 'oncoming' && memory.route === 'ram') {
     // A flyer coming back out of the ram way means its puff cloud held: go the long way, now.
     leaveRam(memory);
@@ -137,7 +139,8 @@ function flyToTarget(
   }
   const wanted = { x: memory.target.x, y: traffic.kind === 'pass' ? traffic.altitude : memory.target.y };
   const point = clearOfHazards(world, racer, wanted);
-  const vertical = verticalStick(racer, memory, numbers, point.y - centre.y);
+  const underLeader = traffic.kind === 'pass' && traffic.flapBelow !== null && centre.y < traffic.flapBelow;
+  const vertical = underLeader ? glideStick(memory) : verticalStick(racer, memory, numbers, point.y - centre.y);
   const horizontal = horizontalFor(racer, memory, numbers, traffic, point.x - centre.x);
   const free = point === wanted && traffic.kind !== 'follow' && memory.route === 'steer' && !holdingBack(memory);
   const kick = free && wantsStraightDash(world, racer, memory, tile, roll);
@@ -146,16 +149,17 @@ function flyToTarget(
 
 /**
  * The racer in its way this tick (`readTraffic`), while it flies across toward a target more than
- * ACROSS_PX to one side; nothing (and no pass kept up) while it climbs or drops to a target above or
- * below, or drops onto a bounce pad.
+ * ACROSS_PX to one side or waits at a storm zone (reading the side it will cross to); nothing (and
+ * no pass kept up) while it climbs or drops to a target above or below, or drops onto a bounce pad.
  */
-function trafficAround(world: World, racer: Racer, memory: FlightPilot): Traffic {
+function trafficAround(world: World, racer: Racer, memory: FlightPilot, numbers: FlightPilotNumbers): Traffic {
   const dx = memory.target.x - centreOf(racer).x;
-  if (memory.bounce || Math.abs(dx) <= ACROSS_PX) {
+  if (memory.bounce || (!memory.stormHold && Math.abs(dx) <= ACROSS_PX)) {
     memory.pass = null;
     return { kind: 'clear' };
   }
-  return readTraffic(world, racer, memory, dx > 0 ? 1 : -1, memory.target.y);
+  const travel = memory.stormHold?.travel ?? (dx > 0 ? 1 : -1);
+  return readTraffic(world, racer, memory, numbers, travel, memory.target);
 }
 
 /**
@@ -172,8 +176,9 @@ function clearOfHazards(world: World, racer: Racer, point: Vec): Vec {
 }
 
 /**
- * The horizontal stick toward a point `dx` px to the side: hold the leader's pace when following
- * it, brake to a stop at a storm zone's wait point, else ease toward it.
+ * The horizontal stick toward a point `dx` px to the side: hold the leader's pace when following it
+ * (or, waiting at a storm zone, stop short of it), brake to a stop at a storm zone's wait point, else
+ * ease toward it.
  */
 function horizontalFor(
   racer: Racer,
@@ -182,14 +187,19 @@ function horizontalFor(
   traffic: Traffic,
   dx: number,
 ): number {
+  if (traffic.kind === 'follow' && memory.stormHold) {
+    // The racer ahead waits at the same spot: stop behind it, not on it.
+    const along = Math.min(dx * traffic.travel, traffic.room);
+    return stopStick(racer, numbers, along * traffic.travel);
+  }
   if (traffic.kind === 'follow') return speedStick(racer, traffic.speed);
-  if (memory.stormHoldX !== null) return stopStick(racer, numbers, dx);
+  if (memory.stormHold) return stopStick(racer, numbers, dx);
   return horizontalStick(racer, numbers, dx);
 }
 
 /** It is waiting at a storm zone or dropping onto a bounce pad, where a dash would carry it past. */
 function holdingBack(memory: FlightPilot): boolean {
-  return memory.stormHoldX !== null || memory.bounce !== null;
+  return memory.stormHold !== null || memory.bounce !== null;
 }
 
 /** Unit vector from `from` toward `to`; zero when they meet. */

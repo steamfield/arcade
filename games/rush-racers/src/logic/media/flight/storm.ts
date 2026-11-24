@@ -10,7 +10,7 @@ import { hitbox } from '../../racers.ts';
 import { type LightningZone, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import type { FlightPilotNumbers } from './stick.ts';
 import { flightWayAhead } from './way.ts';
-import type { FlightRoute } from './way-data.ts';
+import type { FlightRoute, StormHold } from './way-data.ts';
 
 /** Tiles of the way ahead read for a storm zone: room to brake from a dash's speed before it. */
 const STORM_LOOK_TILES = 10;
@@ -24,25 +24,25 @@ const SLOW_SPEED_SHARE = 0.7;
 const MISJUDGE_PER_WOBBLE = 0.5;
 
 /**
- * The x (world px) at which `racer`, at `tile`, should hold its centre short of a storm zone its next
- * tiles on `route` enter, or null to fly on: no zone ahead, it is already in one (it flies on out), the race
- * isn't on, or at its estimated speed it clears the zone's columns before the next strike.
+ * Where `racer`, at `tile`, should hold its centre short of a storm zone its next tiles on `route`
+ * enter, and the way it will cross; null to fly on: no zone ahead, it is already in one (it flies on
+ * out), the race isn't on, or at its estimated speed it clears the zone's columns before the next strike.
  *
  * @throws {Error} When the world's nav isn't flight's.
  */
-export function stormWaitX(
+export function stormWait(
   world: World,
   racer: Racer,
   route: FlightRoute,
   tile: Vec,
   numbers: FlightPilotNumbers,
-): number | null {
+): StormHold | null {
   if (world.race.phase !== 'racing') return null;
   const ahead = zoneAhead(world, tile, route);
   if (!ahead || overlapsColumns(racer, ahead.zone)) return null;
   const strikeIn = ticksUntilStrike(ahead.zone, world.race.raceTick);
   if (ticksToClear(racer, ahead.zone, ahead.travel, numbers) < strikeIn) return null;
-  return waitX(racer, ahead.zone, ahead.travel);
+  return { x: waitX(racer, ahead.zone, ahead.travel), travel: ahead.travel };
 }
 
 /** The first zone the way from `tile` on `route` enters, and the way it crosses (-1 left, 1 right); null when none. */

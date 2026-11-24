@@ -21,7 +21,8 @@ const CORNER_SIGNS = NEIGHBOURS.filter((offset) => offset.x !== 0 && offset.y !=
 const centreOf = (body: Box): Vec => ({ x: body.x + body.w / 2, y: body.y + body.h / 2 });
 /** The tile holding a point in world px. */
 export const tileOf = (point: Vec): Vec => ({ x: Math.floor(point.x / TILE), y: Math.floor(point.y / TILE) });
-const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE });
+/** A tile's centre in world px. */
+export const tileCentre = (tile: Vec): Vec => ({ x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE });
 
 /**
  * Unit direction from a body's centre toward the tile `lookahead` steps down `field`,

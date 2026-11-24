@@ -58,10 +58,34 @@ export interface FlightPilot extends PilotMemory {
   ring: number | null;
   /** Its skill roll for the last ring it considered, so a ring is judged once rather than on every replan. */
   ringRoll: { ring: number; takes: boolean } | null;
-  /** The x (world px) its centre waits at short of a storm zone until it can cross; null when flying on. */
-  stormHoldX: number | null;
-  /** The racer it is passing, the side it passes on (-1 over, 1 under) and the ticks it still gives the pass; null when not passing. */
-  pass: { id: RacerId; side: -1 | 1; ticksLeft: number } | null;
+  /** Where it waits short of a storm zone until it can cross; null when flying on. */
+  stormHold: StormHold | null;
+  /** Its attempt to get past a racer ahead; null when not passing. */
+  pass: Pass | null;
+  /** A racer it gave up passing, and the world tick until which it follows that racer rather than try again; null when none. */
+  passRest: { id: RacerId; until: number } | null;
+}
+
+/** A wait short of a storm zone. */
+export interface StormHold {
+  /** The x (world px) its centre waits at. */
+  x: number;
+  /** The way it will cross the zone (-1 left, 1 right), so it reads the racers on that side while it waits. */
+  travel: -1 | 1;
+}
+
+/** An attempt to get past a racer ahead. */
+export interface Pass {
+  /** The racer it is passing. */
+  id: RacerId;
+  /** The side it is passing on: -1 over, 1 under; null while neither is open and it follows instead. */
+  side: -1 | 1 | null;
+  /** Ticks it still gives the attempt. */
+  ticksLeft: number;
+  /** The least px it has been behind that racer, centre to centre, during the attempt. */
+  closest: number;
+  /** Ticks since `closest` last shrank: an attempt that stops gaining is between two flyers at one speed. */
+  stalledTicks: number;
 }
 
 /**

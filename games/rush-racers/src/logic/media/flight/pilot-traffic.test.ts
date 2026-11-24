@@ -2,7 +2,8 @@
  * Flight rivals in traffic: a faster rival that catches a slower one ahead goes over or under it and
  * on past within 3 s, in open sky and in a tunnel two rows high, and both keep racing; in a tunnel
  * one row high, where there is no room to pass, it follows a little behind instead of bumping or
- * pushing the slower one. Squib (faster) starts behind tess (slower) on inline skies with the player and bo benched.
+ * pushing the slower one; and one only a little faster doesn't grind against the one ahead in a pass
+ * that never finishes. Squib (faster) starts behind tess (slower) on inline skies with the player and bo benched.
  */
 import { describe, expect, it } from 'vitest';
 import { racerOf } from '../../test-world.ts';
@@ -13,7 +14,7 @@ import { benchRace, centre, raceUntilFinished, STEADY_FLYER } from './rival-test
 const PASS_TICKS = 180;
 /** Centre-to-centre px behind the slower rival at which the faster one has caught it. */
 const CAUGHT_PX = 2 * TILE;
-/** Px between two boxes side by side that still counts as touching. */
+/** Px between two boxes, side by side or one above the other, that still counts as touching. */
 const TOUCH_PX = 1;
 /** Ticks a follower may spend touching the racer it follows: a brief brush, not a push. */
 const MOST_TOUCHING_TICKS = 30;
@@ -35,6 +36,9 @@ const OPEN_SKY = [
 /** A tunnel two rows high between thunderheads, the rivals on its lower row. */
 const TWO_ROW_TUNNEL = ['#'.repeat(60), `#${'.'.repeat(58)}F`, `#.3....2${'.'.repeat(51)}F`, '#'.repeat(60)];
 
+/** Open sky nine rows high with squib (3) starting right behind tess (2), for two flyers at nearly one speed. */
+const OPEN_SKY_ADJACENT = OPEN_SKY.map((row) => row.replace('#.3....2', '#..32...'));
+
 /** A tunnel one row high: too low for one flyer to pass another. */
 const ONE_ROW_TUNNEL = ['#'.repeat(60), `#.3....2${'.'.repeat(51)}F`, '#'.repeat(60)];
 
@@ -42,8 +46,8 @@ const ONE_ROW_TUNNEL = ['#'.repeat(60), `#.3....2${'.'.repeat(51)}F`, '#'.repeat
  * Races squib (fast) behind tess (slow) on `area` until both finish, and reports when squib caught
  * tess, when it got past her, the height between them as it drew level, and the bumps between them.
  */
-function chase(area: readonly string[]) {
-  const { world, log } = benchRace(area, { tess: SLOW, squib: FAST });
+function chase(area: readonly string[], profiles: Parameters<typeof benchRace>[1] = { tess: SLOW, squib: FAST }) {
+  const { world, log } = benchRace(area, profiles);
   const tess = racerOf(world, 'tess');
   const squib = racerOf(world, 'squib');
   let caughtAt: number | null = null;
@@ -52,12 +56,14 @@ function chase(area: readonly string[]) {
   let touchingTicks = 0;
   raceUntilFinished(world, log, ['tess', 'squib'], FINISH_LIMIT, (tick) => {
     const behind = centre(tess).x - centre(squib).x;
-    if (Math.abs(behind) <= RACER_SIZE.width + TOUCH_PX && tess.finished === null) touchingTicks++;
+    const apart = Math.abs(centre(tess).y - centre(squib).y);
+    const touching = Math.abs(behind) <= RACER_SIZE.width + TOUCH_PX && apart <= RACER_SIZE.height + TOUCH_PX;
+    if (touching && tess.finished === null) touchingTicks++;
     if (caughtAt === null && behind <= CAUGHT_PX) caughtAt = tick;
     if (heightWhenLevel === null && behind <= 0) heightWhenLevel = Math.abs(centre(tess).y - centre(squib).y);
     if (passedAt === null && behind < -RACER_SIZE.width) passedAt = tick;
   });
-  const bumps = log.all().filter((event) => event.type === 'racer.bumped' && event.a === 'tess' && event.b === 'squib');
+  const bumps = log.all().filter((event) => event.type === 'racer.bumped' && bothOf(event.a, event.b));
   return {
     caughtAt,
     passedAt,
@@ -67,6 +73,9 @@ function chase(area: readonly string[]) {
     finished: [tess.finished !== null, squib.finished !== null],
   };
 }
+
+/** Whether a bump's two racers are tess and squib, in either order. */
+const bothOf = (a: string, b: string) => [a, b].sort().join() === 'squib,tess';
 
 describe('flight rivals in traffic', () => {
   it.each([
@@ -78,7 +87,7 @@ describe('flight rivals in traffic', () => {
     expect(caughtAt).not.toBeNull();
     expect(passedAt).not.toBeNull();
     expect((passedAt ?? Number.POSITIVE_INFINITY) - (caughtAt ?? 0)).toBeLessThanOrEqual(PASS_TICKS);
-    expect(heightWhenLevel).toBeGreaterThanOrEqual(RACER_SIZE.height);
+    expect(heightWhenLevel).toBeGreaterThan(RACER_SIZE.height);
     expect(finished).toEqual([true, true]);
   });
 
@@ -86,6 +95,15 @@ describe('flight rivals in traffic', () => {
     const { passedAt, bumps, touchingTicks, finished } = chase(ONE_ROW_TUNNEL);
 
     expect(passedAt).toBeNull();
+    expect(bumps).toBeLessThanOrEqual(2);
+    expect(touchingTicks).toBeLessThanOrEqual(MOST_TOUCHING_TICKS);
+    expect(finished).toEqual([true, true]);
+  });
+
+  it('a rival only a little faster than the one ahead gets past or falls in behind, without grinding against it', () => {
+    const nearlyEven = { tess: STEADY_FLYER, squib: { ...STEADY_FLYER, forceMul: 1.1 } };
+    const { bumps, touchingTicks, finished } = chase(OPEN_SKY_ADJACENT, nearlyEven);
+
     expect(bumps).toBeLessThanOrEqual(2);
     expect(touchingTicks).toBeLessThanOrEqual(MOST_TOUCHING_TICKS);
     expect(finished).toEqual([true, true]);

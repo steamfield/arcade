@@ -5,9 +5,9 @@
  * takes one is a skill roll against `1 - wobble`; turning one down, and every bounce, rests the plan
  * for BOUNCE_REST_TICKS, so it judges a pad once and never bounces again in place.
  */
-import { hasClearSweep } from '../../ai/steer.ts';
+import { hasClearSweep, tileCentre } from '../../ai/steer.ts';
 import { centreOf } from '../../racers.ts';
-import { type Racer, TILE, type Vec, type World } from '../../types.ts';
+import type { Racer, Vec, World } from '../../types.ts';
 import { mediumOf } from '../index.ts';
 import { type ClimbSpeeds, secondsByBounce, secondsByFlapping } from './bounce-timing.ts';
 import { type FlightPilotNumbers, flapAgainSpeed, flapClimbSpeed } from './stick.ts';
@@ -126,9 +126,4 @@ function padInReach(world: World, racer: Racer, route: FlightRoute, tile: Vec, l
   const detour = flightRouteDistanceAt(world, landing, route) - flightRouteDistanceAt(world, tile, route);
   if (!(detour <= DETOUR_TILES)) return false;
   return hasClearSweep(world.level, world.broken, racer.body, tileCentre(landing));
-}
-
-/** A tile's centre in world px. */
-function tileCentre(tile: Vec): Vec {
-  return { x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE };
 }

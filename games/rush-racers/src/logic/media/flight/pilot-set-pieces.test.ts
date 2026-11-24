@@ -2,8 +2,9 @@
  * Flight rivals and the sky's set pieces: they fly through a ring line their way runs near and finish
  * no slower for it; they drop onto a bounce cloud at the foot of a tall wall and top it sooner than by
  * flapping, without bouncing in place; and they read lightning: wait short of a storm zone they can't
- * cross before the strike, cross one they can, and on sky-test the expert is hardly ever struck and no
- * rival waits a whole period. Raced through `createWorld` on inline skies (`rival-test-kit.ts`) and on sky-test.
+ * cross before the strike, cross one they can, queue behind one another at a zone without shoving the
+ * one ahead into the strike, and on sky-test the expert is hardly ever struck and no rival waits a
+ * whole period. Raced through `createWorld` on inline skies (`rival-test-kit.ts`) and on sky-test.
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
@@ -174,6 +175,18 @@ describe('flight rivals and lightning', () => {
     expect(narrow).toMatchObject({ struck: 0, inZoneDuringStrike: 0, enteredIn: 'warning', finished: true });
   });
 
+  it.each([
+    ['a slower rival ahead of a faster one', { tess: 0.6, squib: 1.6 }],
+    ['two rivals at one speed', { tess: 1, squib: 1 }],
+  ])(
+    'in a one-row tunnel, %s queue at a storm zone: whenever it strikes, neither is struck nor shoved in',
+    (_, forceMul) => {
+      const queued = QUEUE_OFFSETS.map((offsetTicks) => ({ offsetTicks, ...queueAtStorm(forceMul, offsetTicks) }));
+
+      expect(queued.filter((race) => race.struck > 0 || race.bumps > 2 || !race.finished)).toEqual([]);
+    },
+  );
+
   it('on sky-test seeds 1-5 on Hard, expert flyers are struck at most once a race and no rival waits a whole period', () => {
     const races = [1, 2, 3, 4, 5].map((seed) => ({ seed, ...skyTestStorm(seed) }));
 
@@ -181,6 +194,39 @@ describe('flight rivals and lightning', () => {
     expect(races.filter((race) => race.longestWait >= race.periodTicks)).toEqual([]);
   });
 });
+
+/** A tunnel one row high, tess (2) ahead of squib (3), with no room for either to pass the other. */
+const ONE_ROW_TUNNEL = [ROCK, `#.3....2${'.'.repeat(41)}F`, ROCK];
+/** Every tenth tick of a 300-tick storm period: when the zone ahead of the queue strikes. */
+const QUEUE_OFFSETS = Array.from({ length: 30 }, (_, index) => index * 10);
+
+/**
+ * tess and squib (steady, with these force multipliers) through ONE_ROW_TUNNEL with a storm zone over
+ * cols 30-34 striking every 300 ticks from `offsetTicks`: lightning hits on either, bumps between
+ * them, and whether both finished.
+ */
+function queueAtStorm(forceMul: { tess: number; squib: number }, offsetTicks: number) {
+  const zone: LightningZone = { cols: [30, 34], periodTicks: 300, offsetTicks };
+  const profiles = {
+    tess: { ...STEADY_FLYER, forceMul: forceMul.tess },
+    squib: { ...STEADY_FLYER, forceMul: forceMul.squib },
+  };
+  const { world, log } = benchRace(ONE_ROW_TUNNEL, profiles, { lightning: [zone] });
+  raceUntilFinished(world, log, ['tess', 'squib'], FINISH_LIMIT);
+  const events = log.all();
+  const struck = events.filter(
+    (event) =>
+      event.type === 'racer.hit' && event.cause === 'lightning' && (event.id === 'tess' || event.id === 'squib'),
+  ).length;
+  const bumps = events.filter(
+    (event) => event.type === 'racer.bumped' && [event.a, event.b].sort().join() === 'squib,tess',
+  ).length;
+  return {
+    struck,
+    bumps,
+    finished: racerOf(world, 'tess').finished !== null && racerOf(world, 'squib').finished !== null,
+  };
+}
 
 /** Whether the racer's box overlaps the zone's columns at any height. */
 function overlapsColumns(racer: Racer, zone: LightningZone): boolean {
