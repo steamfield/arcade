@@ -2,8 +2,8 @@ import { EventLog, type Stamped } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_COURSE } from '../../logic/courses/index.ts';
 import type { GameEvent } from '../../logic/events.ts';
-import { raceOn } from '../../logic/test-world.ts';
-import { RACER_SIZE } from '../../logic/types.ts';
+import { courseFromLevel, raceOn } from '../../logic/test-world.ts';
+import { type LevelDef, RACER_SIZE } from '../../logic/types.ts';
 import { createWorld } from '../../logic/world.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { CameraSpan } from '../view/set-pieces/storm-reach.ts';
@@ -168,5 +168,57 @@ describe('event effects for the sky set pieces', () => {
     const offScreen = setup();
     offScreen.drain([{ type: 'lightning.struck', zone: 1 }]);
     expect(offScreen.trauma()).toBe(0);
+  });
+});
+
+describe("event effects for the long courses' set pieces", () => {
+  function recorded(level: string, medium: string, extra: Pick<LevelDef, 'wormholes' | 'crumbles'>) {
+    const course = courseFromLevel({ name: 'set pieces', ascii: level, ...extra }, medium);
+    const world = createWorld(course, new EventLog<GameEvent>(), { seed: 1 });
+    const seen: string[] = [];
+    const record = (name: string) => (x: number, y: number) => seen.push(`${name} ${x},${y}`);
+    const effects = createEventEffects(
+      world,
+      { ...NO_BURSTS, pearlSparkle: record('sparkle'), coralDebris: record('debris') },
+      createBubbleTracker(),
+      () => {},
+    );
+    const drain = (events: GameEvent[]) =>
+      effects.onTick(events.map((event, seq) => ({ ...event, tick: 300, seq }) as Stamped<RuntimeEvent>));
+    return { seen, drain };
+  }
+
+  it('sparkles at both mouths of the wormhole a racer warps through', () => {
+    const { seen, drain } = recorded(
+      `
+        ##################
+        #1..............F#
+        #2..............F#
+        #3..............F#
+        #4..............F#
+        ##################
+      `,
+      'drift',
+      { wormholes: [{ a: [3, 2], b: [10, 2], oneWay: false }] },
+    );
+    drain([{ type: 'wormhole.warped', racer: 'tess', hole: 0, from: 'a' }]);
+    expect(seen).toEqual(['sparkle 56,40', 'sparkle 168,40']);
+  });
+
+  it('splinters along a crumbling branch as it falls', () => {
+    const { seen, drain } = recorded(
+      `
+        ##################
+        #...............F#
+        #.....==........F#
+        #...............F#
+        #1234...........F#
+        ##################
+      `,
+      'run',
+      { crumbles: [{ col: 6, row: 2, length: 2 }] },
+    );
+    drain([{ type: 'crumble.fell', crumble: 0 }]);
+    expect(seen).toEqual(['debris 104,40', 'debris 120,40']);
   });
 });

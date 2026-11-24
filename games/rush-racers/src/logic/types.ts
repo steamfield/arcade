@@ -882,7 +882,7 @@ export interface World {
   guide: GuideMemory;
 }
 
-/** Where a crumbling branch is in its cycle, and the ticks left in that phase (unused while solid). */
+/** Where a crumbling branch is in its cycle, and the ticks left in that phase (while solid, the ticks left of its regrowth sprout). */
 export interface CrumbleState {
   phase: 'solid' | 'shaking' | 'fallen';
   ticks: number;
