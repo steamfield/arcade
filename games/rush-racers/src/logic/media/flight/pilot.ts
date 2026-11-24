@@ -18,6 +18,7 @@ import { effectiveTuning } from '../index.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { bounceStillPlanned } from './bounce-plan.ts';
 import { dashAtPuff, dashReady, holdTowardPuff, leaveRam, puffStillDashedAt, wantsStraightDash } from './dashes.ts';
+import { sampleFlightEnvironment } from './env.ts';
 import { replan } from './replan.ts';
 import {
   climbPress,
@@ -35,6 +36,8 @@ import { type FlightPilot, flightPilot } from './way-data.ts';
 
 /** Tiles from its target past which it replans at once (it was knocked or put somewhere else). */
 const LOST_TILES = 6;
+/** Px short of its target's column (or any distance past it) at which it has reached that column. */
+const ARRIVED_PX = TILE / 2;
 /** Ticks of a stuck recovery: backing off and flapping up. */
 const RECOVER_TICKS = 40;
 /** Px to one side its target must be before it reads the racers ahead: below that it is climbing or dropping. */
@@ -48,6 +51,8 @@ export function createFlightPilot(): FlightPilot {
     target: { x: 0, y: 0 },
     aim: { x: 0, y: 0 },
     replanIn: 0,
+    heading: 0,
+    through: false,
     recoverTicks: 0,
     recoverDir: -1,
     waypoint: null,
@@ -79,7 +84,7 @@ export function steerFlyer(
   const ai = racer.ai;
   if (!ai) throw new Error(`flight.steer needs AI memory, but racer '${racer.id}' has none (a human drives it)`);
   const memory = flightPilot(ai.pilot);
-  const numbers = flightPilotNumbers(effectiveTuning(world), mods);
+  const numbers = flightPilotNumbers(effectiveTuning(world), mods, sampleFlightEnvironment(world, racer));
   if (memory.ramRestTicks > 0) memory.ramRestTicks--;
   if (memory.bounceRestTicks > 0) memory.bounceRestTicks--;
   const puff = puffStillDashedAt(world, memory);
@@ -94,15 +99,21 @@ export function steerFlyer(
 }
 
 /**
- * Replans when its reaction comes round, it is lost, or it has just passed the ring it flew at, else
- * counts down; a bounce it is dropping into holds its target until it springs. Then aims at the target.
+ * Replans when its reaction comes round, it is lost, it has flown through to the column of a target
+ * the way carries on past (a rival that reads the way late keeps going rather than hover there
+ * waiting to read it; where the way turns it still waits, so it turns late), or it has just passed
+ * the ring it flew at, else counts down; a bounce it is dropping into holds its target until it
+ * springs. Then aims at the target.
  */
 function followWay(world: World, racer: Racer, memory: FlightPilot, numbers: FlightPilotNumbers, draws: AiDraws): void {
   const centre = centreOf(racer);
-  const lost = length(memory.target.x - centre.x, memory.target.y - centre.y) > LOST_TILES * TILE;
+  const dx = memory.target.x - centre.x;
+  const lost = length(dx, memory.target.y - centre.y) > LOST_TILES * TILE;
+  const arrived = memory.through && dx * memory.heading < ARRIVED_PX;
   const throughRing = memory.ring !== null && world.ringsPassed[racer.id].includes(memory.ring);
   const bouncing = bounceStillPlanned(world, racer, memory);
-  if (!bouncing && (memory.replanIn <= 0 || lost || throughRing)) replan(world, racer, memory, numbers, draws, lost);
+  const due = memory.replanIn <= 0 || lost || arrived || throughRing;
+  if (!bouncing && due) replan(world, racer, memory, numbers, draws, lost);
   else memory.replanIn--;
   memory.aim = unitToward(centre, memory.target);
 }
@@ -141,7 +152,7 @@ function flyToTarget(
   const point = clearOfHazards(world, racer, wanted);
   const underLeader = traffic.kind === 'pass' && traffic.flapBelow !== null && centre.y < traffic.flapBelow;
   const vertical = underLeader ? glideStick(memory) : verticalStick(racer, memory, numbers, point.y - centre.y);
-  const horizontal = horizontalFor(racer, memory, numbers, traffic, point.x - centre.x);
+  const horizontal = horizontalFor(racer, memory, numbers, traffic, point.x - centre.x, point === wanted);
   const free = point === wanted && traffic.kind !== 'follow' && memory.route === 'steer' && !holdingBack(memory);
   const kick = free && wantsStraightDash(world, racer, memory, tile, roll);
   return { move: { x: horizontal, y: vertical }, kick, kickHeld: kick, aim: memory.aim, recovering: false };
@@ -177,8 +188,9 @@ function clearOfHazards(world: World, racer: Racer, point: Vec): Vec {
 
 /**
  * The horizontal stick toward a point `dx` px to the side: hold the leader's pace when following it
- * (or, waiting at a storm zone, stop short of it), brake to a stop at a storm zone's wait point, else
- * ease toward it.
+ * (or, waiting at a storm zone, stop short of it), brake to a stop at a storm zone's wait point,
+ * hold on flat out where the way carries on past the point and no hazard bent the line to it
+ * (`unbent`), else ease toward it.
  */
 function horizontalFor(
   racer: Racer,
@@ -186,6 +198,7 @@ function horizontalFor(
   numbers: FlightPilotNumbers,
   traffic: Traffic,
   dx: number,
+  unbent: boolean,
 ): number {
   if (traffic.kind === 'follow' && memory.stormHold) {
     // The racer ahead waits at the same spot: stop behind it, not on it.
@@ -194,6 +207,7 @@ function horizontalFor(
   }
   if (traffic.kind === 'follow') return speedStick(racer, traffic.speed);
   if (memory.stormHold) return stopStick(racer, numbers, dx);
+  if (memory.through && unbent) return memory.heading;
   return horizontalStick(racer, numbers, dx);
 }
 

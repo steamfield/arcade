@@ -145,6 +145,19 @@ describe('dive', () => {
     expect(speeds[ticksIn(1)]).toBeGreaterThan(cruise);
     expect(speeds.at(-1)).toBe(cruise);
   });
+
+  it('carries a dive into 0.8x the forward speed at forceMul 0.6, the share of it that cruise gets', () => {
+    const carried = (forceMul: number) => {
+      const racer = bareFlyer();
+      const mods = { ...BASE, forceMul };
+      fly(racer, ticksIn(1), hold(DOWN), { mods });
+      fly(racer, 1, hold(STILL), { mods });
+      return racer.body.vx;
+    };
+
+    expect(carried(1)).toBeGreaterThan(0);
+    expect(carried(0.6)).toBeCloseTo(0.8 * carried(1), 9);
+  });
 });
 
 describe('cruise', () => {
@@ -206,6 +219,13 @@ describe('dash', () => {
     expect(withDash.body.vx).toBeCloseTo(-FLIGHT_TUNING.kick * 1.1, 9);
     expect(withDash.body.vy).toBe(without.body.vy);
     expect(eventsIn(log)).toEqual([{ type: 'racer.kicked', id: 'player' }]);
+  });
+
+  it('dashes at 0.8x kick * kickMul with forceMul 0.6, the share of it that cruise gets', () => {
+    const racer = bareFlyer();
+    fly(racer, 1, hold(STILL, { kick: true }), { mods: { ...BASE, forceMul: 0.6, kickMul: 1.1 } });
+
+    expect(Math.abs(racer.body.vx)).toBeCloseTo(FLIGHT_TUNING.kick * 1.1 * 0.8, 9);
   });
 
   it('bleeds the surplus over cruise at drag a second', () => {

@@ -3,13 +3,14 @@
  * it flaps with real presses (Up let go between flaps, pressed only once the flap is ready) while
  * the target is above, holds Up after a flap to glide down to it while it is a little below, and
  * dives when it is further below; horizontally it eases toward the target's column or holds a wanted
- * speed (following a racer it can't pass). The numbers come
- * from flight's physics (`flightExtra`, `dashReachPx`), so they follow its current values and Easy's
- * multipliers.
+ * speed (following a racer it can't pass). The numbers come from flight's physics (`flightExtra`,
+ * `dashReachPx`, `cruiseSpeed`, `windDrift`), so they follow its current values, Easy's multipliers,
+ * the racer's own `forceMul` (catch-up, a ring's boost) and the air it is in.
  */
 import { type MoveModifiers, type Racer, TILE } from '../../types.ts';
 import type { MediumTuning } from '../types.ts';
-import { flightMotion } from './data.ts';
+import { cruiseSpeed, windDrift } from './cruise.ts';
+import { type FlightEnv, flightMotion } from './data.ts';
 import { dashReachPx, flapReadyNextTick, flightExtra } from './physics.ts';
 import type { FlightPilot } from './way-data.ts';
 
@@ -32,8 +33,10 @@ export interface FlightPilotNumbers {
   flapLift: number;
   /** Downward pull with no stick, px/s². */
   gravity: number;
-  /** Top horizontal speed it steers toward, px/s. */
+  /** Px/s holding a direction settles at in still air: its own cruise, from its forceMul and any fog. */
   cruise: number;
+  /** Px/s the gust it is in adds along x (signed); 0 out of the wind. */
+  drift: number;
   /** Ticks after a dash in which it still pops puff clouds. */
   dashTicks: number;
   /** Tiles a dash carries it while the dash still pops puff clouds; at least 1. */
@@ -41,16 +44,18 @@ export interface FlightPilotNumbers {
 }
 
 /**
- * The pilot's numbers, read from flight's `tuning` and the racer's `mods`.
+ * The pilot's numbers, read from flight's `tuning`, the racer's `mods` and the `air` it is in.
  *
  * @throws {Error} When `tuning` lacks one of flight's extras, which means the tuning isn't flight's.
  */
-export function flightPilotNumbers(tuning: MediumTuning, mods: MoveModifiers): FlightPilotNumbers {
-  const { flapLift, gravity, cruise, dashTicks } = flightExtra(tuning);
+export function flightPilotNumbers(tuning: MediumTuning, mods: MoveModifiers, air: FlightEnv): FlightPilotNumbers {
+  const extra = flightExtra(tuning);
+  const { flapLift, gravity, dashTicks } = extra;
   return {
     flapLift,
     gravity,
-    cruise,
+    cruise: cruiseSpeed(extra, mods, air),
+    drift: windDrift(extra, air),
     dashTicks,
     dashReachTiles: Math.max(1, Math.floor(dashReachPx(tuning, mods) / TILE)),
   };
@@ -116,14 +121,14 @@ export function flapAgainSpeed({ flapLift }: FlightPilotNumbers): number {
 
 /**
  * Left (-1), right (1) or nothing (0) toward a target `dx` px right of the flyer's centre, easing off
- * as it lines up so momentum doesn't carry it past. Over cruise toward a far target (after a dash or
- * a dive) it keeps holding on, since air drag bleeds the surplus and pushing back would throw the
- * speed away.
+ * as it lines up so momentum doesn't carry it past. Toward a far target it holds on flat out: at its
+ * own cruise plus any gust's drift, and over that (after a dash, a dive or a ring's boost) too,
+ * since air drag bleeds the surplus and pushing back would throw the speed away.
  */
-export function horizontalStick(racer: Racer, { cruise }: FlightPilotNumbers, dx: number): number {
-  const wanted = Math.max(-cruise, Math.min(cruise, dx * APPROACH_GAIN));
-  if (Math.abs(wanted) === cruise && racer.body.vx * wanted > cruise * cruise) return Math.sign(wanted);
-  return speedStick(racer, wanted);
+export function horizontalStick(racer: Racer, { cruise, drift }: FlightPilotNumbers, dx: number): number {
+  const eased = dx * APPROACH_GAIN;
+  if (Math.abs(eased) >= cruise) return Math.sign(dx);
+  return speedStick(racer, Math.max(drift - cruise, Math.min(drift + cruise, eased)));
 }
 
 /**

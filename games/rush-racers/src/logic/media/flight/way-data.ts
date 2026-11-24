@@ -40,6 +40,16 @@ export interface FlightPilot extends PilotMemory {
   aim: Vec;
   /** Ticks until it reads the way again (`reactionTicks` apart); 0 replans this tick. */
   replanIn: number;
+  /**
+   * The side `target` lay on when it last read the way (-1 left, 1 right), or 0 when it lay above or
+   * below. With `through`, reaching or passing that target's column has it read the way again at once.
+   */
+  heading: -1 | 0 | 1;
+  /**
+   * The way carries on toward `heading` past its target (no set piece or storm wait there), so it
+   * flies through the target at full speed rather than easing to a stop on it.
+   */
+  through: boolean;
   /** Ticks left of a stuck recovery; 0 when not recovering. */
   recoverTicks: number;
   /** The way it backs off during a recovery. */

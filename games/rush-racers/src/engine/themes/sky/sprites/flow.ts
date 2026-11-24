@@ -33,24 +33,27 @@ const FOG_ROWS = [
   '..0...0...0...0.',
 ];
 
-/** Wind blowing right: long faint streaks that end in a bright head. */
+/**
+ * Wind blowing right: four long faint streaks that end in a bright head, sparse enough that a wide
+ * gust band reads as moving air over the backdrop rather than a texture filling the frame.
+ */
 const GUST_ROWS = [
   '................',
   '...0000011......',
   '................',
-  '..........000011',
   '................',
   '................',
-  '0000000011......',
+  '0011.......00000',
   '................',
   '................',
-  '......0000011...',
   '................',
-  '.0000011........',
+  '.........0000011',
   '................',
   '................',
-  '.........0000001',
-  '1...............',
+  '................',
+  '.....000011.....',
+  '................',
+  '................',
 ];
 
 /** An updraft: bright wisps curling up, each a small chevron with a faint tail below it. */
