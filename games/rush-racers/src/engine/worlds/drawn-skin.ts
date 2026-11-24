@@ -7,16 +7,13 @@ import type { CharacterId, EnemyKind } from '../../logic/types.ts';
 import { buildTextures } from '../art/index.ts';
 import type { Palette } from '../art/pixel.ts';
 import { buildUiTextures } from '../art/ui/index.ts';
-import { registerArt as registerForestArt } from '../themes/forest/art.ts';
-import { registerArt as registerOceanArt } from '../themes/ocean/art.ts';
-import { registerArt as registerSkyArt } from '../themes/sky/art.ts';
-import { registerArt as registerSpaceArt } from '../themes/space/art.ts';
+import { THEME_ART } from '../themes/index.ts';
 import { type RecordingScene, recordingScene } from './recording-scene.ts';
 import { REEF_ITEM_ICON_FRAMES } from './reef/sprites/icons.ts';
 import type { WorldSkin } from './types.ts';
 
-/** Every theme's `registerArt`, in the order the game registers them. */
-const THEME_ART = [registerOceanArt, registerForestArt, registerSpaceArt, registerSkyArt];
+/** Every theme's art module, from the registry the game loads them through, in its order. */
+const THEME_ARTS = await Promise.all(Object.values(THEME_ART).map((importArt) => importArt()));
 
 /** What a world's art must look like, beyond what every skin has to satisfy. */
 export interface SkinFixture {
@@ -60,7 +57,7 @@ export function lazyDrawnSkin({ skin, registerArt }: Pick<SkinFixture, 'skin' | 
     const art = recordingScene();
     buildTextures(art.scene);
     buildUiTextures(art.scene, REEF_ITEM_ICON_FRAMES);
-    for (const registerArt of THEME_ART) registerArt(art.scene);
+    for (const theme of THEME_ARTS) theme.registerArt(art.scene);
     const baseKeys = new Set(art.built.keys());
     registerArt(art.scene);
     const skinKeys = new Set([...art.built.keys()].filter((key) => !baseKeys.has(key)));

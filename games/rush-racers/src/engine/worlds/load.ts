@@ -1,8 +1,9 @@
 /**
  * Builds a world's skin and theme textures the first time a screen needs them, from the `art.ts`
- * chunks `WORLD_ART` and `THEME_ART` import on demand. Each world and theme registers once; callers
- * asking for the same one while it loads share that load, and a failed load is forgotten so the
- * next call tries again. Themes register before worlds, as boot always did.
+ * chunks `WORLD_ART` and `THEME_ART` import on demand. A call starts every import it needs at once,
+ * then registers in order, themes before worlds, as boot always did. Each world and theme imports
+ * and registers once; callers asking for the same one while it loads share that import, and a
+ * failed import is forgotten so the next call tries again.
  */
 import type Phaser from 'phaser';
 import type { Course, ThemeId } from '../../logic/courses/types.ts';
@@ -10,8 +11,11 @@ import type { ShippedWorldId } from '../../logic/worlds/types.ts';
 import { THEME_ART, THEMES } from '../themes/index.ts';
 import { assertSkinTextures, SKINS, skinFor, WORLD_ART } from './index.ts';
 
+/** A world's or theme's `art.ts` once imported. */
+type ArtModule = { registerArt(scene: Phaser.Scene): void };
+
 /** Loads one world's or theme's `art.ts`. */
-export type ArtImport = () => Promise<{ registerArt(scene: Phaser.Scene): void }>;
+export type ArtImport = () => Promise<ArtModule>;
 
 /** Where a loader gets each world's and theme's art. */
 export interface ArtSources {
@@ -30,6 +34,13 @@ export interface ArtLoader {
    */
   ensureCourseArt(scene: Phaser.Scene, course: Course): Promise<void>;
   /**
+   * `ensureCourseArt` for several courses with their imports started together: their themes
+   * register first, then their worlds.
+   *
+   * @throws {Error} Rejects as `ensureCourseArt` does, for the first world or theme that fails.
+   */
+  ensureCoursesArt(scene: Phaser.Scene, courses: readonly Course[]): Promise<void>;
+  /**
    * Registers every theme's art, then every world's.
    *
    * @throws {Error} Rejects as `ensureCourseArt` does, for the first world or theme that fails.
@@ -43,52 +54,70 @@ export interface ArtLoader {
   loadedArt(): readonly string[];
 }
 
+/** One world's or theme's art to load: its key (`world:<id>`, `theme:<id>`), its import and what to check once it is drawn. */
+interface ArtEntry {
+  key: string;
+  importArt: ArtImport;
+  check(scene: Phaser.Scene): void;
+}
+
 /** Creates a loader over `sources`, with nothing loaded yet. */
 export function createArtLoader(sources: ArtSources): ArtLoader {
-  const pending = new Map<string, Promise<void>>();
-  /** Keys (`world:<id>`, `theme:<id>`) of the art registered, in order. */
+  const imports = new Map<string, Promise<ArtModule>>();
+  /** Keys of the art registered, in order. */
   const loaded: string[] = [];
 
-  /** Imports and registers one world's or theme's art once; a failure clears its entry so a later call retries. */
-  function ensureOne(key: string, importArt: ArtImport, scene: Phaser.Scene, check: () => void): Promise<void> {
-    const known = pending.get(key);
+  /** Starts `entry`'s import unless one is under way or done; a failure is forgotten so a later call retries. */
+  function importOnce({ key, importArt }: ArtEntry): Promise<ArtModule> {
+    const known = imports.get(key);
     if (known) return known;
-    const load = importArt()
-      .catch((cause: unknown) => {
-        throw new Error(`Couldn't load the art for ${describe(key)}: ${messageOf(cause)}`, { cause });
-      })
-      .then(({ registerArt }) => {
-        registerArt(scene);
-        check();
-        loaded.push(key);
-      })
-      .catch((error: unknown) => {
-        pending.delete(key);
-        throw error;
-      });
-    pending.set(key, load);
+    const load = importArt().catch((cause: unknown) => {
+      imports.delete(key);
+      throw new Error(`Couldn't load the art for ${describe(key)}: ${messageOf(cause)}`, { cause });
+    });
+    imports.set(key, load);
     return load;
   }
 
-  const ensureTheme = (scene: Phaser.Scene, id: ThemeId) =>
-    ensureOne(`theme:${id}`, sources.themes[id], scene, () => {});
-  const ensureWorld = (scene: Phaser.Scene, id: ShippedWorldId) =>
-    ensureOne(`world:${id}`, sources.worlds[id], scene, () =>
-      assertSkinTextures(scene.textures, SKINS[id], scene.anims),
-    );
+  /** Imports every entry at once, then registers and checks those not yet in, in `entries` order. */
+  async function ensure(scene: Phaser.Scene, entries: readonly ArtEntry[]): Promise<void> {
+    const modules = await Promise.all(entries.map(importOnce));
+    entries.forEach((entry, index) => {
+      if (loaded.includes(entry.key)) return;
+      modules[index]?.registerArt(scene);
+      entry.check(scene);
+      loaded.push(entry.key);
+    });
+  }
+
+  const themeEntry = (id: ThemeId): ArtEntry => ({
+    key: `theme:${id}`,
+    importArt: sources.themes[id],
+    check: () => {},
+  });
+  const worldEntry = (id: ShippedWorldId): ArtEntry => ({
+    key: `world:${id}`,
+    importArt: sources.worlds[id],
+    check: (scene) => assertSkinTextures(scene.textures, SKINS[id], scene.anims),
+  });
+  /** Each course's theme, then each course's world, once each. */
+  const courseEntries = (courses: readonly Course[]): ArtEntry[] => {
+    // skinFor names the course when its world has no skin; past it each world is a shipped one.
+    for (const course of courses) skinFor(course);
+    const themes = new Set(courses.map((course) => course.theme));
+    const worlds = new Set(courses.map((course) => course.world as ShippedWorldId));
+    return [...[...themes].map(themeEntry), ...[...worlds].map(worldEntry)];
+  };
   const has = (key: string) => loaded.includes(key);
 
   return {
-    async ensureCourseArt(scene, course) {
-      // skinFor names the course when its world has no skin; past it the world is a shipped one.
-      skinFor(course);
-      await ensureTheme(scene, course.theme);
-      await ensureWorld(scene, course.world as ShippedWorldId);
-    },
-    async ensureAllArt(scene) {
-      for (const id of Object.keys(THEMES) as ThemeId[]) await ensureTheme(scene, id);
-      for (const id of Object.keys(SKINS) as ShippedWorldId[]) await ensureWorld(scene, id);
-    },
+    ensureCourseArt: (scene, course) => ensure(scene, courseEntries([course])),
+    ensureCoursesArt: (scene, courses) => ensure(scene, courseEntries(courses)),
+    ensureAllArt: (scene) =>
+      ensure(scene, [
+        ...(Object.keys(THEMES) as ThemeId[]).map(themeEntry),
+        ...(Object.keys(SKINS) as ShippedWorldId[]).map(worldEntry),
+      ]),
     hasCourseArt: (course) => has(`theme:${course.theme}`) && has(`world:${course.world}`),
     hasAllArt: () => loaded.length === ALL_ART_COUNT,
     loadedArt: () => loaded.map((key) => key.slice(key.indexOf(':') + 1)),
@@ -112,6 +141,8 @@ const shared = createArtLoader({ worlds: WORLD_ART, themes: THEME_ART });
 
 /** The game's loader's `ensureCourseArt`: registers `course`'s theme and world art once. */
 export const ensureCourseArt = shared.ensureCourseArt;
+/** The game's loader's `ensureCoursesArt`: registers several courses' theme and world art once. */
+export const ensureCoursesArt = shared.ensureCoursesArt;
 /** The game's loader's `ensureAllArt`: registers every theme's and world's art once. */
 export const ensureAllArt = shared.ensureAllArt;
 /** The game's loader's `hasCourseArt`. */

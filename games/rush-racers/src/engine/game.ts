@@ -22,7 +22,7 @@ import { RoomScene } from './scenes/room.ts';
 import { SelectScene } from './scenes/select.ts';
 import { TitleScene } from './scenes/title.ts';
 import { type Stage, stageFor } from './stage.ts';
-import { ensureAllArt, ensureCourseArt, hasAllArt, hasCourseArt, loadedArt } from './worlds/load.ts';
+import { ensureAllArt, ensureCoursesArt, hasAllArt, hasCourseArt, loadedArt } from './worlds/load.ts';
 
 /**
  * Starts Rush Racers inside `ctx.container`.
@@ -99,10 +99,7 @@ function artPort(game: () => Phaser.Game | null): ArtPort {
   };
   return {
     ready: (need) => (need === 'all' ? hasAllArt() : need.every(hasCourseArt)),
-    async load(need) {
-      if (need === 'all') return ensureAllArt(scene());
-      for (const course of need) await ensureCourseArt(scene(), course);
-    },
+    load: (need) => (need === 'all' ? ensureAllArt(scene()) : ensureCoursesArt(scene(), need)),
   };
 }
 
@@ -132,13 +129,26 @@ function containerStage(container: HTMLElement): Stage {
  * context-loss hookup once Phaser is ready.
  */
 function watchGame(ctx: GameContext, game: Phaser.Game, rt: Runtime): void {
-  game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => rt.frame(deltaMs));
+  /** The screen showing when a resize came mid-load, or null: it lays out again if it is still showing once the load ends. */
+  let resizedWhileLoading: SceneKey | null = null;
+  const restartShowing = () => {
+    for (const running of game.scene.getScenes(true)) if (running.scene.key !== 'boot') running.scene.restart();
+  };
+  game.events.on(Phaser.Core.Events.STEP, (_time: number, deltaMs: number) => {
+    // A load that failed leaves the old screen up at the old size; one that worked started a screen at the new size.
+    if (resizedWhileLoading !== null && !rt.loading) {
+      if (resizedWhileLoading === rt.scene) restartShowing();
+      resizedWhileLoading = null;
+    }
+    rt.frame(deltaMs);
+  });
   const fitToContainer = () => {
     const stage = containerStage(ctx.container);
     if (stage.width !== game.scale.width || stage.height !== game.scale.height) {
       game.scale.resize(stage.width, stage.height);
-      // Mid-load a scene is still being built at the old size; it lays out at the new one when it starts.
-      if (!rt.loading) for (const running of game.scene.getScenes(true)) running.scene.restart();
+      // Mid-load the next scene is still to be built and lays out at the new size when it starts.
+      if (rt.loading) resizedWhileLoading = rt.scene;
+      else restartShowing();
     }
     game.scale.setZoom(stage.zoom);
   };

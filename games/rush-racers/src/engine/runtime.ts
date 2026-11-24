@@ -17,9 +17,10 @@
  * like a debug race it saves nothing; its results offer Race again (back to the room) and Title.
  *
  * A screen starts only once the art it draws is registered (`ArtPort`): the menu course's on the
- * title, course select and Friends, the picked course's on select and How to Play, the race's on
- * race and results, and every world's in the room, since a guest races whatever the host picks.
- * Ticks wait while it loads; a failed load is reported and leaves the player on the screen showing.
+ * title and course select, the picked course's on select and How to Play, the race's on race and
+ * results, and every world's on Friends and in the room, since a guest races whatever the host
+ * picks. Ticks wait while it loads; a failed load is reported and leaves the player on the screen
+ * showing.
  */
 import { createLogger, EventLog, FixedStep, type Stamped } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
@@ -56,6 +57,7 @@ import {
 } from './online/flow.ts';
 import type { ScreenPress } from './online/friends-screen.ts';
 import { onlineCourses } from './online/room-courses.ts';
+import { roomLinkParam } from './online/room-link.ts';
 import type { OnlineState } from './online/state.ts';
 import { raceProgress } from './race-progress.ts';
 import { moveCharacter } from './screens/character-select.ts';
@@ -255,6 +257,8 @@ export class Runtime {
   private readonly art: ArtPort;
   /** Counts art waits, so a load that finishes after a newer request was made does nothing. */
   private artRequests = 0;
+  /** Asks again for the art boot failed to load; null unless boot's load failed. */
+  private bootRetry: (() => void) | null = null;
 
   constructor(options: RuntimeOptions) {
     this.ctx = options.ctx;
@@ -365,12 +369,25 @@ export class Runtime {
   }
 
   /**
+   * Leaves boot once the art of the courses the first screens draw is in (the session's course and
+   * the menu course behind the title, which differ with `?course=`): straight into a race with
+   * `?scene=race` (or the older `?scene=play`), into the room a `?room=` link names, to Friends with
+   * `?scene=friends`, else to the title. When that art fails to load, the next press tries again.
+   */
+  boot(): void {
+    this.whenArtReady([this.course, this.menuCourse], () => {
+      if (RACE_SCENE_PARAMS.includes(this.ctx.params.scene)) this.startRace();
+      else if (!this.openRoomLink()) this.goTo(this.ctx.params.scene === 'friends' ? 'friends' : 'title');
+    });
+  }
+
+  /**
    * Runs `then` once the art `need` names is registered: at once when it already is, else after it
    * loads, with `loading` set meanwhile. Only the latest request runs. A failed load is reported as
    * an 'art' error and shown as `ART_LOAD_FAILED`, `then` never runs, and ticks carry on on the
-   * screen showing, so the player's next pick tries again.
+   * screen showing, where the player's next pick (on boot, any press) asks again.
    */
-  whenArtReady(need: ArtNeed, then: () => void): void {
+  private whenArtReady(need: ArtNeed, then: () => void): void {
     const request = ++this.artRequests;
     if (this.art.ready(need)) {
       then();
@@ -382,17 +399,21 @@ export class Runtime {
         if (request === this.artRequests) then();
       },
       (error: unknown) => {
-        if (request === this.artRequests) this.failArt(error);
+        if (request !== this.artRequests) return;
+        this.bootRetry = this.scene === 'boot' ? () => this.whenArtReady(need, then) : null;
+        this.failArt(error);
       },
     );
   }
 
-  /** The art `scene` draws: see the module comment. */
+  /**
+   * The art `scene` draws: see the module comment. Friends needs every world's too, so nobody joins
+   * or creates a room (and shows the host they are ready) before a race on any course can be drawn.
+   */
   private artFor(scene: SceneKey): ArtNeed {
-    if (scene === 'room') return 'all';
+    if (scene === 'room' || scene === 'friends') return 'all';
     if (scene === 'race' || scene === 'results') return [this.raceCourse];
     if (scene === 'select' || scene === 'howToPlay') return [this.course];
-    if (scene === 'boot') return [];
     return [this.menuCourse];
   }
 
@@ -400,6 +421,14 @@ export class Runtime {
     this.loading = false;
     this.ctx.reportError('art', error);
     this.ctx.notice(ART_LOAD_FAILED);
+  }
+
+  /** On boot after its art failed to load, any press asks for that art again. */
+  private tickBoot(): void {
+    if (!this.bootRetry || !TITLE_PRESSES.some((action) => input.justPressed(action))) return;
+    const retry = this.bootRetry;
+    this.bootRetry = null;
+    retry();
   }
 
   /**
@@ -484,12 +513,17 @@ export class Runtime {
   }
 
   /**
-   * Boots into the room a `?room=` link names, connecting at once. Returns false, changing nothing,
-   * when there is no `?room=`; an invalid one is warned about and ignored the same way.
+   * Boots into the room a `?room=` link names, connecting once every world's art is in, so the host
+   * never sees this player ready before a race on any course can be drawn. Returns false, changing
+   * nothing, when there is no `?room=`; an invalid one is warned about and ignored the same way.
    */
   openRoomLink(): boolean {
-    if (!this.flow.openLink(this.search)) return false;
-    this.goTo('room');
+    // Without a room code openLink joins nothing; it only warns about an invalid one.
+    if (roomLinkParam(this.search).kind !== 'room') return this.flow.openLink(this.search);
+    this.whenArtReady('all', () => {
+      this.flow.openLink(this.search);
+      this.goTo('room');
+    });
     return true;
   }
 
@@ -585,6 +619,7 @@ export class Runtime {
     else if (this.scene === 'select') this.tickSelect();
     else if (this.scene === 'howToPlay') this.tickHowToPlay();
     else if (this.scene === 'race') this.tickRace(dt);
+    else if (this.scene === 'boot') this.tickBoot();
     if (this.holdEvents) this.holdEvents = false;
     else this.dispatchEvents();
   }
@@ -855,6 +890,9 @@ function nextDifficulty(current: Difficulty): Difficulty {
   const index = DIFFICULTIES.indexOf(current);
   return DIFFICULTIES[(index + 1) % DIFFICULTIES.length] ?? current;
 }
+
+/** `?scene=` values that skip the title. */
+const RACE_SCENE_PARAMS: readonly (string | null)[] = ['race', 'play'];
 
 /** The presses the friends and room screens take, in the order one is picked when several land on one tick. */
 const SCREEN_PRESSES: readonly ScreenPress[] = ['up', 'down', 'left', 'right', 'fire', 'dash'];

@@ -65,6 +65,30 @@ describe('the art loader', () => {
     expect(textures.has(THORNWOOD_SKIN.cast.racers.rudy)).toBe(true);
   });
 
+  it('starts every import at once, and registers the theme first whichever arrives first', async () => {
+    const { scene } = bootedScene();
+    const requested: string[] = [];
+    const arrive = new Map<string, () => void>();
+    const held =
+      (id: string, importArt: ArtImport): ArtImport =>
+      () => {
+        requested.push(id);
+        return new Promise((resolve) => arrive.set(id, () => resolve(importArt())));
+      };
+    const loader = createArtLoader({
+      worlds: { ...WORLD_ART, thornwood: held('thornwood', WORLD_ART.thornwood) },
+      themes: { ...THEME_ART, forest: held('forest', THEME_ART.forest) },
+    });
+
+    const loading = loader.ensureCoursesArt(scene, [BRAMBLE_RUN, SUNLIT_SHALLOWS]);
+    expect(requested).toEqual(['forest', 'thornwood']);
+    arrive.get('thornwood')?.();
+    arrive.get('forest')?.();
+    await loading;
+
+    expect(loader.loadedArt()).toEqual(['forest', 'ocean', 'thornwood', 'reef']);
+  });
+
   it('shares one load between calls made while it runs', async () => {
     const { scene } = bootedScene();
     const { sources, imports } = countedSources();
@@ -94,7 +118,7 @@ describe('the art loader', () => {
       "Couldn't load the art for world 'thornwood': Failed to fetch dynamically imported module: /assets/art-x.js",
     );
     expect((failed as Error).cause).toBe(chunk404);
-    expect(loader.loadedArt()).toEqual(['forest']);
+    expect(loader.loadedArt()).toEqual([]);
 
     fail = false;
     await loader.ensureCourseArt(scene, BRAMBLE_RUN);

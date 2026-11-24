@@ -57,7 +57,8 @@ interface TitleHarness extends Harness {
  * A runtime on its title screen, as the shell hands it over, over `saves`, opened at `search` and
  * offering `listedCourses` on course select. Each scene it asks for comes up at once, as Phaser's would,
  * or with `deferScenes` only when the test calls `showScene`, as between two of Phaser's frames. Its
- * art is always in unless the test passes an `art` port.
+ * art is always in unless the test passes an `art` port. With `boot` it starts on boot instead and
+ * routes on from there, as the boot scene has it do.
  */
 function titleRuntime(
   saves: SaveStore<SaveData>,
@@ -69,6 +70,7 @@ function titleRuntime(
     online = roomPorts(createMemoryRoom()),
     deferScenes = false,
     art,
+    boot = false,
   }: {
     search?: string;
     listedCourses?: readonly Course[];
@@ -77,6 +79,7 @@ function titleRuntime(
     online?: OnlinePorts;
     deferScenes?: boolean;
     art?: ArtPort;
+    boot?: boolean;
   } = {},
 ): TitleHarness {
   let asked: SceneKey | null = null;
@@ -109,6 +112,10 @@ function titleRuntime(
     online,
     ...(art && { art }),
   });
+  if (boot) {
+    rt.boot();
+    return { rt, gameErrors, notices, showScene };
+  }
   rt.entered('title');
   rt.step.advance(ARMED);
   return { rt, gameErrors, notices, showScene };
@@ -508,6 +515,103 @@ describe('art a screen needs', () => {
     art.finish();
     await vi.waitFor(() => expect(rt.scene).toBe('select'));
     expect(art.asked).toEqual(['bramble-run', 'bramble-run']);
+  });
+
+  /** A host waiting in a memory room; each round ticks it, then `rt`, then delivers. */
+  function hostedRoom() {
+    const room = createMemoryRoom();
+    const host = createClient({
+      connection: room.connect(),
+      lobby: { character: 'gil', course: 'run-test', difficulty: 'normal' },
+      createRace: (start) => createOnlineWorld(start, new EventLog(10_000)),
+      kickAfterMs: null,
+      warn: (message) => {
+        throw new Error(`the host warned: ${message}`);
+      },
+    });
+    const rounds = (rt: Runtime, count: number) => {
+      for (let done = 0; done < count; done++) {
+        host.tick(IDLE_INPUT, 16);
+        rt.step.advance(1);
+        room.deliver();
+      }
+    };
+    return { room, host, rounds };
+  }
+
+  it("keeps a room link's guest out of the room, so the host can't start, until every world's art is in", async () => {
+    const { room, host, rounds } = hostedRoom();
+    const art = heldArt([DEFAULT_COURSE]);
+    const { rt, gameErrors } = titleRuntime(await realStore(), {
+      search: `?room=${ROOM_CODE}`,
+      online: roomPorts(room),
+      art: art.port,
+    });
+
+    expect(rt.openRoomLink()).toBe(true);
+    rounds(rt, 60);
+    expect([art.asked, rt.scene, rt.flow.client, host.view.lobby.canStart]).toEqual([['all'], 'title', null, false]);
+
+    art.finish();
+    await vi.waitFor(() => expect(rt.scene).toBe('room'));
+    rounds(rt, 60);
+    expect(host.view.lobby.canStart).toBe(true);
+    expect(gameErrors).toEqual([]);
+  });
+
+  it("opens Friends, where rooms are joined and created, only once every world's art is in", async () => {
+    const art = heldArt([DEFAULT_COURSE]);
+    const { rt } = titleRuntime(await realStore(), { art: art.port });
+
+    press(rt, 'down');
+    press(rt, 'fire');
+    expect([art.asked, rt.scene, rt.loading]).toEqual([['all'], 'title', true]);
+
+    art.finish();
+    await vi.waitFor(() => expect([rt.scene, rt.loading]).toEqual(['friends', false]));
+    // Lets the input see fire released, which it couldn't while the art loaded, so later tests start clean.
+    rt.step.advance(1);
+  });
+
+  it("never joins a room link's room when every world's art fails to load", async () => {
+    const { room, host, rounds } = hostedRoom();
+    const art = heldArt([DEFAULT_COURSE]);
+    const { rt, gameErrors, notices } = titleRuntime(await realStore(), {
+      search: `?room=${ROOM_CODE}`,
+      online: roomPorts(room),
+      art: art.port,
+    });
+    rt.openRoomLink();
+
+    art.fail();
+    await vi.waitFor(() => expect(gameErrors).toEqual(['art']));
+    rounds(rt, 60);
+
+    expect([notices, rt.scene, rt.flow.client, host.view.lobby.canStart]).toEqual([
+      [ART_LOAD_FAILED],
+      'title',
+      null,
+      false,
+    ]);
+  });
+
+  it('asks again for boot’s art on the next press after it fails to load, then opens the title', async () => {
+    const art = heldArt([]);
+    const { rt, gameErrors, notices } = titleRuntime(await realStore(), { art: art.port, boot: true });
+    expect([art.asked, rt.scene, rt.loading]).toEqual([['sunlit-shallows,sunlit-shallows'], 'boot', true]);
+
+    art.fail();
+    await vi.waitFor(() => expect(gameErrors).toEqual(['art']));
+    expect([notices, rt.scene, rt.loading]).toEqual([[ART_LOAD_FAILED], 'boot', false]);
+    rt.step.advance(ARMED);
+    expect(art.asked).toHaveLength(1);
+
+    press(rt, 'fire');
+    expect(art.asked).toHaveLength(2);
+    art.finish();
+    await vi.waitFor(() => expect([rt.scene, rt.loading]).toEqual(['title', false]));
+    // Lets the input see fire released, which it couldn't while the art loaded, so later tests start clean.
+    rt.step.advance(1);
   });
 
   it("loads every world's art before a room link's room opens, so no race starts before it is in", async () => {
