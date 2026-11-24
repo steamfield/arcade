@@ -1,10 +1,11 @@
 /**
  * Gravity wells on the race screen: where each one is, how far it reaches, and for a black hole the
  * horizon not to cross. `wellMarks` says what to draw, in world pixels; `createWellView` draws it
- * once into one static Graphics object: a planet as a shaded globe over the rock the course gives it,
- * a black hole as a black disc ringed by a bright accretion rim and disc. Wells never move, so
- * nothing is redrawn after create and nothing animates (UI.md: motion comes from the logic tick so
- * captures repeat), which also keeps reduced motion and full motion the same picture.
+ * once into two static Graphics objects: planets just over the tiles, as a shaded globe over the rock
+ * the course gives each, and black holes just under them, as a black disc ringed by a bright rim and
+ * an accretion disc, so rock hides the disc and the hole shows only where space is open. Wells never
+ * move, so nothing is redrawn after create and nothing animates (UI.md: motion comes from the logic
+ * tick so captures repeat), which also keeps reduced motion and full motion the same picture.
  */
 import type Phaser from 'phaser';
 import { cellAt } from '../../logic/level/query.ts';
@@ -18,8 +19,10 @@ export interface WellMark {
   horizon: number | null;
 }
 
-/** Just over the terrain tiles and under everything at `Layer.water` (solar wind, the finish gate), so a well never hides either. */
-const WELL_DEPTH = Layer.tiles + 0.5;
+/** Planets: just over the terrain tiles and under everything at `Layer.water` (solar wind, the finish gate), so a well never hides either. */
+const PLANET_DEPTH = Layer.tiles + 0.5;
+/** Black holes: just under the terrain tiles, so their disc and glow never paint over a wall. */
+const HOLE_DEPTH = Layer.tiles - 0.5;
 /** The faint ring at the edge of a well's pull. */
 const REACH_RING = { width: 1, colour: 0xc8d8ff, alpha: 0.3 } as const;
 /**
@@ -71,11 +74,16 @@ export function wellMarks(level: Level): WellMark[] {
 export function createWellView(scene: Phaser.Scene, level: Level, _reducedMotion: boolean): void {
   const marks = wellMarks(level);
   if (marks.length === 0) return;
-  const graphics = scene.add.graphics().setDepth(WELL_DEPTH);
+  const planets = scene.add.graphics().setDepth(PLANET_DEPTH);
+  const holes = scene.add.graphics().setDepth(HOLE_DEPTH);
   for (const mark of marks) {
+    const graphics = mark.horizon === null ? planets : holes;
+    if (mark.horizon === null) {
+      const radius = planetRadius(level, mark);
+      if (radius !== null) drawPlanet(graphics, mark.centre, radius);
+    } else drawBlackHole(graphics, mark.centre, mark.horizon);
+    // Last, so neither a globe nor an accretion disc ever covers it.
     drawReachRing(graphics, mark);
-    if (mark.horizon === null) drawPlanet(graphics, mark.centre, planetRadius(level, mark));
-    else drawBlackHole(graphics, mark.centre, mark.horizon);
   }
 }
 
@@ -92,12 +100,17 @@ function distanceToTile(point: Vec, col: number, row: number): number {
   return Math.hypot(dx, dy);
 }
 
-/** How big to draw a planet: out to the nearest tile around its centre that isn't rock, within the body's limits. */
-function planetRadius(level: Level, mark: WellMark): number {
-  const limit = mark.reach * PLANET.maxReachFraction;
-  const span = Math.ceil(limit / TILE) + 1;
+/**
+ * How big to draw a planet's body: out to the nearest tile around its centre that isn't rock, at least
+ * `PLANET.minRadius` and at most `PLANET.maxReachFraction` of its reach. Null when the centre tile
+ * itself isn't rock: there is no rock there to cover, so no body is drawn.
+ */
+export function planetRadius(level: Level, mark: WellMark): number | null {
   const col = Math.floor(mark.centre.x / TILE);
   const row = Math.floor(mark.centre.y / TILE);
+  if (cellAt(level, col, row) !== 'rock') return null;
+  const limit = mark.reach * PLANET.maxReachFraction;
+  const span = Math.ceil(limit / TILE) + 1;
   let nearestOpen = limit;
   for (let y = row - span; y <= row + span; y++) {
     for (let x = col - span; x <= col + span; x++) {
@@ -121,7 +134,8 @@ function drawPlanet(graphics: Phaser.GameObjects.Graphics, centre: Vec, radius: 
   });
   const { atmosphere } = PLANET;
   graphics.lineStyle(atmosphere.width, atmosphere.colour, atmosphere.alpha);
-  graphics.strokeCircle(centre.x, centre.y, radius + atmosphere.width / 2);
+  // Inside the body's edge, so the haze never spills onto the open tiles the radius stops at.
+  graphics.strokeCircle(centre.x, centre.y, radius - atmosphere.width / 2);
 }
 
 /** A black hole: its glow, the disc behind it, the black core and rim, then the disc's band in front. */

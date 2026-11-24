@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseLevel } from '../../logic/level/parse.ts';
 import { TILE } from '../../logic/types.ts';
-import { wellMarks } from './well-view.ts';
+import { planetRadius, wellMarks } from './well-view.ts';
 
 const ROOM = [
   '#'.repeat(30),
@@ -28,5 +28,44 @@ describe('what the race screen draws for gravity wells', () => {
       { centre: { x: 12.5 * TILE, y: 6.5 * TILE }, reach: 4 * TILE, horizon: null },
       { centre: { x: 20.5 * TILE, y: 7.5 * TILE }, reach: 3 * TILE, horizon: TILE },
     ]);
+  });
+
+  describe("a planet's body", () => {
+    // A room like ROOM with a block of rock five tiles square in it, cols 10-14 and rows 5-9.
+    const ROCKY = [
+      '#'.repeat(30),
+      '#1..........................F#',
+      '#2..........................F#',
+      '#3..........................F#',
+      '#4..........................F#',
+      '#.........#####.............F#',
+      '#.........#####.............F#',
+      '#.........#####.............F#',
+      '#.........#####.............F#',
+      '#.........#####.............F#',
+      '#...........................F#',
+      '#...........................F#',
+      '#...........................F#',
+      '#'.repeat(30),
+    ].join('\n');
+    const radiusFor = (col: number, row: number, reach: number) => {
+      const level = parseLevel({ name: 'planet', ascii: ROCKY, wells: [{ col, row, reach, pull: 300 }] });
+      const [mark] = wellMarks(level);
+      if (!mark) throw new Error('the level has no well');
+      return planetRadius(level, mark);
+    };
+
+    it('reaches from its centre to the nearest open tile when it sits in rock', () => {
+      // Centred on the block's middle tile (12, 7): two and a half tiles to open space on every side.
+      expect(radiusFor(12, 7, 10)).toBe(2.5 * TILE);
+    });
+
+    it('is capped at half its reach', () => {
+      expect(radiusFor(12, 7, 4)).toBe(2 * TILE);
+    });
+
+    it('is not drawn when its centre tile is open', () => {
+      expect(radiusFor(20, 7, 4)).toBeNull();
+    });
   });
 });

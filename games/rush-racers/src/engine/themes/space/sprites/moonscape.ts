@@ -18,7 +18,7 @@ export interface Asteroid {
 }
 
 /** A crater bitten out of the horizon: its centre column, half-width and depth in px. */
-export interface Crater {
+interface Crater {
   x: number;
   halfWidth: number;
   depth: number;

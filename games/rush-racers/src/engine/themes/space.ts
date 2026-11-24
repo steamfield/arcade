@@ -1,8 +1,8 @@
 /**
  * The space look: Farside's asteroid rock, ice, nebula dust, solar wind and starfield. Its art, keys
  * and colours live in `space/`; this file says how the views use them. Nothing has weight in a
- * vacuum, so no particle rises or falls: they coast to a stop, debris barely slows at all, and
- * reduced motion only slows them sooner.
+ * vacuum, so no particle rises or falls: they coast to a stop, and reduced motion only stops them
+ * sooner.
  */
 
 import { drawSheets, registerLoops } from '../art/index.ts';
@@ -26,8 +26,10 @@ const SPACE_LOOPS = [
 ] as const;
 
 /**
- * Every sky band and backdrop silhouette colour: everything a racer or off-panel text can sit in
- * front of. The stars are single pixels, like the drifting motes, so they aren't bands.
+ * Everything a racer or off-panel text can sit in front of: the seven sky bands and the near moon's
+ * shadow and lit edge. The two far starfield colours are drawn nowhere (the far layer is all stars,
+ * which are single pixels like the drifting motes, so they aren't bands); they stay in the list only
+ * so the contrast tests stay as strict as before.
  */
 const SPACE_CONTRAST_BANDS: readonly ContrastBand[] = [
   ...VOID_BANDS.map((colour, band) => ({ name: `sky band ${band}`, colour })),
@@ -62,15 +64,16 @@ export const SPACE_THEME = defineTheme({
       { texture: SpaceTex.backdropFar, height: FAR_HEIGHT, factor: 0.15, aboveRays: false },
       { texture: SpaceTex.backdropNear, height: NEAR_HEIGHT, factor: 0.35, aboveRays: true },
     ],
-    // No air to shimmer in, so no caustics; faint shafts of starlight stay.
+    // No air to shimmer in or scatter light, so no caustics and no light shafts.
     caustics: null,
-    rays: StarLight.ray,
+    rays: null,
   },
   ambient: { motes: StarLight.mote },
   particles: {
     rise: { drag: 0.97, ay: 0, wobble: 1 },
     riseStill: { drag: 0.93, ay: 0, wobble: 0 },
-    fall: { drag: 0.995, ay: 0, wobble: 0 },
+    // Broken ice chips: with no gravity to stop them, drag alone brings them to rest within 5-20 px.
+    fall: { drag: 0.92, ay: 0, wobble: 0 },
     fallStill: { drag: 0.95, ay: 0, wobble: 0 },
     drift: { drag: 0.97, ay: 0, wobble: 0 },
     splash: { drag: 0.9, ay: 0, wobble: 0 },

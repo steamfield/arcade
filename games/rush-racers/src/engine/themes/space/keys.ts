@@ -26,17 +26,17 @@ export type SpaceTexKey = (typeof SpaceTex)[keyof typeof SpaceTex];
 
 /** Tile indices inside `SpaceTex.tiles`, named for the cell each draws and in frame order. */
 export const SpaceTile = {
-  /** Earth with a grass top. */
+  /** Asteroid rock facing open space above: a sunlit rim along its top. */
   rock: 0,
-  /** Cracked stone. */
+  /** Breakable ice. */
   coral: 1,
-  /** A thin branch to jump up through. */
+  /** A thin metal strut to jump up through. */
   ledge: 2,
-  /** Earth under earth or stone: no grass top. */
+  /** Asteroid rock under rock or ice: no rim, a scatter of lit specks instead. */
   rockBuried: 3,
 } as const;
 
-/** Space animation keys: dust bubbles, the four wind flows and the orb's wings. */
+/** Space animation keys: the dust's sway, the four wind flows and the orb's pulse. */
 export const SpaceAnim = {
   dustSwirl: 'space-dust-swirl',
   windRight: 'space-wind-right-flow',

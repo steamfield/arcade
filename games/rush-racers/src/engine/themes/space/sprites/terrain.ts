@@ -1,8 +1,9 @@
 /**
  * The solid and decorative course tiles: the asteroid rock, breakable ice and strut tileset, the
- * chips a broken ice tile scatters and the finish gate. Tiles are 16x16 and seamless sideways, since
- * the same tile repeats across whole walls. Light falls from the upper left, so crater bowls are
- * shadowed along their top and lit along their bottom.
+ * chips a broken ice tile scatters and the finish gate. Tiles are 16x16. Rock and the strut are
+ * seamless sideways, since the same tile repeats across whole walls; ice deliberately isn't, so each
+ * block shows its own edges and a stack reads as separate blocks that break. Light falls from the
+ * upper left.
  */
 import { Frame } from '../../../art/keys.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
@@ -10,12 +11,12 @@ import { SpaceTex, type SpaceTexKey } from '../keys.ts';
 import { SpaceTerrainPalette } from '../palettes.ts';
 
 /**
- * Asteroid rock facing open space: a sunlit rim along the top, then dull rock pocked with two small
- * craters, lit bumps and pits, kept small so a whole wall reads as rough rock rather than a grid. Drawn in the earth palette's three browns; its fourth colour (the forest's grass)
- * is left out.
+ * Asteroid rock facing open space: a sunlit rim along the top in the palette's brightest colour,
+ * then dull rock pocked with small craters, lit bumps and pits, kept small so a whole wall reads as
+ * rough rock rather than a grid.
  */
 const ASTEROID_ROWS = [
-  '2222222222122222',
+  '3333333333233333',
   '1211122111111211',
   '1111111110111121',
   '1121111111111110',
@@ -33,29 +34,50 @@ const ASTEROID_ROWS = [
   '1111111011121111',
 ];
 
-/** Asteroid rock with more rock over it: the same craters with no sunlit rim, so deep rock doesn't stripe. */
-const BURIED_ASTEROID_ROWS = ['1111111111101111', '1111211111111111', ...ASTEROID_ROWS.slice(2)];
+/**
+ * Asteroid rock with more rock over it: the same craters with no rim, so deep rock doesn't stripe,
+ * and a sparse scatter of sunlit specks. A tile can't know which of its sides are open, so the
+ * specks run to every edge and a ceiling or side wall shows where the speckled rock stops.
+ */
+const BURIED_ASTEROID_ROWS = [
+  '1111111111101111',
+  '1111211111111311',
+  '1111111110111121',
+  '3121111111111110',
+  '1111221111112111',
+  '1112001131111111',
+  '1112011211121113',
+  '1111122111111011',
+  '1211111111111111',
+  '1111311211111111',
+  '1111111111120131',
+  '1101111111201211',
+  '3111121111122111',
+  '1111111311111111',
+  '0111111211111101',
+  '1113111011121111',
+];
 
 /**
- * Ice: a pale block lit along its top and left, shadowed along its bottom and right so stacked blocks
- * read apart, with one crack running across it because it breaks. Its palette's moss is left out.
+ * Ice: a pale block frosted along its top and left and shadowed along its bottom and right, so
+ * stacked blocks read apart, with two cracks across it because it breaks.
  */
 const ICE_ROWS = [
-  '2222222222222221',
-  '2222222212222211',
-  '2222222202222221',
-  '2212222220222221',
-  '2222222220222221',
-  '2222222202222221',
-  '2222200022222221',
-  '2222022222222221',
-  '2220222222212221',
-  '2202222221222221',
-  '2022222210222221',
-  '2222222102222221',
-  '2222221022222121',
-  '2212222222222221',
-  '2222222222222221',
+  '3333333333333331',
+  '3222222212222211',
+  '3222222202222221',
+  '3212222220222221',
+  '3222222220222221',
+  '3222222202222221',
+  '3222200022222221',
+  '3222022222222221',
+  '3220222222212221',
+  '3202222221222221',
+  '3022222210222221',
+  '3222222102222221',
+  '3222221022222121',
+  '3212222222222221',
+  '3222222222222221',
   '1111111111111111',
 ];
 
@@ -63,14 +85,17 @@ const ICE_ROWS = [
 const STRUT_ROWS = [
   '2222222222222222',
   '1001100110011001',
-  '0000000000000000',
+  '1111111111111111',
   ...Array.from({ length: 13 }, () => '................'),
 ];
 
 /** Ice chips: a few pale shards with dark edges. */
 const ICE_CHIP_ROWS = ['..22....', '.2210...', '.110..2.', '..0..221', '.....10.', '2.......', '21..22..', '.0..10..'];
 
-/** The finish gate: two pylons with a beacon at each, framing a checkered field. Repeats down the finish column. */
+/**
+ * The finish gate: two grey pylons framing a checkered field, each pylon with one beacon at the top
+ * of the tile, so the beacons repeat every 16 px down the finish column.
+ */
 const GATE_ROWS = [
   '..032222111130..',
   '..002222111100..',
@@ -80,7 +105,7 @@ const GATE_ROWS = [
   '..001111222200..',
   '..001111222200..',
   '..001111222200..',
-  '..032222111130..',
+  '..002222111100..',
   '..002222111100..',
   '..002222111100..',
   '..002222111100..',

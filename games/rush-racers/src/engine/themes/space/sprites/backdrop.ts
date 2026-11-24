@@ -1,8 +1,8 @@
 /**
  * The two painted parallax layers behind the course, each tiling horizontally: a far starfield tall
  * enough to fill the sky behind a course, and a near layer with the limb of a cratered moon and a few
- * distant asteroids. The near layer is two dark colours a step off the sky bands, so it recedes; the
- * stars are single pixels of the theme's starlight, too small for a racer ever to sit on.
+ * distant asteroids. The near layer is a shadow close to the sky and an edge lit about 1.6:1 off it, so
+ * it recedes; the stars are single pixels of the theme's starlight, too small for a racer ever to sit on.
  */
 import { Frame } from '../../../art/keys.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
@@ -21,8 +21,8 @@ export const NEAR_HEIGHT = 80;
 const FAR_STARS: StarCounts = { faint: 70, lit: 22, bright: 4 };
 /** Any fixed seed: it only decides where the stars sit. */
 const FAR_STAR_SEED = 7;
-/** Faint stars in the far trees' lit colour, lit and bright ones in starlight. */
-const STAR_PALETTE = [SpaceBackdropPalette.far[1], StarLight.ray, StarLight.mote];
+/** Faint, lit and bright stars, all in starlight; the faint ones about 2.4:1 off the sky. */
+const STAR_PALETTE = [StarLight.faint, StarLight.ray, StarLight.mote];
 
 /** The moon's horizon: low, gently rolling, with three craters of different sizes. */
 const MOON_HORIZON: Horizon = {

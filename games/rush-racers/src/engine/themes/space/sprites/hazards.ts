@@ -7,19 +7,22 @@ import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { SpaceTex, type SpaceTexKey } from '../keys.ts';
 import { SpaceHazardPalette } from '../palettes.ts';
 
-/** The space mine: a riveted round body with a spike at every compass point, each spike ending in a hot tip. Still. */
+/**
+ * The space mine: a riveted round body with a spike at every compass point, each a shaft of the body
+ * colour ending in a hot tip. The dark outline runs only round the body, so the spikes read bright. Still.
+ */
 const MINE_ROWS = [
   '.....22.....',
-  '.2...00...2.',
-  '..0.0110.0..',
+  '.2...11...2.',
+  '..1.0110.1..',
   '...011110...',
   '..01101110..',
-  '200111111002',
-  '200111111002',
+  '211111111112',
+  '211111111112',
   '..01110110..',
   '...011110...',
-  '..0.0110.0..',
-  '.2...00...2.',
+  '..1.0110.1..',
+  '.2...11...2.',
   '.....22.....',
 ];
 
