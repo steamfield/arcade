@@ -7,7 +7,7 @@ import { cellAt, isSolid, tileIndex } from '../../level/query.ts';
 import { length } from '../../num.ts';
 import { cornerIsClear, fieldAt, NEIGHBOURS } from '../../race/flowfield.ts';
 import { centreOf } from '../../racers.ts';
-import { isInvulnerable } from '../../status.ts';
+import { isWarpCoolingDown } from '../../setpieces/wormholes.ts';
 import type { Box, Racer, Vec, World } from '../../types.ts';
 import { type DriftNav, driftNav } from './way-data.ts';
 
@@ -104,24 +104,44 @@ export function wormholeApproach(
     const distance = length(x, y);
     return distance === 0 ? { x: 0, y: 0 } : { x: x / distance, y: y / distance };
   };
-  const cannotWarp = isInvulnerable(racer) || world.warps.some((warp) => warp.racer === racer.id && warp.ticks > 1);
-  if (isEntry(at)) {
-    // Take a ground route away from the arrival mouth when it improves the way to the finish.
-    // If the warp is the useful way on, hold inside the mouth until it can take the racer.
-    let exit: Vec | null = null;
-    let best = Number.POSITIVE_INFINITY;
-    for (const offset of NEIGHBOURS) {
-      const tile = { x: at.x + offset.x, y: at.y + offset.y };
-      const value = fieldAt(field, nav, tile);
-      if (value >= best || !open(tile.x, tile.y) || !cornerIsClear(at, offset, open)) continue;
-      best = value;
-      exit = tile;
-    }
-    return exit && best < fieldAt(field, nav, at)
-      ? { aim: aimAt(exit), waiting: false }
-      : { aim: { x: 0, y: 0 }, waiting: cannotWarp };
-  }
+  const coolingDown = isWarpCoolingDown(world, racer.id);
+  if (isEntry(at)) return approachOnMouth(field, nav, at, open, aimAt, coolingDown);
+
   const path = downhillPath(field, nav, open, at, lookahead);
+  const target = targetPastMouths(world, racer.body, centre, at, path, isEntry);
+  return target ? { aim: aimAt(target), waiting: isEntry(target) && coolingDown } : null;
+}
+
+/** Leave an arrival mouth if the field improves away from it or hold inside it for the warp. */
+function approachOnMouth(
+  field: Float32Array,
+  nav: DriftNav,
+  at: Vec,
+  open: (x: number, y: number) => boolean,
+  aimAt: (tile: Vec) => Vec,
+  coolingDown: boolean,
+): WormholeApproach {
+  let exit: Vec | null = null;
+  let best = fieldAt(field, nav, at);
+  for (const offset of NEIGHBOURS) {
+    const tile = { x: at.x + offset.x, y: at.y + offset.y };
+    const value = fieldAt(field, nav, tile);
+    if (value >= best || !open(tile.x, tile.y) || !cornerIsClear(at, offset, open)) continue;
+    best = value;
+    exit = tile;
+  }
+  return exit ? { aim: aimAt(exit), waiting: false } : { aim: { x: 0, y: 0 }, waiting: coolingDown };
+}
+
+/** Walk the downhill path as far as the racer can aim without clipping a wall or an unintended mouth. */
+function targetPastMouths(
+  world: World,
+  body: Box,
+  centre: Vec,
+  at: Vec,
+  path: readonly Vec[],
+  isEntry: (tile: Vec) => boolean,
+): Vec | undefined {
   let target: Vec | undefined;
   for (const tile of path) {
     const end = tileCentre(tile);
@@ -135,11 +155,11 @@ export function wormholeApproach(
       target = sides.find((side) => (side.x !== at.x || side.y !== at.y) && !isEntry(side));
       break;
     }
-    if (target && !hasClearSweep(world.level, world.broken, racer.body, end)) break;
+    if (target && !hasClearSweep(world.level, world.broken, body, end)) break;
     target = tile;
     if (isEntry(tile)) break;
   }
-  return target ? { aim: aimAt(target), waiting: isEntry(target) && cannotWarp } : null;
+  return target;
 }
 
 /** Check the centre's straight approach for entry tiles, except the mouth it is aiming at. */

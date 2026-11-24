@@ -2,6 +2,7 @@ import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { PROGRESS_BACKSTOP_TICKS } from '../ai/rival.ts';
 import type { GameEvent } from '../events.ts';
+import { applyHit } from '../hazards/hits.ts';
 import { LevelError, parseLevel } from '../level/parse.ts';
 import { DRIFT_MEDIUM } from '../media/drift/index.ts';
 import { centreOf } from '../racers.ts';
@@ -37,15 +38,30 @@ function playerWarps(log: EventLog<GameEvent>) {
 
 describe('parsing wormholes', () => {
   it.each([
-    ['off the map', [{ ...PAIR, a: [-1, 2] }], 2, -1],
-    ['on rock', [{ ...PAIR, b: [16, 0] }], 0, 16],
-    ['under four tiles from its pair', [{ ...PAIR, b: [9, 2] }], 2, 9],
-    ['under three tiles from another pair', [PAIR, { a: [7, 3], b: [19, 4], oneWay: true }], 3, 7],
-  ] satisfies [string, WormholeDef[], number, number][])('locates a mouth %s', (_name, defs, row, col) => {
-    const parse = () => parseLevel(belt(defs));
-    expect(parse).toThrow(LevelError);
-    expect(parse).toThrow(expect.objectContaining({ row, col }));
-  });
+    ['off the map', [{ ...PAIR, a: [-1, 2] }], 2, -1, "Wormhole 0's mouth is off the map"],
+    ['on rock', [{ ...PAIR, b: [16, 0] }], 0, 16, "Wormhole 0's mouth needs an open tile"],
+    [
+      'under four tiles from its pair',
+      [{ ...PAIR, b: [9, 3] }],
+      3,
+      9,
+      "Wormhole 0's mouths are 3.2 tiles apart and need at least 4",
+    ],
+    [
+      'under three tiles from another pair',
+      [PAIR, { a: [8, 3], b: [19, 4], oneWay: true }],
+      3,
+      8,
+      "Wormhole 1's mouth is 2.2 tiles from wormhole 0's and needs at least 3",
+    ],
+  ] satisfies [string, WormholeDef[], number, number, string][])(
+    'locates a mouth %s',
+    (_name, defs, row, col, message) => {
+      const parse = () => parseLevel(belt(defs));
+      expect(parse).toThrow(LevelError);
+      expect(parse).toThrow(expect.objectContaining({ row, col, message: expect.stringContaining(message) }));
+    },
+  );
 });
 
 describe('drifting through wormholes', () => {
@@ -113,17 +129,19 @@ describe('drifting through wormholes', () => {
     expect(playerWarps(log)).toEqual([]);
   });
 
-  it('warps an unprotected stunned racer', () => {
+  it('warps a racer knocked into a mouth by a hit that stuns and grants invulnerability', () => {
     const { world, log, player } = raceOn([PAIR]);
-    placeOnTile(player, ...PAIR.a);
-    player.status.stunned = 30;
+    const before = { x: PAIR.a[0] * TILE - 1, y: tileCentre(...PAIR.a).y };
+    placeAt(player, before);
+    expect(applyHit(world, player, 'asteroid', null, { x: before.x - TILE, y: before.y })).toBe('stunned');
     step(world, log);
 
     expect(centreOf(player)).toEqual(tileCentre(...PAIR.b));
-    expect(player.status.stunned).toBe(29);
+    expect(player.status.stunned).toBeGreaterThan(0);
+    expect(player.status.invulnerable).toBeGreaterThan(0);
   });
 
-  it.each(['invulnerable', 'fallen', 'trapped', 'finished'] as const)('skips a %s racer', (status) => {
+  it.each(['fallen', 'trapped', 'finished'] as const)('skips a %s racer', (status) => {
     const { world, log, player } = raceOn([PAIR]);
     placeOnTile(player, ...PAIR.a);
     if (status === 'finished') player.finished = { tick: 0, place: 1, overshoot: 0 };
@@ -155,6 +173,16 @@ const CHAMBERS = `
 `;
 
 describe("drift rivals' wormhole routes", () => {
+  it('keeps thrusting toward a shortcut while invulnerable', () => {
+    const { world, log } = raceOn([PAIR], DETOUR);
+    const rival = racerOf(world, 'tess');
+    placeOnTile(rival, 4, 2);
+    rival.status.invulnerable = 30;
+    step(world, log);
+
+    expect(rival.body.vx).toBeGreaterThan(0);
+  });
+
   it('has finite ways from both sides of a two-way pair and sends a rival through the shortcut', () => {
     const { world, log } = raceOn([PAIR], DETOUR);
     for (const [x, y] of [PAIR.a, PAIR.b]) {

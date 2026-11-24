@@ -4,19 +4,17 @@
  */
 import { tileCentre, tileOf } from '../ai/steer.ts';
 import { errorAt } from '../level/level-error.ts';
+import { length } from '../num.ts';
 import { centreOf } from '../racers.ts';
-import { isInvulnerable } from '../status.ts';
-import { type Cell, type Racer, TILE, type World, type WormholeDef } from '../types.ts';
+import { type Cell, type Racer, type RacerId, TILE, type World, type WormholeDef } from '../types.ts';
 
-/** The ring fits its tile. The whole tile catches a racer's centre, including the corners. */
-export const WORMHOLE = { mouthRadius: TILE / 2, cooldownTicks: 45 } as const;
+/** The ring fits the mouth tile. A racer is caught when its centre is anywhere in that tile. */
+export const WORMHOLE = { ringRadius: TILE / 2, cooldownTicks: 45 } as const;
 
 type Mouth = WormholeDef['a'];
 
-function separationSquared([ax, ay]: Mouth, [bx, by]: Mouth): number {
-  const dx = ax - bx;
-  const dy = ay - by;
-  return dx * dx + dy * dy;
+function separation([ax, ay]: Mouth, [bx, by]: Mouth): number {
+  return length(ax - bx, ay - by);
 }
 
 /**
@@ -26,7 +24,7 @@ function separationSquared([ax, ay]: Mouth, [bx, by]: Mouth): number {
  *   apart, or mouths of different holes under 3 tiles apart.
  */
 export function parseWormholes(defs: readonly WormholeDef[], cells: readonly (readonly Cell[])[]): WormholeDef[] {
-  const earlierMouths: Mouth[] = [];
+  const earlierMouths: { at: Mouth; hole: number }[] = [];
   return defs.map((def, index) => {
     const { a, b } = def;
     for (const [col, row] of [a, b]) {
@@ -36,17 +34,30 @@ export function parseWormholes(defs: readonly WormholeDef[], cells: readonly (re
         throw errorAt(`Wormhole ${index}'s mouth needs an open tile`, row, col);
       }
     }
-    if (separationSquared(a, b) < 16) {
-      throw errorAt(`Wormhole ${index}'s mouths must be at least 4 tiles apart`, b[1], b[0]);
+    const apart = separation(a, b);
+    if (apart < 4) {
+      throw errorAt(`Wormhole ${index}'s mouths are ${apart.toFixed(1)} tiles apart and need at least 4`, b[1], b[0]);
     }
     for (const mouth of [a, b]) {
-      if (earlierMouths.some((earlier) => separationSquared(earlier, mouth) < 9)) {
-        throw errorAt(`Wormhole ${index}'s mouth must be at least 3 tiles from another pair`, mouth[1], mouth[0]);
+      for (const { at, hole } of earlierMouths) {
+        const distance = separation(at, mouth);
+        if (distance < 3) {
+          throw errorAt(
+            `Wormhole ${index}'s mouth is ${distance.toFixed(1)} tiles from wormhole ${hole}'s and needs at least 3`,
+            mouth[1],
+            mouth[0],
+          );
+        }
       }
-      earlierMouths.push(mouth);
     }
+    earlierMouths.push({ at: a, hole: index }, { at: b, hole: index });
     return def;
   });
+}
+
+/** Before the warp step, only cooldowns above 1 block this tick because the step decrements first. */
+export function isWarpCoolingDown(world: World, racer: RacerId): boolean {
+  return world.warps.some((warp) => warp.racer === racer && warp.ticks > 1);
 }
 
 /** The wormholes slot of `stepRace`: warps racers that enter a mouth; emits `wormhole.warped`. */
@@ -56,7 +67,7 @@ export function warpWormholes(world: World, racing: readonly Racer[]): void {
   if (world.warps.length > 0) world.warps = world.warps.filter((warp) => --warp.ticks > 0);
 
   for (const racer of racing) {
-    if (racer.finished || racer.status.fallen > 0 || racer.status.trapped > 0 || isInvulnerable(racer)) continue;
+    if (racer.finished || racer.status.fallen > 0 || racer.status.trapped > 0) continue;
     if (world.warps.some((warp) => warp.racer === racer.id)) continue;
     const { x, y } = tileOf(centreOf(racer));
     // Crossing the line counts as finishing even before stepRace records it at the end of the tick.

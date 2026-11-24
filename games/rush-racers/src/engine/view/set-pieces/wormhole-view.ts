@@ -62,7 +62,7 @@ function ringAngle(tick: number, reducedMotion: boolean): number {
 }
 
 function drawRing(graphics: Phaser.GameObjects.Graphics, colour: number, entry: boolean): void {
-  const radius = WORMHOLE.mouthRadius;
+  const radius = WORMHOLE.ringRadius;
   graphics.fillStyle(WormholePalette.centre, 0.85).fillCircle(0, 0, radius);
   graphics.lineStyle(1, colour, 0.65).strokeCircle(0, 0, radius);
   graphics.fillStyle(colour, 1).fillCircle(radius, 0, 1.5).fillCircle(-radius, 0, 1.5);
