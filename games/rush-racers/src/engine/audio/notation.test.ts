@@ -78,7 +78,7 @@ describe('parseSong', () => {
 
     expect(parsed.notes.filter((note) => note.channel === 'pulse1')).toEqual([
       { channel: 'pulse1', start: 0, length: 2, pitch: 69, velocity: 1, slideTo: 5 },
-      { channel: 'pulse1', start: 2, length: 1, pitch: 69, velocity: 0.5, vibrato: true, echo: true },
+      { channel: 'pulse1', start: 2, length: 1, pitch: 69, velocity: 0.5, vibrato: true },
       { channel: 'pulse1', start: 3, length: 1, pitch: 69, velocity: 1 },
     ]);
     expect(rows(song('noise: k/4 s/4@0.8 h/4~ h/4'), 'noise')).toEqual([
@@ -462,7 +462,7 @@ describe('parseSong echo', () => {
     );
     expect(parsed.notes.filter((note) => note.channel === 'pulse2')).toEqual([
       { channel: 'pulse2', start: 4.5, length: 1, pitch: 72, velocity: 0.4, arp: [0, 4, 7], echo: true },
-      { channel: 'pulse2', start: 6.5, length: 1, pitch: 74, velocity: 0.5, vibrato: true },
+      { channel: 'pulse2', start: 6.5, length: 1, pitch: 74, velocity: 0.5, vibrato: true, echo: true },
       { channel: 'pulse2', start: 7.5, length: 0.5, pitch: 76, velocity: 0.5, slideTo: 2, echo: true },
     ]);
   });
