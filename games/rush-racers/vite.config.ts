@@ -48,7 +48,14 @@ const config = defineGameConfig(import.meta.url, {
     projects: [
       {
         extends: true,
-        test: { name: 'unit', include: ALL_TESTS, exclude: [...configDefaults.exclude, DIFFICULTY_BARS] },
+        // Some twenty tests here step a whole race (1 to 2 s each alone), and CI's runner under the full suite
+        // takes about four times as long, past Vitest's 5 s default. A test that needs more still sets its own.
+        test: {
+          name: 'unit',
+          include: ALL_TESTS,
+          exclude: [...configDefaults.exclude, DIFFICULTY_BARS],
+          testTimeout: 20_000,
+        },
       },
       { extends: true, test: { name: 'difficulty', include: [DIFFICULTY_BARS] } },
     ],

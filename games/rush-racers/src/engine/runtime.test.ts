@@ -443,40 +443,27 @@ describe('changing character from the results screen', () => {
     press(rt, 'fire');
     rt.step.advance(COUNTDOWN_TICKS + RACE_LIMIT_TICKS + 90 + ARMED);
   }
-  /**
-   * For a test that races the default course to the time limit: 18,000 ticks take about 2 s alone and
-   * ran past the 5 s default on a loaded CI runner.
-   */
-  const DNF_RACE_TIMEOUT_MS = 20_000;
   const playerCharacter = (rt: Runtime) => rt.world && playerOf(rt.world).character;
   const twoCourses = () => ['Reef', 'Sunlit'].map((name) => courseFromLevel({ name, ascii: '#1234F#' }));
 
-  it(
-    'offers Race again, Character and Title',
-    async () => {
-      const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
-      onResults(rt);
-      expect([rt.scene, rt.menu?.options]).toEqual(['results', ['Race again', 'Character', 'Title']]);
-    },
-    DNF_RACE_TIMEOUT_MS,
-  );
+  it('offers Race again, Character and Title', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    onResults(rt);
+    expect([rt.scene, rt.menu?.options]).toEqual(['results', ['Race again', 'Character', 'Title']]);
+  });
 
-  it(
-    'opens select on the current pick, and the next race runs as the pick moved to',
-    async () => {
-      const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
-      onResults(rt);
-      expect(playerCharacter(rt)).toBe('gil');
-      press(rt, 'down');
-      press(rt, 'fire');
-      expect([rt.scene, rt.selectedCharacter]).toEqual(['select', 'gil']);
-      rt.step.advance(ARMED);
-      press(rt, 'right');
-      press(rt, 'fire');
-      expect([rt.scene, playerCharacter(rt)]).toEqual(['race', 'streak']);
-    },
-    DNF_RACE_TIMEOUT_MS,
-  );
+  it('opens select on the current pick, and the next race runs as the pick moved to', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    onResults(rt);
+    expect(playerCharacter(rt)).toBe('gil');
+    press(rt, 'down');
+    press(rt, 'fire');
+    expect([rt.scene, rt.selectedCharacter]).toEqual(['select', 'gil']);
+    rt.step.advance(ARMED);
+    press(rt, 'right');
+    press(rt, 'fire');
+    expect([rt.scene, playerCharacter(rt)]).toEqual(['race', 'streak']);
+  });
 
   it('opens course select first while it is shown, then select', async () => {
     const { rt } = titleRuntime(await realStore(), { listedCourses: twoCourses() });
@@ -490,20 +477,16 @@ describe('changing character from the results screen', () => {
     expect(rt.scene).toBe('select');
   });
 
-  it(
-    'goes back to results on B from select, keeping the finished race and Character selected',
-    async () => {
-      const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
-      onResults(rt);
-      press(rt, 'down');
-      press(rt, 'fire');
-      rt.step.advance(ARMED);
-      press(rt, 'dash');
-      expect([rt.scene, rt.lastResult === null, rt.world === null]).toEqual(['results', false, false]);
-      expect(rt.menu && selectedOption(rt.menu)).toBe('Character');
-    },
-    DNF_RACE_TIMEOUT_MS,
-  );
+  it('goes back to results on B from select, keeping the finished race and Character selected', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    onResults(rt);
+    press(rt, 'down');
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'dash');
+    expect([rt.scene, rt.lastResult === null, rt.world === null]).toEqual(['results', false, false]);
+    expect(rt.menu && selectedOption(rt.menu)).toBe('Character');
+  });
 
   it('races the finished course again after another is picked on course select and backed out of', async () => {
     const courses = twoCourses();
