@@ -1,4 +1,4 @@
-/** What Slingshot Alley has to contain to be Farside's course: its size, its set pieces and where nothing may lie. */
+/** What Slingshot Alley has to contain to be Farside's course: its size, its set pieces (wells, asteroids) and where nothing may lie. */
 import { describe, expect, it } from 'vitest';
 import { holeAt } from '../level/wells.ts';
 import { type Cell, TILE, type Vec } from '../types.ts';
@@ -46,6 +46,20 @@ describe('Slingshot Alley', () => {
     expect(new Set(level.enemies.map((enemy) => enemy.kind))).toEqual(new Set(['shark', 'eel', 'crab']));
     expect(level.urchins.length).toBeGreaterThan(0);
     expect(level.jellies.length).toBeGreaterThan(0);
+  });
+
+  it('has 4-6 drifting asteroids out of step, on the opening straight and across the dust field', () => {
+    const { asteroids } = level;
+    const inCols = (from: number, to: number) =>
+      asteroids.filter((asteroid) => asteroid.from[0] >= from && asteroid.to[0] <= to).length;
+
+    expect(asteroids.length).toBeGreaterThanOrEqual(4);
+    expect(asteroids.length).toBeLessThanOrEqual(6);
+    expect(inCols(1, 98)).toBeGreaterThan(0);
+    expect(inCols(224, 270)).toBeGreaterThan(0);
+    expect(new Set(asteroids.map((asteroid) => `${asteroid.periodTicks}/${asteroid.offsetTicks}`)).size).toBe(
+      asteroids.length,
+    );
   });
 
   it('has at least 40 stardust and 10 supply pods, none inside a horizon', () => {

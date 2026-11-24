@@ -1,5 +1,5 @@
 /**
- * Farside, the space world: racers drift on thrusters. Data only; only `worlds/index.ts` imports this file.
+ * Farside, the space world: racers drift on thrusters, and its Cannonball is a Comet the gravity wells bend. Data only; only `worlds/index.ts` imports this file.
  */
 import type { WorldDef } from './types.ts';
 
@@ -33,4 +33,6 @@ export const FARSIDE: WorldDef = {
   pickups: { clam: 'Supply Pod', pearl: 'Stardust' },
   enemies: { shark: 'Rocket Ray', eel: 'Moon Worm', crab: 'Moon Mite' },
   hazards: { urchin: 'Space Mine', jelly: 'Plasma Orb' },
+  // The Comet is a shot the wells bend (`powerups/cannonball/comet.ts`), not the swim dash.
+  cannonball: 'comet',
 };

@@ -5,6 +5,9 @@
  * the stick that gets it there (`thrust-plan.ts`), so one rule brakes, corrects sideways drift,
  * turns, and flies with or against the pull of gravity wells.
  *
+ * When flying on would meet a drifting asteroid it slows, stopping if it must, so the asteroid passes
+ * ahead of it (`asteroid-wait.ts`).
+ *
  * It dashes when its dash is ready, it has a charge to spend (keeping one back for a latch as swim
  * does), the skill roll passes, it is moving within about 37 degrees of its aim and the way runs
  * straight for DASH_STRAIGHT_TILES. Below STUCK_SPEED for STUCK_TICKS racing ticks, or on
@@ -23,8 +26,9 @@ import { holds } from '../../powerups/inventory.ts';
 import { CORAL_BREAKERS } from '../../powerups/tuning.ts';
 import type { MoveModifiers, Racer, Vec, World } from '../../types.ts';
 import type { AiDraws, Steering } from '../types.ts';
+import { asteroidPace } from './asteroid-wait.ts';
 import { wayRunsStraight } from './lookahead.ts';
-import { stickToward, unitOr, wantedVelocity } from './thrust-plan.ts';
+import { brakeStick, stickToward, unitOr, wantedVelocity } from './thrust-plan.ts';
 import { type DriftRoute, driftRouteAim } from './way.ts';
 import { type DriftPilot, driftPilot } from './way-data.ts';
 
@@ -88,11 +92,27 @@ export function steerDrifter(
   const recovery = canRecover(world, racer, memory) ? recoveryMove(racer, memory, draws.side, forceRecover) : null;
   if (recovery) return { move: recovery, kick: false, kickHeld: false, aim, recovering: true };
   const wanted = wantedVelocity(world, racer, aim, mods, route);
+  const pace = asteroidPace(world, racer, wanted);
+  if (pace < 1) {
+    return {
+      move: slowedMove(world, racer, wanted, pace, aim, mods),
+      kick: false,
+      kickHeld: false,
+      aim,
+      recovering: false,
+    };
+  }
   // A swerving rival holds its dash, which would carry it on toward the hazard.
   const kick = !swerving && wantsDash(world, racer, aim, draws.kick);
   // A dash fires along the stick, so on its tick the stick points where it wants to go.
   const move = kick ? unitOr(wanted, aim) : stickToward(world, racer, wanted, aim, mods);
   return { move, kick, kickHeld: kick, aim, recovering: false };
+}
+
+/** The stick that slows a rival to `pace` of `wanted` for an asteroid, or holds it still at pace 0. */
+function slowedMove(world: World, racer: Racer, wanted: Vec, pace: number, aim: Vec, mods: MoveModifiers): Vec {
+  if (pace === 0) return brakeStick(world, racer, mods);
+  return stickToward(world, racer, { x: wanted.x * pace, y: wanted.y * pace }, aim, mods);
 }
 
 /** Re-reads the way along `route`'s field every `reactionTicks` (times `reactionMul`). */

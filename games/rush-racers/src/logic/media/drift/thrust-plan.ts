@@ -67,15 +67,34 @@ export function unitOr(vector: Vec, fallback: Vec): Vec {
  * @throws {Error} When the world's tuning lacks one of drift's extras.
  */
 export function stickToward(world: World, racer: Racer, wanted: Vec, aim: Vec, mods: MoveModifiers): Vec {
+  return stickFor(neededAcceleration(world, racer, wanted, mods)) ?? { ...aim };
+}
+
+/**
+ * The unit stick that brings the racer to rest and holds it there against the wells' pull, as
+ * `stickToward` steers to no velocity; no stick at all once it is at rest with nothing pulling it.
+ *
+ * @throws {Error} When the world's tuning lacks one of drift's extras.
+ */
+export function brakeStick(world: World, racer: Racer, mods: MoveModifiers): Vec {
+  return stickFor(neededAcceleration(world, racer, { x: 0, y: 0 }, mods)) ?? { x: 0, y: 0 };
+}
+
+/** The acceleration toward `wanted` the stick has to give: the gap closed in one tick, no harder than its thrust, less the unhelpful pull. */
+function neededAcceleration(world: World, racer: Racer, wanted: Vec, mods: MoveModifiers): Vec {
   const thrust = effectiveTuning(world).force * mods.forceMul;
   const closing = limitLength(
     { x: (wanted.x - racer.body.vx) / TICK_DT, y: (wanted.y - racer.body.vy) / TICK_DT },
     thrust,
   );
   const against = unhelpfulPull(driftPullAt(world, centreOf(racer)), wanted);
-  const needed = { x: closing.x - against.x, y: closing.y - against.y };
+  return { x: closing.x - against.x, y: closing.y - against.y };
+}
+
+/** `needed` as a unit stick, or null when it is too small to burn for. */
+function stickFor(needed: Vec): Vec | null {
   const size = length(needed.x, needed.y);
-  return size < SETTLED_PX_S2 ? { ...aim } : { x: needed.x / size, y: needed.y / size };
+  return size < SETTLED_PX_S2 ? null : { x: needed.x / size, y: needed.y / size };
 }
 
 /**
