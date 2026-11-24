@@ -2,7 +2,7 @@
  * Farside's Comet: fired along its owner's aim, it flies straight but every gravity well bends it, breaking ice and hitting the first racer it touches (cause 'comet').
  *
  * A comet in `world.shots` uses `x`, `y` (its centre), `vx`, `vy` and `ttl`; `target` stays null
- * and `phase` 0. Each tick it gains `COMET.pullMul` times the wells' pull at its centre
+ * and `phase` 0. Each tick it gains `COMET_TUNING.pullMul` times the wells' pull at its centre
  * (`pullAt`), moves, and then ends (`shot.ended` where it stopped) on the first of: a black hole's
  * horizon holds it, it touches ice (which breaks, every ice tile it touches) or other solid tiles,
  * it touches a racer other than its owner that the owner may attack (who is hit), or its time runs out.
@@ -23,7 +23,7 @@ import type { CannonballShotRules } from './index.ts';
 export const COMET_TUNING = {
   /** Launch speed along the aim, px/s. */
   speed: 230,
-  /** The wells pull a comet this many times as hard as they pull a racer, so the bend shows. */
+  /** A comet feels this many times the wells' raw pull (`pullAt`), so the bend shows; racers feel the medium's `wellPull` times it, lower on Easy. */
   pullMul: 2,
   /** Ticks before it burns out on its own: 3 s. */
   ttlTicks: 180,

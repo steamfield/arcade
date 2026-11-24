@@ -6,7 +6,7 @@
  * turns, and flies with or against the pull of gravity wells.
  *
  * When flying on would meet a drifting asteroid it slows, stopping if it must, so the asteroid passes
- * ahead of it (`asteroid-wait.ts`).
+ * ahead of it (`asteroid-wait.ts`); that wait never counts toward being stuck.
  *
  * It dashes when its dash is ready, it has a charge to spend (keeping one back for a latch as swim
  * does), the skill roll passes, it is moving within about 37 degrees of its aim and the way runs
@@ -89,19 +89,15 @@ export function steerDrifter(
   const aim = avoidHazards(world, racer, wobbled);
   // avoidHazards hands back the same object when nothing is in the way.
   const swerving = aim !== wobbled;
-  const recovery = canRecover(world, racer, memory) ? recoveryMove(racer, memory, draws.side, forceRecover) : null;
-  if (recovery) return { move: recovery, kick: false, kickHeld: false, aim, recovering: true };
   const wanted = wantedVelocity(world, racer, aim, mods, route);
   const pace = asteroidPace(world, racer, wanted);
-  if (pace < 1) {
-    return {
-      move: slowedMove(world, racer, wanted, pace, aim, mods),
-      kick: false,
-      kickHeld: false,
-      aim,
-      recovering: false,
-    };
-  }
+  // Holding back for an asteroid is slow on purpose, like a stun, so it restarts the stuck count
+  // instead of ending in a sideways shove along the asteroid's track.
+  if (pace < 1) memory.stuckTicks = 0;
+  const recovery =
+    pace === 1 && canRecover(world, racer, memory) ? recoveryMove(racer, memory, draws.side, forceRecover) : null;
+  if (recovery) return { move: recovery, kick: false, kickHeld: false, aim, recovering: true };
+  if (pace < 1) return slowedSteering(world, racer, wanted, pace, aim, mods);
   // A swerving rival holds its dash, which would carry it on toward the hazard.
   const kick = !swerving && wantsDash(world, racer, aim, draws.kick);
   // A dash fires along the stick, so on its tick the stick points where it wants to go.
@@ -109,10 +105,23 @@ export function steerDrifter(
   return { move, kick, kickHeld: kick, aim, recovering: false };
 }
 
-/** The stick that slows a rival to `pace` of `wanted` for an asteroid, or holds it still at pace 0. */
-function slowedMove(world: World, racer: Racer, wanted: Vec, pace: number, aim: Vec, mods: MoveModifiers): Vec {
-  if (pace === 0) return brakeStick(world, racer, mods);
-  return stickToward(world, racer, { x: wanted.x * pace, y: wanted.y * pace }, aim, mods);
+/**
+ * Steering that slows a rival to `pace` of `wanted` for an asteroid, or holds it still at pace 0,
+ * with no dash, which would carry it into the asteroid.
+ */
+function slowedSteering(
+  world: World,
+  racer: Racer,
+  wanted: Vec,
+  pace: number,
+  aim: Vec,
+  mods: MoveModifiers,
+): Steering {
+  const move =
+    pace === 0
+      ? brakeStick(world, racer, mods)
+      : stickToward(world, racer, { x: wanted.x * pace, y: wanted.y * pace }, aim, mods);
+  return { move, kick: false, kickHeld: false, aim, recovering: false };
 }
 
 /** Re-reads the way along `route`'s field every `reactionTicks` (times `reactionMul`). */

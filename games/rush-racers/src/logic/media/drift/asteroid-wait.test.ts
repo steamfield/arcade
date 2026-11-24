@@ -65,6 +65,26 @@ describe('a drift rival and a crossing asteroid', () => {
     expect(swept.col).toBeGreaterThan(SWEEPER.from[0] + 4);
   });
 
+  it('waits out an asteroid lingering at the end of its track without lurching into it or being hit', () => {
+    // The sweep turns at row 1, just above tess's row, two tiles ahead of her, and its slow turn holds
+    // it near that end for over a second: longer than the half second a nearly still rival takes to
+    // count as stuck, after which a stuck rival is pushed sideways, here up toward the asteroid.
+    const lingering: AsteroidDef = { from: [16, 1], to: [16, 9], periodTicks: 800, offsetTicks: 760, radius: 1 };
+    const setup = tessFacing([lingering]);
+    placeOnTile(setup.tess, 14, 2);
+    const startY = setup.tess.body.y;
+    let furthestOffRow = 0;
+    for (let tick = 0; tick < 300; tick++) {
+      step(setup.world, setup.log, 1, IDLE);
+      if (centreOf(setup.tess).x < 16 * TILE)
+        furthestOffRow = Math.max(furthestOffRow, Math.abs(setup.tess.body.y - startY));
+    }
+
+    expect(eventsIn(setup.log, 'racer.hit')).toEqual([]);
+    expect(furthestOffRow).toBeLessThan(TILE / 2);
+    expect(Math.floor(centreOf(setup.tess).x / TILE)).toBeGreaterThan(16);
+  });
+
   it('holds back only a rival: a bot driving the player slot in the same spot flies on at full pace', () => {
     const { world, tess } = tessFacing([SWEEPER]);
     const player = racerOf(world, 'player');
