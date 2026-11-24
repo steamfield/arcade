@@ -126,7 +126,7 @@ function roomPorts(room: MemoryRoom): OnlinePorts {
   return {
     connect: () => room.connect(),
     createRoom: () => Promise.resolve({ ok: true, code: ROOM_CODE }),
-    copyLink: () => Promise.resolve(true),
+    shareLink: () => Promise.resolve('copied'),
     seed: () => 7,
     kickAfterMs: null,
   };

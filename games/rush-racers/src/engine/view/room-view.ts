@@ -81,8 +81,8 @@ function playerRowText(peer: LobbyPeer, course: Course): PlayerRowText {
   };
 }
 
-/** What `row`'s button says for this peer in `lobby`. */
-function roomRowText(row: RoomRow, lobby: LobbyView): string {
+/** What `row`'s button says for this peer in `lobby`. On a touch screen Copy link opens the share sheet, so it says so. */
+function roomRowText(row: RoomRow, lobby: LobbyView, touch: boolean): string {
   switch (row) {
     case 'Character': {
       const mine = lobby.peers.find((peer) => peer.you)?.character ?? null;
@@ -94,6 +94,8 @@ function roomRowText(row: RoomRow, lobby: LobbyView): string {
       return lobby.difficulty;
     case 'Start':
       return lobby.phase === 'racing' ? RACING_TEXT : 'START';
+    case 'Copy link':
+      return touch ? 'Share link' : row;
     default:
       return row;
   }
@@ -141,7 +143,7 @@ export function createRoomView(scene: Phaser.Scene, touch: boolean): RoomView {
       const cursor = Math.min(online.room.row, shown.length - 1);
       rows.forEach((showRow, index) => {
         const row = shown[index];
-        showRow(row && lobby ? roomRowText(row, lobby) : null, index === cursor, tick, reducedMotion);
+        showRow(row && lobby ? roomRowText(row, lobby, touch) : null, index === cursor, tick, reducedMotion);
       });
     },
   };

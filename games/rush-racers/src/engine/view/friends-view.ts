@@ -2,7 +2,7 @@
  * Draws the friends screen, laid out to UI.md "Friends": the FRIENDS heading, the online notice
  * and the Create room / Join / Back buttons, and under Join the four code cells (the cursor's cell
  * in a gold frame with the cursor fin turned up above it and down below it, and the hint that up
- * and down change a letter), with a footer showing what fire and dash do (as the A and B buttons
+ * and down change a letter, or on a keyboard that the code can be typed), with a footer showing what fire and dash do (as the A and B buttons
  * on touch screens). It only reads the online state; the online flow moves it.
  */
 import { ROOM_CODE_LENGTH } from '@arcade/api/protocol';
@@ -22,8 +22,11 @@ const HEADING = { x: 160, y: 12 } as const;
 const NOTICE_AT = { x: 160, y: 40 } as const;
 /** The menu buttons: as on the title, 80 wide so the fin (x 109-117) clears the d-pad zone. */
 const MENU = { centreX: 160, top: 62, width: 80, pitch: 17 } as const;
-/** The hint line's centre, above the cells; it is wider than the safe column, so it stays above y 76. */
-const HINT = { x: 160, y: 28, text: 'UP AND DOWN CHANGE A LETTER' } as const;
+/**
+ * The hint line's centre, above the cells; it is wider than the safe column, so it stays above y 76.
+ * A keyboard can type the code, so its hint says so.
+ */
+const HINT = { x: 160, y: 28, touch: 'UP AND DOWN CHANGE A LETTER', keyboard: 'TYPE IT OR USE UP AND DOWN' } as const;
 /**
  * Code cells: one display character in a 3 px frame with 1 px padding (20 tall), 18 wide, 2 px
  * apart, centred on x 160 (x 101-219), from y 44. The turned fins sit 1 px clear above and below,
@@ -61,7 +64,7 @@ export function createFriendsView(scene: Phaser.Scene, touch: boolean): FriendsV
     createButton(scene, MENU.centreX, MENU.top + row * MENU.pitch, option, { width: MENU.width }),
   );
   const notice = createLabel(scene, NOTICE_AT.x, NOTICE_AT.y, '', { outline: true, align: 'center' });
-  const code = createCodeEntry(scene);
+  const code = createCodeEntry(scene, touch);
   const footer = createFooter(scene, touch);
   return {
     sync(online, tick, reducedMotion) {
@@ -85,8 +88,9 @@ interface CodeEntry {
   sync(screen: FriendsScreen, visible: boolean): void;
 }
 
-function createCodeEntry(scene: Phaser.Scene): CodeEntry {
-  const hint = createLabel(scene, HINT.x, HINT.y, HINT.text, { tone: 'foam', outline: true, align: 'center' });
+function createCodeEntry(scene: Phaser.Scene, touch: boolean): CodeEntry {
+  const text = touch ? HINT.touch : HINT.keyboard;
+  const hint = createLabel(scene, HINT.x, HINT.y, text, { tone: 'foam', outline: true, align: 'center' });
   const cells = Array.from({ length: ROOM_CODE_LENGTH }, (_, index) => addCell(scene, index));
   // The menu cursor fin points right; turned a quarter either way it marks up and down.
   const up = scene.add.image(0, 0, UiTex.icons, IconFrame.cursorFin).setOrigin(0.5).setAngle(-90);

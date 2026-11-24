@@ -1,12 +1,14 @@
 /**
  * A race between two browsers on the real room service: the host creates a room from Friends, the
  * guest opens its `?room=` link, both pick characters, and they race Run Test with every page
- * stepping the same simulation from the inputs the room relays.
+ * stepping the same simulation from the inputs the room relays. Also a guest joining by typing the
+ * code on the keyboard.
  */
 import type { GameDriver } from '@arcade/testing';
 import { MAX_INPUT_DELAY, MIN_INPUT_DELAY } from '../src/net/messages.ts';
 import {
   ARMED_TICKS,
+  createRoom,
   expect,
   press,
   raceTogether,
@@ -30,6 +32,22 @@ const stateOf = async (game: GameDriver) => (await game.state()) as RaceState;
 test.describe('an online race between two browsers', () => {
   // A whole race played in turns on two pages: several times a typical scenario's work.
   test.slow();
+
+  test('a guest types the code on the keyboard, in lower case, and joins with Enter', async ({ game: host, guest }) => {
+    const code = await createRoom(host);
+    await guest.open({ scene: 'friends', query: { course: 'run-test' } });
+    await guest.advance(ARMED_TICKS);
+    await press(guest, 'down', 'fire');
+    expect((await summaryOf(guest)).friends?.mode).toBe('code');
+
+    // W and X are also bindings (up, dash); typing must fill cells, not move the cursor or leave.
+    await guest.page.keyboard.type(`${code.toLowerCase()}`);
+    await guest.advance(1);
+    expect((await summaryOf(guest)).friends).toMatchObject({ mode: 'code', cells: code, cell: 3 });
+    await guest.page.keyboard.press('Enter');
+    await guest.advance(1);
+    await turnsUntil([host, guest], twoReady);
+  });
 
   test('finishes with equal standings and world hashes, each page in its own slot', async ({ game: host, guest }) => {
     await startRace(host, guest);

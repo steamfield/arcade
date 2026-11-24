@@ -6,6 +6,7 @@ import {
   type FriendsScreen,
   pressFriends,
   type ScreenPress,
+  typeFriends,
 } from './friends-screen.ts';
 
 /** Presses each of `presses` in order and returns every action they asked for. */
@@ -115,5 +116,44 @@ describe('the code cells', () => {
     const screen = openCells();
     pressAll(screen, ['right', 'up', 'left', 'left', 'fire']);
     expect(screen).toEqual({ mode: 'code', selected: 1, cells: [FIRST, SECOND, FIRST, FIRST], cell: 0 });
+  });
+});
+
+describe('typing the code', () => {
+  function openCells(): FriendsScreen {
+    const screen = createFriendsScreen();
+    pressAll(screen, ['down', 'fire']);
+    return screen;
+  }
+
+  it('fills a cell per letter in either case, skipping characters a code never has, and stays on the last cell', () => {
+    const screen = openCells();
+    for (const text of ['h', 'J', '1', 'o', ' ', 'k', 'm', 'z']) typeFriends(screen, { text });
+    expect(screen).toMatchObject({ mode: 'code', cells: ['H', 'J', 'K', 'Z'], cell: 3 });
+    expect(pressFriends(screen, 'fire')).toEqual({ kind: 'join', code: 'HJKZ' });
+  });
+
+  it('fills the cells from a pasted code, and every cell from a pasted room link', () => {
+    const screen = openCells();
+    typeFriends(screen, { text: 'qr' });
+    expect(screen).toMatchObject({ cells: ['Q', 'R', FIRST, FIRST], cell: 2 });
+    typeFriends(screen, { text: ' https://arcade.example/games/rush-racers/?room=wxyz ' });
+    expect(screen).toMatchObject({ cells: ['W', 'X', 'Y', 'Z'], cell: 3 });
+  });
+
+  it('steps back a cell on Backspace, staying on the first, so the next letter retypes it', () => {
+    const screen = openCells();
+    typeFriends(screen, { text: 'ABC' });
+    typeFriends(screen, { backspace: true });
+    typeFriends(screen, { text: 'D' });
+    expect(screen).toMatchObject({ cells: ['A', 'B', 'D', FIRST], cell: 3 });
+    for (let i = 0; i < 5; i++) typeFriends(screen, { backspace: true });
+    expect(screen).toMatchObject({ mode: 'code', cell: 0 });
+  });
+
+  it('ignores typing on the menu', () => {
+    const screen = createFriendsScreen();
+    typeFriends(screen, { text: 'WXYZ' });
+    expect(screen).toEqual(createFriendsScreen());
   });
 });
