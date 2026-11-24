@@ -42,3 +42,7 @@ export const SpaceAnim = {
   windUp: 'space-wind-up-flow',
   windDown: 'space-wind-down-flow',
 } as const;
+
+/** Backdrop layer heights in px: the art draws each layer this tall and `space.ts` declares it to the backdrop view. */
+export const FAR_HEIGHT = 192;
+export const NEAR_HEIGHT = 80;

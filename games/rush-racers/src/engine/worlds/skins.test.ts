@@ -9,21 +9,25 @@ import { ForestBackdropPalette, WOOD_BANDS } from '../themes/forest/palettes.ts'
 import { BackdropPalette, WATER_BANDS } from '../themes/ocean/palettes.ts';
 import { SKY_BANDS, SkyBackdropPalette } from '../themes/sky/palettes.ts';
 import { SpaceBackdropPalette, VOID_BANDS } from '../themes/space/palettes.ts';
+import { registerArt as registerCloudreachArt } from './cloudreach/art.ts';
 import { SkyEnemyPalette } from './cloudreach/sprites/enemies.ts';
 import { CloudreachPalette } from './cloudreach/sprites/palette.ts';
 import { FeatherPalette } from './cloudreach/sprites/pickups.ts';
 import { CLOUDREACH_SKIN } from './cloudreach.ts';
 import type { SkinFixture } from './drawn-skin.ts';
+import { registerArt as registerFarsideArt } from './farside/art.ts';
 import { FarEnemyPalette } from './farside/sprites/enemies.ts';
 import { FarsidePalette } from './farside/sprites/palette.ts';
 import { StardustPalette } from './farside/sprites/pickups.ts';
 import { FARSIDE_SKIN } from './farside.ts';
 import { assertSkinAssets, assertSkinTextures, SKINS, skinFor, type TextureLookup } from './index.ts';
+import { registerArt as registerReefArt } from './reef/art.ts';
 import { ReefEnemyPalette } from './reef/sprites/enemies.ts';
 import { ReefPalette } from './reef/sprites/palette.ts';
 import { PearlPalette } from './reef/sprites/pickups.ts';
 import { REEF_SKIN } from './reef.ts';
 import { describeSkinConformance } from './skin-conformance.ts';
+import { registerArt as registerThornwoodArt } from './thornwood/art.ts';
 import { ThornEnemyPalette } from './thornwood/sprites/enemies.ts';
 import { ThornwoodPalette } from './thornwood/sprites/palette.ts';
 import { AcornPalette } from './thornwood/sprites/pickups.ts';
@@ -34,6 +38,7 @@ import type { WorldSkin } from './types.ts';
 const FIXTURES: readonly SkinFixture[] = [
   {
     skin: REEF_SKIN,
+    registerArt: registerReefArt,
     castPalettes: ReefPalette,
     contrast: {
       backdrop: [...WATER_BANDS, ...Object.values(BackdropPalette).flat()],
@@ -43,6 +48,7 @@ const FIXTURES: readonly SkinFixture[] = [
   },
   {
     skin: THORNWOOD_SKIN,
+    registerArt: registerThornwoodArt,
     castPalettes: ThornwoodPalette,
     keyPrefix: 'thornwood-',
     contrast: {
@@ -57,6 +63,7 @@ const FIXTURES: readonly SkinFixture[] = [
   },
   {
     skin: CLOUDREACH_SKIN,
+    registerArt: registerCloudreachArt,
     castPalettes: CloudreachPalette,
     keyPrefix: 'cloudreach-',
     contrast: {
@@ -71,6 +78,7 @@ const FIXTURES: readonly SkinFixture[] = [
   },
   {
     skin: FARSIDE_SKIN,
+    registerArt: registerFarsideArt,
     castPalettes: FarsidePalette,
     keyPrefix: 'farside-',
     contrast: {

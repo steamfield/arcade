@@ -3,9 +3,9 @@
  * dark tint, racer trail and the colours sprites must stand off. Logic names a theme by id
  * (`Course.theme`); the engine maps the id to one of these, never the reverse. The things that live
  * in a world (racers, items, pickups, enemies and hazards) are its world skin's art (`worlds/`), and
- * the HUD and the UI are global art; neither is part of a theme.
+ * the HUD and the UI are global art; neither is part of a theme. A theme is data only; the textures
+ * it names are drawn by its `art.ts`, through `THEME_ART`.
  */
-import type Phaser from 'phaser';
 import type { ThemeId } from '../../logic/courses/types.ts';
 import type { Cell } from '../../logic/types.ts';
 
@@ -144,8 +144,6 @@ export interface BubbleFrames {
 /** A course's whole look, as the views read it. Build one with `defineTheme`. */
 export interface Theme {
   id: ThemeId;
-  /** Builds and registers the theme's own texture keys, sheets and animations. Boot calls it once per theme. */
-  registerTextures(scene: Phaser.Scene): void;
   terrain: TerrainArt;
   backdrop: BackdropSpec;
   ambient: AmbientSpec;

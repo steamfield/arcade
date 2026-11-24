@@ -2,6 +2,7 @@
  * What the skin conformance suite works from: a world's expected look, as a fixture, and the
  * textures the skin draws on a recording scene after the global art, the UI kit and the themes.
  */
+import type Phaser from 'phaser';
 import type { CharacterId, EnemyKind } from '../../logic/types.ts';
 import { buildTextures } from '../art/index.ts';
 import type { Palette } from '../art/pixel.ts';
@@ -14,6 +15,8 @@ import type { WorldSkin } from './types.ts';
 /** What a world's art must look like, beyond what every skin has to satisfy. */
 export interface SkinFixture {
   skin: WorldSkin;
+  /** The world's `registerArt` from its `art.ts`, which draws every texture the skin names. */
+  registerArt: (scene: Phaser.Scene) => void;
   /** The four colours of each slot's racer, portrait and head. */
   castPalettes: Readonly<Record<CharacterId, Palette>>;
   /** The prefix every texture key the skin draws starts with; Reef's keys are unprefixed. */
@@ -33,18 +36,18 @@ export interface SkinFixture {
 export interface DrawnSkin {
   skin: WorldSkin;
   art: RecordingScene;
-  /** Texture keys the skin's own `registerTextures` drew. */
+  /** Texture keys the world's `registerArt` drew. */
   skinKeys: ReadonlySet<string>;
 }
 
 /**
- * Returns a function that draws the shared art, then `skin`'s own textures, on a fresh recording
+ * Returns a function that draws the shared art, then the world's own textures, on a fresh recording
  * scene the first time it is called and returns that same drawing after. Calling it inside a test
  * means a malformed sprite or a key another owner holds fails that world's tests, not the file.
  * Reusing a key the shared art or a theme drew throws in `drawFrames` and `claim`, so no separate
  * collision check is needed.
  */
-export function lazyDrawnSkin(skin: WorldSkin): () => DrawnSkin {
+export function lazyDrawnSkin({ skin, registerArt }: Pick<SkinFixture, 'skin' | 'registerArt'>): () => DrawnSkin {
   let drawn: DrawnSkin | undefined;
   return () => {
     if (drawn) return drawn;
@@ -53,7 +56,7 @@ export function lazyDrawnSkin(skin: WorldSkin): () => DrawnSkin {
     buildUiTextures(art.scene, REEF_ITEM_ICON_FRAMES);
     registerThemeTextures(art.scene);
     const baseKeys = new Set(art.built.keys());
-    skin.registerTextures(art.scene);
+    registerArt(art.scene);
     const skinKeys = new Set([...art.built.keys()].filter((key) => !baseKeys.has(key)));
     drawn = { skin, art, skinKeys };
     return drawn;

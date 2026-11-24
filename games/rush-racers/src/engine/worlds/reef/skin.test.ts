@@ -1,6 +1,6 @@
 /**
  * Reef's art is drawn by its own skin: the global art and the UI kit build none of it (apart from
- * the HUD item icons in the UI kit's shared `ui-icons`), and after `REEF_SKIN.registerTextures`
+ * the HUD item icons in the UI kit's shared `ui-icons`), and after its `registerArt` draws it
  * the boot texture check passes for Reef.
  */
 import type Phaser from 'phaser';
@@ -11,6 +11,7 @@ import { buildUiTextures } from '../../art/ui/index.ts';
 import { UiTex } from '../../art/ui/keys.ts';
 import { assertSkinTextures } from '../index.ts';
 import { REEF_SKIN } from '../reef.ts';
+import { registerArt } from './art.ts';
 import { REEF_ITEM_ICON_FRAMES } from './sprites/icons.ts';
 
 /**
@@ -70,7 +71,7 @@ describe('Reef skin textures', () => {
     const { scene, textures } = recordingScene();
     buildTextures(scene);
     buildUiTextures(scene, REEF_ITEM_ICON_FRAMES);
-    REEF_SKIN.registerTextures(scene);
+    registerArt(scene);
     expect(() => assertSkinTextures(textures, REEF_SKIN)).not.toThrow();
   });
 
@@ -85,9 +86,9 @@ describe('Reef skin textures', () => {
 
   it('can be registered again without redrawing', () => {
     const { scene, built } = recordingScene();
-    REEF_SKIN.registerTextures(scene);
+    registerArt(scene);
     const first = new Map([...built].map(([key, frames]) => [key, [...frames]]));
-    REEF_SKIN.registerTextures(scene);
+    registerArt(scene);
     expect(built).toEqual(first);
   });
 });

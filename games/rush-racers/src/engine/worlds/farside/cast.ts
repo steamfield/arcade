@@ -1,16 +1,12 @@
 /**
  * Farside's cast skin: the space racers' textures, portraits, heads and ability wording.
- * `registerFarsideCast` draws the textures `keys.ts` names for the cast at boot, and
- * `FARSIDE_CAST` points the skin at them.
+ * `FARSIDE_CAST` points the skin at the textures `keys.ts` names for the cast, which `art.ts`
+ * draws.
  */
-import type Phaser from 'phaser';
 import type { CharacterId } from '../../../logic/types.ts';
-import { drawSheets } from '../../art/index.ts';
 import type { ArtRef } from '../art-ref.ts';
 import type { CastSkin } from '../cast-skin.ts';
-import { FARSIDE_ART_OWNER, FarCastFrame, FarRacerTex, FarTex } from './keys.ts';
-import { FARSIDE_FACE_SHEETS } from './sprites/portraits.ts';
-import { FARSIDE_RACER_SHEETS } from './sprites/racers.ts';
+import { FarCastFrame, FarRacerTex, FarTex } from './keys.ts';
 
 const frameIn =
   (texture: string) =>
@@ -52,13 +48,3 @@ export const FARSIDE_CAST: CastSkin = {
     rook: { name: 'FRENZY', blurb: 'SURGES AS RIVALS GET HIT' },
   },
 };
-
-/**
- * Draws the cast's racer, portrait and head textures; calling it again changes nothing.
- *
- * @throws {Error} When a sprite's pixel text is malformed (see `drawFrames`), naming the key, frame and row.
- * @throws {Error} When another owner already has one of the keys.
- */
-export function registerFarsideCast(scene: Phaser.Scene): void {
-  drawSheets(scene, [...FARSIDE_RACER_SHEETS, ...FARSIDE_FACE_SHEETS], FARSIDE_ART_OWNER);
-}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { measureFrames } from '../art/pixel.ts';
 import { ART_SHEETS } from '../art/sprites/index.ts';
-import { REEF_OBJECT_SHEETS } from '../worlds/reef/objects.ts';
+import { REEF_OBJECT_SHEETS } from '../worlds/reef/art.ts';
 import { REEF_RACER_SHEETS } from '../worlds/reef/sprites/racers.ts';
 import { OceanTex, OceanTile } from './ocean/keys.ts';
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';

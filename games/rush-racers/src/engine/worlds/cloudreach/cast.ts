@@ -1,17 +1,13 @@
 /**
  * Cloudreach's cast skin: the flyers' racer textures, portraits, heads and ability wording.
- * `registerCloudreachCast` draws the textures `keys.ts` names for the cast at boot, and
- * `CLOUDREACH_CAST` points the skin at them. Each ability line stays within the longest Reef line
+ * `CLOUDREACH_CAST` points the skin at the textures `keys.ts` names for the cast, which `art.ts`
+ * draws. Each ability line stays within the longest Reef line
  * of the same kind, which is what the select card lays out for.
  */
-import type Phaser from 'phaser';
 import type { CharacterId } from '../../../logic/types.ts';
-import { drawSheets } from '../../art/index.ts';
 import type { ArtRef } from '../art-ref.ts';
 import type { CastSkin } from '../cast-skin.ts';
-import { CLOUDREACH_ART_OWNER, SkyPortraitFrame, SkyRacerTex, SkyTex } from './keys.ts';
-import { CLOUDREACH_FACE_SHEETS } from './sprites/portraits.ts';
-import { CLOUDREACH_RACER_SHEETS } from './sprites/racers.ts';
+import { SkyPortraitFrame, SkyRacerTex, SkyTex } from './keys.ts';
 
 const frameIn =
   (texture: string) =>
@@ -53,13 +49,3 @@ export const CLOUDREACH_CAST: CastSkin = {
     rook: { name: 'FRENZY', blurb: 'SURGES AS RIVALS GET HIT' },
   },
 };
-
-/**
- * Draws the cast's racer, portrait and head textures; calling it again changes nothing.
- *
- * @throws {Error} When a sprite's pixel text is malformed (see `drawFrames`), naming the key, frame and row.
- * @throws {Error} When another owner already has one of the keys.
- */
-export function registerCloudreachCast(scene: Phaser.Scene): void {
-  drawSheets(scene, [...CLOUDREACH_RACER_SHEETS, ...CLOUDREACH_FACE_SHEETS], CLOUDREACH_ART_OWNER);
-}

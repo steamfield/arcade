@@ -1,7 +1,7 @@
 /**
  * Cloudreach's own texture and frame keys, as typed consts, prefixed `cloudreach-` so they can't
  * collide with the global art, the UI kit, a theme, Reef's or Thornwood's. The cast and object skins
- * name these; their `register` functions build every one at boot, and `assertSkinTextures` checks
+ * name these; `art.ts` builds every one at boot, and `assertSkinTextures` checks
  * they exist.
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
@@ -72,3 +72,15 @@ export const SkyPortraitFrame: Readonly<Record<CharacterId, string>> = bySlot();
 
 /** Frame names in `SkyTex.icons`: the item kind. */
 export const SkyIconFrame: Readonly<Record<PowerUpKind, string>> = byItem();
+
+/** Cloudreach hazard texture keys; each has frames `a` and `b`, looped by `SkyHazardAnim`. */
+export const SkyHazardTex = {
+  sparkCloud: 'sky-theme-spark-cloud',
+  staticWisp: 'sky-theme-static-wisp',
+} as const;
+
+/** Cloudreach hazard animation keys. */
+export const SkyHazardAnim = {
+  sparkCrackle: 'sky-theme-spark-crackle',
+  wispFlicker: 'sky-theme-wisp-flicker',
+} as const;

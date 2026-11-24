@@ -6,7 +6,7 @@ import { CLOUDREACH_RACER_SHEETS } from '../../worlds/cloudreach/sprites/racers.
 import { FarsidePalette } from '../../worlds/farside/sprites/palette.ts';
 import { FARSIDE_RACER_SHEETS } from '../../worlds/farside/sprites/racers.ts';
 import { ReefEnemyPalette } from '../../worlds/reef/sprites/enemies.ts';
-import { ReefItemPalette } from '../../worlds/reef/sprites/items.ts';
+import { ReefItemPalette } from '../../worlds/reef/sprites/item-rows.ts';
 import { ReefPalette } from '../../worlds/reef/sprites/palette.ts';
 import { REEF_RACER_SHEETS } from '../../worlds/reef/sprites/racers.ts';
 import { ThornwoodPalette } from '../../worlds/thornwood/sprites/palette.ts';

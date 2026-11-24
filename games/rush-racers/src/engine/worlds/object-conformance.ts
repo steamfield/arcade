@@ -9,7 +9,8 @@ import { type DrawnSkin, lazyDrawnSkin, type SkinFixture } from './drawn-skin.ts
 import { assertSkinTextures } from './index.ts';
 import type { ObjectSkin } from './object-skin.ts';
 import { type BuiltTexture, framePixels, pixelCount } from './recording-scene.ts';
-import { REEF_OBJECT_SHEETS, REEF_OBJECTS } from './reef/objects.ts';
+import { REEF_OBJECT_SHEETS, registerArt as registerReefArt } from './reef/art.ts';
+import { REEF_OBJECTS } from './reef/objects.ts';
 import { REEF_SKIN } from './reef.ts';
 
 const ICON_SIZE = 9;
@@ -19,7 +20,7 @@ const MIN_ICON_PIXELS = 30;
 const MIN_CONTRAST = 3;
 const MAX_COLOURS_PER_FRAME = 4;
 
-const reef = lazyDrawnSkin(REEF_SKIN);
+const reef = lazyDrawnSkin({ skin: REEF_SKIN, registerArt: registerReefArt });
 
 /** WCAG relative luminance of a 0xRRGGBB colour. */
 function luminance(colour: number): number {
@@ -61,7 +62,7 @@ function wordGroups(objects: ObjectSkin): Record<string, string[]> {
 }
 
 /** Registers the object checks for one drawn skin. */
-export function describeObjectArt({ skin, contrast: rule }: SkinFixture, drawn: () => DrawnSkin): void {
+export function describeObjectArt({ skin, registerArt, contrast: rule }: SkinFixture, drawn: () => DrawnSkin): void {
   const { objects } = skin;
   const built = (key: string) => drawn().art.built.get(key);
 
@@ -72,7 +73,7 @@ export function describeObjectArt({ skin, contrast: rule }: SkinFixture, drawn: 
   it('can be registered again without redrawing', () => {
     const { art } = drawn();
     const drawCount = art.drawOrder.length;
-    skin.registerTextures(art.scene);
+    registerArt(art.scene);
     expect(art.drawOrder).toHaveLength(drawCount);
   });
 

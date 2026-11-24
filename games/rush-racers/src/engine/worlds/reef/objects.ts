@@ -1,23 +1,14 @@
 /**
  * Reef's object skin: items, attacks, clams and pearls, sea enemies, urchins and jellies with their
- * glints, and the words for them, plus `registerReefObjects`, which draws every texture the skin
- * names except the HUD item icons, which are frames of the UI kit's `ui-icons`.
+ * glints, and the words for them. `art.ts` draws every texture the skin names except the HUD item
+ * icons, which are frames of the UI kit's `ui-icons`.
  */
-import type Phaser from 'phaser';
 import type { PowerUpKind } from '../../../logic/types.ts';
-import { drawSheets, registerLoops } from '../../art/index.ts';
 import { Frame } from '../../art/keys.ts';
-import type { ArtSheet } from '../../art/sprites/sheet.ts';
 import { IconFrame, UiTex } from '../../art/ui/keys.ts';
 import type { ArtRef } from '../art-ref.ts';
 import { GLINT_ALPHA, type ObjectSkin } from '../object-skin.ts';
-import { REEF_ART_OWNER, ReefItemTex, ReefTex } from './keys.ts';
-import { REEF_ATTACK_SHEETS } from './sprites/attack.ts';
-import { REEF_ENEMY_SHEETS } from './sprites/enemies.ts';
-import { REEF_HAZARD_LOOPS, REEF_HAZARD_SHEETS, ReefHazardAnim, ReefHazardTex } from './sprites/hazards.ts';
-import { REEF_ITEM_SHEETS } from './sprites/items.ts';
-import { REEF_MARK_SHEET } from './sprites/marks.ts';
-import { REEF_PICKUP_SHEETS } from './sprites/pickups.ts';
+import { ReefHazardAnim, ReefHazardTex, ReefItemTex, ReefTex } from './keys.ts';
 
 const icon = (kind: PowerUpKind): ArtRef => ({ texture: UiTex.icons, frame: IconFrame[kind] });
 
@@ -67,24 +58,3 @@ export const REEF_OBJECTS: ObjectSkin = {
     pearlsHeading: 'GRAB PEARLS',
   },
 };
-
-/** Every object sheet Reef draws: items, attacks, pickups, enemies, marks and hazards. */
-export const REEF_OBJECT_SHEETS: readonly ArtSheet<string>[] = [
-  ...REEF_ITEM_SHEETS,
-  ...REEF_ATTACK_SHEETS,
-  ...REEF_PICKUP_SHEETS,
-  ...REEF_ENEMY_SHEETS,
-  REEF_MARK_SHEET,
-  ...REEF_HAZARD_SHEETS,
-];
-
-/**
- * Draws every object texture and frame the skin names, and the hazards' loops, once; calling it
- * again changes nothing.
- *
- * @throws {Error} When a sprite's pixel text is malformed or a key belongs to another owner (see `drawSheets`).
- */
-export function registerReefObjects(scene: Phaser.Scene): void {
-  drawSheets(scene, REEF_OBJECT_SHEETS, REEF_ART_OWNER);
-  registerLoops(scene, REEF_HAZARD_LOOPS, REEF_ART_OWNER);
-}

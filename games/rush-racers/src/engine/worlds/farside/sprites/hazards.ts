@@ -1,25 +1,15 @@
 /**
- * Farside's hazards: a space mine (the urchin's slot) and a plasma orb (the jelly's slot), with their
- * texture and loop keys. Both are dark-outlined, so they read as dangerous by silhouette and not by
- * colour alone: the mine by its eight spikes, the orb by the sparks it throws. The keys keep the
- * `space-` prefix they were first drawn under, so existing captures and baselines don't change.
+ * Farside's hazard art: a space mine (the urchin's slot) and a plasma orb (the jelly's slot), and
+ * the orb's loop. Both are dark-outlined, so they read as dangerous by silhouette and not by colour
+ * alone: the mine by its eight spikes, the orb by the sparks it throws. Their texture and loop keys
+ * are in `../keys.ts` and keep the `space-` prefix they were first drawn under, so existing captures
+ * and baselines don't change.
  */
 import type { AnimLoop } from '../../../art/index.ts';
 import { Frame } from '../../../art/keys.ts';
 import type { Palette } from '../../../art/pixel.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
-
-/** Farside hazard texture keys. */
-export const FarHazardTex = {
-  mine: 'space-mine',
-  /** The plasma orb: frames `a` and `b`, looped by `FarHazardAnim.orbPulse`. */
-  orb: 'space-orb',
-} as const;
-
-/** Farside hazard animation keys. */
-export const FarHazardAnim = {
-  orbPulse: 'space-orb-pulse',
-} as const;
+import { FarHazardAnim, FarHazardTex } from '../keys.ts';
 
 /** Hazard palettes: dark bodies with hot accents, so danger reads by shape and value, not hue alone. */
 export const FarHazardPalette = {

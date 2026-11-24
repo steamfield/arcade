@@ -1,29 +1,16 @@
 /**
  * Cloudreach's object skin: items, attacks, the `?` balloon and feather, sky enemies, spark clouds
- * and static wisps with their glints, and the words for them, plus `registerCloudreachObjects`,
- * which draws every texture the skin names. Each string stays within the longest Reef or Thornwood
+ * and static wisps with their glints, and the words for them. `art.ts` draws every texture the
+ * skin names. Each string stays within the longest Reef or Thornwood
  * string of the same kind, which is what the HUD and How to Play lay out for, except the attack
  * captions, which the attacks page fits up to 11 characters.
  */
-import type Phaser from 'phaser';
 import type { PowerUpKind } from '../../../logic/types.ts';
-import { drawSheets, registerLoops } from '../../art/index.ts';
 import { Frame } from '../../art/keys.ts';
 import type { ArtRef } from '../art-ref.ts';
 import { GLINT_ALPHA, type ObjectSkin } from '../object-skin.ts';
-import { CLOUDREACH_ART_OWNER, SkyIconFrame, SkyItemTex, SkyTex } from './keys.ts';
-import { SKY_ATTACK_SHEETS } from './sprites/attack.ts';
-import { SKY_ENEMY_SHEETS } from './sprites/enemies.ts';
-import {
-  SKY_HAZARD_LOOPS,
-  SKY_HAZARD_SHEETS,
-  SkyHazardAnim,
-  SkyHazardPalette,
-  SkyHazardTex,
-} from './sprites/hazards.ts';
-import { SKY_ITEM_SHEETS } from './sprites/items.ts';
-import { SKY_MARK_SHEET } from './sprites/marks.ts';
-import { SKY_PICKUP_SHEETS } from './sprites/pickups.ts';
+import { SkyHazardAnim, SkyHazardTex, SkyIconFrame, SkyItemTex, SkyTex } from './keys.ts';
+import { SkyHazardPalette } from './palettes.ts';
 
 const icon = (kind: PowerUpKind): ArtRef => ({ texture: SkyTex.icons, frame: SkyIconFrame[kind] });
 
@@ -83,25 +70,3 @@ export const CLOUDREACH_OBJECTS: ObjectSkin = {
     pearlsHeading: 'FEATHERS',
   },
 };
-
-/**
- * Draws every object texture and frame the skin names, and the hazards' loops, once; calling it
- * again changes nothing.
- *
- * @throws {Error} When a sprite's pixel text is malformed or a key belongs to another owner (see `drawSheets`).
- */
-export function registerCloudreachObjects(scene: Phaser.Scene): void {
-  drawSheets(
-    scene,
-    [
-      ...SKY_ITEM_SHEETS,
-      ...SKY_ATTACK_SHEETS,
-      ...SKY_PICKUP_SHEETS,
-      ...SKY_ENEMY_SHEETS,
-      SKY_MARK_SHEET,
-      ...SKY_HAZARD_SHEETS,
-    ],
-    CLOUDREACH_ART_OWNER,
-  );
-  registerLoops(scene, SKY_HAZARD_LOOPS, CLOUDREACH_ART_OWNER);
-}

@@ -13,15 +13,20 @@ import { measureFrames } from '../art/pixel.ts';
 import type { ArtSheet } from '../art/sprites/sheet.ts';
 import { buildUiTextures } from '../art/ui/index.ts';
 import { themeFor } from '../themes/index.ts';
-import { SKY_HAZARD_LOOPS, SKY_HAZARD_SHEETS, SkyHazardPalette } from '../worlds/cloudreach/sprites/hazards.ts';
+import { registerArt as registerCloudreachArt } from '../worlds/cloudreach/art.ts';
+import { SkyHazardPalette } from '../worlds/cloudreach/palettes.ts';
+import { SKY_HAZARD_LOOPS, SKY_HAZARD_SHEETS } from '../worlds/cloudreach/sprites/hazards.ts';
 import { CLOUDREACH_SKIN } from '../worlds/cloudreach.ts';
+import { registerArt as registerFarsideArt } from '../worlds/farside/art.ts';
 import { FAR_HAZARD_LOOPS, FAR_HAZARD_SHEETS, FarHazardPalette } from '../worlds/farside/sprites/hazards.ts';
 import { FARSIDE_SKIN } from '../worlds/farside.ts';
 import { assertSkinTextures, skinFor } from '../worlds/index.ts';
 import type { HazardSkin } from '../worlds/object-skin.ts';
+import { registerArt as registerReefArt } from '../worlds/reef/art.ts';
 import { REEF_HAZARD_LOOPS, REEF_HAZARD_SHEETS, ReefHazardPalette } from '../worlds/reef/sprites/hazards.ts';
 import { REEF_ITEM_ICON_FRAMES } from '../worlds/reef/sprites/icons.ts';
 import { REEF_SKIN } from '../worlds/reef.ts';
+import { registerArt as registerThornwoodArt } from '../worlds/thornwood/art.ts';
 import { THORN_HAZARD_LOOPS, THORN_HAZARD_SHEETS, ThornHazardPalette } from '../worlds/thornwood/sprites/hazards.ts';
 import { THORNWOOD_SKIN } from '../worlds/thornwood.ts';
 import type { WorldSkin } from '../worlds/types.ts';
@@ -29,9 +34,10 @@ import type { WorldSkin } from '../worlds/types.ts';
 const HAZARD_SLOTS = ['urchin', 'jelly'] as const;
 type HazardSlot = (typeof HAZARD_SLOTS)[number];
 
-/** A world's skin with its hazard sheets and loops, which slots stand still, and each hazard's body colour. */
+/** A world's skin and `registerArt` with its hazard sheets and loops, which slots stand still, and each hazard's body colour. */
 interface WorldHazardArt {
   skin: WorldSkin;
+  registerArt: (scene: Phaser.Scene) => void;
   sheets: readonly ArtSheet<string>[];
   loops: readonly AnimLoop[];
   still: readonly HazardSlot[];
@@ -41,6 +47,7 @@ interface WorldHazardArt {
 const WORLD_HAZARD_ART: readonly WorldHazardArt[] = [
   {
     skin: REEF_SKIN,
+    registerArt: registerReefArt,
     sheets: REEF_HAZARD_SHEETS,
     loops: REEF_HAZARD_LOOPS,
     still: ['urchin'],
@@ -48,6 +55,7 @@ const WORLD_HAZARD_ART: readonly WorldHazardArt[] = [
   },
   {
     skin: THORNWOOD_SKIN,
+    registerArt: registerThornwoodArt,
     sheets: THORN_HAZARD_SHEETS,
     loops: THORN_HAZARD_LOOPS,
     still: ['urchin'],
@@ -55,6 +63,7 @@ const WORLD_HAZARD_ART: readonly WorldHazardArt[] = [
   },
   {
     skin: CLOUDREACH_SKIN,
+    registerArt: registerCloudreachArt,
     sheets: SKY_HAZARD_SHEETS,
     loops: SKY_HAZARD_LOOPS,
     still: [],
@@ -62,6 +71,7 @@ const WORLD_HAZARD_ART: readonly WorldHazardArt[] = [
   },
   {
     skin: FARSIDE_SKIN,
+    registerArt: registerFarsideArt,
     sheets: FAR_HAZARD_SHEETS,
     loops: FAR_HAZARD_LOOPS,
     still: ['urchin'],
@@ -158,7 +168,7 @@ describe.each(WORLD_HAZARD_ART.map((art) => [art.skin.id, art] as const))('%s ha
   it('registers every hazard texture, frame and loop with the skin, passing the boot texture check', () => {
     const { scene, textures, anims } = recordingScene();
     buildUiTextures(scene, REEF_ITEM_ICON_FRAMES);
-    art.skin.registerTextures(scene);
+    art.registerArt(scene);
     expect(() => assertSkinTextures(textures, art.skin, { exists: (key) => anims.has(key) })).not.toThrow();
   });
 });

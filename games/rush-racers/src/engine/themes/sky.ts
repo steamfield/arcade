@@ -6,22 +6,11 @@
  * were left and a popped cloud's puffs drift down, swaying.
  */
 
-import { drawSheets, registerLoops } from '../art/index.ts';
 import { FxFrame } from '../fx/textures.ts';
 import { defineTheme } from './define.ts';
 import { SkyThemeAnim, SkyThemeTex, SkyThemeTile } from './sky/keys.ts';
 import { EVENING_HAZE, SKY_BANDS, SkyBackdropPalette, STORM_TINT } from './sky/palettes.ts';
-import { SKY_SHEETS } from './sky/sprites/index.ts';
 import type { BubbleFrames, ContrastBand, HazeSpec } from './types.ts';
-
-/** Fog drifts and winds flow on Phaser's clock, never on logic ticks. */
-const SKY_LOOPS = [
-  { key: SkyThemeAnim.fogDrift, texture: SkyThemeTex.fog, frameRate: 2 },
-  { key: SkyThemeAnim.windRight, texture: SkyThemeTex.windRight, frameRate: 4 },
-  { key: SkyThemeAnim.windLeft, texture: SkyThemeTex.windLeft, frameRate: 4 },
-  { key: SkyThemeAnim.updraft, texture: SkyThemeTex.updraft, frameRate: 4 },
-  { key: SkyThemeAnim.downdraft, texture: SkyThemeTex.downdraft, frameRate: 4 },
-] as const;
 
 /** The evening haze streaked across the bands. */
 const HAZE: HazeSpec = { colour: EVENING_HAZE, alpha: 0.35 };
@@ -60,10 +49,6 @@ const STORM_VEIL_ALPHA = 0.85;
 /** The sky theme. */
 export const SKY_THEME = defineTheme({
   id: 'sky',
-  registerTextures(scene) {
-    drawSheets(scene, SKY_SHEETS, 'sky');
-    registerLoops(scene, SKY_LOOPS, 'sky');
-  },
   terrain: {
     tileset: SkyThemeTex.tiles,
     tiles: {

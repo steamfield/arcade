@@ -1,5 +1,5 @@
 /**
- * Reef's ten 9x9 HUD item icons, in the item colours of `items.ts` with the UI kit's light rim in
+ * Reef's ten 9x9 HUD item icons, in the item colours of `item-rows.ts` with the UI kit's light rim in
  * place of the dark outline, so they hold on the indigo panels. Boot hands them to the UI kit,
  * which draws them as frames of its shared `ui-icons` texture, named by `IconFrame`.
  */
@@ -7,7 +7,7 @@ import type { PowerUpKind } from '../../../../logic/types.ts';
 import type { NamedFrame, PixelRows } from '../../../art/pixel.ts';
 import { withRim } from '../../../art/ui/icons.ts';
 import { IconFrame } from '../../../art/ui/keys.ts';
-import { REEF_ATTACK_ICON_ROWS, ReefItemPalette } from './items.ts';
+import { REEF_ATTACK_ICON_ROWS, ReefItemPalette } from './item-rows.ts';
 
 /** One item's icon frame: named by `IconFrame`, in the item's palette with the HUD rim. */
 const itemIcon = (kind: PowerUpKind, rows: PixelRows): NamedFrame => ({
