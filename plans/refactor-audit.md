@@ -232,6 +232,42 @@ Depends on: phase 2
 | b | M | packages/config/src/, tools/arcade/src/games.ts, apps/site/vite.config.ts, games/rush-racers/vite.config.ts | | | sonnet | pending | | |
 | c | S | packages/core/src/, games/rush-racers/src/logic/hash.ts | | | sonnet | pending | | |
 
+Scaffold contract: `@arcade/config/manifest-file` exports `readManifest(gameDir)` and `readManifestsIn(parentDir)` (Node only, so browser code importing the schema never pulls in `node:fs`). Lanes 7a and 7b switch their copies of "read game.json" to it.
+
+Files added under `packages/`, `tools/` or `apps/` need a `docs/repo-map.md` row, which no lane owns: put the row text in your report and I add it at landing.
+
+#### Lane 7a brief
+
+- Goal: one copy of each browser-session and port helper, shared by `see`, `attract`, `smoke` and the game Playwright configs, and the touch-hold and save-fixture test code turned into shared helpers.
+- Interface:
+  - `packages/testing/src/ports.ts`: `freePort()`, exported from the package. `tools/arcade/src/smoke.ts`, `packages/testing/src/playwright.ts` and `games/rush-racers/playwright.config.ts` use it instead of their own copies.
+  - `CHROMIUM_ARGS` (the swiftshader and GPU-blocklist flags) exported once and used by `playwright.ts`, `see.ts` and `attract.ts`.
+  - `openGameSession(...)` in `packages/testing/src/` (name the file for what it does): starts the game's Vite server in test mode, launches Chromium with `CHROMIUM_ARGS`, opens the page with the viewport, mobile and query options `see` takes, and returns the page, driver and a `close()` that stops browser and server even when a step fails. `see.ts` and `attract.ts` use it; split `attract()` so recording and ffmpeg encoding are their own functions (deferred from lane 1b).
+  - `gamePlaywrightConfig(configUrl, { extraWebServers })`: extra servers a game needs (Rush Racers' API Worker), each given a free port through the environment the way the game server's port already is. `games/rush-racers/playwright.config.ts` passes its API server through it and loses its own port and server code. `playwright.ts` reads the manifest with `readManifest` from `@arcade/config/manifest-file`.
+  - `GameDriver.touch(action, ticks)` (or the name that fits the driver's existing verbs): press an on-screen touch button by action name for a number of ticks, through the pointer events the copies in `games/rush-racers/tests/smoke.spec.ts` dispatch today. Those copies and any in `hints.spec.ts` use it. Templates adopt it in phase 8.
+  - A save-fixture helper in `packages/testing/src/` that runs the checks `games/rush-racers/tests/save.test.ts` makes against every committed `tests/fixtures/save-v<N>.json` (each migrates to the current version and parses), so a game's `save.test.ts` becomes a few lines. Rush Racers' file uses it; templates adopt it in phase 8.
+- Decisions already made: behaviour of `see`, `attract` and `smoke` output stays the same; no new dependencies.
+- Out of scope: templates (phase 8), `packages/config` (lane 7b).
+- Done when: `pnpm --filter @arcade/testing exec vitest run`, `pnpm --filter @arcade/cli exec vitest run src/run.test.ts src/test.test.ts`, `pnpm arcade see rush-racers --scenario race-to-finish` and `pnpm arcade see phaser-2d --scenario complete-level --mobile` work, `pnpm arcade test rush-racers tests/save.test.ts` passes, and `pnpm exec playwright test tests/smoke.spec.ts tests/hints.spec.ts --project desktop` run from `games/rush-racers` with the dev server passes (`pnpm --filter game-rush-racers exec playwright test tests/smoke.spec.ts tests/hints.spec.ts --project=desktop`); `pnpm arcade check rush-racers --skip-tests` clean. Don't run `arcade smoke`; it runs at landing.
+
+#### Lane 7b brief
+
+- Goal: `defineGameConfig` passes every override through and gives any game the fast/slow test split, so Rush Racers' `vite.config.ts` needs no cast and no post-processing, and the three "list game.json files" copies become one.
+- Interface:
+  - `defineGameConfig(configUrl, overrides, options?)`: every key of `overrides` reaches the result (unknown keys such as `define` included; known nested keys like `build`, `server`, `test` still merge as today). `options.slowTests?: { project: string; include: string[]; testTimeout?: number }` makes the Vitest config two projects, `unit` (everything else, the default) and `<project>` (the slow files); without it the config is as today. Rush Racers passes `{ project: 'difficulty', include: ['src/logic/balance/*.test.ts'] }` and keeps its unit `testTimeout`.
+  - `games/rush-racers/vite.config.ts`: no `as Parameters<...>` cast, no spread after the call; `define` goes in `overrides`. Its `simulationBuildId` hashes `src/logic`, `packages/core/src` and only the `src/net` files that decide what peers simulate or send (read each file; transport and lobby UI code stay out). List in your report which `src/net` files you kept and why.
+  - `tools/arcade/src/games.ts` and `apps/site/vite.config.ts` read manifests with `readManifestsIn` from `@arcade/config/manifest-file`; `packages/config/src/vite.ts` uses `readManifest` from there and keeps exporting `readManifest` for existing callers. Add `packages/config/src/manifest-file.test.ts` (folder with and without `game.json`, a schema failure naming the path) and a `test` script and Vitest dev dependency for the package if it has none (match the other packages).
+- Decisions already made: the Vitest project names `unit` and `difficulty` and the script `test:difficulty` don't change; CI reads them.
+- Out of scope: `packages/testing` (lane 7a).
+- Done when: `pnpm --filter @arcade/config exec vitest run`, `pnpm --filter @arcade/cli exec vitest run src/games.test.ts src/repo-map.test.ts` (whichever exist), `pnpm --filter @arcade/site build`, `pnpm --filter game-rush-racers exec vitest list --project difficulty --filesOnly | wc -l` equal to before, `pnpm arcade test rush-racers src/logic/num.test.ts` and `pnpm arcade check --all --skip-tests` clean.
+
+#### Lane 7c brief
+
+- Goal: the generic state hasher Rush Racers uses for lockstep lives in `@arcade/core`, so the templates (phase 8) can check one world hash across browsers.
+- Interface: `packages/core/src/hash.ts` exporting `hashState(value, options?: { skipKeys?: ReadonlySet<string> })`: the tagged 32-bit FNV-1a walk from `games/rush-racers/src/logic/hash.ts`, with `skipKeys` applied to the top-level object only as today. Export it from `packages/core/src/index.ts`. `games/rush-racers/src/logic/hash.ts` keeps `UNHASHED_WORLD_KEYS` and its `hashWorld` doc and calls `hashState`. Add rows to `packages/core/src/core.test.ts` (or a new `hash.test.ts` there): tags keep `[1]`, `{0: 1}` and `"1"` apart, key order doesn't change the hash, `-0`/`NaN` handled as today, sets hash by content, skipped keys ignored only at top level.
+- Decisions already made: `hashWorld` output must not change for any world (`src/logic/top-route.test.ts` pins one); `packages/core` stays DOM-free and dependency-free.
+- Done when: `pnpm --filter @arcade/core exec vitest run`, `pnpm arcade test rush-racers src/logic/top-route.test.ts src/logic/two-peers.test.ts src/logic/hash.test.ts` (whichever exist) pass; `pnpm arcade check rush-racers --skip-tests` clean.
+
 ### Phase 8: templates start where Rush Racers ended
 
 Demo: `pnpm arcade check --all`, `pnpm arcade smoke phaser-2d` and `pnpm arcade smoke three-3d` pass; each template's smoke asserts one world hash across projects.

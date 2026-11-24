@@ -6,6 +6,7 @@
     ".": "./src/index.ts",
     "./vite": "./src/vite.ts",
     "./manifest": "./src/manifest.ts",
+    "./manifest-file": "./src/manifest-file.ts",
     "./tsconfig.base.json": "./tsconfig.base.json",
     "./tsconfig.game.json": "./tsconfig.game.json",
     "./tsconfig.logic.json": "./tsconfig.logic.json"
