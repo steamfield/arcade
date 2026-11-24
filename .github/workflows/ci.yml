@@ -9,16 +9,47 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  # What the change is compared against: the PR's base branch, or the commit main was at before this push.
+  # A new branch's first push has no "before" (all zeros), and arcade then tests everything.
+  BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+
+# Deploys are not here: Cloudflare Workers Builds (the Git connector) builds with `pnpm cf:build`
+# and runs `wrangler deploy` on main and `wrangler versions upload` on other branches.
+#
+# Each job tests only what the change affects (`pnpm arcade affected`): changed packages, the games
+# that depend on them, or everything when CI, the CLI or root config changed. Protect main with the
+# `ci` job at the bottom, which fails when any job failed or was cancelled; skipped jobs pass.
 jobs:
-  # Deploys are not here: Cloudflare Workers Builds (the Git connector) builds with `pnpm cf:build`
-  # and runs `wrangler deploy` on main and `wrangler versions upload` on other branches.
-  # Protect main with this check so a red build never merges.
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      games: ${{ steps.plan.outputs.games }}
+      slow: ${{ steps.plan.outputs.slow }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: plan
+        run: |
+          pnpm -s arcade affected --base "$BASE_SHA"
+          plan=$(pnpm -s arcade affected --base "$BASE_SHA" --json)
+          echo "games=$(jq -c .games <<<"$plan")" >> "$GITHUB_OUTPUT"
+          echo "slow=$(jq -c .slow <<<"$plan")" >> "$GITHUB_OUTPUT"
+
+  # Typecheck and unit tests for affected packages, and lint for the whole repo. Same command
+  # agents run locally, so "passes locally" means the same thing here.
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      TURBO_TELEMETRY_DISABLED: "1"
-      ARCADE_SITE_URL: https://arcade.steamfield.io
     steps:
       - uses: actions/checkout@v7
         with:
@@ -32,23 +63,79 @@ jobs:
       - uses: actions/cache@v6
         with:
           path: .turbo/cache
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: turbo-${{ runner.os }}-
-      - run: pnpm exec playwright install --with-deps chromium webkit
+          key: turbo-check-${{ github.sha }}
+          restore-keys: turbo-check-
+      - run: pnpm arcade check --base "$BASE_SHA"
 
-      # Same commands agents run locally, so "passes locally" means the same thing here.
-      - run: pnpm arcade check --all
-      # Rush Racers' 30-seed difficulty bars: too slow for check, so they run here and at each lane landing.
-      - run: pnpm --filter game-rush-racers test:difficulty
-      - run: pnpm arcade smoke
-
+  # One job per affected game: production build served by wrangler dev, Playwright against it.
+  # Playwright's image has the browsers and their system libraries, so no apt-get on the runner.
+  # Its tag must match the catalog's @playwright/test (tools/arcade/src/ci.test.ts checks).
+  smoke:
+    needs: plan
+    if: needs.plan.outputs.games != '[]'
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.65.1-noble
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        game: ${{ fromJSON(needs.plan.outputs.games) }}
+    env:
+      ARCADE_SITE_URL: https://arcade.steamfield.io
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-smoke-${{ matrix.game }}-${{ github.sha }}
+          restore-keys: turbo-smoke-${{ matrix.game }}-
+      - run: pnpm arcade smoke ${{ matrix.game }}
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-results
+          name: playwright-${{ matrix.game }}
           path: |
-            games/*/test-results
-            templates/*/test-results
-            games/*/playwright-report
-            templates/*/playwright-report
+            games/${{ matrix.game }}/test-results
+            templates/${{ matrix.game }}/test-results
+            games/${{ matrix.game }}/playwright-report
+            templates/${{ matrix.game }}/playwright-report
           retention-days: 7
+
+  # Suites too slow for check, declared per game in package.json ("arcade": { "ci": { "slow":
+  # { "script", "shards" } } }) and run in parallel shards, only when that game is affected.
+  slow:
+    needs: plan
+    if: needs.plan.outputs.slow != '[]'
+    name: slow (${{ matrix.game }} ${{ matrix.shard }}/${{ matrix.shards }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.slow) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter ${{ matrix.pkg }} ${{ matrix.script }} --shard=${{ matrix.shard }}/${{ matrix.shards }}
+
+  # The one check to require on main. A job that didn't need to run is skipped, which passes.
+  ci:
+    needs: [plan, check, smoke, slow]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "plan=${{ needs.plan.result }} check=${{ needs.check.result }} smoke=${{ needs.smoke.result }} slow=${{ needs.slow.result }}"
+          exit 1

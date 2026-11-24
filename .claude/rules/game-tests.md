@@ -14,6 +14,7 @@ paths:
 - A scenario whose outcome depends on tuning or a default setting (difficulty, assists, a character) pins it with an explicit `start.save` instead of relying on what a fresh save defaults to. Otherwise changing the default breaks every such scenario at once.
 - A rare moment (an item a seed seldom rolls, the end of a long course, an attack on the player) is set up through the game's debug stage (`start: { query: { stage: '<name>' } }`, honoured only in test mode or with `?debug=1`), not by hunting for a seed. Seed-hunted scenarios break when tuning shifts.
 - No sleeps or timeouts. The driver waits on `ready`, `idle()`, ticks and events.
+- A scenario that plays several times a typical one's ticks (a whole race, say) sets `slow: true`, and a long smoke test calls `test.slow()`: Playwright triples their timeout. Don't raise a game's global timeout for one long test, and prefer a debug stage that starts near the moment under test over replaying the whole game to reach it.
 - A known bug is a scenario with `todo: true` and the correct expectation. Remove `todo` when it's fixed. Don't skip, focus or loosen tests to get green.
 - Touch-only smoke tests carry `@touch` in the title so they run in the phone projects.
 - Each save version keeps its committed fixture in `tests/fixtures/`; the migrate-from-every-fixture test must keep passing.

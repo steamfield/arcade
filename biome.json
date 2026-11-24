@@ -100,7 +100,12 @@
       }
     },
     {
-      "includes": ["games/**/src/logic/**", "templates/**/src/logic/**"],
+      "includes": [
+        "games/**/src/logic/**",
+        "games/**/src/net/**",
+        "!games/**/src/net/transport/websocket.ts",
+        "templates/**/src/logic/**"
+      ],
       "plugins": ["./tools/biome/no-nondeterminism.grit"],
       "linter": {
         "rules": {
@@ -124,7 +129,7 @@
       }
     },
     {
-      "includes": ["games/rush-racers/src/logic/**", "!**/*.test.ts"],
+      "includes": ["games/rush-racers/src/logic/**", "games/rush-racers/src/net/**", "!**/*.test.ts"],
       "plugins": ["./tools/biome/no-inexact-math.grit"]
     }
   ]

@@ -11,6 +11,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@arcade/api": "workspace:*",
     "@arcade/core": "workspace:*",
     "@arcade/input": "workspace:*",
     "@arcade/save": "workspace:*",
@@ -29,6 +30,12 @@
     "fake-indexeddb": "catalog:"
   },
   "arcade": {
+    "ci": {
+      "slow": {
+        "script": "test:difficulty",
+        "shards": 4
+      }
+    },
     "attract": {
       "scenario": "race-to-finish",
       "from": 150,

@@ -20,7 +20,8 @@ Where everything is, so you can open the right file instead of searching. Every 
 | Change the landing page | `apps/site/` |
 | Record a game's landing-page footage and cover | `pnpm arcade attract <slug>`, settings in its package.json `arcade.attract` |
 | Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans and `tools/biome/no-inexact-math.grit` for rush-racers' bit-exact math |
-| Change CI or deploys | `.github/workflows/ci.yml`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts`, `cf:build` in `package.json` |
+| Change online rooms or races | Room service: `apps/api/src/` (`protocol.ts` is the wire contract). Rush Racers: `games/rush-racers/src/net/` (client, lobby, lockstep, transports), `src/engine/online/` (flow, screens), `tests/online*.spec.ts` |
+| Change CI or deploys | `.github/workflows/ci.yml`, `tools/arcade/src/affected.ts`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts`, `cf:build` in `package.json` |
 
 `<game>` is `games/<slug>` or `templates/<name>`.
 
@@ -128,11 +129,14 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/cli.ts` | Argument parsing and help for every command. Entry point. |
 | `tools/arcade/src/games.ts` | `listGames`, `findGame`, `ROOT`, `UsageError`. Reads every `game.json`. |
 | `tools/arcade/src/run.ts` | `run(cmd)` subprocess helper with captured output, `elapsed`. |
-| `tools/arcade/src/check.ts` | `check`: turbo typecheck, lint, test (or `--skip-tests`) for the slug plus changed packages; condenses output. |
+| `tools/arcade/src/check.ts` | `check`: turbo typecheck, lint, test (or `--skip-tests`) for the slug plus changed packages, or what changed since `--base`; condenses output. |
+| `tools/arcade/src/affected.ts` | `affected`, `affectedSince`, `planFromChanges`: which packages, games and slow-suite shards a change since a base commit needs tested. CI's job matrices come from it. |
+| `tools/arcade/src/affected.test.ts` | Which games a change selects, the global files that select all, slow-suite shards. |
+| `tools/arcade/src/ci.test.ts` | CI's Playwright container tag matches the catalog's `@playwright/test`. |
 | `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/` (or `--out`); `--query` launch params, `--compare` pixel diff against an earlier run. |
 | `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths, `@group`s from the game's package.json, or `-t`; one line when green. |
 | `tools/arcade/src/test.test.ts` | `@group` expansion for `arcade test`. |
-| `tools/arcade/src/smoke.ts` | `smoke`: assemble, `wrangler dev`, Playwright per game against the production build. |
+| `tools/arcade/src/smoke.ts` | `smoke`: assemble, `wrangler dev` (site Worker plus the API Worker behind `/api/*`), Playwright per game against the production build. |
 | `tools/arcade/src/assemble.ts` | `assemble`, `selectGames`, `includeForBranch`: builds site plus games into `dist/`, writes `_headers`, checks Cloudflare limits. |
 | `tools/arcade/src/assemble.test.ts` | Which games a Cloudflare build ships per branch. |
 | `tools/arcade/src/attract.ts` | `attract`: plays a scenario headlessly and records a game's landing-page loop (`public/attract.mp4`) and cover (`public/cover.png`) with ffmpeg. Settings in the game's package.json `arcade.attract`. |
@@ -141,6 +145,35 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/repo-map.test.ts` | Keeps this map in sync with the files on disk. |
 | `tools/biome/no-nondeterminism.grit` | Biome plugin banning `Math.random`, `Date.now`, `new Date` in logic folders. |
 | `tools/biome/no-inexact-math.grit` | Biome plugin banning `**`, `**=` and `Math.pow` in rush-racers logic and allowing only the exactly specified `Math` members it lists, so lockstep races match bit for bit. |
+
+## Room service (`apps/api/`)
+
+The relay for online races, a separate Worker (`arcade-api`) the site forwards `/api/*` to. Design: `plans/reef-rush-multiplayer.md` section 5.5 and `plans/rush-racers-online.md`. Tests are in `apps/api/test/` and run the Worker in-process (`pnpm --filter @arcade/api test`).
+
+| File | What it is |
+| --- | --- |
+| `apps/api/wrangler.jsonc` | The Worker: the `Room` Durable Object binding and its SQLite migration; no public route. Deployed by hand with `pnpm deploy:api`. |
+| `apps/api/package.json` | `@arcade/api`: `dev` (wrangler on port 8788), `types`, `typecheck`, `test`, `deploy`; exports `./protocol` to games. |
+| `apps/api/tsconfig.json` | Types the Workers (`src/`) with the runtime types `wrangler types` generates; no DOM, no Node. |
+| `apps/api/tsconfig.test.json` | Types the tests with Node types, never the Workers runtime's. |
+| `apps/api/vitest.config.ts` | Runs `test/**/*.test.ts` in Node. |
+| `apps/api/src/protocol.ts` | The room wire protocol (versions, limits, close codes, room codes and `isRoomCode`, schemas), also imported by games as `@arcade/api/protocol`. |
+| `apps/api/src/index.ts` | The Worker's fetch: origin check, `POST /api/rooms`, WebSocket upgrade routing to a `Room`. |
+| `apps/api/src/origin.ts` | `allowedOrigin`: which pages may use the service. |
+| `apps/api/src/codes.ts` | `randomRoomCode`. |
+| `apps/api/src/routes.ts` | The Worker's routes: `createRoom` (claims a code), `joinRoom` (hands the upgrade to the `Room`), 404 JSON. |
+| `apps/api/src/room.ts` | The `Room` Durable Object: claim, join, relay, race phase, kick, limits, idle alarm. |
+| `apps/api/src/peers.ts` | The room's peers read from socket attachments: host, phase, join order, and `joinRefusal`. |
+| `apps/api/src/traffic.ts` | The room's only in-memory state: per-peer heard times and message rates; `kickSilenceMs`. |
+| `apps/api/src/incoming.ts` | Reading a peer's message: its byte size and whether it is relayable JSON. |
+| `apps/api/src/sockets.ts` | WebSocket helpers: upgrade response, refusing a socket, replying to a close, sending without throwing. |
+| `apps/api/src/forward.ts` | The site Worker's script: forwards `/api/*` to the API Worker through the service binding; a 503 JSON error when the binding throws. |
+| `apps/api/test/room-kit.ts` | Test kit: starts the real Worker in-process through wrangler, creates rooms over HTTP, opens real WebSockets; waits on events with deadlines. |
+| `apps/api/test/rooms.test.ts` | Creating and joining rooms: codes, the origin rule, every refusal. |
+| `apps/api/test/relay.test.ts` | What the room passes between peers, and how start, end and departures move its phase and host. |
+| `apps/api/test/kick.test.ts` | When the room honours a `kick`: only between racers, only after the silence window. |
+| `apps/api/test/limits.test.ts` | The size and rate limits. |
+| `apps/api/test/forward.test.ts` | The site's `/api/*` script: passing responses through, and the 503 when the binding throws. |
 
 ## Landing page (`apps/site/`)
 

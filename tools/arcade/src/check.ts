@@ -1,3 +1,4 @@
+import { affectedSince } from './affected.ts';
 import { findGame, listGames, ROOT } from './games.ts';
 import { elapsed, run } from './run.ts';
 
@@ -6,13 +7,25 @@ import { elapsed, run } from './run.ts';
  * changed since HEAD and everything that depends on them, so editing a shared
  * package while working on one game still checks the others. `skipTests` leaves
  * out the unit tests, for an agent that proves its change with `arcade test`.
+ * `base` (CI) checks what changed since that commit instead, by the same plan as `arcade affected`.
  * Prints one line on success; only the failing output otherwise.
  */
-export async function check(slug: string | undefined, options: { all: boolean; skipTests: boolean }): Promise<number> {
+export async function check(
+  slug: string | undefined,
+  options: { all: boolean; skipTests: boolean; base?: string | undefined },
+): Promise<number> {
   const start = performance.now();
   const filters: string[] = [];
   let scope = 'all packages';
-  if (!options.all) {
+  let skipTurbo = false;
+  if (options.base !== undefined) {
+    const plan = await affectedSince(options.base);
+    if (!plan.all) {
+      filters.push(...plan.packages.map((p) => `--filter=${p}`));
+      skipTurbo = plan.packages.length === 0;
+    }
+    scope = plan.all ? `all packages (${plan.reason})` : `packages changed since ${options.base} and their dependents`;
+  } else if (!options.all) {
     const hasCommits = (await run('git', ['rev-parse', '--verify', 'HEAD'])).code === 0;
     if (!hasCommits) {
       // Without a commit there's no way to tell which packages changed, so a slug-only check
@@ -29,25 +42,27 @@ export async function check(slug: string | undefined, options: { all: boolean; s
 
   const [lint, tasks] = await Promise.all([
     run('pnpm', ['exec', 'biome', 'check', '.', '--reporter=github', '--colors=off', '--max-diagnostics=100']),
-    run('pnpm', [
-      'exec',
-      'turbo',
-      'run',
-      'typecheck',
-      ...(options.skipTests ? [] : ['test']),
-      '--output-logs=errors-only',
-      ...filters,
-    ]),
+    skipTurbo
+      ? { code: 0, output: '' }
+      : run('pnpm', [
+          'exec',
+          'turbo',
+          'run',
+          'typecheck',
+          ...(options.skipTests ? [] : ['test']),
+          '--output-logs=errors-only',
+          ...filters,
+        ]),
   ]);
 
-  const affected = /Packages in scope: (.*)/.exec(tasks.output)?.[1]?.split(', ') ?? [];
+  const inScope = /Packages in scope: (.*)/.exec(tasks.output)?.[1]?.split(', ') ?? [];
   const failures: string[] = [];
   if (lint.code !== 0) failures.push(`── lint (biome) ──\n${formatBiome(lint.output)}`);
   if (tasks.code !== 0) failures.push(`── typecheck/test ──\n${trimTurbo(tasks.output)}`);
 
   if (failures.length === 0) {
     const what = options.skipTests ? 'typecheck and lint passed, tests skipped' : 'check passed';
-    console.log(`✓ ${what} (${scope}: ${affected.length} packages) in ${elapsed(start)}`);
+    console.log(`✓ ${what} (${scope}: ${inScope.length} packages) in ${elapsed(start)}`);
     return 0;
   }
   console.log(failures.join('\n\n'));

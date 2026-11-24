@@ -7,15 +7,17 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { CASES_BY_MEDIUM } from '../../conformance/geometries.ts';
+import { courseOf } from '../../courses/index.ts';
 import type { GameEvent } from '../../events.ts';
 import { assistedIntent, guideFor } from '../../guide.ts';
 import { parseLevel } from '../../level/parse.ts';
-import { tileIndex } from '../../level/query.ts';
+import { cellAt, tileIndex } from '../../level/query.ts';
+import { breakCoral } from '../../race/coral.ts';
 import { progressAt } from '../../race/flowfield.ts';
 import { courseFromLevel, hold, IDLE, placeOnTile, racerOf } from '../../test-world.ts';
 import { type Level, TILE, type Vec, type World } from '../../types.ts';
 import { createWorld, stepWorld } from '../../world.ts';
-import { MEDIA } from '../index.ts';
+import { effectiveTuning, MEDIA } from '../index.ts';
 import { runMotion } from './data.ts';
 import { buildLinks } from './links.ts';
 import { buildRunNav } from './nav.ts';
@@ -87,7 +89,12 @@ function names(tiles: Iterable<number>, width: number): string[] {
 }
 
 /** The links out of tile (col, row) in `ascii`. */
-function linksFrom(ascii: string, col: number, row: number, broken: ReadonlySet<number> = NOTHING_BROKEN): RunLink[] {
+function linksFrom(
+  ascii: string,
+  col: number,
+  row: number,
+  broken: ReadonlySet<number> = NOTHING_BROKEN,
+): readonly RunLink[] {
   const level = levelOf(ascii);
   return buildLinks(level, broken, run.tuning).get(tileIndex(level, col, row)) ?? [];
 }
@@ -436,27 +443,65 @@ describe('the level check', () => {
 });
 
 describe('building the nav', () => {
-  it('takes under 50 ms for a 300 by 20 level', () => {
-    const row = (inner: string) => `#${inner}#`;
-    const air = row('.'.repeat(298));
-    const ground = row(Array.from({ length: 298 }, (_, col) => (col % 25 >= 20 && col % 25 < 23 ? '.' : '#')).join(''));
-    const floorStand = row(`1.2.3.4${Array.from({ length: 291 }, (_, col) => (col === 290 ? 'F' : '.')).join('')}`);
-    const rows = [
-      row('#'.repeat(298)),
-      ...Array.from({ length: 16 }, () => air),
-      floorStand,
-      ground,
-      row('#'.repeat(298)),
-    ];
-    const level = levelOf(rows.join('\n'));
-    const elapsed = Array.from({ length: 3 }, () => {
+  it('costs about the same per column on a long level as on a short one, so a long course loads quickly', () => {
+    /** A level `inner` columns wide: a floor with a 3-tile pit every 25 columns, under 16 rows of air. */
+    const levelWide = (inner: number) => {
+      const row = (cells: string) => `#${cells}#`;
+      const air = row('.'.repeat(inner));
+      const ground = row(
+        Array.from({ length: inner }, (_, col) => (col % 25 >= 20 && col % 25 < 23 ? '.' : '#')).join(''),
+      );
+      const floorStand = row(
+        `1.2.3.4${Array.from({ length: inner - 7 }, (_, col) => (col === inner - 8 ? 'F' : '.')).join('')}`,
+      );
+      const rows = [
+        row('#'.repeat(inner)),
+        ...Array.from({ length: 16 }, () => air),
+        floorStand,
+        ground,
+        row('#'.repeat(inner)),
+      ];
+      return levelOf(rows.join('\n'));
+    };
+    // A copy each time: a build reuses the links of the last one for the same level (`buildLinks`).
+    const buildMs = (level: Level) => {
+      const fresh = structuredClone(level);
       const started = performance.now();
-      buildRunNav(level, NOTHING_BROKEN, run.tuning);
+      buildRunNav(fresh, NOTHING_BROKEN, run.tuning);
       return performance.now() - started;
-    });
+    };
+    const short = levelWide(100);
+    const long = levelWide(400);
+    // Interleaved, so a busy machine slows both alike; the fastest of each is the least disturbed.
+    const times = Array.from({ length: 5 }, () => [buildMs(short), buildMs(long)] as const);
+    const ratio = Math.min(...times.map(([, l]) => l)) / Math.min(...times.map(([s]) => s));
 
-    expect(Math.min(...elapsed)).toBeLessThan(50);
+    // Four times the columns costs about four times as much; a build that grew with the square of the
+    // width (every tile against every tile) would cost sixteen times as much.
+    expect(ratio).toBeLessThan(8);
   });
+
+  it.each(['bramble-run', 'run-test'])(
+    'on %s, after each coral tile breaks and in the next race, matches a build from scratch',
+    (course) => {
+      const raceOn = () => createWorld(courseOf({ course }), new EventLog<GameEvent>(100_000), { seed: 1 });
+      const fromScratch = (world: World) =>
+        buildRunNav(structuredClone(world.level), world.broken, effectiveTuning(world));
+      const world = raceOn();
+      const { width, height } = world.level;
+      const coral = Array.from({ length: width * height }, (_, tile) => tile).filter(
+        (tile) => cellAt(world.level, tile % width, Math.floor(tile / width)) === 'coral',
+      );
+      expect(coral.length).toBeGreaterThan(0);
+
+      for (const tile of coral) {
+        expect(breakCoral(world, tile % width, Math.floor(tile / width), 'player')).toBe(true);
+        expect(world.nav).toEqual(fromScratch(world));
+      }
+      const next = raceOn();
+      expect(next.nav).toEqual(fromScratch(next));
+    },
+  );
 
   it('is unchanged by an idle step, so a world can keep its nav', () => {
     const world = runWorld(pitLevel(3));

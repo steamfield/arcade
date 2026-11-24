@@ -14,6 +14,13 @@ import type { CharacterId, Difficulty, PowerUpKind, RacerId, RivalProfile, World
 import { createWorld, stepWorld } from '../world.ts';
 import { botDriver } from './bot-driver.ts';
 
+/**
+ * A test's timeout for racing `races` whole races it hasn't raced yet. A race takes about 1 s on an
+ * idle laptop and has measured over 3 s on a CI runner (40 rival-item races overran 120 s there),
+ * so the budget is 6 s a race: it only ends a test that has stopped making progress.
+ */
+export const racesTimeoutMs = (races: number): number => races * 6_000;
+
 /** The rival slots, in race order. */
 export const RIVAL_IDS = ['tess', 'squib', 'bo'] as const;
 

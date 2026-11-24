@@ -173,4 +173,4 @@ Play sounds from logic events (drain the `EventLog`, see `game-feel`), never fro
 - [ ] Pixel art: integer zoom, `pixelArt: true`, rounded positions, extruded atlases, legible HUD text at 1x.
 - [ ] Audio context registered with the shell; sounds triggered from events; music stops on scene shutdown.
 - [ ] `debugSummary` has the fields new scenarios assert on, and a scenario covers the new behavior.
-- [ ] `pnpm arcade check <slug>`, `see` on the changed scene (desktop and `--mobile`), and `smoke` pass (`verify-game`).
+- [ ] `pnpm arcade test <slug>` on the tests covering your files and `pnpm arcade check <slug> --skip-tests` pass, and `see` on the changed scene (desktop and `--mobile`) looks right. Whoever merges runs the full `check` and `smoke` (`verify-game`, AGENTS.md "Test scope").

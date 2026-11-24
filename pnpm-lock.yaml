@@ -224,6 +224,28 @@ importers:
         specifier: 'catalog:'
         version: 4.166.0(@types/node@24.19.2)(vitest@5.1.1(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)))
 
+  apps/api:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
+    devDependencies:
+      '@arcade/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.19.2
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.1(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2))
+      wrangler:
+        specifier: 'catalog:'
+        version: 4.166.0(@types/node@24.19.2)(vitest@5.1.1(@types/node@24.19.2)(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)))
+
   apps/site:
     devDependencies:
       '@arcade/config':
@@ -247,6 +269,9 @@ importers:
 
   games/rush-racers:
     dependencies:
+      '@arcade/api':
+        specifier: workspace:*
+        version: link:../../apps/api
       '@arcade/core':
         specifier: workspace:*
         version: link:../../packages/core

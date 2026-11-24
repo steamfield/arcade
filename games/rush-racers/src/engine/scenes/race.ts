@@ -1,7 +1,8 @@
 /**
  * The race screen. It assembles the views, drawn in the course's theme (backdrop, course, pickups, hazards, enemies,
  * the attack power-ups in the water, racers and their power-up effects, the darkness
- * over dark zones, HUD, the hints for young players, camera, debug overlay, and any layers the theme adds) over the
+ * over dark zones, HUD, the hints for young players, an online race's player tags and waiting line, camera, debug overlay,
+ * and any layers the theme adds) over the
  * runtime's world and syncs them every rendered frame.
  * Event-driven visuals arrive through the runtime's per-tick listener.
  * Ticking, input and the move to results all happen in the runtime.
@@ -29,6 +30,7 @@ import { createHintView } from '../view/hint-view.ts';
 import { createHud } from '../view/hud.ts';
 import { createLevelView } from '../view/level-view.ts';
 import { createLightningView } from '../view/lightning-view.ts';
+import { createOnlineRaceView } from '../view/online-race-view.ts';
 import { createPickupView } from '../view/pickup-view.ts';
 import { createPowerupView } from '../view/powerup-view.ts';
 import { createRacerView } from '../view/racer-view.ts';
@@ -98,6 +100,8 @@ export class RaceScene extends Phaser.Scene {
     const fx = createFx(this, world, theme, reducedMotion);
     const camera = followRacer(this.cameras.main, localOf(world).body, world.level);
     const debug = this.rt.ctx.params.debug ? createDebugOverlay(this) : null;
+    // Lobby tags and the waiting line belong to online races only.
+    const online = this.rt.onlineRace ? createOnlineRaceView(this, layout) : null;
 
     const stopListening = this.rt.listen((events) => {
       const tick = this.rt.world?.tick ?? 0;
@@ -139,6 +143,7 @@ export class RaceScene extends Phaser.Scene {
       fx.sync(current);
       // After the camera moved, so the darkness lines up with this frame's scroll.
       dark.sync(current);
+      online?.sync(current, this.rt.online.view?.race ?? null);
       debug?.sync(current);
     };
     sync(world);

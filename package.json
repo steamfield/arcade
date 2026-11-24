@@ -11,6 +11,7 @@
     "test:update": "turbo run test -- -u",
     "build": "turbo run build",
     "cf:build": "ARCADE_SITE_URL=${ARCADE_SITE_URL:-https://arcade.steamfield.io} node tools/arcade/src/cli.ts assemble --include branch",
+    "deploy:api": "pnpm --filter @arcade/api run deploy",
     "deploy": "node tools/arcade/src/cli.ts smoke && node tools/arcade/src/cli.ts assemble && wrangler deploy"
   },
   "devDependencies": {

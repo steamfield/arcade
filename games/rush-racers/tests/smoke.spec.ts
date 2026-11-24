@@ -14,7 +14,7 @@ test('starts on WebGL, races from the title through course select and the select
   expect(await game.renderer()).toBe('webgl');
   expect(await game.summary()).toMatchObject({
     scene: 'title',
-    menu: { options: ['Race', 'How to play', 'Difficulty', 'Sound', 'Motion'], selected: 0 },
+    menu: { options: ['Race', 'Friends', 'How to play', 'Difficulty', 'Sound', 'Motion'], selected: 0 },
     best: null,
   });
 
@@ -154,6 +154,7 @@ test('on Thunderhead Pass a tap of the on-screen Up button flaps @touch', async 
 const TOP_ROUTE_BROWSER_HASH = 746211979;
 
 test('a finished race is saved and its best time shows on the title after a reload', async ({ game }) => {
+  test.slow(true, 'swims the whole course, about 250 input steps');
   // TOP_ROUTE was recorded on Hard; a fresh save races on Easy.
   await game.open();
   await game.loadState(HARD_SAVE);

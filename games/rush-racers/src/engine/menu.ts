@@ -1,12 +1,13 @@
 /**
  * A vertical list of options with one selected, as used by the title and
- * results screens. Plain state and moves; the runtime feeds it input each tick
+ * results screens (offline and online). Plain state and moves; the runtime feeds it input each tick
  * and scenes only draw it.
  */
 
 /** Every option a menu in this game can offer. */
 export type MenuOption =
   | 'Race'
+  | 'Friends'
   | 'How to play'
   | 'Difficulty'
   | 'Sound'
@@ -17,8 +18,10 @@ export type MenuOption =
 
 /** The options each menu screen offers, top to bottom. */
 export const MENU_OPTIONS = {
-  title: ['Race', 'How to play', 'Difficulty', 'Sound', 'Motion'],
+  title: ['Race', 'Friends', 'How to play', 'Difficulty', 'Sound', 'Motion'],
   results: ['Race again', 'Character', 'Title'],
+  /** After an online race: Race again goes back to the room, Title leaves it. The room picks characters. */
+  onlineResults: ['Race again', 'Title'],
 } as const satisfies Record<string, readonly MenuOption[]>;
 
 /** A menu's options and which one is selected. */
