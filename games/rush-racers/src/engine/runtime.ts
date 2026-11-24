@@ -45,6 +45,8 @@ import { createOnlineWorld } from '../net/race-world.ts';
 import { enemyWithinHearing } from './audio/adapter.ts';
 import { withinHearing } from './audio/attack-sfx.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
+import { RACE_TRACKS, type SongName } from './audio/songs/index.ts';
+import { createTrackRotation, type TrackRotation } from './audio/track-rotation.ts';
 import { applyStage, stageFor } from './capture-stages.ts';
 import { type Action, input } from './input.ts';
 import { localOf, setLocalRacer } from './local-racer.ts';
@@ -62,6 +64,14 @@ import type { OnlineState } from './online/state.ts';
 import { raceProgress } from './race-progress.ts';
 import { moveCharacter } from './screens/character-select.ts';
 import { type PagePress, turnPage } from './screens/how-to-play.ts';
+import {
+  createJukebox,
+  hearJukebox,
+  type Jukebox,
+  type JukeboxPress,
+  pressJukebox,
+  soundtrackTracks,
+} from './screens/jukebox.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './screens/menu.ts';
 import { assertCourseAssets } from './themes/course-assets.ts';
 import {
@@ -77,7 +87,17 @@ import { stormWithinReach } from './view/set-pieces/storm-reach.ts';
 import { assertSkinAssets, skinFor } from './worlds/index.ts';
 
 /** Phaser scene keys, one per screen. */
-export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'course' | 'select' | 'race' | 'results' | 'friends' | 'room';
+export type SceneKey =
+  | 'boot'
+  | 'title'
+  | 'howToPlay'
+  | 'course'
+  | 'select'
+  | 'race'
+  | 'results'
+  | 'friends'
+  | 'room'
+  | 'jukebox';
 
 /** Events the engine adds on top of the world's. */
 type EngineEvent =
@@ -210,6 +230,10 @@ export class Runtime {
   hints: HintState = NO_HINTS;
   /** Friends, the room and its races: the online flow, which the friends, room and online race screens tick. */
   readonly flow: OnlineFlow;
+  /** The sound test's list, cursor and playing song; set each time the jukebox screen opens. */
+  jukebox: Jukebox | null = null;
+  /** The track the race in hand plays, picked from its course's set as the race starts; null before the first race. */
+  raceTrack: SongName | null = null;
   /** True while the race in hand is an online one: the flow's client steps it, and it is never saved. */
   onlineRace = false;
   /** The slot this peer races in during an online race; null otherwise. */
@@ -257,6 +281,8 @@ export class Runtime {
   /** Set by a tick that sent the player into an online race: that tick's events go out on the race scene's first tick instead. */
   private holdEvents = false;
   private readonly art: ArtPort;
+  /** Picks each race's track from its course's set, starting at the save's race count at boot. */
+  private readonly rotation: TrackRotation;
   /** Counts art waits, so a load that finishes after a newer request was made does nothing. */
   private artRequests = 0;
   /** Asks again for the art boot failed to load; null unless boot's load failed. */
@@ -290,8 +316,9 @@ export class Runtime {
         localRacer: () => this.localRacer,
         raceWorld: () => this.world,
       },
-      () => this.raceCourse.song,
+      () => this.raceTrack ?? RACE_TRACKS[this.raceCourse.song][0],
     );
+    this.rotation = createTrackRotation({ startAt: options.save?.races ?? 0, pinned: pinnedTrackFor(this.search) });
     this.flow = createOnlineFlow({
       ...options.online,
       createRace: (start) => createOnlineWorld(start, this.events),
@@ -376,12 +403,14 @@ export class Runtime {
    * Leaves boot once the art of the courses the first screens draw is in (the session's course and
    * the menu course behind the title, which differ with `?course=`): straight into a race with
    * `?scene=race` (or the older `?scene=play`), into the room a `?room=` link names, to Friends with
-   * `?scene=friends`, else to the title. When that art fails to load, the next press tries again.
+   * `?scene=friends`, to the sound test with `?scene=jukebox`, else to the title. When that art fails
+   * to load, the next press tries again.
    */
   boot(): void {
     this.whenArtReady([this.course, this.menuCourse], () => {
-      if (RACE_SCENE_PARAMS.includes(this.ctx.params.scene)) this.startRace();
-      else if (!this.openRoomLink()) this.goTo(this.ctx.params.scene === 'friends' ? 'friends' : 'title');
+      const scene = this.ctx.params.scene;
+      if (RACE_SCENE_PARAMS.includes(scene)) this.startRace();
+      else if (!this.openRoomLink()) this.goTo(scene === 'friends' || scene === 'jukebox' ? scene : 'title');
     });
   }
 
@@ -449,6 +478,7 @@ export class Runtime {
     if (scene === 'select') this.selectedCharacter = this.savedCharacter;
     if (scene === 'course') this.courseCursor = Math.max(0, this.listedCourses.indexOf(this.course));
     if (scene === 'howToPlay') this.showHowToPlayPage(0);
+    if (scene === 'jukebox') this.jukebox = createJukebox(soundtrackTracks());
     const options = scene === 'results' ? this.resultsOptions : MENUS[scene];
     this.menu = options ? createMenu(options) : null;
     if (this.menu && this.returnTo) {
@@ -497,8 +527,12 @@ export class Runtime {
     this.beginRace(world);
   }
 
-  /** Resets the per-race state for `world`, whose local racer is set, and shows the race from its countdown. */
+  /**
+   * Resets the per-race state for `world`, whose local racer is set, picks the race's track and shows
+   * the race from its countdown.
+   */
   private beginRace(world: World): void {
+    this.raceTrack = this.rotation.next(this.raceCourse.song);
     this.hintMemory = newHintMemory();
     this.hintConfig = hintConfig(this.save?.races ?? 0, world.difficulty);
     this.hints = NO_HINTS;
@@ -621,6 +655,7 @@ export class Runtime {
     else if (this.scene === 'course') this.tickCourse();
     else if (this.scene === 'select') this.tickSelect();
     else if (this.scene === 'howToPlay') this.tickHowToPlay();
+    else if (this.scene === 'jukebox' && this.jukebox) this.tickJukebox(this.jukebox);
     else if (this.scene === 'race') this.tickRace(dt);
     else if (this.scene === 'boot') this.tickBoot();
     if (this.holdEvents) this.holdEvents = false;
@@ -764,6 +799,14 @@ export class Runtime {
     }
   }
 
+  /** Hands the sound test this tick's press and does what it asks: audition a song, stop, or leave for the title. */
+  private tickJukebox(jukebox: Jukebox): void {
+    const outcome = pressJukebox(jukebox, readJukeboxPress());
+    if (outcome.kind === 'play') this.audio.audition(outcome.song, outcome.section);
+    else if (outcome.kind === 'stop') this.audio.audition(null);
+    else if (outcome.kind === 'leave') this.goTo('title');
+  }
+
   private showHowToPlayPage(page: number): void {
     this.howToPage = page;
     this.howToSince = this.step.tick;
@@ -832,6 +875,8 @@ export class Runtime {
     if (event.type === 'race.finished') this.finishRace(event);
     else if (event.type === 'save.failed' && this.lastResult)
       this.lastResult = { ...this.lastResult, saveFailed: true };
+    else if (event.type === 'audio.played' && event.kind === 'song' && this.jukebox)
+      hearJukebox(this.jukebox, event.key);
   }
 
   private finishRace({ standings }: RaceResult): void {
@@ -888,6 +933,18 @@ function localSlotFor(search: string): RacerId | null {
   return null;
 }
 
+/**
+ * The 0-based track `?track=` pins every race to (1-based in the URL), or null without one. A value
+ * that is not a positive whole number is warned about once and ignored, so tracks rotate.
+ */
+function pinnedTrackFor(search: string): number | null {
+  const asked = new URLSearchParams(search).get('track');
+  if (asked === null) return null;
+  if (/^\d+$/.test(asked) && Number(asked) > 0) return Number(asked) - 1;
+  log.warn(`?track=${asked} is not a track number (1, 2, 3 and so on), so race tracks rotate`);
+  return null;
+}
+
 /** The next difficulty in the cycle EASY, NORMAL, HARD, then back to EASY. */
 function nextDifficulty(current: Difficulty): Difficulty {
   const index = DIFFICULTIES.indexOf(current);
@@ -902,6 +959,11 @@ const SCREEN_PRESSES: readonly ScreenPress[] = ['up', 'down', 'left', 'right', '
 
 /** Every button a player can press on the title, any of which clears an online notice there. */
 const TITLE_PRESSES: readonly Action[] = [...SCREEN_PRESSES, 'prev', 'next'];
+
+/** The sound test button pressed this tick, if any. */
+function readJukeboxPress(): JukeboxPress | null {
+  return SCREEN_PRESSES.find((press) => input.justPressed(press)) ?? null;
+}
 
 /** The page button pressed this tick, if any. */
 function readPagePress(): PagePress | null {
