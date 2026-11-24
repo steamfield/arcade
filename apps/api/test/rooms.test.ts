@@ -51,7 +51,7 @@ test.each([
   const failing = await startRoomService({ ROOM_FAILURE: message }, FAILING_ROOM);
   try {
     const response = await postCreateRoom(failing);
-    const close = await openSocket(failing, 'ABCDEF').closed;
+    const close = await openSocket(failing, 'BCDF').closed;
 
     expect.soft([response.status, await response.json()]).toEqual([status, { error: expect.any(String), ...body }]);
     expect(close).toEqual({ code, reason, opened: true });
