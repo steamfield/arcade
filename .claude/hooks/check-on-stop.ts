@@ -1,4 +1,5 @@
-// Stop hook: if game or package code changed, run `arcade check` before Claude
+// Stop hook: if game or package code changed, run `arcade check --skip-tests` (typecheck and lint;
+// AGENTS.md "Test scope" keeps the full suite for whoever merges) before Claude
 // reports done. On failure, block the stop once and hand Claude the failure output.
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -10,12 +11,12 @@ const status = spawnSync('git', ['status', '--porcelain'], { encoding: 'utf8' })
 const touched = status.split('\n').some((l) => /\s(games|templates|packages|tools|apps)\//.test(l));
 if (!touched) process.exit(0);
 
-const result = spawnSync('pnpm', ['arcade', 'check'], { encoding: 'utf8' });
+const result = spawnSync('pnpm', ['arcade', 'check', '--skip-tests'], { encoding: 'utf8' });
 if (result.status === 0) process.exit(0);
 const output = `${result.stdout}${result.stderr}`.trim().split('\n').slice(-60).join('\n');
 console.log(
   JSON.stringify({
     decision: 'block',
-    reason: `pnpm arcade check fails on the current changes. Fix these before finishing:\n${output}`,
+    reason: `pnpm arcade check --skip-tests fails on the current changes. Fix these before finishing:\n${output}`,
   }),
 );

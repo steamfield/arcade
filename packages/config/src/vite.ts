@@ -33,7 +33,8 @@ export function defineGameConfig(configUrl: string, overrides: UserConfig = {}):
     build: {
       assetsDir: '_v',
       target: 'es2023',
-      sourcemap: true,
+      // No production sourcemaps: they doubled the deploy (14 MB for Rush Racers) and approach Cloudflare's per-file limit.
+      sourcemap: false,
       chunkSizeWarningLimit: 2000,
       ...overrides.build,
     },
