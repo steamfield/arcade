@@ -1,9 +1,9 @@
 /**
- * The race screen. It assembles the views, drawn in the course's theme (backdrop, course, pickups, hazards, enemies,
- * the attack power-ups in the water, racers and their power-up effects, the darkness
- * over dark zones, HUD, the hints for young players, an online race's player tags and waiting line, camera, debug overlay,
- * and any layers the theme adds) over the
- * runtime's world and syncs them every rendered frame.
+ * The race screen. It assembles the views (backdrop, course, pickups, hazards, enemies, the attack
+ * power-ups in the water, racers and their power-up effects, the darkness over dark zones, HUD, the
+ * hints for young players, an online race's player tags and waiting line, camera, debug overlay)
+ * over the runtime's world, drawn in the course's theme and its world's skin, and syncs them every
+ * rendered frame.
  * Event-driven visuals arrive through the runtime's per-tick listener.
  * Ticking, input and the move to results all happen in the runtime.
  */
@@ -76,7 +76,7 @@ export class RaceScene extends Phaser.Scene {
     const { reducedMotion } = this.rt.settings;
     createWellView(this, world.level, reducedMotion);
     const pickups = createPickupView(this, world.level, skin, reducedMotion);
-    const hazards = createHazardView(this, world.level, theme.hazards, skin, reducedMotion);
+    const hazards = createHazardView(this, world.level, skin, reducedMotion);
     const rings = createRingView(this, world, reducedMotion);
     const lightning = createLightningView(this, world, reducedMotion);
     const enemies = createEnemyView(this, world, reducedMotion);
@@ -86,7 +86,6 @@ export class RaceScene extends Phaser.Scene {
       view: createRacerView(this, racer, reducedMotion, skin.cast, localIdOf(world)),
       effects: createPowerupView(this, racer.id, skin, reducedMotion),
     }));
-    const themeLayers = theme.extraLayers(this, world);
     const dark = createDarkView(this, world, theme.dark, reducedMotion);
     const layout = screenLayout(this.scale);
     const hud = createHud(this, world, reducedMotion, layout);
@@ -136,7 +135,6 @@ export class RaceScene extends Phaser.Scene {
       lightning.sync(current, current.tick);
       enemies.sync(current);
       attacks.sync(current, current.tick);
-      for (const layer of themeLayers) layer.sync(current);
       for (const { racer, view, effects } of racers) {
         view.sync(racer, current.tick);
         effects.sync(racer, current.tick);

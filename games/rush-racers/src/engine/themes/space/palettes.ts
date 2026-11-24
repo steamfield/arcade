@@ -1,8 +1,8 @@
 /**
- * The space theme's colours: Farside's asteroid rock and ice, struts, nebula dust, solar wind, space
- * mines and plasma orbs, the painted moonscape layers, the sky's depth bands and the starlight. As in
- * the ocean, terrain is mid-value and the sky and backdrop dark and low in saturation, so racers,
- * hazards and pickups read in front. Every racer's main colour and the mine's body hold 3:1 off every
+ * The space theme's colours: Farside's asteroid rock and ice, struts, nebula dust, solar wind, the
+ * painted moonscape layers, the sky's depth bands and the starlight. As in the ocean, terrain is
+ * mid-value and the sky and backdrop dark and low in saturation, so racers, hazards and pickups read
+ * in front. Every racer's main colour and each hazard's body hold 3:1 off every
  * sky band and backdrop colour (the space theme's contrast bands). Tune these only while every
  * contrast test still passes.
  */
@@ -25,14 +25,6 @@ export const SpaceTerrainPalette = {
   wind: [0x8a7a3a, 0xffe9a0],
   /** Finish gate: pylon (3.6:1 off the sky), dark check, light check, beacon. */
   finish: [0x6e7090, 0x2a2a3a, 0xf2f2f2, 0xffcc33],
-} as const satisfies Record<string, Palette>;
-
-/** Hazard palettes: dark bodies with hot accents, so danger reads by shape and value, not hue alone. */
-export const SpaceHazardPalette = {
-  /** Space mine: near-black rivets, a lit pink body that holds 3:1 off the lightest sky band, spike tips. */
-  mine: [0x140810, 0xe888b0, 0xffd0a0],
-  /** Plasma orb: outline, yellow body, dark core band and white-hot shine. */
-  orb: [0x1a1206, 0xffd23a, 0x2a2010, 0xe8f4ff],
 } as const satisfies Record<string, Palette>;
 
 /** Backdrop palettes: dark blues a step away from the sky behind them. */

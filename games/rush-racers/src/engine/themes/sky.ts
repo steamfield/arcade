@@ -7,7 +7,6 @@
  */
 
 import { drawSheets, registerLoops } from '../art/index.ts';
-import { Frame } from '../art/keys.ts';
 import { FxFrame } from '../fx/textures.ts';
 import { defineTheme } from './define.ts';
 import { SkyThemeAnim, SkyThemeTex, SkyThemeTile } from './sky/keys.ts';
@@ -15,16 +14,13 @@ import { EVENING_HAZE, SKY_BANDS, SkyBackdropPalette, STORM_TINT } from './sky/p
 import { SKY_SHEETS } from './sky/sprites/index.ts';
 import type { BubbleFrames, ContrastBand, HazeSpec } from './types.ts';
 
-/** Fog drifts, winds flow and the hazards crackle on Phaser's clock, never on logic ticks. */
+/** Fog drifts and winds flow on Phaser's clock, never on logic ticks. */
 const SKY_LOOPS = [
   { key: SkyThemeAnim.fogDrift, texture: SkyThemeTex.fog, frameRate: 2 },
   { key: SkyThemeAnim.windRight, texture: SkyThemeTex.windRight, frameRate: 4 },
   { key: SkyThemeAnim.windLeft, texture: SkyThemeTex.windLeft, frameRate: 4 },
   { key: SkyThemeAnim.updraft, texture: SkyThemeTex.updraft, frameRate: 4 },
   { key: SkyThemeAnim.downdraft, texture: SkyThemeTex.downdraft, frameRate: 4 },
-  // Three a second at most: the spark cloud's bright sparks are a flash (UI.md).
-  { key: SkyThemeAnim.sparkCrackle, texture: SkyThemeTex.sparkCloud, frameRate: 3 },
-  { key: SkyThemeAnim.wispFlicker, texture: SkyThemeTex.staticWisp, frameRate: 3 },
 ] as const;
 
 /** The evening haze streaked across the bands. */
@@ -105,10 +101,6 @@ export const SKY_THEME = defineTheme({
     fallStill: { drag: 0.97, ay: 0.01, wobble: 0 },
     drift: { drag: 0.96, ay: 0, wobble: 0 },
     splash: { drag: 0.92, ay: 0.02, wobble: 0 },
-  },
-  hazards: {
-    urchin: { texture: SkyThemeTex.sparkCloud, frame: Frame.a, anim: SkyThemeAnim.sparkCrackle },
-    jelly: { texture: SkyThemeTex.staticWisp, frame: Frame.a, anim: SkyThemeAnim.wispFlicker },
   },
   // Veils the course's dark stretches (`level.dark`); lightning zones are shaded by the lightning view.
   dark: { colour: STORM_TINT, alpha: STORM_VEIL_ALPHA },

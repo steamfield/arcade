@@ -12,6 +12,6 @@ export interface WorldSkin {
   id: string;
   cast: CastSkin;
   objects: ObjectSkin;
-  /** Builds the world's own cast and object textures at boot; calling it again changes nothing. */
+  /** Builds the world's own cast, object and hazard textures and loops at boot; calling it again changes nothing. */
   registerTextures(scene: Phaser.Scene): void;
 }

@@ -4,7 +4,7 @@
  * files import these; views get them through the theme.
  */
 
-/** Ocean texture keys: the reef's terrain, flowing water, the waterline, finish banner, hazards and backdrop layers. */
+/** Ocean texture keys: the reef's terrain, flowing water, the waterline, finish banner and backdrop layers. */
 export const OceanTex = {
   /** Tileset for the tilemap: one frame per entry in `OceanTile`. */
   tiles: 'tiles',
@@ -15,8 +15,6 @@ export const OceanTex = {
   currentUp: 'current-up',
   currentDown: 'current-down',
   finishGate: 'finish-gate',
-  urchin: 'urchin',
-  jelly: 'jelly',
   backdropFar: 'backdrop-far',
   backdropNear: 'backdrop-near',
   /** The wave crest along the sea's surface, a two-frame loop. */
@@ -41,13 +39,12 @@ export const OceanTile = {
   bounce: 7,
 } as const;
 
-/** Ocean animation keys: kelp sway, the four current flows, the jelly's pulse and the waterline's roll. */
+/** Ocean animation keys: kelp sway, the four current flows and the waterline's roll. */
 export const OceanAnim = {
   kelpSway: 'kelp-sway',
   currentRight: 'current-right-flow',
   currentLeft: 'current-left-flow',
   currentUp: 'current-up-flow',
   currentDown: 'current-down-flow',
-  jellyPulse: 'jelly-pulse',
   waterlineRoll: 'waterline-roll',
 } as const;

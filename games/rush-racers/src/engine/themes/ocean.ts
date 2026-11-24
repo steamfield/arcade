@@ -6,7 +6,6 @@
  */
 
 import { drawSheets, registerLoops } from '../art/index.ts';
-import { Frame } from '../art/keys.ts';
 import { FxFrame } from '../fx/textures.ts';
 import { defineTheme } from './define.ts';
 import { OceanAnim, OceanTex, OceanTile } from './ocean/keys.ts';
@@ -14,14 +13,13 @@ import { BackdropPalette, TerrainPalette, WATER_BANDS, WaterLight } from './ocea
 import { OCEAN_SHEETS } from './ocean/sprites/index.ts';
 import type { ContrastBand } from './types.ts';
 
-/** Kelp sways, currents flow, jellies pulse and the waterline rolls on Phaser's clock, never on logic ticks. */
+/** Kelp sways, currents flow and the waterline rolls on Phaser's clock, never on logic ticks. */
 const OCEAN_LOOPS = [
   { key: OceanAnim.kelpSway, texture: OceanTex.kelp, frameRate: 2 },
   { key: OceanAnim.currentRight, texture: OceanTex.currentRight, frameRate: 4 },
   { key: OceanAnim.currentLeft, texture: OceanTex.currentLeft, frameRate: 4 },
   { key: OceanAnim.currentUp, texture: OceanTex.currentUp, frameRate: 4 },
   { key: OceanAnim.currentDown, texture: OceanTex.currentDown, frameRate: 4 },
-  { key: OceanAnim.jellyPulse, texture: OceanTex.jelly, frameRate: 3 },
   { key: OceanAnim.waterlineRoll, texture: OceanTex.waterline, frameRate: 3 },
 ] as const;
 
@@ -85,10 +83,6 @@ export const OCEAN_THEME = defineTheme({
     fallStill: { drag: 0.9, ay: 0.01, wobble: 0 },
     drift: { drag: 0.88, ay: 0, wobble: 0 },
     splash: { drag: 0.85, ay: -0.01, wobble: 0 },
-  },
-  hazards: {
-    urchin: { texture: OceanTex.urchin, frame: Frame.a, anim: null },
-    jelly: { texture: OceanTex.jelly, frame: Frame.a, anim: OceanAnim.jellyPulse },
   },
   // The deep water's own blue taken almost to black.
   dark: { colour: 0x020616, alpha: 0.9 },

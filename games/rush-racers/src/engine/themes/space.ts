@@ -6,7 +6,6 @@
  */
 
 import { drawSheets, registerLoops } from '../art/index.ts';
-import { Frame } from '../art/keys.ts';
 import { FxFrame } from '../fx/textures.ts';
 import { defineTheme } from './define.ts';
 import { SpaceAnim, SpaceTex, SpaceTile } from './space/keys.ts';
@@ -15,14 +14,13 @@ import { FAR_HEIGHT, NEAR_HEIGHT } from './space/sprites/backdrop.ts';
 import { SPACE_SHEETS } from './space/sprites/index.ts';
 import type { ContrastBand } from './types.ts';
 
-/** Dust sway, wind and the orb's pulse animate on Phaser's clock, never on logic ticks. */
+/** Dust sway and wind animate on Phaser's clock, never on logic ticks. */
 const SPACE_LOOPS = [
   { key: SpaceAnim.dustSwirl, texture: SpaceTex.dust, frameRate: 2 },
   { key: SpaceAnim.windRight, texture: SpaceTex.windRight, frameRate: 4 },
   { key: SpaceAnim.windLeft, texture: SpaceTex.windLeft, frameRate: 4 },
   { key: SpaceAnim.windUp, texture: SpaceTex.windUp, frameRate: 4 },
   { key: SpaceAnim.windDown, texture: SpaceTex.windDown, frameRate: 4 },
-  { key: SpaceAnim.orbPulse, texture: SpaceTex.orb, frameRate: 4 },
 ] as const;
 
 /**
@@ -77,10 +75,6 @@ export const SPACE_THEME = defineTheme({
     fallStill: { drag: 0.95, ay: 0, wobble: 0 },
     drift: { drag: 0.97, ay: 0, wobble: 0 },
     splash: { drag: 0.9, ay: 0, wobble: 0 },
-  },
-  hazards: {
-    urchin: { texture: SpaceTex.mine, frame: Frame.a, anim: null },
-    jelly: { texture: SpaceTex.orb, frame: Frame.a, anim: SpaceAnim.orbPulse },
   },
   // The moon's shadow: the sky's own blue taken almost to black.
   dark: { colour: 0x020208, alpha: 0.9 },
