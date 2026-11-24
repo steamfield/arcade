@@ -30,7 +30,7 @@ export const RIVAL_LANE_ROWS = 3;
 export const ticksIn = (seconds: number) => Math.round(seconds / TICK_DT);
 
 /** Who a bare racer is and where it starts (px from the top-left of the empty space it floats in). */
-export interface BareRacerOptions {
+interface BareRacerOptions {
   character?: CharacterId;
   x?: number;
   y?: number;
@@ -68,7 +68,7 @@ export function bareRacer(motionFor: (body: Racer['body']) => RacerMotion, optio
 }
 
 /** A medium's `applyXIntent`: one tick of movement for one racer. */
-export type ApplyIntent = (
+type ApplyIntent = (
   racer: Racer,
   intent: Intent,
   env: MediumEnv,
@@ -79,7 +79,7 @@ export type ApplyIntent = (
 ) => void;
 
 /** What `stepBare` runs the racer under. */
-export interface BareStepSetup {
+interface BareStepSetup {
   env: MediumEnv;
   tuning: MediumTuning;
   /** Defaults to the tuning's base modifiers. */
