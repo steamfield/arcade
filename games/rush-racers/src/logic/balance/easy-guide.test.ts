@@ -1,7 +1,9 @@
 /**
  * The Easy guide against the stuck-prone kid (see `kid-bot.ts`): on a few seeds of the real course,
- * the same races with the guide off and on. The full measurement (40 seeds, several characters) is
- * in DESIGN.md; this keeps the effect from regressing.
+ * the same races with the guide off and on; this keeps the effect from regressing. The full
+ * measurement (40 seeds), guide off then on: stuck seconds per race Rudy 14.8 to 2.6, Gil 19.0 to
+ * 3.1, Onyx 22.7 to 4.4, Baron 21.1 to 1.0; mean place 1.70/1.82/2.10/1.40 to 1.05/1.00/1.02/1.00;
+ * DNFs 0/3/5/0 to none.
  *
  * Measured at v2 phase 4 (seeds 1-4): 5329 stuck ticks without the guide and 2293 with it. The bar
  * was "less than a third" until rivals got two clam rolls: the unguided kid now gets stuck less

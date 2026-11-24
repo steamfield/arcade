@@ -8,7 +8,7 @@
  * `par` is the number a course records as `parTicks`: the expert bot's mean finish on Hard over every
  * character and seeds 1..N (COURSES.md "parTicks"). `race` prints, per character, the player's places
  * and mean finish against the course's par band, so a bar's margin shows before the bar runs.
- * Run from games/rush-racers. A tuning change is an edit to the course or medium file, then a rerun.
+ * Runs from the repo root or games/rush-racers. A tuning change is an edit to the course or medium file, then a rerun.
  */
 import { parseArgs } from 'node:util';
 import { BOT_PROFILES } from '../src/logic/ai/profiles.ts';
