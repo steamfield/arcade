@@ -56,23 +56,29 @@ const smashCost = (cell: Cell, isBroken: boolean, move: Vec): number =>
 const ramCost = (cell: Cell, isBroken: boolean, move: Vec): number =>
   cell === 'coral' && !isBroken ? RAM_CORAL_COST : steerCost(cell, isBroken, move);
 
+/** Selects the field for ordinary swimming, item-assisted coral breaking, or ramming through coral. */
 export type SwimRoute = 'steer' | 'smash' | 'ram';
 
 const TERRAIN_COST = { steer: steerCost, smash: smashCost, ram: ramCost };
 
-/** Prices the pool like a current, tapering the discount and penalty as the flow drops off. */
+/** Prices the tangential current by its strength and how closely a move lines up with it. */
 function entryCostFor(level: Level, route: SwimRoute): EntryCost {
   const cost = TERRAIN_COST[route];
   if (level.whirlpools.length === 0) return cost;
   return (cell, isBroken, move, tile) => {
     const base = cost(cell, isBroken, move);
     if (!Number.isFinite(base)) return base;
+    const moveLength = length(move.x, move.y);
+    if (moveLength === 0) return base;
     const point = { x: (tile.x + 0.5) * TILE, y: (tile.y + 0.5) * TILE };
     for (const pool of level.whirlpools) {
-      const flow = whirlpoolFlowAt(pool, point);
-      if (!flow) continue;
-      const strength = Math.min(1, length(flow.x, flow.y) / SWIM_TUNING.extra.currentForce);
-      return base * (1 + strength * (alongCost(flow, move, CURRENT_PRICES) - 1));
+      const tangent = whirlpoolFlowAt(pool, point, 'tangent');
+      if (!tangent) continue;
+      const speed = length(tangent.x, tangent.y);
+      if (speed === 0) return base;
+      const strength = Math.min(1, speed / SWIM_TUNING.extra.currentForce);
+      const alignment = Math.abs(tangent.x * move.x + tangent.y * move.y) / (speed * moveLength);
+      return base * (1 + strength * alignment * (alongCost(tangent, move, CURRENT_PRICES) - 1));
     }
     return base;
   };

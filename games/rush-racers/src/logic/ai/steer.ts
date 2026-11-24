@@ -74,8 +74,11 @@ export function openTiles(
 }
 
 /**
- * Up to `steps` tiles from `start`, descending the field through tiles `open` allows.
- * When supplied, `price` ranks the downhill steps by the full cost to reach the finish through them.
+ * Up to `steps` tiles from `start`, descending the field through tiles `open` allows,
+ * stopping where nothing is lower. Never cuts a corner `open` refuses.
+ *
+ * @param price Adds the step's length times its entry price to the remaining distance, matching
+ * `distancesToFinish`'s relaxation so the priced walk follows the field's cheapest step.
  */
 export function downhillPath(
   field: Float32Array,

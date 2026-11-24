@@ -38,7 +38,7 @@ const LEVEL: LevelDef = {
 };
 
 /** Mean Hard expert finish over 40 seeds and all eight characters (320 of 320 finished). */
-const PAR_TICKS = 443;
+const PAR_TICKS = 442;
 
 /** Reef Test: swim's set piece test course in Reef, reachable only by `?course=reef-test` and tests. */
 export const REEF_TEST: ShippedCourse = {

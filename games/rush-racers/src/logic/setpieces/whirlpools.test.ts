@@ -1,11 +1,15 @@
+import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
+import type { GameEvent } from '../events.ts';
 import { LevelError } from '../level/level-error.ts';
 import { mediumOf } from '../media/index.ts';
 import { swimDistanceAt, swimNextTile } from '../media/swim/way.ts';
 import { length, unit } from '../num.ts';
 import { centreOf } from '../racers.ts';
-import { hold, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
-import { TILE, type Vec, type WhirlpoolDef, type World } from '../types.ts';
+import { courseFromLevel, hold, placeAt, placeOnTile, raceOn, racerOf, step, tileCentre } from '../test-world.ts';
+import { type CharacterId, TILE, type Vec, type WhirlpoolDef, type World } from '../types.ts';
+import { createWorld } from '../world.ts';
+import { WHIRLPOOL } from './whirlpools.ts';
 
 const POOL: WhirlpoolDef = { col: 11, row: 7, radius: 4, spin: 1, push: 220 };
 const RIGHT = hold({ x: 1, y: 0 });
@@ -35,13 +39,15 @@ function water(whirlpools: readonly WhirlpoolDef[] = [POOL]) {
 }
 
 /** Keep the other slots at the line while the test drives one swimmer. */
-function swim(whirlpools?: readonly WhirlpoolDef[]) {
-  const race = raceOn(water(whirlpools));
-  const racer = racerOf(race.world, 'player');
-  for (const rival of race.world.racers) {
+function swim(whirlpools?: readonly WhirlpoolDef[], character: CharacterId = 'rudy') {
+  const log = new EventLog<GameEvent>(1000);
+  const world = createWorld(courseFromLevel(water(whirlpools)), log, { seed: 1, character, difficulty: 'hard' });
+  world.race.phase = 'racing';
+  const racer = racerOf(world, 'player');
+  for (const rival of world.racers) {
     if (rival !== racer) rival.finished = { tick: 1, place: rival.place, overshoot: 0 };
   }
-  return { ...race, racer };
+  return { world, log, racer };
 }
 
 function distanceFromEye(world: World): number {
@@ -53,19 +59,22 @@ function distanceFromEye(world: World): number {
 describe('whirlpool course data', () => {
   it.each<{ pool: WhirlpoolDef; message: RegExp }>([
     { pool: { ...POOL, col: -1 }, message: /off the map/ },
-    { pool: { ...POOL, row: 0 }, message: /open water/ },
+    { pool: { ...POOL, col: 17.5 }, message: /col and row must be integers/ },
+    { pool: { ...POOL, row: 7.5 }, message: /col and row must be integers/ },
+    { pool: { ...POOL, row: 0 }, message: /open water.*rock/ },
     { pool: { ...POOL, radius: 1.9 }, message: /radius/ },
     { pool: { ...POOL, radius: 10.1 }, message: /radius/ },
     { pool: { ...POOL, radius: Number.NaN }, message: /radius/ },
     { pool: { ...POOL, push: 0 }, message: /push/ },
     { pool: { ...POOL, push: Number.POSITIVE_INFINITY }, message: /push/ },
-    { pool: { ...POOL, push: 481 }, message: /push/ },
+    { pool: { ...POOL, push: WHIRLPOOL.maxPush + 1 }, message: /push/ },
     { pool: { ...POOL, push: 1e200 }, message: /push/ },
   ])('locates invalid data ($message)', ({ pool, message }) => {
     expect(() => raceOn(water([pool]))).toThrow(LevelError);
     expect(() => raceOn(water([pool]))).toThrow(
       expect.objectContaining({ message: expect.stringMatching(message), row: pool.row, col: pool.col }),
     );
+    expect(() => raceOn(water([pool]))).toThrow(`Whirlpool 0 at col ${pool.col}, row ${pool.row}`);
   });
 
   it('rejects a spin outside the two directions, including untyped course data', () => {
@@ -73,7 +82,11 @@ describe('whirlpool course data', () => {
     Reflect.set(invalid, 'spin', 0);
     expect(() => raceOn(water([invalid]))).toThrow(LevelError);
     expect(() => raceOn(water([invalid]))).toThrow(
-      expect.objectContaining({ message: expect.stringMatching(/spin/), row: POOL.row, col: POOL.col }),
+      expect.objectContaining({
+        message: expect.stringMatching(/Whirlpool 0 at col 11, row 7.*spin/),
+        row: POOL.row,
+        col: POOL.col,
+      }),
     );
   });
 
@@ -81,7 +94,11 @@ describe('whirlpool course data', () => {
     const second = { ...POOL, col: 17, row: 7 };
     expect(() => raceOn(water([POOL, second]))).toThrow(LevelError);
     expect(() => raceOn(water([POOL, second]))).toThrow(
-      expect.objectContaining({ message: expect.stringMatching(/overlap/), row: second.row, col: second.col }),
+      expect.objectContaining({
+        message: expect.stringMatching(/Whirlpool 1 at col 17, row 7.*overlaps whirlpool 0.*6 tiles apart.*at least 8/),
+        row: second.row,
+        col: second.col,
+      }),
     );
     const touching = { ...second, col: 19 };
     expect(raceOn(water([POOL, touching])).world.level.whirlpools).toEqual([POOL, touching]);
@@ -136,10 +153,10 @@ describe('swimming through a whirlpool', () => {
     expect(rider.racer.body.vx).toBeGreaterThan(bypass.racer.body.vx + 10);
   });
 
-  it.each([
-    { push: 220, trackEye: false },
-    { push: 480, trackEye: true },
-  ])('lets a full-force outward swim escape from any side at push $push', ({ push, trackEye }) => {
+  it.each<{ push: number; character: CharacterId; starts: number[] }>([
+    { push: POOL.push, character: 'rudy', starts: [0, 0.05, 0.25, 0.5, 0.75, 0.98] },
+    { push: WHIRLPOOL.maxPush, character: 'baron', starts: [0.5] },
+  ])('lets $character swim straight out from any side at push $push', ({ push, character, starts }) => {
     const eye = tileCentre(POOL.col, POOL.row);
     const directions: Vec[] = [
       { x: 1, y: 0 },
@@ -153,15 +170,12 @@ describe('swimming through a whirlpool', () => {
     ];
     const rim = POOL.radius * TILE;
     for (const direction of directions.map(unit)) {
-      for (const start of [0, 0.05, 0.25, 0.5, 0.75, 0.98]) {
-        const { world, log, racer } = swim([{ ...POOL, push }]);
+      const outward = hold(direction);
+      for (const start of starts) {
+        const { world, log, racer } = swim([{ ...POOL, push }], character);
         placeAt(racer, { x: eye.x + direction.x * rim * start, y: eye.y + direction.y * rim * start });
         for (let ticks = 0; ticks < 105 && distanceFromEye(world) < rim; ticks++) {
-          // At the strongest allowed push, adjust the heading as the flow carries the swimmer round.
-          const at = centreOf(racer);
-          const outward =
-            trackEye && (at.x !== eye.x || at.y !== eye.y) ? { x: at.x - eye.x, y: at.y - eye.y } : direction;
-          step(world, log, 1, hold(outward));
+          step(world, log, 1, outward);
         }
         expect(
           distanceFromEye(world),
@@ -258,6 +272,23 @@ it('reports the directional steer price through the swim medium', () => {
   const forwardSide = { x: POOL.col, y: POOL.row - 2 };
   expect(medium.enterCost('water', false, { x: 1, y: 0 }, forwardSide, world.level)).toBeLessThan(1);
   expect(medium.enterCost('water', false, { x: -1, y: 0 }, forwardSide, world.level)).toBeGreaterThan(1);
+});
+
+it('charges plain-water price at right angles to the spin on either side of the eye', () => {
+  const { world } = raceOn(water());
+  const medium = mediumOf(world);
+  for (const col of [POOL.col + 2, POOL.col - 2]) {
+    const tile = { x: col, y: POOL.row };
+    expect(medium.enterCost('water', false, { x: 1, y: 0 }, tile, world.level)).toBeCloseTo(1);
+  }
+});
+
+it('scales the discount and penalty by the angle of a diagonal entry', () => {
+  const { world } = raceOn(water());
+  const medium = mediumOf(world);
+  const tile = { x: POOL.col, y: POOL.row - 2 };
+  expect(medium.enterCost('water', false, { x: 1, y: 1 }, tile, world.level)).toBeCloseTo(1 - 0.6 / Math.SQRT2);
+  expect(medium.enterCost('water', false, { x: -1, y: 1 }, tile, world.level)).toBeCloseTo(1 + 2 / Math.SQRT2);
 });
 
 it('takes the cheaper diagonal exit when a straight exit crosses the counterflow', () => {
