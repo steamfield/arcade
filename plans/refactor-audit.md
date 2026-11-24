@@ -112,14 +112,16 @@ Inline (me): `.github/workflows/ci.yml` concurrency, `.claude/hooks/check-on-sto
 
 ### Phase 2: logic copy-paste removed, balance folder named for what it is
 
+Scaffold: de34f7deeef4 (no contracts: lanes refactor behind unchanged interfaces)
+
 Demo: `pnpm arcade test rush-racers @media @courses src/logic/balance/sanity` passes; `pnpm arcade test rush-racers src/logic/top-route.test.ts` keeps the pinned hash; `ls src/logic/balance` shows one naming scheme.
 Depends on: phase 1
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/logic/media/pilot-kit.ts, games/rush-racers/src/logic/media/swim/pilot.ts, games/rush-racers/src/logic/media/drift/pilot.ts, games/rush-racers/src/logic/media/swim/nav.ts, games/rush-racers/src/logic/media/flight/nav.ts, games/rush-racers/src/logic/media/drift/nav.ts, games/rush-racers/src/logic/race/flowfield.ts, games/rush-racers/src/logic/num.ts, games/rush-racers/src/logic/num.test.ts, games/rush-racers/src/logic/media/flight/physics.ts, games/rush-racers/src/logic/media/run/physics.ts, games/rush-racers/src/logic/media/swim/physics.ts, games/rush-racers/src/logic/conformance/glide.ts, games/rush-racers/src/logic/characters.ts, games/rush-racers/src/logic/characters.test.ts, games/rush-racers/src/net/messages.ts, games/rush-racers/src/net/lobby.ts, games/rush-racers/src/logic/hazards/enemies/contact.ts, games/rush-racers/src/logic/ai/avoid.ts, games/rush-racers/src/logic/media/run/tuning.ts, games/rush-racers/src/logic/media/run/respawn.ts, games/rush-racers/src/logic/media/flight/way.ts, games/rush-racers/src/logic/surface.test.ts, games/rush-racers/src/logic/media/swim/surface.test.ts | | | opus | pending | | |
-| b | M | games/rush-racers/src/logic/media/test-kit.ts, games/rush-racers/src/logic/media/flight/test-kit.ts, games/rush-racers/src/logic/media/drift/test-kit.ts, games/rush-racers/src/logic/media/run/physics.test.ts, games/rush-racers/src/logic/media/run/respawn.test.ts | | | sonnet | pending | | |
-| c | M | games/rush-racers/src/logic/difficulty/, games/rush-racers/src/logic/balance/, games/rush-racers/vite.config.ts, games/rush-racers/package.json | | | sonnet | pending | | |
+| a | M | games/rush-racers/src/logic/media/pilot-kit.ts, games/rush-racers/src/logic/media/swim/pilot.ts, games/rush-racers/src/logic/media/drift/pilot.ts, games/rush-racers/src/logic/media/swim/nav.ts, games/rush-racers/src/logic/media/flight/nav.ts, games/rush-racers/src/logic/media/drift/nav.ts, games/rush-racers/src/logic/race/flowfield.ts, games/rush-racers/src/logic/num.ts, games/rush-racers/src/logic/num.test.ts, games/rush-racers/src/logic/media/flight/physics.ts, games/rush-racers/src/logic/media/run/physics.ts, games/rush-racers/src/logic/media/swim/physics.ts, games/rush-racers/src/logic/conformance/glide.ts, games/rush-racers/src/logic/characters.ts, games/rush-racers/src/logic/characters.test.ts, games/rush-racers/src/net/messages.ts, games/rush-racers/src/net/lobby.ts, games/rush-racers/src/logic/hazards/enemies/contact.ts, games/rush-racers/src/logic/ai/avoid.ts, games/rush-racers/src/logic/media/run/tuning.ts, games/rush-racers/src/logic/media/run/respawn.ts, games/rush-racers/src/logic/media/flight/way.ts, games/rush-racers/src/logic/surface.test.ts, games/rush-racers/src/logic/media/swim/surface.test.ts | | | opus | running | deliver/refactor-audit-2a | |
+| b | M | games/rush-racers/src/logic/media/test-kit.ts, games/rush-racers/src/logic/media/flight/test-kit.ts, games/rush-racers/src/logic/media/drift/test-kit.ts, games/rush-racers/src/logic/media/run/physics.test.ts, games/rush-racers/src/logic/media/run/respawn.test.ts | | | sonnet | running | deliver/refactor-audit-2b | |
+| c | M | games/rush-racers/src/logic/difficulty/, games/rush-racers/src/logic/balance/, games/rush-racers/vite.config.ts, games/rush-racers/package.json | | | sonnet | running | deliver/refactor-audit-2c | |
 
 Test cases: behaviour is unchanged, so the guard is the existing suite: `src/logic/top-route.test.ts` (pinned hash), `@media`, `@courses`, `src/logic/two-peers.test.ts`, the media conformance tests, plus the new matrix test in lane c and `num.test.ts` rows for each helper moved into `num.ts`.
 
@@ -161,12 +163,14 @@ Test cases: behaviour is unchanged, so the guard is the existing suite: `src/log
 
 ### Phase 3: Reef's art lives in its world folder
 
+Scaffold: de34f7deeef4 (no contracts: lanes refactor behind unchanged interfaces)
+
 Demo: `ls src/engine/worlds/reef` matches the other worlds; `pnpm arcade test rush-racers @worlds src/engine/themes src/engine/art` passes; a reef race captured with `arcade see` matches a baseline taken on the phase base via `--compare`.
 Depends on: phase 1
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers/src/engine/worlds/reef/, games/rush-racers/src/engine/worlds/reef.ts, games/rush-racers/src/engine/worlds/object-skin.ts, games/rush-racers/src/engine/worlds/thornwood/, games/rush-racers/src/engine/worlds/farside/, games/rush-racers/src/engine/worlds/cloudreach/, games/rush-racers/src/engine/art/, games/rush-racers/src/engine/themes/ocean.test.ts | | | opus | pending | | |
+| a | L | games/rush-racers/src/engine/worlds/reef/, games/rush-racers/src/engine/worlds/reef.ts, games/rush-racers/src/engine/worlds/object-skin.ts, games/rush-racers/src/engine/worlds/thornwood/, games/rush-racers/src/engine/worlds/farside/, games/rush-racers/src/engine/worlds/cloudreach/, games/rush-racers/src/engine/art/, games/rush-racers/src/engine/themes/ocean.test.ts | | | opus | running | deliver/refactor-audit-3a | |
 
 Test cases: texture key strings unchanged (`themes/ocean.test.ts` pins them); `skins.test.ts` and `assertSkinTextures` pass for Reef with art registered by `REEF_SKIN.registerTextures`; `art/` builds no Reef cast, item, pickup or enemy texture; no world folder imports another world's folder (Thornwood, Cloudreach and Farside stop importing `reef/objects.ts`); a reef race capture matches the baseline.
 
