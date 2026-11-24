@@ -1,0 +1,11 @@
+{
+  "id": "rush-racers-3d",
+  "slug": "rush-racers-3d",
+  "title": "Rush Racers 3D",
+  "pitch": "Race the forest on foot: jump logs and pits, dash past mud and beat three rivals to the clearing.",
+  "genre": "racing",
+  "engine": "three",
+  "inputs": ["keyboard", "touch"],
+  "orientation": "landscape",
+  "status": "draft"
+}

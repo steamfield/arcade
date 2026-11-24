@@ -131,7 +131,12 @@
       }
     },
     {
-      "includes": ["games/rush-racers/src/logic/**", "games/rush-racers/src/net/**", "!**/*.test.ts"],
+      "includes": [
+        "games/rush-racers/src/logic/**",
+        "games/rush-racers/src/net/**",
+        "games/rush-racers-3d/src/logic/**",
+        "!**/*.test.ts"
+      ],
       "plugins": ["./tools/biome/no-inexact-math.grit"]
     }
   ]

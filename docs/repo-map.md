@@ -19,7 +19,7 @@ Where everything is, so you can open the right file instead of searching. Every 
 | Change the `game.json` schema | `packages/config/src/manifest.ts` |
 | Change the landing page | `apps/site/` |
 | Record a game's landing-page footage and cover | `pnpm arcade attract <slug>`, settings in its package.json `arcade.attract` |
-| Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans and `tools/biome/no-inexact-math.grit` for rush-racers' bit-exact math |
+| Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans and `tools/biome/no-inexact-math.grit` for rush-racers' and rush-racers-3d's bit-exact math |
 | Add a world to Rush Racers | Logic: `games/rush-racers/src/logic/worlds/<id>.ts`. Art: `games/rush-racers/src/engine/worlds/<id>.ts` plus `<id>/{keys,cast,objects,art}.ts`, `<id>/palettes.ts` when views read its colours, and `<id>/sprites/`; register in `games/rush-racers/src/engine/worlds/index.ts` (`SKINS`, `WORLD_ART`). `games/rush-racers/src/engine/worlds/load.ts` loads its art on demand. Steps: "Add a world" in `games/rush-racers/COURSES.md` |
 | Add a theme (a course's look) to Rush Racers | `games/rush-racers/src/engine/themes/<id>.ts` plus `<id>/{keys,palettes,art}.ts` and `<id>/sprites/`; register in `games/rush-racers/src/engine/themes/index.ts` (`THEMES`, `THEME_ART`) and add the id to `ThemeId` in `games/rush-racers/src/logic/courses/types.ts`. Loaded on demand by `games/rush-racers/src/engine/worlds/load.ts` |
 | Change online rooms or races | Room service: `apps/api/src/` (`protocol.ts` is the wire contract). Rush Racers: `games/rush-racers/src/net/` (client, lobby, lockstep, transports), `src/engine/online/` (flow, screens), `tests/online*.spec.ts` |
