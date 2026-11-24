@@ -74,8 +74,8 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | biome.json, turbo.json, tools/arcade/src/guardrails.test.ts | tools/biome/no-nondeterminism.grit, tools/arcade/src/repo-map.test.ts | tools/arcade/src/guardrails.test.ts | opus | pending | | guardrails tests pass and fail when the logic override's patterns are removed |
-| b | M | tools/arcade/src/cli.ts, games/rush-racers/package.json, tools/arcade/src/test.ts, tools/arcade/src/test.test.ts, tools/arcade/src/smoke.ts, tools/arcade/src/run.ts, tools/arcade/src/run.test.ts, tools/arcade/src/attract.ts, packages/testing/src/driver.ts | tools/arcade/src/games.ts | tools/arcade/src/test.test.ts, tools/arcade/src/run.test.ts | sonnet | pending | | test and run tests pass, typecheck clean |
+| a | M | biome.json, turbo.json, tools/arcade/src/guardrails.test.ts | tools/biome/no-nondeterminism.grit, tools/arcade/src/repo-map.test.ts | tools/arcade/src/guardrails.test.ts | opus | running | deliver/refactor-audit-1a | guardrails tests pass and fail when the logic override's patterns are removed |
+| b | M | tools/arcade/src/cli.ts, games/rush-racers/package.json, tools/arcade/src/test.ts, tools/arcade/src/test.test.ts, tools/arcade/src/smoke.ts, tools/arcade/src/run.ts, tools/arcade/src/run.test.ts, tools/arcade/src/attract.ts, packages/testing/src/driver.ts | tools/arcade/src/games.ts | tools/arcade/src/test.test.ts, tools/arcade/src/run.test.ts | sonnet | running | deliver/refactor-audit-1b | test and run tests pass, typecheck clean |
 
 Inline (me): `.github/workflows/ci.yml` concurrency, `.claude/hooks/check-on-stop.ts` `--skip-tests`, `.gitignore`, `packages/config/src/vite.ts` `sourcemap: false`, `games/rush-racers/scenarios/kit.ts` `HARD_SAVE` and the other inline saves in `scenarios/course-select.ts`, `tests/course.spec.ts`.
 
@@ -120,6 +120,44 @@ Depends on: phase 1
 | b | M | games/rush-racers/src/logic/media/test-kit.ts, games/rush-racers/src/logic/media/flight/test-kit.ts, games/rush-racers/src/logic/media/drift/test-kit.ts, games/rush-racers/src/logic/media/run/physics.test.ts, games/rush-racers/src/logic/media/run/respawn.test.ts | | | sonnet | pending | | |
 | c | M | games/rush-racers/src/logic/difficulty/, games/rush-racers/src/logic/balance/, games/rush-racers/vite.config.ts, games/rush-racers/package.json | | | sonnet | pending | | |
 
+Test cases: behaviour is unchanged, so the guard is the existing suite: `src/logic/top-route.test.ts` (pinned hash), `@media`, `@courses`, `src/logic/two-peers.test.ts`, the media conformance tests, plus the new matrix test in lane c and `num.test.ts` rows for each helper moved into `num.ts`.
+
+#### Lane 2a brief
+
+- Goal: remove the copy-paste between the swim and drift pilots and the small helpers repeated across media and nav, and drop dead or needless exports in the logic and net files listed, without changing any race.
+- Interface:
+  - New `src/logic/media/pilot-kit.ts`: the helpers byte-identical in `media/swim/pilot.ts` and `media/drift/pilot.ts` (`canRecover`, `recoveryMove`, `stepWobble`, `sidewaysFrom`, `hasDashToSpend`) and the shared constants (`DASH_RESERVE`, `LOOKAHEAD_TILES`, `RECOVER_TICKS`, `RESERVE_WAIVED_BEHIND`, `STUCK_SPEED`, `STUCK_TICKS`, `WOBBLE_STEP`, `DARK_STEERING`), typed on a structural memory `{ stuckTicks; recoverTicks; recoverSide; wobble }` (use the real field names). Run's and flight's pilots stay as they are.
+  - `race/flowfield.ts`: one `alongCost(...)` replacing swim's `currentCost` and flight/drift's `windCost` (same shape, different constants passed in), and one `unreachableStarts(...)` replacing the three "every start reaches the finish" checks in `swim/nav.ts`, `flight/nav.ts`, `drift/nav.ts` (message passed in so each keeps its wording).
+  - `num.ts`: `approach` (flight/run physics), `clamp` (run physics), `unit` (swim physics, conformance/glide) moved here, each with a `num.test.ts` row.
+  - Dead exports: delete `GameMessage` and make `GameMessageSchema` module-private if only used there (`net/messages.ts`); drop `export` from symbols used only in their own file in the files you own (e.g. `latencyTicks` in `net/lobby.ts`, `isBonking`/`isStomping` in `hazards/enemies/contact.ts`, the two in `ai/avoid.ts`, `RUN_STOMP_BOUNCE`, `RESPAWN_RUN_UP_TILES`, `flightCost`, `flightPuffAhead`). Verify each with a repo-wide grep (games/rush-racers/src, scenarios, tests) before un-exporting.
+  - `pickRivals` in `characters.ts` is used only by `characters.test.ts` as a reference for `assignCharacters`: delete it and rewrite that test to assert on `assignCharacters` behaviour directly (three distinct rivals, never the player's pick, same seed gives the same draw, different seeds can differ).
+  - Move `src/logic/surface.test.ts` to `src/logic/media/swim/surface.test.ts` with imports fixed.
+- Decisions already made: every refactor must keep `hashWorld` identical; floating-point expressions must stay operation-for-operation the same (no reassociation), since lockstep races compare bits.
+- Out of scope: run and flight pilot internals, `wrongKind`/kind accessors (documented pattern), `types.ts` split, anything under `difficulty/` or the media test kits.
+- Done when: `pnpm arcade test rush-racers src/logic/top-route.test.ts src/logic/two-peers.test.ts @media @courses src/logic/num.test.ts src/logic/characters.test.ts src/logic/media/swim/surface.test.ts` passes and `pnpm arcade check rush-racers --skip-tests` is clean.
+
+#### Lane 2b brief
+
+- Goal: one shared media test kit instead of the copies in flight's and drift's `test-kit.ts` and the inline helpers in run's physics and respawn tests.
+- Interface: new `src/logic/media/test-kit.ts` exporting `ticksIn(seconds)`, `ticksOfRacer(...)`, `bareRacer(motion)`, `laneWorld(medium, rows, opts)` and a generic `stepBare(apply, env, ...)` (names may follow the existing ones where they already exist; keep signatures close to today's so call sites change little). `media/flight/test-kit.ts` and `media/drift/test-kit.ts` keep only what is medium-specific (`STILL_AIR`, `VACUUM`, their sample types) and re-use the shared kit; `media/run/physics.test.ts` and `media/run/respawn.test.ts` import from it instead of defining `ticksIn`, `bareRunner` and the `rivalLane` literal inline. Drop exports only used inside a kit (`FlightSample`, `DriftSample` if unused elsewhere).
+- Decisions already made: test kits are test-only code; `test-kit.ts` is not a `.test.ts` file, so it is hashed into the build id like the existing kits (fine).
+- Out of scope: changing what any test asserts.
+- Done when: `pnpm arcade test rush-racers src/logic/media` passes and `pnpm arcade check rush-racers --skip-tests` is clean.
+
+#### Lane 2c brief
+
+- Goal: name the slow-bars folder for what it is, give its files one naming scheme, collapse the Easy bar copies, and add a cheap check that the bar matrix is complete.
+- Interface:
+  - `git mv src/logic/difficulty src/logic/balance`. Fix every import of it (grep games/rush-racers for `difficulty/`; `difficulty-level.ts` keeps its name and is not part of this).
+  - Rename Sunlit Shallows' files to the scheme the other courses use: `<char>.test.ts` → `sunlit-shallows-<char>.test.ts`, `<char>-novice.test.ts` → `sunlit-shallows-<char>-novice.test.ts`, `normal-<char>.test.ts` → `sunlit-shallows-<char>-normal.test.ts`, `easy-level.test.ts`/`easy-toddler.test.ts` → `sunlit-shallows-easy-*.test.ts`.
+  - Add `describeEasyToddler(courseId)` and `describeEasyLevel(courseId)` next to `describeNormal` in `normal-bars.ts` (or a new `easy-bars.ts` if `normal-bars.ts` would pass about 250 lines), and turn the four copies of each Easy file into stubs like the per-character ones. Keep each copy's per-course wording (e.g. "swimming"/"running") via a parameter or derive it from the course's medium.
+  - New `src/logic/balance/sanity/files.test.ts` (runs in the unit project): for every course in `LISTED_COURSES` and every id in `CHARACTER_IDS`, the files `<course>-<char>.test.ts`, `-novice` and `-normal` exist, plus `<course>-easy-level.test.ts` and `<course>-easy-toddler.test.ts`; the failure lists every missing name.
+  - `vite.config.ts`: `DIFFICULTY_BARS` glob and its comment point at `src/logic/balance/*.test.ts`.
+  - `package.json`: `arcade.testGroups` paths that name `src/logic/difficulty` move to `src/logic/balance` (the `bars` group is the object form `{ "project": "difficulty", "paths": [...] }` after phase 1; keep that shape). The Vitest project stays named `difficulty` and the script `test:difficulty` keeps its name.
+- Decisions already made: one file per character per bar stays (Vitest parallelises per file and CI shards them); no file generator.
+- Out of scope: changing any bar's thresholds, seeds or bots; docs (phase 9 updates DESIGN.md and COURSES.md).
+- Done when: `pnpm arcade test rush-racers src/logic/balance/sanity` passes; `pnpm --filter game-rush-racers exec vitest list --project difficulty --filesOnly | wc -l` shows the same file count as before the rename (record both numbers in your report); `pnpm arcade check rush-racers --skip-tests` clean. Do not run the difficulty project itself (slow); I run it at landing.
+
 ### Phase 3: Reef's art lives in its world folder
 
 Demo: `ls src/engine/worlds/reef` matches the other worlds; `pnpm arcade test rush-racers @worlds src/engine/themes src/engine/art` passes; a reef race captured with `arcade see` matches a baseline taken on the phase base via `--compare`.
@@ -127,9 +165,23 @@ Depends on: phase 1
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/engine/worlds/reef/, games/rush-racers/src/engine/worlds/reef.ts, games/rush-racers/src/engine/worlds/object-skin.ts, games/rush-racers/src/engine/worlds/thornwood/, games/rush-racers/src/engine/worlds/farside/, games/rush-racers/src/engine/worlds/cloudreach/, games/rush-racers/src/engine/art/, games/rush-racers/src/engine/themes/ocean.test.ts | | | opus | pending | | |
+| a | L | games/rush-racers/src/engine/worlds/reef/, games/rush-racers/src/engine/worlds/reef.ts, games/rush-racers/src/engine/worlds/object-skin.ts, games/rush-racers/src/engine/worlds/thornwood/, games/rush-racers/src/engine/worlds/farside/, games/rush-racers/src/engine/worlds/cloudreach/, games/rush-racers/src/engine/art/, games/rush-racers/src/engine/themes/ocean.test.ts | | | opus | pending | | |
 
-Scaffold does the file moves (`git mv` of Reef's sprite and portrait files into `worlds/reef/`, imports rewritten); the lane gives Reef its own keys and `registerTextures`, a default glint alpha in `object-skin.ts`, and deletes the dead HUD marker art.
+Test cases: texture key strings unchanged (`themes/ocean.test.ts` pins them); `skins.test.ts` and `assertSkinTextures` pass for Reef with art registered by `REEF_SKIN.registerTextures`; `art/` builds no Reef cast, item, pickup or enemy texture; no world folder imports another world's folder (Thornwood, Cloudreach and Farside stop importing `reef/objects.ts`); a reef race capture matches the baseline.
+
+#### Lane 3a brief
+
+- Goal: give Reef the same shape as the other three worlds, so "where does a world's art go" has one answer: `worlds/<id>/{keys.ts, sprites/*, cast.ts, objects.ts}`. Keep `art/` for what every world shares: the pixel engine (`pixel.ts`, `rows.ts`, `sheet.ts`), fonts, the UI kit, HUD, guide art and shared frame names.
+- Interface:
+  - Move Reef's pixel data out of `art/`: racers (`art/sprites/racers.ts`), enemies (`art/sprites/enemies.ts`), items/attack (`art/sprites/attack.ts`, `art/sprites/powerups.ts`), pickups (`art/sprites/pickups.ts`), portraits and heads (`art/ui/portraits.ts`), and Reef palettes (`art/palettes.ts`) into `worlds/reef/sprites/` and `worlds/reef/keys.ts`. Where another world imports a helper from one of these files today (e.g. `worldIcon` from `art/sprites/attack.ts`, sheet helpers), keep that helper in `art/` (it is shared) and move only Reef's data.
+  - Reef's texture keys move from `art/keys.ts` `Tex` (and `art/ui/keys.ts` where they are cast portraits/heads/icons) into `worlds/reef/keys.ts` with the same strings. `art/keys.ts` keeps global keys and the shared `Frame` names.
+  - `REEF_SKIN.registerTextures` builds Reef's textures (like `THORNWOOD_SKIN`); `art/index.ts` `buildTextures` no longer builds them. Boot order stays: global art, UI kit, themes, skins.
+  - `worlds/object-skin.ts` exports the default glint alphas; Thornwood, Cloudreach and Farside `objects.ts` use them instead of reading `REEF_OBJECTS`. Fold each world's two-line `owner.ts` into its `keys.ts`.
+  - Delete the dead HUD marker art: the `hud-marker` sheet (`art/sprites/hud.ts`), `RacerPalette` and `HudPalette.marker*` (`art/palettes.ts`), `Frame.marker*` (`art/keys.ts`), and their test references (`art/sprites/sprites.test.ts`, `themes/ocean.test.ts`). Grep first to confirm nothing draws them.
+  - Update the header comment in `worlds/reef.ts` and `themes/types.ts` lines 1-5 (racers, pickups and power-ups are per-world skin art now). `themes/types.ts` belongs to phase 4; if you need that header changed, report it instead.
+- Decisions already made: texture key strings never change; no behaviour or visual change.
+- Out of scope: hazard (urchin/jelly) art in themes (phase 4), helper dedupe across worlds (phase 4 scaffold), lazy loading.
+- Done when: `pnpm arcade test rush-racers @worlds src/engine/themes src/engine/art src/engine/view/hud.test.ts` passes; `pnpm arcade check rush-racers --skip-tests` clean; `pnpm arcade see rush-racers --scenario race-to-finish --at 200,600 --out .arcade/runs/3a-after` compared with `--compare` against a baseline you capture first on the scaffold commit (`--out .arcade/runs/3a-before`) shows no pixel difference; look at the frames yourself.
 
 ### Phase 4: hazard art in world skins, one skin conformance suite, engine folders
 
