@@ -185,6 +185,23 @@ function countStalls(world: World, stalls: Map<RacerId, StallCount>): void {
   }
 }
 
+/**
+ * A good race's mean expert finish as fractions of the course's par. Per-character means measure
+ * 0.95-1.03 of Sunlit's par and five-seed means 0.97-1.06, so this catches a tuning that moves
+ * race length by more than about 9 s.
+ */
+const PAR_BAND = { min: 0.92, max: 1.08 } as const;
+
+/**
+ * The mean expert finish, in ticks, that counts as a good race on the course with `courseId`.
+ *
+ * @throws {Error} When `courseId` is neither a shipped nor a registered course.
+ */
+export function parBand(courseId: string): { min: number; max: number } {
+  const { parTicks } = courseOf({ course: courseId });
+  return { min: PAR_BAND.min * parTicks, max: PAR_BAND.max * parTicks };
+}
+
 /** A finish tick in seconds, or 'DNF'. */
 export const seconds = (ticks: number | null) => (ticks === null ? 'DNF' : (ticks / TICK_HZ).toFixed(1));
 

@@ -2,22 +2,22 @@
  * Measures a course from the command line, so balance work never needs a throwaway test file.
  * Every race is deterministic: the same arguments print the same numbers.
  *
- *   node scripts/measure.ts par <course> [--seeds 200]
- *   node scripts/measure.ts race <course> [--bot expert] [--difficulty hard] [--char rudy,baron] [--seeds 30]
+ *   node games/rush-racers/scripts/measure.ts par <course> [--seeds 200]
+ *   node games/rush-racers/scripts/measure.ts race <course> [--bot expert] [--difficulty hard] [--char rudy,baron] [--seeds 30]
  *
  * `par` is the number a course records as `parTicks`: the expert bot's mean finish on Hard over every
- * character and seeds 1..N (COURSES.md "parTicks"). `race` prints, per character, the player's places
- * and mean finish against the course's par band, so a bar's margin shows before the bar runs.
- * Run from games/rush-racers. A tuning change is an edit to the course or medium file, then a rerun.
+ * character and seeds 1..N (COURSES.md "parTicks"). `race` prints, per character, the player's places,
+ * DNFs and mean finish, with the course's Hard par band, to compare with a bar's thresholds.
+ * Runs from any directory (the repo root, so no `cd`). It imports no Vitest. A tuning change is an edit to the course or medium file, then a rerun.
  */
 import { parseArgs } from 'node:util';
 import { BOT_PROFILES } from '../src/logic/ai/profiles.ts';
 import { courseById } from '../src/logic/courses/index.ts';
-import { parBand } from '../src/logic/difficulty/hard-bars.ts';
-import { meanPlayerFinish, type Run, race, seconds } from '../src/logic/difficulty/race-bots.ts';
+import { meanPlayerFinish, parBand, type Run, race, seconds } from '../src/logic/difficulty/race-bots.ts';
 import { CHARACTER_IDS, type CharacterId, DIFFICULTIES, type Difficulty } from '../src/logic/types.ts';
 
-const USAGE = 'usage: node scripts/measure.ts <par|race> <course> [--seeds N] [--bot B] [--difficulty D] [--char a,b]';
+const USAGE =
+  'usage: node games/rush-racers/scripts/measure.ts <par|race> <course> [--seeds N] [--bot B] [--difficulty D] [--char a,b]';
 
 /** Exits with a usage message: the arguments can't be measured. */
 function fail(message: string): never {
