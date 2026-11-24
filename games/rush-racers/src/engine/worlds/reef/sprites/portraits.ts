@@ -9,9 +9,8 @@
  * as in the world art.
  */
 import type { CharacterId } from '../../../../logic/types.ts';
-import { CHARACTER_IDS } from '../../../../logic/types.ts';
 import type { NamedFrame, PixelRows } from '../../../art/pixel.ts';
-import type { ArtSheet } from '../../../art/sprites/sheet.ts';
+import { type ArtSheet, castFrames } from '../../../art/sprites/sheet.ts';
 import { ReefCastFrame, ReefTex } from '../keys.ts';
 import { ReefPalette } from './palette.ts';
 
@@ -200,13 +199,8 @@ const FACES: Record<CharacterId, Face> = {
   },
 };
 
-/** One sheet frame per slot, named by `ReefCastFrame`, drawn in that slot's palette. */
 function framesOf(size: keyof Face): NamedFrame[] {
-  return CHARACTER_IDS.map((character) => ({
-    name: ReefCastFrame[character],
-    palette: ReefPalette[character],
-    rows: FACES[character][size],
-  }));
+  return castFrames(ReefCastFrame, ReefPalette, (character) => FACES[character][size]);
 }
 
 /** The portrait and head sheets, one frame per slot in each, named by `ReefCastFrame`. */

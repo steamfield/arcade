@@ -7,6 +7,7 @@
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
 import { worldArtOwner } from '../../art/index.ts';
+import { bySlot } from '../../art/keys.ts';
 
 /** The art owner name Reef's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
 export const REEF_ART_OWNER = worldArtOwner('reef');
@@ -68,13 +69,4 @@ export const ReefItemTex: Readonly<Record<PowerUpKind, string>> = {
 };
 
 /** Frame names in `ReefTex.portraits` and `ReefTex.heads`: the slot id. */
-export const ReefCastFrame: Readonly<Record<CharacterId, string>> = {
-  rudy: 'rudy',
-  gil: 'gil',
-  streak: 'streak',
-  onyx: 'onyx',
-  nib: 'nib',
-  baron: 'baron',
-  selene: 'selene',
-  rook: 'rook',
-};
+export const ReefCastFrame: Readonly<Record<CharacterId, string>> = bySlot();

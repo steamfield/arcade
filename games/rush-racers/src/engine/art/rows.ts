@@ -33,3 +33,14 @@ export function shiftRows(rows: PixelRows, dx: number, dy: number): PixelRows {
     return source.slice(cut) + source.slice(0, cut);
   });
 }
+
+/** Each row of `halves` followed by its mirror image, so a left-right symmetric sprite is drawn once. */
+export function mirroredRows(halves: PixelRows): PixelRows {
+  return halves.map((half) => half + [...half].reverse().join(''));
+}
+
+/** `rows` turned on their diagonal, so column `x` becomes row `x`: a drawing running right then runs down. */
+export function transposeRows(rows: PixelRows): PixelRows {
+  const width = rows[0]?.length ?? 0;
+  return Array.from({ length: width }, (_, x) => rows.map((row) => row[x] ?? '.').join(''));
+}

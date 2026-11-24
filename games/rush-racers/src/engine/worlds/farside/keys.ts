@@ -5,6 +5,7 @@
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
 import { worldArtOwner } from '../../art/index.ts';
+import { byItem, bySlot } from '../../art/keys.ts';
 
 /** The art owner name Farside's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
 export const FARSIDE_ART_OWNER = worldArtOwner('farside');
@@ -65,27 +66,7 @@ export const FarItemTex: Readonly<Record<PowerUpKind, string>> = {
 };
 
 /** Frame names in `FarTex.portraits` and `FarTex.heads`: the slot id. */
-export const FarCastFrame: Readonly<Record<CharacterId, string>> = {
-  rudy: 'rudy',
-  gil: 'gil',
-  streak: 'streak',
-  onyx: 'onyx',
-  nib: 'nib',
-  baron: 'baron',
-  selene: 'selene',
-  rook: 'rook',
-};
+export const FarCastFrame: Readonly<Record<CharacterId, string>> = bySlot();
 
 /** Frame names in `FarTex.icons`: the item kind. */
-export const FarIconFrame: Readonly<Record<PowerUpKind, string>> = {
-  jetFin: 'jetFin',
-  bubbleShield: 'bubbleShield',
-  puffer: 'puffer',
-  inkSac: 'inkSac',
-  glowLantern: 'glowLantern',
-  homingSquid: 'homingSquid',
-  riptide: 'riptide',
-  undertow: 'undertow',
-  mimic: 'mimic',
-  cannonball: 'cannonball',
-};
+export const FarIconFrame: Readonly<Record<PowerUpKind, string>> = byItem();

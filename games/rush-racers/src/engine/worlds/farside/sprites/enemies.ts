@@ -4,8 +4,10 @@
  * counterpart's slot (crab, shark, eel) at the same size and with the same frame names, and holds
  * its body colour 3:1 off the space bands.
  */
+
 import { Frame } from '../../../art/keys.ts';
 import type { Palette, PixelRows } from '../../../art/pixel.ts';
+import { mirroredRows } from '../../../art/rows.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { FarTex } from '../keys.ts';
 
@@ -19,14 +21,9 @@ export const FarEnemyPalette = {
   worm: [0x2a1040, 0xc0a0f0, 0xf0e0ff, 0xffe040],
 } as const satisfies Record<string, Palette>;
 
-/** A row of `half` followed by its mirror image, so a symmetric sprite is drawn once. */
-function mirrored(halves: PixelRows): PixelRows {
-  return halves.map((half) => half + [...half].reverse().join(''));
-}
-
 const MITE_SHEET = sheet(FarTex.mite, FarEnemyPalette.mite, {
   // A round shell on three pairs of legs, feelers out; legs and feelers are pale so they show on the dark sky.
-  [Frame.a]: mirrored([
+  [Frame.a]: mirroredRows([
     '........',
     '...2....',
     '....2...',
@@ -41,7 +38,7 @@ const MITE_SHEET = sheet(FarTex.mite, FarEnemyPalette.mite, {
     '........',
   ]),
   // Feelers in, legs the other way.
-  [Frame.b]: mirrored([
+  [Frame.b]: mirroredRows([
     '........',
     '....2...',
     '...2....',
@@ -56,7 +53,7 @@ const MITE_SHEET = sheet(FarTex.mite, FarEnemyPalette.mite, {
     '........',
   ]),
   // Flipped on its back and dazed, legs kicking.
-  [Frame.enemyStagger]: mirrored([
+  [Frame.enemyStagger]: mirroredRows([
     '........',
     '........',
     '........',

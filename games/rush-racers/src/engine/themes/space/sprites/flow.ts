@@ -7,10 +7,10 @@
  */
 import { Frame } from '../../../art/keys.ts';
 import type { PixelRows } from '../../../art/pixel.ts';
+import { flipRows, mirrorRows, shiftRows, transposeRows } from '../../../art/rows.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { SpaceTex, type SpaceTexKey } from '../keys.ts';
 import { SpaceTerrainPalette } from '../palettes.ts';
-import { flipRows, mirrorRows, shiftRows, transposeRows } from './rows.ts';
 
 /**
  * Nebula dust: dithered wisps of the dust body colour with a few glinting grains, more gap than cloud

@@ -4,8 +4,10 @@
  * counterpart's slot (crab, shark, eel) at the same size and with
  * the same frame names, and holds its main colour 3:1 off the forest's canopy bands.
  */
+
 import { Frame } from '../../../art/keys.ts';
 import type { Palette, PixelRows } from '../../../art/pixel.ts';
+import { mirroredRows } from '../../../art/rows.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { ThornTex } from '../keys.ts';
 
@@ -19,14 +21,9 @@ export const ThornEnemyPalette = {
   snake: [0x14280a, 0xc8e840, 0xf8ffa0, 0xff4a5a],
 } as const satisfies Record<string, Palette>;
 
-/** A row of `half` followed by its mirror image, so a symmetric sprite is drawn once. */
-function mirrored(halves: PixelRows): PixelRows {
-  return halves.map((half) => half + [...half].reverse().join(''));
-}
-
 const BEETLE_SHEET = sheet(ThornTex.beetle, ThornEnemyPalette.beetle, {
   // Feelers up, legs out.
-  [Frame.a]: mirrored([
+  [Frame.a]: mirroredRows([
     '..0..0..',
     '...00.0.',
     '..0110..',
@@ -41,7 +38,7 @@ const BEETLE_SHEET = sheet(ThornTex.beetle, ThornEnemyPalette.beetle, {
     '........',
   ]),
   // Feelers down, legs in.
-  [Frame.b]: mirrored([
+  [Frame.b]: mirroredRows([
     '........',
     '..0..0..',
     '...00.0.',
@@ -56,7 +53,7 @@ const BEETLE_SHEET = sheet(ThornTex.beetle, ThornEnemyPalette.beetle, {
     '........',
   ]),
   // Flipped dazed: shell flat, feelers drooping, legs in the air.
-  [Frame.enemyStagger]: mirrored([
+  [Frame.enemyStagger]: mirroredRows([
     '........',
     '........',
     '........',

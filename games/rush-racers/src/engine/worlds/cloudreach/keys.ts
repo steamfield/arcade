@@ -6,6 +6,7 @@
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
 import { worldArtOwner } from '../../art/index.ts';
+import { byItem, bySlot } from '../../art/keys.ts';
 
 /** The art owner name Cloudreach's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
 export const CLOUDREACH_ART_OWNER = worldArtOwner('cloudreach');
@@ -67,27 +68,7 @@ export const SkyItemTex: Readonly<Record<PowerUpKind, string>> = {
 };
 
 /** Frame names in `SkyTex.portraits` and `SkyTex.heads`: the slot id. */
-export const SkyPortraitFrame: Readonly<Record<CharacterId, string>> = {
-  rudy: 'rudy',
-  gil: 'gil',
-  streak: 'streak',
-  onyx: 'onyx',
-  nib: 'nib',
-  baron: 'baron',
-  selene: 'selene',
-  rook: 'rook',
-};
+export const SkyPortraitFrame: Readonly<Record<CharacterId, string>> = bySlot();
 
 /** Frame names in `SkyTex.icons`: the item kind. */
-export const SkyIconFrame: Readonly<Record<PowerUpKind, string>> = {
-  jetFin: 'jetFin',
-  bubbleShield: 'bubbleShield',
-  puffer: 'puffer',
-  inkSac: 'inkSac',
-  glowLantern: 'glowLantern',
-  homingSquid: 'homingSquid',
-  riptide: 'riptide',
-  undertow: 'undertow',
-  mimic: 'mimic',
-  cannonball: 'cannonball',
-};
+export const SkyIconFrame: Readonly<Record<PowerUpKind, string>> = byItem();

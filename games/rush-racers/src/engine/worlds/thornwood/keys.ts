@@ -5,6 +5,7 @@
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
 import { worldArtOwner } from '../../art/index.ts';
+import { byItem, bySlot } from '../../art/keys.ts';
 
 /** The art owner name Thornwood's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
 export const THORNWOOD_ART_OWNER = worldArtOwner('thornwood');
@@ -65,27 +66,7 @@ export const ThornItemTex: Readonly<Record<PowerUpKind, string>> = {
 };
 
 /** Frame names in `ThornTex.portraits` and `ThornTex.heads`: the slot id. */
-export const ThornCastFrame: Readonly<Record<CharacterId, string>> = {
-  rudy: 'rudy',
-  gil: 'gil',
-  streak: 'streak',
-  onyx: 'onyx',
-  nib: 'nib',
-  baron: 'baron',
-  selene: 'selene',
-  rook: 'rook',
-};
+export const ThornCastFrame: Readonly<Record<CharacterId, string>> = bySlot();
 
 /** Frame names in `ThornTex.icons`: the item kind. */
-export const ThornIconFrame: Readonly<Record<PowerUpKind, string>> = {
-  jetFin: 'jetFin',
-  bubbleShield: 'bubbleShield',
-  puffer: 'puffer',
-  inkSac: 'inkSac',
-  glowLantern: 'glowLantern',
-  homingSquid: 'homingSquid',
-  riptide: 'riptide',
-  undertow: 'undertow',
-  mimic: 'mimic',
-  cannonball: 'cannonball',
-};
+export const ThornIconFrame: Readonly<Record<PowerUpKind, string>> = byItem();

@@ -6,6 +6,18 @@
  * `themes/`, never here.
  */
 
+import { CHARACTER_IDS, type CharacterId, POWER_UP_KINDS, type PowerUpKind } from '../../logic/types.ts';
+
+/** A frame name per character slot, each the slot id itself: how every world names its portrait and head frames. */
+export function bySlot(): Readonly<Record<CharacterId, string>> {
+  return Object.fromEntries(CHARACTER_IDS.map((id) => [id, id])) as Record<CharacterId, string>;
+}
+
+/** A frame name per power-up kind, each the kind itself: how worlds name their HUD item icon frames. */
+export function byItem(): Readonly<Record<PowerUpKind, string>> {
+  return Object.fromEntries(POWER_UP_KINDS.map((kind) => [kind, kind])) as Record<PowerUpKind, string>;
+}
+
 /** Global texture keys. */
 export const Tex = {
   kickPip: 'kick-pip',

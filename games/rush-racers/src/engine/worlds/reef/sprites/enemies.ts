@@ -4,8 +4,10 @@
  * silhouette first (fin and jaws, a long body out of a hole, raised claws on stalked eyes) and holds
  * its main colour 3:1 off every theme's water. The marks drawn around them are in `marks.ts`.
  */
+
 import { Frame } from '../../../art/keys.ts';
 import type { Palette, PixelRows } from '../../../art/pixel.ts';
+import { mirroredRows } from '../../../art/rows.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { ReefTex } from '../keys.ts';
 
@@ -18,11 +20,6 @@ export const ReefEnemyPalette = {
   /** Crab: dark red outline, orange shell, peach shine, white eyes. */
   crab: [0x3a0c08, 0xff8050, 0xffc8a0, 0xffffff],
 } as const satisfies Record<string, Palette>;
-
-/** A row of `half` followed by its mirror image, so a symmetric sprite is drawn once. */
-function mirrored(halves: PixelRows): PixelRows {
-  return halves.map((half) => half + [...half].reverse().join(''));
-}
 
 const SHARK_SHEET = sheet(ReefTex.shark, ReefEnemyPalette.shark, {
   // Tail up.
@@ -141,7 +138,7 @@ const EEL_BODY_SHEET = sheet(ReefTex.eelBody, ReefEnemyPalette.eel, {
 
 const CRAB_SHEET = sheet(ReefTex.crab, ReefEnemyPalette.crab, {
   // Claws open, legs out.
-  [Frame.a]: mirrored([
+  [Frame.a]: mirroredRows([
     '.00.....',
     '0120.03.',
     '01.10.0.',
@@ -156,7 +153,7 @@ const CRAB_SHEET = sheet(ReefTex.crab, ReefEnemyPalette.crab, {
     '........',
   ]),
   // Claws snapped shut, legs in.
-  [Frame.b]: mirrored([
+  [Frame.b]: mirroredRows([
     '........',
     '.00..03.',
     '0120..0.',
@@ -171,7 +168,7 @@ const CRAB_SHEET = sheet(ReefTex.crab, ReefEnemyPalette.crab, {
     '........',
   ]),
   // Flattened, eye stalks drooping, claws flat on the floor.
-  [Frame.enemyStagger]: mirrored([
+  [Frame.enemyStagger]: mirroredRows([
     '........',
     '........',
     '......0.',
