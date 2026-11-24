@@ -1,5 +1,9 @@
 import { TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
+import type { Racer } from '../logic/types.ts';
+import type { TrackFrame, TrackFrames } from './track-geometry.ts';
+
+const FOLLOW = 1 - Math.exp(-10 * TICK_DT);
 
 /**
  * Third-person follow camera. Smoothing is visual only and never feeds back
@@ -9,27 +13,31 @@ import * as THREE from 'three';
  */
 export class CameraRig {
   readonly camera: THREE.PerspectiveCamera;
-  private readonly offset = new THREE.Vector3(0, 6, 9);
+  private readonly track: TrackFrames;
+  private readonly frame: TrackFrame = { x: 0, y: 0, z: 0, tx: 0, tz: 0, rx: 0, rz: 0 };
   private readonly goal = new THREE.Vector3();
+  private readonly aim = new THREE.Vector3();
   private readonly look = new THREE.Vector3();
-  /** Higher follows more tightly. ~10 settles in about a third of a second. */
-  private readonly lambda = 10;
 
-  constructor(aspect: number) {
-    this.camera = new THREE.PerspectiveCamera(55, aspect, 0.1, 200);
+  constructor(track: TrackFrames) {
+    this.track = track;
+    this.camera = new THREE.PerspectiveCamera(53, 1, 0.1, 135);
   }
 
-  /** Call once per logic tick with the player's position. */
-  tick(position: THREE.Vector3): void {
-    this.goal.copy(position).add(this.offset);
-    this.camera.position.lerp(this.goal, 1 - Math.exp(-this.lambda * TICK_DT));
-    this.look.set(position.x, position.y + 0.5, position.z);
-    this.camera.lookAt(this.look);
-  }
-
-  snapTo(position: THREE.Vector3): void {
-    this.camera.position.copy(position).add(this.offset);
-    this.look.set(position.x, position.y + 0.5, position.z);
+  /** Call once per logic tick. Snap on initial placement, a restart or a respawn. */
+  tick(racer: Racer, snap = false): void {
+    const frame = this.track.frameAt(racer.s, this.frame);
+    // Follow the trail's height through jumps so the camera clears the arches.
+    this.goal.set(
+      frame.x + frame.rx * racer.d - frame.tx * 8.7,
+      frame.y + 4.45,
+      frame.z + frame.rz * racer.d - frame.tz * 8.7,
+    );
+    this.track.frameAt(racer.s + 10, frame);
+    this.aim.set(frame.x + frame.rx * racer.d * 0.45, frame.y + 0.5, frame.z + frame.rz * racer.d * 0.45);
+    const follow = snap ? 1 : FOLLOW;
+    this.camera.position.lerp(this.goal, follow);
+    this.look.lerp(this.aim, follow);
     this.camera.lookAt(this.look);
   }
 
