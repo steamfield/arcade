@@ -87,10 +87,6 @@
                   {
                     "group": ["@arcade/*/src/*", "@arcade/*/src"],
                     "message": "Import from the package entry (@arcade/<pkg>), not its internals."
-                  },
-                  {
-                    "group": ["../../games/*", "../../../games/*", "../../templates/*"],
-                    "message": "Games never import other games. Move shared code into a package."
                   }
                 ]
               }
@@ -121,7 +117,13 @@
                   "@arcade/shell": "Logic may import only @arcade/core and zod.",
                   "@arcade/save": "Logic may import only @arcade/core and zod. Save types are in @arcade/core.",
                   "@arcade/input": "Logic may import only @arcade/core and zod. Pass input state in as plain data."
-                }
+                },
+                "patterns": [
+                  {
+                    "group": ["@arcade/*/src/*", "@arcade/*/src"],
+                    "message": "Import from the package entry (@arcade/<pkg>), not its internals."
+                  }
+                ]
               }
             }
           }

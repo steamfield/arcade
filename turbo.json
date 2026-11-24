@@ -32,7 +32,17 @@
         "$TURBO_ROOT$/tools/*/src/**",
         "$TURBO_ROOT$/apps/*/src/**",
         "$TURBO_ROOT$/templates/*/src/**",
-        "$TURBO_ROOT$/templates/*/scenarios/**"
+        "$TURBO_ROOT$/templates/*/scenarios/**",
+        "$TURBO_ROOT$/biome.json",
+        "$TURBO_ROOT$/tools/biome/**",
+        "$TURBO_ROOT$/games/*/src/**",
+        "$TURBO_ROOT$/games/*/scenarios/**",
+        "$TURBO_ROOT$/games/*/tests/**",
+        "$TURBO_ROOT$/templates/*/tests/**",
+        "$TURBO_ROOT$/.claude/**",
+        "$TURBO_ROOT$/docs/*.md",
+        "$TURBO_ROOT$/apps/*/test/**",
+        "$TURBO_ROOT$/apps/*/wrangler.jsonc"
       ]
     }
   }
