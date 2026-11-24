@@ -1,8 +1,14 @@
 /**
  * Small transforms on pixel rows, so a sprite's second frame or its mirror image is derived from
- * one drawing instead of being typed twice.
+ * one drawing instead of being typed twice, or a 9x9 HUD icon doubles as a 12x12 world sprite.
  */
 import type { PixelRows } from './pixel.ts';
+
+/** `rows` (9x9) centred in a 12x12 frame: one px of margin above and left, two below and right. */
+export function worldIcon(rows: PixelRows): PixelRows {
+  const blank = '.'.repeat(12);
+  return [blank, ...rows.map((row) => `.${row}..`), blank, blank];
+}
 
 /** `rows` flipped left to right. */
 export function mirrorRows(rows: PixelRows): PixelRows {

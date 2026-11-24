@@ -1,45 +1,19 @@
 /**
- * The eight racers, 16x12 and facing right (the racer view flips them), each
- * drawn around its 12x10 body with two swim-stroke frames, one texture per
- * character. Light comes from the top left like the rest of the art: lit
- * pixels sit on top edges, the fish carry their second (pale) colour on the
- * belly, and a dark outline closes each body. Thin limbs (legs, antennae,
- * tentacles) are 1 px unoutlined lines in a body colour, so they stay thin.
+ * Reef's eight racers, 16x12 and facing right (the racer view flips them), each drawn around its
+ * 12x10 body with two swim-stroke frames, one texture per slot. Light comes from the top left like
+ * the rest of the art: lit pixels sit on top edges, the fish carry their second (pale) colour on
+ * the belly, and a dark outline closes each body. Thin limbs (legs, antennae, tentacles) are 1 px
+ * unoutlined lines in a body colour, so they stay thin.
  *
- * `CharacterPalette` holds each character's four colours; the portraits and
- * heads in `ui/portraits.ts` draw in the same palettes, so a racer looks the
- * same in the water, on the strip and on the podium.
+ * Colours come from `palette.ts`, shared with the portraits and heads.
  */
-import type { CharacterId } from '../../../logic/types.ts';
-import { CHARACTER_IDS } from '../../../logic/types.ts';
-import { Frame, Tex } from '../keys.ts';
-import type { Palette, PixelRows } from '../pixel.ts';
-import { type ArtSheet, sheet } from './sheet.ts';
-
-/**
- * Each character's palette: outline, main, second, accent. The main colour holds 3:1 against every
- * water band so the racer reads in any depth (`sprites.test.ts`). The second is the other body
- * tone: a pale belly, glint or shell for most, but Onyx's charcoal back, the one second colour
- * darker than its main.
- */
-export const CharacterPalette = {
-  /** Brass helmet, pale glints, red snapper body behind the porthole. */
-  rudy: [0x2a1008, 0xffc040, 0xfff2c0, 0xf05038],
-  /** Seahorse green, pale belly plates, deep green ridges. */
-  gil: [0x0c2a14, 0x7ad860, 0xe0ffa0, 0x2e8a44],
-  /** Electric blue, ice-white belly and sail spots, a yellow lightning stripe. */
-  streak: [0x0a1040, 0x3cb8ff, 0xd8f6ff, 0xffe040],
-  /** Silver rim and belly framing a charcoal-black back, a red eye and a red scar on the fin tip. */
-  onyx: [0x06060c, 0xc4cadc, 0x46445e, 0xff3048],
-  /** Cream shell, red cleaner stripes, cyan goggle lenses. */
-  nib: [0x3a0a14, 0xfff0e2, 0xff4a4a, 0x5ae2ff],
-  /** Rust-orange shell; cream legs and barnacles, so the legs still read over coral; a gold crown. */
-  baron: [0x220a08, 0xf08c50, 0xfff0d0, 0xffd040],
-  /** Pale moon bell, white starlight, periwinkle rings and tentacles. */
-  selene: [0x241a5c, 0xd0d8ff, 0xffffff, 0x9a8cff],
-  /** Shark grey, white belly and teeth, yellow hunter's eyes. */
-  rook: [0x0a1626, 0x9aaec4, 0xeef4fa, 0xffd23a],
-} as const satisfies Record<CharacterId, Palette>;
+import type { CharacterId } from '../../../../logic/types.ts';
+import { CHARACTER_IDS } from '../../../../logic/types.ts';
+import { Frame } from '../../../art/keys.ts';
+import type { PixelRows } from '../../../art/pixel.ts';
+import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
+import { ReefRacerTex } from '../keys.ts';
+import { ReefPalette } from './palette.ts';
 
 /** One character's two swim-stroke frames. */
 type Strokes = Readonly<Record<typeof Frame.a | typeof Frame.b, PixelRows>>;
@@ -303,7 +277,7 @@ const STROKES: Record<CharacterId, Strokes> = {
   rook: ROOK,
 };
 
-/** Racer sheets, one per character: frame `a` and `b` are the two strokes of the swim cycle. */
-export const RACER_SHEETS: readonly ArtSheet[] = CHARACTER_IDS.map((character) =>
-  sheet(Tex[character], CharacterPalette[character], STROKES[character]),
+/** Racer sheets, one per slot: frames `a` and `b` are the two strokes of the swim cycle. */
+export const REEF_RACER_SHEETS: readonly ArtSheet<string>[] = CHARACTER_IDS.map((character) =>
+  sheet(ReefRacerTex[character], ReefPalette[character], STROKES[character]),
 );

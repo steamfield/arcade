@@ -40,6 +40,9 @@ export interface Glint {
   alpha: number;
 }
 
+/** How strongly each hazard's glint shows in a dark zone; every world uses these unless it has a reason not to. */
+export const GLINT_ALPHA: Readonly<Record<'urchin' | 'jelly', number>> = { urchin: 0.55, jelly: 0.6 };
+
 /** Words the HUD and How to Play show about shared things, in capitals. */
 export interface ObjectText {
   /** The HUD line under a racer slowed by an Ink Sac cloud, e.g. SLOWED BY INK. */

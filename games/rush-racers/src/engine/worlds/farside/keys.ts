@@ -5,6 +5,9 @@
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
 
+/** The art owner name Farside's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
+export const FARSIDE_ART_OWNER = 'farside';
+
 /** Racer texture per slot: 16x12, facing right, run-stride frames `Frame.a` and `Frame.b`. */
 export const FarRacerTex: Readonly<Record<CharacterId, string>> = {
   rudy: 'farside-racer-bolt',

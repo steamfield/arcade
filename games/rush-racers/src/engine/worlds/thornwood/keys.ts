@@ -5,6 +5,9 @@
  */
 import type { CharacterId, PowerUpKind } from '../../../logic/types.ts';
 
+/** The art owner name Thornwood's cast and object textures are drawn under, so `drawSheets` treats them as one world's. */
+export const THORNWOOD_ART_OWNER = 'thornwood';
+
 /** Racer texture per slot: 16x12, facing right, run-stride frames `Frame.a` and `Frame.b`. */
 export const ThornRacerTex: Readonly<Record<CharacterId, string>> = {
   rudy: 'thornwood-racer-grit',

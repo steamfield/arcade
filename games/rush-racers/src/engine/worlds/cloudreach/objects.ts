@@ -10,10 +10,8 @@ import type { PowerUpKind } from '../../../logic/types.ts';
 import { drawSheets } from '../../art/index.ts';
 import { SkyHazardPalette } from '../../themes/sky/palettes.ts';
 import type { ArtRef } from '../art-ref.ts';
-import type { ObjectSkin } from '../object-skin.ts';
-import { REEF_OBJECTS } from '../reef/objects.ts';
-import { SkyIconFrame, SkyItemTex, SkyTex } from './keys.ts';
-import { CLOUDREACH_ART_OWNER } from './owner.ts';
+import { GLINT_ALPHA, type ObjectSkin } from '../object-skin.ts';
+import { CLOUDREACH_ART_OWNER, SkyIconFrame, SkyItemTex, SkyTex } from './keys.ts';
 import { SKY_ATTACK_SHEETS } from './sprites/attack.ts';
 import { SKY_ENEMY_SHEETS } from './sprites/enemies.ts';
 import { SKY_ITEM_SHEETS } from './sprites/items.ts';
@@ -61,9 +59,9 @@ export const CLOUDREACH_OBJECTS: ObjectSkin = {
     urchin: {
       key: 'cloudreach-glint-spark-cloud',
       colour: SPARK_GLINT_COLOUR,
-      alpha: REEF_OBJECTS.glints.urchin.alpha,
+      alpha: GLINT_ALPHA.urchin,
     },
-    jelly: { key: 'cloudreach-glint-static-wisp', colour: WISP_GLINT_COLOUR, alpha: REEF_OBJECTS.glints.jelly.alpha },
+    jelly: { key: 'cloudreach-glint-static-wisp', colour: WISP_GLINT_COLOUR, alpha: GLINT_ALPHA.jelly },
   },
   text: {
     slowedBy: 'SLOWED BY FOG',

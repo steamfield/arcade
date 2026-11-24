@@ -8,7 +8,7 @@
 import type { PowerUpKind } from '../../../../logic/types.ts';
 import { Frame } from '../../../art/keys.ts';
 import type { NamedFrame, Palette, PixelRows } from '../../../art/pixel.ts';
-import { worldIcon } from '../../../art/sprites/attack.ts';
+import { worldIcon } from '../../../art/rows.ts';
 import type { ArtSheet } from '../../../art/sprites/sheet.ts';
 import { ICON_RIM } from '../../../art/ui/icons.ts';
 import { SkyIconFrame, SkyItemTex, SkyTex } from '../keys.ts';

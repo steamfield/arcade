@@ -51,8 +51,8 @@ describe('texture and loop ownership', () => {
     const { scene } = recordingScene();
     buildTextures(scene);
     OCEAN_THEME.registerTextures(scene);
-    expect(() => drawSheets(scene, [{ ...PIXEL, key: 'pearl' }], 'copycat')).toThrow(
-      "Texture 'pearl' is owned by the global art",
+    expect(() => drawSheets(scene, [{ ...PIXEL, key: 'kick-pip' }], 'copycat')).toThrow(
+      "Texture 'kick-pip' is owned by the global art",
     );
     expect(() => registerLoops(scene, [{ key: 'kelp-sway', texture: 'tiles', frameRate: 2 }], 'copycat')).toThrow(
       "Animation 'kelp-sway' is owned by theme 'ocean'",

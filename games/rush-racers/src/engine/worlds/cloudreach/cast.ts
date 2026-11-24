@@ -9,8 +9,7 @@ import type { CharacterId } from '../../../logic/types.ts';
 import { drawSheets } from '../../art/index.ts';
 import type { ArtRef } from '../art-ref.ts';
 import type { CastSkin } from '../cast-skin.ts';
-import { SkyPortraitFrame, SkyRacerTex, SkyTex } from './keys.ts';
-import { CLOUDREACH_ART_OWNER } from './owner.ts';
+import { CLOUDREACH_ART_OWNER, SkyPortraitFrame, SkyRacerTex, SkyTex } from './keys.ts';
 import { CLOUDREACH_FACE_SHEETS } from './sprites/portraits.ts';
 import { CLOUDREACH_RACER_SHEETS } from './sprites/racers.ts';
 

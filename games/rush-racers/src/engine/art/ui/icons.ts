@@ -5,11 +5,14 @@
  * rim (index 0), sticker style: an ink outline would vanish into the indigo
  * panels and the inset wells the icons sit on. Each medal carries its numeral,
  * so first, second and third differ by more than colour.
+ *
+ * The ten power-up icons are Reef's: they take Reef's item colours and its four attack
+ * silhouettes from `worlds/reef/sprites/items.ts`, so an item looks the same in the well and in the
+ * water. Other worlds draw their item icons into their own textures.
  */
 
-import { ItemPalette } from '../palettes.ts';
+import { REEF_ATTACK_ICON_ROWS, ReefItemPalette } from '../../worlds/reef/sprites/items.ts';
 import type { Palette, PixelRows } from '../pixel.ts';
-import { ATTACK_ICON_ROWS, AttackPalette } from '../sprites/attack.ts';
 import { IconFrame, MedalFrame, type UiSheet, UiTex } from './keys.ts';
 import { UiColour, UiRamp } from './palette.ts';
 
@@ -27,16 +30,16 @@ const IconPalette = {
   up: [ICON_RIM, UiColour.sun, 0xfff3c4],
   down: [ICON_RIM, UiColour.coral, 0xffc0b8],
   cursor: [ICON_RIM, UiColour.sun, 0xfff3c4, UiRamp.sunDark],
-  jetFin: withRim(ItemPalette.jetFin),
-  bubbleShield: withRim(ItemPalette.bubbleShield),
-  puffer: withRim(ItemPalette.puffer),
-  inkSac: withRim(ItemPalette.inkSac),
-  glowLantern: withRim(ItemPalette.glowLantern),
-  homingSquid: withRim(AttackPalette.homingSquid),
-  riptide: withRim(AttackPalette.riptide),
-  undertow: withRim(AttackPalette.undertow),
-  mimic: withRim(AttackPalette.mimic),
-  cannonball: withRim(ItemPalette.cannonball),
+  jetFin: withRim(ReefItemPalette.jetFin),
+  bubbleShield: withRim(ReefItemPalette.bubbleShield),
+  puffer: withRim(ReefItemPalette.puffer),
+  inkSac: withRim(ReefItemPalette.inkSac),
+  glowLantern: withRim(ReefItemPalette.glowLantern),
+  homingSquid: withRim(ReefItemPalette.homingSquid),
+  riptide: withRim(ReefItemPalette.riptide),
+  undertow: withRim(ReefItemPalette.undertow),
+  mimic: withRim(ReefItemPalette.mimic),
+  cannonball: withRim(ReefItemPalette.cannonball),
   warn: [ICON_RIM, UiColour.coral, 0xffc0b8],
 } as const satisfies Record<string, Palette>;
 
@@ -139,10 +142,10 @@ export const ICON_SHEETS: readonly UiSheet[] = [
         '...000...',
       ]),
       // The four attack kinds: a squid, a wave, a pull arrow and an octopus. Rows are shared with the world icons.
-      icon(IconFrame.homingSquid, IconPalette.homingSquid, ATTACK_ICON_ROWS.homingSquid),
-      icon(IconFrame.riptide, IconPalette.riptide, ATTACK_ICON_ROWS.riptide),
-      icon(IconFrame.undertow, IconPalette.undertow, ATTACK_ICON_ROWS.undertow),
-      icon(IconFrame.mimic, IconPalette.mimic, ATTACK_ICON_ROWS.mimic),
+      icon(IconFrame.homingSquid, IconPalette.homingSquid, REEF_ATTACK_ICON_ROWS.homingSquid),
+      icon(IconFrame.riptide, IconPalette.riptide, REEF_ATTACK_ICON_ROWS.riptide),
+      icon(IconFrame.undertow, IconPalette.undertow, REEF_ATTACK_ICON_ROWS.undertow),
+      icon(IconFrame.mimic, IconPalette.mimic, REEF_ATTACK_ICON_ROWS.mimic),
       // Cannonball: an iron ball with a lit fuse.
       icon(IconFrame.cannonball, IconPalette.cannonball, [
         '......3.3',

@@ -1,16 +1,16 @@
 /**
- * Art for the enemies a racer beats with a dash bonk: a shark, a moray eel that lives in the reef
- * wall, and a crab that walks the floor. Each reads by silhouette first (fin and jaws, a long body
- * out of a hole, raised claws on stalked eyes) and holds its main colour 3:1 off every theme's
- * water. The marks sheet carries what the view draws around them: the eel's hole and the eyes in
- * it, the shark's `!` tell, warning bubbles, the dizzy star of a stagger and the pop of a defeat.
+ * Reef's enemies, the ones a racer beats with a dash bonk: a shark, a moray eel that lives in the
+ * reef wall (head and repeating body tile), and a crab that walks the floor. Each reads by
+ * silhouette first (fin and jaws, a long body out of a hole, raised claws on stalked eyes) and holds
+ * its main colour 3:1 off every theme's water. The marks drawn around them are in `marks.ts`.
  */
-import { Frame, Tex } from '../keys.ts';
-import type { NamedFrame, Palette, PixelRows } from '../pixel.ts';
-import { type ArtSheet, sheet } from './sheet.ts';
+import { Frame } from '../../../art/keys.ts';
+import type { Palette, PixelRows } from '../../../art/pixel.ts';
+import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
+import { ReefTex } from '../keys.ts';
 
 /** One palette per enemy kind: outline, body, light (belly or shell shine), accent. */
-export const EnemyPalette = {
+export const ReefEnemyPalette = {
   /** Shark: deep slate outline, steel body, white belly and teeth, red gums and eye glint. */
   shark: [0x141a2a, 0x9aaac0, 0xf4f6fa, 0xff4a5a],
   /** Eel: deep green outline, bright green body, pale belly, yellow eyes and spots. */
@@ -19,29 +19,12 @@ export const EnemyPalette = {
   crab: [0x3a0c08, 0xff8050, 0xffc8a0, 0xffffff],
 } as const satisfies Record<string, Palette>;
 
-/** The marks' palettes; each mark frame has its own. */
-const MarkPalette = {
-  /** A hole in the reef wall: near black with a dim rim, yellow eyes with a white glint. */
-  hole: [0x05060e, 0x2a2238, 0xffe040, 0xffffff],
-  /** The `!` tell: ink glyph on a sun-gold bubble with a foam shine, the UI's alert colours. */
-  alert: [0x0b0a1e, 0xffc53a, 0xf6f0dc],
-  /** A small warning bubble: rim and shine. */
-  bubble: [0xb8f4ff, 0xffffff],
-  /** Dizzy and bonk star: outline, gold, white core. */
-  star: [0x3a2008, 0xffe060, 0xffffff],
-  /** Pop ring: white with gold sparkles. */
-  pop: [0xffffff, 0xffe060],
-} as const satisfies Record<string, Palette>;
-
 /** A row of `half` followed by its mirror image, so a symmetric sprite is drawn once. */
 function mirrored(halves: PixelRows): PixelRows {
   return halves.map((half) => half + [...half].reverse().join(''));
 }
 
-/** Size of each frame in the marks sheet, px. */
-export const MARK_SIZE = 12;
-
-const SHARK_SHEET = sheet(Tex.shark, EnemyPalette.shark, {
+const SHARK_SHEET = sheet(ReefTex.shark, ReefEnemyPalette.shark, {
   // Tail up.
   [Frame.a]: [
     '............00..........',
@@ -112,7 +95,7 @@ const SHARK_SHEET = sheet(Tex.shark, EnemyPalette.shark, {
   ],
 });
 
-const EEL_HEAD_SHEET = sheet(Tex.eelHead, EnemyPalette.eel, {
+const EEL_HEAD_SHEET = sheet(ReefTex.eelHead, ReefEnemyPalette.eel, {
   // Mouth shut, a yellow eye; the neck on the left joins the body tile row for row.
   [Frame.a]: [
     '................',
@@ -141,7 +124,7 @@ const EEL_HEAD_SHEET = sheet(Tex.eelHead, EnemyPalette.eel, {
   ],
 });
 
-const EEL_BODY_SHEET = sheet(Tex.eelBody, EnemyPalette.eel, {
+const EEL_BODY_SHEET = sheet(ReefTex.eelBody, ReefEnemyPalette.eel, {
   [Frame.a]: [
     '........',
     '........',
@@ -156,7 +139,7 @@ const EEL_BODY_SHEET = sheet(Tex.eelBody, EnemyPalette.eel, {
   ],
 });
 
-const CRAB_SHEET = sheet(Tex.crab, EnemyPalette.crab, {
+const CRAB_SHEET = sheet(ReefTex.crab, ReefEnemyPalette.crab, {
   // Claws open, legs out.
   [Frame.a]: mirrored([
     '.00.....',
@@ -204,123 +187,5 @@ const CRAB_SHEET = sheet(Tex.crab, EnemyPalette.crab, {
   ]),
 });
 
-/** The marks, each on a 12x12 frame with its own palette. */
-const MARK_FRAMES: readonly NamedFrame[] = [
-  {
-    name: Frame.markHole,
-    palette: MarkPalette.hole,
-    rows: [
-      '............',
-      '............',
-      '...111111...',
-      '..10000001..',
-      '.1000000001.',
-      '.1000000001.',
-      '.1000000001.',
-      '.1000000001.',
-      '..10000001..',
-      '...111111...',
-      '............',
-      '............',
-    ],
-  },
-  {
-    name: Frame.markEyes,
-    palette: MarkPalette.hole,
-    rows: [
-      '............',
-      '............',
-      '...111111...',
-      '..10000001..',
-      '.1000000001.',
-      '.1322002231.',
-      '.1222002221.',
-      '.1000000001.',
-      '..10000001..',
-      '...111111...',
-      '............',
-      '............',
-    ],
-  },
-  {
-    name: Frame.markAlert,
-    palette: MarkPalette.alert,
-    rows: [
-      '...000000...',
-      '..01211110..',
-      '.0121001110.',
-      '.0111001110.',
-      '.0111001110.',
-      '.0111001110.',
-      '.0111111110.',
-      '.0111001110.',
-      '..01111110..',
-      '...000000...',
-      '....010.....',
-      '.....0......',
-    ],
-  },
-  {
-    name: Frame.markBubble,
-    palette: MarkPalette.bubble,
-    rows: [
-      '............',
-      '............',
-      '............',
-      '............',
-      '.....00.....',
-      '....0.10....',
-      '....0..0....',
-      '.....00.....',
-      '............',
-      '............',
-      '............',
-      '............',
-    ],
-  },
-  {
-    name: Frame.markStar,
-    palette: MarkPalette.star,
-    rows: [
-      '.....0......',
-      '.....0......',
-      '....010.....',
-      '....010.....',
-      '...01210....',
-      '00112221100.',
-      '...01210....',
-      '....010.....',
-      '....010.....',
-      '.....0......',
-      '.....0......',
-      '............',
-    ],
-  },
-  {
-    name: Frame.markPop,
-    palette: MarkPalette.pop,
-    rows: [
-      '....0000....',
-      '..00....00..',
-      '.0........0.',
-      '.0..1..1..0.',
-      '0..........0',
-      '0....11....0',
-      '0....11....0',
-      '0..........0',
-      '.0..1..1..0.',
-      '.0........0.',
-      '..00....00..',
-      '....0000....',
-    ],
-  },
-];
-
-/** World sheets for the three enemies and their marks. */
-export const ENEMY_SHEETS: readonly ArtSheet[] = [
-  SHARK_SHEET,
-  EEL_HEAD_SHEET,
-  EEL_BODY_SHEET,
-  CRAB_SHEET,
-  { key: Tex.enemyMark, frames: MARK_FRAMES },
-];
+/** World sheets for the three enemies: the shark, the eel's head and body tile, and the crab. */
+export const REEF_ENEMY_SHEETS: readonly ArtSheet<string>[] = [SHARK_SHEET, EEL_HEAD_SHEET, EEL_BODY_SHEET, CRAB_SHEET];

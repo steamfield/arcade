@@ -1,10 +1,10 @@
 /**
- * The entry point for the global world art: builds every texture in `keys.ts` from the
- * palette-indexed pixel text in `sprites/`. Boot calls it once. It also exports the two builders
- * a theme uses for its own art (`drawSheets`, `registerLoops`), so every texture in the game is
- * made the same way. Each texture and loop key has one owner (the global art or one theme): the
- * same owner building it again changes nothing, and another owner asking for it throws, so a theme
- * can never draw with someone else's art by reusing a key.
+ * The entry point for the global art: builds the HUD sprites and the guide arrow from the
+ * palette-indexed pixel text in `sprites/`. Boot calls it once. It also exports the two builders a
+ * world or theme uses for its own art (`drawSheets`, `registerLoops`), so every texture in the game
+ * is made the same way. Each texture and loop key has one owner (the global art, one world or one
+ * theme): the same owner building it again changes nothing, and another owner asking for it
+ * throws, so no one can draw with someone else's art by reusing a key.
  */
 import type Phaser from 'phaser';
 import { Frame } from './keys.ts';
@@ -19,7 +19,7 @@ export interface AnimLoop {
   frameRate: number;
 }
 
-/** The owner name of the global art in `keys.ts`; themes own keys under their theme id. */
+/** The owner name of the global art in `keys.ts`; worlds and themes own keys under their own id. */
 export const GLOBAL_ART = 'global';
 
 // Owners per texture and animation manager: both are shared by every scene of one game, and a new game starts clean.
@@ -27,7 +27,7 @@ const textureOwners = new WeakMap<object, Map<string, string>>();
 const loopOwners = new WeakMap<object, Map<string, string>>();
 
 /**
- * Builds every global texture key; calling it again changes nothing.
+ * Builds every global texture in `sprites/index.ts`; calling it again changes nothing.
  *
  * @throws {Error} When a sprite's pixel text is malformed (see `drawFrames`), naming the key, frame and row.
  */

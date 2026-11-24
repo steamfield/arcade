@@ -8,8 +8,7 @@ import type { CharacterId } from '../../../logic/types.ts';
 import { drawSheets } from '../../art/index.ts';
 import type { ArtRef } from '../art-ref.ts';
 import type { CastSkin } from '../cast-skin.ts';
-import { ThornCastFrame, ThornRacerTex, ThornTex } from './keys.ts';
-import { THORNWOOD_ART_OWNER } from './owner.ts';
+import { THORNWOOD_ART_OWNER, ThornCastFrame, ThornRacerTex, ThornTex } from './keys.ts';
 import { THORNWOOD_FACE_SHEETS } from './sprites/portraits.ts';
 import { THORNWOOD_RACER_SHEETS } from './sprites/racers.ts';
 

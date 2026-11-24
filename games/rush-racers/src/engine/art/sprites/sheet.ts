@@ -1,7 +1,7 @@
 /**
  * The shape every sprite family file exports: a texture key and its frames, each named and
  * coloured. `sheet` covers the common case of one palette for every frame. Global art keys its
- * sheets by `TexKey`; a theme keys its own sheets by its own key type.
+ * sheets by `TexKey`; a world or theme keys its own sheets by its own key type.
  */
 import type { TexKey } from '../keys.ts';
 import type { NamedFrame, Palette, PixelRows } from '../pixel.ts';
