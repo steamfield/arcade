@@ -97,3 +97,30 @@ describe('a bounce', () => {
     expect(other.look(100, false).stretch).toBe(0);
   });
 });
+
+describe('a jump and a landing', () => {
+  it('stretches a jumping racer tall, squats it on landing, and settles back to rest', () => {
+    const moments = createRacerMoments('player', 1);
+    moments.onEvents([{ type: 'racer.jumped', id: 'player', tick: STEP_TICK, seq: 0 }], 100);
+
+    expect(moments.look(100, false)).toMatchObject({ axis: 'y' });
+    expect(moments.look(100, false).stretch).toBeGreaterThan(0);
+
+    moments.onLanded(130);
+    expect(moments.look(130, false)).toMatchObject({ axis: 'y' });
+    expect(moments.look(130, false).stretch).toBeLessThan(0);
+    expect(moments.look(160, false)).toEqual({ stretch: 0, axis: null, flashing: false });
+  });
+
+  it("does nothing under reduced motion or for another racer's jump", () => {
+    const moments = createRacerMoments('tess', 2);
+    moments.onEvents([{ type: 'racer.jumped', id: 'tess', tick: STEP_TICK, seq: 0 }], 100);
+    moments.onLanded(120);
+    const other = createRacerMoments('tess', 2);
+    other.onEvents([{ type: 'racer.jumped', id: 'player', tick: STEP_TICK, seq: 0 }], 100);
+
+    expect(moments.look(100, true)).toEqual({ stretch: 0, axis: null, flashing: false });
+    expect(moments.look(120, true)).toEqual({ stretch: 0, axis: null, flashing: false });
+    expect(other.look(100, false).stretch).toBe(0);
+  });
+});

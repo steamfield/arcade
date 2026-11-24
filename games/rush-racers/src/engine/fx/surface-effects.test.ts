@@ -11,7 +11,6 @@ const NO_BURSTS: Bursts = {
   kickPuff() {},
   trailBubble() {},
   coralDebris() {},
-  hitSparks() {},
   pearlSparkle() {},
   pickupPop() {},
   inkPuff() {},

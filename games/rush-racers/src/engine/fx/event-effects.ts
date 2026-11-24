@@ -1,12 +1,13 @@
 /**
- * Maps one tick's drained events to effects: which burst plays where (including the attack
- * power-ups' fire, lane, pull, shake-off and pop, and the splash of a racer breaching the surface
- * or falling back in, a puff under a racer springing off a bounce cloud, and sparkles where the local
- * racer passes a boost ring), and how much screen shake the local racer's own
+ * Maps one tick's drained events to effects: which burst plays where (kick puffs, coral debris,
+ * pickups, a squid fizzling, a racer shaking one off, a decoy's pop, the splash of a racer breaching
+ * the surface or falling back in, a puff under a racer springing off a bounce cloud, and sparkles
+ * where the local racer passes a boost ring), and how much screen shake the local racer's own
  * knocks and a lightning strike on screen add (the slot the screen follows; see `local-racer.ts`). A
  * strike is on screen by the same measure the lightning view uses for its flash (`view/storm-reach.ts`). Positions come from the event and the world as it stands
  * after the tick. Shake is only ever asked for through `shake`, which the caller leaves out
- * under reduced motion.
+ * under reduced motion. Item fires, hits, shield pops and the Riptide and Undertow lines are
+ * `item-effects.ts`'s.
  */
 import type { Stamped } from '@arcade/core';
 import { CANNONBALL } from '../../logic/powerups/tuning.ts';
@@ -32,10 +33,6 @@ const CANNONBALL_TRAUMA = 0.6;
 const NO_SCREEN: CameraSpan = { x: 0, y: 0, width: 0 };
 /** A lightning strike on screen: a jolt lighter than a hit. */
 const STRIKE_TRAUMA = 0.35;
-/** Bubbles shed along a new Riptide lane, one per this many px of its length. */
-const LANE_BUBBLE_SPACING = 12;
-/** Bubbles shed from each racer an Undertow pulls. */
-const PULL_BUBBLES = 3;
 
 /**
  * Builds the event-to-effect mapping for `world`.
@@ -87,12 +84,10 @@ export function createEventEffects(
             if (event.by === local && localCannonballing()) cannonballImpact = true;
             break;
           case 'racer.hit':
-            racerAt(event.id, bursts.hitSparks);
             if (event.id === local) localHit = true;
             if (event.by === local && event.cause === 'puffer' && localCannonballing()) cannonballImpact = true;
             break;
           case 'shield.popped':
-            racerAt(event.id, bursts.bubblePop);
             if (event.id === local) localShieldPopped = true;
             break;
           case 'racer.bounced':
@@ -121,11 +116,6 @@ export function createEventEffects(
           case 'loose.grabbed':
             racerAt(event.id, (x, y) => bursts.pickupPop(x, y, event.kind));
             break;
-          case 'ink.spawned': {
-            const ink = world.inks.findLast((cloud) => cloud.owner === event.owner);
-            if (ink) bursts.inkPuff(ink.x, ink.y);
-            break;
-          }
           case 'bubble.popped':
             bubblesPopped = true;
             break;
@@ -136,9 +126,6 @@ export function createEventEffects(
             break;
           case 'racer.finished':
             if (event.id === local) racerAt(local, bursts.finishBurst);
-            break;
-          case 'squid.spawned':
-            racerAt(event.owner, bursts.bubblePop);
             break;
           case 'squid.lost': {
             const at = goneOwnedBy(lastSquidAt, world.squids, event.owner);
@@ -152,16 +139,6 @@ export function createEventEffects(
           case 'racer.breached':
           case 'racer.splashed':
             racerAt(event.id, bursts.bubblePop);
-            break;
-          case 'riptide.spawned':
-            shedLaneBubbles(world, event.owner, bursts);
-            break;
-          case 'undertow.fired':
-            for (const id of event.pulled) {
-              racerAt(id, (x, y) => {
-                for (let bubble = 0; bubble < PULL_BUBBLES; bubble++) bursts.trailBubble(x - bubble * 4, y);
-              });
-            }
             break;
           case 'decoy.popped': {
             const at = goneOwnedBy(lastDecoyAt, world.decoys, event.owner);
@@ -182,19 +159,6 @@ export function createEventEffects(
       track(lastDecoyAt, world.decoys);
     },
   };
-}
-
-/** Bubbles strung along the newest lane `owner` laid, so a new Riptide announces its length. */
-function shedLaneBubbles(world: World, owner: RacerId, bursts: Bursts): void {
-  const lane = world.riptides.findLast((riptide) => riptide.owner === owner);
-  if (!lane) return;
-  const alongX = Math.abs(lane.dir.x) >= Math.abs(lane.dir.y);
-  const length = alongX ? lane.w : lane.h;
-  for (let along = 0; along < length; along += LANE_BUBBLE_SPACING) {
-    const x = alongX ? lane.x + along : lane.x + lane.w / 2;
-    const y = alongX ? lane.y + lane.h / 2 : lane.y + along;
-    bursts.trailBubble(x, y);
-  }
 }
 
 /**
