@@ -136,7 +136,7 @@ export class TitleScene extends Phaser.Scene {
     this.pressA = isTouchScreen()
       ? createLabel(this, PRESS_A.x, PRESS_A.top + 3, 'PRESS A', { align: 'center', outline: true })
       : null;
-    this.notice = createLabel(this, NOTICE.x, NOTICE.top, '', { align: 'center', outline: true });
+    this.notice = createLabel(this, NOTICE.x, NOTICE.top + 3, '', { align: 'center', outline: true });
     const save = rt.save ?? NEW_GAME;
     this.bestCards = {};
     for (const level of DIFFICULTIES) {

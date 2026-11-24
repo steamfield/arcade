@@ -326,6 +326,32 @@ describe('the title', () => {
 
     expect([rt.scene, rt.loading, rt.flow.client, rt.online.notice]).toEqual(['title', false, null, null]);
   });
+
+  it('leaves an offline race running untouched when the tab hides and shows', async () => {
+    const { rt } = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE] });
+    press(rt, 'fire');
+    rt.step.advance(ARMED);
+    press(rt, 'fire');
+    rt.step.advance(5);
+    await settled(rt);
+    const saves = () => rt.events.all().filter((event) => event.type.startsWith('save.')).length;
+    const savesBefore = saves();
+    const world = rt.world;
+    const tick = world?.tick;
+
+    rt.hide();
+    rt.show();
+    await settled(rt);
+
+    expect([rt.scene, rt.world === world, rt.world?.tick, rt.loading, rt.online.notice]).toEqual([
+      'race',
+      true,
+      tick,
+      false,
+      null,
+    ]);
+    expect(saves()).toBe(savesBefore);
+  });
 });
 
 describe('course select', () => {
