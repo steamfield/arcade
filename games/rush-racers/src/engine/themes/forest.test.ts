@@ -54,25 +54,40 @@ describe('the forest theme', () => {
 
   it('lays the tileset out in ForestTile order on the 16 px grid, and points terrain at it', () => {
     const tiles = sheetFor(ForestTex.tiles);
-    expect(tiles?.frames.map((frame) => frame.name)).toEqual(['rock', 'coral', 'ledge', 'rockBuried', 'bounce']);
-    expect(Object.keys(ForestTile)).toEqual(['rock', 'coral', 'ledge', 'rockBuried', 'bounce']);
+    const names = [
+      'rock',
+      'coral',
+      'ledge',
+      'rockBuried',
+      'bounce',
+      'streamStone',
+      'oakBark',
+      'knotRim',
+      'rottenWood',
+      'ropePost',
+    ];
+    expect(tiles?.frames.map((frame) => frame.name)).toEqual(names);
+    expect(Object.keys(ForestTile)).toEqual(names);
     expect(measureFrames(ForestTex.tiles, tiles?.frames ?? [])).toEqual({ width: 16, height: 16 });
     expect(FOREST_THEME.terrain).toMatchObject({
       tileset: 'forest-tiles',
       tiles: { rock: 0, coral: 1, ledge: 2 },
       buriedTiles: { rock: 3 },
-      glyphTiles: {},
+      glyphTiles: { streamStone: 5, oakBark: 6, knotRim: 7, rottenWood: 8, ropePost: 9 },
     });
   });
 
-  it('draws a ledge as a thin branch along the top of its tile and nothing below', () => {
-    const ledge = sheetFor(ForestTex.tiles)?.frames.find((frame) => frame.name === 'ledge');
-    const filledRows = ledge?.rows.map((row) => /[^.]/.test(row)) ?? [];
-    const firstEmptyRow = filledRows.indexOf(false);
-    expect(firstEmptyRow).toBeGreaterThan(0);
-    expect(firstEmptyRow).toBeLessThanOrEqual(4);
-    expect(filledRows.slice(firstEmptyRow).some(Boolean)).toBe(false);
-  });
+  it.each(['ledge', 'streamStone', 'rottenWood'])(
+    'draws %s along the top of its tile and leaves the space below open',
+    (name) => {
+      const ledge = sheetFor(ForestTex.tiles)?.frames.find((frame) => frame.name === name);
+      const filledRows = ledge?.rows.map((row) => /[^.]/.test(row)) ?? [];
+      const firstEmptyRow = filledRows.indexOf(false);
+      expect(firstEmptyRow).toBeGreaterThan(0);
+      expect(firstEmptyRow).toBeLessThanOrEqual(4);
+      expect(filledRows.slice(firstEmptyRow).some(Boolean)).toBe(false);
+    },
+  );
 
   it('tiles both backdrop layers at the size the theme draws them', () => {
     const [far, near] = FOREST_THEME.backdrop.layers;

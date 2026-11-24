@@ -16,6 +16,16 @@ export const ForestTerrainPalette = {
   crackedStone: [0x24242c, 0x6a6a78, 0x9a9aa8, 0x6e9a4a],
   /** Branch: bark shadow, bark, lit bark. Thin and warm, a platform you jump up through. */
   branch: [0x2a160c, 0x6b4423, 0x9a6a3a],
+  /** Stepping stone: wet shadow, stone, lit stone, moss. */
+  streamStone: [0x25363b, 0x4c6263, 0x8fa5a1, 0x668c51],
+  /** Oak bark: furrow, bark, lit bark, ridge highlight. */
+  oakBark: [0x24160e, 0x422819, 0x62402a, 0x805736],
+  /** Knothole rim: hollow, rim shadow, rim, lit rim. */
+  knotRim: [0x2c1810, 0x503323, 0x795334, 0xa4774b],
+  /** Rotten plank: rot shadow, plank, lit plank, pale rot. Pinker than branch, so a crumbling plank reads apart from a solid one. */
+  rottenWood: [0x302023, 0x654345, 0x9c6860, 0xc98f75],
+  /** Rope post: shadow, post, lit post, rope. */
+  ropePost: [0x302023, 0x654345, 0x9c6860, 0xd6b278],
   /**
    * Spring mushroom: outline and the soil round its stem (earth's deep soil), red cap, cream spots
    * and stem, the cap's shaded rim. Bright, so a spring reads as a toy.
