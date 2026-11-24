@@ -1,12 +1,14 @@
 /**
  * The forest look: Thornwood's earth, branches, canopy and light. Its art, keys and colours live in
  * `forest/`; this file says how the views use them. Air barely slows particles, so dust and leaves
- * rise slowly, debris falls fast and a splash is a short burst of dust.
+ * rise slowly, debris falls fast and a splash is a short burst of dust. Its one extra layer draws
+ * Thornwood's rolling Boulders (`view/boulder-view.ts`).
  */
 
 import { drawSheets, registerLoops } from '../art/index.ts';
 import { Frame } from '../art/keys.ts';
 import { FxFrame } from '../fx/textures.ts';
+import { createBoulderView } from '../view/boulder-view.ts';
 import { defineTheme } from './define.ts';
 import { ForestAnim, ForestTex, ForestTile } from './forest/keys.ts';
 import { CanopyLight, ForestBackdropPalette, WOOD_BANDS } from './forest/palettes.ts';
@@ -39,7 +41,7 @@ export const FOREST_THEME = defineTheme({
   },
   terrain: {
     tileset: ForestTex.tiles,
-    tiles: { rock: ForestTile.rock, coral: ForestTile.coral, ledge: ForestTile.ledge },
+    tiles: { rock: ForestTile.rock, coral: ForestTile.coral, ledge: ForestTile.ledge, bounce: ForestTile.bounce },
     buriedTiles: { rock: ForestTile.rockBuried },
     flowing: {
       kelp: { texture: ForestTex.mud, anim: ForestAnim.mudBubble },
@@ -77,4 +79,5 @@ export const FOREST_THEME = defineTheme({
   dark: { colour: 0x020a06, alpha: 0.9 },
   trail: { frame: FxFrame.chip, tint: 0x8a6a48, alpha: 0.5 },
   contrastBands: FOREST_CONTRAST_BANDS,
+  extraLayers: (scene, world) => [createBoulderView(scene, world)],
 });

@@ -1,6 +1,7 @@
 /**
  * Run's rival pilot: it follows the best link out of the stand tile it is on. It runs toward a walk
- * or a drop, starts a jump at the link's take-off with Up held for the link's hold ticks, steers in
+ * or a drop, holds Up as a spring mushroom launches it when its bounce link says to, starts a jump
+ * at the link's take-off with Up held for the link's hold ticks, steers in
  * the air toward the tile it means to land on (or back from a pit its speed would carry it into),
  * lets go of Up before it lands, and plans again from where it stands. It dashes on flat ground,
  * hops over a slower racer it would otherwise push into, and a loose (high-wobble) profile now and
@@ -19,6 +20,7 @@ import { sampleRunEnvironment } from './env.ts';
 import { type AirRules, type Flying, feetOnRow, landingX } from './landing.ts';
 import { HOP_HOLD_TICKS } from './nav.ts';
 import { runExtra } from './physics.ts';
+import { springUnderFeet } from './spring.ts';
 import { runAimFrom } from './way.ts';
 import { type RunLink, type RunNav, type RunPilot, runNav, runPilot } from './way-data.ts';
 
@@ -102,10 +104,13 @@ export function steerRunner(
   }
 
   const nav = runNav(world.nav);
-  const stand = grounded ? followedStand(nav, racer, memory) : null;
+  const stand = grounded ? standToFollow(world, nav, racer, memory) : null;
   const link = stand === null ? null : (nav.best[stand] ?? null);
   if (grounded) memory.landingTile = link?.to ?? null;
-  if (stand !== null && link?.kind === 'jump' && canPress(memory) && atTakeOff(nav, racer, stand, link)) {
+  if (link?.kind === 'bounce') {
+    // The launch needs Up held, not a fresh press: a mushroom springs whatever was held before.
+    memory.holdUpTicks = link.holdTicks;
+  } else if (stand !== null && link?.kind === 'jump' && canPress(memory) && atTakeOff(nav, racer, stand, link)) {
     memory.holdUpTicks = link.holdTicks;
   } else if (link?.kind === 'walk' && canPress(memory) && wantsHop(world, nav, racer, link.dir)) {
     memory.holdUpTicks = HOP_HOLD_TICKS;
@@ -148,6 +153,17 @@ function startOver(memory: RunPilot): void {
 /** True when a new jump can start: no Up left to hold, and Up was let go of last tick. */
 function canPress(memory: RunPilot): boolean {
   return memory.holdUpTicks === 0 && !memory.upHeld;
+}
+
+/**
+ * The stand tile whose best link a grounded runner follows: the spring mushroom's under its feet,
+ * which is launching it, or else the one `followedStand` gives.
+ */
+function standToFollow(world: World, nav: RunNav, racer: Racer, memory: RunPilot): number | null {
+  const spring = springUnderFeet(world.level, racer.body);
+  if (spring === null) return followedStand(nav, racer, memory);
+  memory.planTile = spring;
+  return spring;
 }
 
 /**

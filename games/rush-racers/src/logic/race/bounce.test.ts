@@ -1,17 +1,23 @@
 /**
- * Bounce clouds (`B`) in a flight race: a flyer coming down onto one springs up at the medium's
- * `effects.bounceSpeed`, and from any other side one is just a wall. Raced through `createWorld` on
- * small inline courses, where the rivals start in their own lane walled off above the player's.
+ * Bounce cells (`B`): in a flight race a bounce cloud, where a flyer coming down onto one springs up
+ * at the medium's `effects.bounceSpeed` and from any other side one is just a wall; in a run race a
+ * spring mushroom, which launches a runner higher than any jump, and higher still with Up held as it
+ * lands. Raced through `createWorld` on small inline courses; in flight the rivals start in their own
+ * lane walled off above the player's, and in run they start to the right and race away from it.
  * Parsing, `toAscii`, the LevelError for other media and nav closure are `media/bounce.test.ts`.
  */
+import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import type { GameEvent } from '../events.ts';
 import { applyHit } from '../hazards/hits.ts';
 import { flightWorld, RIVAL_LANE_ROWS, ticksOfRacer } from '../media/flight/test-kit.ts';
 import { FLIGHT_EFFECTS } from '../media/flight/tuning.ts';
+import { jumpPeak } from '../media/run/physics.ts';
+import { RUN_TUNING } from '../media/run/tuning.ts';
 import { centreOf } from '../racers.ts';
-import { eventsIn, hold, IDLE, placeOnTile, step } from '../test-world.ts';
-import { TILE } from '../types.ts';
+import { courseFromLevel, eventsIn, hold, IDLE, placeOnTile, racerOf, step } from '../test-world.ts';
+import { TILE, type TickInput } from '../types.ts';
+import { createWorld } from '../world.ts';
 
 const BOUNCE_SPEED = FLIGHT_EFFECTS.bounceSpeed ?? Number.NaN;
 const BOUNCED: GameEvent = { type: 'racer.bounced', id: 'player' };
@@ -142,5 +148,71 @@ describe('a racer that fell out of the sky', () => {
       'racer.fell',
       'racer.respawned',
     ]);
+  });
+});
+
+/** Nine rows of air over a floor with a spring mushroom at col 2; the runners start right of it. */
+const MUSHROOM_FLOOR = [
+  '####################',
+  ...Array.from({ length: 9 }, () => '#..................#'),
+  '#.....1.2.3.4.....F#',
+  '##B#################',
+].join('\n');
+/** Level row of the floor in `MUSHROOM_FLOOR`. */
+const MUSHROOM_ROW = 11;
+const UP: TickInput = hold({ x: 0, y: -1 });
+
+/**
+ * Drops the player onto the mushroom from two tiles up with `input` held throughout, and returns
+ * how high its feet rise above the mushroom's top after the spring (px), with the springs and jumps
+ * up to the top of the rise.
+ */
+function riseOffMushroom(input: TickInput | ((bottom: number) => TickInput)) {
+  const log = new EventLog<GameEvent>(10_000);
+  const world = createWorld(courseFromLevel(MUSHROOM_FLOOR, 'run'), log, { seed: 1 });
+  world.race = { phase: 'racing', raceTick: 0, rivalsDoneAt: null, result: null, endsWhen: 'player' };
+  const player = racerOf(world, 'player');
+  placeOnTile(player, 2, MUSHROOM_ROW - 3);
+  const top = MUSHROOM_ROW * TILE;
+  let highest = top;
+  let sprung = false;
+  for (let tick = 0; tick < 120 && !(sprung && player.body.vy >= 0); tick++) {
+    step(world, log, 1, typeof input === 'function' ? input(player.body.y + player.body.h) : input);
+    sprung = eventsIn(log, 'racer.bounced').length > 0;
+    if (sprung) highest = Math.min(highest, player.body.y + player.body.h);
+  }
+  return { rise: top - highest, bounces: eventsIn(log, 'racer.bounced'), jumps: eventsIn(log, 'racer.jumped') };
+}
+
+describe('a spring mushroom in a run race', () => {
+  const fullJump = jumpPeak(RUN_TUNING, 60, TICK_DT);
+
+  it('launches a runner landing on it about 5 tiles up with nothing held, past a full jump', () => {
+    const { rise, bounces, jumps } = riseOffMushroom(IDLE);
+
+    expect(bounces).toEqual([BOUNCED]);
+    expect(jumps).toEqual([]);
+    expect(rise / TILE).toBeGreaterThan(4.5);
+    expect(rise / TILE).toBeLessThan(5.5);
+    expect(rise).toBeGreaterThan(fullJump * 1.4);
+  });
+
+  it('launches about 6 tiles with Up held as it lands, and the press fires no lower jump', () => {
+    const free = riseOffMushroom(IDLE);
+    const held = riseOffMushroom(UP);
+
+    expect(held.bounces).toEqual([BOUNCED]);
+    expect(held.jumps).toEqual([]);
+    expect(held.rise / TILE).toBeGreaterThan(5.5);
+    expect(held.rise / TILE).toBeLessThan(6.5);
+    expect(held.rise).toBeGreaterThan(free.rise + TILE / 2);
+  });
+
+  it('takes a fresh press of Up just before it lands as held, never as a jump', () => {
+    const top = MUSHROOM_ROW * TILE;
+    const pressed = riseOffMushroom((bottom) => (bottom > top - TILE / 2 ? UP : IDLE));
+
+    expect(pressed.jumps).toEqual([]);
+    expect(pressed.rise).toBe(riseOffMushroom(UP).rise);
   });
 });

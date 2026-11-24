@@ -19,9 +19,9 @@ export function runDistanceAt(world: World, tile: Vec): number {
   return fieldAt(nav.distance, nav, tile);
 }
 
-/** The first step of a link: sideways along a walk or a drop, and up along a jump (diagonal when it moves sideways). */
+/** The first step of a link: sideways along a walk or a drop, and up along a jump or a bounce (diagonal when it moves sideways). */
 function firstStep(link: RunLink, from: Vec, width: number): Vec {
-  if (link.kind !== 'jump') return { x: link.dir, y: 0 };
+  if (link.kind === 'walk' || link.kind === 'drop') return { x: link.dir, y: 0 };
   return { x: Math.sign((link.to % width) - from.x), y: -1 };
 }
 

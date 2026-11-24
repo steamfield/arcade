@@ -1,5 +1,5 @@
 /**
- * The solid and decorative course tiles: the earth, cracked stone and branch tileset, the chips a
+ * The solid and decorative course tiles: the earth, cracked stone, branch and mushroom tileset, the chips a
  * broken stone tile scatters and the finish banner. Tiles are 16x16 and seamless sideways, since the
  * same tile repeats across whole walls.
  */
@@ -60,6 +60,30 @@ const BRANCH_ROWS = [
   ...Array.from({ length: 12 }, () => '................'),
 ];
 
+/**
+ * A spring mushroom (a bounce cell): a big spotted cap across the top of the tile over a short
+ * stem set in dark soil, so one in the floor still reads as ground and a run of them as a bed of
+ * caps to land on.
+ */
+const MUSHROOM_ROWS = [
+  '..000000000000..',
+  '.01121111121110.',
+  '0112221111222110',
+  '0111211111121110',
+  '0111111221111110',
+  '0311111222111130',
+  '0331111121111330',
+  '0333333333333330',
+  '0000002222000000',
+  '0000002222000000',
+  '0000002222000000',
+  '0000002222000000',
+  '0000022222200000',
+  '0000022222200000',
+  '0000222222220000',
+  '0000000000000000',
+];
+
 /** The checkered finish banner on a post. */
 const FINISH_ROWS = [
   '...00222211110..',
@@ -80,7 +104,7 @@ const FINISH_ROWS = [
   '...00111122220..',
 ];
 
-/** Terrain sheets. The tileset frames sit in `ForestTile` order: earth, stone, the branch, then buried earth. */
+/** Terrain sheets. The tileset frames sit in `ForestTile` order: earth, stone, the branch, buried earth, then the mushroom. */
 export const TERRAIN_SHEETS: readonly ArtSheet<ForestTexKey>[] = [
   {
     key: ForestTex.tiles,
@@ -89,6 +113,7 @@ export const TERRAIN_SHEETS: readonly ArtSheet<ForestTexKey>[] = [
       { name: 'coral', palette: ForestTerrainPalette.crackedStone, rows: STONE_ROWS },
       { name: 'ledge', palette: ForestTerrainPalette.branch, rows: BRANCH_ROWS },
       { name: 'rockBuried', palette: ForestTerrainPalette.earth, rows: BURIED_EARTH_ROWS },
+      { name: 'bounce', palette: ForestTerrainPalette.mushroom, rows: MUSHROOM_ROWS },
     ],
   },
   sheet(ForestTex.stoneDebris, ForestTerrainPalette.crackedStone, {
