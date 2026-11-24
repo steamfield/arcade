@@ -7,7 +7,6 @@ import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@arcade/api/protocol';
 
 /** The menu's options, top to bottom. */
 export const FRIENDS_OPTIONS = ['Create room', 'Join', 'Back'] as const;
-export type FriendsOption = (typeof FRIENDS_OPTIONS)[number];
 
 /** A button press the menu screens understand. */
 export type ScreenPress = 'up' | 'down' | 'left' | 'right' | 'fire' | 'dash';

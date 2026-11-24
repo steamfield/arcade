@@ -22,7 +22,7 @@
 import { parseSong, type Song } from '../notation.ts';
 
 /** Cloudreach's race song in the game's notation. */
-export const cloudreachSource = `
+const cloudreachSource = `
 name: cloudreach
 tempo: 132
 time: 4/4

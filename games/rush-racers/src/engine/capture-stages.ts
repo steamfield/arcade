@@ -64,7 +64,7 @@ export const STAGES = [
 ] as const;
 
 /** A name from `STAGES`. */
-export type StageName = (typeof STAGES)[number];
+type StageName = (typeof STAGES)[number];
 
 /**
  * The items a stage puts in the player's slots from the left, each with the charges a clam gives,
@@ -85,7 +85,7 @@ const SQUID_SPEED = 110;
 const STAGED_STUCK_TICKS = 150;
 
 /** The launch parameters a stage depends on. */
-export interface StageGate {
+interface StageGate {
   debug: boolean;
   testMode: boolean;
 }

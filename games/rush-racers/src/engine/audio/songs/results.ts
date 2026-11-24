@@ -6,7 +6,7 @@
 import { parseSong, type Song } from '../notation.ts';
 
 /** The results loop in the game's notation. */
-export const resultsSource = `
+const resultsSource = `
 name: results
 tempo: 96
 time: 4/4

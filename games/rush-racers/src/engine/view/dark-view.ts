@@ -46,7 +46,7 @@ import {
 import { Layer } from './layers.ts';
 
 /** The darkness view; `sync` redraws it from the world each frame. */
-export interface DarkView {
+interface DarkView {
   sync(world: World): void;
 }
 

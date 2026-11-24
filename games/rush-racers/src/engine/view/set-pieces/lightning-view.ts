@@ -7,22 +7,22 @@
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
-import { type LightningPhase, lightningPhase } from '../../logic/hazards/lightning.ts';
-import { LIGHTNING } from '../../logic/hazards/tuning.ts';
-import { type LightningZone, TILE, type World } from '../../logic/types.ts';
-import { drawFrames, type NamedFrame } from '../art/pixel.ts';
-import type { RuntimeEvent } from '../runtime.ts';
-import { Layer } from './layers.ts';
+import { type LightningPhase, lightningPhase } from '../../../logic/hazards/lightning.ts';
+import { LIGHTNING } from '../../../logic/hazards/tuning.ts';
+import { type LightningZone, TILE, type World } from '../../../logic/types.ts';
+import { drawFrames, type NamedFrame } from '../../art/pixel.ts';
+import type { RuntimeEvent } from '../../runtime.ts';
+import { Layer } from '../layers.ts';
 import { type CameraSpan, cameraSpan, zoneSide } from './storm-reach.ts';
 
 /** The storm zones; `sync` redraws them from the world, `onEvents` hears warnings and strikes drained on world tick `tick`. */
-export interface LightningView {
+interface LightningView {
   sync(world: World, tick: number): void;
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
 }
 
 /** How one zone looks on one frame; an alpha of 0 hides that part. */
-export interface StormLook {
+interface StormLook {
   shadeAlpha: number;
   shimmerAlpha: number;
   cloudAlpha: number;

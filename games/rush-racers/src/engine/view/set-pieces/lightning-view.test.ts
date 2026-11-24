@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { describe, expect, it } from 'vitest';
-import { LIGHTNING } from '../../logic/hazards/tuning.ts';
-import { TILE } from '../../logic/types.ts';
+import { LIGHTNING } from '../../../logic/hazards/tuning.ts';
+import { TILE } from '../../../logic/types.ts';
 import { stormLook, ticksIntoPhase } from './lightning-view.ts';
 import { cameraSpan, zoneSide } from './storm-reach.ts';
 

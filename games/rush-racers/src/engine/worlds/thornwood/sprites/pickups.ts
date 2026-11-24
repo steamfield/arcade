@@ -10,7 +10,7 @@ import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { ThornTex } from '../keys.ts';
 
 /** Crate: dark outline, wood, lit wood edge and the pale `?`. */
-export const CratePalette: Palette = [0x2a1408, 0xb8803c, 0xf0c070, 0xfff4b0];
+const CratePalette: Palette = [0x2a1408, 0xb8803c, 0xf0c070, 0xfff4b0];
 
 /** Acorn: dark outline, pale gold nut (as bright as the pearl), its shine and a brown cap. */
 export const AcornPalette: Palette = [0x3a2008, 0xfff0b0, 0xffffff, 0x9a5a20];

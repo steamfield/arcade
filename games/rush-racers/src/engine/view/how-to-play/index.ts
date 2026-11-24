@@ -7,7 +7,7 @@ import { createLogger } from '@arcade/core';
 import type Phaser from 'phaser';
 import type { ShippedMediumId } from '../../../logic/courses/types.ts';
 import type { CharacterId } from '../../../logic/types.ts';
-import { HOW_TO_PLAY_PAGES } from '../../how-to-play.ts';
+import { HOW_TO_PLAY_PAGES } from '../../screens/how-to-play.ts';
 import type { WorldSkin } from '../../worlds/types.ts';
 import { controlName } from '../control-glyphs.ts';
 import { buildAttacksPage } from './attacks-page.ts';
@@ -31,13 +31,13 @@ export type { Page } from './kit.ts';
  * A page's heading (at most four short words, naming the fire control as the player's screen does,
  * and the world's own words for clams and pearls) and builder.
  */
-export interface PageSpec {
+interface PageSpec {
   heading: (touch: boolean, skin: WorldSkin) => string;
   build: PageBuilder;
 }
 
 /** A medium's move page: its heading and builder. */
-export interface MovePage {
+interface MovePage {
   heading: string;
   build: PageBuilder;
 }
@@ -48,7 +48,7 @@ export interface MovePage {
  * enemies instead of dashing into them, and has no dash that dodges a squid, so its page 7 shows a
  * shield stopping one).
  */
-export interface MediumPages {
+interface MediumPages {
   move: MovePage;
   crates?: PageSpec;
   enemies?: PageSpec;

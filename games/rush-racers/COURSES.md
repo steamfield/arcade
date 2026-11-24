@@ -269,7 +269,7 @@ DESIGN.md gets the world's section (cast and names, how its medium plays, any se
 Tests, as each world has them:
 
 - Mechanics scenarios on the unlisted test course (on Hard, pinned through `HARD_SAVE`), so they don't move when the listed course is retuned: one per move and set piece (Cloudreach's `flight-*` scenarios). A debug stage such as `cannonball` starts one near the moment under test.
-- The debug stages work on the test course too: `debug-stage.test.ts` stages `enemy-modes` on `sky-test`, whose floor has a bounce cloud in it.
+- The debug stages work on the test course too: `capture-stages.test.ts` stages `enemy-modes` on `sky-test`, whose floor has a bounce cloud in it.
 - A How to Play scenario that pages through the world's pages on its listed course (`how-to-play-cloudreach`).
 - `tests/course.spec.ts`: course select lists the course with its best, picking it shows the world's cast on select, the race runs in the medium, and it becomes the last course the title's best follows.
 - `tests/smoke.spec.ts`: a race from the menus that runs 600 ticks on every browser project, and the touch Up button on the phone doing the medium's vertical move.

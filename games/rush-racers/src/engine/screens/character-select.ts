@@ -5,14 +5,14 @@
  * the words the character card shows for an ability, read from the world's cast skin. The runtime feeds the
  * cursor input; `scenes/select.ts` draws the grid and the card.
  */
-import { CHARACTER_IDS, type CharacterId } from '../logic/types.ts';
-import type { AbilityText, CastSkin } from './worlds/cast-skin.ts';
+import { CHARACTER_IDS, type CharacterId } from '../../logic/types.ts';
+import type { AbilityText, CastSkin } from '../worlds/cast-skin.ts';
 
 /** Characters per row on the select grid. */
 export const SELECT_COLUMNS = 4;
 
 /** Rows on the select grid. */
-export const SELECT_ROWS = Math.ceil(CHARACTER_IDS.length / SELECT_COLUMNS);
+const SELECT_ROWS = Math.ceil(CHARACTER_IDS.length / SELECT_COLUMNS);
 
 /**
  * The character one step from `current` across the grid: `dx` moves along the row and `dy` down

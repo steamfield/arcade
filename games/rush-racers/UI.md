@@ -107,7 +107,7 @@ Event effects: a squid fired puffs bubbles at its owner; a shake-off pops bubble
 
 In dark zones a decoy carries the rival's 28 px light pool and a squid a 14 px one.
 
-Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.ts`, applied by `Runtime.startRace`) puts staged state in the world before the first frame: `icons-a`, `icons-b`, `icons-c`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow`, `dark`. It only writes plain world state the views read, and a staged race never saves.
+Review captures: `?stage=<name>` with `?debug=1` on the race URL (`capture-stages.ts`, applied by `Runtime.startRace`) puts staged state in the world before the first frame: `icons-a`, `icons-b`, `icons-c`, `squid-flight`, `squid-lockon`, `squid-lockon-far`, `squid-latched`, `riptide`, `decoy`, `undertow`, `dark`. It only writes plain world state the views read, and a staged race never saves.
 
 ## Title
 
@@ -226,7 +226,7 @@ Up and down move the cursor and wrap; A (fire) picks the course and goes to sele
 | --- | --- | --- |
 | Heading | 112, 6, 96, 12 | "PICK A RACER", display, sun, outlined, centred on x 160 |
 | Grid cells | from 22, 28; 66x22; 4 px between columns, 2 between rows | the picked course's world's cast (Reef: Rudy to Rook; Thornwood: Grit, Skip, Blaze, Shade, Cheeks, Duke, Dusk, Fang; Cloudreach: Bumper, Zip, Dart, Nox, Pip, Admiral, Luna, Talon; Farside: Bolt, Zib, Flare, Umbra, Widget, Admiral, Nova, Krag; short names being the first word), 4x2 in `CHARACTER_IDS` order: rows y 28-49 and 52-73. `raised`, the cursor's cell `accent` with its name in sun; 16x16 portrait at (+3, +3), short name in foam at (+22, +8). The top-right cell (x 232-297) starts below the back link; the bottom row ends above the d-pad zone |
-| Card | 110, 78, 188, 40 | `raised`; right edge on the grid's, bottom at y 117 above the A/B zone. Portrait at 2x (32x32) at (114, 82); text column x 150-293 (`CARD_TEXT_WIDTH` 144): full name in display sun at y 83, ability in foam at y 98, blurb in dim at y 107. `character-select.test.ts` holds every line to the column |
+| Card | 110, 78, 188, 40 | `raised`; right edge on the grid's, bottom at y 117 above the A/B zone. Portrait at 2x (32x32) at (114, 82); text column x 150-293 (`CARD_TEXT_WIDTH` 144): full name in display sun at y 83, ability in foam at y 98, blurb in dim at y 107. `screens/character-select.test.ts` holds every line to the column |
 | Preview | 144, 128, 32, 24 | the picked racer's sprite at 2x, centred on (160, 140), swimming in place |
 | Footer | 114, 159, 92, 15 | `inset` readout: fire icon at (122, 162) + RACE, dash icon at (164, 162) + BACK, words in foam 11 px right of their icons. On touch screens (the PRESS A rule) the icons give way to the button letters A and B in sun |
 

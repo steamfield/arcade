@@ -17,7 +17,7 @@ export interface HazardSkin {
 }
 
 /** In-world art for the attack items and their effects. */
-export interface AttackArt {
+interface AttackArt {
   /** The Homing Squid (or a world's homing creature) in flight, frames `a`, `b` and `latched`. */
   homer: string;
   /** One 16x16 tile of a Riptide lane, streaks pointing right. */
@@ -53,7 +53,7 @@ export interface Glint {
 export const GLINT_ALPHA: Readonly<Record<'urchin' | 'jelly', number>> = { urchin: 0.55, jelly: 0.6 };
 
 /** Words the HUD and How to Play show about shared things, in capitals. */
-export interface ObjectText {
+interface ObjectText {
   /** The HUD line under a racer slowed by an Ink Sac cloud, e.g. SLOWED BY INK. */
   slowedBy: string;
   /** The word on the arrows beside a trapped racer, e.g. BUBBLE. */

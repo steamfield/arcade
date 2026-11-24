@@ -8,7 +8,7 @@
 import { parseSong, type Song } from '../notation.ts';
 
 /** The title theme in the game's notation. */
-export const titleSource = `
+const titleSource = `
 name: title
 tempo: 100
 time: 4/4

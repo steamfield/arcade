@@ -19,7 +19,7 @@ export const UiTex = {
 } as const;
 
 /** Any UI texture key. */
-export type UiTexKey = (typeof UiTex)[keyof typeof UiTex];
+type UiTexKey = (typeof UiTex)[keyof typeof UiTex];
 
 /** One UI texture's art: frames laid left to right in the listed order. */
 export interface UiSheet {

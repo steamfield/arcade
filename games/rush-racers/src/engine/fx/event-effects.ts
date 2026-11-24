@@ -4,7 +4,7 @@
  * or falling back in, a puff under a racer springing off a bounce cloud, and sparkles where the local
  * racer passes a boost ring), and how much screen shake the local racer's own
  * knocks and a lightning strike on screen add (the slot the screen follows; see `local-racer.ts`). A
- * strike is on screen by the same measure the lightning view uses for its flash (`view/storm-reach.ts`). Positions come from the event and the world as it stands
+ * strike is on screen by the same measure the lightning view uses for its flash (`view/set-pieces/storm-reach.ts`). Positions come from the event and the world as it stands
  * after the tick. Shake is only ever asked for through `shake`, which the caller leaves out
  * under reduced motion.
  */
@@ -13,12 +13,12 @@ import { CANNONBALL } from '../../logic/powerups/tuning.ts';
 import { type Decoy, RACER_SIZE, type RacerId, type Squid, TILE, type Vec, type World } from '../../logic/types.ts';
 import { localIdOf, localOf } from '../local-racer.ts';
 import type { RuntimeEvent } from '../runtime.ts';
-import { type CameraSpan, zoneSide } from '../view/storm-reach.ts';
+import { type CameraSpan, zoneSide } from '../view/set-pieces/storm-reach.ts';
 import type { BubbleTracker } from './bubble-tracker.ts';
 import type { Bursts } from './bursts.ts';
 
 /** Reacts to each tick's events. */
-export interface EventEffects {
+interface EventEffects {
   onTick(events: readonly Stamped<RuntimeEvent>[]): void;
 }
 

@@ -43,14 +43,14 @@ const TEXT_HEIGHT = 7;
 const TEXT_PITCH = 6;
 
 /** One course row: its frame, where its name starts, and where its best time ends (right-aligned). */
-export interface CourseRowLayout {
+interface CourseRowLayout {
   panel: Rect;
   name: { x: number; y: number };
   bestRight: { x: number; y: number };
 }
 
 /** One footer control: the icon or button letter, and its word. */
-export interface FooterItem {
+interface FooterItem {
   glyph: Rect;
   word: { x: number; y: number; text: string };
 }

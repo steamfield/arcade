@@ -11,7 +11,7 @@ import { ReefTex } from '../keys.ts';
 export const PearlPalette: Palette = [0x4a4660, 0xe8e4f4, 0xffffff];
 
 /** Clam: outline, shell, shell light, the gold prize inside. */
-export const ClamPalette: Palette = [0x24163e, 0x8a6cd0, 0xd6c6ff, 0xffd23f];
+const ClamPalette: Palette = [0x24163e, 0x8a6cd0, 0xd6c6ff, 0xffd23f];
 
 /** Pickup sheets: the pearl and the clam. */
 export const REEF_PICKUP_SHEETS: readonly ArtSheet<string>[] = [

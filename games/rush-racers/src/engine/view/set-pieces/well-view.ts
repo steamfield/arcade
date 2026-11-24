@@ -8,12 +8,12 @@
  * tick so captures repeat), which also keeps reduced motion and full motion the same picture.
  */
 import type Phaser from 'phaser';
-import { cellAt } from '../../logic/level/query.ts';
-import { type Level, TILE, type Vec } from '../../logic/types.ts';
-import { Layer } from './layers.ts';
+import { cellAt } from '../../../logic/level/query.ts';
+import { type Level, TILE, type Vec } from '../../../logic/types.ts';
+import { Layer } from '../layers.ts';
 
 /** What to draw for one well: its centre, the ring at its reach, and a horizon disc for a black hole (null for a planet). */
-export interface WellMark {
+interface WellMark {
   centre: Vec;
   reach: number;
   horizon: number | null;
@@ -69,9 +69,9 @@ export function wellMarks(level: Level): WellMark[] {
 
 /**
  * Draws `level`'s wells in `scene`, behind racers and pickups and in front of the backdrop. A level
- * without wells draws nothing. The drawing is still, so `_reducedMotion` changes nothing.
+ * without wells draws nothing.
  */
-export function createWellView(scene: Phaser.Scene, level: Level, _reducedMotion: boolean): void {
+export function createWellView(scene: Phaser.Scene, level: Level): void {
   const marks = wellMarks(level);
   if (marks.length === 0) return;
   const planets = scene.add.graphics().setDepth(PLANET_DEPTH);

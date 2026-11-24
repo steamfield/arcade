@@ -19,7 +19,7 @@ const SPRITE_HALF_HEIGHT = 8;
 const HALF_LINE = 3;
 
 /** The online race's tags and waiting line, synced each frame. */
-export interface OnlineRaceView {
+interface OnlineRaceView {
   sync(world: World, race: RaceView | null): void;
 }
 

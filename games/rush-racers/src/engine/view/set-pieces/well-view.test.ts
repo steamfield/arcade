@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseLevel } from '../../logic/level/parse.ts';
-import { TILE } from '../../logic/types.ts';
+import { parseLevel } from '../../../logic/level/parse.ts';
+import { TILE } from '../../../logic/types.ts';
 import { planetRadius, wellMarks } from './well-view.ts';
 
 const ROOM = [

@@ -6,20 +6,20 @@
  */
 import type { Stamped } from '@arcade/core';
 import type Phaser from 'phaser';
-import { TILE, type World } from '../../logic/types.ts';
-import { drawFrames, type NamedFrame } from '../art/pixel.ts';
-import { localIdOf } from '../local-racer.ts';
-import type { RuntimeEvent } from '../runtime.ts';
-import { Layer } from './layers.ts';
+import { TILE, type World } from '../../../logic/types.ts';
+import { drawFrames, type NamedFrame } from '../../art/pixel.ts';
+import { localIdOf } from '../../local-racer.ts';
+import type { RuntimeEvent } from '../../runtime.ts';
+import { Layer } from '../layers.ts';
 
 /** The rings; `sync` redraws them from the world, `onEvents` hears the passes drained on world tick `tick`. */
-export interface RingView {
+interface RingView {
   sync(world: World, tick: number): void;
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
 }
 
 /** How one ring looks on one frame. */
-export interface RingLook {
+interface RingLook {
   frame: RingFrame;
   scale: number;
   /** Whole px added to the ring's y, for its idle bob. */

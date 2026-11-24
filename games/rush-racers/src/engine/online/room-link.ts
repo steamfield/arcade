@@ -5,7 +5,7 @@
 import { isRoomCode } from '@arcade/api/protocol';
 
 /** What a page's query says about a room. */
-export type RoomLinkParam =
+type RoomLinkParam =
   /** No `?room=`. */
   | { kind: 'none' }
   /** A well-formed code, upper-cased. */

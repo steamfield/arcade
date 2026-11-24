@@ -22,9 +22,6 @@ const SkyMarkPalette = {
   pop: [0xffffff, 0x9ad8ff],
 } as const satisfies Record<string, Palette>;
 
-/** Size of each frame in the marks sheet, px. */
-export const SKY_MARK_SIZE = 12;
-
 /** The hole an eel waits in, with or without its eyes showing. */
 const HOLE_ROWS = [
   '............',

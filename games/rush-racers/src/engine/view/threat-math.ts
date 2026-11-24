@@ -12,7 +12,7 @@ import { BASE_LAYOUT, type Rect, type ScreenLayout } from './screen-layout.ts';
 export type { Rect } from './screen-layout.ts';
 
 /** A point in px. */
-export interface Point {
+interface Point {
   x: number;
   y: number;
 }

@@ -64,7 +64,7 @@ export function racerShortName(character: CharacterId, course: Pick<Course, 'id'
 }
 
 /** What a racer's time column says when they never finished: a phrase a child can read, not an abbreviation. */
-export const NO_TIME_TEXT = 'TIME UP';
+const NO_TIME_TEXT = 'TIME UP';
 
 /**
  * One results standings row, 18 characters (107 px, UI.md's row width): the place in 4, the short
@@ -82,7 +82,7 @@ export function standingsRow(
 }
 
 /** The word and lit pips the race countdown shows for the level the race was built on. */
-export interface LevelBanner {
+interface LevelBanner {
   text: string;
   /** 1 for Easy, 2 for Normal, 3 for Hard, as on the title's Level button. */
   pips: number;
@@ -112,7 +112,7 @@ export const TONE_CSS: Readonly<Record<UiToneName, string>> = {
 };
 
 /** The race's centre splash: countdown numerals, GO, FINAL STRETCH and FINISH. */
-export interface RaceSplash {
+interface RaceSplash {
   /** Redraws the splash and says whether one is showing. */
   sync(world: World): boolean;
 }
@@ -134,7 +134,7 @@ const BANNER_HOLD_TICKS = 45;
 const COUNTDOWN_TEXT: Partial<Record<number, string>> = { 1: '1', 2: '2', 3: '3' };
 
 /** One splash frame: the text (empty for none), its tone and how far it sits from its resting place. */
-export interface SplashFrame {
+interface SplashFrame {
   text: string;
   tone: UiToneName;
   dx: number;

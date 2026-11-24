@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_COURSE } from '../logic/courses/index.ts';
-import { CHARACTER_IDS } from '../logic/types.ts';
-import { DISPLAY_FACE, measureText, TEXT_FACE } from './art/ui/typeface.ts';
+import { DEFAULT_COURSE } from '../../logic/courses/index.ts';
+import { CHARACTER_IDS } from '../../logic/types.ts';
+import { DISPLAY_FACE, measureText, TEXT_FACE } from '../art/ui/typeface.ts';
+import { racerName } from '../view/race-text.ts';
+import { skinFor } from '../worlds/index.ts';
 import { abilityTextFor, CARD_TEXT_WIDTH, moveCharacter } from './character-select.ts';
-import { racerName } from './view/race-text.ts';
-import { skinFor } from './worlds/index.ts';
 
 const { cast } = skinFor(DEFAULT_COURSE);
 

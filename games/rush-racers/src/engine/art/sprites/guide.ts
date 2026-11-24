@@ -8,7 +8,7 @@ import type { Palette } from '../pixel.ts';
 import { type ArtSheet, sheet } from './sheet.ts';
 
 /** Outline, sun body, pale highlight: the colours of the hint text, bright on every water band. */
-export const GUIDE_PALETTE: Palette = [0x0a0a14, 0xffd23f, 0xfff4b0];
+const GUIDE_PALETTE: Palette = [0x0a0a14, 0xffd23f, 0xfff4b0];
 
 /** Side of the arrow's square frame, px. */
 export const GUIDE_SIZE = 13;

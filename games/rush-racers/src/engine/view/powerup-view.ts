@@ -20,7 +20,7 @@ import type { WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
 
 /** One racer's item overlays. */
-export interface PowerupView {
+interface PowerupView {
   /** Starts the flash ring when `flash.fired` names this racer. `tick` is the world tick the events were drained at. */
   onEvents(events: readonly Stamped<RuntimeEvent>[], tick: number): void;
   /** Positions and shows or hides every overlay from `racer`'s state at `tick`; hides them all while it is out of play. */

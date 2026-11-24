@@ -39,12 +39,9 @@ import { createOnlineWorld } from '../net/race-world.ts';
 import { enemyWithinHearing } from './audio/adapter.ts';
 import { withinHearing } from './audio/attack-sfx.ts';
 import { type AudioPort, createAudio } from './audio/index.ts';
-import { moveCharacter } from './character-select.ts';
-import { applyStage, stageFor } from './debug-stage.ts';
-import { type PagePress, turnPage } from './how-to-play.ts';
+import { applyStage, stageFor } from './capture-stages.ts';
 import { type Action, input } from './input.ts';
 import { localOf, setLocalRacer } from './local-racer.ts';
-import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 import {
   createOnlineFlow,
   type FlowNext,
@@ -56,6 +53,9 @@ import type { ScreenPress } from './online/friends-screen.ts';
 import { onlineCourses } from './online/room-courses.ts';
 import type { OnlineState } from './online/state.ts';
 import { raceProgress } from './race-progress.ts';
+import { moveCharacter } from './screens/character-select.ts';
+import { type PagePress, turnPage } from './screens/how-to-play.ts';
+import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './screens/menu.ts';
 import { assertCourseAssets } from './themes/course-assets.ts';
 import {
   type HintConfig,
@@ -66,14 +66,14 @@ import {
   newHintMemory,
   updateHints,
 } from './view/hints.ts';
-import { stormWithinReach } from './view/storm-reach.ts';
+import { stormWithinReach } from './view/set-pieces/storm-reach.ts';
 import { assertSkinAssets, skinFor } from './worlds/index.ts';
 
 /** Phaser scene keys, one per screen. */
 export type SceneKey = 'boot' | 'title' | 'howToPlay' | 'course' | 'select' | 'race' | 'results' | 'friends' | 'room';
 
 /** Events the engine adds on top of the world's. */
-export type EngineEvent =
+type EngineEvent =
   | { type: 'scene.started'; scene: SceneKey }
   | { type: 'menu.selected'; option: MenuOption }
   /** How to Play turned to another page; `page` is 1-based, as the summary shows it. */
@@ -105,10 +105,10 @@ export interface RaceOutcome {
 }
 
 /** Receives each tick's drained events. Views use it for event-driven visuals such as broken coral. */
-export type EventListener = (events: readonly Stamped<RuntimeEvent>[]) => void;
+type EventListener = (events: readonly Stamped<RuntimeEvent>[]) => void;
 
 /** What the runtime needs from the outside: the shell context, saves, the OS motion setting and a scene switcher. */
-export interface RuntimeOptions {
+interface RuntimeOptions {
   ctx: GameContext;
   saves: SaveStore<SaveData>;
   /** The loaded save, or null when there is none or it could not be read. */

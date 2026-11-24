@@ -35,7 +35,7 @@ const BOUNCE_SQUASH_AMOUNT = 0.2;
 export const PLACE_FLASH_TICKS = 4;
 
 /** What the sprite shows at a world tick. */
-export interface RacerLook {
+interface RacerLook {
   /** Stretch along the kick's axis: negative while squashed, positive while stretched, 0 at rest. */
   stretch: number;
   /**
@@ -48,7 +48,7 @@ export interface RacerLook {
 }
 
 /** Tracks one racer's kick, flap, bounce and place-up moments. */
-export interface RacerMoments {
+interface RacerMoments {
   /**
    * Records a `racer.kicked`, `racer.flapped` or `racer.rebounded` for this racer and its own `player.place` that gains a
    * place, at world tick `tick`.
