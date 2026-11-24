@@ -171,8 +171,11 @@ export interface World {
   rngState: number;
   /** The tick the race will end on once every rival has finished (the grace period), else null. */
   endTick: number | null;
-  /** One per `crate` feature, in feature order: ticks until it can be opened again, 0 when ready. */
-  crates: { shutTicks: number }[];
+  /**
+   * One per `crate` feature, in feature order. `shutTicks` is 0 when ready. `touching` lists racers
+   * in contact who already had their chance at it. A racer leaves the list when it stops touching.
+   */
+  crates: { shutTicks: number; touching: RacerId[] }[];
   /** Fired items still flying. */
   shots: Shot[];
   /** Mud patches from Mud Pies. */

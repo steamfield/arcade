@@ -3,8 +3,8 @@ import { expect, it } from 'vitest';
 import { THORNWOOD_TRAIL } from './courses/thornwood-trail.ts';
 import type { GameEvent } from './events.ts';
 import { NO_INPUT } from './racer.ts';
-import { RACE, RIVAL, RUN } from './tuning.ts';
-import type { Course, Feature, TickInputs } from './types.ts';
+import { DASH, ITEMS, RACE, RIVAL, RUN } from './tuning.ts';
+import type { Course, Feature, ItemKind, TickInputs } from './types.ts';
 import { createWorld, stepWorld } from './world.ts';
 
 const straight: Course = {
@@ -169,6 +169,8 @@ it.each([1, 2, 3, 4, 5])('finishes Thornwood Trail with all rivals within par an
   const deadline = Math.floor(THORNWOOD_TRAIL.parTicks * 1.25);
   const { world, events, step } = start(THORNWOOD_TRAIL, seed);
   for (let tick = 0; tick < deadline && world.phase !== 'finished'; tick++) step();
+  expect(events.all().some((event) => event.type === 'crate.opened')).toBe(true);
+  expect(events.all().some((event) => event.type === 'item.fired')).toBe(true);
   for (const { id, finishTicks } of world.racers.slice(1)) {
     const falls = events.all().filter((event) => event.type === 'racer.fell' && event.id === id);
     expect(finishTicks, `${id} finish`).not.toBeNull();
@@ -177,4 +179,124 @@ it.each([1, 2, 3, 4, 5])('finishes Thornwood Trail with all rivals within par an
       2,
     );
   }
+});
+
+it('opens the crate on the rival’s racing line in a crosswind', () => {
+  const { step, events } = start(
+    {
+      ...straight,
+      features: [
+        { kind: 'gust', s0: 30, s1: 95, d0: -5, d1: 5, push: -4 },
+        { kind: 'crate', s: 70, d: 1.5 },
+      ],
+    },
+    1,
+  );
+  for (let tick = 0; tick < 330; tick++) step({ player: { ...NO_INPUT, forward: true } });
+  expect(events.all().filter((event) => event.type === 'crate.opened')).toMatchObject([{ id: 'r1', crate: 0 }]);
+});
+
+it('opens a crate on the rival’s line, selects useful boots past its guard, and fires one item', () => {
+  const feature = { kind: 'crate', s: 60, d: 1.25 } as const;
+  const { rival, events, step, world } = start({ ...straight, features: [feature] });
+  rival.s = feature.s;
+  rival.d = feature.d;
+  step();
+  expect(events.all().filter((event) => event.type === 'crate.opened')).toMatchObject([
+    { id: 'r1', crate: 0, tick: RACE.countdownTicks },
+  ]);
+  expect(world.crates[0]?.shutTicks).toBe(ITEMS.crateShutTicks);
+  rival.slots = [{ kind: 'shield', charges: 1 }, null, { kind: 'boots', charges: 3 }];
+  rival.selected = 0;
+  step();
+  step();
+  step();
+  expect(rival.slots).toEqual([{ kind: 'shield', charges: 1 }, null, { kind: 'boots', charges: 2 }]);
+  expect(events.all().filter((event) => event.type === 'item.selected' || event.type === 'item.fired')).toMatchObject([
+    { type: 'item.selected', id: 'r1', slot: 2, tick: RACE.countdownTicks + 1 },
+    { type: 'item.fired', id: 'r1', kind: 'boots', tick: RACE.countdownTicks + 2 },
+  ]);
+});
+
+it.each([
+  { kind: 'boots', gap: 0, hazard: 'pit', fires: false },
+  { kind: 'boots', gap: 0, hazard: 'log', fires: false },
+  { kind: 'boots', gap: 40, fires: true },
+  { kind: 'pie', gap: 5, fires: true },
+  { kind: 'pie', gap: 20, speed: DASH.speed, fires: true },
+  { kind: 'pie', gap: 4.9, fires: false },
+  { kind: 'pie', gap: 20.1, speed: DASH.speed, fires: false },
+  { kind: 'pie', gap: 12, airborne: true, fires: false },
+  { kind: 'burr', gap: 3, fires: true },
+  { kind: 'burr', gap: -2, fires: true },
+  { kind: 'burr', gap: 3.1, fires: false },
+  { kind: 'shield', gap: 5, fires: true },
+  { kind: 'shield', gap: 25, fires: true },
+  { kind: 'shield', gap: 4.9, fires: false },
+  { kind: 'shield', gap: 25.1, fires: false },
+  { kind: 'shield', gap: -10, fires: false },
+  { kind: 'shield', gap: 12, lateral: 2, fires: false },
+] satisfies {
+  kind: ItemKind;
+  gap: number;
+  hazard?: 'pit' | 'log';
+  speed?: number;
+  airborne?: boolean;
+  lateral?: number;
+  fires: boolean;
+}[])(
+  'fires $kind only for a useful opening ($gap m; hazard $hazard; airborne $airborne; lateral $lateral → $fires)',
+  ({ kind, gap, hazard, airborne, lateral, speed, fires }) => {
+    const s = 50 + RIVAL.dashClearance;
+    const features: Feature[] =
+      hazard === 'pit'
+        ? [{ kind: 'pit', s0: s, s1: s + 5, d0: -5, d1: 5 }]
+        : hazard === 'log'
+          ? [{ kind: 'log', s, d0: -5, d1: 5, height: 1 }]
+          : [];
+    const { player, rival, events, step } = start({ ...straight, features });
+    rival.s = 50;
+    rival.vs = speed ?? 0;
+    player.s = 50 + gap;
+    player.d = rival.d + (lateral ?? 0);
+    if (airborne) {
+      player.grounded = false;
+      player.y = 2;
+    }
+    rival.slots[0] = { kind, charges: ITEMS.charges[kind] };
+    step();
+    expect(events.all().filter((event) => event.type === 'item.fired')).toMatchObject(
+      fires ? [{ id: 'r1', kind, tick: RACE.countdownTicks }] : [],
+    );
+  },
+);
+
+it.each([
+  ['pie', 7, true],
+  ['pie', 15, false],
+  ['shield', 19, true],
+  ['shield', 24, false],
+] as const)('uses %s only if it can reach an equal-speed racer %i m ahead (%s)', (kind, gap, fires) => {
+  const { player, rival, events, step } = start(straight);
+  rival.s = 50;
+  player.s = rival.s + gap;
+  player.d = rival.d;
+  player.vs = rival.vs = RUN.runSpeed;
+  rival.dashCharges = 0;
+  rival.slots[0] = { kind, charges: ITEMS.charges[kind] };
+  step({ player: { ...NO_INPUT, forward: true } });
+  expect(events.all().filter((event) => event.type === 'item.fired')).toMatchObject(
+    fires ? [{ id: 'r1', kind, tick: RACE.countdownTicks }] : [],
+  );
+});
+
+it('uses Rocket Boots on a clear straight without spending a dash on the same tick', () => {
+  const { rival, events, step } = start(straight);
+  rival.s = 20;
+  rival.vs = RUN.runSpeed;
+  rival.slots[0] = { kind: 'boots', charges: ITEMS.charges.boots };
+  step();
+  expect(events.all().filter((event) => 'id' in event && event.id === rival.id)).toMatchObject([
+    { type: 'item.fired', kind: 'boots', tick: RACE.countdownTicks },
+  ]);
 });
