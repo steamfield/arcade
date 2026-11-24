@@ -3,7 +3,7 @@
  * Only `courses/index.ts` imports this file; everything else asks the registry.
  */
 import type { LevelDef } from '../types.ts';
-import type { ShippedCourse } from './types.ts';
+import type { CourseSection, ShippedCourse } from './types.ts';
 
 /**
  * Sunlit Shallows, the ocean course: about 132 s for a good swimmer. Each section
@@ -92,6 +92,17 @@ const LEVEL: LevelDef = {
  */
 const PAR_TICKS = 7920;
 
+/** The zones the race screen calls out, from the section list above; the cave starts with its dark zone. */
+const SECTIONS: readonly CourseSection[] = [
+  { fromCol: 0, name: 'THE REEF' },
+  { fromCol: 95, name: 'CURRENT HIGHWAY' },
+  { fromCol: 247, name: 'JELLY FIELD' },
+  { fromCol: 365, name: 'THE SURFACE' },
+  { fromCol: 461, name: 'URCHIN GAUNTLET' },
+  { fromCol: 563, name: 'CORAL GATE' },
+  { fromCol: 628, name: 'THE DARK CAVE' },
+];
+
 export const SUNLIT_SHALLOWS: ShippedCourse = {
   id: 'sunlit-shallows',
   name: 'Sunlit Shallows',
@@ -101,4 +112,5 @@ export const SUNLIT_SHALLOWS: ShippedCourse = {
   song: 'race',
   listed: true,
   parTicks: PAR_TICKS,
+  sections: SECTIONS,
 };

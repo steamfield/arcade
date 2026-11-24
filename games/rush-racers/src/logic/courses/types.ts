@@ -49,6 +49,22 @@ export interface Course<World extends string = string> {
    * bounds (`rivalCatchUpFor`). A level the course doesn't name keeps the table's bounds.
    */
   catchUp?: Partial<Record<Difficulty, Partial<CatchUpBounds>>>;
+  /**
+   * The course's named zones, in course order, which the race screen calls out as the player reaches
+   * each one. Engine-facing data: logic never reads it and it is not part of any hash. Leave out for none.
+   */
+  sections?: readonly CourseSection[];
+}
+
+/**
+ * A named zone of a course, running from `fromCol` to the next section's start (or the level's end).
+ * A course lists them sorted by `fromCol`, the first at column 0. Names are upper case and at most
+ * 18 characters, which is what fits the race's callout in the text face.
+ */
+export interface CourseSection {
+  /** The level column the zone starts at. */
+  fromCol: number;
+  name: string;
 }
 
 /**

@@ -3,7 +3,7 @@
  * Only `courses/index.ts` imports this file.
  */
 import type { LevelDef } from '../types.ts';
-import type { ShippedCourse } from './types.ts';
+import type { CourseSection, ShippedCourse } from './types.ts';
 
 /**
  * Bramble Run, left to right. The forest floor stands on row 16 (runners on row 15); every pit is
@@ -72,6 +72,14 @@ const PAR_TICKS = 4119;
  */
 const NORMAL_LAG_TILES = 9;
 
+/** The zones the race screen calls out, one per part of the list above. */
+const SECTIONS: readonly CourseSection[] = [
+  { fromCol: 0, name: 'THE FOREST FLOOR' },
+  { fromCol: 180, name: 'THE TREETOPS' },
+  { fromCol: 320, name: 'THE ROOT CAVE' },
+  { fromCol: 450, name: 'THE CLEARING' },
+];
+
 /** Bramble Run: Thornwood's listed course, run on foot through the forest. */
 export const BRAMBLE_RUN: ShippedCourse = {
   id: 'bramble-run',
@@ -82,5 +90,6 @@ export const BRAMBLE_RUN: ShippedCourse = {
   song: 'thornwood',
   listed: true,
   parTicks: PAR_TICKS,
+  sections: SECTIONS,
   catchUp: { normal: { lagTiles: NORMAL_LAG_TILES } },
 };
