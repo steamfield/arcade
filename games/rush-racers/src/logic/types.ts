@@ -388,6 +388,28 @@ export type HitCause =
   | CannonballShotStyle
   | EnemyKind;
 
+/** A world's reworked item, used in place of the shared effect (`powerups/twists/`). */
+export type ItemTwistStyle = 'mudPie' | 'headwind' | 'gravityBomb';
+
+/**
+ * A world's reworked item in play (`powerups/twists/`). One shape for every style so the world
+ * holds them in one list; each style's module says what its fields mean for it.
+ */
+export interface Twist {
+  style: ItemTwistStyle;
+  owner: RacerId;
+  /** Centre in px. */
+  x: number;
+  y: number;
+  /** Velocity in px/s. */
+  vx: number;
+  vy: number;
+  /** Ticks left before it ends on its own. */
+  ttl: number;
+  /** A per-style stage, such as 0 while a Mud Pie flies and 1 once it has landed as a splat. */
+  phase: number;
+}
+
 /** How a world's Cannonball fires when it isn't the swim dash (`powerups/cannonball/`). */
 export type CannonballShotStyle = 'boulder' | 'meteor' | 'comet';
 
@@ -780,6 +802,8 @@ export interface World {
   decoys: Decoy[];
   /** World-specific Cannonballs in flight (`powerups/cannonball/`). */
   shots: Shot[];
+  /** World-specific reworked items in play (`powerups/twists/`). */
+  twists: Twist[];
   /** The player's way-finding record for the Easy guide. */
   guide: GuideMemory;
 }

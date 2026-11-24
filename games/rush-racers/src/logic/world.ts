@@ -17,7 +17,7 @@
  * a dash charge spent for each `racer.kicked` that movement emitted; one pass of separation over
  * unfinished racers when the medium's racers collide (`racerCollision`: 'solid' along the shallower
  * overlap, 'horizontal' sideways only, 'ghost' not at all); then the phase 3 systems for unfinished
- * racers only: items (cycle, then use, from intents), projectiles and inks, world-specific Cannonball shots, squids, riptides, decoys, jellies,
+ * racers only: items (cycle, then use, from intents), projectiles and inks, world-specific Cannonball shots and reworked items, squids, riptides, decoys, jellies,
  * enemies, lightning, the course set pieces (vents, shifting wind, asteroids), contacts (hits), pickups (clams, pearls, rings, loose), status counters and dash recharge; then abilities
  * (`onWorldEvents` with the events since the last call, then `tickAbilities`);
  * then progress, finishes, places, race end. Finished racers are out of play:
@@ -60,6 +60,7 @@ import { canDash, DASH_METER, rechargeDash, spendDash } from './powerups/dash-me
 import { advanceDecoys } from './powerups/decoys.ts';
 import { selectedSlot, slotItems } from './powerups/inventory.ts';
 import { advanceRiptides } from './powerups/riptides.ts';
+import { advanceTwists } from './powerups/twists/index.ts';
 import { applyUndertow } from './powerups/undertow.ts';
 import { driveDash, sustainItems, useItems } from './powerups/use.ts';
 import { bounceOffClouds } from './race/bounce.ts';
@@ -188,6 +189,7 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     riptides: [],
     decoys: [],
     shots: [],
+    twists: [],
     guide: { bestSteer: Number.POSITIVE_INFINITY, stuckTicks: 0, helpTicks: 0 },
   };
   // Catch-up reads progress on the first racing tick, before stepWorld updates it.
@@ -346,6 +348,7 @@ export function stepRace(world: World, inputs: Partial<Record<RacerId, TickInput
   sustainItems(world, racing);
   advanceProjectiles(world, racing, dt);
   advanceShots(world, racing, dt);
+  advanceTwists(world, racing, dt);
   advanceSquids(world, racing, dt);
   advanceRiptides(world);
   advanceDecoys(world, dt);

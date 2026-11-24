@@ -16,6 +16,7 @@ import { length } from '../num.ts';
 import { shotRules, shotStyleOf } from '../powerups/cannonball/index.ts';
 import { firstSlotWhere, itemAt } from '../powerups/inventory.ts';
 import { CLAM, CORAL_BREAKERS, FLASH } from '../powerups/tuning.ts';
+import { twistRules, twistStyleOf } from '../powerups/twists/index.ts';
 import { canFire } from '../powerups/use.ts';
 import { activeRacers, centreOf, isHuman } from '../racers.ts';
 import { type PowerUpKind, type Racer, TILE, type Vec, type World } from '../types.ts';
@@ -108,6 +109,8 @@ function slotWithUse(world: World, racer: Racer, aim: Vec): number {
 }
 
 function hasUse(world: World, racer: Racer, aim: Vec, kind: PowerUpKind): boolean {
+  const twist = twistStyleOf(world, kind);
+  if (twist) return twistRules(twist).rivalWants(world, racer, aim);
   if (DEFENSIVE_KINDS.includes(kind) && chasedWhileLeading(world, racer)) return true;
   switch (kind) {
     case 'inkSac':

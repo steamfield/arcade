@@ -23,9 +23,10 @@ const TOP_ROUTE_MARGIN_TICKS = 300;
  * default way must keep racing exactly as it did when this was recorded, so a change that moves
  * this number changed the simulation. The smoke test pins its own number for the browsers, whose
  * replay feeds diagonals differently and steps on past the finish. Re-pinned with the route itself
- * when the course gained its geyser vents, which push whoever is in an eruption and so move the rivals.
+ * when the course gained its geyser vents, which push whoever is in an eruption and so move the rivals,
+ * and again when the world gained `twists` for the world item twists (with it left out, every pin hashes to the values before it).
  */
-const TOP_ROUTE_HASH = 900986295;
+const TOP_ROUTE_HASH = 2829996515;
 
 /**
  * `hashWorld` at the end of `busyRace` on each level. The top route never dashes or uses an item,
@@ -39,12 +40,13 @@ const TOP_ROUTE_HASH = 900986295;
  * here and the smoke test's hash to the values before them), and again when the world gained `shots`
  * for the world-specific Cannonballs (with it left out, every pin hashes to the values before it), and
  * again when the course gained its geyser vents and `TOP_ROUTE` was re-recorded for them: eruptions push
- * the racers in their columns, so every race here plays out differently from then on.
+ * the racers in their columns, so every race here plays out differently from then on, and again
+ * when the world gained `twists` for the world item twists (with it left out, every pin hashes to the values before it).
  */
 const BUSY_RACE_HASHES: readonly [Difficulty, number][] = [
-  ['easy', 2198666691],
-  ['normal', 3112734912],
-  ['hard', 1895548702],
+  ['easy', 2143177433],
+  ['normal', 3602805522],
+  ['hard', 728899752],
 ];
 
 const KICK_EVERY_TICKS = 45;

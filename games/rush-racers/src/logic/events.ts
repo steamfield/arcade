@@ -23,7 +23,7 @@
  * lists the racers given `status.undertow`. `decoy.popped.by` is null when the decoy simply
  * expires.
  */
-import type { CannonballShotStyle, EnemyKind, HitCause, PowerUpKind, RacerId } from './types.ts';
+import type { CannonballShotStyle, EnemyKind, HitCause, ItemTwistStyle, PowerUpKind, RacerId } from './types.ts';
 
 export type GameEvent =
   | { type: 'race.countdown'; n: 3 | 2 | 1 }
@@ -55,6 +55,12 @@ export type GameEvent =
   | { type: 'shot.warned'; owner: RacerId; style: CannonballShotStyle; target: RacerId }
   /** A shot ends where it stopped: it hit, broke, fell out or ran out of time. */
   | { type: 'shot.ended'; owner: RacerId; style: CannonballShotStyle; x: number; y: number }
+  /** A world's reworked item leaves its owner (`powerups/twists/`). */
+  | { type: 'twist.launched'; owner: RacerId; style: ItemTwistStyle }
+  /** A reworked item takes hold where it is, such as a Mud Pie splatting on the ground. */
+  | { type: 'twist.landed'; owner: RacerId; style: ItemTwistStyle; x: number; y: number }
+  /** A reworked item is gone. */
+  | { type: 'twist.ended'; owner: RacerId; style: ItemTwistStyle; x: number; y: number }
   /**
    * A racer rebounded off a tile hard enough to notice (a bouncing medium only); `speed` is how fast it
    * went in (px/s) and `axis` the axis the tile stopped it on (the harder one in a corner).

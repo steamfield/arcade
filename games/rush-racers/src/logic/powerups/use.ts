@@ -32,6 +32,7 @@ import { spawnDecoy } from './decoys.ts';
 import { cycleSelection, itemAt, selectedSlot, selectSlot, spendCharge } from './inventory.ts';
 import { layRiptide } from './riptides.ts';
 import { BUBBLE, CANNONBALL, DASH, INFLATE, INK, USE_COOLDOWN_TICKS } from './tuning.ts';
+import { twistRules, twistStyleOf } from './twists/index.ts';
 import { fireUndertow } from './undertow.ts';
 
 /**
@@ -82,6 +83,11 @@ export function fireItem(world: World, racer: Racer, slot: number, move: Vec): b
 
 /** One kind's effect on firing, as the module doc lists. */
 function applyEffect(world: World, racer: Racer, kind: PowerUpKind, aim: Vec): void {
+  const twist = twistStyleOf(world, kind);
+  if (twist) {
+    twistRules(twist).fire(world, racer, aim);
+    return;
+  }
   switch (kind) {
     case 'jetFin':
       startDash(world, racer, aim, DASH);

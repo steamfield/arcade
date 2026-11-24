@@ -6,7 +6,7 @@
  * engine's world skin (`engine/worlds/`) draws a world; this is its data in logic.
  */
 import type { ShippedMediumId } from '../courses/types.ts';
-import type { CannonballShotStyle, CharacterId, EnemyKind, PowerUpKind } from '../types.ts';
+import type { CannonballShotStyle, CharacterId, EnemyKind, ItemTwistStyle, PowerUpKind } from '../types.ts';
 
 /** Shipped worlds. Grows with each world. */
 export type ShippedWorldId = 'reef' | 'thornwood' | 'cloudreach' | 'farside';
@@ -41,4 +41,6 @@ export interface WorldDef<Medium extends string = ShippedMediumId> {
   hazards: Readonly<Record<HazardKind, string>>;
   /** The projectile this world's Cannonball fires (`powerups/cannonball/`); left out, it is the swim dash. */
   cannonball?: CannonballShotStyle;
+  /** Items this world reworks (`powerups/twists/`), each used in place of the shared effect. */
+  itemTwists?: Readonly<Partial<Record<PowerUpKind, ItemTwistStyle>>>;
 }
