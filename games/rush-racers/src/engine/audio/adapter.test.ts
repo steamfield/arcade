@@ -337,6 +337,19 @@ describe('the adapter and the race music', () => {
     expect(rig.calls).toEqual(['play thornwood from 0', 'tempo 1.1']);
     expect(rig.announced()).toEqual(['thornwood', 'thornwood:lift']);
   });
+
+  it('plays the win jingle on the results screen after a won race, then the results loop', () => {
+    const rig = musicRig(() => 'race');
+    rig.drain({ type: 'scene.started', scene: 'race' }, { type: 'race.started' });
+    rig.drain(
+      { type: 'racer.finished', id: 'player', place: 1, ticks: 3600 },
+      { type: 'race.finished', standings: ['player', 'tess'], playerPlace: 1, playerTicks: 3600 },
+      { type: 'scene.started', scene: 'results' },
+    );
+    rig.report([], true);
+    rig.drain();
+    expect(rig.calls).toEqual(['play race from 0', 'play win from 0', 'play results from 0']);
+  });
 });
 
 describe('the adapter and the sound test', () => {
@@ -400,5 +413,15 @@ describe('the adapter and the sound test', () => {
     rig.drain();
     expect(rig.calls).toEqual(['play win from 0']);
     expect(rig.announced()).toEqual(['win']);
+  });
+
+  it('never chains an auditioned jingle into the results loop after leaving for another screen', () => {
+    const rig = musicRig(() => 'race');
+    rig.adapter.audition('win');
+    rig.drain({ type: 'scene.started', scene: 'select' });
+    rig.report([], true);
+    rig.drain();
+    rig.drain();
+    expect(rig.calls).toEqual(['play win from 0']);
   });
 });

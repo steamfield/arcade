@@ -80,6 +80,8 @@ export function createMusicCues(options: MusicCueOptions): MusicCues {
   let restart = false;
   /** Whether an audition holds the music until the next scene. */
   let auditioning = false;
+  /** Whether the results screen chose a win or lose jingle, which moves on to the results loop when it ends. */
+  let jingleLeadsToResults = false;
   /** The track this race plays, read once at GO; null outside a race. */
   let raceTrack: SongName | null = null;
   let lifted = false;
@@ -105,7 +107,8 @@ export function createMusicCues(options: MusicCueOptions): MusicCues {
     if (!running() || started === null) return;
     const news = sequencer.poll();
     for (const section of news.sections) announce(`${started}:${section}`, 'song');
-    if (news.ended && isJingle(started) && !auditioning) {
+    if (news.ended && jingleLeadsToResults && isJingle(started)) {
+      jingleLeadsToResults = false;
       wanted = 'results';
       start();
     }
@@ -113,6 +116,7 @@ export function createMusicCues(options: MusicCueOptions): MusicCues {
 
   const onSceneStarted = (scene: string) => {
     auditioning = false;
+    jingleLeadsToResults = scene === 'results' && won !== null;
     fromBeat = 0;
     restart = false;
     if (scene === 'title') wanted = 'title';
@@ -156,6 +160,7 @@ export function createMusicCues(options: MusicCueOptions): MusicCues {
     audition(name, section) {
       const beat = name !== null && section !== undefined ? sectionStartBeat(songFor(name), section) : 0;
       auditioning = true;
+      jingleLeadsToResults = false;
       wanted = name;
       fromBeat = beat;
       restart = true;

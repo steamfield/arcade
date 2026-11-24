@@ -38,6 +38,26 @@ describe('the race track rotation', () => {
     expect(picks(rotation, 'thornwood', 2)).toEqual(['thornwood', 'thornwood']);
   });
 
+  it('counts a negative pin back from the end of the set', () => {
+    const rotation = createTrackRotation({ startAt: 0, pinned: -1, tracks: TRACKS });
+    expect(picks(rotation, 'race', 2)).toEqual(['results', 'results']);
+  });
+
+  it('rounds a fractional start offset down', () => {
+    const rotation = createTrackRotation({ startAt: 1.7, pinned: null, tracks: TRACKS });
+    expect(picks(rotation, 'race', 3)).toEqual(['title', 'results', 'race']);
+  });
+
+  it('counts a negative start offset back from the end of the set', () => {
+    const rotation = createTrackRotation({ startAt: -4, pinned: null, tracks: TRACKS });
+    expect(picks(rotation, 'race', 3)).toEqual(['results', 'race', 'title']);
+  });
+
+  it('rejects a set with no tracks, naming it', () => {
+    const rotation = createTrackRotation({ startAt: 0, pinned: null, tracks: { ...TRACKS, farside: [] } });
+    expect(() => rotation.next('farside')).toThrow('Race track set "farside" has no tracks; give it at least one.');
+  });
+
   it('rotates the game’s own race tracks when no table is given', () => {
     const rotation = createTrackRotation({ startAt: 0, pinned: null });
     expect(picks(rotation, 'cloudreach', 2)).toEqual(['cloudreach', 'cloudreach']);
