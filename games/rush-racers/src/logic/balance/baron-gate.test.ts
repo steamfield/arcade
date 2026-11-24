@@ -1,7 +1,8 @@
 /**
- * Rival Baron Barnacle rams through the coral gate (columns 577-578, rows 8-9) instead of always
+ * Rival Baron Barnacle rams through the coral gate (columns 737-738, rows 8-9) instead of always
  * climbing over it. His steering reads the ram field, so this holds only while that field prices
  * the gate below the climb (`RAM_CORAL_COST` in `race/flowfield.ts`).
+ * The Maelstrom shifted the gate and the end of the observation window 160 columns right.
  */
 import { EventLog, TICK_DT } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
@@ -13,9 +14,9 @@ import type { RacerId, TickInput } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
 const IDLE: TickInput = { move: { x: 0, y: 0 }, kick: false, use: false, cycle: 0 };
-const GATE_COLUMNS = [577, 578];
+const GATE_COLUMNS = [737, 738];
 /** A tile column well past the gate. */
-const PAST_GATE = 591;
+const PAST_GATE = 751;
 
 /** The first `count` seeds from 1 in which Baron races as a rival against Rudy, with his slot. */
 function seedsWithBaron(count: number): { seed: number; slot: RacerId }[] {

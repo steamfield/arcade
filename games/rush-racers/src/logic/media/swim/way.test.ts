@@ -14,14 +14,16 @@ import { RACER_SIZE, TILE, type Vec } from '../../types.ts';
 import { createWorld } from '../../world.ts';
 import { MEDIA } from '../index.ts';
 import { swimNav } from './data.ts';
+import { swimStepPrice } from './nav.ts';
 
 const world = createWorld(DEFAULT_COURSE, new EventLog<GameEvent>(), { seed: 1 });
 const swim = MEDIA.swim;
 const { level } = world;
 const nav = swimNav(world.nav);
+const price = swimStepPrice(world, 'steer');
 const start = level.starts[0] ?? { x: 0, y: 0 };
 /** Every tile of the steer route from the first start, then every tenth one for the slower checks. */
-const route = [start, ...downhillPath(nav.steer, nav, openTiles(level, world.broken, false), start, 2000)];
+const route = [start, ...downhillPath(nav.steer, nav, openTiles(level, world.broken, false), start, 2000, price)];
 const sample = route.filter((_, index) => index % 10 === 0);
 
 const boxOn = (tile: Vec) => ({
@@ -57,6 +59,8 @@ describe('the swim way on Sunlit Shallows', () => {
   it('aims a body along the steer field', () => {
     const aims = sample.map((tile) => swim.aimFrom(world, boxOn(tile), 3));
 
-    expect(aims).toEqual(sample.map((tile) => steerDirection(nav.steer, nav, level, world.broken, boxOn(tile), 3)));
+    expect(aims).toEqual(
+      sample.map((tile) => steerDirection(nav.steer, nav, level, world.broken, boxOn(tile), 3, false, price)),
+    );
   });
 });

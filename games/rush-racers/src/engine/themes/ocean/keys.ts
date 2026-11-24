@@ -37,6 +37,10 @@ export const OceanTile = {
   ledge: 6,
   /** A bounce cloud, for sky-test until the sky theme has its own. */
   bounce: 7,
+  shellTopLeft: 8,
+  shellTopRight: 9,
+  shellBottomLeft: 10,
+  shellBottomRight: 11,
 } as const;
 
 /** Ocean animation keys: kelp sway, the four current flows and the waterline's roll. */
