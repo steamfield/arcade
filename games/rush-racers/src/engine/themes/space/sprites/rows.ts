@@ -14,6 +14,12 @@ export function flipRows(rows: PixelRows): PixelRows {
   return [...rows].reverse();
 }
 
+/** `rows` turned on their diagonal, so column `x` becomes row `x`: a drawing running right then runs down. */
+export function transposeRows(rows: PixelRows): PixelRows {
+  const width = rows[0]?.length ?? 0;
+  return Array.from({ length: width }, (_, x) => rows.map((row) => row[x] ?? '.').join(''));
+}
+
 /** The remainder of `value` over `size`, never negative. */
 function wrap(value: number, size: number): number {
   return ((value % size) + size) % size;

@@ -1,78 +1,67 @@
 /**
- * The flowing cells: dust with slow bubbles and the four winds (gust streaks left and right, rising
- * and falling leaves). Each is two frames drawn over open cells, so they are sparse and the racer
- * stays visible through them. Every sprite is 16x16 and seamless in both axes; frame `b` is frame
- * `a` moved along the flow, and the left and down winds are the mirror images of right and up.
+ * The flowing cells: nebula dust and the four solar winds. Each is two frames drawn over open cells,
+ * so they are sparse and the racer stays visible through them. Every sprite is 16x16 and seamless in
+ * both axes. Dust sways sideways between its frames, since nothing in space settles or rises. A wind's
+ * frame `b` is frame `a` moved along the wind; left is the mirror of right, down is right turned on
+ * its diagonal, and up is down flipped.
  */
 import { Frame } from '../../../art/keys.ts';
 import type { PixelRows } from '../../../art/pixel.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { SpaceTex, type SpaceTexKey } from '../keys.ts';
 import { SpaceTerrainPalette } from '../palettes.ts';
-import { flipRows, mirrorRows, shiftRows } from './rows.ts';
+import { flipRows, mirrorRows, shiftRows, transposeRows } from './rows.ts';
 
-/** Dust: sparse dark blotches with a few wet-shine rings, which rise a row in the next frame. */
-const MUD_ROWS = [
-  '..1.....1.......',
-  '.101...101..2...',
-  '..1.....1..2.2..',
-  '...........2....',
-  '.....11.........',
-  '....1001...1....',
-  '.....11...101...',
-  '...2..........1.',
-  '..2.2....11.....',
-  '...2....1001....',
-  '.........11..2..',
-  '.1...........2.2',
-  '101.....2.....2.',
-  '.1.....2.2......',
-  '........2....11.',
-  '..11.........101',
+/**
+ * Nebula dust: dithered wisps of the dust body colour with a few glinting grains, more gap than cloud
+ * so a racer inside it still reads.
+ */
+const NEBULA_ROWS = [
+  '................',
+  '..1.1...........',
+  '.1.1.1.......2..',
+  '..1.1.1.1.......',
+  '.....1.1.1......',
+  '..............1.',
+  '.2...........1.1',
+  '............1.1.',
+  '.......1.....1..',
+  '......1.1.1.....',
+  '.....1.1.1.1....',
+  '......1.1.1...2.',
+  '...........1....',
+  '1.1.............',
+  '.1.1......2.....',
+  '1.1.1...........',
 ];
 
-/** Wind blowing right: long faint streaks that end in a bright head. */
-const GUST_ROWS = [
+/** Solar wind blowing right: dotted trails of particles that thicken into a bright head. */
+const SOLAR_WIND_ROWS = [
   '................',
-  '..000001........',
-  '................',
-  '.........0000011',
+  '..0.0.0011......',
   '................',
   '................',
-  '...0000000011...',
+  '1.........0.0.00',
   '................',
   '................',
-  '.0000011........',
-  '................',
-  '.........000001.',
+  '....0.00011.....',
   '................',
   '................',
-  '..00000011......',
+  '.........0.0.001',
+  '................',
+  '................',
+  '0011.......0.0.0',
+  '................',
   '................',
 ];
 
-/** Leaves blown up: a lit leaf with a faint stem and trail below it. */
-const LEAVES_UP_ROWS = [
-  '................',
-  '...11...........',
-  '..110...........',
-  '..0.............',
-  '..0.............',
-  '..........11....',
-  '.........110....',
-  '.........0......',
-  '.........0......',
-  '................',
-  '.11.............',
-  '110.............',
-  '0...............',
-  '0.........11....',
-  '.........110....',
-  '.........0......',
-];
+/** Wind blowing down: the rightward trails turned so their heads lead downward. */
+const SOLAR_WIND_DOWN_ROWS = transposeRows(SOLAR_WIND_ROWS);
 
-const GUST_STEP = 6;
-const LEAF_STEP = 4;
+/** Sideways sway of the dust between frames: two pixels, so its checkered dither keeps its phase. */
+const DUST_SWAY = 2;
+/** How far a wind's particles move between frames. */
+const WIND_STEP = 4;
 
 /** Frames `a` and `b` for a flow: `rows`, then the same drawing moved one step. */
 function flowFrames(rows: PixelRows, dx: number, dy: number): Record<string, PixelRows> {
@@ -81,15 +70,15 @@ function flowFrames(rows: PixelRows, dx: number, dy: number): Record<string, Pix
 
 /** Flowing-cell sheets. */
 export const FLOW_SHEETS: readonly ArtSheet<SpaceTexKey>[] = [
-  sheet(SpaceTex.dust, SpaceTerrainPalette.dust, flowFrames(MUD_ROWS, 0, -1)),
-  sheet(SpaceTex.windRight, SpaceTerrainPalette.wind, flowFrames(GUST_ROWS, GUST_STEP, 0)),
+  sheet(SpaceTex.dust, SpaceTerrainPalette.dust, flowFrames(NEBULA_ROWS, DUST_SWAY, 0)),
+  sheet(SpaceTex.windRight, SpaceTerrainPalette.wind, flowFrames(SOLAR_WIND_ROWS, WIND_STEP, 0)),
   sheet(SpaceTex.windLeft, SpaceTerrainPalette.wind, {
-    [Frame.a]: mirrorRows(GUST_ROWS),
-    [Frame.b]: mirrorRows(shiftRows(GUST_ROWS, GUST_STEP, 0)),
+    [Frame.a]: mirrorRows(SOLAR_WIND_ROWS),
+    [Frame.b]: mirrorRows(shiftRows(SOLAR_WIND_ROWS, WIND_STEP, 0)),
   }),
-  sheet(SpaceTex.windUp, SpaceTerrainPalette.wind, flowFrames(LEAVES_UP_ROWS, 0, -LEAF_STEP)),
-  sheet(SpaceTex.windDown, SpaceTerrainPalette.wind, {
-    [Frame.a]: flipRows(LEAVES_UP_ROWS),
-    [Frame.b]: flipRows(shiftRows(LEAVES_UP_ROWS, 0, -LEAF_STEP)),
+  sheet(SpaceTex.windDown, SpaceTerrainPalette.wind, flowFrames(SOLAR_WIND_DOWN_ROWS, 0, WIND_STEP)),
+  sheet(SpaceTex.windUp, SpaceTerrainPalette.wind, {
+    [Frame.a]: flipRows(SOLAR_WIND_DOWN_ROWS),
+    [Frame.b]: flipRows(shiftRows(SOLAR_WIND_DOWN_ROWS, 0, WIND_STEP)),
   }),
 ];

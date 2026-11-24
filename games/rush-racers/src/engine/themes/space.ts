@@ -1,7 +1,8 @@
 /**
- * The space look: Farside's earth, branches, canopy and light. Its art, keys and colours live in
- * `space/`; this file says how the views use them. Air barely slows particles, so dust and leaves
- * rise slowly, debris falls fast and a splash is a short burst of dust.
+ * The space look: Farside's asteroid rock, ice, nebula dust, solar wind and starfield. Its art, keys
+ * and colours live in `space/`; this file says how the views use them. Nothing has weight in a
+ * vacuum, so no particle rises or falls: they coast to a stop, debris barely slows at all, and
+ * reduced motion only slows them sooner.
  */
 
 import { drawSheets, registerLoops } from '../art/index.ts';
@@ -10,24 +11,28 @@ import { FxFrame } from '../fx/textures.ts';
 import { defineTheme } from './define.ts';
 import { SpaceAnim, SpaceTex, SpaceTile } from './space/keys.ts';
 import { SpaceBackdropPalette, StarLight, VOID_BANDS } from './space/palettes.ts';
+import { FAR_HEIGHT, NEAR_HEIGHT } from './space/sprites/backdrop.ts';
 import { SPACE_SHEETS } from './space/sprites/index.ts';
 import type { ContrastBand } from './types.ts';
 
-/** Dust bubbles, wind and orb wings animate on Phaser's clock, never on logic ticks. */
+/** Dust sway, wind and the orb's pulse animate on Phaser's clock, never on logic ticks. */
 const SPACE_LOOPS = [
   { key: SpaceAnim.dustSwirl, texture: SpaceTex.dust, frameRate: 2 },
   { key: SpaceAnim.windRight, texture: SpaceTex.windRight, frameRate: 4 },
   { key: SpaceAnim.windLeft, texture: SpaceTex.windLeft, frameRate: 4 },
   { key: SpaceAnim.windUp, texture: SpaceTex.windUp, frameRate: 4 },
   { key: SpaceAnim.windDown, texture: SpaceTex.windDown, frameRate: 4 },
-  { key: SpaceAnim.orbPulse, texture: SpaceTex.orb, frameRate: 12 },
+  { key: SpaceAnim.orbPulse, texture: SpaceTex.orb, frameRate: 4 },
 ] as const;
 
-/** Every canopy band and backdrop layer colour: everything a racer or off-panel text can sit in front of. */
+/**
+ * Every sky band and backdrop silhouette colour: everything a racer or off-panel text can sit in
+ * front of. The stars are single pixels, like the drifting motes, so they aren't bands.
+ */
 const SPACE_CONTRAST_BANDS: readonly ContrastBand[] = [
-  ...VOID_BANDS.map((colour, band) => ({ name: `canopy band ${band}`, colour })),
-  ...SpaceBackdropPalette.far.map((colour, index) => ({ name: `far trees ${index}`, colour })),
-  ...SpaceBackdropPalette.near.map((colour, index) => ({ name: `near trunks ${index}`, colour })),
+  ...VOID_BANDS.map((colour, band) => ({ name: `sky band ${band}`, colour })),
+  ...SpaceBackdropPalette.far.map((colour, index) => ({ name: `far starfield ${index}`, colour })),
+  ...SpaceBackdropPalette.near.map((colour, index) => ({ name: `near moon ${index}`, colour })),
 ];
 
 /** The space theme. */
@@ -54,27 +59,29 @@ export const SPACE_THEME = defineTheme({
   backdrop: {
     bands: VOID_BANDS,
     layers: [
-      { texture: SpaceTex.backdropFar, height: 64, factor: 0.15, aboveRays: false },
-      { texture: SpaceTex.backdropNear, height: 80, factor: 0.35, aboveRays: true },
+      { texture: SpaceTex.backdropFar, height: FAR_HEIGHT, factor: 0.15, aboveRays: false },
+      { texture: SpaceTex.backdropNear, height: NEAR_HEIGHT, factor: 0.35, aboveRays: true },
     ],
-    caustics: StarLight.dapple,
+    // No air to shimmer in, so no caustics; faint shafts of starlight stay.
+    caustics: null,
     rays: StarLight.ray,
   },
   ambient: { motes: StarLight.mote },
   particles: {
-    rise: { drag: 0.97, ay: -0.012, wobble: 1 },
-    riseStill: { drag: 0.95, ay: -0.004, wobble: 0 },
-    fall: { drag: 0.99, ay: 0.09, wobble: 0 },
-    fallStill: { drag: 0.97, ay: 0.02, wobble: 0 },
-    drift: { drag: 0.95, ay: 0, wobble: 0 },
-    splash: { drag: 0.9, ay: 0.02, wobble: 0 },
+    rise: { drag: 0.97, ay: 0, wobble: 1 },
+    riseStill: { drag: 0.93, ay: 0, wobble: 0 },
+    fall: { drag: 0.995, ay: 0, wobble: 0 },
+    fallStill: { drag: 0.95, ay: 0, wobble: 0 },
+    drift: { drag: 0.97, ay: 0, wobble: 0 },
+    splash: { drag: 0.9, ay: 0, wobble: 0 },
   },
   hazards: {
     urchin: { texture: SpaceTex.mine, frame: Frame.a, anim: null },
     jelly: { texture: SpaceTex.orb, frame: Frame.a, anim: SpaceAnim.orbPulse },
   },
-  // The root cave's own green taken almost to black.
-  dark: { colour: 0x020a06, alpha: 0.9 },
-  trail: { frame: FxFrame.chip, tint: 0x8a6a48, alpha: 0.5 },
+  // The moon's shadow: the sky's own blue taken almost to black.
+  dark: { colour: 0x020208, alpha: 0.9 },
+  // Thruster exhaust: pale blue specks.
+  trail: { frame: FxFrame.chip, tint: 0x9fc8ff, alpha: 0.45 },
   contrastBands: SPACE_CONTRAST_BANDS,
 });

@@ -72,7 +72,7 @@ describe('the space theme', () => {
     });
   });
 
-  it('draws a ledge as a thin branch along the top of its tile and nothing below', () => {
+  it('draws a ledge as a thin strut along the top of its tile and nothing below', () => {
     const ledge = sheetFor(SpaceTex.tiles)?.frames.find((frame) => frame.name === 'ledge');
     const filledRows = ledge?.rows.map((row) => /[^.]/.test(row)) ?? [];
     const firstEmptyRow = filledRows.indexOf(false);
@@ -88,12 +88,12 @@ describe('the space theme', () => {
     expect(sizeOf(near?.texture ?? '').height).toBe(near?.height);
   });
 
-  it('animates the orb and leaves the thorn bush still, in the hazard slots the views read', () => {
+  it('animates the plasma orb and leaves the space mine still, in the hazard slots the views read', () => {
     expect(SPACE_THEME.hazards.urchin).toEqual({ texture: SpaceTex.mine, frame: 'a', anim: null });
     expect(SPACE_THEME.hazards.jelly).toMatchObject({ texture: SpaceTex.orb, anim: SpaceAnim.orbPulse });
   });
 
-  it("keeps the thorn bush's body 3:1 off every space contrast band, so it reads in the darkest and lightest canopy", () => {
+  it("keeps the space mine's body 3:1 off every space contrast band, so it reads against the darkest and lightest sky", () => {
     const weakest = Math.min(
       ...SPACE_THEME.contrastBands.map((band) => contrast(SpaceHazardPalette.mine[1], band.colour)),
     );
