@@ -217,6 +217,7 @@ Rules every phase 1 lane follows (pasted into each contract):
 Demo: `pnpm arcade see rush-racers --scene race --query course=<id> --input "right*N" --at ...` across each new section of each course, and `node games/rush-racers/scripts/measure.ts par <course> --seeds 40` within 9000-10200 ticks for each.
 Depends on: phase 1
 Scaffold: 0e0cbb2f026c4bc7ff5b942f452de32ec990fed6
+Tag: long-courses/phase-2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -271,6 +272,7 @@ Rules every phase 2 lane follows (pasted into each contract):
 
 Demo: every `src/logic/balance/<course>-*.test.ts` file passes for all four listed courses.
 Depends on: phase 2
+Scaffold: ada5b28
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -297,6 +299,8 @@ Rules every phase 3 lane follows (pasted into each contract):
 - Done when: all 26 bar files for the course pass, the phase 3 rules above hold, and the report lists each bar file's result and the par measurement.
 
 ## Log
+
+- 2026-11-24: lc-2y (Float32 tie in priced steering froze swim bots in the Jelly Field) merged. lc-2x turn 2 (counter-thrust keeps full dust drag; drift dustCruiseMul back to 0.6, Slingshot-only 0.45 override; Slingshot par 9140, drift-test 1006) merged at ada5b28. Phase 2 gate: check passed, smoke 118/118. Tagged long-courses/phase-2.
 
 - User decisions (2026-11-24): par 150-170 s on all four courses; clear old bests with a save migration; one new mechanic per world.
 - Plan critique (opus devils-advocate), 8 findings, all held and applied: (1) links made forced, so loop-backs price high; a link start is a field sink, which `downhillPath` stopping on is fine for; (2) fallen branches moved from a `moveBody` argument to `MoveRules.openLedges` plus `ledgeHolds`, with every ledge caller in lane b; (3) run nav never sees `fallen` (no rebuilds), the pilot skips links onto fallen tiles; (4) `rideCannon` pre-move hook replaces the medium's movement for riders; (5) existing scenarios on each test course added to that lane, smoke hashes are the orchestrator's, the two-peers claim dropped (it pins no hash); (6) phase 3 shared bar files (`hard-bars.ts` close-win window, `race-bots.ts` per-race budget) go in phase 3's scaffold, phase 3 lanes get the same ownership as phase 2, bars leave the phase 1-2 gate; (7) camera cuts by jump detection in its own `update`, level-view syncs from `world.fallen`, `toAscii` shows fallen branches (scaffold); (8) save fixture left as captured, v7 fixture added, `IDLE_TO_RESULTS` cost accepted.
