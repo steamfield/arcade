@@ -1,9 +1,10 @@
 /**
  * How fast a flight rival flies along an open straight: at its own cruise (its share of forceMul,
  * so a profile, catch-up or ring boost over 1 shows), carried on by a tailwind, and without easing
- * off at each waypoint when it reads the way late. Raced through `createWorld` on small inline skies
- * with the other racers benched below; its own cruise is read each tick from its modifiers, since
- * catch-up moves them as it pulls ahead of the benched player.
+ * off at each waypoint when it reads the way late, though still steering round a spark cloud by its
+ * line. Raced through `createWorld` on small inline skies with the other racers benched below; its
+ * own cruise is read each tick from its modifiers, since catch-up moves them as it pulls ahead of the
+ * benched player.
  */
 import { describe, expect, it } from 'vitest';
 import { modifiersFor } from '../../modifiers.ts';
@@ -25,6 +26,24 @@ function straight(fill: '.' | '>'): string[] {
   const open = fill.repeat(68);
   return ['#'.repeat(70), `#${open}F`, `#2${open.slice(1)}F`, `#${open}F`];
 }
+
+/** A reactionTicks long enough that the rival reaches its waypoint well before it reads the way again. */
+const LATE_READ_TICKS = 30;
+/** Open sky five rows high and 50 tiles long, tess starting on row 2 with a spark cloud against the ceiling just above her line, 19 tiles ahead. */
+const SPARKED = (() => {
+  const open = `#${'.'.repeat(48)}F`;
+  return [
+    '#'.repeat(50),
+    `#${'.'.repeat(19)}*${'.'.repeat(28)}F`,
+    `#2${'.'.repeat(47)}F`,
+    open,
+    open,
+    open,
+    '#'.repeat(50),
+  ];
+})();
+/** Ticks tess gets to finish the straight. */
+const FINISH_LIMIT = 1200;
 
 /** A profile strong enough that even held back by catch-up, its own cruise is over the base cruise. */
 const STRONG = 2.5;
@@ -61,8 +80,16 @@ describe('a flight rival on an open straight', () => {
   });
 
   it('keeps flying through waypoints at its own cruise when it reads the way only every 30 ticks', () => {
-    const { flown, ownCruise } = speeds(straight('.'), { forceMul: STRONG, reactionTicks: 30 });
+    const { flown, ownCruise } = speeds(straight('.'), { forceMul: STRONG, reactionTicks: LATE_READ_TICKS });
 
     expect(flown).toBeCloseTo(ownCruise, -1);
+  });
+
+  it('still steers round a spark cloud just above its line when it reads the way only every 30 ticks, never stunned', () => {
+    const { world, log } = benchRace(SPARKED, { tess: { wobble: 0, kickSkill: 0, reactionTicks: LATE_READ_TICKS } });
+    raceUntilFinished(world, log, ['tess'], FINISH_LIMIT);
+
+    expect(racerOf(world, 'tess').finished).not.toBeNull();
+    expect(log.all().filter((event) => event.type === 'racer.stunned' && event.id === 'tess')).toEqual([]);
   });
 });

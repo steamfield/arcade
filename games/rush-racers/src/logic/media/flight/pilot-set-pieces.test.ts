@@ -1,6 +1,6 @@
 /**
  * Flight rivals and the sky's set pieces: they fly through a ring line their way runs near and finish
- * no slower for it; they drop onto a bounce cloud at the foot of a tall wall and top it sooner than by
+ * no slower for it, even reading the way only every 30 ticks from above it; they drop onto a bounce cloud at the foot of a tall wall and top it sooner than by
  * flapping, without bouncing in place; and they read lightning: wait short of a storm zone they can't
  * cross before the strike, cross one they can, queue behind one another at a zone without shoving the
  * one ahead into the strike, and on sky-test the expert is hardly ever struck and no rival waits a
@@ -13,7 +13,7 @@ import { courseById } from '../../courses/index.ts';
 import type { GameEvent } from '../../events.ts';
 import { lightningPhase } from '../../hazards/lightning.ts';
 import { IDLE, racerOf } from '../../test-world.ts';
-import { type LightningZone, type Racer, type RacerId, TILE, type World } from '../../types.ts';
+import { type LightningZone, type Racer, type RacerId, type RivalProfile, TILE, type World } from '../../types.ts';
 import { createWorld, stepWorld } from '../../world.ts';
 import { benchRace, centre, columnOf, raceUntilFinished, STEADY_FLYER } from './rival-test-kit.ts';
 
@@ -24,6 +24,8 @@ const ROCK = '#'.repeat(50);
 
 /** Ticks a rival gets to finish an inline sky. */
 const FINISH_LIMIT = 1200;
+/** A reactionTicks long enough that the rival reaches the point it flies at well before it reads the way again. */
+const LATE_READ_TICKS = 30;
 
 /** An open row 50 tiles wide with `glyphs` (by column) placed in it. */
 function openWith(glyphs: Record<number, string>): string {
@@ -47,9 +49,9 @@ describe('flight rivals and ring lines', () => {
     ROCK,
   ];
 
-  /** tess's finish tick and the rings she passed on `area`. */
-  function ringRun(area: readonly string[]) {
-    const { world, log } = benchRace(area, { tess: STEADY_FLYER });
+  /** tess's finish tick and the rings she passed on `area`, flying as STEADY_FLYER with `profile` on top. */
+  function ringRun(area: readonly string[], profile: Partial<RivalProfile> = {}) {
+    const { world, log } = benchRace(area, { tess: { ...STEADY_FLYER, ...profile } });
     raceUntilFinished(world, log, ['tess'], FINISH_LIMIT);
     const passed = log.all().filter((event) => event.type === 'ring.passed' && event.id === 'tess');
     return {
@@ -67,6 +69,13 @@ describe('flight rivals and ring lines', () => {
     expect(ringed.passed).toBeGreaterThanOrEqual(ringed.rings - 1);
     expect(ringed.finish).not.toBeNull();
     expect(ringed.finish ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(plain.finish ?? 0);
+  });
+
+  it('flies through the ring line from above reading the way only every 30 ticks, easing to each ring rather than past it', () => {
+    const fromAbove = RINGED.map((row, index) => (index === 3 ? openWith({ 2: '2' }) : row.replace('2', '.')));
+    const late = ringRun(fromAbove, { reactionTicks: LATE_READ_TICKS });
+
+    expect(late.passed).toBeGreaterThanOrEqual(late.rings - 1);
   });
 });
 
