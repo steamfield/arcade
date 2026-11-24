@@ -98,10 +98,12 @@ export class Hud {
     container.append(root);
   }
 
+  /** Flashes the slot awarded by a drained pickup event using the previous tick's slots. */
   flashPickup(world: World): void {
     this.inventory.flashPickup(world);
   }
 
+  /** Call once per logic tick after draining and handling its events. `flashPickup` needs the previous tick's slots. */
   observeInventory(world: World): void {
     this.inventory.observeInventory(world);
   }

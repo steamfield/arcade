@@ -58,10 +58,9 @@ export class InventoryHud {
     for (const { node } of this.slots) this.root.append(node);
   }
 
+  /** Replays crate fills from the previous tick's slots so a pickup can flash even if spent immediately. */
   flashPickup(world: World): void {
     this.useWorld(world);
-    // Crates fill the first empty slot before firing and hits. Replay those fills from the
-    // previous tick so a one-charge item used on pickup still flashes the slot that received it.
     for (const slot of this.slots) {
       if (slot.occupied) continue;
       slot.occupied = true;
@@ -70,6 +69,7 @@ export class InventoryHud {
     }
   }
 
+  /** Call once per logic tick after draining and handling its events. `flashPickup` needs the previous tick's slots. */
   observeInventory(world: World): void {
     this.useWorld(world);
     const { slots } = playerOf(world);

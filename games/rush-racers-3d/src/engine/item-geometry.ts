@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+/** Paints the shared wooden crate face with a question mark readable from the chase camera. */
 export function crateMaterial(): THREE.MeshLambertMaterial {
   const canvas = document.createElement('canvas');
   canvas.width = 128;
@@ -36,6 +37,7 @@ export function crateMaterial(): THREE.MeshLambertMaterial {
   return new THREE.MeshLambertMaterial({ map, emissiveMap: map, emissive: 0x888888 });
 }
 
+/** Builds a centered, solid five-point star for the orbit above a stunned racer. */
 export function starGeometry(): THREE.ExtrudeGeometry {
   const star = new THREE.Shape();
   for (let i = 0; i < 10; i++) {
@@ -53,6 +55,7 @@ export function starGeometry(): THREE.ExtrudeGeometry {
   return geometry.translate(0, 0, -0.13);
 }
 
+/** Builds one Rocket Boots flame with vertex colors from a hot gold base to an orange tip. */
 export function flameGeometry(): THREE.ConeGeometry {
   const geometry = new THREE.ConeGeometry(1, 2, 7, 4);
   const positions = geometry.getAttribute('position');
