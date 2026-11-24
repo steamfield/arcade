@@ -32,10 +32,19 @@ describe('set piece and shot sounds', () => {
     expect(setPieceCue({ ...event, target: 'bo' }, worldAt(0), 'player')).toBeNull();
   });
 
-  it('crunches where a shot ends within hearing', () => {
-    const event = { type: 'shot.ended', owner: 'tess', style: 'boulder', x: 100, y: 0 } as const;
-    expect(setPieceCue(event, worldAt(150), 'player')).toBe('coral');
-    expect(setPieceCue(event, worldAt(5000), 'player')).toBeNull();
+  it("sounds each world's shot where it ends within hearing", () => {
+    const ended = (style: 'boulder' | 'meteor' | 'comet') =>
+      ({ type: 'shot.ended', owner: 'tess', style, x: 100, y: 0 }) as const;
+    expect(setPieceCue(ended('boulder'), worldAt(150), 'player')).toBe('coral');
+    expect(setPieceCue(ended('meteor'), worldAt(150), 'player')).toBe('lightning.strike');
+    expect(setPieceCue(ended('comet'), worldAt(150), 'player')).toBe('decoy.pop');
+    expect(setPieceCue(ended('boulder'), worldAt(5000), 'player')).toBeNull();
+  });
+
+  it('breathes when a wind zone near the local racer is about to turn', () => {
+    const event = { type: 'wind.warned', zone: 0, dir: 1 } as const;
+    expect(setPieceCue(event, worldAt(45 * TILE), 'player')).toBe('flap');
+    expect(setPieceCue(event, worldAt(400 * TILE), 'player')).toBeNull();
   });
 
   it('is silent off the race screen', () => {
