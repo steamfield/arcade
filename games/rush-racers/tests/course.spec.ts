@@ -61,7 +61,7 @@ test('a race on Bramble Run makes it the last course, and the title shows its be
   await game.play([wait(25), tap('fire'), wait(5), tap('down'), wait(2)]);
   expect(await game.summary()).toMatchObject({
     scene: 'course',
-    courseSelect: { rows: [{ id: 'sunlit-shallows' }, { id: 'bramble-run' }], selected: 1 },
+    courseSelect: { rows: [{ id: 'sunlit-shallows' }, { id: 'bramble-run' }, { id: 'thunderhead-pass' }], selected: 1 },
   });
   // Fire picks it: select shows Thornwood's cast, the cursor on the saved pick's slot (rudy is Grit there).
   await game.play([wait(20), tap('fire'), wait(2)]);
