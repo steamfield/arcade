@@ -10,7 +10,7 @@ import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { FarTex } from '../keys.ts';
 import { FarItemPalette } from './items.ts';
 
-/** The ion stream lane tile: a deep blue shadow, blue chevrons and pale blue tails. */
+/** The ion stream lane tile: the faded far end of each tail, blue chevrons and the pale blue tails. */
 const ION_TILE_PALETTE: Palette = [0x2a5ad8, 0x80c0ff, 0xd8ecff];
 
 /** Tractor pull lines: a magenta shadow, a pale pink core and a pink lead. */
@@ -56,7 +56,7 @@ const PROBE_SHEET = sheet(FarTex.probe, FarItemPalette.homingSquid, {
     '......02020.....',
     '......00000.....',
   ],
-  // Clamped on a racer's head: panels spread to the sides, eye glaring down, claws gripping.
+  // Clamped on a racer's head: panels spread to the sides, eye glaring down, pale claws gripping so they show on a dark racer.
   [Frame.squidLatched]: [
     '....00000000....',
     '0000012211100000',
@@ -64,10 +64,10 @@ const PROBE_SHEET = sheet(FarTex.probe, FarItemPalette.homingSquid, {
     '0000011331100000',
     '....01111110....',
     '....00000000....',
-    '....0......0....',
-    '...0........0...',
-    '...0........0...',
-    '....0......0....',
+    '....2......2....',
+    '...22......22...',
+    '...2........2...',
+    '....2......2....',
     '................',
     '................',
   ],

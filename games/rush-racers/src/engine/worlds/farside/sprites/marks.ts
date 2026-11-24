@@ -14,8 +14,8 @@ const FarMarkPalette = {
   hole: [0x05060e, 0x6a6a88, 0xffe040, 0xffffff],
   /** The warning triangle: ink `!` and edge, amber face, a pale shine. */
   alert: [0x0b0a1e, 0xffc53a, 0xf6f0dc],
-  /** A puff of moon dust: rim and fleck. */
-  bubble: [0xb0b8d0, 0xffffff],
+  /** A puff of moon dust: grey grains and a white fleck. */
+  dust: [0xb0b8d0, 0xffffff],
   /** Dizzy and bonk star: outline, gold, white core. */
   star: [0x3a2008, 0xffe060, 0xffffff],
   /** Pop burst: white rays with cyan sparks. */
@@ -83,17 +83,17 @@ const MARK_FRAMES: readonly NamedFrame[] = [
   },
   {
     name: Frame.markBubble,
-    palette: FarMarkPalette.bubble,
+    palette: FarMarkPalette.dust,
     rows: [
       '............',
       '............',
       '............',
       '............',
-      '....000.....',
-      '...0.1.0....',
-      '...0...0....',
-      '....000.....',
-      '............',
+      '......0.....',
+      '...00.00....',
+      '..0000100...',
+      '...00000.0..',
+      '....0.00....',
       '............',
       '............',
       '............',

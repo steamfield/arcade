@@ -86,17 +86,17 @@ const ITEM_ROWS = {
     '.0111110.',
     '..00000..',
   ],
-  // A gold star burst with a white core and four short rays between its points.
+  // A gold star burst with a white core and four short rays between its points, the rays and tips pale so they show on the dark sky.
   glowLantern: [
-    '....0....',
-    '.0..1..0.',
+    '....2....',
+    '.2..1..2.',
     '..01210..',
     '.0122210.',
-    '012232210',
+    '212232212',
     '.0122210.',
     '..01210..',
-    '.0..1..0.',
-    '....0....',
+    '.2..1..2.',
+    '....2....',
   ],
   // An orange comet head at the top right with its tail streaming down to the left.
   cannonball: [

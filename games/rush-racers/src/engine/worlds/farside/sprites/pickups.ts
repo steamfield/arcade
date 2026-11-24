@@ -9,7 +9,7 @@ import type { Palette } from '../../../art/pixel.ts';
 import { type ArtSheet, sheet } from '../../../art/sprites/sheet.ts';
 import { FarTex } from '../keys.ts';
 
-/** Pod: dark rust outline and empty inside, orange shell, pale orange shine and the cream `?`. */
+/** Pod: dark rust outline, empty inside and `?` (well over 3:1 on the shell), orange shell, pale orange shine, a cream glint. */
 export const PodPalette: Palette = [0x2a1004, 0xff8a30, 0xffc880, 0xfff4d0];
 
 /** Stardust: dark gold outline, pale gold body (as bright as the pearl), white shine, a warm gold core. */
@@ -35,17 +35,17 @@ export const FAR_PICKUP_SHEETS: readonly ArtSheet<string>[] = [
       '..011111111110..',
       '...0000000000...',
     ],
-    // Ready (`clamOpen`, as Reef's open clam is): a whole capsule with a `?` on its face.
+    // Ready (`clamOpen`, as Reef's open clam is): a whole capsule with a bold dark `?` on its face.
     [Frame.clamOpen]: [
       '...0000000000...',
       '..022222222220..',
-      '.02111133311110.',
-      '0211113111311110',
-      '0211111111311110',
-      '0111111113111110',
-      '0111111131111110',
+      '.03111000011110.',
+      '0211100110011110',
+      '0211111110011110',
+      '0111111100111110',
+      '0111111001111110',
       '.01111111111110.',
-      '..011111311110..',
+      '..011110011110..',
       '...0000000000...',
     ],
   }),

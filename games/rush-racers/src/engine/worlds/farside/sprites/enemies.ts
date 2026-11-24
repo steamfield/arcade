@@ -124,7 +124,7 @@ const RAY_SHEET = sheet(FarTex.ray, FarEnemyPalette.ray, {
     '........00000...........',
     '........................',
   ],
-  // Flame out, eye shut, both wings drooping one way: stunned and tumbling.
+  // Flame out, eye shut, both wings drooping below the body side by side, the top one showing its pale side: stunned and tumbling.
   [Frame.enemyStagger]: [
     '........................',
     '........................',
@@ -135,10 +135,10 @@ const RAY_SHEET = sheet(FarTex.ray, FarEnemyPalette.ray, {
     '...0000111111111110200..',
     '...0222222222222222220..',
     '...0000111111111111100..',
-    '.......01111111110000...',
-    '.......0111111110.......',
-    '.......011111110........',
-    '.......0000000..........',
+    '.......0111111002222220.',
+    '.......011111100222220..',
+    '.......01111100022220...',
+    '.......0000000.000000...',
     '........................',
   ],
 });
