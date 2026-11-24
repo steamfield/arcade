@@ -14,6 +14,7 @@ import { friendsSummary, netSummary } from './online/net-summary.ts';
 import type { Runtime } from './runtime.ts';
 import { rowText } from './scenes/course.ts';
 import { HOW_TO_PLAY_PAGES } from './screens/how-to-play.ts';
+import { type Jukebox, selectedTrack } from './screens/jukebox.ts';
 import { formatBest, levelBanner, racerName } from './view/race-text.ts';
 import { squidHuntingLocal } from './view/threat-math.ts';
 
@@ -32,7 +33,8 @@ export interface ArtSummary {
  * menu screens, the best line as shown on the title (for the level now selected) and, after online play ended with a notice, that `onlineNotice`, on course select each row as
  * shown (`courseSelect.rows`: id, name and best time on the level in force) and the cursor's row
  * (`courseSelect.selected`), on select the highlighted racer's name as the card shows it in the course's
- * world (`selectName`), the 1-based page on How to Play, the friends screen (`friends`) on Friends, and the race outcome on results. `local` names the slot the screen follows, and is present only when
+ * world (`selectName`), the 1-based page on How to Play, the friends screen (`friends`) on Friends, the sound test on the
+ * jukebox screen (`jukebox`, see `jukeboxOf`), the race's `track` during race and results, and the race outcome on results. `local` names the slot the screen follows, and is present only when
  * a `?local=` was accepted (a debug race, never saved). `net` describes the online room and race
  * while a room is open, until the player leaves online play (see `netSummary`). During an online
  * race `course` and `medium` are the race's, which the host picked. `textures` and `art` say how much
@@ -90,9 +92,22 @@ function sceneDetails(rt: Runtime): Record<string, unknown> {
   if (rt.scene === 'select') return { selectName: racerName(rt.selectedCharacter, rt.course).toUpperCase() };
   if (rt.scene === 'friends') return { friends: friendsSummary(rt.online) };
   if (rt.scene === 'howToPlay') return { howToPlay: { page: rt.howToPage + 1, pages: HOW_TO_PLAY_PAGES } };
-  if (rt.scene !== 'results' || !rt.lastResult) return {};
+  if (rt.scene === 'jukebox' && rt.jukebox) return { jukebox: jukeboxOf(rt.jukebox) };
+  if (rt.scene === 'race') return { track: rt.raceTrack };
+  if (rt.scene !== 'results') return {};
+  if (!rt.lastResult) return { track: rt.raceTrack };
   const { result, newBest, saveFailed } = rt.lastResult;
-  return { result: { place: result.playerPlace, ticks: result.playerTicks, newBest, saveFailed } };
+  return { track: rt.raceTrack, result: { place: result.playerPlace, ticks: result.playerTicks, newBest, saveFailed } };
+}
+
+/** The sound test: the highlighted song, the playing one, its section sounding (or null) and every listed song in order. */
+function jukeboxOf(jukebox: Jukebox) {
+  return {
+    selected: selectedTrack(jukebox).name,
+    playing: jukebox.playing,
+    section: jukebox.section,
+    tracks: jukebox.tracks.map((track) => track.name),
+  };
 }
 
 /** Course select's rows as the screen shows them, and the index of the cursor's row. */
