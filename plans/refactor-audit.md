@@ -247,6 +247,7 @@ Test cases (written in phase 5): `ensureCourseArt` loads a world's and theme's a
 ### Phase 7: shared tooling and config
 
 Scaffold: 4318c749405a (manifest-file contract in ca8685e34c14; lanes start after phase 2 landed)
+Tag: refactor-audit/phase-7
 
 Demo: `pnpm arcade check --all` passes; `see` and `attract` share `openGameSession`; Rush Racers' `vite.config.ts` has no cast.
 Depends on: phase 2
@@ -331,3 +332,4 @@ Depends on: phase 6, phase 8
 - 7b accepted: package.json/lockfile edit (vitest devDependency for config tests); build id keeps codec, messages, race-world, race, session, hash-ledger, lobby.
 - 3a accepted: widened owns for review fixes (boot.ts, enemy-look/hud tests, theme tests, skins.test, types.ts, cloudreach.ts, DESIGN.md, UI.md). Phase 3 demo: race-to-finish frames at 200/400/600 identical to the pre-3a capture.
 - 7a accepted: see-images.ts split, see.ts at 381 lines (summary formatting and run-folder handling left), @arcade/save and fake-indexeddb devDependencies of @arcade/testing, see validates --viewport before creating the run folder.
+- phase 7 landed: check --all green, smoke all games green (phaser-2d 11, rush-racers 100, three-3d 8).
