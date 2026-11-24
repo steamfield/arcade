@@ -94,6 +94,7 @@ Key types (exact text lives in `src/logic/types.ts`):
 
 Demo: `pnpm arcade dev rush-racers-3d`, open `/games/rush-racers-3d/`: a 3-2-1 countdown, run the trail from the chase camera, jump logs and pits, dash, cross the finish, see your time and best, press confirm to race again. `pnpm arcade see rush-racers-3d --scenario finish-line` shows it headless.
 Scaffold: 4d8a16958803f2fd880f56e440336cc96a6d2d54
+Tag: rr3d-phase-1
 Test cases (lane a writes these; every line needs a test):
 - Countdown: a new world is in `countdown` for RACE.countdownTicks (180); input moves nothing; `race.countdown` fires with 3, 2, 1 at ticks 0, 60, 120 and `race.started` at 180, then `phase` is `racing`.
 - Holding forward accelerates to RUN.runSpeed and never above it without a dash; releasing slows to 0 at RUN.friction; brake slows faster than release; `vs` never goes negative.
