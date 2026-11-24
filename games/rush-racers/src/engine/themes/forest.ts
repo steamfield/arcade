@@ -1,14 +1,16 @@
 /**
  * The forest look: Thornwood's earth, branches, canopy and light. Its art, keys and colours live in
  * `forest/`; this file says how the views use them. Air barely slows particles, so dust and leaves
- * rise slowly, debris falls fast and a splash is a short burst of dust. Its one extra layer draws
- * Thornwood's rolling Boulders (`view/boulder-view.ts`).
+ * rise slowly, debris falls fast and a splash is a short burst of dust. Its extra layers draw
+ * Thornwood's rolling Boulders (`view/boulder-view.ts`) and its Mud Pies and their mud patches
+ * (`view/mud-pie-view.ts`).
  */
 
 import { drawSheets, registerLoops } from '../art/index.ts';
 import { Frame } from '../art/keys.ts';
 import { FxFrame } from '../fx/textures.ts';
 import { createBoulderView } from '../view/boulder-view.ts';
+import { createMudPieView } from '../view/mud-pie-view.ts';
 import { defineTheme } from './define.ts';
 import { ForestAnim, ForestTex, ForestTile } from './forest/keys.ts';
 import { CanopyLight, ForestBackdropPalette, WOOD_BANDS } from './forest/palettes.ts';
@@ -79,5 +81,8 @@ export const FOREST_THEME = defineTheme({
   dark: { colour: 0x020a06, alpha: 0.9 },
   trail: { frame: FxFrame.chip, tint: 0x8a6a48, alpha: 0.5 },
   contrastBands: FOREST_CONTRAST_BANDS,
-  extraLayers: (scene, world) => [createBoulderView(scene, world)],
+  extraLayers: (scene, world, reducedMotion) => [
+    createBoulderView(scene, world),
+    createMudPieView(scene, reducedMotion),
+  ],
 });
