@@ -35,6 +35,15 @@ export const SPACE_THEME = defineTheme({
     tileset: SpaceTex.tiles,
     tiles: { rock: SpaceTile.rock, coral: SpaceTile.coral, ledge: SpaceTile.ledge },
     buriedTiles: { rock: SpaceTile.rockBuried },
+    glyphTiles: {
+      gasGiant: SpaceTile.gasGiant,
+      debrisShield: SpaceTile.debrisShield,
+      archCrown: SpaceTile.archCrown,
+      archShoulderLeft: SpaceTile.archShoulderLeft,
+      archShoulderRight: SpaceTile.archShoulderRight,
+      archPillarLeft: SpaceTile.archPillarLeft,
+      archPillarRight: SpaceTile.archPillarRight,
+    },
     flowing: {
       kelp: { texture: SpaceTex.dust, anim: SpaceAnim.dustSwirl },
       'current-right': { texture: SpaceTex.windRight, anim: SpaceAnim.windRight },

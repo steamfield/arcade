@@ -1,6 +1,6 @@
 /** What Slingshot Alley has to contain to be Farside's course: its size, its set pieces (wells, asteroids) and where nothing may lie. */
 import { describe, expect, it } from 'vitest';
-import { holeAt } from '../level/wells.ts';
+import { holeAt, inHoleReach, pullAt } from '../level/wells.ts';
 import { type Cell, TILE, type Vec } from '../types.ts';
 import { COURSES, levelOf } from './index.ts';
 
@@ -17,23 +17,32 @@ describe('Slingshot Alley', () => {
     expect(level.cells).not.toEqual(levelOf(COURSES['drift-test']).cells);
   });
 
-  it('is about as long as Bramble Run, in tiles and in par', () => {
-    const width = level.width / levelOf(bramble).width;
-    const par = course.parTicks / bramble.parTicks;
-
-    expect(width).toBeGreaterThanOrEqual(0.8);
-    expect(width).toBeLessThanOrEqual(1.3);
-    expect(par).toBeGreaterThanOrEqual(0.8);
-    expect(par).toBeLessThanOrEqual(1.25);
+  it('has the same par target as Bramble Run with more columns for drift speed', () => {
+    // Drift covers more columns in the same time, and the separate Bramble lane may still have its short course.
+    const brambleWidth = levelOf(bramble).width;
+    const bramblePar = bramble.parTicks;
+    expect(level.width).toBeGreaterThan(brambleWidth);
+    expect(level.width).toBeGreaterThanOrEqual(1300);
+    expect(level.width).toBeLessThanOrEqual(1450);
+    expect(course.parTicks).toBeGreaterThanOrEqual(9000);
+    expect(course.parTicks).toBeLessThanOrEqual(10200);
+    if (bramblePar >= 9000) {
+      expect(level.width / brambleWidth).toBeGreaterThanOrEqual(1.2);
+      expect(level.width / brambleWidth).toBeLessThanOrEqual(1.5);
+      expect(Math.abs(course.parTicks - bramblePar)).toBeLessThanOrEqual(1200);
+    }
   });
 
   it("has a stretch in a moon's shadow at least 40 columns long", () => {
     expect(Math.max(0, ...level.dark.map(([from, to]) => to - from + 1))).toBeGreaterThanOrEqual(40);
   });
 
-  it('has at least three planets and exactly two black holes', () => {
+  it('keeps both black holes in the late split and adds one by the wormway shortcut', () => {
     expect(level.wells.filter((well) => well.horizon === null).length).toBeGreaterThanOrEqual(3);
-    expect(level.wells.filter((well) => well.horizon !== null)).toHaveLength(2);
+    const holes = level.wells.filter((well) => well.horizon !== null);
+    expect(holes).toHaveLength(3);
+    const split = course.sections?.find((section) => section.name === 'BLACK HOLE SPLIT')?.fromCol ?? level.finishX;
+    expect(holes.filter(({ centre }) => centre.x / TILE >= split)).toHaveLength(2);
   });
 
   it('has ice, nebula dust and solar wind', () => {
@@ -48,18 +57,46 @@ describe('Slingshot Alley', () => {
     expect(level.jellies.length).toBeGreaterThan(0);
   });
 
-  it('has 4-6 drifting asteroids out of step, on the opening straight and across the dust field', () => {
+  it('has drifting asteroids out of step in the opening, dust field and debris corridor', () => {
     const { asteroids } = level;
     const inCols = (from: number, to: number) =>
-      asteroids.filter((asteroid) => asteroid.from[0] >= from && asteroid.to[0] <= to).length;
+      asteroids.filter((asteroid) => [asteroid.from[0], asteroid.to[0]].every((col) => col >= from && col <= to))
+        .length;
 
-    expect(asteroids.length).toBeGreaterThanOrEqual(4);
-    expect(asteroids.length).toBeLessThanOrEqual(6);
-    expect(inCols(1, 98)).toBeGreaterThan(0);
-    expect(inCols(224, 270)).toBeGreaterThan(0);
+    expect(asteroids).toHaveLength(11);
+    expect(inCols(1, 98)).toBe(2);
+    expect(inCols(224, 270)).toBe(3);
+    expect(inCols(603, 846)).toBe(6);
     expect(new Set(asteroids.map((asteroid) => `${asteroid.periodTicks}/${asteroid.offsetTicks}`)).size).toBe(
       asteroids.length,
     );
+  });
+
+  it('teaches through a sealed two-way passage before sending racers to two different gravity exits', () => {
+    const [wall, shortcut, neutral, loop, slingshot, split] = level.wormholes;
+    expect(level.wormholes).toHaveLength(6);
+    if (!wall || !shortcut || !neutral || !loop || !slingshot || !split) throw new Error('Missing wormway pair');
+
+    const middle = Math.floor((wall.a[0] + wall.b[0]) / 2);
+    expect(level.cells.every((row) => row[middle] === 'rock')).toBe(true);
+    expect(wall.oneWay).toBe(false);
+
+    const shortcutExit = centreOfTile({ x: shortcut.b[0], y: shortcut.b[1] });
+    const cornerNearestHole = { x: shortcutExit.x + TILE / 2, y: shortcutExit.y + TILE / 2 };
+    const insideReach = centreOfTile({ x: shortcut.b[0] + 1, y: shortcut.b[1] + 1 });
+    expect(inHoleReach(level, shortcutExit)).toBe(false);
+    expect(inHoleReach(level, cornerNearestHole)).toBe(false);
+    expect(inHoleReach(level, insideReach)).toBe(true);
+    expect(holeAt(level, insideReach)).toBeNull();
+    expect(neutral.a[0]).toBe(neutral.b[0]);
+    expect(neutral.oneWay).toBe(true);
+    expect(loop.oneWay).toBe(true);
+    expect(loop.b[0]).toBeLessThan(loop.a[0]);
+
+    const slingshotExit = centreOfTile({ x: slingshot.b[0], y: slingshot.b[1] });
+    expect(inHoleReach(level, slingshotExit)).toBe(false);
+    expect(pullAt(level, slingshotExit).x).toBeGreaterThan(0);
+    expect(split.b[0]).toBeGreaterThan(slingshot.b[0]);
   });
 
   it('has at least 40 stardust and 10 supply pods, none inside a horizon', () => {
