@@ -14,8 +14,11 @@ export const COUNTDOWN_TICKS = 180;
  * (or none is left), before the race ends without them.
  */
 export const DNF_GRACE_TICKS = 600;
-/** Race ticks after which the race ends regardless. */
-export const RACE_LIMIT_TICKS = 18000;
+/**
+ * Race ticks after which the race ends regardless: 8 minutes, so a slow child on Easy still finishes
+ * a course whose par is about two and a half minutes.
+ */
+export const RACE_LIMIT_TICKS = 28800;
 
 /** Ticks between the 3, 2, 1 beeps. */
 const BEEP_INTERVAL_TICKS = 60;

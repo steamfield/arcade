@@ -64,14 +64,38 @@ export function buildProgressField(level: Level): ProgressField {
   };
 }
 
-/** Cheapest cost from every tile to any finish tile, in tiles; Infinity where the finish is out of reach. */
-export function distancesToFinish(level: Level, broken: ReadonlySet<number>, cost: EntryCost): Float32Array {
+/**
+ * A forced jump the grid's neighbours don't show: a racer that enters tile `from` is carried to tile
+ * `to` for `cost` field units, as a cloud cannon fires it or a wormhole warps it. A medium passes its
+ * own links. Entering `from` is never a way past it, so its value is the link's alone.
+ */
+export interface NavLink {
+  from: Vec;
+  to: Vec;
+  cost: number;
+}
+
+/**
+ * Cheapest cost from every tile to any finish tile, in tiles; Infinity where the finish is out of reach.
+ * Each of `links` sets its `from` tile to `cost` more than its `to` tile, and its neighbours price
+ * entering it from that, so a link that carries a racer back makes its tile one to steer round. A
+ * link whose `from` tile is closed (Infinity to enter) is ignored. A `from` tile whose `to` can't reach
+ * the finish stays Infinity. Two links out of one tile keep the cheaper.
+ */
+export function distancesToFinish(
+  level: Level,
+  broken: ReadonlySet<number>,
+  cost: EntryCost,
+  links: readonly NavLink[] = [],
+): Float32Array {
   const entry = (tx: number, ty: number, move: Vec) =>
     cost(cellAt(level, tx, ty), broken.has(tileIndex(level, tx, ty)), move, { x: tx, y: ty });
   const isOpen = (tx: number, ty: number) => Number.isFinite(entry(tx, ty, STILL));
   // Searched in float64 so sums don't drift; stored as float32 like every field.
   const distance = new Float64Array(level.width * level.height).fill(Number.POSITIVE_INFINITY);
   const frontier = new PriorityQueue<QueuedTile>();
+  const linksInto = linksByTarget(level, links);
+  const linkStarts = new Set(links.map((link) => tileIndex(level, link.from.x, link.from.y)));
   for (let ty = 0; ty < level.height; ty++) {
     if (!isOpen(level.finishX, ty)) continue;
     distance[tileIndex(level, level.finishX, ty)] = 0;
@@ -81,6 +105,14 @@ export function distancesToFinish(level: Level, broken: ReadonlySet<number>, cos
   for (let next = frontier.pop(); next; next = frontier.pop()) {
     const { cost: settled, tx, ty } = next;
     if (settled > (distance[tileIndex(level, tx, ty)] ?? 0)) continue;
+    for (const link of linksInto.get(tileIndex(level, tx, ty)) ?? []) {
+      if (!isOpen(link.from.x, link.from.y)) continue;
+      const reached = settled + link.cost;
+      const fromIndex = tileIndex(level, link.from.x, link.from.y);
+      if (reached >= (distance[fromIndex] ?? 0)) continue;
+      distance[fromIndex] = reached;
+      frontier.push(reached, { cost: reached, tx: link.from.x, ty: link.from.y });
+    }
     for (const offset of NEIGHBOURS) {
       // The search runs backwards: a racer on the neighbour moves into this tile.
       const fromX = tx + offset.x;
@@ -90,12 +122,26 @@ export function distancesToFinish(level: Level, broken: ReadonlySet<number>, cos
       const move = { x: -offset.x, y: -offset.y };
       const reached = settled + length(move.x, move.y) * entry(tx, ty, move);
       const fromIndex = tileIndex(level, fromX, fromY);
+      // A racer on a link's start is carried off, so the tile beyond is no way on from there.
+      if (linkStarts.has(fromIndex)) continue;
       if (reached >= (distance[fromIndex] ?? 0)) continue;
       distance[fromIndex] = reached;
       frontier.push(reached, { cost: reached, tx: fromX, ty: fromY });
     }
   }
   return Float32Array.from(distance);
+}
+
+/** `links` grouped by the index of their `to` tile, each group in the order given, for the search to relax. */
+function linksByTarget(level: Level, links: readonly NavLink[]): Map<number, NavLink[]> {
+  const byTarget = new Map<number, NavLink[]>();
+  for (const link of links) {
+    const index = tileIndex(level, link.to.x, link.to.y);
+    const group = byTarget.get(index);
+    if (group) group.push(link);
+    else byTarget.set(index, [link]);
+  }
+  return byTarget;
 }
 
 /**

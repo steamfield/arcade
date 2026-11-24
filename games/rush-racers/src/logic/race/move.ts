@@ -23,7 +23,7 @@ const MAX_SUBSTEPS = 64;
 const LEDGE_TOLERANCE = 1e-6;
 
 /** The rules of a medium with no platformer seams: a solid bottom edge, no extra solid tiles. */
-export const NO_MOVE_RULES: MoveRules = { pitBelow: false, solidTiles: new Set() };
+export const NO_MOVE_RULES: MoveRules = { pitBelow: false, solidTiles: new Set(), openLedges: new Set() };
 
 /** One `moveBody` call's grid and rules, and what the body has run into so far this tick. */
 interface TileMove {
@@ -168,12 +168,12 @@ function bumpCeiling(body: Body, move: TileMove): void {
  */
 export function moveRulesFor(world: World): MoveRules {
   const { pitBelow, solidClams } = mediumOf(world).effects;
-  if (!pitBelow && !solidClams) return NO_MOVE_RULES;
+  if (!pitBelow && !solidClams && world.fallen.size === 0) return NO_MOVE_RULES;
   const solidTiles = new Set<number>();
   if (solidClams) {
     for (const clam of world.clams) solidTiles.add(tileIndex(world.level, clam.tile.x, clam.tile.y));
   }
-  return { pitBelow, solidTiles };
+  return { pitBelow, solidTiles, openLedges: world.fallen };
 }
 
 /** Length two spans share along one axis; zero when they touch, negative when there's a gap. */

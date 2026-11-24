@@ -7,7 +7,7 @@ import type { Migrations } from '@arcade/core';
 import { z } from 'zod';
 import { CHARACTER_IDS, type CharacterId, DIFFICULTIES, type Difficulty } from './types.ts';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 /** A fastest finish with the place it earned. */
 const BestSchema = z.object({ ticks: z.number().int().positive(), place: z.number().int().min(1).max(4) });
@@ -82,4 +82,19 @@ export const migrations: Migrations = {
     const { best, ...rest } = old as SaveDataV5;
     return { ...rest, bests: { 'sunlit-shallows': best }, lastCourse: null };
   },
+  // v6 bests were set on the short layouts of the four listed courses; v7 lengthened every one of them
+  // to about two and a half minutes, so those times could never be beaten. Other keys are kept.
+  6: (old): SaveData => {
+    const v6 = old as SaveData;
+    const bests = Object.fromEntries(Object.entries(v6.bests).filter(([id]) => !LENGTHENED_IN_V7.has(id)));
+    return { ...v6, bests };
+  },
 };
+
+/** The courses whose layouts v7 lengthened, so their v6 bests no longer compare. */
+const LENGTHENED_IN_V7: ReadonlySet<string> = new Set([
+  'sunlit-shallows',
+  'bramble-run',
+  'thunderhead-pass',
+  'slingshot-alley',
+]);

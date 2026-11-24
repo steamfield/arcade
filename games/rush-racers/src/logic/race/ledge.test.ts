@@ -23,7 +23,7 @@ const SHELF: Level = parseLevel({
   `,
 });
 
-const RULES: MoveRules = { pitBelow: false, solidTiles: new Set() };
+const RULES: MoveRules = { pitBelow: false, solidTiles: new Set(), openLedges: new Set() };
 const LEDGE_TOP = 3 * TILE;
 
 const body = (x: number, y: number, vx: number, vy: number): Body => ({

@@ -16,7 +16,8 @@ export type ShippedCourseId =
   | 'slingshot-alley'
   | 'run-test'
   | 'sky-test'
-  | 'drift-test';
+  | 'drift-test'
+  | 'reef-test';
 /** Shipped movement styles. */
 export type ShippedMediumId = 'swim' | 'run' | 'flight' | 'drift';
 /** Looks the engine draws a course with. */

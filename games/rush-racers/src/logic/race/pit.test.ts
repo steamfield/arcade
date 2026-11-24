@@ -33,7 +33,7 @@ const body = (x: number, y: number, vx: number, vy: number): Body => ({
 
 function fall(target: Body, pitBelow: boolean, ticks: number): void {
   for (let i = 0; i < ticks; i++) {
-    moveBody(target, GAP, new Set(), TICK_DT, { pitBelow, solidTiles: new Set() });
+    moveBody(target, GAP, new Set(), TICK_DT, { pitBelow, solidTiles: new Set(), openLedges: new Set() });
     target.vy = Math.min(320, target.vy + 800 * TICK_DT);
   }
 }

@@ -5,7 +5,7 @@ import { parseLevel } from '../level/parse.ts';
 import { tileIndex } from '../level/query.ts';
 import { buildSwimNav, validateSwimLevel } from '../media/swim/nav.ts';
 import { type Body, type Level, RACER_SIZE, TILE } from '../types.ts';
-import { buildProgressField, progressAt } from './flowfield.ts';
+import { buildProgressField, distancesToFinish, type EntryCost, progressAt } from './flowfield.ts';
 
 /** A four-lane straight with one column (x = 3) of `fill`. The finish is at x = 6. */
 const straight = (fill = '.'): Level =>
@@ -263,5 +263,47 @@ describe('progress beside a blocked diagonal', () => {
     const readings = route.map((body) => progressAt(fields, body));
 
     for (let i = 1; i < readings.length; i++) expect(readings[i]).toBeLessThanOrEqual(readings[i - 1] ?? 0);
+  });
+});
+
+describe('links', () => {
+  const uniform: EntryCost = (cell) => (cell === 'rock' ? Number.POSITIVE_INFINITY : 1);
+
+  it('prices a link start from where it carries a racer, and its neighbours route into it', () => {
+    const level = hook();
+    const walked = distancesToFinish(level, new Set(), uniform);
+    const linked = distancesToFinish(level, new Set(), uniform, [
+      { from: { x: 1, y: 4 }, to: { x: 6, y: 1 }, cost: 2 },
+    ]);
+
+    expect(at(walked, level, 1, 4)).toBe(9);
+    expect(at(linked, level, 1, 4)).toBe(3);
+    expect(at(linked, level, 2, 4)).toBe(4);
+  });
+
+  it('makes a link that carries a racer back a tile to steer round, not a free way past', () => {
+    const level = straight();
+    const walked = distancesToFinish(level, new Set(), uniform);
+    // A mouth in the middle of the second lane that throws a racer back to the start column.
+    const linked = distancesToFinish(level, new Set(), uniform, [
+      { from: { x: 3, y: 2 }, to: { x: 1, y: 2 }, cost: 1 },
+    ]);
+
+    expect(at(walked, level, 3, 2)).toBe(3);
+    // One for the link plus the start column's way to the finish, which now bends round the mouth.
+    expect(at(linked, level, 3, 2)).toBeCloseTo(1 + 4 + Math.SQRT2, 5);
+    // The tile behind the mouth reaches the finish round it, through the lanes beside.
+    expect(at(linked, level, 2, 2)).toBeCloseTo(3 + Math.SQRT2, 5);
+  });
+
+  it('ignores a link out of a closed tile, and leaves a start Infinity when its target cannot reach the finish', () => {
+    const level = hook();
+    const linked = distancesToFinish(level, new Set(), uniform, [
+      { from: { x: 0, y: 4 }, to: { x: 6, y: 1 }, cost: 1 },
+      { from: { x: 1, y: 4 }, to: { x: 3, y: 3 }, cost: 0 },
+    ]);
+
+    expect(at(linked, level, 0, 4)).toBe(Number.POSITIVE_INFINITY);
+    expect(at(linked, level, 1, 4)).toBe(Number.POSITIVE_INFINITY);
   });
 });

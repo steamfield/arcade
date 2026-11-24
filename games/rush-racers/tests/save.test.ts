@@ -11,11 +11,12 @@ const freshStore = () =>
   createSaveStore({ gameId: `fixture-${store++}`, version: SAVE_VERSION, schema: SaveSchema, migrate: migrations });
 
 const NO_BEST = { easy: null, normal: null, hard: null };
-/** A pre-v6 save's bests, which were all set on the one course there was. */
-const onSunlit = (best: typeof NO_BEST | Record<string, unknown>) => ({
-  bests: { 'sunlit-shallows': best },
-  lastCourse: null,
-});
+/**
+ * What a pre-v6 save's bests become: v5 files them under Sunlit Shallows, the one course there was,
+ * and v7 drops them again because it lengthened that course, so none reach the current version.
+ * `best` is what v5 filed, checked step by step in the v5 test.
+ */
+const onSunlit = (_best: typeof NO_BEST | Record<string, unknown>) => ({ bests: {}, lastCourse: null });
 
 /** Imports a committed fixture into a fresh store, as a player's old save file would load. */
 async function load(file: string) {
@@ -77,7 +78,15 @@ describe('save compatibility', () => {
     });
   });
 
-  it('upgrades a v5 save by filing its bests under Sunlit Shallows, with no last course yet', async () => {
+  it("files a v5 save's bests under Sunlit Shallows, with no last course yet", () => {
+    const v5 = JSON.parse(readFileSync(new URL('save-v5.json', fixturesDir), 'utf8')).data;
+    expect(migrations[5]?.(v5)).toMatchObject({
+      bests: { 'sunlit-shallows': { easy: { ticks: 3100, place: 3 }, normal: null, hard: { ticks: 2650, place: 1 } } },
+      lastCourse: null,
+    });
+  });
+
+  it('upgrades a v5 save to the current version, its Sunlit Shallows bests dropped by v7', async () => {
     expect(await load('save-v5.json')).toEqual({
       kind: 'ok',
       migratedFrom: 5,
@@ -90,12 +99,12 @@ describe('save compatibility', () => {
     });
   });
 
-  it('loads a v6 save as it is, keeping bests for a course the game no longer has', async () => {
+  it('drops v6 bests on the lengthened courses, keeping bests for a course the game no longer has', async () => {
     expect(await load('save-v6.json')).toEqual({
       kind: 'ok',
+      migratedFrom: 6,
       data: {
         bests: {
-          'sunlit-shallows': { easy: { ticks: 3100, place: 3 }, normal: null, hard: { ticks: 2650, place: 1 } },
           'retired-course': { easy: null, normal: { ticks: 4000, place: 2 }, hard: null },
         },
         lastCourse: 'sunlit-shallows',

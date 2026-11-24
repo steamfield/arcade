@@ -1,0 +1,32 @@
+{
+  "version": 7,
+  "savedAt": "2026-11-24T00:00:00.000Z",
+  "data": {
+    "bests": {
+      "bramble-run": {
+        "easy": {
+          "ticks": 10400,
+          "place": 2
+        },
+        "normal": null,
+        "hard": null
+      },
+      "retired-course": {
+        "easy": null,
+        "normal": {
+          "ticks": 4000,
+          "place": 2
+        },
+        "hard": null
+      }
+    },
+    "lastCourse": "bramble-run",
+    "races": 9,
+    "settings": {
+      "muted": false,
+      "reducedMotion": null,
+      "difficulty": "normal"
+    },
+    "character": "selene"
+  }
+}

@@ -69,6 +69,15 @@ export function isLedge(level: Level, tx: number, ty: number): boolean {
 }
 
 /**
+ * True for a ledge that holds a body landing on it this tick under `rules`: a ledge (`isLedge`) that
+ * isn't one of the rules' open ledges (a crumbling branch that is down). Use it wherever something
+ * lands on ledges during a race; `isLedge` alone is the level's shape.
+ */
+export function ledgeHolds(level: Level, rules: MoveRules, tx: number, ty: number): boolean {
+  return isLedge(level, tx, ty) && !rules.openLedges.has(tileIndex(level, tx, ty));
+}
+
+/**
  * Inclusive tile range a body overlaps.
  * A tile the body only touches along an edge is not included.
  */
