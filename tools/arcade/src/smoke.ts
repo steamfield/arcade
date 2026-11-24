@@ -38,6 +38,10 @@ export async function smoke(slug: string | undefined): Promise<number> {
   wrangler.stderr.on('data', (d) => {
     wranglerLog += d;
   });
+  // A spawn failure (pnpm missing, say) is reported like run() reports it: through the log waitFor prints.
+  wrangler.once('error', (err) => {
+    wranglerLog += `pnpm exec wrangler: ${err.message}\n`;
+  });
   const stopWrangler = () => killProcessGroup(wrangler.pid);
   // Once this handler has fired, the signal is sent again: with no handler left, Node dies with the
   // conventional status (130 for SIGINT, 143 for SIGTERM) without a process.exit call here.
