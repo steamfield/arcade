@@ -1,6 +1,6 @@
 /**
  * The friends screen as plain state, with no Phaser in it: a short menu (Create room, Join, Back)
- * and, under Join, six cells that spell a room code with the d-pad. The online flow feeds it
+ * and, under Join, four cells that spell a room code with the d-pad. The online flow feeds it
  * presses; `scenes/friends.ts` draws it.
  */
 import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@arcade/api/protocol';
@@ -13,7 +13,7 @@ export type ScreenPress = 'up' | 'down' | 'left' | 'right' | 'fire' | 'dash';
 
 /** The friends screen. */
 export interface FriendsScreen {
-  /** `menu` shows the options; `code` shows the six cells. */
+  /** `menu` shows the options; `code` shows the four cells. */
   mode: 'menu' | 'code';
   /** Index into `FRIENDS_OPTIONS`. */
   selected: number;

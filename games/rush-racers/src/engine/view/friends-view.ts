@@ -1,6 +1,6 @@
 /**
  * Draws the friends screen, laid out to UI.md "Friends": the FRIENDS heading, the online notice
- * and the Create room / Join / Back buttons, and under Join the six code cells (the cursor's cell
+ * and the Create room / Join / Back buttons, and under Join the four code cells (the cursor's cell
  * in a gold frame with the cursor fin turned up above it and down below it, and the hint that up
  * and down change a letter), with a footer showing what fire and dash do (as the A and B buttons
  * on touch screens). It only reads the online state; the online flow moves it.

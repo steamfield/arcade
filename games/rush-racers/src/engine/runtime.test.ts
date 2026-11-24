@@ -29,7 +29,7 @@ const SOUND_ROW = 4;
 /** The title ignores fire for its first 20 ticks. */
 const ARMED = 21;
 /** The code every room in these tests has. */
-const ROOM_CODE = 'ABCDEF';
+const ROOM_CODE = 'ABCD';
 
 let storeCount = 0;
 const realStore = () =>

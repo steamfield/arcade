@@ -14,11 +14,13 @@ function pressAll(screen: FriendsScreen, presses: readonly ScreenPress[]): (Frie
 }
 
 const FIRST = ROOM_CODE_ALPHABET[0] as string;
+const SECOND = ROOM_CODE_ALPHABET[1] as string;
+const THIRD = ROOM_CODE_ALPHABET[2] as string;
 const LAST = ROOM_CODE_ALPHABET[ROOM_CODE_ALPHABET.length - 1] as string;
 
 describe('the friends menu', () => {
-  it('opens on the menu with Create room selected and six blank cells', () => {
-    expect(createFriendsScreen()).toEqual({ mode: 'menu', selected: 0, cells: Array(6).fill(FIRST), cell: 0 });
+  it('opens on the menu with Create room selected and four blank cells', () => {
+    expect(createFriendsScreen()).toEqual({ mode: 'menu', selected: 0, cells: Array(4).fill(FIRST), cell: 0 });
   });
 
   it('moves down and up through the options, wrapping at both ends', () => {
@@ -75,29 +77,29 @@ describe('the code cells', () => {
   it('steps down from the first character to the last', () => {
     const screen = openCells();
     expect(pressFriends(screen, 'down')).toBeNull();
-    expect(screen.cells).toEqual([LAST, FIRST, FIRST, FIRST, FIRST, FIRST]);
+    expect(screen.cells).toEqual([LAST, FIRST, FIRST, FIRST]);
   });
 
   it('moves to the next cell on right and on fire, and joins with the code from the last cell', () => {
     const screen = openCells();
-    const actions = pressAll(screen, ['up', 'right', 'up', 'up', 'fire', 'down', 'right', 'right', 'fire']);
-    expect(actions).toEqual(Array(9).fill(null));
-    expect(screen.cell).toBe(5);
+    const actions = pressAll(screen, ['up', 'right', 'up', 'up', 'fire', 'down', 'right']);
+    expect(actions).toEqual(Array(7).fill(null));
+    expect(screen.cell).toBe(3);
     expect(pressFriends(screen, 'up')).toBeNull();
-    expect(pressFriends(screen, 'fire')).toEqual({ kind: 'join', code: `34${LAST}${FIRST}${FIRST}3` });
+    expect(pressFriends(screen, 'fire')).toEqual({ kind: 'join', code: `${SECOND}${THIRD}${LAST}${SECOND}` });
   });
 
   it('joins on right from the last cell, as on fire', () => {
     const screen = openCells();
-    pressAll(screen, ['right', 'right', 'right', 'right', 'right', 'up']);
-    expect(pressFriends(screen, 'right')).toEqual({ kind: 'join', code: `${FIRST.repeat(5)}3` });
+    pressAll(screen, ['right', 'right', 'right', 'up']);
+    expect(pressFriends(screen, 'right')).toEqual({ kind: 'join', code: `${FIRST.repeat(3)}${SECOND}` });
   });
 
   it('returns to the menu on left from the first cell, keeping the cells', () => {
     const screen = openCells();
     pressAll(screen, ['up', 'right', 'up', 'left']);
     expect(pressFriends(screen, 'left')).toBeNull();
-    expect(screen).toEqual({ mode: 'menu', selected: 1, cells: ['3', '3', FIRST, FIRST, FIRST, FIRST], cell: 0 });
+    expect(screen).toEqual({ mode: 'menu', selected: 1, cells: [SECOND, SECOND, FIRST, FIRST], cell: 0 });
   });
 
   it('steps back a cell on left and on dash, and from the first cell returns to the menu keeping the cells', () => {
@@ -106,12 +108,12 @@ describe('the code cells', () => {
     expect(pressAll(screen, ['left', 'dash'])).toEqual([null, null]);
     expect(screen.cell).toBe(0);
     expect(pressFriends(screen, 'dash')).toBeNull();
-    expect(screen).toEqual({ mode: 'menu', selected: 1, cells: ['3', FIRST, '3', FIRST, FIRST, FIRST], cell: 0 });
+    expect(screen).toEqual({ mode: 'menu', selected: 1, cells: [SECOND, FIRST, SECOND, FIRST], cell: 0 });
   });
 
   it('reopens on the first cell with the code spelled so far', () => {
     const screen = openCells();
     pressAll(screen, ['right', 'up', 'left', 'left', 'fire']);
-    expect(screen).toEqual({ mode: 'code', selected: 1, cells: [FIRST, '3', FIRST, FIRST, FIRST, FIRST], cell: 0 });
+    expect(screen).toEqual({ mode: 'code', selected: 1, cells: [FIRST, SECOND, FIRST, FIRST], cell: 0 });
   });
 });

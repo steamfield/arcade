@@ -26,7 +26,7 @@ afterAll(async () => {
   await service.dispose();
 });
 
-test('create returns a six-character code from the alphabet', async () => {
+test('create returns a four-letter code from the alphabet', async () => {
   const response = await postCreateRoom(service);
 
   expect(response.status).toBe(201);
@@ -47,7 +47,7 @@ test('create from a foreign origin is 403 and a join from one is closed with ori
 });
 
 test('joining an unknown code is closed with unknownRoom after a successful upgrade', async () => {
-  const socket = openSocket(service, 'ZZZZZZ');
+  const socket = openSocket(service, 'ZZZZ');
 
   expect(await socket.closed).toEqual({ code: CLOSE.unknownRoom, reason: 'unknownRoom', opened: true });
 });

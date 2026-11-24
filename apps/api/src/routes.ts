@@ -8,7 +8,10 @@ import { allowedOrigin } from './origin.ts';
 import { CLOSE, type Created, isRoomCode } from './protocol.ts';
 import { refuseSocket } from './sockets.ts';
 
-/** Codes tried before creating a room gives up; with 31^6 codes a second collision is already unlikely. */
+/**
+ * Codes tried before creating a room gives up; with 23^4 (about 280,000) codes and rooms that close
+ * when idle, a second collision is already unlikely.
+ */
 const CLAIM_ATTEMPTS = 5;
 
 const CREATED = 201;
