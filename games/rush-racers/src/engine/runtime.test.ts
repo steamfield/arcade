@@ -5,8 +5,7 @@ import { createSaveStore } from '@arcade/save';
 import type { GameContext } from '@arcade/shell';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOP_ROUTE } from '../../scenarios/kit.ts';
-import { BRAMBLE_RUN } from '../logic/courses/bramble-run.ts';
-import { DEFAULT_COURSE } from '../logic/courses/index.ts';
+import { COURSES, DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { Course } from '../logic/courses/types.ts';
 import { hashWorld } from '../logic/hash.ts';
 import { COUNTDOWN_TICKS, RACE_LIMIT_TICKS } from '../logic/race/standings.ts';
@@ -480,7 +479,10 @@ describe('art a screen needs', () => {
   /** On course select with Bramble Run picked and its art still loading. */
   async function pickedBrambleRun() {
     const art = heldArt([DEFAULT_COURSE]);
-    const harness = titleRuntime(await realStore(), { listedCourses: [DEFAULT_COURSE, BRAMBLE_RUN], art: art.port });
+    const harness = titleRuntime(await realStore(), {
+      listedCourses: [DEFAULT_COURSE, COURSES['bramble-run']],
+      art: art.port,
+    });
     press(harness.rt, 'fire');
     harness.rt.step.advance(ARMED);
     press(harness.rt, 'down');
@@ -498,7 +500,9 @@ describe('art a screen needs', () => {
     expect([rt.scene, rt.courseCursor, rt.events.all().length]).toEqual(['course', 1, logged]);
 
     art.finish();
-    await vi.waitFor(() => expect([rt.scene, rt.loading, rt.course]).toEqual(['select', false, BRAMBLE_RUN]));
+    await vi.waitFor(() =>
+      expect([rt.scene, rt.loading, rt.course]).toEqual(['select', false, COURSES['bramble-run']]),
+    );
     expect(gameErrors).toEqual([]);
   });
 

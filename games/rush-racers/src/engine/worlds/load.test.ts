@@ -3,10 +3,10 @@
  * the UI kit as boot draws them. Only the imports are wrapped, to count them, hold them open or make
  * one fail as a 404'd chunk does.
  */
+
 import type Phaser from 'phaser';
 import { describe, expect, it } from 'vitest';
-import { BRAMBLE_RUN } from '../../logic/courses/bramble-run.ts';
-import { SUNLIT_SHALLOWS } from '../../logic/courses/sunlit-shallows.ts';
+import { COURSES } from '../../logic/courses/index.ts';
 import { buildTextures } from '../art/index.ts';
 import { buildUiTextures } from '../art/ui/index.ts';
 import { THEME_ART } from '../themes/index.ts';
@@ -50,16 +50,16 @@ describe('the art loader', () => {
     const { sources, imports } = countedSources();
     const loader = createArtLoader(sources);
     const before = textures.size;
-    expect(loader.hasCourseArt(BRAMBLE_RUN)).toBe(false);
+    expect(loader.hasCourseArt(COURSES['bramble-run'])).toBe(false);
 
-    await loader.ensureCourseArt(scene, BRAMBLE_RUN);
+    await loader.ensureCourseArt(scene, COURSES['bramble-run']);
     const after = textures.size;
-    await loader.ensureCourseArt(scene, BRAMBLE_RUN);
+    await loader.ensureCourseArt(scene, COURSES['bramble-run']);
 
     expect(imports).toEqual(['forest', 'thornwood']);
     expect(loader.loadedArt()).toEqual(['forest', 'thornwood']);
-    expect(loader.hasCourseArt(BRAMBLE_RUN)).toBe(true);
-    expect(loader.hasCourseArt(SUNLIT_SHALLOWS)).toBe(false);
+    expect(loader.hasCourseArt(COURSES['bramble-run'])).toBe(true);
+    expect(loader.hasCourseArt(COURSES['sunlit-shallows'])).toBe(false);
     expect(after).toBeGreaterThan(before);
     expect(textures.size).toBe(after);
     expect(textures.has(THORNWOOD_SKIN.cast.racers.rudy)).toBe(true);
@@ -80,7 +80,7 @@ describe('the art loader', () => {
       themes: { ...THEME_ART, forest: held('forest', THEME_ART.forest) },
     });
 
-    const loading = loader.ensureCoursesArt(scene, [BRAMBLE_RUN, SUNLIT_SHALLOWS]);
+    const loading = loader.ensureCoursesArt(scene, [COURSES['bramble-run'], COURSES['sunlit-shallows']]);
     expect(requested).toEqual(['forest', 'thornwood']);
     arrive.get('thornwood')?.();
     arrive.get('forest')?.();
@@ -94,7 +94,10 @@ describe('the art loader', () => {
     const { sources, imports } = countedSources();
     const loader = createArtLoader(sources);
 
-    await Promise.all([loader.ensureCourseArt(scene, BRAMBLE_RUN), loader.ensureCourseArt(scene, BRAMBLE_RUN)]);
+    await Promise.all([
+      loader.ensureCourseArt(scene, COURSES['bramble-run']),
+      loader.ensureCourseArt(scene, COURSES['bramble-run']),
+    ]);
 
     expect(imports).toEqual(['forest', 'thornwood']);
   });
@@ -112,7 +115,7 @@ describe('the art loader', () => {
       },
     });
 
-    const failed = await loader.ensureCourseArt(scene, BRAMBLE_RUN).catch((error: unknown) => error);
+    const failed = await loader.ensureCourseArt(scene, COURSES['bramble-run']).catch((error: unknown) => error);
     expect(failed).toBeInstanceOf(Error);
     expect((failed as Error).message).toBe(
       "Couldn't load the art for world 'thornwood': Failed to fetch dynamically imported module: /assets/art-x.js",
@@ -121,7 +124,7 @@ describe('the art loader', () => {
     expect(loader.loadedArt()).toEqual([]);
 
     fail = false;
-    await loader.ensureCourseArt(scene, BRAMBLE_RUN);
+    await loader.ensureCourseArt(scene, COURSES['bramble-run']);
     expect(loader.loadedArt()).toEqual(['forest', 'thornwood']);
     expect(imports).toEqual(['forest', 'thornwood']);
   });
@@ -130,7 +133,7 @@ describe('the art loader', () => {
     const { scene } = bootedScene();
     const { sources } = countedSources();
     const loader = createArtLoader(sources);
-    await loader.ensureCourseArt(scene, SUNLIT_SHALLOWS);
+    await loader.ensureCourseArt(scene, COURSES['sunlit-shallows']);
     expect(loader.hasAllArt()).toBe(false);
 
     await loader.ensureAllArt(scene);
