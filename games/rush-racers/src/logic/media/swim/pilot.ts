@@ -35,6 +35,7 @@ import {
 } from '../pilot-kit.ts';
 import type { AiDraws, Steering } from '../types.ts';
 import { type SwimPilot, swimNav, swimPilot } from './data.ts';
+import { swimStepPrice } from './nav.ts';
 
 /** Kick only when the aim is within about 37 degrees of the way the racer is already moving. */
 const KICK_ALIGNMENT = 0.8;
@@ -95,8 +96,17 @@ function replanAim(world: World, racer: Racer, memory: SwimPilot, reactionMul: n
     const holdsBreaker = CORAL_BREAKERS.some((kind) => holds(racer, kind));
     const pufferReady = racer.status.inflated > 0 || (holdsBreaker && racer.useCooldown === 0);
     const rams = breaksCoralOnContact(racer);
-    const field = rams ? nav.ram : pufferReady ? nav.smash : nav.steer;
-    memory.aim = steerDirection(field, nav, level, broken, racer.body, LOOKAHEAD_TILES, rams || pufferReady);
+    const route = rams ? 'ram' : pufferReady ? 'smash' : 'steer';
+    memory.aim = steerDirection(
+      nav[route],
+      nav,
+      level,
+      broken,
+      racer.body,
+      LOOKAHEAD_TILES,
+      rams || pufferReady,
+      swimStepPrice(world, route),
+    );
     memory.replanIn = racer.profile.reactionTicks * reactionMul;
   }
   memory.replanIn--;
