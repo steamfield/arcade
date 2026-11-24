@@ -53,6 +53,15 @@ describe('set piece and shot sounds', () => {
     expect(setPieceCue(event, worldAt(400 * TILE), 'player')).toBeNull();
   });
 
+  it('splats a Mud Pie where it lands and pops a gravity bomb as it ends, within hearing', () => {
+    const landed = { type: 'twist.landed', owner: 'tess', style: 'mudPie', x: 100, y: 0 } as const;
+    const ended = { type: 'twist.ended', owner: 'tess', style: 'gravityBomb', x: 100, y: 0 } as const;
+    expect(setPieceCue(landed, worldAt(150), 'player')).toBe('squid.latch');
+    expect(setPieceCue(ended, worldAt(150), 'player')).toBe('decoy.pop');
+    expect(setPieceCue({ ...ended, style: 'headwind' }, worldAt(150), 'player')).toBeNull();
+    expect(setPieceCue(landed, worldAt(5000), 'player')).toBeNull();
+  });
+
   it('is silent off the race screen', () => {
     expect(setPieceCue({ type: 'vent.erupted', vent: 0 }, null, 'player')).toBeNull();
   });

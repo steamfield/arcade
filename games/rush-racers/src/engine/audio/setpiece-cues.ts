@@ -4,8 +4,9 @@
  * wind zone turning near the local racer rushes like a Riptide, a wind zone about
  * to turn breathes like a wingbeat, a shot that warns the local racer it is the target pings like a
  * squid lock, and a shot ending within hearing sounds like its world: a Boulder crunches like coral,
- * a Meteor lands with a lightning crack and a Comet pops like a decoy. Positions come from the event
- * or the level, judged against the local racer.
+ * a Meteor lands with a lightning crack and a Comet pops like a decoy. Of the reworked items, a Mud
+ * Pie splats like a squid latching and a gravity bomb pops like a decoy as it ends. Positions come
+ * from the event or the level, judged against the local racer.
  */
 import { type RacerId, TILE, type World } from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
@@ -40,6 +41,10 @@ export function setPieceCue(event: RuntimeEvent, world: World | null, local: Rac
       return event.target === local ? 'squid.lock' : null;
     case 'shot.ended':
       return heard(event.x) ? SHOT_LANDS[event.style] : null;
+    case 'twist.landed':
+      return event.style === 'mudPie' && heard(event.x) ? 'squid.latch' : null;
+    case 'twist.ended':
+      return event.style === 'gravityBomb' && heard(event.x) ? 'decoy.pop' : null;
     default:
       return null;
   }
