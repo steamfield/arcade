@@ -10,7 +10,7 @@
  * - `key: <tonic> <mode>`, e.g. `key: D dorian`, declares the key for analysis. Modes: major,
  *   minor, dorian, mixolydian, lydian, phrygian, harmonic-minor.
  * - `time: <n>/<d>` sets the time signature (default 4/4; d is 2, 4 or 8). A beat is a
- *   quarter note, so 6/8 has 3 beats per bar. It must come before the first note line.
+ *   quarter note, so 6/8 has 3 beats per bar. It must come before the first note or chord line.
  * - `loop: <section>` makes the song loop back to that section's first bar; without it the
  *   song is a one-shot jingle.
  * - `voice <channel>: key=value ...` sets `duty` (0.125, 0.25, 0.5, 0.75; pulse channels
@@ -46,7 +46,8 @@
  * - Modifiers follow the division in any order: `~` ties into the next note (same pitch),
  *   `v` adds vibrato, `>+3` / `>-12` slides by that many semitones over the note (stored as
  *   the relative offset in `slideTo`), `@0.5` sets velocity (default 1), and `!` on a triangle
- *   note drops its pitch for a kick (low notes) or tom (higher ones), never with `~`, `v` or a slide.
+ *   note drops its pitch for a kick (low notes) or tom (higher ones), never with `~`, `v`, a
+ *   slide or an arpeggio.
  * - `|` ends a bar, and so does the end of a line. Every bar must fill the time signature.
  * - `[ ... ]x3` repeats the enclosed tokens (bar lines included); repeats nest.
  *
@@ -102,7 +103,8 @@ interface ParseState extends OpenSection {
   title: string | null;
   key: SongKey | null;
   bpm: number | null;
-  notesStarted: boolean;
+  /** Whether a note or chord line has placed bars yet, after which the meter is fixed. */
+  barsStarted: boolean;
   loop: { section: string; line: number } | null;
   sections: { name: string; bar: number }[];
   voices: Record<Channel, ChannelVoice>;
@@ -111,7 +113,8 @@ interface ParseState extends OpenSection {
 /** Reads one directive that takes no argument into the parse state. */
 type DirectiveReader = (state: ParseState, value: string, line: Line) => void;
 
-const DIRECTIVES: Record<string, DirectiveReader> = {
+/** Look readers up with `Object.hasOwn`, so a directive such as `constructor:` stays unknown. */
+const DIRECTIVES: Readonly<Record<string, DirectiveReader>> = {
   name: (state, value, line) => {
     state.name = requireText(value, line);
   },
@@ -125,14 +128,17 @@ const DIRECTIVES: Record<string, DirectiveReader> = {
     state.key = parseKey(value, line);
   },
   time: (state, value, line) => {
-    if (state.notesStarted) failLine(line, 'the time signature must come before the first note line');
+    if (state.barsStarted) failLine(line, 'the time signature must come before the first note or chord line');
     state.beatsPerBar = parseTime(value, line);
   },
   loop: (state, value, line) => {
     state.loop = { section: requireText(value, line), line: line.number };
   },
   section: (state, value, line) => startSection(state, requireText(value, line)),
-  chords: (state, value, line) => writeChordLine(state.chart, value, line, state.beatsPerBar),
+  chords: (state, value, line) => {
+    state.barsStarted = true;
+    writeChordLine(state.chart, value, line, state.beatsPerBar);
+  },
 };
 
 /**
@@ -164,7 +170,7 @@ function createState(): ParseState {
     key: null,
     bpm: null,
     beatsPerBar: 4,
-    notesStarted: false,
+    barsStarted: false,
     loop: null,
     sections: [],
     voices,
@@ -189,11 +195,11 @@ function parseLine(state: ParseState, line: Line): void {
   }
   if (arg !== undefined) failLine(line, 'only "voice", "duty" and "echo" take a channel before the colon');
   if (isChannel(key)) {
-    state.notesStarted = true;
+    state.barsStarted = true;
     writeChannelLine(state.tracks[key], value, line.number, state.beatsPerBar);
     return;
   }
-  const reader = DIRECTIVES[key];
+  const reader = Object.hasOwn(DIRECTIVES, key) ? DIRECTIVES[key] : undefined;
   if (reader === undefined) {
     failLine(
       line,

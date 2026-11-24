@@ -198,10 +198,16 @@ describe('parseSong', () => {
     ['a duty on the triangle', 'voice triangle: duty=0.5', 'only pulse channels have a duty'],
     ['an unsupported duty', 'voice pulse1: duty=0.3', 'duty must be 0.125, 0.25, 0.5 or 0.75'],
     ['an unknown directive', 'tempoo: 120', 'unknown directive "tempoo"'],
+    ['a directive named like an object property', 'constructor: hi', 'unknown directive "constructor"'],
     [
       'a time signature after notes',
       'pulse1: C5/1\ntime: 3/4',
-      'the time signature must come before the first note line',
+      'the time signature must come before the first note or chord line',
+    ],
+    [
+      'a time signature after a chord line',
+      'chords: C | G\ntime: 6/8\npulse1: C5/2. | C5/2.',
+      'line 4 "time: 6/8": the time signature must come before the first note or chord line',
     ],
     ['a song with no notes', '', 'song "test" has no bars'],
   ])('rejects %s', (_case, body, message) => {
@@ -251,8 +257,16 @@ describe('parseSong titles and keys', () => {
     );
   });
 
-  it('rejects an unknown key tonic, naming the line', () => {
-    expect(() => parseSong(song('key: H minor\npulse1: C5/1'))).toThrow('line 3 "key: H minor": unknown tonic "H"');
+  it('rejects an unknown key tonic, naming the line and listing the modes', () => {
+    expect(() => parseSong(song('key: H dorian\npulse1: C5/1'))).toThrow(
+      'line 3 "key: H dorian": unknown tonic "H"; use a letter A to G with an optional # or b, then one of the modes major, minor, dorian, mixolydian, lydian, phrygian or harmonic-minor',
+    );
+  });
+
+  it('rejects a mode named like an object property as an unknown mode', () => {
+    expect(() => parseSong(song('key: C constructor\npulse1: C5/1'))).toThrow(
+      'line 3 "key: C constructor": unknown mode "constructor"',
+    );
   });
 });
 
@@ -321,6 +335,12 @@ describe('parseSong chord charts', () => {
     );
     expect(() => parseSong(song('chords: Cadd9\npulse1: C5/1'))).toThrow('unknown chord "Cadd9"');
   });
+
+  it.each([['Cconstructor'], ['CtoString']])('rejects the chord %s, named like an object property', (symbol) => {
+    expect(() => parseSong(song(`chords: ${symbol}\npulse1: C5/1`))).toThrow(
+      `line 3 "chords: ${symbol}": unknown chord "${symbol}"`,
+    );
+  });
 });
 
 describe('parseSong arpeggios, drops and drums', () => {
@@ -355,6 +375,7 @@ describe('parseSong arpeggios, drops and drums', () => {
     ['a drop with a tie', 'triangle: C2/2!~ C2/2', 'token "C2/2!~": a drop can\'t take a tie, vibrato or slide'],
     ['a drop with vibrato', 'triangle: C2/1v!', 'token "C2/1v!": a drop can\'t take a tie, vibrato or slide'],
     ['a drop with a slide', 'triangle: C2/1!>+3', 'token "C2/1!>+3": a drop can\'t take a tie, vibrato or slide'],
+    ['a drop with an arpeggio', 'triangle: C2:07/1!', 'token "C2:07/1!": a drop can\'t take an arpeggio'],
   ])('rejects %s', (_case, body, message) => {
     expect(() => parseSong(song(body))).toThrow(message);
   });
@@ -386,6 +407,11 @@ describe('parseSong voice detune and arpeggio speed', () => {
     ['detune below -50', 'voice pulse1: detune=-51', 'detune must be -50..50 cents, got -51'],
     ['detune above 50', 'voice pulse2: detune=50.5', 'detune must be -50..50 cents, got 50.5'],
     ['detune on noise', 'voice noise: detune=5', 'noise has no pitch to detune'],
+    [
+      'a detune that is not a number',
+      'voice pulse1: detune=abc',
+      '"detune=abc" needs a number of cents from -50 to 50',
+    ],
     ['arp frames of 0', 'voice pulse1: arp=0', 'arp must be 1, 2 or 3 frames, got 0'],
     ['arp frames of 4', 'voice pulse1: arp=4', 'arp must be 1, 2 or 3 frames, got 4'],
     ['a negative level', 'voice pulse1: level=-0.5', '"level=-0.5" needs a non-negative number'],

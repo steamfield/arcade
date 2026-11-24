@@ -19,19 +19,19 @@ export interface ChordChart {
 }
 
 /** Each chord quality's tones as semitones above the root. */
-const QUALITIES: Record<string, readonly number[]> = {
-  '': [0, 4, 7],
-  m: [0, 3, 7],
-  '7': [0, 4, 7, 10],
-  m7: [0, 3, 7, 10],
-  maj7: [0, 4, 7, 11],
-  dim: [0, 3, 6],
-  sus2: [0, 2, 7],
-  sus4: [0, 5, 7],
-  '5': [0, 7],
-  '6': [0, 4, 7, 9],
-  m6: [0, 3, 7, 9],
-};
+const QUALITIES: ReadonlyMap<string, readonly number[]> = new Map([
+  ['', [0, 4, 7]],
+  ['m', [0, 3, 7]],
+  ['7', [0, 4, 7, 10]],
+  ['m7', [0, 3, 7, 10]],
+  ['maj7', [0, 4, 7, 11]],
+  ['dim', [0, 3, 6]],
+  ['sus2', [0, 2, 7]],
+  ['sus4', [0, 5, 7]],
+  ['5', [0, 7]],
+  ['6', [0, 4, 7, 9]],
+  ['m6', [0, 3, 7, 9]],
+]);
 const CHORD_SYMBOL = /^(?<root>[A-G][#b]?)(?<quality>.*)$/;
 
 /** An empty chart at the start of the song. */
@@ -47,7 +47,7 @@ export function createChordChart(): ChordChart {
 export function parseChordSymbol(symbol: string, line: Line): { root: number; tones: readonly number[] } {
   const groups = CHORD_SYMBOL.exec(symbol)?.groups;
   const root = pitchClassOf(groups?.root ?? '');
-  const intervals = QUALITIES[groups?.quality ?? ''];
+  const intervals = QUALITIES.get(groups?.quality ?? '');
   if (root === null || intervals === undefined) {
     failLine(line, `unknown chord "${symbol}"; write a root A-G with # or b, then none, ${listQualities()}`);
   }
@@ -107,6 +107,6 @@ export function closeChordChart(chart: ChordChart, where: string, sectionEndBar:
 }
 
 function listQualities(): string {
-  const named = Object.keys(QUALITIES).filter((quality) => quality !== '');
+  const named = [...QUALITIES.keys()].filter((quality) => quality !== '');
   return `${named.slice(0, -1).join(', ')} or ${named.at(-1)}`;
 }

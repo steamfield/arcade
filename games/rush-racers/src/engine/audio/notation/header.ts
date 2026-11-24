@@ -60,13 +60,16 @@ export function applyVoiceSettings(voice: ChannelVoice, channel: Channel, value:
   for (const pair of value.split(/\s+/).filter(Boolean)) {
     const [setting = '', raw = ''] = pair.split('=');
     const number = Number(raw);
-    // Detune is the one setting that bends both ways; every other value is non-negative.
-    const negativeAllowed = setting === 'detune';
-    if (raw === '' || !Number.isFinite(number) || (number < 0 && !negativeAllowed)) {
-      failLine(line, `"${pair}" needs a non-negative number, e.g. level=0.5`);
+    const isNumber = raw !== '' && Number.isFinite(number);
+    // Detune is the one setting that bends both ways, so it gets its own range message.
+    if (setting === 'detune') {
+      if (!isNumber) failLine(line, `"${pair}" needs a number of cents from -50 to 50, e.g. detune=-8`);
+      applyDetune(voice, channel, number, line);
+      continue;
     }
-    if (setting === 'detune') applyDetune(voice, channel, number, line);
-    else if (setting === 'duty' || setting === 'arp') applyStepSetting(voice, channel, setting, number, line);
+    if (!isNumber || number < 0) failLine(line, `"${pair}" needs a non-negative number, e.g. level=0.5`);
+    if (setting === 'duty') applyDuty(voice, channel, number, line);
+    else if (setting === 'arp') applyArpFrames(voice, channel, number, line);
     else applyEnvelopeSetting(voice, setting, number, line);
   }
 }
@@ -77,17 +80,20 @@ function applyDetune(voice: ChannelVoice, channel: Channel, cents: number, line:
   voice.detune = cents;
 }
 
-/** Applies a setting that takes one of a few fixed values: `duty` or `arp`. */
-function applyStepSetting(voice: ChannelVoice, channel: Channel, setting: 'duty' | 'arp', value: number, line: Line) {
-  if (setting === 'duty') {
-    if (voice.duty === undefined) failLine(line, `only pulse channels have a duty, not ${channel}`);
-    if (!isDuty(value)) failLine(line, `duty must be 0.125, 0.25, 0.5 or 0.75, got ${value}`);
-    voice.duty = value;
-    return;
-  }
+function applyDuty(voice: ChannelVoice, channel: Channel, value: number, line: Line): void {
+  if (voice.duty === undefined) failLine(line, `only pulse channels have a duty, not ${channel}`);
+  if (!isDuty(value)) failLine(line, `duty must be 0.125, 0.25, 0.5 or 0.75, got ${value}`);
+  voice.duty = value;
+}
+
+function applyArpFrames(voice: ChannelVoice, channel: Channel, frames: number, line: Line): void {
   if (channel === 'noise') failLine(line, 'noise plays drums, which have no arpeggio');
-  if (!ARP_FRAMES.includes(value)) failLine(line, `arp must be 1, 2 or 3 frames, got ${value}`);
-  voice.arpFrames = value as 1 | 2 | 3;
+  if (!isArpFrames(frames)) failLine(line, `arp must be 1, 2 or 3 frames, got ${frames}`);
+  voice.arpFrames = frames;
+}
+
+function isArpFrames(frames: number): frames is 1 | 2 | 3 {
+  return ARP_FRAMES.includes(frames);
 }
 
 /** Applies `level` or one of the envelope's settings. */

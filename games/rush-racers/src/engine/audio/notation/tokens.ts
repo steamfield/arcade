@@ -164,5 +164,7 @@ function parseArp(parsed: ParsedToken, offsets: string, place: Place): number[] 
     failAt(place, 'an arpeggio needs 2 to 6 offsets, hex digits 0-9 and a-f, e.g. "C4:047/4"');
   }
   if (parsed.slide !== undefined) failAt(place, "an arpeggio can't slide; drop the >N or the :offsets");
+  // The synth's drop is one falling thump, so it would ignore the arpeggio.
+  if (parsed.drop) failAt(place, "a drop can't take an arpeggio; drop the ! or the :offsets");
   return [...offsets].map((digit) => Number.parseInt(digit, HEX));
 }
