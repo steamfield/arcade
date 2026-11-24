@@ -165,6 +165,7 @@ Test cases: behaviour is unchanged, so the guard is the existing suite: `src/log
 ### Phase 3: Reef's art lives in its world folder
 
 Scaffold: de34f7deeef4 (no contracts: lanes refactor behind unchanged interfaces)
+Tag: refactor-audit/phase-3
 
 Demo: `ls src/engine/worlds/reef` matches the other worlds; `pnpm arcade test rush-racers @worlds src/engine/themes src/engine/art` passes; a reef race captured with `arcade see` matches a baseline taken on the phase base via `--compare`.
 Depends on: phase 1
