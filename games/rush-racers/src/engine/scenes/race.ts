@@ -105,8 +105,14 @@ export class RaceScene extends Phaser.Scene {
     // Lobby tags and the waiting line belong to online races only.
     const online = this.rt.onlineRace ? createOnlineRaceView(this, layout) : null;
 
+    // The camera eases once per logic tick, not per rendered frame: frames batch ticks unevenly (a
+    // test advance renders once after many), and exponential easing toward a moving target lands
+    // somewhere else when the same ticks are split differently.
+    let lastTick = world.tick;
     const stopListening = this.rt.listen((events) => {
       const tick = this.rt.world?.tick ?? 0;
+      camera.update((tick - lastTick) / TICK_HZ);
+      lastTick = tick;
       level.onEvents(events);
       enemies.onEvents(events, tick);
       rings.onEvents(events, tick);
@@ -122,10 +128,7 @@ export class RaceScene extends Phaser.Scene {
       fireIcon.destroy();
     });
 
-    let lastTick = world.tick;
     const sync = (current: World) => {
-      camera.update((current.tick - lastTick) / TICK_HZ);
-      lastTick = current.tick;
       backdrop.update(current.tick);
       pickups.sync(current, current.tick);
       hazards.sync(current, current.tick);
