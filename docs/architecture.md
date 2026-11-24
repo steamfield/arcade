@@ -59,6 +59,7 @@ Two decisions can't be reversed once players have saves:
 | Landing page              | Vite app + build-time render from `game.json`    |                              | One index page; Astro would add a second toolchain and a TS 6 pin for one page                                 |
 | Hosting                   | Cloudflare Workers static assets via Wrangler    | 4.166                        | Static requests free and unlimited; Cloudflare now points new projects to Workers                              |
 | Production telemetry      | Cloudflare Web Analytics                         |                              | Free, cookieless, real-user load metrics with no backend                                                       |
+| Real-time multiplayer     | Lockstep over a relay Durable Object (`apps/api`, one SQLite `Room` per room code, reached through the site's `/api/*` service binding) | | Every browser steps the same deterministic simulation from the players' inputs, so the room only relays inputs and world hashes and never runs the game: no server tick, no game code on the server, and a desync shows as a hash mismatch. Rush Racers races up to four friends this way |
 | CI / deploy               | GitHub Actions checks; Cloudflare Workers Builds deploys |                       | Actions runs check and smoke; the Git connector runs `pnpm cf:build`, then `wrangler deploy` on main and `wrangler versions upload` (preview URLs) on other branches |
 
 Considered and not chosen:

@@ -23,8 +23,8 @@ import { netSummary } from './online/net-summary.ts';
 import { createOnlineWorld } from './online/race-world.ts';
 import { Runtime, type SceneKey } from './runtime.ts';
 
-/** Title rows: Race, How to play, Level, Sound, Motion. Sound is three down. */
-const SOUND_ROW = 3;
+/** Title rows: Race, Friends, How to play, Level, Sound, Motion. Sound is four down. */
+const SOUND_ROW = 4;
 /** The title ignores fire for its first 20 ticks. */
 const ARMED = 21;
 /** The code every room in these tests has. */
@@ -305,6 +305,26 @@ describe('a ?debug=1&local= race', () => {
     expect(rt.save).toEqual(slowBest);
     expect(rt.events.all().filter((e) => e.type === 'save.written' || e.type === 'save.failed')).toEqual([]);
     expect(gameErrors).toEqual([]);
+  });
+});
+
+describe('the title', () => {
+  it('opens Friends from its second button', async () => {
+    const { rt } = titleRuntime(await realStore());
+
+    press(rt, 'down');
+    press(rt, 'fire');
+
+    expect([rt.scene, rt.online.friends.mode, rt.online.notice]).toEqual(['friends', 'menu', null]);
+  });
+
+  it('changes nothing when the tab hides offline', async () => {
+    const { rt } = titleRuntime(await realStore());
+
+    rt.hide();
+    rt.show();
+
+    expect([rt.scene, rt.loading, rt.flow.client, rt.online.notice]).toEqual(['title', false, null, null]);
   });
 });
 
@@ -723,7 +743,7 @@ describe('an online race', () => {
     until(() => rt.scene === 'title');
 
     expect([rt.world, rt.localRacer, rt.flow.client]).toEqual([null, 'player', null]);
-    expect(rt.online.notice).toBe('Disconnected: kicked');
+    expect(rt.online.notice).toBe('You were dropped from the race');
     expect(gameErrors).toEqual([]);
   });
 
@@ -737,8 +757,29 @@ describe('an online race', () => {
 
     until(() => rt.scene === 'room');
 
-    expect([rt.world, rt.onlineRace, rt.localRacer, rt.online.notice]).toEqual([null, false, 'player', 'Out of sync']);
+    expect([rt.world, rt.onlineRace, rt.localRacer, rt.online.notice]).toEqual([
+      null,
+      false,
+      'player',
+      'The race went out of sync',
+    ]);
     expect(rt.flow.client?.view).toMatchObject({ status: 'lobby', race: null });
+  });
+
+  it('leaves a running race for the title when the tab hides, and the notice stays until a press there', async () => {
+    const { rt, host, rounds, until, pressOnline, showScene } = await joinedRoom();
+    host.start(9);
+    until(() => rt.world?.race.phase === 'racing');
+
+    rt.hide();
+    showScene();
+    expect([rt.scene, rt.world, rt.flow.client, rt.online.notice]).toEqual(['title', null, null, 'You left the race']);
+    until(() => host.view.lobby.peers.length === 1);
+
+    rounds(ARMED);
+    expect(rt.online.notice).toBe('You left the race');
+    pressOnline('left');
+    expect(rt.online.notice).toBeNull();
   });
 
   it('ignores a ?room= that is not a room code, with one warning', async () => {

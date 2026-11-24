@@ -8,7 +8,7 @@ const down = (count: number) => move('down', count);
 const up = (count: number) => move('up', count);
 
 /**
- * A fresh save starts on Easy. From the title, the Level button is two rows below Race, under How to Play: each press
+ * A fresh save starts on Easy. From the title, the Level button is three rows below Race, under Friends and How to Play: each press
  * cycles Easy, Normal, Hard and back to Easy, saving every change. After the full cycle, moving
  * back up to Race and starting a race builds the world on the saved level (Easy; logic's own
  * default is Hard, so a world that shows Easy was given the setting).
@@ -17,14 +17,14 @@ export default scenario({
   description: 'the Level button cycles Easy, Normal, Hard, saves each choice, and the next race uses it',
   input: [
     wait(25),
-    ...down(2),
+    ...down(3),
     tap('fire'),
     wait(3),
     tap('fire'),
     wait(3),
     tap('fire'),
     wait(3),
-    ...up(2),
+    ...up(3),
     tap('fire'),
     wait(25),
     tap('fire'),

@@ -55,9 +55,55 @@ export interface Summary {
   scene: string;
   phase?: string;
   net?: NetSummary;
+  /** On the title, why online play ended. */
+  onlineNotice?: string;
 }
 
 export const summaryOf = async (game: GameDriver) => (await game.summary()) as unknown as Summary;
+
+/** Ticks a menu screen ignores fire after it appears (20), plus one. */
+export const ARMED_TICKS = 21;
+/** Ticks from the end of a race to a results screen that takes input: the 90-tick delay, then the menu's arming. */
+const END_TO_RESULTS = 90 + ARMED_TICKS + 5;
+
+/** True when the room holds two players and both are ready. */
+export const twoReady = (summary: Summary) =>
+  summary.net?.peers.length === 2 && summary.net.peers.every((peer) => peer.ready);
+
+/** The host opens Friends on Run Test and creates a room; returns its code once the host is in it. */
+export async function createRoom(host: GameDriver): Promise<string> {
+  await host.open({ scene: 'friends', query: { course: 'run-test' } });
+  await host.play([wait(ARMED_TICKS), tap('fire')]);
+  await turnsUntil([host], (summary) => summary.net?.status === 'lobby');
+  const code = (await summaryOf(host)).net?.code;
+  expect(code, 'the host summary names the room').toMatch(/^[2-9A-Z]{6}$/);
+  return code as string;
+}
+
+/**
+ * The host creates a room on Run Test, the guest joins by link, the host picks Streak and the guest
+ * Gil, and the host starts; returns once both pages are racing.
+ */
+export async function startRace(host: GameDriver, guest: GameDriver): Promise<void> {
+  const code = await createRoom(host);
+  await guest.open({ query: { room: code } });
+  await turnsUntil([host, guest], twoReady);
+  await press(host, 'right', 'right');
+  await press(guest, 'right');
+  const picked = (summary: Summary) => summary.net?.peers.map((peer) => peer.character).join() === 'streak,gil';
+  await turnsUntil([host, guest], (summary) => picked(summary) && summary.net?.phase === 'lobby');
+  expect((await summaryOf(host)).net?.canStart).toBe(true);
+
+  await press(host, 'down', 'down', 'down', 'fire');
+  await turnsUntil([host, guest], (summary) => summary.scene === 'race');
+}
+
+/** Every page races to the end, then waits out the results delay together. */
+export async function raceToResults(games: readonly GameDriver[]): Promise<void> {
+  await raceTogether(games, 'over');
+  for (const game of games) await game.advance(END_TO_RESULTS);
+  await turnsUntil(games, (summary) => summary.scene === 'results');
+}
 
 /** Ticks each page runs in a turn before the other gets one. */
 const TURN_TICKS = 4;

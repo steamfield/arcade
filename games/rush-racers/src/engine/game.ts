@@ -151,6 +151,10 @@ function createHandle(rt: Runtime, game: Phaser.Game, saves: SaveStore<SaveData>
       rt.goTo('title');
     },
     pause: () => game.loop.sleep(),
-    resume: () => game.loop.wake(),
+    resume: () => {
+      game.loop.wake();
+      rt.show();
+    },
+    onHide: () => rt.hide(),
   };
 }
