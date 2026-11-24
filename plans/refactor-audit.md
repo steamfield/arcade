@@ -371,8 +371,33 @@ Depends on: phase 6, phase 8
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | AGENTS.md, README.md, docs/, .claude/skills/, .claude/rules/, .claude/agents/, plans/done/ | | | opus | pending | | |
-| b | M | games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md, games/rush-racers/MAP.md, games/rush-racers/src/map.test.ts | | | opus | pending | | |
+| a | M | AGENTS.md, README.md, docs/, .claude/skills/, .claude/rules/, .claude/agents/, plans/ | | | opus | pending | | |
+| b | M | games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md, games/rush-racers/MAP.md, games/rush-racers/src/map.test.ts, games/rush-racers/package.json | | | opus | pending | | |
+
+#### Lane 9a brief
+
+- Goal: the repo-level docs describe the repo as it is after this run, in current-state form, with each fact in one place.
+- Fix every audit finding in these files:
+  - `docs/architecture.md`: multiplayer is built (the `apps/api` Durable Object relay plus each game's `src/net/`), so drop it from non-goals and rewrite "static hosting only" to say the site is static and the API Worker is separate; remove the nonexistent `--filter` flag (line ~128); describe how a protocol change ships (site auto-deploys from main, API via `pnpm deploy:api`).
+  - `docs/agent-experience.md`: rewrite as a current-state doc of the `arcade` CLI, harness and guardrails as built (fold the "As built" section in, delete the planned-only `--device mobile`/server-reuse text, include `attract`, `test` groups with `{ project, paths }`, `--project`, `see --viewport/--query/--compare`). Keep a short "Not built yet" list only for things really not built.
+  - `docs/repo-map.md`: CI runs an affected-since-base matrix (`arcade affected --base`), not `check --all` (line ~40); add a "new world" and a "new theme" row to "find it fast" (world: `worlds/<id>.ts` + `<id>/{keys,cast,objects,palettes,art}.ts` + `sprites/`; theme: `themes/<id>.ts` + `<id>/art.ts`; both lazily loaded by `worlds/load.ts`); check every row added in this run reads right.
+  - `AGENTS.md`: plans are per feature (`plans/<feature>.md`) and move to `plans/done/` when finished; mention `apps/api` and a game's `src/net/` in Layout; warn that `.claude/worktrees/` holds other sessions' checkouts, so repo-wide grep should exclude it (`git grep` does); describe the template runtime pattern now in both templates (Phaser-free `runtime.ts`, `worldHash`, `?stage=` capture stages) in one line where Layout describes a game.
+  - `.claude/skills/verify-game`: `check` for Rush Racers takes minutes (89-184 s measured for the full run), not seconds; say so where it sets expectations.
+  - Plans: move every finished plan in `plans/` except `refactor-audit.md` into `plans/done/` (`git mv`), adding a `Status: done` line where one is missing; leave unfinished ones. `plans/reef-rush-multiplayer.md` references the deleted `games/reef-rush/` and is half built: add a header note saying what is built (point at `games/rush-racers/src/net/` and `apps/api`) and that the rest is not, and update DESIGN.md/repo-map links to it if it moves.
+- Out of scope: game docs (lane 9b); rewriting skill content beyond the fixes named.
+- Done when: `pnpm --filter @arcade/cli exec vitest run src/repo-map.test.ts` passes; `git grep -n "plans/" -- AGENTS.md docs .claude games/*/DESIGN.md` has no dangling path (check each exists); your report lists each finding above with the line that fixes it.
+
+#### Lane 9b brief
+
+- Goal: Rush Racers' own docs are correct, short, and cover the recipes agents keep needing, with a map of the game's folders checked by a test.
+- Fix every audit finding:
+  - `COURSES.md`: the `describeDifficulty` import example (line ~104) names the wrong file; `CASES_BY_MEDIUM` (line ~233) points at the wrong file; line ~22 cites a course that doesn't exist. Check every code path and identifier in the file against the code.
+  - `DESIGN.md`: How to Play is missing Farside; move history and measurements (the audit flagged lines ~43-45 and ~182-209 before this run; find their current place) out, since the bar files hold the numbers; replace the 600-word scenarios paragraph with a pointer to `scenarios/` and a sentence on how to find one; each fact (course list, versions, gate commands) lives in one place, with the others linking to it.
+  - New `MAP.md` at `games/rush-racers/MAP.md`: one table of the game's folders (`src/logic/*`, `src/net`, `src/engine/*` including `screens/`, `view/set-pieces/`, `worlds/<id>/`, `themes/<id>/`, `art/`, `fx/`, `audio/`, `online/`, `scenes/`, plus `scenarios/`, `tests/`, `scripts/`) with what each holds and where to start for a common change. New `src/map.test.ts` (or under `src/` where the game's other repo-shape tests live) fails when a folder under `src/` exists that MAP.md doesn't list, or MAP.md lists one that doesn't exist; watch it fail once.
+  - Recipes (in COURSES.md or MAP.md, wherever reads best, each short): adding an item kind, an enemy kind, a set piece, a capture stage (`engine/capture-stages.ts`), and a net message (where messages and the codec live, when to bump the protocol version, how to keep lockstep safe, which tests pin it); state that a ninth character isn't supported and why.
+  - `UI.md`: check every path and test name in it against the code.
+- Out of scope: repo-level docs (9a); changing code beyond the map test.
+- Done when: `pnpm arcade test rush-racers src/map.test.ts` (or its path) passes; `pnpm arcade check rush-racers --skip-tests` clean; every path and identifier the four docs name exists (`git grep` each); your report lists each finding with its fix.
 
 ## Log
 
