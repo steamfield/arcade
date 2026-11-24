@@ -8,7 +8,7 @@
  *
  * Measured at v2 phase 4 (rivals at par, a metered dash, two clam rolls for rivals), Sunlit
  * Shallows, seeds 1-30 unless said: expert wins 21-27 of 30 per character, close wins (lead rival
- * within 8 s) 21-27; mean expert finish 106.9-115.0 s, 0.95-1.03 of par; the novice places 3rd or
+ * within 8 s, now CLOSE_WIN_PAR_SHARE of par) 21-27; mean expert finish 106.9-115.0 s, 0.95-1.03 of par; the novice places 3rd or
  * 4th in 21-28 of 30 and finishes within 1.3x the winner every time. Test-only.
  *
  * Open balance problem: the cast's expert win rates are no longer within a few points of each other.
@@ -16,7 +16,6 @@
  * 24-point spread (v1 kept it to 6). Abilities, not rival profiles, drive it, so these bars check
  * that every character's expert wins most races and leave balance to an ability retune.
  */
-import { TICK_HZ } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { BOT_PROFILES } from '../ai/profiles.ts';
 import { courseOf, DEFAULT_COURSE } from '../courses/index.ts';
@@ -34,10 +33,16 @@ const SEEDS = Array.from({ length: 30 }, (_, i) => i + 1);
 const EXPERT_WINS_MIN = 17;
 
 /**
- * Close expert wins (the lead rival within 8 s) needed of the 30 seeds: measured 21-27 at v2 phase
+ * Close expert wins (the lead rival within CLOSE_WIN_PAR_SHARE of par) needed of the 30 seeds: measured 21-27 at v2 phase
  * 4; lowered from 18 with the harder course, which took Nib's expert to 16.
  */
 const CLOSE_WINS_MIN = 16;
+
+/**
+ * How close the lead rival must finish for an expert win to count as close, as a share of the
+ * course's par: 8 s of Sunlit's 111 s par at v2 phase 4, so about 11 s on a 152 s course.
+ */
+const CLOSE_WIN_PAR_SHARE = 0.072;
 
 /** Novice 3rd or 4th places needed of the 30 seeds: measured 21 (Selene) to 28. */
 const NOVICE_BEHIND_MIN = 18;
@@ -53,11 +58,16 @@ function rivalBest(run: Run): number | null {
   return times.length ? Math.min(...times) : null;
 }
 
-/** An expert win that stayed a race: first, with the lead rival in within 8 s. */
-function closeWin(run: Run): boolean {
+/** The close-win window on a course with `parTicks`, in ticks. */
+function closeWindowTicks(parTicks: number): number {
+  return Math.round(parTicks * CLOSE_WIN_PAR_SHARE);
+}
+
+/** An expert win that stayed a race: first, with the lead rival in within `windowTicks`. */
+function closeWin(run: Run, windowTicks: number): boolean {
   const player = run.finish.player;
   const rival = rivalBest(run);
-  return run.playerPlace === 1 && player !== null && rival !== null && rival - player <= 8 * TICK_HZ;
+  return run.playerPlace === 1 && player !== null && rival !== null && rival - player <= windowTicks;
 }
 
 /**
@@ -70,14 +80,16 @@ export function describeDifficulty(character: CharacterId, courseId: string = DE
   const course = courseOf({ course: courseId });
   describe(`difficulty on ${course.name} as ${character}`, () => {
     const expert = (): Run[] => SEEDS.map((seed) => race(BOT_PROFILES.expert, character, seed, 'hard', courseId));
+    const closeTicks = closeWindowTicks(course.parTicks);
 
     it(
-      `an expert wins at least ${CLOSE_WINS_MIN} of 30 seeds, with the lead rival within 8 s of it`,
+      `an expert wins at least ${CLOSE_WINS_MIN} of 30 seeds, with the lead rival within ${seconds(closeTicks)} s of it`,
       () => {
         const runs = expert();
-        expect(runs.filter(closeWin).length, `expert close wins:\n${table(runs)}`).toBeGreaterThanOrEqual(
-          CLOSE_WINS_MIN,
-        );
+        expect(
+          runs.filter((run) => closeWin(run, closeTicks)).length,
+          `expert close wins:\n${table(runs)}`,
+        ).toBeGreaterThanOrEqual(CLOSE_WINS_MIN);
       },
       RACES_TIMEOUT_MS,
     );
