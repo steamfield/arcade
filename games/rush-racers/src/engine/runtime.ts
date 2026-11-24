@@ -419,7 +419,7 @@ export class Runtime {
 
   private failArt(error: unknown): void {
     this.loading = false;
-    this.ctx.reportError('art', error);
+    this.ctx.reportError('art', error, { fatal: false });
     this.ctx.notice(ART_LOAD_FAILED);
   }
 

@@ -29,7 +29,7 @@ const RACES = 40;
  * A rival's median item uses per race on Normal must fall in this band: busy, but not a blur. The
  * floor was 5 until the harder course (surface section, cave) took Selene's median to 4.5.
  */
-export const USES_BAND = { min: 4.5, max: 10 } as const;
+const USES_BAND = { min: 4.5, max: 10 } as const;
 
 /** Each band races at most its RACES seeds; the kinds check reuses the bands' races. */
 const RACES_TIMEOUT_MS = racesTimeoutMs(RACES);

@@ -1,4 +1,4 @@
-import { EventLog } from '@arcade/core';
+import { configureLogging, EventLog, type LogEntry } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
 import { COURSES, courseById, DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { GameEvent } from '../logic/events.ts';
@@ -18,9 +18,23 @@ describe('which stage a launch gets', () => {
     expect(stageFor({ debug: false, testMode: true }, search)).toBe('squid-lockon');
   });
 
-  it('ignores a name it does not know, and a launch without one', () => {
-    expect(stageFor({ debug: true, testMode: true }, '?stage=bogus')).toBeNull();
-    expect(stageFor({ debug: true, testMode: true }, '')).toBeNull();
+  it('ignores a name it does not know, warning with the valid names, and a launch without one quietly', () => {
+    const logged: LogEntry[] = [];
+    configureLogging((entry) => logged.push(entry));
+    try {
+      expect(stageFor({ debug: true, testMode: true }, '?stage=bogus')).toBeNull();
+      expect(stageFor({ debug: true, testMode: true }, '')).toBeNull();
+      expect(stageFor({ debug: false, testMode: false }, '?stage=bogus')).toBeNull();
+    } finally {
+      configureLogging(() => {});
+    }
+    expect(logged).toEqual([
+      {
+        level: 'warn',
+        namespace: 'rush-racers:stage',
+        message: `Unknown ?stage=bogus, so the race is not staged. Valid stages: ${STAGES.join(', ')}`,
+      },
+    ]);
   });
 });
 

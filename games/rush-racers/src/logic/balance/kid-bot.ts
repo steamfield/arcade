@@ -16,7 +16,7 @@ import type { CharacterId, Difficulty, Intent, World } from '../types.ts';
 import { createWorld, stepWorld } from '../world.ts';
 
 /** How the kid plays, in ticks (60 per second). */
-export const KID = {
+const KID = {
   /** Without getting closer this long, the kid tries up or down. */
   giveUpAfter: 90,
   /** How long one up-or-down try lasts before the kid goes back to holding right. */
@@ -30,7 +30,7 @@ export const KID = {
 } as const;
 
 /** What the kid remembers between ticks. */
-export interface KidMemory {
+interface KidMemory {
   /** The best reading so far (lower is closer). */
   best: number;
   /** The tick the kid last got closer. A try that ends does not reset it, so a failed try is followed by another at once. */
@@ -44,7 +44,7 @@ export interface KidMemory {
 }
 
 /** A kid about to start. */
-export function newKid(): KidMemory {
+function newKid(): KidMemory {
   return { best: Number.POSITIVE_INFINITY, lastGain: 0, trying: 0, nextTry: -1, vertical: 0 };
 }
 
@@ -53,7 +53,7 @@ export function newKid(): KidMemory {
  * `lastGain`. The kid judges progress by how far right it has got: it knows where the finish is
  * on the screen, not the route.
  */
-export function gainedGround(kid: KidMemory, reading: number, minGain: number, tick: number): boolean {
+function gainedGround(kid: KidMemory, reading: number, minGain: number, tick: number): boolean {
   if (kid.best !== Number.POSITIVE_INFINITY && reading >= kid.best - minGain) return false;
   kid.best = reading;
   kid.lastGain = tick;
@@ -70,7 +70,7 @@ const routeDistance = (world: World): number => mediumOf(world).distanceAt(world
  * The kid's input for this tick: right, plus up or down for a try that lasts while the kid keeps
  * getting closer and runs out `KID.tryFor` ticks after it stops, then right alone again.
  */
-export function kidInput(kid: KidMemory, world: World): Intent {
+function kidInput(kid: KidMemory, world: World): Intent {
   const gained = gainedGround(kid, nearness(world), KID.gainTiles, world.tick);
   if (kid.trying > 0) {
     kid.trying = gained ? KID.tryFor : kid.trying - 1;
