@@ -167,6 +167,12 @@ In Thornwood (the run medium), four pages change:
 | 5 JUMP TO STOMP | A beetle walks toward the racer, which jumps and lands on it; the beetle pops into an acorn (`run-enemies-page.ts`) |
 | 7 SHIELD STOPS THE BEE | On foot a dash dodges nothing, so the page shows what does stop a bee: the racer stands on the floor at x 196 inside its Sap Shield bubble (4x, as a race draws it at twice the racer's scale) with the Sap Shield icon at 2x over it; a bee flies in from x 118, the bubble pops with a pop ring where they meet, and the bee is gone while the racer stands unharmed. 150-tick loop; reduced motion holds the bee at the bubble's rim (`run-shield-page.ts`) |
 
+In Farside (the drift medium), page 1 changes:
+
+| Page | Pictures |
+| --- | --- |
+| 1 THRUST AND DRIFT | The racer crosses open space twice, with a caption naming each beat. First pass: Right lights and it burns up to speed with a flame behind it (HOLD TO BURN), the arrows go dark and it coasts on with a faint trail (LET GO TO DRIFT), then Left lights and it burns to a stop, flame ahead (BURN BACK TO BRAKE). Second pass: it drifts past a small planet and its path bends up toward it (PLANETS PULL YOU IN). Under reduced motion it holds mid-burn with the planet above it and one caption lists all four (`drift-page.ts`) |
+
 Reduced motion holds each page on its clearest still moment (the pressed arrow and loop halfway, the first dash half out with one pip spent, the last pop with all three held and their charges, the first item just fired, the pearls just scattered with the counter at two, the crab popping, the shark dizzy and the eel out, the dragged racer, the dodge made, on foot the bee at the shield's rim). The page's animation counts from the tick it came up on, so captures repeat.
 
 ## Hints
@@ -185,7 +191,7 @@ Glyph frames and the pulse blink at most 3 times a second. On touch screens the 
 
 ## Course select
 
-Shown between the title and select while more than one course is listed, which is now: Sunlit Shallows, then Bramble Run. With one course listed, or with an unlisted `?course=` in force (such as `run-test`), Race goes straight to select. Drawn by `view/course-view.ts`; `course-view.test.ts` holds three courses to this layout on desktop and phone.
+Shown between the title and select while more than one course is listed, which is now: Sunlit Shallows, Bramble Run, then Slingshot Alley. With one course listed, or with an unlisted `?course=` in force (such as `run-test` or `drift-test`), Race goes straight to select. Drawn by `view/course-view.ts`; `course-view.test.ts` holds three courses to this layout on desktop and phone.
 
 | Element | Rect | Notes |
 | --- | --- | --- |
@@ -208,7 +214,7 @@ Up and down move the cursor and wrap; A (fire) picks the course and goes to sele
 | Element | Rect | Notes |
 | --- | --- | --- |
 | Heading | 112, 6, 96, 12 | "PICK A RACER", display, sun, outlined, centred on x 160 |
-| Grid cells | from 22, 28; 66x22; 4 px between columns, 2 between rows | the picked course's world's cast (Reef: Rudy to Rook; Thornwood: Grit, Skip, Blaze, Shade, Cheeks, Duke, Dusk, Fang, short names being the first word), 4x2 in `CHARACTER_IDS` order: rows y 28-49 and 52-73. `raised`, the cursor's cell `accent` with its name in sun; 16x16 portrait at (+3, +3), short name in foam at (+22, +8). The top-right cell (x 232-297) starts below the back link; the bottom row ends above the d-pad zone |
+| Grid cells | from 22, 28; 66x22; 4 px between columns, 2 between rows | the picked course's world's cast (Reef: Rudy to Rook; Thornwood: Grit, Skip, Blaze, Shade, Cheeks, Duke, Dusk, Fang; Farside: Bolt, Zib, Flare, Umbra, Widget, Admiral, Nova, Krag, short names being the first word), 4x2 in `CHARACTER_IDS` order: rows y 28-49 and 52-73. `raised`, the cursor's cell `accent` with its name in sun; 16x16 portrait at (+3, +3), short name in foam at (+22, +8). The top-right cell (x 232-297) starts below the back link; the bottom row ends above the d-pad zone |
 | Card | 110, 78, 188, 40 | `raised`; right edge on the grid's, bottom at y 117 above the A/B zone. Portrait at 2x (32x32) at (114, 82); text column x 150-293 (`CARD_TEXT_WIDTH` 144): full name in display sun at y 83, ability in foam at y 98, blurb in dim at y 107. `character-select.test.ts` holds every line to the column |
 | Preview | 144, 128, 32, 24 | the picked racer's sprite at 2x, centred on (160, 140), swimming in place |
 | Footer | 114, 159, 92, 15 | `inset` readout: fire icon at (122, 162) + RACE, dash icon at (164, 162) + BACK, words in foam 11 px right of their icons. On touch screens (the PRESS A rule) the icons give way to the button letters A and B in sun |

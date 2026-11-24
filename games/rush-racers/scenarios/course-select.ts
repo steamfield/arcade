@@ -1,5 +1,5 @@
 /**
- * Course select with two listed courses: Sunlit Shallows first, then Bramble Run, each with its best
+ * Course select with its listed courses: Sunlit Shallows first, then Bramble Run, each with its best
  * on the level in force. Picking Bramble Run opens select on its world, and dash there goes back to
  * course select with the cursor on Bramble Run.
  */
@@ -32,7 +32,7 @@ const TWO_COURSE_SAVE = {
  * Thornwood cast and the race on foot are checked mid-walk in `tests/course.spec.ts`.
  */
 export default scenario({
-  description: 'course select lists both courses with their bests, picks Bramble Run, and select goes back to it',
+  description: 'course select lists the courses with their bests, picks Bramble Run, and select goes back to it',
   start: { save: TWO_COURSE_SAVE, seed: 1 },
   input: [wait(25), tap('fire'), wait(5), tap('down'), wait(20), tap('fire'), wait(25), tap('dash'), wait(5)],
   expect({ summary, events }) {
@@ -43,6 +43,7 @@ export default scenario({
         rows: [
           { id: 'sunlit-shallows', name: 'Sunlit Shallows', best: '1:30.00' },
           { id: 'bramble-run', name: 'Bramble Run', best: '1:40.00' },
+          { id: 'slingshot-alley', name: 'Slingshot Alley', best: '-:--.--' },
         ],
         selected: 1,
       },

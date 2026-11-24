@@ -100,15 +100,15 @@ const NORMAL_LAG_TILES = 3;
  */
 const EASY_CATCH_UP_MIN = 0.3;
 
-/** Slingshot Alley: a flight through an asteroid belt in Farside, unlisted until its art and song land. */
+/** Slingshot Alley: a flight through an asteroid belt, the listed course of Farside. */
 export const SLINGSHOT_ALLEY: ShippedCourse = {
   id: 'slingshot-alley',
   name: 'Slingshot Alley',
   level: LEVEL,
   world: 'farside',
-  theme: 'ocean',
-  song: 'race',
-  listed: false,
+  theme: 'space',
+  song: 'farside',
+  listed: true,
   parTicks: PAR_TICKS,
   catchUp: { normal: { lagTiles: NORMAL_LAG_TILES }, easy: { min: EASY_CATCH_UP_MIN } },
 };

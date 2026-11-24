@@ -71,8 +71,8 @@ export const DRIFT_TEST: ShippedCourse = {
   name: 'Drift Test',
   level: LEVEL,
   world: 'farside',
-  theme: 'ocean',
-  song: 'race',
+  theme: 'space',
+  song: 'farside',
   listed: false,
   parTicks: PAR_TICKS,
 };

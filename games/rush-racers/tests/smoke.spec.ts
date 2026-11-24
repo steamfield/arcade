@@ -79,6 +79,28 @@ test('a Bramble Run race starts from the menus and runs 600 ticks on foot', asyn
   expect(summary.raceTick).toBeGreaterThanOrEqual(600);
 });
 
+/**
+ * `debugState().worldHash` 600 ticks into a Slingshot Alley race on Hard, holding Right from the
+ * start line. It covers the drift medium, its gravity wells included, the way `TOP_ROUTE_BROWSER_HASH`
+ * covers swimming: every browser project must compute the same number.
+ */
+const SLINGSHOT_BROWSER_HASH = 3665128705;
+
+test('a Slingshot Alley race starts from the menus and drifts 600 ticks to one hash on every browser', async ({
+  game,
+}) => {
+  await game.open();
+  await game.loadState(HARD_SAVE);
+  // Title Race, then down twice to Slingshot Alley on course select once it has armed.
+  await game.play(parseInput('_*20 fire _*2 _*20 down _*1 down _*1 fire _*2'));
+  expect(await game.summary()).toMatchObject({ scene: 'select', course: 'slingshot-alley', medium: 'drift' });
+  await game.play(parseInput('_*20 fire _*2 _*180 right*600'));
+  const summary = await game.summary();
+  expect(summary).toMatchObject({ scene: 'race', phase: 'racing', course: 'slingshot-alley', medium: 'drift' });
+  expect(summary.raceTick).toBeGreaterThanOrEqual(600);
+  expect(await game.state()).toMatchObject({ worldHash: SLINGSHOT_BROWSER_HASH });
+});
+
 test('on Bramble Run the on-screen Up button jumps @touch', async ({ game, page }) => {
   await game.open();
   const hold = async (action: string, ticks: number) => {
