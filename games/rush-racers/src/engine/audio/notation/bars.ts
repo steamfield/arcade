@@ -28,6 +28,7 @@ export function createTrack(channel: Channel): Track {
     barBeats: 0,
     sectionStartBar: 0,
     events: [],
+    duty: undefined,
     tie: null,
     playedInSection: false,
     lastLine: 0,
@@ -79,7 +80,7 @@ function writeNote(track: Track, place: Place, beatsPerBar: number): void {
 export function closeSection(tracks: readonly Track[], sectionName: string | undefined): number {
   const start = tracks[0]?.sectionStartBar ?? 0;
   const longest = tracks.reduce((a, b) => (b.bar > a.bar ? b : a));
-  const where = sectionName === undefined ? 'the part before the first section' : `section "${sectionName}"`;
+  const where = describeSection(sectionName);
   if (sectionName !== undefined && longest.bar === start) {
     throw new Error(`${where} has no bars; give it a channel line or remove it`);
   }
@@ -98,6 +99,11 @@ export function closeSection(tracks: readonly Track[], sectionName: string | und
     track.playedInSection = false;
   }
   return longest.bar;
+}
+
+/** A section as errors name it: `section "A"`, or the part before the first section when unnamed. */
+export function describeSection(sectionName: string | undefined): string {
+  return sectionName === undefined ? 'the part before the first section' : `section "${sectionName}"`;
 }
 
 function barCount(bars: number): string {

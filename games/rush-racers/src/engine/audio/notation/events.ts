@@ -4,19 +4,21 @@
  */
 import { failAt } from './errors.ts';
 import type { ParsedToken } from './tokens.ts';
-import type { Channel, NoteEvent, Place } from './types.ts';
+import type { Channel, Duty, NoteEvent, Place } from './types.ts';
 
 /** A channel's emitted notes and the tie, if any, still waiting for its continuation. */
 export interface ChannelEvents {
   channel: Channel;
   events: NoteEvent[];
+  /** The duty a `duty` directive set for new notes, or undefined for the voice's own. */
+  duty: Duty | undefined;
   /** The note a `~` is extending, with the token that opened the tie. */
   tie: { event: NoteEvent; place: Place } | null;
 }
 
 /**
- * Places one token at `start` beats. A tied note keeps the first note's velocity, slide and
- * vibrato; later notes in the tie only add length.
+ * Places one token at `start` beats. A tied note keeps the first note's velocity, slide,
+ * vibrato, arpeggio and duty; later notes in the tie only add length.
  *
  * @throws {Error} When a tie continues on a different pitch or into a rest.
  */
@@ -43,6 +45,9 @@ export function placeNote(target: ChannelEvents, note: ParsedToken, start: numbe
   };
   if (note.slide !== undefined) event.slideTo = note.slide;
   if (note.vibrato) event.vibrato = true;
+  if (note.arp !== undefined) event.arp = note.arp;
+  if (note.drop) event.drop = true;
+  if (target.duty !== undefined) event.duty = target.duty;
   target.events.push(event);
   if (note.tie) target.tie = { event, place };
 }
