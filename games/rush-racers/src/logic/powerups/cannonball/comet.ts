@@ -16,7 +16,7 @@ import { mediumOf } from '../../media/index.ts';
 import { length } from '../../num.ts';
 import { breakCoral } from '../../race/coral.ts';
 import { activeRacers, centreOf, hitbox } from '../../racers.ts';
-import { type Box, type Racer, type Shot, TILE, type Vec, type World } from '../../types.ts';
+import { type Box, type Racer, type Shot, type ShotEndReason, TILE, type Vec, type World } from '../../types.ts';
 import type { CannonballShotRules } from './index.ts';
 
 /** The Comet's numbers. */
@@ -56,11 +56,10 @@ export const COMET: CannonballShotRules = {
   },
   advance(world: World, shot: Shot, racing: readonly Racer[], dt: number): boolean {
     fly(world, shot, dt);
-    if (stopsComet(world, shot, racing)) {
-      world.events.emit({ type: 'shot.ended', owner: shot.owner, style: 'comet', x: shot.x, y: shot.y });
-      return false;
-    }
-    return true;
+    const reason = stopsComet(world, shot, racing);
+    if (reason === null) return true;
+    world.events.emit({ type: 'shot.ended', owner: shot.owner, style: 'comet', reason, x: shot.x, y: shot.y });
+    return false;
   },
   breaksCoral: true,
   rivalWants(world: World, racer: Racer, aim: Vec): boolean {
@@ -79,12 +78,12 @@ function fly(world: World, shot: Shot, dt: number): void {
   shot.ttl -= 1;
 }
 
-/** True when the comet ends this tick, after doing what ends it (breaking ice, hitting a racer). */
-function stopsComet(world: World, shot: Shot, racing: readonly Racer[]): boolean {
-  if (holeAt(world.level, { x: shot.x, y: shot.y })) return true;
-  if (strikesTiles(world, shot)) return true;
-  if (strikesRacer(world, shot, racing)) return true;
-  return shot.ttl <= 0;
+/** Why the comet ends this tick, after doing what ends it (breaking ice, hitting a racer), or null while it flies on. */
+function stopsComet(world: World, shot: Shot, racing: readonly Racer[]): ShotEndReason | null {
+  if (holeAt(world.level, { x: shot.x, y: shot.y })) return 'expired';
+  if (strikesTiles(world, shot)) return 'landed';
+  if (strikesRacer(world, shot, racing)) return 'hit';
+  return shot.ttl <= 0 ? 'expired' : null;
 }
 
 /**

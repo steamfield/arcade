@@ -23,7 +23,15 @@
  * lists the racers given `status.undertow`. `decoy.popped.by` is null when the decoy simply
  * expires.
  */
-import type { CannonballShotStyle, EnemyKind, HitCause, ItemTwistStyle, PowerUpKind, RacerId } from './types.ts';
+import type {
+  CannonballShotStyle,
+  EnemyKind,
+  HitCause,
+  ItemTwistStyle,
+  PowerUpKind,
+  RacerId,
+  ShotEndReason,
+} from './types.ts';
 
 export type GameEvent =
   | { type: 'race.countdown'; n: 3 | 2 | 1 }
@@ -53,8 +61,8 @@ export type GameEvent =
   | { type: 'shot.launched'; owner: RacerId; style: CannonballShotStyle; target: RacerId | null }
   /** A shot that warns before it lands, such as a Meteor's shadow over its target. */
   | { type: 'shot.warned'; owner: RacerId; style: CannonballShotStyle; target: RacerId }
-  /** A shot ends where it stopped: it hit, broke, fell out or ran out of time. */
-  | { type: 'shot.ended'; owner: RacerId; style: CannonballShotStyle; x: number; y: number }
+  /** A shot ends where it stopped, and why (`ShotEndReason`). */
+  | { type: 'shot.ended'; owner: RacerId; style: CannonballShotStyle; reason: ShotEndReason; x: number; y: number }
   /** A world's reworked item leaves its owner (`powerups/twists/`). */
   | { type: 'twist.launched'; owner: RacerId; style: ItemTwistStyle }
   /** A reworked item takes hold where it is, such as a Mud Pie splatting on the ground. */

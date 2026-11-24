@@ -16,7 +16,16 @@ import { breakCoral } from '../../race/coral.ts';
 import { moveBody, moveRulesFor } from '../../race/move.ts';
 import { centreOf, hitbox } from '../../racers.ts';
 import { isDowned, isInvulnerable } from '../../status.ts';
-import { type Body, type Box, type Racer, type Shot, TILE, type Vec, type World } from '../../types.ts';
+import {
+  type Body,
+  type Box,
+  type Racer,
+  type Shot,
+  type ShotEndReason,
+  TILE,
+  type Vec,
+  type World,
+} from '../../types.ts';
 import type { CannonballShotRules } from './index.ts';
 
 /**
@@ -82,10 +91,10 @@ function rollBoulder(world: World, shot: Shot, racing: readonly Racer[], dt: num
   shot.x = body.x + body.w / 2;
   shot.y = body.y + body.h / 2;
   shot.vy = body.vy;
-  if (hitsRacer(world, shot, racing)) return end(world, shot);
+  if (hitsRacer(world, shot, racing)) return end(world, shot, 'hit');
   // In the air it slides down a wall it meets, so one thrown into a pit falls out of the level.
   if (contacts.floor && (contacts.wallLeft || contacts.wallRight)) return smash(world, shot);
-  if (body.y >= world.level.height * TILE || shot.ttl <= 0) return end(world, shot);
+  if (body.y >= world.level.height * TILE || shot.ttl <= 0) return end(world, shot, 'expired');
   return true;
 }
 
@@ -126,12 +135,12 @@ function smash(world: World, shot: Shot): boolean {
   for (let ty = top; ty <= bottom; ty++) {
     for (let tx = left; tx <= right; tx++) breakCoral(world, tx, ty, shot.owner);
   }
-  return end(world, shot);
+  return end(world, shot, 'landed');
 }
 
-/** Emits `shot.ended` where the boulder stopped; returns false, for `advance` to drop it. */
-function end(world: World, shot: Shot): false {
-  world.events.emit({ type: 'shot.ended', owner: shot.owner, style: 'boulder', x: shot.x, y: shot.y });
+/** Emits `shot.ended` where the boulder stopped, and why; returns false, for `advance` to drop it. */
+function end(world: World, shot: Shot, reason: ShotEndReason): false {
+  world.events.emit({ type: 'shot.ended', owner: shot.owner, style: 'boulder', reason, x: shot.x, y: shot.y });
   return false;
 }
 

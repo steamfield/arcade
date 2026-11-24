@@ -414,6 +414,13 @@ export interface Twist {
 export type CannonballShotStyle = 'boulder' | 'meteor' | 'comet';
 
 /**
+ * Why a shot ended: it hit a racer, met the ground or a wall (a meteor landing, a boulder smashing,
+ * a comet striking rock or ice), fizzled with no one to aim at, or ran out (time, the level's
+ * bottom, a black hole).
+ */
+export type ShotEndReason = 'hit' | 'landed' | 'fizzled' | 'expired';
+
+/**
  * A world-specific Cannonball in flight (`powerups/cannonball/`). One shape for every style so
  * the world holds them in one list; each style's module says what its fields mean for it.
  */

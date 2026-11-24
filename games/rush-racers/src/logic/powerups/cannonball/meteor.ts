@@ -64,7 +64,7 @@ function fireMeteor(world: World, racer: Racer): void {
   const target = meteorTarget(world, racer);
   const owner = racer.id;
   if (!target) {
-    world.events.emit({ type: 'shot.ended', owner, style: 'meteor', ...centreOf(racer) });
+    world.events.emit({ type: 'shot.ended', owner, style: 'meteor', reason: 'fizzled', ...centreOf(racer) });
     return;
   }
   const mark = centreOf(target);
@@ -190,7 +190,7 @@ function strike(world: World, shot: Shot, racing: readonly Racer[]): void {
 }
 
 function endMeteor(world: World, shot: Shot): false {
-  world.events.emit({ type: 'shot.ended', owner: shot.owner, style: 'meteor', x: shot.x, y: shot.y });
+  world.events.emit({ type: 'shot.ended', owner: shot.owner, style: 'meteor', reason: 'landed', x: shot.x, y: shot.y });
   return false;
 }
 

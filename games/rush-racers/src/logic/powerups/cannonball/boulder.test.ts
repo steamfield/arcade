@@ -135,7 +135,7 @@ describe('a rolled boulder', () => {
     stepUntilShotsEnd(world, log);
     const [ended] = eventsIn(log, 'shot.ended');
 
-    expect(ended).toMatchObject({ type: 'shot.ended', owner: 'player', style: 'boulder' });
+    expect(ended).toMatchObject({ type: 'shot.ended', owner: 'player', style: 'boulder', reason: 'expired' });
     expect(ended?.type === 'shot.ended' && ended.y).toBeGreaterThan(7 * TILE);
     expect(eventsIn(log, 'coral.broken', 'racer.hit')).toEqual([]);
   });

@@ -40,7 +40,7 @@ describe('set piece and shot sounds', () => {
 
   it("sounds each world's shot where it ends within hearing", () => {
     const ended = (style: 'boulder' | 'meteor' | 'comet') =>
-      ({ type: 'shot.ended', owner: 'tess', style, x: 100, y: 0 }) as const;
+      ({ type: 'shot.ended', owner: 'tess', style, reason: 'landed', x: 100, y: 0 }) as const;
     expect(setPieceCue(ended('boulder'), worldAt(150), 'player')).toBe('coral');
     expect(setPieceCue(ended('meteor'), worldAt(150), 'player')).toBe('lightning.strike');
     expect(setPieceCue(ended('comet'), worldAt(150), 'player')).toBe('decoy.pop');

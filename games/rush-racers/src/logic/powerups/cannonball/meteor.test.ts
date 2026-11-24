@@ -127,7 +127,7 @@ describe('who a meteor marks', () => {
     const owner = racerOf(world, 'player').body;
     fire('player');
     expect(shotEvents(log)).toEqual([
-      { type: 'shot.ended', owner: 'player', style: 'meteor', x: owner.x + owner.w / 2, y: owner.y + owner.h / 2 },
+      { type: 'shot.ended', owner: 'player', style: 'meteor', reason: 'fizzled', x: owner.x + owner.w / 2, y: owner.y + owner.h / 2 },
     ]);
     expect(world.shots).toEqual([]);
     expect(racerOf(world, 'player').items.every((item) => item === null)).toBe(true);
@@ -179,7 +179,7 @@ describe('where a meteor falls', () => {
     run(UNTIL_LANDED);
     expect(meteorHits(log).sort()).toEqual(['squib', 'tess']);
     const ended = shotEvents(log).at(-1);
-    expect(ended).toEqual({ type: 'shot.ended', owner: 'player', style: 'meteor', x: 20.5 * TILE, y: FLOOR_Y });
+    expect(ended).toEqual({ type: 'shot.ended', owner: 'player', style: 'meteor', reason: 'landed', x: 20.5 * TILE, y: FLOOR_Y });
     expect(world.shots).toEqual([]);
   });
 
