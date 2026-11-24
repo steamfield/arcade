@@ -96,13 +96,5 @@ export const OCEAN_THEME = defineTheme({
   dark: { colour: 0x020616, alpha: 0.9 },
   trail: { frame: FxFrame.bubbleSmall, tint: 0xffffff, alpha: 0.6 },
   contrastBands: OCEAN_CONTRAST_BANDS,
-  extraLayers: (scene, world) => [createVentView(scene, world, OCEAN_VENT_ART, prefersReducedMotion())],
+  extraLayers: (scene, world, reducedMotion) => [createVentView(scene, world, OCEAN_VENT_ART, reducedMotion)],
 });
-
-/**
- * The OS reduced-motion preference. A theme layer isn't handed the player's Motion setting
- * (`Theme.extraLayers` gets only the scene and world), so the vents follow the OS, as a fresh save does.
- */
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}

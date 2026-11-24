@@ -177,8 +177,8 @@ export interface Theme {
    * rows sit above play (the reef's air, the forest canopy).
    */
   hudOverSky?: boolean;
-  /** Extra layers for this theme's race scene, built once per race. */
-  extraLayers(scene: Phaser.Scene, world: World): ThemeLayer[];
+  /** Extra layers for this theme's race scene, built once per race; `reducedMotion` is the player's Motion setting. */
+  extraLayers(scene: Phaser.Scene, world: World, reducedMotion: boolean): ThemeLayer[];
 }
 
 /** What a theme file writes; `defineTheme` fills `terrain.glyphTiles` and `extraLayers` when left out. */

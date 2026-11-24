@@ -87,7 +87,7 @@ export class RaceScene extends Phaser.Scene {
       view: createRacerView(this, racer, reducedMotion, skin.cast, localIdOf(world)),
       effects: createPowerupView(this, racer.id, skin, reducedMotion),
     }));
-    const themeLayers = theme.extraLayers(this, world);
+    const themeLayers = theme.extraLayers(this, world, reducedMotion);
     const dark = createDarkView(this, world, theme.dark, reducedMotion);
     const layout = screenLayout(this.scale);
     const hud = createHud(this, world, reducedMotion, layout);
