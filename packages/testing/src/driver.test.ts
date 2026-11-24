@@ -82,4 +82,10 @@ describe('GameDriver.touch', () => {
     await new GameDriver(fake.page, '/games/x/').touch('fire', 3);
     expect(fake.log).toEqual([`pointerdown ${fireButton} ${finger}`, 'advance 3', `pointerup ${fireButton} ${finger}`]);
   });
+
+  it('lifts the finger and passes the error on when the game fails to advance', async () => {
+    const fake = fakePage({ closed: false, evaluate: () => Promise.reject(new Error('Target page closed')) });
+    await expect(new GameDriver(fake.page, '/games/x/').touch('fire', 3)).rejects.toThrow('Target page closed');
+    expect(fake.log).toEqual([`pointerdown ${fireButton} ${finger}`, `pointerup ${fireButton} ${finger}`]);
+  });
 });

@@ -80,6 +80,9 @@ interface RunRecord {
  * server from this worktree on a free port and shuts it down afterwards.
  *
  * @throws {UsageError} When an option is malformed or names a scenario or folder that doesn't exist.
+ * @throws {Error} When the dev server or browser can't start, the game fails to open, a Playwright
+ *   step fails during the run, or stopping the session fails. An AggregateError carries both causes
+ *   when opening fails and stopping what had started fails too.
  */
 export async function see(slug: string, opts: SeeOptions): Promise<number> {
   const start = performance.now();

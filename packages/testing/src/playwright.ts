@@ -126,7 +126,7 @@ export async function gamePlaywrightConfig(
       screenshot: 'only-on-failure',
     } as PlaywrightTestConfig['use'],
     projects: browserProjects(manifest),
-    // A single server stays a plain object, the shape games that read `config.webServer` expect.
+    // With no extra servers, webServer is the single object it has always been for games without extras.
     webServer: servers?.length === 1 ? servers[0] : servers,
   });
 }
