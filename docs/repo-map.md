@@ -20,6 +20,8 @@ Where everything is, so you can open the right file instead of searching. Every 
 | Change the landing page | `apps/site/` |
 | Record a game's landing-page footage and cover | `pnpm arcade attract <slug>`, settings in its package.json `arcade.attract` |
 | Change a lint rule | `biome.json`, plus `tools/biome/no-nondeterminism.grit` for logic-only bans and `tools/biome/no-inexact-math.grit` for rush-racers' bit-exact math |
+| Add a world to Rush Racers | Logic: `games/rush-racers/src/logic/worlds/<id>.ts`. Art: `games/rush-racers/src/engine/worlds/<id>.ts` plus `<id>/{keys,cast,objects,art}.ts`, `<id>/palettes.ts` when views read its colours, and `<id>/sprites/`; register in `games/rush-racers/src/engine/worlds/index.ts` (`SKINS`, `WORLD_ART`). `games/rush-racers/src/engine/worlds/load.ts` loads its art on demand. Steps: "Add a world" in `games/rush-racers/COURSES.md` |
+| Add a theme (a course's look) to Rush Racers | `games/rush-racers/src/engine/themes/<id>.ts` plus `<id>/{keys,palettes,art}.ts` and `<id>/sprites/`; register in `games/rush-racers/src/engine/themes/index.ts` (`THEMES`, `THEME_ART`) and add the id to `ThemeId` in `games/rush-racers/src/logic/courses/types.ts`. Loaded on demand by `games/rush-racers/src/engine/worlds/load.ts` |
 | Change online rooms or races | Room service: `apps/api/src/` (`protocol.ts` is the wire contract). Rush Racers: `games/rush-racers/src/net/` (client, lobby, lockstep, transports), `src/engine/online/` (flow, screens), `tests/online*.spec.ts` |
 | Change CI or deploys | `.github/workflows/ci.yml`, `tools/arcade/src/affected.ts`, `wrangler.jsonc`, `tools/arcade/src/assemble.ts`, `cf:build` in `package.json` |
 
@@ -37,7 +39,7 @@ Where everything is, so you can open the right file instead of searching. Every 
 | `biome.json` | Lint and format, with per-folder overrides (test files, game `src/`, logic folders). |
 | `tsconfig.json` | Editor-level config. Each package has its own. |
 | `wrangler.jsonc` | Cloudflare Workers static assets config. Serves `dist/` at the `arcade.steamfield.io` custom domain. |
-| `.github/workflows/ci.yml` | CI: `arcade check --all`, `arcade smoke`. Deploys run in Cloudflare Workers Builds, not here. |
+| `.github/workflows/ci.yml` | CI: a `plan` job runs `arcade affected --base`, then one `arcade check --base` job, one `arcade smoke` job per affected game, and each affected game's sharded slow suite. Deploys run in Cloudflare Workers Builds, not here. |
 | `.nvmrc` | Node 24. |
 
 Generated and ignored, never worth searching: `node_modules/`, `dist/` (assembled site), `.arcade/runs/` (`arcade see` output, `latest` symlink), `test-results/`, `.turbo/`, `.wrangler/`.
@@ -48,7 +50,7 @@ Generated and ignored, never worth searching: `node_modules/`, `dist/` (assemble
 | --- | --- |
 | `docs/repo-map.md` | This file. |
 | `docs/architecture.md` | Stack, key decisions and why, shared packages, hosting, risks. |
-| `docs/agent-experience.md` | The agent tooling design: inner loop, determinism, `see`, guardrails, tests. "As built" at the end lists what differs from the plan and what isn't built. |
+| `docs/agent-experience.md` | The `arcade` CLI, test harness and guardrails as built: inner loop, determinism, `see`, lint and type rules, tests, hooks, and a short "Not built yet" list. |
 | `docs/product-vision.md` | Who the arcade is for and what success looks like. |
 | `docs/problem-statement.md` | The problem the repo solves. |
 | `docs/research/stack-research-2026-11.md` | The stack research behind the architecture. Background only. |
@@ -66,7 +68,7 @@ Generated and ignored, never worth searching: `node_modules/`, `dist/` (assemble
 | `.claude/rules/game-engine.md` | Loaded when touching `src/engine/` or `src/main.ts`. |
 | `.claude/rules/game-tests.md` | Loaded when touching `scenarios/` or `tests/`. |
 | `.claude/hooks/format.ts` | PostToolUse hook: Biome-formats the edited file. Inactive until registered as a hook in a `settings.json` (see the hooks note in `AGENTS.md`). |
-| `.claude/hooks/check-on-stop.ts` | Stop hook: runs `pnpm arcade check` when code changed. Needs registering too. |
+| `.claude/hooks/check-on-stop.ts` | Stop hook: runs `pnpm arcade check --skip-tests` when code changed. Needs registering too. |
 | `.claude/launch.json` | Dev servers for the in-app browser preview. `arcade new` adds each game. |
 
 ## Shared packages (`packages/`)
@@ -107,10 +109,10 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 
 | Path | Exports |
 | --- | --- |
-| `packages/testing/src/index.ts` | Re-exports `scenario.ts` and `driver.ts`. Playwright pieces come from `@arcade/testing/playwright`. |
+| `packages/testing/src/index.ts` | Re-exports `scenario.ts`, `driver.ts`, `ports.ts`, `chromium-args.ts`, `game-session.ts` and `save-fixtures.ts`. Playwright pieces come from `@arcade/testing/playwright`. |
 | `packages/testing/src/scenario.ts` | `scenarioKit<Action>()` (`scenario`, `hold`, `tap`, `wait`), `parseInput("right*30 jump")`, `totalTicks`, `Scenario` and result types; `start` takes `save`, `scene`, `seed` and `query`. |
-| `packages/testing/src/driver.ts` | `GameDriver`: `open`, `advance`, `play`, `loadState`, `summary`, `state`, `events`, `screenshot`, `runScenario`, `problems`. Shared by Playwright and `arcade see`. |
-| `packages/testing/src/playwright.ts` | The `test` fixture (`game`, fails on console errors, failed requests, game errors, dropped events), `defineScenarioTests(dir)`, `gamePlaywrightConfig(url)` (desktop, phone, WebKit projects). |
+| `packages/testing/src/driver.ts` | `GameDriver`: `open`, `waitIdle`, `advance`, `play`, `touch` (hold an on-screen button by action name), `loadState`, `summary`, `state`, `events`, `screenshot`, `renderer`, `runScenario`, `problems`. Shared by Playwright and `arcade see`. |
+| `packages/testing/src/playwright.ts` | The `test` fixture (`game`, fails on console errors, failed requests, game errors, dropped events), `defineScenarioTests(dir)`, `gamePlaywrightConfig(url, { extraWebServers })` (desktop, phone, WebKit projects; extra servers such as an API Worker get free ports through an environment variable). |
 | `packages/testing/src/ports.ts` | `freePort()`: an unused local port for test and tool servers. |
 | `packages/testing/src/chromium-args.ts` | `CHROMIUM_ARGS`: the Chromium flags shared by Playwright projects, `see` and `attract`. |
 | `packages/testing/src/game-session.ts` | `openGameSession`: Vite test server, Chromium and an open `GameDriver` page for `see` and `attract`; `close()` stops all of it. |
@@ -122,10 +124,10 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | --- | --- |
 | `packages/config/src/index.ts` | Re-exports the manifest schema. |
 | `packages/config/src/game-html-plugin.ts` | Vite plugin that injects the title, description and Open Graph tags from `game.json`. |
-| `packages/config/src/test-config.ts` | Vitest defaults for a game, and the `slowTests` option that splits tests into `unit` and a slow project. |
+| `packages/config/src/test-config.ts` | `buildTestConfig`: Vitest defaults for a game, and the `slowTests` option that splits tests into `unit` and a slow project. |
 | `packages/config/src/manifest-file.ts` | `readManifest(dir)`, `readManifestsIn(parent)`: read `game.json` from disk for Node tools. Imported as `@arcade/config/manifest-file`. |
 | `packages/config/src/manifest.ts` | `gameManifestSchema`, `GameManifest`, `parseManifest`: the `game.json` format. |
-| `packages/config/src/vite.ts` | `defineGameConfig(import.meta.url)`: base path `/games/<slug>/`, hashed assets, dev server, share tags. `readManifest`. Imported as `@arcade/config/vite`. |
+| `packages/config/src/vite.ts` | `defineGameConfig(import.meta.url, overrides?, { slowTests }?)`: base path `/games/<slug>/`, hashed assets, dev server, share tags; every override key reaches the result. `readManifest`. Imported as `@arcade/config/vite`. |
 | `packages/config/tsconfig.base.json` | Strict base, `erasableSyntaxOnly`. |
 | `packages/config/tsconfig.game.json` | Game code: DOM plus `vite/client`. |
 | `packages/config/tsconfig.logic.json` | Logic code: ES2023 only, no DOM, which is how logic is kept engine-free. |
@@ -141,9 +143,10 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/affected.ts` | `affected`, `affectedSince`, `planFromChanges`: which packages, games and slow-suite shards a change since a base commit needs tested. CI's job matrices come from it. |
 | `tools/arcade/src/affected.test.ts` | Which games a change selects, the global files that select all, slow-suite shards. |
 | `tools/arcade/src/ci.test.ts` | CI's Playwright container tag matches the catalog's `@playwright/test`. |
-| `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/` (or `--out`); `--query` launch params, `--compare` pixel diff against an earlier run. |
-| `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths, `@group`s from the game's package.json, or `-t`; one line when green. |
-| `tools/arcade/src/test.test.ts` | `@group` expansion for `arcade test`. |
+| `tools/arcade/src/see.ts` | `see`: headless run to an exact tick, writes frames, summary, state, events, console to `.arcade/runs/` (or `--out`); `--viewport`, `--query` launch params, `--compare` pixel diff against an earlier run. |
+| `tools/arcade/src/test.ts` | `test`: one game's Vitest run, narrowed to paths, `@group`s from the game's package.json (a path list or `{ project, paths }`), or `-t`; runs the fast project its `test` script names unless given test files or `--project`; one line when green. |
+| `tools/arcade/src/test.test.ts` | `@group` expansion and the Vitest arguments `arcade test` builds. |
+| `tools/arcade/src/guardrails.test.ts` | Each Biome import and nondeterminism ban fires (with a near miss that passes), and no game or template imports a relative path outside its own folder. |
 | `tools/arcade/src/smoke.ts` | `smoke`: assemble, `wrangler dev` (site Worker plus the API Worker behind `/api/*`), Playwright per game against the production build. |
 | `tools/arcade/src/assemble.ts` | `assemble`, `selectGames`, `includeForBranch`: builds site plus games into `dist/`, writes `_headers`, checks Cloudflare limits. |
 | `tools/arcade/src/assemble.test.ts` | Which games a Cloudflare build ships per branch. |
@@ -157,7 +160,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 
 ## Room service (`apps/api/`)
 
-The relay for online races, a separate Worker (`arcade-api`) the site forwards `/api/*` to. Design: `plans/reef-rush-multiplayer.md` section 5.5 and `plans/rush-racers-online.md`. Tests are in `apps/api/test/` and run the Worker in-process (`pnpm --filter @arcade/api test`).
+The relay for online races, a separate Worker (`arcade-api`) the site forwards `/api/*` to. Design: `plans/reef-rush-multiplayer.md` section 5.5 and `plans/done/rush-racers-online.md`. Tests are in `apps/api/test/` and run the Worker in-process (`pnpm --filter @arcade/api test`).
 
 | File | What it is |
 | --- | --- |
@@ -256,4 +259,4 @@ The 3D template (`templates/three-3d/`) has the same files with these difference
 | `templates/three-3d/scenarios/push-crate.ts` | Scenario: Rapier pushes a crate. |
 | `templates/three-3d/scenarios/restore-save.ts` | Scenario: start from a save fixture. |
 
-Games in `games/` follow the same layout. Their own `DESIGN.md` is the map for anything game-specific.
+Games in `games/` follow the same layout. Their own `DESIGN.md` is the map for anything game-specific; Rush Racers also has a `MAP.md` of its folders.

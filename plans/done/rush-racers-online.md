@@ -2,6 +2,7 @@
 
 Skill: deliver. Profile: deliver. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.0/shared/scripts/plan_graph.py
+Status: done, merged to main 2026-11-23.
 Started: 2026-11-23. Timebox: none. Landing branch: deliver/reef-net (worktree `/Users/riley/Projects/games/.claude/worktrees/reef-net`).
 Gate: `pnpm arcade check --all && pnpm arcade smoke rush-racers` (about 4 min). Filtered tests: `pnpm arcade test rush-racers <paths>` for the game, `pnpm --filter @arcade/api test` for the room service. Typecheck and lint: `pnpm arcade check rush-racers --skip-tests` (game), `pnpm --filter @arcade/api typecheck && pnpm exec biome check apps/api` (room service).
 Runner: plain commands.

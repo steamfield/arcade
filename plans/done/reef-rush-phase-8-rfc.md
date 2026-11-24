@@ -1,7 +1,7 @@
 # RFC: Reef Rush phase 8, course and movement-style seams
 
-Status: ready to implement. Written 2026-11-22 at the end of phase 7, for an agent who was not in the session that built phases 1-7.
-Game: `games/reef-rush` (Phaser 4.2.1). Read `AGENTS.md`, `docs/repo-map.md`, `games/reef-rush/DESIGN.md` and `games/reef-rush/UI.md` before starting. The phases 1-7 plan, with its lane history and decisions, is `plans/reef-rush.md`; this RFC replaces its "Phase 8" section and keeps its "Phase 9" section as the target the seams must serve.
+Status: done. Phase 8 merged to main on 2026-11-22 (see reef-rush.md). Written 2026-11-22 at the end of phase 7, for an agent who was not in the session that built phases 1-7.
+Game: `games/reef-rush` (Phaser 4.2.1). Read `AGENTS.md`, `docs/repo-map.md`, `games/reef-rush/DESIGN.md` and `games/reef-rush/UI.md` before starting. The phases 1-7 plan, with its lane history and decisions, is `plans/done/reef-rush.md`; this RFC replaces its "Phase 8" section and keeps its "Phase 9" section as the target the seams must serve.
 
 ## 1. Why
 
@@ -234,7 +234,7 @@ The user's requirement is that the ocean game loses nothing. Capture before the 
 
 ## 6. Plan
 
-Use the deliver workflow (`ce:deliver`): convert this RFC into the plan file `plans/reef-rush.md` (add the phase 8 lane table and briefs under the existing Phase 8 heading, replacing its text with a pointer to this RFC), run `plan_graph.py validate`, have the plan critiqued against the code (devils-advocate), scaffold, then run lanes.
+Use the deliver workflow (`ce:deliver`): convert this RFC into the plan file `plans/done/reef-rush.md` (add the phase 8 lane table and briefs under the existing Phase 8 heading, replacing its text with a pointer to this RFC), run `plan_graph.py validate`, have the plan critiqued against the code (devils-advocate), scaffold, then run lanes.
 
 ### Scaffold (inline, one commit, no behaviour change)
 

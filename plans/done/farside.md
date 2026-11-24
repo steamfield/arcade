@@ -2,6 +2,7 @@
 
 Skill: deliver. Profile: deliver. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.0/shared/scripts/plan_graph.py
+Status: done, merged to main 2026-11-23.
 Started: 2026-11-23. Timebox: none. Landing branch: deliver/space (worktree `/Users/riley/Projects/games/.claude/worktrees/space`), cut from the tag `cloudreach/phase-1` (331e1c0) by the user's choice. deliver/cloudreach is being delivered by another session and lands on main first; merge its later phase tags into this branch as they appear (conflicts in registries and `MediumEffects` literals are resolved here), and merge main in before the final gate.
 Gate: `pnpm arcade check rush-racers && pnpm --filter game-rush-racers test:difficulty && pnpm arcade smoke rush-racers` (184 s on this base, measured by the Cloudreach run). Filtered tests: `pnpm arcade test rush-racers <paths or @groups> [-t name]`. Typecheck: `pnpm arcade check rush-racers --skip-tests`.
 Runner: plain commands (`rr suite -- rush-racers` only if this machine is busy; another delivery run shares it).

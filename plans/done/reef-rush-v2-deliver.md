@@ -2,6 +2,7 @@
 
 Skill: deliver. Profile: deliver. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.0/shared/scripts/plan_graph.py
+Status: done, merged to main 2026-11-23.
 Started: 2026-11-22. Finished: 2026-11-23 (all four phases on main, nothing pushed). Timebox: none. Landing branch: main.
 Gate: `pnpm arcade check reef-rush && pnpm arcade smoke reef-rush && pnpm --filter game-reef-rush test:difficulty` (about 2 min; the difficulty project rejoined the gate when phase 4 landed). Filtered tests: `pnpm arcade test reef-rush <paths or @groups>`. Typecheck and lint: `pnpm arcade check reef-rush --skip-tests`.
 Runner: plain commands.
@@ -11,9 +12,9 @@ Manifests: package.json, pnpm-lock.yaml, pnpm-workspace.yaml
 
 ## Spec
 
-Product spec: `plans/reef-rush-v2.md`. A playtest found Reef Rush is won by mashing kick, and that power-ups are unreadable and uncontrollable: Burst fires the whole stack, combos are hidden, nothing runs out. v2 changes it to Mario Kart rules. You swim at par with the rivals, fire one item you chose, items have charges, the kick becomes a metered dash, pearls work like coins, and enemies are things you beat. The player of the game is the user; the user plays on desktop keyboard and touch.
+Product spec: `plans/done/reef-rush-v2.md`. A playtest found Reef Rush is won by mashing kick, and that power-ups are unreadable and uncontrollable: Burst fires the whole stack, combos are hidden, nothing runs out. v2 changes it to Mario Kart rules. You swim at par with the rivals, fire one item you chose, items have charges, the kick becomes a metered dash, pearls work like coins, and enemies are things you beat. The player of the game is the user; the user plays on desktop keyboard and touch.
 
-In scope (user decisions 2026-11-22): pair combos are dropped and Cannonball becomes its own item; three held items (Nib's ability keeps four) with a swap control; items have charges; downed racers (stunned, trapped, latched) don't collide, so you swim through them; everything else in `plans/reef-rush-v2.md`.
+In scope (user decisions 2026-11-22): pair combos are dropped and Cannonball becomes its own item; three held items (Nib's ability keeps four) with a swap control; items have charges; downed racers (stunned, trapped, latched) don't collide, so you swim through them; everything else in `plans/done/reef-rush-v2.md`.
 
 Out of scope: remappable keys, a second course, changes under `packages/`, save shape changes.
 
@@ -73,7 +74,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/reef-rush/src/, games/reef-rush/scenarios/, games/reef-rush/tests/, games/reef-rush/DESIGN.md, games/reef-rush/UI.md | plans/reef-rush-v2.md, this plan | | opus | merged | v2-1a | check, smoke and the new tests pass |
+| a | L | games/reef-rush/src/, games/reef-rush/scenarios/, games/reef-rush/tests/, games/reef-rush/DESIGN.md, games/reef-rush/UI.md | plans/done/reef-rush-v2.md, this plan | | opus | merged | v2-1a | check, smoke and the new tests pass |
 
 #### Lane a brief
 
@@ -198,7 +199,7 @@ Test cases:
 | a | L | games/reef-rush/src/logic/difficulty/, games/reef-rush/src/logic/ai/profiles.ts, games/reef-rush/src/logic/ai/items.ts, games/reef-rush/src/logic/ai/rival.test.ts, games/reef-rush/src/logic/difficulty-level.ts, games/reef-rush/src/logic/difficulty-level.test.ts, games/reef-rush/src/logic/characters.ts, games/reef-rush/src/logic/characters.test.ts, games/reef-rush/src/logic/courses/sunlit-shallows.ts, games/reef-rush/src/logic/courses/index.test.ts, games/reef-rush/src/logic/powerups/tuning.ts, games/reef-rush/src/logic/powerups/charges.ts, games/reef-rush/src/logic/powerups/charges.test.ts, games/reef-rush/src/logic/pickups/clams.ts, games/reef-rush/src/logic/pickups/clams.test.ts | | | opus | merged | v2-4a | `test:difficulty` passes, check passes |
 | b | M | games/reef-rush/src/engine/view/how-to-play/, games/reef-rush/src/engine/how-to-play.ts, games/reef-rush/src/engine/how-to-play.test.ts, games/reef-rush/src/engine/view/hints.ts, games/reef-rush/src/engine/view/hints.test.ts, games/reef-rush/src/engine/view/hint-view.ts, games/reef-rush/src/engine/view/control-glyphs.ts, games/reef-rush/src/engine/view/control-glyphs.test.ts, games/reef-rush/src/engine/art/font.ts, games/reef-rush/scenarios/how-to-play.ts, games/reef-rush/scenarios/first-race-hint.ts, games/reef-rush/tests/hints.spec.ts, games/reef-rush/DESIGN.md, games/reef-rush/UI.md | | | opus | merged | v2-4b | captures of every page and the swap hint, check and smoke pass |
 
-Shared for every phase 4 lane: read the Spec, `plans/reef-rush-v2.md` and the Phase 4 test cases above, plus the Log for what earlier phases measured. Touch only the files you own; if you need a change elsewhere, stop and report it. Run `pnpm arcade test reef-rush <your paths>` and `pnpm arcade check reef-rush --skip-tests`, then `pnpm fix`, and commit on your branch.
+Shared for every phase 4 lane: read the Spec, `plans/done/reef-rush-v2.md` and the Phase 4 test cases above, plus the Log for what earlier phases measured. Touch only the files you own; if you need a change elsewhere, stop and report it. Run `pnpm arcade test reef-rush <your paths>` and `pnpm arcade check reef-rush --skip-tests`, then `pnpm fix`, and commit on your branch.
 
 #### Lane a brief
 

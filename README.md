@@ -1,6 +1,6 @@
 # Arcade
 
-Original browser games in one monorepo, each deployed on its own at `/games/<slug>/`, plus a landing page. Static hosting on Cloudflare Workers static assets; saves live in the player's browser.
+Original browser games in one monorepo, each deployed on its own at `/games/<slug>/`, plus a landing page. Static hosting on Cloudflare Workers static assets; saves live in the player's browser, and online races go through a small room Worker in `apps/api`.
 
 ```bash
 pnpm install
