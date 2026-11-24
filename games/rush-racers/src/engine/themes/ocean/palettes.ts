@@ -49,3 +49,10 @@ export const WaterLight = {
   caustic: 0xd8f6ff,
   mote: 0x9fd4ee,
 } as const;
+
+/** Whirlpool streaks inherit the look of currents, with the waterline's foam at the rim. */
+export const WhirlpoolPalette = {
+  streak: TerrainPalette.current[0],
+  crest: TerrainPalette.current[1],
+  foam: TerrainPalette.waterline[2],
+} as const;

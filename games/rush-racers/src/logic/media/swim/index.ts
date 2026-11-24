@@ -10,7 +10,7 @@ import { feltCurrent } from '../../powerups/riptides.ts';
 import { centreOf } from '../../racers.ts';
 import type { Medium } from '../types.ts';
 import type { SwimEnv, SwimMotion } from './data.ts';
-import { buildSwimNav, steerCost, validateSwimLevel } from './nav.ts';
+import { buildSwimNav, swimEnterCost, validateSwimLevel } from './nav.ts';
 import { applyIntent } from './physics.ts';
 import { createSwimPilot, steerSwimmer } from './pilot.ts';
 import { SPLASH_DEPTH, SWIM_EFFECTS, SWIM_KICK_RULES, SWIM_TUNING } from './tuning.ts';
@@ -37,7 +37,7 @@ export const SWIM_MEDIUM: Medium = {
   applyIntent,
   buildNav: buildSwimNav,
   steer: steerSwimmer,
-  enterCost: steerCost,
+  enterCost: swimEnterCost,
   aimFrom: swimAimFrom,
   nextTile: swimNextTile,
   distanceAt: swimDistanceAt,
