@@ -310,6 +310,7 @@ Files added under `packages/`, `tools/` or `apps/` need a `docs/repo-map.md` row
 ### Phase 8: templates start where Rush Racers ended
 
 Scaffold: 5a099a518778 (no contracts: the shared helpers landed in phase 7)
+Tag: refactor-audit/phase-8
 
 Demo: `pnpm arcade check --all`, `pnpm arcade smoke phaser-2d` and `pnpm arcade smoke three-3d` pass; each template's smoke asserts one world hash across projects.
 Depends on: phase 7
