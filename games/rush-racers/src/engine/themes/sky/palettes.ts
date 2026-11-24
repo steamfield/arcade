@@ -26,8 +26,11 @@ export const SkyTerrainPalette = {
   wind: [0x7a9ac8, 0xe4eeff],
   /** Finish banner: post, dark check, light check, flag cloth. */
   finish: [0x16161e, 0x2a2a3a, 0xf2f2f2, 0xffcc33],
+  /** Sunlit bank: shadow, shaded cloud, lit cloud, gold edge. */
   sunlitBank: [0x4e4868, 0x9e7483, 0xe4a58b, 0xffdcaf],
+  /** Crow roost: shadow, thunderhead, twigs, pale quills. */
   crowRoost: [0x372b42, 0x4e4868, 0x94718c, 0xd2a18a],
+  /** Cannon rigging: shadow, steel deck, cross-braces, brass rivets. */
   cannonRigging: [0x292b50, 0x464f75, 0x7386a0, 0xeab37a],
 } as const satisfies Record<string, Palette>;
 
