@@ -129,8 +129,10 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
       if (event.type === 'racer.respawned' && event.id === 'player') snap = true;
       if (event.type === 'race.started') goUntil = world.tick + 45;
       if (event.type === 'best.new' && event.course === world.course.id) newBest = true;
+      if (event.type === 'crate.opened' && event.id === 'player') hud.flashPickup(world);
     }
     if (racing) {
+      hud.observeInventory(world);
       for (const racer of world.racers) racers.get(racer.id)?.tick(racer, frames, course);
     } else if (screenChanged) {
       for (const view of racers.values()) view.root.visible = false;
