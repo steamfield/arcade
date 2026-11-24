@@ -9,11 +9,13 @@ import type { SaveStore } from '@arcade/save';
 import type { GameEvent } from '../logic/events.ts';
 import { hashWorld } from '../logic/hash.ts';
 import { NEW_SAVE, type SaveData } from '../logic/save.ts';
-import type { CharacterId, Course, TickInput, World } from '../logic/types.ts';
+import { placeOf } from '../logic/standings.ts';
+import { CHARACTER_IDS, type CharacterId, type Course, type TickInput, type World } from '../logic/types.ts';
 import { createWorld, stepWorld, summarize, withBest } from '../logic/world.ts';
 import { applyStage, type StageName } from './capture-stages.ts';
 
 const SAVE_SLOT = 'main';
+const SELECT_COLUMNS = 4;
 
 /** Events the engine adds to the logic's own. */
 export type EngineEvent =
@@ -82,6 +84,7 @@ export class Runtime {
   protected readonly options: RuntimeOptions;
   protected readonly log: Logger;
   protected readonly step: FixedStep;
+  private titleCharacter = NEW_SAVE.character;
   private resultsTick = 0;
   private writes: Promise<void> = Promise.resolve();
   private writesPending = 0;
@@ -94,7 +97,7 @@ export class Runtime {
 
   /**
    * Loads the save (or starts fresh), notices the player when it can't be loaded or kept, and builds
-   * the first race's world in countdown. An unreadable or newer save is never overwritten.
+   * the first race's world, then opens the launch scene. An unreadable or newer save is never overwritten.
    */
   static async start(options: RuntimeOptions): Promise<Runtime> {
     const runtime = new Runtime(options);
@@ -106,6 +109,7 @@ export class Runtime {
       options.notice('Progress will not be saved in this browser mode.');
     }
     const save = loaded.kind === 'ok' ? loaded.data : NEW_SAVE;
+    runtime.titleCharacter = save.character;
     runtime.character = options.character ?? save.character;
     runtime.bests = { ...save.bests };
     runtime.newRace();
@@ -119,7 +123,7 @@ export class Runtime {
       course: this.options.course,
       seed: this.options.seed,
       character: this.character,
-      rivals: false,
+      rivals: true,
     });
     if (this.options.stage) applyStage(this.world, this.options.stage);
     this.scene = 'race';
@@ -130,10 +134,14 @@ export class Runtime {
     this.step.frame(seconds);
   }
 
-  /** Runs `ticks` logic ticks. Returns how many ran. */
+  /** Runs up to `ticks` logic ticks, pausing the test driver at an outstanding save write. */
   advance(ticks: number): number {
-    this.step.advance(ticks);
-    return ticks;
+    let ran = 0;
+    while (ran < ticks && !this.saving) {
+      this.step.advance(1);
+      ran++;
+    }
+    return ran;
   }
 
   /** True while a save write is queued or running. The engine's `idle()` includes it. */
@@ -148,7 +156,13 @@ export class Runtime {
 
   /** A small stable view of the world for the CLI summary. */
   summary() {
-    return { ...summarize(this.world), scene: this.scene, save: this.options.saves.status };
+    return {
+      ...summarize(this.world),
+      scene: this.scene,
+      save: this.options.saves.status,
+      place: placeOf(this.world, 'player'),
+      ...(this.scene === 'select' ? { cursor: this.cursor } : {}),
+    };
   }
 
   /** One number for the whole logic state, equal across runs and browsers that played the same ticks. */
@@ -162,23 +176,50 @@ export class Runtime {
     const frame = this.options.readInput();
     switch (this.scene) {
       case 'title':
+        if (frame.confirmPressed) this.showSelect(this.titleCharacter);
+        break;
       case 'select':
-        // Phase 2 lane a: title goes to select on confirm; select moves the cursor, saves and races.
+        this.tickSelect(frame);
         break;
       case 'race':
         stepWorld(this.world, { player: frame.race }, dt);
         if (this.world.phase === 'finished') this.showResults(tick);
         break;
       case 'results':
-        if (frame.confirmPressed && tick - this.resultsTick >= RESULTS_CONFIRM_DELAY_TICKS) {
-          this.newRace();
-          this.events.emit({ type: 'race.restarted' });
+        if (tick - this.resultsTick >= RESULTS_CONFIRM_DELAY_TICKS) {
+          if (frame.menu.back) this.showSelect(this.character);
+          else if (frame.confirmPressed) {
+            this.newRace();
+            this.events.emit({ type: 'race.restarted' });
+          }
         }
         break;
       default:
         this.scene satisfies never;
     }
     this.options.afterTick(this.world);
+  }
+
+  private showSelect(character: CharacterId): void {
+    this.scene = 'select';
+    this.cursor = CHARACTER_IDS.indexOf(character);
+  }
+
+  private tickSelect({ menu, confirmPressed }: FrameInput): void {
+    if (menu.back) {
+      this.scene = 'title';
+      return;
+    }
+    const column = (this.cursor % SELECT_COLUMNS) + Number(menu.right) - Number(menu.left);
+    const row = Math.floor(this.cursor / SELECT_COLUMNS) + Number(menu.down) - Number(menu.up);
+    this.cursor = Math.max(0, Math.min(1, row)) * SELECT_COLUMNS + Math.max(0, Math.min(SELECT_COLUMNS - 1, column));
+    const picked = CHARACTER_IDS[this.cursor];
+    if (confirmPressed && picked) {
+      this.character = picked;
+      this.titleCharacter = picked;
+      this.persist();
+      this.newRace();
+    }
   }
 
   private showResults(tick: number): void {
@@ -193,10 +234,12 @@ export class Runtime {
       const ticks = bests[course];
       if (ticks !== undefined) this.events.emit({ type: 'best.new', course, ticks });
     }
-    if (!this.saveBlocked) this.persist();
+    this.persist();
   }
 
   private persist(): void {
+    if (this.saveBlocked || this.options.stage !== null) return;
+    this.titleCharacter = this.character;
     const data = { character: this.character, bests: { ...this.bests } };
     this.writesPending++;
     this.writes = this.writes.then(() => this.write(data));

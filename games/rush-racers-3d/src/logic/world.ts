@@ -3,31 +3,33 @@
  * the race limit, and the small summary scenarios assert on.
  *
  * `race.countdown` fires on steps 0, 60 and 120. Step `RACE.countdownTicks` starts the race and
- * runs its first racing tick. On each racing tick, `raceTicks` counts up, then each racer in
- * `racers` order takes `stepRacer` with its input, and `racer.finished` fires for one that just crossed. The race ends (`race.ended`, phase `finished`)
- * when the player finishes (phase 1) or at `RACE.limitTicks`. A finished world ignores input.
+ * runs its first racing tick. Each racing tick runs movement in slot order, resolves bumps, awards
+ * places to new finishers and checks the race deadline. A finished world ignores input.
  */
 import { type EventSink, TICK_HZ } from '@arcade/core';
+import { rivalInput } from './ai.ts';
+import { bumpRacers, captureBumpStarts } from './bump.ts';
+import { drawRivals } from './characters.ts';
 import { assertCourse, groundY } from './course.ts';
 import type { GameEvent } from './events.ts';
 import { NO_INPUT, stepRacer } from './racer.ts';
 import type { SaveData } from './save.ts';
 import { placeOf } from './standings.ts';
-import { DASH, RACE } from './tuning.ts';
-import type { Racer, RacerId, TickInputs, World, WorldOptions } from './types.ts';
+import { DASH, RACE, RIVAL, RUN } from './tuning.ts';
+import type { CharacterId, Racer, RacerId, TickInputs, World, WorldOptions } from './types.ts';
 
 /**
- * A world on the start line in countdown. The player is in slot 0 at `d = 0`; with `rivals` (phase 2)
- * the rivals line up beside it `RACE.gridSpacing` apart.
+ * A world on the start line in countdown. The solo player starts on the centreline. With rivals,
+ * four lanes are spaced up to `RACE.gridSpacing` apart within the track edges.
  *
  * @throws {CourseError} When `options.course` is invalid.
  */
 export function createWorld(events: EventSink<GameEvent>, options: WorldOptions): World {
   assertCourse(options.course);
   const { course } = options;
-  const racer = (id: RacerId, d: number): Racer => ({
+  const racer = (id: RacerId, character: CharacterId, d: number): Racer => ({
     id,
-    character: options.character,
+    character,
     s: course.startS,
     d,
     y: groundY(course, course.startS),
@@ -47,8 +49,18 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
     safeD: d,
     finishTicks: null,
   });
-  const racers = [racer('player', 0)];
-  if (options.rivals) throw new Error('rivals: not implemented until phase 2');
+  const draw = options.rivals ? drawRivals(options.seed, options.character) : null;
+  const edge = Math.max(0, course.halfWidth - RUN.radius);
+  const spacing = Math.min(RACE.gridSpacing, edge / 1.5);
+  const racers = [racer('player', options.character, draw ? -spacing / 2 : 0)];
+  if (draw) {
+    const [first, second, third] = draw.rivals;
+    racers.push(
+      racer('r1', first, spacing / 2),
+      racer('r2', second, -spacing * 1.5),
+      racer('r3', third, spacing * 1.5),
+    );
+  }
   return {
     seed: options.seed,
     course,
@@ -56,7 +68,7 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
     tick: 0,
     raceTicks: 0,
     racers,
-    rngState: options.seed >>> 0,
+    rngState: draw?.rngState ?? options.seed >>> 0,
     endTick: null,
     events,
   };
@@ -79,21 +91,39 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
   world.tick++;
   world.raceTicks++;
   const { course, events, raceTicks } = world;
+  const player = playerOf(world);
+  const playerS = player.s;
+  const hasRivals = world.racers.length > 1;
+  if (hasRivals) captureBumpStarts(world);
   for (const racer of world.racers) {
-    const wasFinished = racer.state === 'finished';
-    stepRacer(racer, inputs[racer.id] ?? NO_INPUT, { course, events, raceTicks, speedMul: 1 }, dt);
-    if (!wasFinished && racer.state === 'finished')
+    const isPlayer = racer.id === 'player';
+    const input = isPlayer ? (inputs.player ?? NO_INPUT) : rivalInput(world, racer);
+    const gap = (playerS - racer.s) / RIVAL.catchUpRange;
+    const speedMul = isPlayer ? 1 : 1 + Math.max(-1, Math.min(1, gap)) * RIVAL.catchUp;
+    stepRacer(racer, input, { course, events, raceTicks, speedMul }, dt);
+  }
+  if (hasRivals) bumpRacers(world);
+  for (const racer of world.racers) {
+    if (racer.finishTicks === raceTicks) {
       events.emit({ type: 'racer.finished', id: racer.id, ticks: raceTicks, place: placeOf(world, racer.id) });
+    }
   }
-  const playerFinished = playerOf(world).state === 'finished';
-  if (playerFinished || world.raceTicks >= RACE.limitTicks) {
-    world.phase = 'finished';
-    world.events.emit({
-      type: 'race.ended',
-      ticks: world.raceTicks,
-      reason: playerFinished ? 'player-finished' : 'limit',
-    });
+
+  if (player.finishTicks !== null) endRace(world, 'player-finished');
+  else if (raceTicks >= RACE.limitTicks) endRace(world, 'limit');
+  else if (world.endTick !== null && world.tick >= world.endTick) endRace(world, 'rivals-finished');
+  else if (
+    world.endTick === null &&
+    hasRivals &&
+    world.racers.every((racer) => racer.id === 'player' || racer.finishTicks !== null)
+  ) {
+    world.endTick = world.tick + RACE.rivalsDoneGraceTicks;
   }
+}
+
+function endRace(world: World, reason: Extract<GameEvent, { type: 'race.ended' }>['reason']): void {
+  world.phase = 'finished';
+  world.events.emit({ type: 'race.ended', ticks: world.raceTicks, reason });
 }
 
 /** The player's racer. */
