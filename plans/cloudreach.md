@@ -2,7 +2,7 @@
 
 Skill: deliver. Profile: deliver. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.0/shared/scripts/plan_graph.py
-Started: 2026-11-23. Timebox: none. Landing branch: deliver/cloudreach (worktree `/Users/riley/Projects/games/.claude/worktrees/cloudreach`), cut from deliver/rush-racers c7e4659. deliver/rush-racers lands on main first; merge its later commits into this branch as they appear.
+Status: done 2026-11-23, merged to main. Started: 2026-11-23. Timebox: none. Landing branch: deliver/cloudreach (worktree `/Users/riley/Projects/games/.claude/worktrees/cloudreach`), cut from deliver/rush-racers c7e4659. deliver/rush-racers lands on main first; merge its later commits into this branch as they appear.
 Gate: `pnpm arcade check rush-racers && pnpm --filter game-rush-racers test:difficulty && pnpm arcade smoke rush-racers` (timed at scaffold). Filtered tests: `pnpm arcade test rush-racers <paths or @groups> [-t name]`. Typecheck: `pnpm arcade check rush-racers --skip-tests`.
 Runner: plain commands (`rr suite -- rush-racers` only if this machine is busy).
 Worktree setup: `pnpm install --frozen-lockfile --offline`.
