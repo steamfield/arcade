@@ -1,6 +1,7 @@
 /**
  * Which sound the course set pieces and the world-specific Cannonballs make, from existing effects:
- * a vent erupting or a wind zone turning near the local racer rushes like a Riptide, a wind zone about
+ * a vent about to erupt near the local racer rumbles like a gathering storm, a vent erupting or a
+ * wind zone turning near the local racer rushes like a Riptide, a wind zone about
  * to turn breathes like a wingbeat, a shot that warns the local racer it is the target pings like a
  * squid lock, and a shot ending within hearing sounds like its world: a Boulder crunches like coral,
  * a Meteor lands with a lightning crack and a Comet pops like a decoy. Positions come from the event
@@ -21,9 +22,11 @@ export function setPieceCue(event: RuntimeEvent, world: World | null, local: Rac
   if (listenerX === undefined) return null;
   const heard = (x: number) => Math.abs(x - listenerX) <= HEARING_PX;
   switch (event.type) {
+    case 'vent.warned':
     case 'vent.erupted': {
       const vent = world.level.vents[event.vent];
-      return vent && heard((vent.col + 0.5) * TILE) ? 'riptide' : null;
+      if (!vent || !heard((vent.col + 0.5) * TILE)) return null;
+      return event.type === 'vent.warned' ? 'lightning.warn' : 'riptide';
     }
     case 'wind.warned':
     case 'wind.shifted': {

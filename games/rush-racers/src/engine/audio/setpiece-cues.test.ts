@@ -20,6 +20,12 @@ describe('set piece and shot sounds', () => {
     expect(setPieceCue(event, worldAt(200 * TILE), 'player')).toBeNull();
   });
 
+  it('rumbles when a vent within hearing is about to erupt', () => {
+    const event = { type: 'vent.warned', vent: 0 } as const;
+    expect(setPieceCue(event, worldAt(10 * TILE), 'player')).toBe('lightning.warn');
+    expect(setPieceCue(event, worldAt(400 * TILE), 'player')).toBeNull();
+  });
+
   it('rushes when a wind zone the local racer is inside turns', () => {
     const event = { type: 'wind.shifted', zone: 0, dir: -1 } as const;
     expect(setPieceCue(event, worldAt(45 * TILE), 'player')).toBe('riptide');
