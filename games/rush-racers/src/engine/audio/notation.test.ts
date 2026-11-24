@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { expandEcho } from './notation/echo.ts';
 import { type NoteEvent, parseSong } from './notation.ts';
 
 /** Wraps channel lines in the two required headers. */
@@ -185,8 +186,8 @@ describe('parseSong', () => {
     ['a section with no bars before another', 'section: a\nsection: b\npulse1: C5/1', 'section "a" has no bars'],
     [
       'a loop at an empty last section',
-      'loop: end\nsection: a\npulse1: C5/1\nsection: end',
-      'section "end" has no bars',
+      'loop: coda\nsection: a\npulse1: C5/1\nsection: coda',
+      'section "coda" has no bars',
     ],
     [
       'a loop at a missing section',
@@ -197,10 +198,16 @@ describe('parseSong', () => {
     ['a duty on the triangle', 'voice triangle: duty=0.5', 'only pulse channels have a duty'],
     ['an unsupported duty', 'voice pulse1: duty=0.3', 'duty must be 0.125, 0.25, 0.5 or 0.75'],
     ['an unknown directive', 'tempoo: 120', 'unknown directive "tempoo"'],
+    ['a directive named like an object property', 'constructor: hi', 'unknown directive "constructor"'],
     [
       'a time signature after notes',
       'pulse1: C5/1\ntime: 3/4',
-      'the time signature must come before the first note line',
+      'the time signature must come before the first note or chord line',
+    ],
+    [
+      'a time signature after a chord line',
+      'chords: C | G\ntime: 6/8\npulse1: C5/2. | C5/2.',
+      'line 4 "time: 6/8": the time signature must come before the first note or chord line',
     ],
     ['a song with no notes', '', 'song "test" has no bars'],
   ])('rejects %s', (_case, body, message) => {
@@ -210,5 +217,328 @@ describe('parseSong', () => {
   it('requires a name and a tempo', () => {
     expect(() => parseSong('tempo: 120\npulse1: C5/1')).toThrow('song is missing "name: <text>"');
     expect(() => parseSong('name: x\npulse1: C5/1')).toThrow('song "x" is missing "tempo: <bpm>"');
+  });
+});
+
+describe('parseSong titles and keys', () => {
+  it('reads a title, keeping a colon inside it whole', () => {
+    const parsed = parseSong(song('pulse1: C5/1', 'name: chase\ntitle: Hollow Chase: Reprise\ntempo: 120'));
+    expect(parsed.title).toBe('Hollow Chase: Reprise');
+  });
+
+  it('uses the name as the title when there is no title header', () => {
+    expect(parseSong(song('pulse1: C5/1', 'name: chase\ntempo: 120')).title).toBe('chase');
+  });
+
+  it('rejects an empty title', () => {
+    expect(() => parseSong(song('title:\npulse1: C5/1'))).toThrow('line 3 "title:": needs a value');
+  });
+
+  it('reads a key into its tonic, mode and scale ascending from the tonic', () => {
+    expect(parseSong(song('key: D dorian\npulse1: C5/1')).key).toEqual({
+      tonic: 2,
+      mode: 'dorian',
+      scale: [2, 4, 5, 7, 9, 11, 0],
+    });
+    expect(parseSong(song('key: Bb harmonic-minor\npulse1: C5/1')).key).toEqual({
+      tonic: 10,
+      mode: 'harmonic-minor',
+      scale: [10, 0, 1, 3, 5, 6, 9],
+    });
+  });
+
+  it('has no key without a key header', () => {
+    expect(parseSong(song('pulse1: C5/1')).key).toBeNull();
+  });
+
+  it('rejects an unknown mode, naming the line and listing the modes', () => {
+    expect(() => parseSong(song('key: D blues\npulse1: C5/1'))).toThrow(
+      'line 3 "key: D blues": unknown mode "blues"; use major, minor, dorian, mixolydian, lydian, phrygian or harmonic-minor',
+    );
+  });
+
+  it('rejects an unknown key tonic, naming the line and listing the modes', () => {
+    expect(() => parseSong(song('key: H dorian\npulse1: C5/1'))).toThrow(
+      'line 3 "key: H dorian": unknown tonic "H"; use a letter A to G with an optional # or b, then one of the modes major, minor, dorian, mixolydian, lydian, phrygian or harmonic-minor',
+    );
+  });
+
+  it('rejects a mode named like an object property as an unknown mode', () => {
+    expect(() => parseSong(song('key: C constructor\npulse1: C5/1'))).toThrow(
+      'line 3 "key: C constructor": unknown mode "constructor"',
+    );
+  });
+});
+
+describe('parseSong chord charts', () => {
+  it('gives each bar its chord as a span in beats from the song start, with root and tones', () => {
+    const parsed = parseSong(song('section: intro\npulse1: C5/1\nsection: A\nchords: Dm | G7\npulse1: C5/1 | C5/1'));
+    expect(parsed.chords).toEqual([
+      { start: 4, length: 4, symbol: 'Dm', root: 2, tones: [2, 5, 9] },
+      { start: 8, length: 4, symbol: 'G7', root: 7, tones: [7, 11, 2, 5] },
+    ]);
+  });
+
+  it('reads every chord quality', () => {
+    const parsed = parseSong(song('chords: C Cm C7 Cm7 Cmaj7 Cdim Csus2 Csus4 C5 C6 Cm6 F#\npulse1: C5/1'));
+    expect(parsed.chords.map((chord) => [chord.symbol, chord.tones])).toEqual([
+      ['C', [0, 4, 7]],
+      ['Cm', [0, 3, 7]],
+      ['C7', [0, 4, 7, 10]],
+      ['Cm7', [0, 3, 7, 10]],
+      ['Cmaj7', [0, 4, 7, 11]],
+      ['Cdim', [0, 3, 6]],
+      ['Csus2', [0, 2, 7]],
+      ['Csus4', [0, 5, 7]],
+      ['C5', [0, 7]],
+      ['C6', [0, 4, 7, 9]],
+      ['Cm6', [0, 3, 7, 9]],
+      ['F#', [6, 10, 1]],
+    ]);
+  });
+
+  it('splits a bar evenly between the symbols written in it', () => {
+    const parsed = parseSong(song('chords: Am D | Bb\npulse1: C5/1 | C5/1'));
+    expect(parsed.chords.map((chord) => [chord.symbol, chord.start, chord.length])).toEqual([
+      ['Am', 0, 2],
+      ['D', 2, 2],
+      ['Bb', 4, 4],
+    ]);
+  });
+
+  it('expands repeats in chord lines and joins several chord lines in a section', () => {
+    const parsed = parseSong(song('section: A\nchords: [Dm | C |]x2\nchords: G\npulse1: [C5/1 |]x5'));
+    expect(parsed.chords.map((chord) => [chord.symbol, chord.start])).toEqual([
+      ['Dm', 0],
+      ['C', 4],
+      ['Dm', 8],
+      ['C', 12],
+      ['G', 16],
+    ]);
+  });
+
+  it('adds no spans for a section without a chords line', () => {
+    expect(parseSong(song('section: A\npulse1: C5/1\nsection: B\nchords: G\npulse1: C5/1')).chords).toEqual([
+      { start: 4, length: 4, symbol: 'G', root: 7, tones: [7, 11, 2] },
+    ]);
+  });
+
+  it('rejects a chord chart covering the wrong number of bars, naming the section and both counts', () => {
+    expect(() => parseSong(song('section: A\nchords: Dm | C | G\npulse1: C5/1 | C5/1'))).toThrow(
+      'section "A" has 2 bars but its chords: lines cover 3',
+    );
+  });
+
+  it('rejects an unknown chord symbol, naming the line and the symbol', () => {
+    expect(() => parseSong(song('chords: Dm Hm7\npulse1: C5/1'))).toThrow(
+      'line 3 "chords: Dm Hm7": unknown chord "Hm7"',
+    );
+    expect(() => parseSong(song('chords: Cadd9\npulse1: C5/1'))).toThrow('unknown chord "Cadd9"');
+  });
+
+  it.each([['Cconstructor'], ['CtoString']])('rejects the chord %s, named like an object property', (symbol) => {
+    expect(() => parseSong(song(`chords: ${symbol}\npulse1: C5/1`))).toThrow(
+      `line 3 "chords: ${symbol}": unknown chord "${symbol}"`,
+    );
+  });
+});
+
+describe('parseSong arpeggios, drops and drums', () => {
+  it('reads an arpeggio as hex semitone offsets on the note', () => {
+    const parsed = parseSong(song('pulse1: C4:047/2 A3:07c/2@0.5\ntriangle: C3:0af/1'));
+    expect(parsed.notes.filter((note) => note.channel === 'pulse1')).toEqual([
+      { channel: 'pulse1', start: 0, length: 2, pitch: 60, velocity: 1, arp: [0, 4, 7] },
+      { channel: 'pulse1', start: 2, length: 2, pitch: 57, velocity: 0.5, arp: [0, 7, 12] },
+    ]);
+    expect(parsed.notes.find((note) => note.channel === 'triangle')?.arp).toEqual([0, 10, 15]);
+  });
+
+  it.each([
+    ['one offset', 'pulse1: C4:0/1', 'token "C4:0/1": an arpeggio needs 2 to 6 offsets'],
+    ['seven offsets', 'pulse1: C4:0123456/1', 'token "C4:0123456/1": an arpeggio needs 2 to 6 offsets'],
+    ['an arpeggio on noise', 'noise: k:04/1', 'noise bar 1 (line 3), token "k:04/1": only pitched notes'],
+    ['an arpeggio with a slide', 'pulse1: C4:047/1>+2', 'token "C4:047/1>+2": an arpeggio can\'t slide'],
+  ])('rejects %s', (_case, body, message) => {
+    expect(() => parseSong(song(body))).toThrow(message);
+  });
+
+  it('marks a triangle note with ! as a pitch-dropped thump', () => {
+    expect(parseSong(song('triangle: C2/4! r/4 G3/4!@0.8 C3/4')).notes).toEqual([
+      { channel: 'triangle', start: 0, length: 1, pitch: 36, velocity: 1, drop: true },
+      { channel: 'triangle', start: 2, length: 1, pitch: 55, velocity: 0.8, drop: true },
+      { channel: 'triangle', start: 3, length: 1, pitch: 48, velocity: 1 },
+    ]);
+  });
+
+  it.each([
+    ['a drop on a pulse', 'pulse1: C4/1!', 'token "C4/1!": only triangle notes take "!"'],
+    ['a drop with a tie', 'triangle: C2/2!~ C2/2', 'token "C2/2!~": a drop can\'t take a tie, vibrato or slide'],
+    ['a drop with vibrato', 'triangle: C2/1v!', 'token "C2/1v!": a drop can\'t take a tie, vibrato or slide'],
+    ['a drop with a slide', 'triangle: C2/1!>+3', 'token "C2/1!>+3": a drop can\'t take a tie, vibrato or slide'],
+    ['a drop with an arpeggio', 'triangle: C2:07/1!', 'token "C2:07/1!": a drop can\'t take an arpeggio'],
+  ])('rejects %s', (_case, body, message) => {
+    expect(() => parseSong(song(body))).toThrow(message);
+  });
+
+  it('plays an open hat, crash and noise tom on noise', () => {
+    expect(rows(song('noise: o/4 c/4 t/4 k/4'), 'noise')).toEqual([
+      ['openHat', 0, 1],
+      ['crash', 1, 1],
+      ['tom', 2, 1],
+      ['kick', 3, 1],
+    ]);
+  });
+
+  it.each([['o'], ['c'], ['t']])('rejects the drum %s on a pitched channel', (drum) => {
+    expect(() => parseSong(song(`pulse2: ${drum}/1`))).toThrow(`token "${drum}/1": pulse2 plays pitches`);
+  });
+});
+
+describe('parseSong voice detune and arpeggio speed', () => {
+  it('reads detune, negative included, and arpeggio frames', () => {
+    const parsed = parseSong(song('voice pulse1: detune=-12 arp=1\nvoice triangle: detune=7.5 arp=3\npulse1: C5/1'));
+    expect(parsed.voices.pulse1).toMatchObject({ detune: -12, arpFrames: 1 });
+    expect(parsed.voices.triangle).toMatchObject({ detune: 7.5, arpFrames: 3 });
+    expect(parsed.voices.pulse2.detune).toBeUndefined();
+    expect(parsed.voices.pulse2.arpFrames).toBeUndefined();
+  });
+
+  it.each([
+    ['detune below -50', 'voice pulse1: detune=-51', 'detune must be -50..50 cents, got -51'],
+    ['detune above 50', 'voice pulse2: detune=50.5', 'detune must be -50..50 cents, got 50.5'],
+    ['detune on noise', 'voice noise: detune=5', 'noise has no pitch to detune'],
+    [
+      'a detune that is not a number',
+      'voice pulse1: detune=abc',
+      '"detune=abc" needs a number of cents from -50 to 50',
+    ],
+    ['arp frames of 0', 'voice pulse1: arp=0', 'arp must be 1, 2 or 3 frames, got 0'],
+    ['arp frames of 4', 'voice pulse1: arp=4', 'arp must be 1, 2 or 3 frames, got 4'],
+    ['a negative level', 'voice pulse1: level=-0.5', '"level=-0.5" needs a non-negative number'],
+  ])('rejects %s', (_case, body, message) => {
+    expect(() => parseSong(song(body))).toThrow(message);
+  });
+});
+
+describe('parseSong duty changes', () => {
+  it('sets the duty of later notes across sections until "voice" returns to the voice duty', () => {
+    const parsed = parseSong(
+      song(
+        'section: a\npulse1: C5/1\nduty pulse1: 0.125\npulse1: D5/1\nsection: b\npulse1: E5/1\nduty pulse1: voice\npulse1: F5/1\npulse2: [C4/1 |]x2',
+      ),
+    );
+    const pulse1 = parsed.notes.filter((note) => note.channel === 'pulse1');
+    expect(pulse1.map((note) => [note.pitch, note.duty])).toEqual([
+      [72, undefined],
+      [74, 0.125],
+      [76, 0.125],
+      [77, undefined],
+    ]);
+    expect(parsed.notes.filter((note) => note.channel === 'pulse2').map((note) => note.duty)).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it.each([
+    [
+      'an unknown duty value',
+      'duty pulse1: 0.3',
+      'line 3 "duty pulse1: 0.3": duty must be 0.125, 0.25, 0.5, 0.75 or voice',
+    ],
+    ['a duty on the triangle', 'duty triangle: 0.5', 'line 3 "duty triangle: 0.5": only pulse1 and pulse2 have a duty'],
+    ['a duty on noise', 'duty noise: 0.5', 'line 3 "duty noise: 0.5": only pulse1 and pulse2 have a duty'],
+  ])('rejects %s', (_case, body, message) => {
+    expect(() => parseSong(song(`${body}\npulse1: C5/1`))).toThrow(message);
+  });
+});
+
+describe('parseSong echo', () => {
+  it('plays the source notes of the section later and quieter, keeping pitch, arp, vibrato and slide', () => {
+    const parsed = parseSong(
+      song(
+        'section: a\npulse1: C5/1\nsection: b\necho pulse2: pulse1 delay=0.5 level=0.5\nduty pulse1: 0.25\npulse1: C5:047/4@0.8 r/4 D5/4v E5/4>+2',
+      ),
+    );
+    expect(parsed.notes.filter((note) => note.channel === 'pulse2')).toEqual([
+      { channel: 'pulse2', start: 4.5, length: 1, pitch: 72, velocity: 0.4, arp: [0, 4, 7], echo: true },
+      { channel: 'pulse2', start: 6.5, length: 1, pitch: 74, velocity: 0.5, vibrato: true, echo: true },
+      { channel: 'pulse2', start: 7.5, length: 0.5, pitch: 76, velocity: 0.5, slideTo: 2, echo: true },
+    ]);
+  });
+
+  it('cuts each echoed note where the next echoed note starts', () => {
+    const source: NoteEvent[] = [
+      { channel: 'pulse1', start: 0, length: 3, pitch: 72, velocity: 1 },
+      { channel: 'pulse1', start: 1, length: 1, pitch: 74, velocity: 1 },
+    ];
+    expect(expandEcho(source, { channel: 'pulse2', delay: 1, level: 0.5, sectionEnd: 8 })).toEqual([
+      { channel: 'pulse2', start: 1, length: 1, pitch: 72, velocity: 0.5, echo: true },
+      { channel: 'pulse2', start: 2, length: 1, pitch: 74, velocity: 0.5, echo: true },
+    ]);
+  });
+
+  it('cuts echoes at the section end and drops notes that would start at or past it', () => {
+    const source = song(
+      'section: a\necho pulse1: pulse2 delay=2 level=0.5\npulse2: C5/2. D5/4\nsection: b\npulse2: E5/1',
+    );
+    expect(rows(source, 'pulse1')).toEqual([[72, 2, 2]]);
+  });
+
+  it('works whichever order the echo and the source lines come in', () => {
+    const before = song('echo pulse2: pulse1 delay=1 level=0.5\npulse1: C5/2 D5/2');
+    const after = song('pulse1: C5/2 D5/2\necho pulse2: pulse1 delay=1 level=0.5');
+    expect(parseSong(after).notes).toEqual(parseSong(before).notes);
+    expect(rows(after, 'pulse2')).toEqual([
+      [72, 1, 2],
+      [74, 3, 1],
+    ]);
+  });
+
+  it.each([
+    [
+      'an echoing channel that also has lines',
+      'section: a\necho pulse2: pulse1 delay=1 level=0.5\npulse1: C5/1\npulse2: C4/1',
+      'line 4 "echo pulse2: pulse1 delay=1 level=0.5": pulse2 has its own lines in section "a"',
+    ],
+    ['a delay of 0', 'echo pulse2: pulse1 delay=0 level=0.5', 'delay must be above 0 and at most 4 beats, got 0'],
+    [
+      'a delay above 4',
+      'echo pulse2: pulse1 delay=4.5 level=0.5',
+      'delay must be above 0 and at most 4 beats, got 4.5',
+    ],
+    ['a level of 0', 'echo pulse2: pulse1 delay=1 level=0', 'level must be above 0 and at most 1, got 0'],
+    ['a level above 1', 'echo pulse2: pulse1 delay=1 level=1.2', 'level must be above 0 and at most 1, got 1.2'],
+    [
+      'an echo of its own channel',
+      'echo pulse2: pulse2 delay=1 level=0.5',
+      'line 3 "echo pulse2: pulse2 delay=1 level=0.5": pulse2 can\'t echo itself; name the other pulse',
+    ],
+  ])('rejects %s', (_case, body, message) => {
+    expect(() => parseSong(song(`${body}\npulse1: C5/1`))).toThrow(message);
+  });
+});
+
+describe('parseSong source whitespace', () => {
+  it('parses CRLF line endings, tabs between tokens and trailing spaces the same as a clean source', () => {
+    const clean = [
+      'name: ws',
+      'title: Whitespace',
+      'tempo: 120',
+      'key: D dorian',
+      'voice pulse1: duty=0.25 detune=-5',
+      'section: a',
+      'chords: Dm | C',
+      'pulse1: C5/2 D5/2 | E5/1',
+      'echo pulse2: pulse1 delay=0.5 level=0.5',
+      'duty pulse1: 0.125',
+      'triangle: [C3/4!]x4 | C3/1',
+    ];
+    const messy = clean.map((line) => `${line.replace(': ', ':\t').replaceAll(' ', ' \t')}  \t`).join('\r\n');
+    expect(parseSong(messy)).toEqual(parseSong(clean.join('\n')));
+  });
+
+  it.each(['end', 'lift'])('refuses a section named %s, which the music announces itself', (name) => {
+    expect(() => parseSong(song(`section: ${name}\npulse1: C5/1`))).toThrow(`section "${name}" uses a reserved name`);
   });
 });

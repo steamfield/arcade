@@ -2,12 +2,14 @@
  * Song header lines: tempo, time signature and per-channel voice settings, plus the default
  * voices a song starts with.
  */
+import { isDuty } from './duty.ts';
 import { failLine } from './errors.ts';
-import type { Channel, ChannelVoice, Duty, Envelope, Line } from './types.ts';
+import type { Channel, ChannelVoice, Envelope, Line } from './types.ts';
 
-const DUTIES: readonly number[] = [0.125, 0.25, 0.5, 0.75];
 const DEFAULT_ENVELOPE: Envelope = { attack: 0.005, decay: 0.08, sustain: 0.6, release: 0.05 };
 const DEFAULT_LEVEL = 0.5;
+const MAX_DETUNE_CENTS = 50;
+const ARP_FRAMES: readonly number[] = [1, 2, 3];
 
 /** A channel's voice before any `voice` line: level 0.5, a short envelope, and 50% duty on pulses. */
 export function defaultVoice(channel: Channel): ChannelVoice {
@@ -50,28 +52,62 @@ export function parseTime(value: string, line: Line): number {
 /**
  * Applies `key=value` settings from a `voice <channel>:` line to that channel's voice.
  *
- * @throws {Error} Naming the line for an unknown setting, a bad number, or a duty on a
- *   non-pulse channel or outside 0.125/0.25/0.5/0.75.
+ * @throws {Error} Naming the line for an unknown setting, a bad number, a duty on a non-pulse
+ *   channel or outside 0.125/0.25/0.5/0.75, a detune on noise or outside -50..50, or an `arp`
+ *   other than 1, 2 or 3 or on noise.
  */
 export function applyVoiceSettings(voice: ChannelVoice, channel: Channel, value: string, line: Line): void {
   for (const pair of value.split(/\s+/).filter(Boolean)) {
     const [setting = '', raw = ''] = pair.split('=');
     const number = Number(raw);
-    if (raw === '' || !Number.isFinite(number) || number < 0) {
-      failLine(line, `"${pair}" needs a non-negative number, e.g. level=0.5`);
+    const isNumber = raw !== '' && Number.isFinite(number);
+    // Detune is the one setting that bends both ways, so it gets its own range message.
+    if (setting === 'detune') {
+      if (!isNumber) failLine(line, `"${pair}" needs a number of cents from -50 to 50, e.g. detune=-8`);
+      applyDetune(voice, channel, number, line);
+      continue;
     }
-    if (setting === 'duty') {
-      if (voice.duty === undefined) failLine(line, `only pulse channels have a duty, not ${channel}`);
-      if (!DUTIES.includes(number)) failLine(line, `duty must be 0.125, 0.25, 0.5 or 0.75, got ${raw}`);
-      voice.duty = number as Duty;
-    } else if (setting === 'level' || setting === 'sustain') {
-      if (number > 1) failLine(line, `${setting} must be 0..1, got ${raw}`);
-      if (setting === 'level') voice.level = number;
-      else voice.envelope.sustain = number;
-    } else if (setting === 'attack' || setting === 'decay' || setting === 'release') {
-      voice.envelope[setting] = number;
-    } else {
-      failLine(line, `unknown voice setting "${setting}"; use duty, level, attack, decay, sustain or release`);
-    }
+    if (!isNumber || number < 0) failLine(line, `"${pair}" needs a non-negative number, e.g. level=0.5`);
+    if (setting === 'duty') applyDuty(voice, channel, number, line);
+    else if (setting === 'arp') applyArpFrames(voice, channel, number, line);
+    else applyEnvelopeSetting(voice, setting, number, line);
+  }
+}
+
+function applyDetune(voice: ChannelVoice, channel: Channel, cents: number, line: Line): void {
+  if (channel === 'noise') failLine(line, 'noise has no pitch to detune');
+  if (Math.abs(cents) > MAX_DETUNE_CENTS) failLine(line, `detune must be -50..50 cents, got ${cents}`);
+  voice.detune = cents;
+}
+
+function applyDuty(voice: ChannelVoice, channel: Channel, value: number, line: Line): void {
+  if (voice.duty === undefined) failLine(line, `only pulse channels have a duty, not ${channel}`);
+  if (!isDuty(value)) failLine(line, `duty must be 0.125, 0.25, 0.5 or 0.75, got ${value}`);
+  voice.duty = value;
+}
+
+function applyArpFrames(voice: ChannelVoice, channel: Channel, frames: number, line: Line): void {
+  if (channel === 'noise') failLine(line, 'noise plays drums, which have no arpeggio');
+  if (!isArpFrames(frames)) failLine(line, `arp must be 1, 2 or 3 frames, got ${frames}`);
+  voice.arpFrames = frames;
+}
+
+function isArpFrames(frames: number): frames is 1 | 2 | 3 {
+  return ARP_FRAMES.includes(frames);
+}
+
+/** Applies `level` or one of the envelope's settings. */
+function applyEnvelopeSetting(voice: ChannelVoice, setting: string, value: number, line: Line): void {
+  if (setting === 'level' || setting === 'sustain') {
+    if (value > 1) failLine(line, `${setting} must be 0..1, got ${value}`);
+    if (setting === 'level') voice.level = value;
+    else voice.envelope.sustain = value;
+  } else if (setting === 'attack' || setting === 'decay' || setting === 'release') {
+    voice.envelope[setting] = value;
+  } else {
+    failLine(
+      line,
+      `unknown voice setting "${setting}"; use duty, level, attack, decay, sustain, release, detune or arp`,
+    );
   }
 }

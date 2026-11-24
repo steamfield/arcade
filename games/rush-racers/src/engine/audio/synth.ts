@@ -3,10 +3,17 @@
  * pulse waves with four duty cycles, a triangle bass and a filtered noise
  * channel for drums and effects. Every sound is one short-lived oscillator or
  * buffer source with its own envelope gain, scheduled on the AudioContext clock.
- * It knows nothing about songs or game events; the sequencer and SFX call it.
+ * It knows nothing about songs or game events; the sequencer, the offline renderer and SFX
+ * call it, on a live `AudioContext` or an `OfflineAudioContext`.
  */
 import { createRng } from '@arcade/core';
-import type { Duty, Envelope } from './notation.ts';
+import type { Drum, Duty, Envelope } from './notation.ts';
+
+/** A frequency the oscillator reaches at a context time. */
+interface FrequencyPoint {
+  frequency: number;
+  at: number;
+}
 
 /** A pitched note on a pulse or triangle voice. Times are AudioContext seconds. */
 interface ToneSpec {
@@ -23,6 +30,12 @@ interface ToneSpec {
   /** Frequency reached by the end of `length`, for a pitch slide. */
   slideTo?: number;
   vibrato?: boolean;
+  /** Detune of the whole note in cents. */
+  detune?: number;
+  /** Frequencies the note jumps to at their times, for an arpeggio. */
+  steps?: readonly FrequencyPoint[];
+  /** Frequencies the note glides to exponentially by their times, in order, for a pitch drop. */
+  glides?: readonly FrequencyPoint[];
 }
 
 /** A burst of filtered white noise, for drums and whooshes. */
@@ -38,12 +51,9 @@ interface NoiseSpec {
   sweepTo?: number;
 }
 
-/** The three noise-channel drums songs can call for. */
-type Drum = 'kick' | 'snare' | 'hat';
-
 /** The synthesizer. Every play method schedules nodes into `out`, which should lead to `master`. */
 export interface Synth {
-  readonly context: AudioContext;
+  readonly context: BaseAudioContext;
   /** The one gain every sound passes through; mute sets it to zero. */
   readonly master: GainNode;
   /** A gain stage at `level` feeding `master`, for a song or the SFX mix. */
@@ -67,6 +77,16 @@ const VIBRATO_DEPTH = 0.01;
 const VIBRATO_DELAY = 0.12;
 /** A mute fades over this many seconds so it doesn't click. */
 const MUTE_FADE = 0.02;
+/**
+ * The master gain when unmuted. Four voices at their song levels sum to nearly twice full scale
+ * at their loudest instants, and the output clips anything past it, so the mix is scaled to leave
+ * the loudest song bar just under `CLIP_KNEE`.
+ */
+const MASTER_LEVEL = 0.45;
+/** The output level above which the soft clip starts to bend the signal. */
+const CLIP_KNEE = 0.9;
+/** Points in the soft clip's curve across -1..1; odd, so 0 maps to 0 exactly. */
+const CLIP_CURVE_POINTS = 2049;
 /** Fixed seed for the noise buffer: the hiss is the same every run, like the hardware's LFSR. */
 const NOISE_SEED = 0x6e6f6973;
 
@@ -74,7 +94,14 @@ const DRUMS: Record<Drum, Omit<NoiseSpec, 'at' | 'level'>> = {
   kick: { length: 0.03, envelope: env(0.001, 0.08, 0, 0.02), filter: 'lowpass', frequency: 900, sweepTo: 120 },
   snare: { length: 0.06, envelope: env(0.001, 0.12, 0.2, 0.05), filter: 'bandpass', frequency: 2200 },
   hat: { length: 0.015, envelope: env(0.001, 0.03, 0, 0.01), filter: 'highpass', frequency: 7000 },
+  // A noise envelope's decay is cut where its length ends, so these lengths equal their decays.
+  openHat: { length: 0.18, envelope: env(0.001, 0.18, 0, 0.03), filter: 'highpass', frequency: 7000 },
+  crash: { length: 0.6, envelope: env(0.001, 0.6, 0, 0.1), filter: 'highpass', frequency: 4000 },
+  tom: { length: 0.15, envelope: env(0.001, 0.15, 0, 0.03), filter: 'lowpass', frequency: 600, sweepTo: 150 },
 };
+
+/** Seconds the longest drum in the kit sounds for, so an offline render leaves room for it. */
+export const DRUM_RING_OUT = Math.max(...Object.values(DRUMS).map((d) => d.length + d.envelope.release));
 
 /**
  * Builds the synth on `context`: the master gain, one PeriodicWave per pulse duty and
@@ -82,10 +109,10 @@ const DRUMS: Record<Drum, Omit<NoiseSpec, 'at' | 'level'>> = {
  *
  * @throws {Error} When WebAudio refuses to create the master chain.
  */
-export function createSynth(context: AudioContext, muted: boolean): Synth {
+export function createSynth(context: BaseAudioContext, muted: boolean): Synth {
   const master = context.createGain();
-  master.gain.value = muted ? 0 : 1;
-  master.connect(context.destination);
+  master.gain.value = muted ? 0 : MASTER_LEVEL;
+  master.connect(createSoftClip(context)).connect(context.destination);
   const pulses = new Map(DUTIES.map((duty) => [duty, pulseWave(context, duty)]));
   const noiseBuffer = whiteNoise(context);
 
@@ -102,8 +129,7 @@ export function createSynth(context: AudioContext, muted: boolean): Synth {
       const osc = context.createOscillator();
       if (spec.wave === 'triangle') osc.type = 'triangle';
       else osc.setPeriodicWave(pulses.get(spec.duty ?? 0.5) ?? pulseWave(context, 0.5));
-      osc.frequency.setValueAtTime(spec.frequency, spec.at);
-      if (spec.slideTo !== undefined) osc.frequency.exponentialRampToValueAtTime(spec.slideTo, spec.at + spec.length);
+      shapePitch(osc, spec);
       const end = playThroughEnvelope(context, osc, out, spec);
       if (spec.vibrato) addVibrato(context, osc, spec.frequency, spec.at, end);
     },
@@ -126,10 +152,32 @@ export function createSynth(context: AudioContext, muted: boolean): Synth {
       const now = context.currentTime;
       master.gain.cancelScheduledValues(now);
       master.gain.setValueAtTime(master.gain.value, now);
-      master.gain.linearRampToValueAtTime(isMuted ? 0 : 1, now + MUTE_FADE);
+      master.gain.linearRampToValueAtTime(isMuted ? 0 : MASTER_LEVEL, now + MUTE_FADE);
     },
   };
   return synth;
+}
+
+/**
+ * A soft clip between the master gain and the output. It passes everything under `CLIP_KNEE`
+ * untouched and bends what is above it toward full scale, so a loud bar with several effects on
+ * top rounds off where the output would otherwise clip hard. A wave shaper adds no gain and no
+ * delay, which a compressor would.
+ */
+function createSoftClip(context: BaseAudioContext): WaveShaperNode {
+  const shaper = context.createWaveShaper();
+  const curve = new Float32Array(CLIP_CURVE_POINTS);
+  for (let i = 0; i < curve.length; i++) curve[i] = softClip((i / (curve.length - 1)) * 2 - 1);
+  shaper.curve = curve;
+  return shaper;
+}
+
+/** `sample` unchanged up to the knee, then eased so that no input reaches past full scale. */
+function softClip(sample: number): number {
+  const size = Math.abs(sample);
+  if (size <= CLIP_KNEE) return sample;
+  const room = 1 - CLIP_KNEE;
+  return Math.sign(sample) * (CLIP_KNEE + room * Math.tanh((size - CLIP_KNEE) / room));
 }
 
 /** Converts a MIDI note number to Hz (A4 = 69 = 440 Hz). */
@@ -142,12 +190,21 @@ export function env(attack: number, decay: number, sustain: number, release: num
   return { attack, decay, sustain, release };
 }
 
+/** Sets the oscillator's frequency over the note: start, slide, arpeggio steps, glides and detune. */
+function shapePitch(osc: OscillatorNode, spec: ToneSpec): void {
+  osc.frequency.setValueAtTime(spec.frequency, spec.at);
+  if (spec.slideTo !== undefined) osc.frequency.exponentialRampToValueAtTime(spec.slideTo, spec.at + spec.length);
+  for (const step of spec.steps ?? []) osc.frequency.setValueAtTime(step.frequency, step.at);
+  for (const glide of spec.glides ?? []) osc.frequency.exponentialRampToValueAtTime(glide.frequency, glide.at);
+  if (spec.detune) osc.detune.setValueAtTime(spec.detune, spec.at);
+}
+
 /**
  * Routes `source` (through `via` when given) into a fresh envelope gain on `out`, starts it
  * at `at` and stops it once the release has finished. Returns that stop time.
  */
 function playThroughEnvelope(
-  context: AudioContext,
+  context: BaseAudioContext,
   source: AudioScheduledSourceNode,
   out: AudioNode,
   spec: { at: number; length: number; envelope: Envelope; level: number },
@@ -182,7 +239,7 @@ function shapeEnvelope(param: AudioParam, at: number, length: number, envelope: 
 }
 
 /** Wobbles `osc` with a sine LFO from shortly after `at` until `end`. */
-function addVibrato(context: AudioContext, osc: OscillatorNode, frequency: number, at: number, end: number): void {
+function addVibrato(context: BaseAudioContext, osc: OscillatorNode, frequency: number, at: number, end: number): void {
   const lfo = context.createOscillator();
   lfo.frequency.value = VIBRATO_HZ;
   const depth = context.createGain();
@@ -199,7 +256,7 @@ function addVibrato(context: AudioContext, osc: OscillatorNode, frequency: numbe
  * A pulse wave of the given duty as Fourier coefficients: the n-th harmonic of a pulse
  * high for `duty` of the period is (2 / nπ)·sin(nπ·duty), phase-shifted by nπ·duty.
  */
-function pulseWave(context: AudioContext, duty: Duty): PeriodicWave {
+function pulseWave(context: BaseAudioContext, duty: Duty): PeriodicWave {
   const real = new Float32Array(HARMONICS + 1);
   const imag = new Float32Array(HARMONICS + 1);
   for (let n = 1; n <= HARMONICS; n++) {
@@ -211,7 +268,7 @@ function pulseWave(context: AudioContext, duty: Duty): PeriodicWave {
 }
 
 /** One second of white noise, looped by every noise voice. */
-function whiteNoise(context: AudioContext): AudioBuffer {
+function whiteNoise(context: BaseAudioContext): AudioBuffer {
   const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
   const data = buffer.getChannelData(0);
   const rng = createRng(NOISE_SEED);

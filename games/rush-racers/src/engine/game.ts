@@ -16,6 +16,7 @@ import { BootScene } from './scenes/boot.ts';
 import { CourseScene } from './scenes/course.ts';
 import { FriendsScene } from './scenes/friends.ts';
 import { HowToPlayScene } from './scenes/how-to-play.ts';
+import { JukeboxScene } from './scenes/jukebox.ts';
 import { RaceScene } from './scenes/race.ts';
 import { ResultsScene } from './scenes/results.ts';
 import { RoomScene } from './scenes/room.ts';
@@ -83,6 +84,7 @@ function createPhaserGame(ctx: GameContext, rt: Runtime): Phaser.Game {
       new ResultsScene(rt),
       new FriendsScene(rt),
       new RoomScene(rt),
+      new JukeboxScene(rt),
     ],
   });
 }

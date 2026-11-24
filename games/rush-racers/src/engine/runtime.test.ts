@@ -17,6 +17,7 @@ import { createClient, type OnlineClient } from '../net/client.ts';
 import { IDLE_INPUT } from '../net/codec.ts';
 import { createOnlineWorld } from '../net/race-world.ts';
 import { createMemoryRoom, type MemoryRoom } from '../net/transport/memory.ts';
+import { RACE_TRACKS } from './audio/songs/index.ts';
 import { type Action, input } from './input.ts';
 import type { OnlinePorts } from './online/flow.ts';
 import { netSummary } from './online/net-summary.ts';
@@ -1035,5 +1036,42 @@ describe('an online race', () => {
     expect(logged.filter((entry) => entry.level === 'warn').map((entry) => entry.message)).toEqual([
       '?room=nope is not a room code, so no room was joined',
     ]);
+  });
+});
+
+describe('race tracks', () => {
+  const [first, second, third] = RACE_TRACKS[DEFAULT_COURSE.song];
+
+  /** The track each of `races` races in a row on the default course plays, on a runtime opened at `search`. */
+  async function tracksRaced(races: number, options: { search?: string; save?: SaveData } = {}) {
+    const { rt } = titleRuntime(await realStore(), options);
+    return Array.from({ length: races }, () => {
+      rt.startRace();
+      return rt.raceTrack;
+    });
+  }
+
+  /** The warnings logged so far. */
+  const warnings = () => logged.filter((entry) => entry.level === 'warn').map((entry) => entry.message);
+
+  it('plays the next track of the course set each race', async () => {
+    expect(await tracksRaced(3)).toEqual([first, second, third]);
+  });
+
+  it('starts the rotation at the save race count', async () => {
+    expect(await tracksRaced(2, { save: { ...NEW_GAME, races: 1 } })).toEqual([second, third]);
+  });
+
+  it('pins every race to the 1-based ?track=', async () => {
+    expect(await tracksRaced(3, { search: '?track=2' })).toEqual([second, second, second]);
+  });
+
+  it('wraps a ?track= past the end of the set round to its first track', async () => {
+    expect(await tracksRaced(2, { search: '?track=4' })).toEqual([first, first]);
+  });
+
+  it.each(['0', '-1', '2.5', 'abc', ''])('warns once about ?track=%s and keeps rotating', async (value) => {
+    expect(await tracksRaced(3, { search: `?track=${value}` })).toEqual([first, second, third]);
+    expect(warnings()).toEqual([`?track=${value} is not a track number (1, 2, 3 and so on), so race tracks rotate`]);
   });
 });

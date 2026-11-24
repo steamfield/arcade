@@ -14,7 +14,7 @@ A **course** is data: a level, the world it races in (which names its medium), a
 | `logic/courses/index.ts` | Registration: import the constant and add it to `COURSES`, whose order is the menu order. `LISTED_COURSES` (course select) is derived from `COURSES` by each course's `listed` flag, so there is no second list to keep in step. This is the only file allowed to import a course file; `logic/architecture.test.ts` fails otherwise. |
 | `logic/courses/types.ts` | Add the id to `ShippedCourseId`, and the theme or song id to `ThemeId` / `SongId` if they are new. |
 | `engine/themes/<theme-id>.ts`, `engine/themes/<theme-id>/` | Only for a look no theme has yet: the theme's data in `<theme-id>.ts`, built with `defineTheme` from its `keys.ts` and `palettes.ts` and importing no sprite, and its `art.ts`, whose `registerArt(scene)` draws the sheets in `sprites/` and registers the loops. Register the data in `THEMES` and the art in `THEME_ART` (`<theme-id>: () => import('./<theme-id>/art.ts')`), both in `engine/themes/index.ts`; `engine/worlds/load.ts` imports it when a screen first draws the theme, so it is a chunk of its own. `engine/themes/ocean.ts` and `engine/themes/ocean/art.ts` are the example. |
-| `engine/audio/songs/<song-id>.ts` | Only for a song not yet shipped: register it in `songs` in `engine/audio/songs/index.ts`. |
+| `engine/audio/songs/<track>.ts` | Only for a song set not yet shipped: three race tracks, registered in `songs` and `RACE_TRACKS` in `engine/audio/songs/index.ts` (`MUSIC.md`). |
 | `logic/balance/<course-id>-*.test.ts` | The course's difficulty bars (see below). |
 | `DESIGN.md`, this file | The course's row and one-line description in DESIGN.md "Worlds and courses"; anything this recipe got wrong. |
 
@@ -258,7 +258,7 @@ Every view reads racer art, portraits, heads, ability wording, item icons and ar
 
 ### 5. The song
 
-`engine/audio/songs/<song-id>.ts` in the game's notation, its id in `SongId` and its entry in `songs`. Its own key, tempo and hook, not a reharmonised race theme. The sfx pin over Sunlit Shallows must not change.
+A set of three race tracks, each `engine/audio/songs/<track>.ts` in the game's notation with its entry in `songs`; the set's id in `SongId` and its tracks in `RACE_TRACKS`. Each has its own key, tempo and hook, not a reharmonised race theme, and passes `songs/race-tracks.test.ts`; `MUSIC.md` says how to write one. The sfx pin over Sunlit Shallows must not change.
 
 ### 6. The course
 

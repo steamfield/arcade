@@ -31,9 +31,10 @@ Three rules hold the layout together. Logic (`src/logic/`) compiles without DOM 
 | `src/engine/art/` | Global art: texture keys (`keys.ts`), the pixel-art drawer (`pixel.ts`), labels (`font.ts`) and the boot art builder (`index.ts`). | Add a global texture. |
 | `src/engine/art/sprites/` | Global sprite sheets (HUD sprites, the guide arrow) and the contrast tests every world's racers must pass. | Change HUD art. |
 | `src/engine/art/ui/` | The UI kit: palette, fonts, panels, buttons, icons, the logo and kit motion. | Change a UI colour, panel or font (`UI.md` first). |
-| `src/engine/audio/` | The chip synth, sequencer, song notation parser, sound effects and the event-to-sound adapter. | Add or change a sound effect. |
+| `src/engine/audio/` | The chip synth, sequencer, song notation parser, race track rotation, offline WAV render, sound effects and the event-to-sound adapter. | Add or change a sound effect. |
+| `src/engine/audio/analysis/` | Pure measurements of a parsed song: form, chord fit, lead shape, peak level and a text report. | Change what the song conformance test can measure. |
 | `src/engine/audio/notation/` | The notation parser's parts: tokens, header, bars, events and errors. | Extend the song notation. |
-| `src/engine/audio/songs/` | One file per song in the notation, and the registry `songs`. | Add a song. |
+| `src/engine/audio/songs/` | One file per song in the notation, the registry `songs`, the race track sets `RACE_TRACKS` and the conformance test every race track passes. `MUSIC.md` says how to write one. | Add a song or a race track. |
 | `src/engine/fx/` | Particles, bursts, trails and camera shake, all driven by logic events. | Add an effect for an event. |
 | `src/engine/online/` | The online flow (`flow.ts`), Friends and room screen state, notices and the race HUD labels. Phaser-free. | Change an online screen's behaviour. |
 | `src/engine/scenes/` | One Phaser scene per screen: boot, title, how to play, course, select, race, results, friends, room. | Change what a screen builds. |
@@ -48,4 +49,4 @@ Three rules hold the layout together. Logic (`src/logic/`) compiles without DOM 
 | `scenarios/` | One Playwright scenario per file, plus `kit.ts` (saves, menu walks, `TOP_ROUTE`). | Add a scenario (`DESIGN.md` "Scenarios"). |
 | `tests/` | Browser specs (`smoke.spec.ts`, course, hints, online, boot art and more), `save.test.ts` and the save fixtures. | Add a cross-browser check or a save version. |
 | `tests/fixtures/` | One captured save per old save version. | Add the old version's fixture when bumping `SAVE_VERSION`. |
-| `scripts/` | `measure.ts`: par and bar margins from the command line. | Measure a course (`COURSES.md` "parTicks"). |
+| `scripts/` | `measure.ts`: par and bar margins from the command line. `render-songs.ts`: songs rendered to WAV with their peak and RMS. | Measure a course (`COURSES.md` "parTicks"); check a song's mix (`MUSIC.md`). |
