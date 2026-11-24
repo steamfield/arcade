@@ -7,6 +7,7 @@
  * uniform and medium-free. `unreachableStarts` is the level check every open-field medium runs.
  */
 import { cellAt, isRockLike, tileIndex } from '../level/query.ts';
+import type { LevelProblem } from '../media/types.ts';
 import { length } from '../num.ts';
 import { type Box, type Cell, type GridSize, type Level, type ProgressField, TILE, type Vec } from '../types.ts';
 import { PriorityQueue } from './priority-queue.ts';
@@ -127,23 +128,11 @@ export function alongCost(flow: Vec, move: Vec, prices: FlowPrices): number {
   return 1;
 }
 
-/** A start tile that can't reach the finish, as `Medium.validateLevel` reports it. */
-export interface UnreachableStart {
-  message: string;
-  row: number;
-  col: number;
-}
-
 /**
  * One problem for each of `level`'s starts whose tile is Infinity on `field`, located at that start.
  * Each message reads `Start <n> <reason>`, numbering starts from 1.
  */
-export function unreachableStarts(
-  level: Level,
-  field: Float32Array,
-  size: GridSize,
-  reason: string,
-): UnreachableStart[] {
+export function unreachableStarts(level: Level, field: Float32Array, size: GridSize, reason: string): LevelProblem[] {
   return level.starts.flatMap((start, index) =>
     Number.isFinite(fieldAt(field, size, start))
       ? []

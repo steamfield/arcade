@@ -48,7 +48,7 @@ On course select up and down move the cursor, fire picks the course and dash goe
 
 ## Roster
 
-You race as one of eight characters; the race fills the three rival slots with three of the other seven, drawn by seed from the `roster` random stream (`pickRivals` in `logic/characters.ts`). Characters are data in fixed slots (`player`, `tess`, `squib`, `bo`), so tick order, random streams and tie-breaks never depend on who is picked. Abilities live in `logic/abilities.ts` (numbers in `ABILITY`), called from hooks in the systems they change. Each character also has its own rival profile in `logic/characters.ts`. Each character has its own art (`art/sprites/racers.ts`, portraits and heads in `art/ui/portraits.ts`).
+You race as one of eight characters; the race fills the three rival slots with three of the other seven, drawn by seed from the `roster` random stream (`assignCharacters` in `logic/characters.ts`). Characters are data in fixed slots (`player`, `tess`, `squib`, `bo`), so tick order, random streams and tie-breaks never depend on who is picked. Abilities live in `logic/abilities.ts` (numbers in `ABILITY`), called from hooks in the systems they change. Each character also has its own rival profile in `logic/characters.ts`. Each character has its own art (`art/sprites/racers.ts`, portraits and heads in `art/ui/portraits.ts`).
 
 | Character | Look | Ability |
 | --- | --- | --- |

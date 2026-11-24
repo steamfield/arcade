@@ -87,16 +87,6 @@ export const CHARACTERS: Readonly<Record<CharacterId, Character>> = {
   },
 };
 
-/**
- * The characters for the three rival slots, in slot order: three distinct characters, never
- * `player`, drawn one by one from the other seven by `rng` (the world's `roster` stream) and
- * nothing else, so the same seed always fields the same rivals.
- */
-export function pickRivals(rng: Rng, player: CharacterId): [CharacterId, CharacterId, CharacterId] {
-  const pool = CHARACTER_IDS.filter((id) => id !== player);
-  return [drawFrom(rng, pool), drawFrom(rng, pool), drawFrom(rng, pool)];
-}
-
 /** Who the player races as when nobody chose: Rudy, unless another slot was given him. */
 const DEFAULT_PLAYER_CHARACTER: CharacterId = 'rudy';
 
@@ -104,7 +94,7 @@ const DEFAULT_PLAYER_CHARACTER: CharacterId = 'rudy';
  * The character in each slot. Slots in `fixed` keep their character; every
  * other slot, in slot order, draws one by `rng` (the world's `roster` stream) from the characters
  * nobody was given. The player slot, when not fixed, is Rudy if he is free. With only the player's
- * character fixed this is `[player, ...pickRivals(rng, player)]`, the same draws in the same order.
+ * character fixed, the three rivals are drawn one by one from the other seven.
  *
  * @throws {Error} When `fixed` names a slot that is not in RACER_IDS or a character that is not in
  *   CHARACTER_IDS, or gives two slots one character.

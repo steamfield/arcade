@@ -36,9 +36,6 @@ import {
 import type { AiDraws, Steering } from '../types.ts';
 import { type SwimPilot, swimNav, swimPilot } from './data.ts';
 
-/** How much looser a swim rival steers in a dark zone it can't see in (the shared pilot kit's). */
-export { DARK_STEERING };
-
 /** Kick only when the aim is within about 37 degrees of the way the racer is already moving. */
 const KICK_ALIGNMENT = 0.8;
 
