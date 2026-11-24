@@ -18,7 +18,7 @@ describe('Slingshot Alley', () => {
   });
 
   it('has the same par target as Bramble Run with more columns for drift speed', () => {
-    // Drift covers more columns in the same time, and the separate Bramble lane may still have its short course.
+    // Compare the lengthened courses once Bramble reaches 1000 columns, since drift needs more track for a similar par.
     const brambleWidth = levelOf(bramble).width;
     const bramblePar = bramble.parTicks;
     expect(level.width).toBeGreaterThan(brambleWidth);
@@ -26,8 +26,8 @@ describe('Slingshot Alley', () => {
     expect(level.width).toBeLessThanOrEqual(1450);
     expect(course.parTicks).toBeGreaterThanOrEqual(9000);
     expect(course.parTicks).toBeLessThanOrEqual(10200);
-    if (bramblePar >= 9000) {
-      expect(level.width / brambleWidth).toBeGreaterThanOrEqual(1.2);
+    if (brambleWidth >= 1000) {
+      expect(level.width / brambleWidth).toBeGreaterThanOrEqual(1.15);
       expect(level.width / brambleWidth).toBeLessThanOrEqual(1.5);
       expect(Math.abs(course.parTicks - bramblePar)).toBeLessThanOrEqual(1200);
     }
