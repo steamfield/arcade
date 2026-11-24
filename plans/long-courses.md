@@ -91,6 +91,7 @@ Layout of new modules:
 ### Phase 1: four new mechanics on the test courses (MVP)
 
 Scaffold: e2886b32cf4482c53bf5934998989efeab55705c
+Tag: long-courses/phase-1
 Demo: `pnpm arcade see rush-racers --scenario <whirlpool-ride|crumble-bridge|cannon-launch|wormhole-warp>` each shows its mechanic working, with a rival on its test course using it.
 Test cases (each lane writes these as logic tests unless marked scenario):
 - Whirlpools: each parse error (centre off the map or not open water, radius outside 2-10, push not positive, spin not 1 or -1, two pools whose discs overlap); a racer inside the radius is pushed along the spin, one outside is not; with the spin on the forward side a racer moves faster than cruise, against it slower; a racer swimming outward at full force from any point inside escapes within a bounded time; `whirlpool.caught` fires once per entry; a fallen or finished racer is not pushed; swim nav prices a pool's tiles so the steer field favours the forward side; scenario `whirlpool-ride` on Reef Test.
