@@ -279,7 +279,7 @@ Scaffold: ada5b28
 | a | M | games/rush-racers/src/logic/courses/sunlit-shallows.ts, games/rush-racers/src/logic/top-route.test.ts, games/rush-racers/src/logic/race/flowfield.test.ts, games/rush-racers/scenarios/kit.ts, games/rush-racers/src/engine/themes/ocean.ts, games/rush-racers/src/engine/themes/ocean/ | contracts | | sol 6.2 | pending | | all sunlit-shallows bars pass, par still in band |
 | b | M | games/rush-racers/src/logic/courses/bramble-run.ts, games/rush-racers/src/engine/themes/forest.ts, games/rush-racers/src/engine/themes/forest/ | contracts | | sol 6.2 | merged | | all bramble-run bars pass, par still in band |
 | c | M | games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/engine/themes/sky.ts, games/rush-racers/src/engine/themes/sky/ | contracts | | sol 6.2 | pending | | all thunderhead-pass bars pass, par still in band |
-| d | M | games/rush-racers/src/logic/courses/slingshot-alley.ts, games/rush-racers/src/logic/courses/slingshot-alley.test.ts, games/rush-racers/src/engine/themes/space.ts, games/rush-racers/src/engine/themes/space/ | contracts | | sol 6.2 | pending | | all slingshot-alley bars pass, par still in band |
+| d | M | games/rush-racers/src/logic/courses/slingshot-alley.ts, games/rush-racers/src/logic/courses/slingshot-alley.test.ts, games/rush-racers/src/engine/themes/space.ts, games/rush-racers/src/engine/themes/space/ | contracts | | sol 6.2 | merged | | all slingshot-alley bars pass, par still in band |
 
 Phase 3's scaffold (orchestrator, before dispatch) adjusts the shared bar files every lane needs: the close-win window in `balance/hard-bars.ts` (an absolute 8 s today) and the per-race budget in `balance/race-bots.ts` (6 s today), both scaled to the longer races after measuring them. Lanes own their course and theme exactly as in phase 2 (lane a also `TOP_ROUTE`, its hashes and the coral gate test), so a reshape that passes a bar can also keep par in band.
 
@@ -299,6 +299,8 @@ Rules every phase 3 lane follows (pasted into each contract):
 - Done when: all 26 bar files for the course pass, the phase 3 rules above hold, and the report lists each bar file's result and the par measurement.
 
 ## Log
+
+- 2026-11-24: lane 3/d needed no change: all 26 slingshot-alley bar files pass at par 9140 (Streak Hard close wins 17/30, the narrowest). Lane 3/b merged after review: a Treetops lead-in step (col 178) fixes the four rival stalls, Millstream stones widened and the Rotten Bridges low road eased so Hard close wins pass at the table's catch-up; Normal lag 7; par 9078. Docs to do: DESIGN.md says Slingshot has five drifting asteroids, it has eleven.
 
 - 2026-11-24: lc-2y (Float32 tie in priced steering froze swim bots in the Jelly Field) merged. lc-2x turn 2 (counter-thrust keeps full dust drag; drift dustCruiseMul back to 0.6, Slingshot-only 0.45 override; Slingshot par 9140, drift-test 1006) merged at ada5b28. Phase 2 gate: check passed, smoke 118/118. Tagged long-courses/phase-2.
 
