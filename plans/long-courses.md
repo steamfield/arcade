@@ -162,6 +162,7 @@ Rules every phase 1 lane follows (pasted into each contract):
 
 Demo: `pnpm arcade see rush-racers --scene race --query course=<id> --input "right*N" --at ...` across each new section of each course, and `node games/rush-racers/scripts/measure.ts par <course> --seeds 40` within 9000-10200 ticks for each.
 Depends on: phase 1
+Scaffold: 0e0cbb2f026c4bc7ff5b942f452de32ec990fed6
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
