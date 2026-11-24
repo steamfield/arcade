@@ -307,3 +307,31 @@ describe('links', () => {
     expect(at(linked, level, 1, 4)).toBe(Number.POSITIVE_INFINITY);
   });
 });
+
+describe('progress across a wall only a wormhole crosses', () => {
+  // The wall at x = 5 is sealed; the two-way hole carries racers from (3, 2) to (7, 2).
+  const sealed = (oneWay: boolean): Level =>
+    parseLevel({
+      name: 'sealed',
+      ascii: `
+        ############
+        #1...#....F#
+        #2...#....F#
+        #3...#....F#
+        #4...#....F#
+        ############
+      `,
+      wormholes: [{ a: [3, 2], b: [7, 2], oneWay }],
+    });
+
+  it.each([false, true])('ranks the near side by the way through the hole (one-way: %s)', (oneWay) => {
+    const level = sealed(oneWay);
+    const progress = buildProgressField(level).distance;
+
+    expect(at(progress, level, 1, 2)).toBeLessThan(Number.POSITIVE_INFINITY);
+    // Approaching the mouth gets closer, and the far side is closer still.
+    expect(at(progress, level, 1, 2)).toBeGreaterThan(at(progress, level, 2, 2) ?? 0);
+    expect(at(progress, level, 2, 2)).toBeGreaterThan(at(progress, level, 3, 2) ?? 0);
+    expect(at(progress, level, 3, 2)).toBeGreaterThan(at(progress, level, 8, 2) ?? 0);
+  });
+});
