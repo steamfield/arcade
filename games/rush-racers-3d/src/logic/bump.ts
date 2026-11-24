@@ -1,5 +1,7 @@
 /** Racers bumping into each other: run once per tick after every racer has moved. */
 import { groundY, logAt, pitAt } from './course.ts';
+import { burrContact } from './items/burr.ts';
+import { isImmobilized } from './items/hits.ts';
 import { RUN } from './tuning.ts';
 import type { Course, Racer, World } from './types.ts';
 
@@ -26,8 +28,13 @@ interface Pair {
  *
  * @param startD The pre-move `d` by racer slot, used to preserve side order when racers cross.
  * A `null` entry marks a racer that wasn't racing before movement. Omitted positions use the current `d`.
+ * @param lockedAtStart Racers held still during movement, including those whose timer has just expired.
  */
-export function bumpRacers(world: World, startD?: readonly (number | null)[]): void {
+export function bumpRacers(
+  world: World,
+  startD?: readonly (number | null)[],
+  lockedAtStart?: ReadonlySet<Racer>,
+): void {
   const pairs: Pair[] = [];
   for (const [i, a] of world.racers.entries()) {
     if (a.state !== 'racing') continue;
@@ -53,8 +60,10 @@ export function bumpRacers(world: World, startD?: readonly (number | null)[]): v
       const { a, b, left, right } = pair;
       const overlap = WIDTH - (right.d - left.d);
       if (overlap <= EPSILON) continue;
-      const min = bounds.get(left)?.min ?? left.d;
-      const max = bounds.get(right)?.max ?? right.d;
+      const leftLocked = lockedAtStart?.has(left) || isImmobilized(left);
+      const rightLocked = lockedAtStart?.has(right) || isImmobilized(right);
+      const min = leftLocked ? left.d : (bounds.get(left)?.min ?? left.d);
+      const max = rightLocked ? right.d : (bounds.get(right)?.max ?? right.d);
       let leftD = Math.max(min, left.d - overlap / 2);
       const rightD = Math.min(max, Math.max(right.d + overlap / 2, leftD + WIDTH));
       leftD = Math.max(min, rightD - WIDTH);
@@ -64,10 +73,12 @@ export function bumpRacers(world: World, startD?: readonly (number | null)[]): v
       if (pair.bumped) continue;
       pair.bumped = true;
       const transfer = Math.max(0, left.vd - right.vd) * VELOCITY_TRANSFER;
-      left.vd -= transfer;
-      right.vd += transfer;
+      if (!leftLocked) left.vd -= transfer;
+      if (!rightLocked) right.vd += transfer;
       world.events.emit({ type: 'racer.bumped', id: a.id, s: a.s, by: b.id });
       world.events.emit({ type: 'racer.bumped', id: b.id, s: b.s, by: a.id });
+      burrContact(world, a, b);
+      burrContact(world, b, a);
     }
     if (!moved) break;
   }

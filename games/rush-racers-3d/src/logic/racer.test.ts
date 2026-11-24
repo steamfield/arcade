@@ -33,7 +33,7 @@ function start(patch: Partial<Course> = {}, startingPose: Partial<Racer> = {}, s
   function advance(ticks: number, input: TickInput = NO_INPUT) {
     for (let i = 0; i < ticks; i++) {
       events.tick++;
-      stepRacer(racer, input, { course, events, raceTicks: events.tick, speedMul }, TICK_DT);
+      stepRacer(racer, input, { course, events, raceTicks: events.tick, speedMul, splats: world.splats }, TICK_DT);
     }
   }
   return { course, racer, events, advance };

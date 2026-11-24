@@ -302,3 +302,51 @@ it('replays the same four-racer script and hash, with seed-dependent rival movem
     }).rngState,
   );
 });
+
+it('replays a four-racer pickup and fire script with the same world hash', () => {
+  function play(seed: number) {
+    const events = new EventLog<GameEvent>();
+    const world = createWorld(events, {
+      course: THORNWOOD_TRAIL,
+      seed,
+      character: 'grit',
+      rivals: true,
+    });
+    for (let tick = 0; tick < 733; tick++) {
+      events.tick = world.tick;
+      stepWorld(
+        world,
+        {
+          player: {
+            ...forward,
+            jumpPressed: tick === 270,
+            jumpHeld: tick >= 270 && tick < 290,
+            firePressed: tick === 490 || tick === 612,
+            nextPressed: tick === 611,
+          },
+        },
+        TICK_DT,
+      );
+    }
+    const pickup = events.all().find((event) => event.type === 'crate.opened' && event.id === 'player');
+    const log = events
+      .all()
+      .find((event) => event.type === 'racer.bumped' && event.id === 'player' && event.by === null);
+    expect(pickup?.tick ?? Infinity).toBeLessThan(log?.tick ?? Infinity);
+    expect(events.all()).toContainEqual(expect.objectContaining({ type: 'item.fired', id: 'player', tick: 490 }));
+    return world;
+  }
+  const first = play(1);
+  const other = play(2);
+  expect(hashWorld(first)).toBe(hashWorld(play(1)));
+  expect(hashWorld(first)).not.toBe(hashWorld(other));
+  expect(first.racers.slice(1).map(({ s, d }) => [s, d])).not.toEqual(other.racers.slice(1).map(({ s, d }) => [s, d]));
+  expect(first.rngState).not.toBe(
+    createWorld(new EventLog<GameEvent>(), {
+      course: THORNWOOD_TRAIL,
+      seed: 1,
+      character: 'grit',
+      rivals: true,
+    }).rngState,
+  );
+});

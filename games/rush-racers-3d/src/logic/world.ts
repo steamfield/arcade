@@ -3,7 +3,7 @@
  * the race limit, and the small summary scenarios assert on.
  *
  * `race.countdown` fires on steps 0, 60 and 120. Step `RACE.countdownTicks` starts the race and
- * runs its first racing tick. Each racing tick runs movement in slot order, resolves bumps, awards
+ * runs its first racing tick. Each racing tick runs movement in slot order, steps items, resolves bumps, awards
  * places to new finishers and checks the race deadline. A finished world ignores input.
  */
 import { type EventSink, TICK_HZ } from '@arcade/core';
@@ -13,6 +13,8 @@ import { drawRivals } from './characters.ts';
 import { assertCourse, groundY } from './course.ts';
 import type { GameEvent } from './events.ts';
 import { gridD } from './grid.ts';
+import { isImmobilized } from './items/hits.ts';
+import { stepItems } from './items/index.ts';
 import { NO_INPUT, stepRacer } from './racer.ts';
 import type { SaveData } from './save.ts';
 import { placeOf } from './standings.ts';
@@ -76,7 +78,7 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
     racers,
     rngState: draw?.rngState ?? options.seed >>> 0,
     endTick: null,
-    crates: course.features.filter((f) => f.kind === 'crate').map(() => ({ shutTicks: 0 })),
+    crates: course.features.filter((f) => f.kind === 'crate').map(() => ({ shutTicks: 0, touching: [] })),
     shots: [],
     splats: [],
     events,
@@ -102,16 +104,21 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
   const { course, events, raceTicks } = world;
   const player = playerOf(world);
   const playerS = player.s;
+  const from = world.racers.map(({ s, d, y, state }) => (state === 'racing' ? { s, d, y } : null));
   const hasRivals = world.racers.length > 1;
-  const startD = hasRivals ? world.racers.map((racer) => (racer.state === 'racing' ? racer.d : null)) : undefined;
+  const startD = hasRivals ? from.map((pose) => pose?.d ?? null) : undefined;
+  const lockedAtStart = hasRivals ? new Set(world.racers.filter(isImmobilized)) : undefined;
+  const raceInputs: TickInputs = {};
   for (const racer of world.racers) {
     const isPlayer = racer.id === 'player';
     const input = isPlayer ? (inputs.player ?? NO_INPUT) : rivalInput(world, racer);
+    if (racer.state === 'racing') raceInputs[racer.id] = input;
     const gap = (playerS - racer.s) / RIVAL.catchUpRange;
     const speedMul = isPlayer ? 1 : 1 + Math.max(-1, Math.min(1, gap)) * RIVAL.catchUp;
-    stepRacer(racer, input, { course, events, raceTicks, speedMul }, dt);
+    stepRacer(racer, input, { course, events, raceTicks, speedMul, splats: world.splats }, dt);
   }
-  if (startD) bumpRacers(world, startD);
+  stepItems(world, raceInputs, from);
+  if (startD) bumpRacers(world, startD, lockedAtStart);
   for (const racer of world.racers) {
     if (racer.finishTicks === raceTicks) {
       events.emit({ type: 'racer.finished', id: racer.id, ticks: raceTicks, place: placeOf(world, racer.id) });

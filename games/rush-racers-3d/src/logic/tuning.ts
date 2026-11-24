@@ -68,6 +68,11 @@ export const RIVAL = {
   lookAhead: 25,
   /** A rival dashes only with no pit or log within this many meters ahead, m. */
   dashClearance: 30,
+  /** Distances at which rivals consider using an item, m. */
+  pieRange: 20,
+  sapRange: 25,
+  throwMinRange: 5,
+  burrRange: 3,
 } as const;
 
 /** Items and crates. Lane 3a tunes these. */

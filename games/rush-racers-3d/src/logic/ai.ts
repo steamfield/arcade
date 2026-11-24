@@ -6,9 +6,11 @@ import { createRng, TICK_DT } from '@arcade/core';
 import { RIVAL_PROFILES } from './characters.ts';
 import { groundY, surfaceAt } from './course.ts';
 import { gridD } from './grid.ts';
+import { canBeHit, isImmobilized } from './items/hits.ts';
+import { heldSlot } from './items/inventory.ts';
 import { NO_INPUT } from './racer.ts';
-import { RIVAL, RUN } from './tuning.ts';
-import type { Racer, Span, TickInput, World } from './types.ts';
+import { ITEMS, RIVAL, RUN } from './tuning.ts';
+import type { ItemKind, Racer, Span, TickInput, World } from './types.ts';
 
 type Obstacle = Span & { kind: 'pit' | 'mud' | 'log'; height: number };
 
@@ -62,20 +64,83 @@ export function rivalInput(world: World, racer: Racer): TickInput {
   const { push } = surfaceAt(course, racer.s, racer.d);
   const steer = clamp(((target - racer.d) * 3 - racer.vd * 0.35 - push) / RUN.steerSpeed + wobble, -1, 1);
   const jump = racer.grounded && obstacles.some((obstacle) => shouldJump(world, racer, obstacle, jitter));
+  const item = itemInput(world, racer, dashClear);
+  const usingBoots = racer.bootsTicks > 0 || (item.firePressed && racer.slots[racer.selected]?.kind === 'boots');
 
   return {
     ...NO_INPUT,
+    ...item,
     forward: true,
     steer,
     jumpPressed: jump,
     jumpHeld: true,
     dashPressed:
       dashClear &&
+      !usingBoots &&
       racer.grounded &&
       racer.dashCharges > 0 &&
       racer.vs >= RUN.runSpeed * profile.dashAtSpeed &&
       racer.vs <= RUN.runSpeed * (1 + RIVAL.catchUp),
   };
+}
+
+function itemInput(world: World, racer: Racer, dashClear: boolean): Partial<TickInput> {
+  if (racer.itemCooldown > 1 || isImmobilized(racer)) return NO_INPUT;
+  const selected = racer.slots[racer.selected];
+  if (selected && shouldFire(world, racer, selected.kind, dashClear)) return { firePressed: true };
+
+  const next = heldSlot(racer, 1);
+  const prev = heldSlot(racer, -1);
+  const nextItem = racer.slots[next];
+  const prevItem = racer.slots[prev];
+  if (next !== racer.selected && nextItem && shouldFire(world, racer, nextItem.kind, dashClear)) {
+    return { nextPressed: true };
+  }
+  if (prev !== racer.selected && prev !== next && prevItem && shouldFire(world, racer, prevItem.kind, dashClear)) {
+    return { prevPressed: true };
+  }
+  return NO_INPUT;
+}
+
+function shouldFire(world: World, racer: Racer, kind: ItemKind, dashClear: boolean): boolean {
+  if (kind === 'boots') return dashClear && racer.bootsTicks <= 1;
+  if (kind === 'burr' && racer.burrTicks > 1) return false;
+  return world.racers.some((other) => {
+    if (other === racer || other.state !== 'racing') return false;
+    const ds = other.s - racer.s;
+    const dd = other.d - racer.d;
+    const dy = other.y - racer.y;
+    if (kind === 'burr') {
+      return canBeHit(other) && ds * ds + dd * dd + dy * dy <= RIVAL.burrRange * RIVAL.burrRange;
+    }
+    if (ds < RIVAL.throwMinRange) return false;
+    if (kind === 'pie') {
+      return ds <= RIVAL.pieRange && other.grounded && pieCanReach(world.course, racer, other, ds, dd);
+    }
+    const reachSq = RUN.radius * RUN.radius - dd * dd - dy * dy;
+    const sapFlight = ITEMS.sapRange / ITEMS.sapSpeed;
+    return (
+      ds <= RIVAL.sapRange &&
+      canBeHit(other) &&
+      reachSq >= 0 &&
+      ds <= (ITEMS.sapSpeed - other.vs) * sapFlight + Math.sqrt(reachSq)
+    );
+  });
+}
+
+/** Estimates a landing on level ground while the target keeps its current speed. */
+function pieCanReach(course: World['course'], racer: Racer, target: Racer, ds: number, dd: number): boolean {
+  const height = Math.max(0, racer.y + RUN.radius - groundY(course, racer.s));
+  const lift = racer.vy + ITEMS.pieThrowUp;
+  const flight = (lift + Math.sqrt(lift * lift + 2 * RUN.gravity * height)) / RUN.gravity;
+  const gapAtLanding = ds + (target.vs - racer.vs - ITEMS.pieThrowSpeed) * flight;
+  const sideAtLanding = dd + (target.vd - racer.vd) * flight;
+  const halfLength = ITEMS.splatLength / 2;
+  return (
+    Math.abs(sideAtLanding) <= ITEMS.splatWidth / 2 &&
+    gapAtLanding <= halfLength &&
+    gapAtLanding + target.vs * ITEMS.splatTicks * TICK_DT >= -halfLength
+  );
 }
 
 /** Try the usual line and the open sides of upcoming obstacles, favoring short lane changes. */
