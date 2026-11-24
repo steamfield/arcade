@@ -93,6 +93,7 @@ Key types (exact text lives in `src/logic/types.ts`):
 ### Phase 1: solo race on Thornwood Trail (MVP)
 
 Demo: `pnpm arcade dev rush-racers-3d`, open `/games/rush-racers-3d/`: a 3-2-1 countdown, run the trail from the chase camera, jump logs and pits, dash, cross the finish, see your time and best, press confirm to race again. `pnpm arcade see rush-racers-3d --scenario finish-line` shows it headless.
+Scaffold: 4d8a16958803f2fd880f56e440336cc96a6d2d54
 Test cases (lane a writes these; every line needs a test):
 - Countdown: a new world is in `countdown` for RACE.countdownTicks (180); input moves nothing; `race.countdown` fires with 3, 2, 1 at ticks 0, 60, 120 and `race.started` at 180, then `phase` is `racing`.
 - Holding forward accelerates to RUN.runSpeed and never above it without a dash; releasing slows to 0 at RUN.friction; brake slows faster than release; `vs` never goes negative.
@@ -114,8 +115,8 @@ Test cases (lane a writes these; every line needs a test):
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers-3d/src/logic/, games/rush-racers-3d/src/engine/runtime.ts, games/rush-racers-3d/src/engine/runtime.test.ts | contracts, templates/three-3d/src/engine/runtime.ts | | gpt-6.2-sol | pending | | every phase 1 test case has a passing test; typecheck and lint pass |
-| b | M | games/rush-racers-3d/src/engine/track-geometry.ts, games/rush-racers-3d/src/engine/track-geometry.test.ts, games/rush-racers-3d/src/engine/track-view.ts, games/rush-racers-3d/src/engine/racer-view.ts, games/rush-racers-3d/src/engine/camera-rig.ts, games/rush-racers-3d/src/engine/hud.ts, games/rush-racers-3d/src/engine/game.ts | contracts, .claude/skills/threejs-game/SKILL.md | | gpt-6.2-sol | pending | | track-geometry tests pass; `see` frames at the start line and every capture stage look right on desktop and `--mobile` |
+| a | L | games/rush-racers-3d/src/logic/, games/rush-racers-3d/src/engine/runtime.ts, games/rush-racers-3d/src/engine/runtime.test.ts | contracts, templates/three-3d/src/engine/runtime.ts | | gpt-6.2-sol | running | foreman/rr3d-1a | every phase 1 test case has a passing test; typecheck and lint pass |
+| b | M | games/rush-racers-3d/src/engine/track-geometry.ts, games/rush-racers-3d/src/engine/track-geometry.test.ts, games/rush-racers-3d/src/engine/track-view.ts, games/rush-racers-3d/src/engine/racer-view.ts, games/rush-racers-3d/src/engine/camera-rig.ts, games/rush-racers-3d/src/engine/hud.ts, games/rush-racers-3d/src/engine/game.ts | contracts, .claude/skills/threejs-game/SKILL.md | | gpt-6.2-sol | running | foreman/rr3d-1b | track-geometry tests pass; `see` frames at the start line and every capture stage look right on desktop and `--mobile` |
 
 #### Lane a brief
 
