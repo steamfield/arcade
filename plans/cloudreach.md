@@ -278,10 +278,39 @@ Test cases:
 Demo: course select lists Sunlit Shallows, Bramble Run and Thunderhead Pass; race Thunderhead Pass on each level; the bars pass.
 Depends on: phase 3, phase 4
 
+Scaffold: a4463d5
+
+Scaffold (inline, by the orchestrator, after phases 3 and 4 tag; done): `'thunderhead-pass'` in `ShippedCourseId`; `logic/courses/thunderhead-pass.ts` registered in `COURSES` after Bramble Run, `listed: true`, world cloudreach, theme sky, song cloudreach, with a first-draft level (sky-test's ideas stretched to Bramble Run's length, 26 rows) and a guessed `parTicks`; every spec or scenario that asserts course select's rows or walks to Bramble Run by row index gets the third row. The gate passes on the scaffold (203 s). The draft repeats Sky Test's cols 9-117 four times (447 cols) with four lightning zones offset 40 ticks apart, par guessed at 4400. Listing it in the scaffold lets lane b test course select with three courses while lane a tunes the level.
+
+Test cases:
+- Thunderhead Pass's level (lane a): three zones left to right. The cloud bank: puff clouds to pop or fly around, fog banks, sideways gusts, a bounce cloud under a thunderhead wall, spark clouds, Cloud Crabs on thunderhead tops, gaps out of the bottom of the sky between solid stretches. The high road over the low road: a ring line along the top of the sky that is faster for a flyer who holds altitude (flaps on rhythm), above a sheltered low road through fog and updrafts that is slower and safer; Storm Crows and Static Wisps. The storm cell: two or three lightning zones with offset periods, downdrafts, a Sky Eel, and a puff-cloud wall a dash breaks to shortcut. Then a finish straight. Every cell, enemy and set piece the flight medium supports appears at least once. Bramble Run's race length (par within 4500-6500 ticks), 24-28 rows.
+- `course.test.ts` conformance passes for Thunderhead Pass with no edit; the sky theme has a tile for every legend art key (course-assets test).
+- Par measured per COURSES.md "parTicks", with a comment saying so.
+- Bars per COURSES.md "Difficulty bars": `thunderhead-pass-<character>.test.ts`, `-novice`, `-normal` for all eight, plus `thunderhead-pass-easy-level.test.ts` and `-easy-toddler.test.ts`, passing with profiles unchanged. Tune the level first; a `catchUp` override on this course only if the level can't get there.
+- Course select (lane b): lists Sunlit Shallows, Bramble Run, Thunderhead Pass with each best; down twice and fire picks Thunderhead Pass; select shows the Cloudreach cast's names; the race runs with `course: 'thunderhead-pass'`, `medium: 'flight'`; `lastCourse` saves and the title best follows.
+- Mechanics scenarios on `sky-test` (lane b), so they don't depend on lane a's layout: a flap and glide (`racer.flapped`, the racer rises then falls slower while Up is held), a dash popping a puff cloud (`block.broken` or its flight equivalent), falling out and respawning (`racer.fell`, `racer.respawned`), a ring boost (`ring.passed`) and a bounce (`racer.bounced`). The enemy-modes stage on sky-test gets a floor where it needs one (it reports "need a floor below row 22 in column 11" since the bounce cloud moved there) or picks a column that has one.
+- How to Play (lane b): Cloudreach's pages read with flight controls (flap, glide, dive, dash) and sky names; `how-to-play` scenario covers the Cloudreach page set.
+- Smoke (lane b): a Thunderhead Pass race starts from the menus and runs 600 ticks with no console error on desktop Chromium, the phone and WebKit; on the phone a tap of Up flaps.
+
+#### Lane a brief
+
+- Goal: Thunderhead Pass, Cloudreach's real course, designed and tuned until it passes the same bars as Sunlit Shallows and Bramble Run.
+- Interface: `logic/courses/thunderhead-pass.ts` is data only (the scaffold's draft is yours to replace); its `listed`, id, world, theme and song stay. Bars are new files in `logic/difficulty/` named `thunderhead-pass-*.test.ts`. If the level needs a legend art key the sky theme lacks, or flight's nav, pilot or physics need a change, stop and report it with numbers rather than editing (Bramble Run needed a physics change to pass; if flight does, the orchestrator decides and may open a lane for it).
+- Behavior: the level, conformance, par and bars cases above. Phase 4's rivals take a bounce cloud only when their estimate says it saves at least 0.1 s over flapping, and a ring line only within 8 columns of their way; place bounce clouds at the foot of walls tall enough that bouncing wins, where the way arrives at floor level within about 2 columns of the cloud (a flyer arriving higher or further back is right to flap), and lay ring lines across the way, never stacked up a climb (rivals skip vertical lines, and a ring's boost doesn't help a climb), or rivals will ignore them.
+- Out of scope: art, scenarios, docs (lane b), physics and pilot tuning.
+- Done when: `pnpm arcade test rush-racers @courses` passes, each new bars file passes on its own, `pnpm --filter game-rush-racers test:difficulty` passes once at the end, the `--skip-tests` check passes, and `see --query course=thunderhead-pass --scene race` captures in each zone look right.
+
+#### Lane b brief
+
+- Goal: Thunderhead Pass and Cloudreach are reachable, tested and documented.
+- Interface: new scenarios under `scenarios/` for the mechanics above; `tests/smoke.spec.ts` and `tests/course.spec.ts` gain the Thunderhead cases. Docs: DESIGN.md (Cloudreach, the flight medium's controls and rules, rings, bounce clouds, lightning, Thunderhead Pass's section from this plan's zone list without exact columns), COURSES.md ("Add a world" checked against what this run did; add what it missed, such as course set pieces), UI.md (three courses, Cloudreach's names).
+- Out of scope: the level (lane a), engine and logic code other than the enemy-modes stage fix in `src/engine/debug-stage.ts` (it throws "need a floor below row 22 in column 11" on sky-test; let it pick the nearest column with a floor, with a `debug-stage.test.ts` case).
+- Done when: the new scenario files pass through `pnpm arcade test rush-racers` (and `see --scenario <name>`, looked at), `tests/course.spec.ts` passes, the `--skip-tests` check passes. Smoke runs at the merge.
+
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | L | games/rush-racers/src/logic/courses/thunderhead-pass.ts, games/rush-racers/src/logic/difficulty/ | contracts, games/rush-racers/COURSES.md | games/rush-racers/src/logic/conformance/course.test.ts | opus | pending | | Thunderhead Pass bars pass |
-| b | M | games/rush-racers/scenarios/, games/rush-racers/tests/, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md | contracts | games/rush-racers/tests/smoke.spec.ts | opus | pending | | scenarios and smoke pass |
+| b | M | games/rush-racers/scenarios/, games/rush-racers/tests/, games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md, games/rush-racers/src/engine/debug-stage.ts, games/rush-racers/src/engine/debug-stage.test.ts | contracts | games/rush-racers/tests/smoke.spec.ts | opus | pending | | scenarios and smoke pass |
 
 ## Log
 
