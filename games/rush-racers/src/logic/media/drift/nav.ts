@@ -4,18 +4,16 @@
  * finish. A black hole closes the tiles inside its horizon and makes the tiles in its reach dear, so
  * every field keeps clear of it where there is room. Walking the fields lives in `way.ts`.
  */
-import { cellAt, isRockLike, isSolid, tileIndex } from '../../level/query.ts';
+import { cellAt, isRockLike, isSolid, NEIGHBOURS, tileIndex } from '../../level/query.ts';
 import { length } from '../../num.ts';
 import {
   alongCost,
-  cornerIsClear,
   distancesToFinish,
   type EntryCost,
   type FlowPrices,
-  type NavLink,
-  NEIGHBOURS,
   unreachableStarts,
 } from '../../race/flowfield.ts';
+import { wormholeLinks } from '../../race/wormhole-links.ts';
 import { type Cell, type Level, TILE, type Vec, type Well } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
 import { type DriftNav, driftNav } from './way-data.ts';
@@ -75,24 +73,17 @@ const ramCost = (cell: Cell, isBroken: boolean, move: Vec): number =>
  */
 export function buildDriftNav(level: Level, broken: ReadonlySet<number>, _tuning: MediumTuning): DriftNav {
   const wormholeEntries = new Set<number>();
-  const mouths = level.wormholes.map(({ a, b, oneWay }) => {
-    const from = { x: a[0], y: a[1] };
-    const to = { x: b[0], y: b[1] };
-    if (from.x < level.finishX) wormholeEntries.add(tileIndex(level, from.x, from.y));
-    if (!oneWay && to.x < level.finishX) wormholeEntries.add(tileIndex(level, to.x, to.y));
-    return { from, to, oneWay };
-  });
+  for (const { a, b, oneWay } of level.wormholes) {
+    if (a[0] < level.finishX) wormholeEntries.add(tileIndex(level, ...a));
+    if (!oneWay && b[0] < level.finishX) wormholeEntries.add(tileIndex(level, ...b));
+  }
   const surcharges = tileSurcharges(level, broken, wormholeEntries);
   const field = (cost: EntryCost) => {
     const entry: EntryCost = (cell, isBroken, move, tile) =>
       cost(cell, isBroken, move, tile) + (surcharges[tile.y * level.width + tile.x] ?? 0);
-    const links = mouths.flatMap(({ from, to, oneWay }) =>
-      oneWay
-        ? from.x < level.finishX
-          ? [{ from, to, cost: WARP_COST }]
-          : []
-        : [...linksThroughExit(level, broken, entry, from, to), ...linksThroughExit(level, broken, entry, to, from)],
-    );
+    const stepCost = (tile: Vec, move: Vec) =>
+      entry(cellAt(level, tile.x, tile.y), broken.has(tileIndex(level, tile.x, tile.y)), move, tile);
+    const links = wormholeLinks(level, stepCost, WARP_COST);
     return distancesToFinish(level, broken, entry, links);
   };
   return {
@@ -104,33 +95,6 @@ export function buildDriftNav(level: Level, broken: ReadonlySet<number>, _tuning
     smash: field(smashCost),
     ram: field(ramCost),
   };
-}
-
-/**
- * The cooldown lets a racer leave a two-way exit. Link to each legal step out of it, charging
- * for the warp and the step. Linking the two entry tiles directly would only make a forced cycle.
- */
-function linksThroughExit(
-  level: Level,
-  broken: ReadonlySet<number>,
-  entry: EntryCost,
-  from: Vec,
-  exit: Vec,
-): NavLink[] {
-  if (from.x >= level.finishX) return [];
-  // Arriving on the finish column ends the race on the warp tick.
-  if (exit.x === level.finishX) return [{ from, to: exit, cost: WARP_COST }];
-  const stepCost = (tile: Vec, move: Vec) =>
-    entry(cellAt(level, tile.x, tile.y), broken.has(tileIndex(level, tile.x, tile.y)), move, tile);
-  const open = (x: number, y: number) => Number.isFinite(stepCost({ x, y }, { x: 0, y: 0 }));
-  const links = NEIGHBOURS.flatMap((move) => {
-    const to = { x: exit.x + move.x, y: exit.y + move.y };
-    const cost = stepCost(to, move);
-    if (!Number.isFinite(cost) || !cornerIsClear(exit, move, open)) return [];
-    return [{ from, to, cost: WARP_COST + length(move.x, move.y) * cost }];
-  });
-  // An enclosed exit has nowhere to go. Keep the entry forced even when no step out exists.
-  return links.length > 0 ? links : [{ from, to: from, cost: WARP_COST }];
 }
 
 /** Extra cost for tiles beside walls or entries and inside each black hole's reach. */

@@ -3,7 +3,8 @@
  * velocity kept (`LevelDef.wormholes`). Cooldowns live in `World.warps`.
  */
 import { tileCentre, tileOf } from '../ai/steer.ts';
-import { errorAt } from '../level/level-error.ts';
+import { errorAt, requireTile } from '../level/level-error.ts';
+import { isOpenCell } from '../level/query.ts';
 import { length } from '../num.ts';
 import { centreOf } from '../racers.ts';
 import { type Cell, type Racer, type RacerId, TILE, type World, type WormholeDef } from '../types.ts';
@@ -26,24 +27,28 @@ function separation([ax, ay]: Mouth, [bx, by]: Mouth): number {
 export function parseWormholes(defs: readonly WormholeDef[], cells: readonly (readonly Cell[])[]): WormholeDef[] {
   const earlierMouths: { at: Mouth; hole: number }[] = [];
   return defs.map((def, index) => {
+    const name = `Wormhole ${index}`;
     const { a, b } = def;
-    for (const [col, row] of [a, b]) {
-      const cell = cells[row]?.[col];
-      if (!cell) throw errorAt(`Wormhole ${index}'s mouth is off the map`, row, col);
-      if (cell === 'rock' || cell === 'coral' || cell === 'bounce' || cell === 'ledge') {
-        throw errorAt(`Wormhole ${index}'s mouth needs an open tile`, row, col);
-      }
+    for (const end of ['a', 'b'] as const) {
+      const [col, row] = def[end];
+      const mouth = `${name} mouth ${end}`;
+      const cell = requireTile(cells, mouth, row, col);
+      if (!isOpenCell(cell)) throw errorAt(`${mouth}: expected an open tile, got ${cell}`, row, col);
     }
     const apart = separation(a, b);
     if (apart < 4) {
-      throw errorAt(`Wormhole ${index}'s mouths are ${apart.toFixed(1)} tiles apart and need at least 4`, b[1], b[0]);
+      throw errorAt(
+        `${name} mouth spacing: expected at least 4 tiles between mouths, got ${apart.toFixed(1)} tiles`,
+        b[1],
+        b[0],
+      );
     }
     for (const mouth of [a, b]) {
       for (const { at, hole } of earlierMouths) {
         const distance = separation(at, mouth);
         if (distance < 3) {
           throw errorAt(
-            `Wormhole ${index}'s mouth is ${distance.toFixed(1)} tiles from wormhole ${hole}'s and needs at least 3`,
+            `${name} spacing from wormhole ${hole}: expected at least 3 tiles between mouths, got ${distance.toFixed(1)} tiles`,
             mouth[1],
             mouth[0],
           );

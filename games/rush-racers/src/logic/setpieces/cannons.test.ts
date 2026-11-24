@@ -58,18 +58,47 @@ function race(cannons: readonly CannonDef[], ascii = SKY, pieces: Pick<LevelDef,
 
 describe('parsing cloud cannons', () => {
   const invalid: { name: string; patch: Partial<CannonDef>; message: RegExp }[] = [
-    { name: 'off the map', patch: { col: 20 }, message: /off the map/ },
-    { name: 'on a solid tile', patch: { row: 6 }, message: /open tile/ },
-    { name: 'a zero aim', patch: { dir: [0, 0] }, message: /direction.*, not \[0,0\]/ },
+    {
+      name: 'off the map',
+      patch: { col: 20 },
+      message:
+        /^Cannon 0 tile: expected integer coordinates in cols 0–19 and rows 0–6, got \(20, 5\) at row 5, col 20$/,
+    },
+    { name: 'on a solid tile', patch: { row: 6 }, message: /^Cannon 0 tile: expected an open tile, got rock at / },
+    { name: 'a zero aim', patch: { dir: [0, 0] }, message: /^Cannon 0 direction: expected .*?, got \[0,0\] at / },
     // Runtime course data can disagree with its TypeScript definition.
-    { name: 'aim outside -1..1', patch: JSON.parse('{"dir":[2,0]}'), message: /direction.*, not \[2,0\]/ },
-    { name: 'missing aim components', patch: JSON.parse('{"dir":null}'), message: /direction.*, not null/ },
-    { name: 'extra aim components', patch: JSON.parse('{"dir":[1,0,2]}'), message: /direction.*, not \[1,0,2\]/ },
-    { name: 'speed below range', patch: { speed: 0 }, message: /speed.*, not 0/ },
-    { name: 'speed above range', patch: { speed: 1201 }, message: /speed.*, not 1201/ },
-    { name: 'flight below range', patch: { flightTicks: 0 }, message: /flightTicks.*, not 0/ },
-    { name: 'flight above range', patch: { flightTicks: 121 }, message: /flightTicks.*, not 121/ },
-    { name: 'fractional flight', patch: { flightTicks: 1.5 }, message: /flightTicks.*, not 1\.5/ },
+    {
+      name: 'aim outside -1..1',
+      patch: JSON.parse('{"dir":[2,0]}'),
+      message: /direction: expected .*?, got \[2,0\] at /,
+    },
+    {
+      name: 'missing aim components',
+      patch: JSON.parse('{"dir":null}'),
+      message: /direction: expected .*?, got null at /,
+    },
+    {
+      name: 'extra aim components',
+      patch: JSON.parse('{"dir":[1,0,2]}'),
+      message: /direction: expected .*?, got \[1,0,2\] at /,
+    },
+    { name: 'speed below range', patch: { speed: 0 }, message: /speed: expected 60–1200 px\/s, got 0 at / },
+    { name: 'speed above range', patch: { speed: 1201 }, message: /speed: expected 60–1200 px\/s, got 1201 at / },
+    {
+      name: 'flight below range',
+      patch: { flightTicks: 0 },
+      message: /flightTicks: expected an integer in 1–120, got 0 at /,
+    },
+    {
+      name: 'flight above range',
+      patch: { flightTicks: 121 },
+      message: /flightTicks: expected an integer in 1–120, got 121 at /,
+    },
+    {
+      name: 'fractional flight',
+      patch: { flightTicks: 1.5 },
+      message: /flightTicks: expected an integer in 1–120, got 1\.5 at /,
+    },
   ];
   it.each(invalid)('rejects $name at its tile', ({ patch, message }) => {
     const cannon = { ...CANNON_TILE, ...patch };
@@ -81,7 +110,12 @@ describe('parsing cloud cannons', () => {
 
   it('rejects two cannons on one tile', () => {
     expect(() => race([CANNON_TILE, { ...CANNON_TILE, dir: [1, 0] }])).toThrow(
-      expect.objectContaining({ name: 'LevelError', row: 5, col: 5, message: expect.stringMatching(/same tile/) }),
+      expect.objectContaining({
+        name: 'LevelError',
+        row: 5,
+        col: 5,
+        message: 'Cannon 1 tile: expected an unclaimed tile, got a tile already claimed by a cannon at row 5, col 5',
+      }),
     );
   });
 });
@@ -150,19 +184,46 @@ describe('riding a cloud cannon', () => {
     expect(tess.body.vy).toBe(0);
   });
 
-  it('can chain into a second cannon on the last flight tick', () => {
-    const first = { ...CANNON_TILE, dir: [1, 0], speed: 480, flightTicks: 8 } satisfies CannonDef;
+  it('chains into a second cannon midway through the first shot', () => {
+    const first = { ...CANNON_TILE, dir: [1, 0], speed: 480, flightTicks: 16 } satisfies CannonDef;
     const second = { ...first, col: 9, dir: [0, -1] } satisfies CannonDef;
-    const { player, log, advance } = race([first, second]);
+    const { world, player, log, advance } = race([first, second], SKY, {}, false);
     placeOnTile(player, 5, 5);
-    advance(HOLD_TICKS + first.flightTicks);
+    advance(HOLD_TICKS + 7);
     expect(eventsIn(log, 'cannon.loaded')).toEqual([
       { type: 'cannon.loaded', racer: 'player', cannon: 0 },
       { type: 'cannon.loaded', racer: 'player', cannon: 1 },
     ]);
     expect(centreOf(player)).toEqual(tileCentre(9, 5));
+    expect(world.cannonRides).toMatchObject([
+      { flight: 0, reload: RELOAD_TICKS },
+      { held: HOLD_TICKS, reload: 0 },
+    ]);
     advance(HOLD_TICKS);
     expect(player.body.vy).toBe(-second.speed);
+  });
+
+  it('keeps flying while its centre is still inside the barrel that fired it', () => {
+    const slow = { ...CANNON_TILE, dir: [1, 0], speed: 60 } satisfies CannonDef;
+    const { world, player, log, advance } = race([slow], SKY, {}, false);
+    placeOnTile(player, 5, 5);
+    advance(HOLD_TICKS + 1);
+
+    expect(centreOf(player).x).toBe(tileCentre(5, 5).x + 1);
+    expect(eventsIn(log, 'cannon.loaded')).toHaveLength(1);
+    expect(world.cannonRides).toMatchObject([{ held: 0, flight: slow.flightTicks - 1, reload: 0 }]);
+  });
+
+  it('records the finish without snapping a shot to a barrel on the line', () => {
+    const first = { ...CANNON_TILE, dir: [1, 0], speed: 480, flightTicks: 30 } satisfies CannonDef;
+    const second = { ...first, col: 18 };
+    const { world, player, log, advance } = race([first, second], SKY, {}, false);
+    placeOnTile(player, first.col, first.row);
+    advance(HOLD_TICKS + 25);
+
+    expect(centreOf(player).x).toBe(world.level.finishX * TILE);
+    expect(player.finished).toMatchObject({ overshoot: 0 });
+    expect(eventsIn(log, 'cannon.loaded')).not.toContainEqual({ type: 'cannon.loaded', racer: 'player', cannon: 1 });
   });
 
   it.each(['finished', 'fallen', 'trapped'] as const)('leaves a %s racer alone', (status) => {
@@ -203,6 +264,52 @@ describe('riding a cloud cannon', () => {
     expect(player.body.y).toBeLessThan(6 * TILE);
   });
 
+  it('ends a shot when drift swallows the racer and leaves it parked to respawn', () => {
+    const log = new EventLog<GameEvent>();
+    const cannon = { ...CANNON_TILE, row: 3, dir: [1, 0], speed: 480, flightTicks: 30 } satisfies CannonDef;
+    const course = courseFromLevel(
+      {
+        ascii: SKY,
+        name: 'cannon aimed through a black hole',
+        cannons: [cannon],
+        wells: [{ col: 9, row: 3, reach: 2, horizon: 0.75, pull: 100 }],
+      },
+      'drift',
+    );
+    const world = createWorld(course, log, { seed: 1 });
+    world.race.phase = 'racing';
+    const player = racerOf(world, 'player');
+    placeOnTile(player, cannon.col, cannon.row);
+    step(world, log, HOLD_TICKS + 7);
+
+    expect(eventsIn(log, 'racer.fell')).toContainEqual({ type: 'racer.fell', id: 'player' });
+    expect(world.cannonRides).toMatchObject([{ flight: 0, reload: RELOAD_TICKS }]);
+    const parked = centreOf(player);
+    step(world, log);
+    expect(centreOf(player)).toEqual(parked);
+    step(world, log, player.status.fallen);
+    expect(eventsIn(log, 'racer.respawned')).toContainEqual(expect.objectContaining({ id: 'player' }));
+  });
+
+  it("does not carry a runner's jump grace period through the hold and shot", () => {
+    const log = new EventLog<GameEvent>();
+    const course = courseFromLevel({ ascii: SKY, name: 'cannon over a floor', cannons: [CANNON_TILE] }, 'run');
+    const world = createWorld(course, log, { seed: 1 });
+    world.race.phase = 'racing';
+    const player = racerOf(world, 'player');
+    placeOnTile(player, CANNON_TILE.col - 1, CANNON_TILE.row);
+    player.body.y = (CANNON_TILE.row + 1) * TILE - player.body.h;
+    for (let ticks = 0; ticks < 30 && centreOf(player).x < CANNON_TILE.col * TILE; ticks++) {
+      step(world, log, 1, hold({ x: 1, y: 0 }));
+    }
+    step(world, log, HOLD_TICKS + CANNON_TILE.flightTicks - 1);
+    expect(eventsIn(log, 'cannon.fired')).toContainEqual({ type: 'cannon.fired', racer: 'player', cannon: 0 });
+
+    step(world, log, 1, hold({ x: 0, y: -1 }));
+
+    expect(eventsIn(log, 'racer.jumped')).not.toContainEqual({ type: 'racer.jumped', id: 'player' });
+  });
+
   it('respawns clear of a barrel that was the last tile over safe ground', () => {
     const sky = SKY.replace(/#{20}(?=\s*$)/, '########..........##');
     const { player, log, advance } = race([{ col: 5, row: 2, dir: [1, 1], speed: 1200, flightTicks: 60 }], sky);
@@ -218,6 +325,44 @@ describe('riding a cloud cannon', () => {
 
 describe('flight rival routes through cloud cannons', () => {
   const approach = { ...CANNON_TILE, col: 6, dir: [1, 0], speed: 480, flightTicks: 20 } satisfies CannonDef;
+
+  it('prices the first shot only up to the second cannon in a chain', () => {
+    const second = { ...approach, col: 9, dir: [0, -1], flightTicks: 4 } satisfies CannonDef;
+    const { world } = race([approach, second]);
+
+    // Five flight ticks to the second barrel plus the hold, at 0.125 tile per tick of cruise.
+    expect(flightDistanceAt(world, { x: 6, y: 5 })).toBeCloseTo(flightDistanceAt(world, { x: 9, y: 5 }) + 2.875);
+  });
+
+  it.each([
+    { flightTicks: 30, distance: 7.375, landing: 'beyond' },
+    { flightTicks: 6, distance: 12, landing: 'inside' },
+  ])(
+    'finds the only route when the second shot ends $landing the reloading first barrel',
+    ({ flightTicks, distance }) => {
+      const sky = `
+      ##############
+      ######1#######
+      ######2#######
+      ######3#######
+      ######4#######
+      #...........F#
+      ##############
+    `;
+      const first = { ...approach, dir: [-1, 0] } satisfies CannonDef;
+      const second = { ...approach, col: 3, flightTicks };
+      const { world, player, log, advance } = race([first, second], sky, {}, false);
+      placeOnTile(player, first.col, first.row);
+      for (let tick = 0; tick < 120 && !player.finished; tick++) advance(1, hold({ x: 1, y: 0 }));
+
+      expect(flightDistanceAt(world, { x: 6, y: 5 })).toBeCloseTo(distance);
+      expect(eventsIn(log, 'cannon.loaded').filter((event) => 'racer' in event && event.racer === 'player')).toEqual([
+        { type: 'cannon.loaded', racer: 'player', cannon: 0 },
+        { type: 'cannon.loaded', racer: 'player', cannon: 1 },
+      ]);
+      expect(player.finished).not.toBeNull();
+    },
+  );
 
   it('prices the launch by time and flies a rival into the faster route', () => {
     const fast = race([approach], SKY, {}, false);

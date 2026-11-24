@@ -2,7 +2,7 @@
  * Whirlpools, Reef's set piece: swirls of water that push racers inside them round their centres
  * (`LevelDef.whirlpools`). Reading them from the course and the push they give live here.
  */
-import { LevelError } from '../level/level-error.ts';
+import { errorAt, requireTile } from '../level/level-error.ts';
 import { length } from '../num.ts';
 import { centreOf } from '../racers.ts';
 import { type Cell, type Racer, TILE, type Vec, type WhirlpoolDef, type World } from '../types.ts';
@@ -34,37 +34,26 @@ export function parseWhirlpools(defs: readonly WhirlpoolDef[], cells: readonly (
   const pools: WhirlpoolDef[] = [];
   for (const [index, def] of defs.entries()) {
     const { col, row, radius, spin, push } = def;
-    const at = `Whirlpool ${index} at col ${col}, row ${row}`;
-    if (!Number.isInteger(col) || !Number.isInteger(row)) {
-      throw new LevelError(`${at}: col and row must be integers`, row, col);
-    }
-    const cell = cells[row]?.[col];
-    if (cell === undefined) {
-      throw new LevelError(
-        `${at} is off the map: its centre needs cols 0-${(cells[0]?.length ?? 0) - 1} and rows 0-${cells.length - 1}`,
-        row,
-        col,
-      );
-    }
-    if (cell !== 'water') throw new LevelError(`${at} needs open water at its centre, which is ${cell}`, row, col);
+    const name = `Whirlpool ${index}`;
+    const cell = requireTile(cells, `${name} tile`, row, col);
+    if (cell !== 'water') throw errorAt(`${name} centre: expected open water, got ${cell}`, row, col);
     if (!(radius >= WHIRLPOOL.minRadius && radius <= WHIRLPOOL.maxRadius)) {
-      throw new LevelError(
-        `${at} has radius ${radius}; use ${WHIRLPOOL.minRadius}–${WHIRLPOOL.maxRadius} tiles`,
+      throw errorAt(
+        `${name} radius: expected ${WHIRLPOOL.minRadius}–${WHIRLPOOL.maxRadius} tiles, got ${radius}`,
         row,
         col,
       );
     }
     if (!Number.isFinite(push) || push <= 0 || push > WHIRLPOOL.maxPush) {
-      throw new LevelError(`${at} has push ${push}; use a positive push up to ${WHIRLPOOL.maxPush} px/s²`, row, col);
+      throw errorAt(`${name} push: expected more than 0 and at most ${WHIRLPOOL.maxPush} px/s², got ${push}`, row, col);
     }
-    if (spin !== 1 && spin !== -1) throw new LevelError(`${at} has spin ${spin}; use 1 or -1`, row, col);
+    if (spin !== 1 && spin !== -1) throw errorAt(`${name} spin: expected 1 or -1, got ${spin}`, row, col);
     for (const [other, pool] of pools.entries()) {
       const distance = length(col - pool.col, row - pool.row);
       const separation = radius + pool.radius;
       if (distance >= separation) continue;
-      throw new LevelError(
-        `${at} overlaps whirlpool ${other} at col ${pool.col}, row ${pool.row}; their centres are ${distance} tiles apart, ` +
-          `but need at least ${separation} tiles (the sum of their radii)`,
+      throw errorAt(
+        `${name} separation from whirlpool ${other}: expected at least ${separation} tiles, got ${distance} tiles`,
         row,
         col,
       );
@@ -99,15 +88,15 @@ export function whirlpoolFlowAt(pool: WhirlpoolDef, point: Vec, component: 'tota
 export function swirlWhirlpools(world: World, racing: readonly Racer[], dt: number): void {
   const pools = world.level.whirlpools;
   if (pools.length === 0) return;
-  const occupants: NonNullable<World['whirlpoolOccupants']> = {};
+  const riders: World['whirlpoolRiders'] = {};
   for (const racer of racing) {
     if (racer.finished !== null || racer.status.fallen > 0) continue;
     const point = centreOf(racer);
     for (const [index, pool] of pools.entries()) {
       const flow = whirlpoolFlowAt(pool, point);
       if (!flow) continue;
-      occupants[racer.id] = index;
-      if (world.whirlpoolOccupants?.[racer.id] !== index) {
+      riders[racer.id] = index;
+      if (world.whirlpoolRiders[racer.id] !== index) {
         world.events.emit({ type: 'whirlpool.caught', racer: racer.id, pool: index });
       }
       if (racer.status.trapped === 0) {
@@ -117,5 +106,5 @@ export function swirlWhirlpools(world: World, racing: readonly Racer[], dt: numb
       break;
     }
   }
-  world.whirlpoolOccupants = occupants;
+  world.whirlpoolRiders = riders;
 }

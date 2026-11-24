@@ -2,7 +2,7 @@
  * Crumbling branches, Thornwood's set piece: ledge runs that shake when a racer stands on them, fall
  * away, and grow back (`LevelDef.crumbles`). The only writer of `World.fallen`.
  */
-import { errorAt } from '../level/level-error.ts';
+import { errorAt, requireTile } from '../level/level-error.ts';
 import { tileIndex } from '../level/query.ts';
 import { type Cell, type CrumbleDef, type CrumbleState, type Level, type Racer, TILE, type World } from '../types.ts';
 
@@ -23,17 +23,22 @@ export function parseCrumbles(defs: readonly CrumbleDef[], cells: readonly (read
   return defs.map(({ col, row, length }, index) => {
     const name = `Crumbling branch ${index}`;
     if (!Number.isInteger(length) || length < 1 || length > MAX_LENGTH) {
-      throw errorAt(`${name} length must be an integer from 1 to ${MAX_LENGTH}, got ${length},`, row, col);
+      throw errorAt(`${name} length: expected an integer in 1–${MAX_LENGTH}, got ${length}`, row, col);
     }
     const last = col + length - 1;
-    if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || row >= cells.length || col < 0 || col >= width) {
-      throw errorAt(`${name} starts off the map`, row, col);
-    }
-    if (last >= width) throw errorAt(`${name} runs off the map`, row, width);
+    requireTile(cells, `${name} tile`, row, col);
+    if (last >= width) requireTile(cells, `${name} tile`, row, width);
     for (let x = col; x <= last; x++) {
-      if (cells[row]?.[x] !== 'ledge') throw errorAt(`${name} must be on a ledge`, row, x);
+      const cell = requireTile(cells, `${name} tile`, row, x);
+      if (cell !== 'ledge') throw errorAt(`${name} tile: expected a ledge, got ${cell}`, row, x);
       const tile = row * width + x;
-      if (claimed.has(tile)) throw errorAt(`${name} overlaps another crumbling branch`, row, x);
+      if (claimed.has(tile)) {
+        throw errorAt(
+          `${name} tile: expected an unclaimed ledge, got a ledge already claimed by a crumbling branch`,
+          row,
+          x,
+        );
+      }
       claimed.add(tile);
     }
     return { col, row, length };

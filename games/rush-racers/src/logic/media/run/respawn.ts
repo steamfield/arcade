@@ -10,6 +10,7 @@ import type { EventSink } from '@arcade/core';
 import type { GameEvent } from '../../events.ts';
 import { blocksBody, bodyTiles, cellAt, ledgeHolds } from '../../level/query.ts';
 import { moveRulesFor } from '../../race/move.ts';
+import { activeCannonRide } from '../../setpieces/cannons.ts';
 import { type Box, type MoveContacts, type MoveRules, type Racer, TILE, type Vec, type World } from '../../types.ts';
 import { fallOut, isBelowLevel, respawnAt, waitOut } from '../fall-out.ts';
 import { effectiveTuning } from '../index.ts';
@@ -27,10 +28,11 @@ export function afterRunMove(world: World, racer: Racer, contacts: MoveContacts,
   if (racer.status.fallen > 0) {
     if (waitOut(racer)) {
       respawnAt(racer, respawnSpot(world, racer.body, motion), extra.respawnInvulnTicks, events);
-      resetAfterRespawn(motion);
+      clearJumpState(motion);
     }
     return;
   }
+  if (activeCannonRide(world, racer.id)) clearJumpState(motion);
   const { body } = racer;
   motion.grounded = contacts.floor;
   if (contacts.ceiling && body.vy < 0) body.vy = 0;
@@ -66,8 +68,8 @@ function respawnSpot(world: World, body: Box, motion: RunMotion): Vec {
   return { x: runUpX(world, body, motion.lastSafe, back), y: motion.lastSafe.y };
 }
 
-/** A runner back in play: its jump timers cleared. */
-function resetAfterRespawn(motion: RunMotion): void {
+/** A fall or cannon ride ends the jump and clears any press or coyote time left over. */
+function clearJumpState(motion: RunMotion): void {
   motion.coyote = 0;
   motion.buffer = 0;
   motion.jumping = false;

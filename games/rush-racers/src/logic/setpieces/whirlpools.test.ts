@@ -57,24 +57,42 @@ function distanceFromEye(world: World): number {
 }
 
 describe('whirlpool course data', () => {
-  it.each<{ pool: WhirlpoolDef; message: RegExp }>([
-    { pool: { ...POOL, col: -1 }, message: /off the map/ },
-    { pool: { ...POOL, col: 17.5 }, message: /col and row must be integers/ },
-    { pool: { ...POOL, row: 7.5 }, message: /col and row must be integers/ },
-    { pool: { ...POOL, row: 0 }, message: /open water.*rock/ },
-    { pool: { ...POOL, radius: 1.9 }, message: /radius/ },
-    { pool: { ...POOL, radius: 10.1 }, message: /radius/ },
-    { pool: { ...POOL, radius: Number.NaN }, message: /radius/ },
-    { pool: { ...POOL, push: 0 }, message: /push/ },
-    { pool: { ...POOL, push: Number.POSITIVE_INFINITY }, message: /push/ },
-    { pool: { ...POOL, push: WHIRLPOOL.maxPush + 1 }, message: /push/ },
-    { pool: { ...POOL, push: 1e200 }, message: /push/ },
+  it.each<{ pool: WhirlpoolDef; message: string }>([
+    {
+      pool: { ...POOL, col: -1 },
+      message: 'tile: expected integer coordinates in cols 0–24 and rows 0–14, got (-1, 7)',
+    },
+    {
+      pool: { ...POOL, col: 17.5 },
+      message: 'tile: expected integer coordinates in cols 0–24 and rows 0–14, got (17.5, 7)',
+    },
+    {
+      pool: { ...POOL, row: 7.5 },
+      message: 'tile: expected integer coordinates in cols 0–24 and rows 0–14, got (11, 7.5)',
+    },
+    { pool: { ...POOL, row: 0 }, message: 'centre: expected open water, got rock' },
+    { pool: { ...POOL, radius: 1.9 }, message: 'radius: expected 2–10 tiles, got 1.9' },
+    { pool: { ...POOL, radius: 10.1 }, message: 'radius: expected 2–10 tiles, got 10.1' },
+    { pool: { ...POOL, radius: Number.NaN }, message: 'radius: expected 2–10 tiles, got NaN' },
+    { pool: { ...POOL, push: 0 }, message: 'push: expected more than 0 and at most 480 px/s², got 0' },
+    {
+      pool: { ...POOL, push: Number.POSITIVE_INFINITY },
+      message: 'push: expected more than 0 and at most 480 px/s², got Infinity',
+    },
+    {
+      pool: { ...POOL, push: WHIRLPOOL.maxPush + 1 },
+      message: 'push: expected more than 0 and at most 480 px/s², got 481',
+    },
+    { pool: { ...POOL, push: 1e200 }, message: 'push: expected more than 0 and at most 480 px/s², got 1e+200' },
   ])('locates invalid data ($message)', ({ pool, message }) => {
     expect(() => raceOn(water([pool]))).toThrow(LevelError);
     expect(() => raceOn(water([pool]))).toThrow(
-      expect.objectContaining({ message: expect.stringMatching(message), row: pool.row, col: pool.col }),
+      expect.objectContaining({
+        message: `Whirlpool 0 ${message} at row ${pool.row}, col ${pool.col}`,
+        row: pool.row,
+        col: pool.col,
+      }),
     );
-    expect(() => raceOn(water([pool]))).toThrow(`Whirlpool 0 at col ${pool.col}, row ${pool.row}`);
   });
 
   it('rejects a spin outside the two directions, including untyped course data', () => {
@@ -83,7 +101,7 @@ describe('whirlpool course data', () => {
     expect(() => raceOn(water([invalid]))).toThrow(LevelError);
     expect(() => raceOn(water([invalid]))).toThrow(
       expect.objectContaining({
-        message: expect.stringMatching(/Whirlpool 0 at col 11, row 7.*spin/),
+        message: 'Whirlpool 0 spin: expected 1 or -1, got 0 at row 7, col 11',
         row: POOL.row,
         col: POOL.col,
       }),
@@ -95,7 +113,7 @@ describe('whirlpool course data', () => {
     expect(() => raceOn(water([POOL, second]))).toThrow(LevelError);
     expect(() => raceOn(water([POOL, second]))).toThrow(
       expect.objectContaining({
-        message: expect.stringMatching(/Whirlpool 1 at col 17, row 7.*overlaps whirlpool 0.*6 tiles apart.*at least 8/),
+        message: 'Whirlpool 1 separation from whirlpool 0: expected at least 8 tiles, got 6 tiles at row 7, col 17',
         row: second.row,
         col: second.col,
       }),
@@ -106,6 +124,10 @@ describe('whirlpool course data', () => {
 });
 
 describe('swimming through a whirlpool', () => {
+  it('starts with no riders even on a course with no whirlpools', () => {
+    expect(swim([]).world).toHaveProperty('whirlpoolRiders', {});
+  });
+
   it('pushes along each spin and inward, leaves the rim and outside alone, and eases near the eye', () => {
     const speed = (row: number, whirlpools: readonly WhirlpoolDef[]) => {
       const { world, log, racer } = swim(whirlpools);
@@ -195,8 +217,10 @@ describe('swimming through a whirlpool', () => {
 
     racer.body.vx = 90;
     step(world, log, 15, RIGHT);
+    expect(world).toHaveProperty('whirlpoolRiders', { player: 0 });
     placeAt(racer, beforeRim);
     step(world, log, 1, RIGHT);
+    expect(world).toHaveProperty('whirlpoolRiders', {});
     racer.body.vx = 90;
     step(world, log, 1, RIGHT);
 

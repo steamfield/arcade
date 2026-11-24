@@ -6,11 +6,14 @@
  * (`Medium.enterCost`), with `alongCost` for currents and winds; the progress field's cost is
  * uniform and medium-free. `unreachableStarts` is the level check every open-field medium runs.
  */
-import { cellAt, isRockLike, tileIndex } from '../level/query.ts';
+import { cellAt, cornerIsClear, isRockLike, NEIGHBOURS, tileIndex } from '../level/query.ts';
 import type { LevelProblem } from '../media/types.ts';
 import { length } from '../num.ts';
 import { type Box, type Cell, type GridSize, type Level, type ProgressField, TILE, type Vec } from '../types.ts';
 import { PriorityQueue } from './priority-queue.ts';
+import { wormholeLinks } from './wormhole-links.ts';
+
+export { cornerIsClear, NEIGHBOURS } from '../level/query.ts';
 
 /**
  * Cost multiplier for moving into a tile along `move` (-1, 0 or 1 per axis); Infinity means closed.
@@ -25,62 +28,20 @@ type QueuedTile = { cost: number; tx: number; ty: number };
 const STILL: Vec = { x: 0, y: 0 };
 const NOTHING_BROKEN: ReadonlySet<number> = new Set();
 
-/**
- * The 8 neighbour offsets, orthogonal first. Every walk over the grid visits them in this order,
- * so ties resolve the same way every run.
- */
-export const NEIGHBOURS: readonly Vec[] = [
-  { x: 1, y: 0 },
-  { x: -1, y: 0 },
-  { x: 0, y: 1 },
-  { x: 0, y: -1 },
-  { x: 1, y: 1 },
-  { x: 1, y: -1 },
-  { x: -1, y: 1 },
-  { x: -1, y: -1 },
-];
-
 /** Uniform cost with only rock (and bounce clouds, rock-like) closed, so places don't depend on terrain or broken coral. */
 const progressCost: EntryCost = (cell) => (isRockLike(cell) ? Number.POSITIVE_INFINITY : 1);
-
-/**
- * The corner rule shared by every walk over the grid: a diagonal step from `tile` by `offset` is
- * allowed only when both tiles beside it are open. Orthogonal steps always pass.
- */
-export function cornerIsClear(tile: Vec, offset: Vec, isOpen: (tx: number, ty: number) => boolean): boolean {
-  if (offset.x === 0 || offset.y === 0) return true;
-  return isOpen(tile.x + offset.x, tile.y) && isOpen(tile.x, tile.y + offset.y);
-}
 
 /**
  * The progress field for `level`. Coral counts as open whether broken or not, so the field never
  * needs rebuilding during a race.
  */
 export function buildProgressField(level: Level): ProgressField {
+  const links = wormholeLinks(level, (tile, move) => progressCost(cellAt(level, tile.x, tile.y), false, move, tile), 1);
   return {
     width: level.width,
     height: level.height,
-    distance: distancesToFinish(level, NOTHING_BROKEN, progressCost, wormholeProgressLinks(level)),
+    distance: distancesToFinish(level, NOTHING_BROKEN, progressCost, links),
   };
-}
-
-/**
- * The level's wormholes as progress links, so a wall only a wormhole crosses still ranks racers on its
- * near side. A one-way hole links its entry to its exit. A two-way hole links each mouth to the tiles
- * one step out of the other mouth (the warp plus that step), since linking the two mouths to each other
- * would make a forced loop neither side could price.
- */
-function wormholeProgressLinks(level: Level): NavLink[] {
-  const isOpen = (tx: number, ty: number) => Number.isFinite(progressCost(cellAt(level, tx, ty), false, STILL, STILL));
-  const outOf = (from: Vec, exit: Vec): NavLink[] =>
-    NEIGHBOURS.filter((move) => isOpen(exit.x + move.x, exit.y + move.y) && cornerIsClear(exit, move, isOpen)).map(
-      (move) => ({ from, to: { x: exit.x + move.x, y: exit.y + move.y }, cost: 1 + length(move.x, move.y) }),
-    );
-  return level.wormholes.flatMap(({ a, b, oneWay }) => {
-    const mouthA = { x: a[0], y: a[1] };
-    const mouthB = { x: b[0], y: b[1] };
-    return oneWay ? [{ from: mouthA, to: mouthB, cost: 1 }] : [...outOf(mouthA, mouthB), ...outOf(mouthB, mouthA)];
-  });
 }
 
 /**

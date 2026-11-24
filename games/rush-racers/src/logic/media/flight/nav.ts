@@ -5,7 +5,8 @@
  * the finish without popping one. Its nav is a `FlightNav` (`way-data.ts`); `way.ts` reads it.
  */
 import { TICK_DT } from '@arcade/core';
-import { cellAt, isRockLike, isSolid } from '../../level/query.ts';
+import { cellAt, cornerIsClear, isRockLike, isSolid, NEIGHBOURS, tileIndex } from '../../level/query.ts';
+import { length } from '../../num.ts';
 import {
   alongCost,
   distancesToFinish,
@@ -14,6 +15,7 @@ import {
   type NavLink,
   unreachableStarts,
 } from '../../race/flowfield.ts';
+import { RACE_LIMIT_TICKS } from '../../race/standings.ts';
 import { CANNON, traceCannonShot } from '../../setpieces/cannons.ts';
 import { type CannonDef, type Cell, type Level, type MoveRules, TILE, type Vec } from '../../types.ts';
 import type { LevelProblem, MediumNav, MediumTuning } from '../types.ts';
@@ -73,30 +75,93 @@ const ramCost = (cell: Cell, isBroken: boolean, move: Vec): number => {
  */
 export function buildFlightNav(level: Level, broken: ReadonlySet<number>, tuning: MediumTuning): FlightNav {
   const rules: MoveRules = { pitBelow: FLIGHT_EFFECTS.pitBelow, solidTiles: new Set(), openLedges: new Set() };
-  const links = level.cannons.map((cannon) => cannonLink(level, cannon, broken, rules, flightExtra(tuning).cruise));
+  const shots = level.cannons.map((cannon) => traceCannonShot(cannon, level, broken, rules));
+  const routes = shots.map(({ exit, ticks }, index) =>
+    entersLoop(index, shots)
+      ? traceLoopExit(level, broken, rules, index)
+      : { exit, ticks: CANNON.holdTicks + ticks, coolingExit: false },
+  );
+  const cruise = flightExtra(tuning).cruise;
+  const field = (cost: EntryCost) => {
+    const links = level.cannons.flatMap((cannon, index) =>
+      cannonLinks(level, cannon, routes[index], cruise, (tile, move) =>
+        cost(cellAt(level, tile.x, tile.y), broken.has(tileIndex(level, tile.x, tile.y)), move, tile),
+      ),
+    );
+    return distancesToFinish(level, broken, cost, links);
+  };
   return {
     kind: 'flight',
     width: level.width,
     height: level.height,
-    steer: distancesToFinish(level, broken, keptOffLowSky(level, flightCost), links),
-    ram: distancesToFinish(level, broken, keptOffLowSky(level, ramCost), links),
+    steer: field(keptOffLowSky(level, flightCost)),
+    ram: field(keptOffLowSky(level, ramCost)),
     bouncePads: bouncePads(level, broken),
   };
 }
 
-/** Trace a racer-sized shot, then price the hold and time in flight in tiles at cruise speed. */
-function cannonLink(
+function entersLoop(first: number, shots: readonly ReturnType<typeof traceCannonShot>[]): boolean {
+  const seen = new Set<number>();
+  for (let index: number | null = first; index !== null; index = shots[index]?.receiver ?? null) {
+    if (seen.has(index)) return true;
+    seen.add(index);
+  }
+  return false;
+}
+
+type CannonRoute = { exit: Vec; ticks: number; coolingExit: boolean };
+
+/** A forced loop can exit when a returning shot passes through a barrel still reloading for it. */
+function traceLoopExit(level: Level, broken: ReadonlySet<number>, rules: MoveRules, first: number): CannonRoute | null {
+  const readyAt = new Map<number, number>();
+  let tick = 0;
+  let costTicks = 0;
+  for (let index = first; tick < RACE_LIMIT_TICKS; ) {
+    const cannon = level.cannons[index];
+    if (!cannon) return null;
+    // The first flight tick shares the last hold tick, even though nav prices the full hold.
+    const launch = tick + CANNON.holdTicks - 1;
+    const { exit, ticks, receiver } = traceCannonShot(
+      cannon,
+      level,
+      broken,
+      rules,
+      (next, flown) => (readyAt.get(next) ?? 0) <= launch + flown,
+    );
+    tick = launch + ticks;
+    costTicks += CANNON.holdTicks + ticks;
+    if (receiver === null) {
+      const coolingExit = level.cannons.some(({ col, row }) => col === exit.x && row === exit.y);
+      return { exit, ticks: costTicks, coolingExit: coolingExit && exit.x < level.finishX };
+    }
+    readyAt.set(index, tick + CANNON.reloadTicks);
+    index = receiver;
+  }
+  return null;
+}
+
+/** Price the hold and flight in tiles at cruise speed, plus a step out of a cooling exit. */
+function cannonLinks(
   level: Level,
   cannon: CannonDef,
-  broken: ReadonlySet<number>,
-  rules: MoveRules,
+  route: CannonRoute | null | undefined,
   cruise: number,
-): NavLink {
+  stepCost: (tile: Vec, move: Vec) => number,
+): NavLink[] {
   const from = { x: cannon.col, y: cannon.row };
-  const { exit, ticks } = traceCannonShot(cannon, level, broken, rules);
-  // Pricing an out-of-bounds shot as a self-link makes the field route around the mouth.
-  const to = exit.y >= level.height ? from : { x: Math.min(exit.x, level.finishX), y: exit.y };
-  return { from, to, cost: ((CANNON.holdTicks + ticks) * TICK_DT * cruise) / TILE };
+  const blocked: NavLink = { from, to: from, cost: 0 };
+  if (!route || route.exit.y >= level.height) return [blocked];
+  const { exit, ticks, coolingExit } = route;
+  const cost = (ticks * TICK_DT * cruise) / TILE;
+  if (!coolingExit) return [{ from, to: { x: Math.min(exit.x, level.finishX), y: exit.y }, cost }];
+  const open = (x: number, y: number) => Number.isFinite(stepCost({ x, y }, { x: 0, y: 0 }));
+  const links = NEIGHBOURS.flatMap((move) => {
+    const to = { x: exit.x + move.x, y: exit.y + move.y };
+    const step = stepCost(to, move);
+    if (!Number.isFinite(step) || !cornerIsClear(exit, move, open)) return [];
+    return [{ from, to, cost: cost + length(move.x, move.y) * step }];
+  });
+  return links.length > 0 ? links : [blocked];
 }
 
 /** Every bounce cloud tile of `level` whose tile above is open, in reading order. */

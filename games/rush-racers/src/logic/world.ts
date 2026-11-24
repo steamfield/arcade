@@ -194,6 +194,7 @@ export function createWorld(course: Course, events: EventSink<GameEvent>, option
     decoys: [],
     shots: [],
     twists: [],
+    whirlpoolRiders: {},
     crumbles: createCrumbles(level),
     fallen: new Set(),
     cannonRides: [],
@@ -456,7 +457,11 @@ function spendKickedDashes(world: World): void {
  */
 function moveRacer(world: World, medium: Medium, racer: Racer, intent: Intent, mods: MoveModifiers, dt: number): void {
   // A cloud cannon moves a racer it holds or has fired instead of the medium (`setpieces/cannons.ts`).
-  if (rideCannon(world, racer, dt)) return;
+  const ridden = rideCannon(world, racer, dt);
+  if (ridden) {
+    medium.afterMove(world, racer, ridden, world.events);
+    return;
+  }
   const env = medium.sampleEnvironment(world, racer);
   medium.applyIntent(racer, intent, env, effectiveTuning(world), mods, world.events, dt);
   driftLatched(racer, dt);
