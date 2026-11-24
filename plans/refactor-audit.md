@@ -296,13 +296,15 @@ Files added under `packages/`, `tools/` or `apps/` need a `docs/repo-map.md` row
 
 ### Phase 8: templates start where Rush Racers ended
 
+Scaffold: 5a099a518778 (no contracts: the shared helpers landed in phase 7)
+
 Demo: `pnpm arcade check --all`, `pnpm arcade smoke phaser-2d` and `pnpm arcade smoke three-3d` pass; each template's smoke asserts one world hash across projects.
 Depends on: phase 7
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | templates/phaser-2d/ | | | opus | pending | | |
-| b | M | templates/three-3d/ | | | sonnet | pending | | |
+| a | M | templates/phaser-2d/ | | | opus | running | deliver/refactor-audit-8a | |
+| b | M | templates/three-3d/ | | | sonnet | running | deliver/refactor-audit-8b | |
 
 Both template lanes adopt the same patterns, in their engine's idiom. Read Rush Racers for each one before writing it; keep the template small (a template that needs a page of explanation has gone too far).
 
