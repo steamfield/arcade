@@ -259,7 +259,9 @@ Test cases (written in phase 5): `ensureCourseArt` loads a world's and theme's a
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers/src/engine/worlds/load.ts, games/rush-racers/src/engine/worlds/load.test.ts, games/rush-racers/src/engine/worlds/index.ts, games/rush-racers/src/engine/themes/index.ts, games/rush-racers/src/engine/scenes/, games/rush-racers/src/engine/runtime.ts, games/rush-racers/src/engine/runtime.test.ts, games/rush-racers/src/engine/online/flow.ts, games/rush-racers/src/engine/debug.ts, games/rush-racers/src/engine/game.ts, games/rush-racers/tests/boot-art.spec.ts, games/rush-racers/src/engine/worlds/art-boundary.test.ts, games/rush-racers/DESIGN.md, docs/repo-map.md | | | opus | pending | | |
+| a | M | games/rush-racers/src/engine/worlds/load.ts, games/rush-racers/src/engine/worlds/load.test.ts, games/rush-racers/src/engine/worlds/index.ts, games/rush-racers/src/engine/themes/index.ts, games/rush-racers/src/engine/scenes/, games/rush-racers/src/engine/runtime.ts, games/rush-racers/src/engine/runtime.test.ts, games/rush-racers/src/engine/online/flow.ts, games/rush-racers/src/engine/debug.ts, games/rush-racers/src/engine/game.ts, games/rush-racers/tests/boot-art.spec.ts, games/rush-racers/src/engine/worlds/art-boundary.test.ts, games/rush-racers/DESIGN.md, docs/repo-map.md | | | opus | running | deliver/refactor-audit-6a | |
+
+Scaffold: 230a11d77142 (no contract commit: the brief names the interface)
 
 #### Lane 6a brief
 
