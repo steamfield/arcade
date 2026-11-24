@@ -74,6 +74,74 @@ export const HUD_CSS = `
   transform: skewX(-14deg);
 }
 .rr3d-dash i[data-charged] { background: #ffce73; }
+.rr3d-inventory {
+  position: absolute;
+  top: calc(34px + env(safe-area-inset-top));
+  right: calc(16px + env(safe-area-inset-right));
+  display: flex;
+  gap: 5px;
+}
+.rr3d-item-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 52px;
+  height: 48px;
+  border: 1px solid #9e8566;
+  border-radius: 8px;
+  background: #231d17f5;
+  box-shadow: 0 3px 10px #19130f44;
+}
+.rr3d-item-slot:not([data-held])::before {
+  content: "";
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: #99866d;
+}
+.rr3d-item-slot[data-selected] {
+  border: 2px solid #ffda8f;
+  box-shadow: 0 0 0 1px #1b1410, 0 3px 10px #19130f44;
+}
+.rr3d-item-slot[data-selected]::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  width: 15px;
+  height: 4px;
+  border-radius: 0 0 2px 2px;
+  background: #ffda8f;
+}
+.rr3d-item-slot[data-pickup] {
+  background: #734921;
+  outline: 2px solid #fff0bd;
+  outline-offset: 1px;
+}
+.rr3d-item-icon, .rr3d-item-charges { position: absolute; }
+.rr3d-item-icon { top: 7px; left: 6px; width: 28px; height: 28px; }
+.rr3d-item-icon svg { display: block; width: 100%; height: 100%; }
+.rr3d-item-charges {
+  right: 3px;
+  bottom: 3px;
+  color: #fff7e5;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+@media (max-height: 280px) {
+  .arcade-container:has(.arcade-touch) .rr3d-inventory {
+    top: calc(4px + env(safe-area-inset-top));
+    right: calc(76px + env(safe-area-inset-right));
+  }
+  .arcade-container:has(.arcade-touch) .rr3d-item-slot { width: 46px; height: 40px; }
+  .arcade-container:has(.arcade-touch) .rr3d-item-icon {
+    top: 4px;
+    left: 4px;
+    width: 25px;
+    height: 25px;
+  }
+}
 .rr3d-race-hint {
   position: absolute;
   left: 50%;

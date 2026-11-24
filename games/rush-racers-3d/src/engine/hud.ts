@@ -6,10 +6,12 @@ import { DASH, RACE } from '../logic/tuning.ts';
 import type { World } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
 import { HUD_CSS } from './hud-style.ts';
+import { InventoryHud } from './inventory-hud.ts';
 import { RACER_COLORS } from './racer-geometry.ts';
 import type { Scene } from './runtime.ts';
 
 const ORDINAL = ['1st', '2nd', '3rd', '4th'];
+type Hint = 'countdown' | 'items' | null;
 
 function show(node: HTMLElement, visible: boolean): void {
   if (node.hidden === visible) node.hidden = !visible;
@@ -33,8 +35,11 @@ export class Hud {
   private readonly markers: { node: HTMLSpanElement; label: string; offset: number }[] = [];
   private readonly dash = document.createElement('div');
   private readonly pips = Array.from({ length: DASH.charges }, () => document.createElement('i'));
+  private readonly inventory = new InventoryHud();
   private readonly count = document.createElement('div');
   private readonly hint = document.createElement('p');
+  private readonly keyboardHint = document.createElement('span');
+  private readonly touchHint = document.createElement('span');
   private readonly results = document.createElement('section');
   private readonly standings = document.createElement('ol');
   private readonly bestTime = document.createElement('span');
@@ -47,6 +52,7 @@ export class Hud {
   private charges = -1;
   private countSecond: number | null = null;
   private bestTicks: number | undefined;
+  private hintMode: Hint = null;
 
   constructor(container: HTMLElement) {
     const root = document.createElement('div');
@@ -65,14 +71,11 @@ export class Hud {
     this.dash.setAttribute('role', 'img');
     this.dash.append('Dash', ...this.pips);
     this.hint.className = 'rr3d-race-hint';
-    const keyboard = document.createElement('span');
-    keyboard.className = 'rr3d-keyboard-keys';
-    keyboard.textContent = '↑ Run · ← → Steer · Space Jump · X Dash';
-    const touch = document.createElement('span');
-    touch.className = 'rr3d-touch-keys';
-    touch.textContent = '↑\u00a0Run · ←\u00a0→\u00a0Steer · A\u00a0Jump · B\u00a0Dash';
-    this.hint.append(keyboard, touch);
-    this.race.append(info, this.dash, this.count, this.hint);
+    this.keyboardHint.className = 'rr3d-keyboard-keys';
+    this.touchHint.className = 'rr3d-touch-keys';
+    this.hint.hidden = true;
+    this.hint.append(this.keyboardHint, this.touchHint);
+    this.race.append(info, this.dash, this.inventory.root, this.count, this.hint);
     this.race.hidden = true;
 
     this.results.className = 'rr3d-results';
@@ -95,6 +98,16 @@ export class Hud {
     container.append(root);
   }
 
+  /** Flashes the slot awarded by a drained pickup event using the previous tick's slots. */
+  flashPickup(world: World): void {
+    this.inventory.flashPickup(world);
+  }
+
+  /** Call once per logic tick after draining and handling its events. `flashPickup` needs the previous tick's slots. */
+  observeInventory(world: World): void {
+    this.inventory.observeInventory(world);
+  }
+
   /** Syncs the current screen. Race-only values may change while the clock is ticking. */
   sync(world: World, scene: Scene, bests: SaveData['bests'], go: boolean, newBest: boolean): void {
     show(this.race, scene === 'race');
@@ -113,6 +126,8 @@ export class Hud {
     this.raceWorld = world;
     this.raceTick = world.tick;
     const player = playerOf(world);
+    const hasItems = this.inventory.sync(world, player);
+    this.syncHint(world.phase === 'countdown' ? 'countdown' : hasItems ? 'items' : null);
     const time = tenths(world.raceTicks);
     if (time !== this.time) {
       this.time = time;
@@ -129,6 +144,19 @@ export class Hud {
       this.place.textContent = ORDINAL[place - 1] ?? String(place);
     }
     this.syncProgress(world, newWorld);
+  }
+
+  private syncHint(hint: Hint): void {
+    if (hint === this.hintMode) return;
+    this.hintMode = hint;
+    if (hint === 'countdown') {
+      this.keyboardHint.textContent = '↑ Run · ← → Steer · Space Jump · X Dash';
+      this.touchHint.textContent = '↑\u00a0Run · ←\u00a0→\u00a0Steer · A\u00a0Jump · B\u00a0Dash';
+    } else if (hint === 'items') {
+      this.keyboardHint.textContent = 'Q/E Select · Z Use';
+      this.touchHint.textContent = '⇄ Select · ★ Use';
+    }
+    show(this.hint, hint !== null);
   }
 
   private syncProgress(world: World, newWorld: boolean): void {
@@ -180,7 +208,6 @@ export class Hud {
       this.count.textContent = second === null ? '' : second === 0 ? 'GO' : String(second);
     }
     show(this.count, second !== null);
-    show(this.hint, world.phase === 'countdown');
   }
 
   private syncResults(world: World, best: number | undefined, newBest: boolean): void {
