@@ -35,4 +35,6 @@ export const FARSIDE: WorldDef = {
   hazards: { urchin: 'Space Mine', jelly: 'Plasma Orb' },
   // The Comet is a shot the wells bend (`powerups/cannonball/comet.ts`), not the swim dash.
   cannonball: 'comet',
+  // The Gas Bomb is a gravity bomb that pulls chasers in (`powerups/twists/gravity-bomb.ts`), not an ink cloud.
+  itemTwists: { inkSac: 'gravityBomb' },
 };
