@@ -9,13 +9,16 @@ import { describe, expect, it, vi } from 'vitest';
 import type { GameEvent } from '../../logic/events.ts';
 import { hashWorld } from '../../logic/hash.ts';
 import { RACER_IDS, type RacerId, type TickInput, type World } from '../../logic/types.ts';
+import type { RaceView } from '../../net/client.ts';
 import { IDLE_INPUT } from '../../net/codec.ts';
 import type { StartMessage } from '../../net/messages.ts';
-import { createMemoryRoom, type MemoryRoom } from '../../net/transport/memory.ts';
-import type { RoomConnection } from '../../net/transport/types.ts';
+import { createMemoryRoom, type MemoryRoom, type MemoryRoomOptions } from '../../net/transport/memory.ts';
+import type { CloseReason, ConnectionEvent, RoomConnection } from '../../net/transport/types.ts';
 import type { CreateRoomResult } from '../../net/transport/websocket.ts';
 import { createOnlineFlow, type FlowNext, type OnlineFlow, type ResultsChoice } from './flow.ts';
 import type { ScreenPress } from './friends-screen.ts';
+import { closedNotice, NOTICE_MAX_CHARS, NOTICES } from './notices.ts';
+import { WAITING_AFTER_MS, waitingLine } from './race-hud.ts';
 import { createOnlineWorld } from './race-world.ts';
 
 /** Wall time one logic tick stands for. */
@@ -41,6 +44,8 @@ interface Player {
   /** Each distinct notice in the order it showed. */
   notices: (string | null)[];
   warnings: string[];
+  /** A frozen player's page has stopped: the table never ticks it. */
+  frozen: boolean;
 }
 
 /** Run right, jumping on a cycle that differs per slot: clears Run Test well inside the race. */
@@ -54,6 +59,8 @@ interface PlayerOptions {
   copyLink?: () => Promise<boolean>;
   /** Replaces the table's room for this player's connections. */
   connect?: () => RoomConnection;
+  /** Stall before this player's client asks the room to kick a silent racer; never by default. */
+  kickAfterMs?: number;
 }
 
 /** A connection to a room that never answers: the player stays connecting. */
@@ -73,8 +80,8 @@ function answerByHand<T>() {
 }
 
 /** A table of players around one room. */
-function createTable() {
-  const room: MemoryRoom = createMemoryRoom();
+function createTable(roomOptions: MemoryRoomOptions = {}) {
+  const room: MemoryRoom = createMemoryRoom(undefined, roomOptions);
   const players: Player[] = [];
 
   function seat(options: PlayerOptions = {}): Player {
@@ -87,13 +94,14 @@ function createTable() {
       built: [],
       notices: [null],
       warnings: [],
+      frozen: false,
     };
     player.flow = createOnlineFlow({
       connect: options.connect ?? (() => room.connect()),
       createRoom: options.createRoom ?? (() => Promise.resolve({ ok: true, code: CODE })),
       copyLink: options.copyLink ?? (() => Promise.resolve(true)),
       seed: () => 5,
-      kickAfterMs: null,
+      kickAfterMs: options.kickAfterMs ?? null,
       createRace(start, local) {
         player.built.push({ start, local });
         return createOnlineWorld(start, new EventLog<GameEvent>(10_000));
@@ -120,6 +128,7 @@ function createTable() {
   /** One tick for `player` on its screen, with `press` (a menu press on results). */
   function tick(player: Player, press: ScreenPress | null = null, choice: ResultsChoice = null): void {
     const { flow } = player;
+    if (player.frozen) return;
     if (player.screen === 'friends') follow(player, flow.friends(press));
     else if (player.screen === 'room') follow(player, flow.room(press, STEP_MS));
     else if (player.screen === 'results') follow(player, flow.results(choice, STEP_MS));
@@ -166,17 +175,35 @@ function pressAll(table: Table, player: Player, presses: readonly ScreenPress[])
 const lobbyOf = (player: Player) => player.flow.client?.view.lobby;
 const peerCount = (player: Player) => lobbyOf(player)?.peers.length ?? 0;
 
-/** A host who created room CODE and a guest who joined it by spelling the code, each seeing the other. */
-async function seatedRoom() {
-  const table = createTable();
-  const host = table.seat();
-  const guest = table.seat();
+/** How `seatedRoom` sets the table up. */
+interface SeatingOptions {
+  /** Players who join after the host; one by default. */
+  guests?: number;
+  room?: MemoryRoomOptions;
+  kickAfterMs?: number;
+}
+
+/**
+ * A host who created room CODE and guests who joined it by spelling the code, each seeing all the
+ * others. `guest` is the first guest.
+ */
+async function seatedRoom({ guests: guestCount = 1, room, kickAfterMs }: SeatingOptions = {}) {
+  const table = createTable(room);
+  const seatOptions: PlayerOptions = kickAfterMs === undefined ? {} : { kickAfterMs };
+  const host = table.seat(seatOptions);
   table.tick(host, 'fire');
   await vi.waitFor(() => expect(host.flow.busy).toBe(false));
   table.tick(host);
-  pressAll(table, guest, spell(CODE));
-  table.until(() => peerCount(host) === 2 && peerCount(guest) === 2 && lobbyOf(host)?.canStart === true);
-  return { table, host, guest };
+  const guests = Array.from({ length: guestCount }, () => {
+    const guest = table.seat(seatOptions);
+    pressAll(table, guest, spell(CODE));
+    return guest;
+  });
+  const everyone = [host, ...guests];
+  table.until(
+    () => everyone.every((player) => peerCount(player) === everyone.length) && lobbyOf(host)?.canStart === true,
+  );
+  return { table, host, guest: guests[0] as Player, guests };
 }
 
 /** Starts a race from the host's Start row (three down from Character) and runs both players to results. */
@@ -222,7 +249,7 @@ describe('Friends', () => {
 
     expect(host.screen).toBe('friends');
     expect(host.flow.client).toBeNull();
-    expect(host.notices).toEqual([null, 'Creating room...', 'Rooms are unavailable']);
+    expect(host.notices).toEqual([null, 'Creating room...', 'Rooms are unavailable right now']);
   });
 
   it('joins by code, and host and guest see each other', async () => {
@@ -257,7 +284,7 @@ describe('Friends', () => {
     table.tick(host);
 
     expect(host.screen).toBe('friends');
-    expect(host.notices).toEqual([null, 'Creating room...', 'Rooms are unavailable']);
+    expect(host.notices).toEqual([null, 'Creating room...', 'Rooms are unavailable right now']);
     expect(host.warnings).toEqual(['online: creating a room failed: offline']);
   });
 
@@ -373,7 +400,7 @@ describe('the room', () => {
     table.room.drop(lobbyOf(guest)?.you ?? 0, 'kicked');
     table.until(() => guest.screen === 'title');
 
-    expect(guest.flow.state.notice).toBe('Disconnected: kicked');
+    expect(guest.flow.state.notice).toBe('You were dropped from the race');
     expect(guest.signals).toEqual(['room', 'title']);
     expect(host.screen).toBe('room');
   });
@@ -451,8 +478,124 @@ describe('an online race', () => {
     table.until(() => host.screen === 'room' && guest.screen === 'room');
 
     for (const player of [host, guest]) {
-      expect(player.flow.state.notice).toBe('Out of sync');
+      expect(player.flow.state.notice).toBe('The race went out of sync');
       expect(player.flow.client?.view).toMatchObject({ status: 'lobby', race: null });
     }
+  });
+});
+
+/** A connection the room refuses at once, for `reason`, as the real room does with a close code. */
+function refusedConnection(reason: CloseReason): RoomConnection {
+  let events: ConnectionEvent[] = [{ kind: 'closed', reason }];
+  return {
+    send() {},
+    poll() {
+      const arrived = events;
+      events = [];
+      return arrived;
+    },
+    close() {},
+  };
+}
+
+/** Starts a race from the host's Start row and runs until every player in `players` is racing past the countdown. */
+function startRace(table: Table, host: Player, players: readonly Player[]): void {
+  pressAll(table, host, ['down', 'down', 'down', 'fire']);
+  table.until(() => players.every((player) => player.world?.race.phase === 'racing'));
+}
+
+/** The tick the AI took over `slot` in `player`'s world, if it has. */
+const takenOverAt = (player: Player, slot: RacerId | null) =>
+  player.world?.racers.find((racer) => racer.id === slot)?.tookOverAt;
+
+describe('departures and states', () => {
+  it.each([
+    ['full', 'That room is full'],
+    ['unknown-room', 'No room with that code'],
+    ['version', 'Reload the page to update, then rejoin'],
+    ['unavailable', 'Rooms are unavailable right now'],
+    ['kicked', 'You were dropped from the race'],
+    ['lost', 'Connection lost'],
+  ] as const)('goes to the title saying why when a join ends with %s', (reason, notice) => {
+    const table = createTable();
+    const player = table.seat({ connect: () => refusedConnection(reason) });
+
+    pressAll(table, player, spell(CODE));
+    table.tick(player);
+
+    expect([player.screen, player.flow.state.notice]).toEqual(['title', notice]);
+  });
+
+  it('keeps every notice to one line of 40 characters', () => {
+    const reasons: CloseReason[] = ['left', 'full', 'version', 'unknown-room', 'kicked', 'unavailable', 'lost'];
+    const notices = [...Object.values(NOTICES), ...reasons.map(closedNotice)].filter((text) => text !== null);
+
+    expect(notices.filter((text) => text.length > NOTICE_MAX_CHARS)).toEqual([]);
+  });
+
+  it('leaves a race still running when the tab hides, and the others take its racer over on one tick', async () => {
+    const { table, host, guests } = await seatedRoom({ guests: 2 });
+    const [leaver, third] = guests as [Player, Player];
+    startRace(table, host, [host, leaver, third]);
+
+    expect(leaver.flow.hide()).toEqual({ kind: 'title' });
+    leaver.screen = 'title';
+    table.until(() => host.screen === 'results' && third.screen === 'results');
+
+    expect(leaver.flow.state.notice).toBe('You left the race');
+    expect(takenOverAt(host, leaver.local)).toBeGreaterThan(0);
+    expect(takenOverAt(third, leaver.local)).toBe(takenOverAt(host, leaver.local));
+    expect(outcomeOf(third)).toEqual(outcomeOf(host));
+  });
+
+  it('tells the room this player is away while the tab is hidden in the room, and ready again when it shows', async () => {
+    const { table, host, guest } = await seatedRoom();
+    const guestReady = () => lobbyOf(host)?.peers[1]?.ready;
+
+    expect(guest.flow.hide()).toEqual({ kind: 'stay' });
+    table.until(() => guestReady() === false);
+    expect(lobbyOf(host)?.canStart).toBe(false);
+
+    guest.flow.show();
+    table.until(() => guestReady() === true);
+    expect(lobbyOf(host)?.canStart).toBe(true);
+  });
+
+  it('does nothing when the tab hides outside online play', () => {
+    const table = createTable();
+    const player = table.seat();
+
+    expect(player.flow.hide()).toEqual({ kind: 'stay' });
+    player.flow.show();
+    expect([player.flow.client, player.flow.state.notice]).toEqual([null, null]);
+  });
+
+  it('shows who the race waits on once stalled, has the silent racer kicked, and the rest finish alike', async () => {
+    const { table, host, guests } = await seatedRoom({
+      guests: 2,
+      room: { kickSilenceSteps: 30 },
+      kickAfterMs: 1000,
+    });
+    const [guest, silent] = guests as [Player, Player];
+    startRace(table, host, [host, guest, silent]);
+    const silentLabel = lobbyOf(host)?.peers[2]?.label;
+    const hostRace = () => host.flow.client?.view.race;
+
+    silent.frozen = true;
+    table.until(() => (hostRace()?.stalledMs ?? 0) > 0);
+    expect(waitingLine(hostRace() as RaceView)).toBeNull();
+    table.until(() => (hostRace()?.stalledMs ?? 0) >= WAITING_AFTER_MS);
+    expect(waitingLine(hostRace() as RaceView)).toBe(`WAITING FOR ${silentLabel}`);
+
+    table.until(() => takenOverAt(host, silent.local) !== undefined);
+    table.round();
+    expect(waitingLine(hostRace() as RaceView)).toBeNull();
+    table.until(() => host.screen === 'results' && guest.screen === 'results');
+    expect(takenOverAt(guest, silent.local)).toBe(takenOverAt(host, silent.local));
+    expect(outcomeOf(guest)).toEqual(outcomeOf(host));
+
+    silent.frozen = false;
+    table.until(() => silent.screen === 'title');
+    expect(silent.flow.state.notice).toBe('You were dropped from the race');
   });
 });

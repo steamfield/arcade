@@ -13,7 +13,7 @@ test('starts on WebGL, races from the title through course select and the select
   expect(await game.renderer()).toBe('webgl');
   expect(await game.summary()).toMatchObject({
     scene: 'title',
-    menu: { options: ['Race', 'How to play', 'Difficulty', 'Sound', 'Motion'], selected: 0 },
+    menu: { options: ['Race', 'Friends', 'How to play', 'Difficulty', 'Sound', 'Motion'], selected: 0 },
     best: null,
   });
 

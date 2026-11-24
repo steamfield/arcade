@@ -41,7 +41,7 @@ import { type AudioPort, createAudio } from './audio/index.ts';
 import { moveCharacter } from './character-select.ts';
 import { applyStage, stageFor } from './debug-stage.ts';
 import { type PagePress, turnPage } from './how-to-play.ts';
-import { input } from './input.ts';
+import { type Action, input } from './input.ts';
 import { localOf, setLocalRacer } from './local-racer.ts';
 import { createMenu, MENU_OPTIONS, type Menu, type MenuOption, moveSelection, selectedOption } from './menu.ts';
 import {
@@ -419,6 +419,20 @@ export class Runtime {
     return true;
   }
 
+  /**
+   * The tab was hidden (the shell's `onHide`, between ticks, with the loop already stopped). An
+   * online race still running is left for the title with a notice; in the room or after an online
+   * race the room hears this player is away. Offline it changes nothing.
+   */
+  hide(): void {
+    this.follow(this.flow.hide());
+  }
+
+  /** The tab shows again (the shell's `resume`): a player away in the room or on online results is ready again. */
+  show(): void {
+    this.flow.show();
+  }
+
   /** True while the online flow waits on the outside (creating a room, copying its link); the game is not idle meanwhile. */
   get onlineBusy(): boolean {
     return this.flow.busy;
@@ -548,6 +562,8 @@ export class Runtime {
   }
 
   private tickMenu(menu: Menu): void {
+    // A notice from online play stays on the title until the player does anything there.
+    if (this.scene === 'title' && TITLE_PRESSES.some((action) => input.justPressed(action))) this.flow.dismissNotice();
     if (input.justPressed('down')) moveSelection(menu, 1);
     if (input.justPressed('up')) moveSelection(menu, -1);
     if (this.menuArmIn > 0) {
@@ -561,6 +577,7 @@ export class Runtime {
     else if (option === 'Motion') this.changeSettings({ reducedMotion: !this.settings.reducedMotion });
     else if (option === 'Difficulty') this.changeSettings({ difficulty: nextDifficulty(this.settings.difficulty) });
     else if (option === 'How to play') this.goTo('howToPlay');
+    else if (option === 'Friends') this.goTo('friends');
     else if (option === 'Title') this.goTo('title');
     else if (option === 'Race' || option === 'Character') {
       this.selectOpenedFrom = option === 'Character' ? 'results' : 'title';
@@ -767,6 +784,9 @@ function nextDifficulty(current: Difficulty): Difficulty {
 
 /** The presses the friends and room screens take, in the order one is picked when several land on one tick. */
 const SCREEN_PRESSES: readonly ScreenPress[] = ['up', 'down', 'left', 'right', 'fire', 'dash'];
+
+/** Every button a player can press on the title, any of which clears an online notice there. */
+const TITLE_PRESSES: readonly Action[] = [...SCREEN_PRESSES, 'prev', 'next'];
 
 /** The page button pressed this tick, if any. */
 function readPagePress(): PagePress | null {

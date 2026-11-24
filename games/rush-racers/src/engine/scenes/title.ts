@@ -1,10 +1,11 @@
 /**
  * The title screen, laid out to UI.md: the RUSH RACERS logotype over the backdrop of the last
- * listed course raced (Sunlit Shallows until then), the four racers swimming past, the Race / How to play / Level / Sound / Motion
- * buttons (Level, Sound and Motion show the setting in force and change the moment it does),
+ * listed course raced (Sunlit Shallows until then), the four racers swimming past, the Race / Friends / How to play /
+ * Level / Sound / Motion buttons (Level, Sound and Motion show the setting in force and change the moment it does),
  * a blinking PRESS A on touch screens (on a keyboard A is a move key, so the
- * hint would mislead), and the best-time card, to the right of the buttons, when the save has a
- * best on the current course at the level now selected (it follows the Level button).
+ * hint would mislead), the best-time card, to the right of the buttons, when the save has a
+ * best on the current course at the level now selected (it follows the Level button), and the
+ * line saying why online play ended, when it ended with one.
  *
  * The screen stays up while the player toggles Motion, so every motion here
  * reads `rt.settings.reducedMotion` live each frame. Motion is timed from the
@@ -39,12 +40,18 @@ const LOGO_AT = { x: 64, y: 28, scale: 2 } as const;
 /** The lane the racers swim along: base y 62, across the whole view, behind the menu. */
 const RACER_LANE = { y: 62, depth: -1 } as const;
 /**
- * The five buttons share one width so their fins line up. 80 is the widest that keeps the fin
- * (x 109-117) clear of the d-pad zone (x < 108) with the column centred on the logo.
+ * The six buttons share one width so their fins line up. 80 is the widest that keeps the fin
+ * (x 109-117) clear of the d-pad zone (x < 108) with the column centred on the logo. A 1 px gap
+ * between buttons fits six between the racer lane and the bottom margin.
  */
-const MENU = { centreX: 160, top: 78, width: 80, pitch: 17 } as const;
-/** 6 px clear of the last button, so it reads as a hint, not a sixth button; it ends on the bottom margin. */
-const PRESS_A = { x: 160, top: 167 } as const;
+const MENU = { centreX: 160, top: 76, width: 80, pitch: 16 } as const;
+/** Under the best card, just above the A/B buttons it points to; no room is left under the six buttons. */
+const PRESS_A = { x: 264, top: 110 } as const;
+/**
+ * The online notice: one line of up to 40 characters (240 px) centred between the left margin and
+ * the back link (x 6-246), above the logo.
+ */
+const NOTICE = { x: 126, top: 8 } as const;
 /** Right of the buttons, clear of the back link above and the A/B buttons below. */
 const BEST_CARD = { x: 214, y: 82, w: 100, h: 24 } as const;
 const BEST_BADGE_AT = { x: 218, y: 87 } as const;
@@ -91,6 +98,7 @@ export class TitleScene extends Phaser.Scene {
   /** The view's width: the swimmers' lane runs across all of it. */
   private laneWidth = 0;
   private pressA: Label | null = null;
+  private notice: Label | null = null;
   private levelPips: Phaser.GameObjects.Rectangle[] = [];
   /** Each level's best-time card, for the levels that have a best; one shows at a time. */
   private bestCards: Partial<Record<Difficulty, BestCard>> = {};
@@ -128,6 +136,7 @@ export class TitleScene extends Phaser.Scene {
     this.pressA = isTouchScreen()
       ? createLabel(this, PRESS_A.x, PRESS_A.top + 3, 'PRESS A', { align: 'center', outline: true })
       : null;
+    this.notice = createLabel(this, NOTICE.x, NOTICE.top, '', { align: 'center', outline: true });
     const save = rt.save ?? NEW_GAME;
     this.bestCards = {};
     for (const level of DIFFICULTIES) {
@@ -150,6 +159,9 @@ export class TitleScene extends Phaser.Scene {
       pip.setFillStyle(index < level ? UiColour.sun : UiRamp.indigoLight);
     for (const shown of DIFFICULTIES) this.bestCards[shown]?.setVisible(shown === difficulty);
     this.pressA?.setVisible(reducedMotion || tick % (BLINK.on + BLINK.off) < BLINK.on);
+    const notice = this.rt.online.notice;
+    this.notice?.setVisible(notice !== null);
+    if (notice !== null) this.notice?.setText(notice.toUpperCase());
     const stroke = reducedMotion || Math.floor(tick / STROKE_TICKS) % 2 === 0 ? Frame.a : Frame.b;
     for (const swimmer of this.swimmers)
       swimmer.image.setX(swimmerX(swimmer, this.laneWidth, tick, reducedMotion)).setFrame(stroke);

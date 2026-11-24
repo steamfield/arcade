@@ -7,6 +7,7 @@
 /** Every option a menu in this game can offer. */
 export type MenuOption =
   | 'Race'
+  | 'Friends'
   | 'How to play'
   | 'Difficulty'
   | 'Sound'
@@ -17,7 +18,7 @@ export type MenuOption =
 
 /** The options each menu screen offers, top to bottom. */
 export const MENU_OPTIONS = {
-  title: ['Race', 'How to play', 'Difficulty', 'Sound', 'Motion'],
+  title: ['Race', 'Friends', 'How to play', 'Difficulty', 'Sound', 'Motion'],
   results: ['Race again', 'Character', 'Title'],
   /** After an online race: Race again goes back to the room, Title leaves it. The room picks characters. */
   onlineResults: ['Race again', 'Title'],

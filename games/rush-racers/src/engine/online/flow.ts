@@ -79,6 +79,16 @@ export interface OnlineFlow {
   openLink(search: string): boolean;
   /** Leaves online play: closes the room and forgets it and any request, keeping only the notice. */
   release(): void;
+  /** Clears the notice, as any press on the title does. */
+  dismissNotice(): void;
+  /**
+   * The tab was hidden. In a race still running this peer leaves the room (the others' pages hand
+   * its racer to the AI) and goes to the title; in the room or after its race it tells the room it
+   * is away. Outside online play it does nothing. Called between ticks: every client setter sends at once.
+   */
+  hide(): FlowNext;
+  /** The tab shows again: back in the room or after a race, this peer is ready again. */
+  show(): void;
   /** One tick on the friends screen with this tick's press. */
   friends(press: ScreenPress | null): FlowNext;
   /** One tick on the room screen with this tick's press; `elapsedMs` is the wall time the tick stands for. */
@@ -90,6 +100,12 @@ export interface OnlineFlow {
   race(input: TickInput, elapsedMs: number): { stepped: number; next: FlowNext };
   /** One tick on an online race's results screen. */
   results(choice: ResultsChoice, elapsedMs: number): FlowNext;
+}
+
+/** True while `client` is in the room between races or on the results of its finished race. */
+function waitsBetweenRaces(client: OnlineClient): boolean {
+  const { status, race } = client.view;
+  return status === 'lobby' || (status === 'racing' && race?.over === true);
 }
 
 const STAY: FlowNext = { kind: 'stay' };
@@ -286,6 +302,23 @@ export function createOnlineFlow(deps: OnlineFlowDeps): OnlineFlow {
     release() {
       dropClient();
       creation.cancel();
+    },
+    dismissNotice() {
+      state.notice = null;
+    },
+    hide() {
+      if (!client) return STAY;
+      const { status, race } = client.view;
+      if (status === 'racing' && race && !race.over) {
+        const next = leave(client);
+        state.notice = NOTICES.hidden;
+        return next;
+      }
+      if (waitsBetweenRaces(client)) client.setReady(false);
+      return STAY;
+    },
+    show() {
+      if (client && waitsBetweenRaces(client)) client.setReady(true);
     },
     friends(press) {
       const created = creation.take();

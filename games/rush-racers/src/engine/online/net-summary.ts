@@ -5,6 +5,7 @@
 
 import type { OnlineFlow } from './flow.ts';
 import { FRIENDS_OPTIONS } from './friends-screen.ts';
+import { waitingLine } from './race-hud.ts';
 import type { OnlineState } from './state.ts';
 
 /** The summary's `net`: the client's status, room, peers and, while racing, the lockstep race. Null with no client. */
@@ -31,6 +32,8 @@ export function netSummary(flow: OnlineFlow): Record<string, unknown> | null {
             simTick: race.simTick,
             targetTick: race.targetTick,
             waitingOn: race.waitingOn,
+            // True while the race screen shows WAITING FOR.
+            stalled: waitingLine(race) !== null,
             over: race.over,
             desync: race.desync !== null,
           },

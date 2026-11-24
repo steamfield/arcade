@@ -73,6 +73,8 @@ Every rect below stays clear of all three zones on every device, so the layout n
 | Caption | centred on (160, 45) | text, foam, outlined: TRAPPED!, STUNNED!, LOCKED ON! (a Homing Squid has locked on the player), SLOWED BY INK, or an off-screen bubble's direction (`< BUBBLE`). Words that name an item come from the course's world skin, so in Thornwood they read SLOWED BY MUD and `< SAP`. Empty while a squid is latched where a dash can shake it, when DASH! takes the spot |
 | Lock-on arrow | `MARKER_BOUNDS` x 8-312, y 52-172 | `warnArrow` (9x9 coral wedge, foam rim) turned to the nearest 45 degrees toward the squid hunting the player. On the screen's edge when the squid is off-screen, 14 px short of it when in view. Off-screen it sits where the line from the player to the squid leaves the bounds. Never inside a touch zone, nor in the splash rectangle (x 53-267, y 50-74) while a banner shows (it slides to the nearest clear point). Blinks 14 ticks on, 6 off (3 Hz); steady under reduced motion. Paired with the LOCKED ON! caption and a rising three-ping sfx, so colour is never the only signal |
 | DASH! prompt | centred on x 168, beside the player | display, sun, outlined, while a squid is latched on the player on a course whose medium lets dashes shake it (`kickRules.shakesLatch`; not in Thornwood, where the latch runs its time and no prompt shows), placed beside the player (`besidePlayerY` in `beside-player.ts`: 16 px clear of the player, above when it fits, within y 50-174); swaps sun and foam every 10 ticks (steady sun under reduced motion). On touch screens `PRESS B` in foam text sits 2 px under it as one block, since B is the dash button |
+| Player tags (online) | centred over each human racer's sprite, bottom 2 px above it | the racer's lobby label (P1 to P4) in the text face, foam, outlined, in the world (it moves with the racer, over the racers' layer), the local racer's included; none for a racer the AI took over, and none offline (`online/race-hud.ts` `racerTags`, `view/online-race-view.ts`) |
+| Waiting line (online) | centred on the safe column's middle (x 168 on the base), top at the bottom margin less 7 (y 167) | WAITING FOR P2 (every label the race waits on, space-separated: at most 20 characters, 120 px, so it stays inside x 108-228 between the d-pad and the A/B buttons), foam, outlined, pinned to the screen, once the race has stalled 500 ms on someone; gone the moment it steps again |
 | Darkness | whole screen, over a dark zone's columns | `view/dark-view.ts`: a near-black veil (90%) under the HUD layer, faded in over 32 px at each end of the zone, with a light pool cut around every racer (player 64 px, leaning up to 16 px ahead along their velocity; rival 28; +32 holding a Glow Lantern; four 4 px rings of falling light at the edge), so at top speed a hazard is lit about 0.35 s before contact. Urchins (coral, 55%) and jellies (lilac, 60%) in a zone show a 5x5 glint above the veil. A player who sees in the dark (`racerSeesInDark`, Selene) gets only a 30% tint. One screen-sized render texture, redrawn only while a zone is on screen and the tick or scroll changed; numbers in `view/dark-math.ts` |
 
 Every racer, portrait, head, item icon, attack, pickup and enemy on the HUD and in the world comes from the course's world skin (`skinFor(course)`), so a Thornwood race shows Grit, Skip and the rest, Rocket Boots and acorns, at the same rects. Reef's held items in the well, 9x9 with a foam rim: Jet Fins (fin), Bubble Shield (ring), Puffer (spiny fish), Ink Sac (drop), Glow Lantern (lamp), Homing Squid (upright magenta-pink squid), Riptide (green swell peaks), Undertow (violet arrow pulling left), Mimic (lilac octopus with gold eyes), Cannonball (iron ball with an orange spark). While a Cannonball dashes, the racer wears the 12x12 Cannonball at 2x where an inflated Puffer would show. Each has a 12x12 world twin (the same rows padded, dark outline) for loose pickups and clam pops.
@@ -111,28 +113,30 @@ Review captures: `?stage=<name>` with `?debug=1` on the race URL (`debug-stage.t
 
 | Element | Rect | Notes |
 | --- | --- | --- |
+| Online notice | centred on x 126, top 8, up to 240 wide | why online play ended (`rt.online.notice`), in the text face, foam, outlined, one line of at most 40 characters (`NOTICE_MAX_CHARS`), so it spans at most x 6-246: left of the back link and above the logo. Cleared by any press on the title or by opening Friends |
 | Logo | 64, 28, 192, 30 | `ui-logo` at 2x |
 | Racer lane | 0, 62, view width, 12 | racers swim past left to right across the whole view, not just the base (sprites, not text); still under reduced motion |
-| Race button | 120, 78, 80, 15 | cursor fin at x 109-117 |
-| How to play button | 120, 95, 80, 15 | HOW TO PLAY opens the How to Play screen |
-| Level button | 120, 112, 80, 15 | EASY / NORMAL / HARD, centred; each press cycles to the next and saves, and the text changes the moment the setting does. Three 3 px pips at x 126, 131 and 136 (y 118) show the level without reading: 1 lit (sun) for Easy, 2 Normal, 3 Hard, the rest dim |
-| Sound button | 120, 129, 80, 15 | SOUND ON / SOUND OFF, changes the moment the setting does |
-| Motion button | 120, 146, 80, 15 | MOTION FULL / MOTION LESS. "MOTION REDUCED" is 83 px, too wide for a button whose fin clears the d-pad zone with the column centred on the logo |
-| PRESS A | 140, 167, 41, 7 | touch screens only (`?touch=1` or a coarse pointer, the rule `@arcade/input` mounts the controls by); on a keyboard A is a move key. Foam, outlined, blinks. 6 px clear of the last button, ending on the bottom margin |
+| Race button | 120, 76, 80, 15 | cursor fin at x 109-117. The six buttons are 16 px apart (a 1 px gap), the most that fits between the racer lane and the bottom margin |
+| Friends button | 120, 92, 80, 15 | FRIENDS opens the friends screen (online races) |
+| How to play button | 120, 108, 80, 15 | HOW TO PLAY opens the How to Play screen |
+| Level button | 120, 124, 80, 15 | EASY / NORMAL / HARD, centred; each press cycles to the next and saves, and the text changes the moment the setting does. Three 3 px pips at x 126, 131 and 136 (y 130) show the level without reading: 1 lit (sun) for Easy, 2 Normal, 3 Hard, the rest dim |
+| Sound button | 120, 140, 80, 15 | SOUND ON / SOUND OFF, changes the moment the setting does |
+| Motion button | 120, 156, 80, 15 | MOTION FULL / MOTION LESS, ending at y 171. "MOTION REDUCED" is 83 px, too wide for a button whose fin clears the d-pad zone with the column centred on the logo |
+| PRESS A | centred on x 264, top 110, 41 wide | touch screens only (`?touch=1` or a coarse pointer, the rule `@arcade/input` mounts the controls by); on a keyboard A is a move key. Foam, outlined, blinks. Under the best card and just above the A/B zone (y 118), next to the button it names: the six buttons leave no room under the column |
 | Best card | 214, 82, 100, 24 | `raised`, right of the buttons so five buttons fit; clear of the back link above and the A/B zone (y 118 and below); medal at (218, 87), or the saved character's portrait for a 4th-place best; "BEST 2ND" in dim at (234, 86); time in foam at (234, 95). It shows the best on the current course at the level the Level button is on, and swaps as it cycles; a level with no best there shows no card |
 
-The backdrop behind the title and course select is the last listed course raced (Sunlit Shallows until then), in that course's theme; select shows the picked course's, and How to Play the current course's level in its theme. All five buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A new save starts on Easy.
+The backdrop behind the title and course select is the last listed course raced (Sunlit Shallows until then), in that course's theme; select shows the picked course's, and How to Play the current course's level in its theme. All six buttons are 80 wide so the fins line up; 80 is the widest that keeps the fin (x 109-117) clear of the d-pad zone (x < 108). The longest Level text, NORMAL, starts at x 142, clear of the pips. A new save starts on Easy.
 
 ```
-                                            (back link)
+      NO ROOM WITH THAT CODE                (back link)
               R E E F   R U S H   (2x)
   ~ ~ racers ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
                >[    RACE    ]
-                [ HOW TO PLAY]       [BEST 2ND  ]
-                [ ■□□ EASY   ]       [  0:24.46 ]
+                [  FRIENDS   ]       [BEST 2ND  ]
+                [ HOW TO PLAY]       [  0:24.46 ]
+                [ ■□□ EASY   ]          PRESS A   (touch only)
                 [  SOUND ON  ]
-                [ MOTION FULL]
- (d-pad)           PRESS A        (touch only)             (A/B)
+ (d-pad)        [ MOTION FULL]                             (A/B)
 ```
 
 ## How to Play
@@ -266,7 +270,7 @@ Create a room or join one by its code, over the title's backdrop. Drawn by `view
 | Element | Rect | Notes |
 | --- | --- | --- |
 | Heading | centred on (160, 12) | "FRIENDS", display, sun, outlined |
-| Notice | centred on (160, 40) | `online.notice` ("CREATING ROOM...", "ROOMS ARE UNAVAILABLE"), text, foam, outlined, in menu mode only; 40 characters span x 41-279, above the d-pad zone and under the back link |
+| Notice | centred on (160, 40) | `online.notice` ("CREATING ROOM...", "ROOMS ARE UNAVAILABLE RIGHT NOW"), text, foam, outlined, in menu mode only; 40 characters span x 41-279, above the d-pad zone and under the back link |
 | Menu buttons | 120, 62, 80, 15; pitch 17 | CREATE ROOM, JOIN, BACK; fin at x 109-117 as on the title. Hidden while the cells show |
 | Hint | centred on (160, 28) | UP AND DOWN CHANGE A LETTER, text, foam, outlined; wider than the safe column, so it stays above y 76 |
 | Code cells | from 101, 44; 18x20, 2 px apart | six `raised` cells (x 101-219), each one display character centred; the cursor's cell `accent` with its character in sun. The menu cursor fin turned to point up 1 px above the cursor's cell (y 34-42) and turned down 1 px below it (y 65-73), not the HUD's place-change arrows; the block ends at y 73, above the d-pad zone. A cell with no character draws empty |
