@@ -233,7 +233,7 @@ Depends on: phase 2
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | packages/testing/src/, tools/arcade/src/see.ts, tools/arcade/src/attract.ts, tools/arcade/src/smoke.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/hints.spec.ts, games/rush-racers/tests/save.test.ts, games/rush-racers/playwright.config.ts | | | opus | running | deliver/refactor-audit-7a | |
 | b | M | packages/config/src/, tools/arcade/src/games.ts, apps/site/vite.config.ts, games/rush-racers/vite.config.ts | | | sonnet | running | deliver/refactor-audit-7b | |
-| c | S | packages/core/src/, games/rush-racers/src/logic/hash.ts | | | sonnet | running | deliver/refactor-audit-7c | |
+| c | S | packages/core/src/, games/rush-racers/src/logic/hash.ts | | | sonnet | merged | deliver/refactor-audit-7c | |
 
 Scaffold contract: `@arcade/config/manifest-file` exports `readManifest(gameDir)` and `readManifestsIn(parentDir)` (Node only, so browser code importing the schema never pulls in `node:fs`). Lanes 7a and 7b switch their copies of "read game.json" to it.
 
@@ -305,3 +305,4 @@ Depends on: phase 6, phase 8
 - 2026-11-23: phase tags namespaced `refactor-audit/phase-N`; the bare `phase-1` tag belongs to an older plan and was restored to 8628f05.
 - 2c review triage: accepted the toddler measurement note, `fileURLToPath` in files.test.ts, unused `Wording.burst`; rejected moving easy helpers into normal-bars.ts (the brief allowed `easy-bars.ts`); stale `difficulty/` comments and four outside imports fixed at landing.
 - phase 2 landed: check --all green, difficulty 109 files / 273 tests passed (197 s).
+- landing fix: race camera eased per frame, so `see --compare` differed 30% between identical runs; it now eases per logic tick (HUD tweens still use real time, allowed for visuals).

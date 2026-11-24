@@ -82,6 +82,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `packages/core/src/timestep.ts` | `TICK_HZ` (60), `TICK_DT`, `FixedStep` (`frame(realDelta)`, `advance(n)`, `tick`, `alpha`). |
 | `packages/core/src/events.ts` | `EventLog` ring buffer (`emit`, `drain(cursor)` with dropped count, `all`, `tick`), `EventSink`. |
 | `packages/core/src/logger.ts` | `createLogger(ns)`, `configureLogging(sink, filter)`. Use instead of `console`. |
+| `packages/core/src/hash.ts` | `hashState(value, { skipKeys })`: tagged 32-bit FNV-1a over any plain state, the same bytes on every engine. Games hash their world with it for lockstep and cross-browser checks. |
 | `packages/core/src/save-types.ts` | `SaveSchema`, `Migration`, `Migrations` types shared by game `save.ts` files and `@arcade/save`. |
 
 ### `@arcade/save`
