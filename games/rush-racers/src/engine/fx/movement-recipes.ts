@@ -13,9 +13,9 @@ import type { Recipe, RecipePart } from './recipe-types.ts';
 export type MovementMoment = 'jump' | 'land' | 'skid' | 'flap' | 'dive' | 'thrust' | 'rebound';
 
 /** A part with the defaults most movement parts share: drawn behind the racers. */
-const part = (fields: Omit<RecipePart, 'layer'> & Partial<Pick<RecipePart, 'layer'>>): RecipePart => ({
+const part = (spec: Omit<RecipePart, 'layer'> & Partial<Pick<RecipePart, 'layer'>>): RecipePart => ({
   layer: 'back',
-  ...fields,
+  ...spec,
 });
 
 /** Each moment's particles, from a theme's materials. */

@@ -12,6 +12,11 @@ export interface WorldSkin {
   id: string;
   cast: CastSkin;
   objects: ObjectSkin;
+  /**
+   * The local racer's own movement sound beyond the medium's events (`audio/move-cues.ts`):
+   * footsteps while it runs on the ground, or thruster burns while it speeds up. None when left out.
+   */
+  moveSound?: 'steps' | 'burns';
   /** Builds the world's own textures at boot. Reef's art is the global art `art/index.ts` builds, so its is empty. */
   registerTextures(scene: Phaser.Scene): void;
 }

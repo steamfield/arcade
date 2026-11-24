@@ -11,6 +11,7 @@ export const FARSIDE_SKIN: WorldSkin = {
   id: 'farside',
   cast: FARSIDE_CAST,
   objects: FARSIDE_OBJECTS,
+  moveSound: 'burns',
   registerTextures(scene) {
     registerFarsideCast(scene);
     registerFarsideObjects(scene);

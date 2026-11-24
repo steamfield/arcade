@@ -5,9 +5,10 @@
  * Steps and burns are rate-limited by world tick so they stay a light pattern under the song. Other
  * racers' movement is never heard. Pure but for the timers and the last velocity it remembers.
  */
-import { runMotion } from '../../logic/media/run/data.ts';
+import { courseOf } from '../../logic/courses/index.ts';
 import type { Racer, RacerId, World } from '../../logic/types.ts';
 import type { RuntimeEvent } from '../runtime.ts';
+import { skinFor } from '../worlds/index.ts';
 import type { MoveSfxKey } from './move-sfx.ts';
 
 /** A footstep sounds no sooner than this many ticks after the last one. */
@@ -76,7 +77,8 @@ export function createMoveCues(localRacer: () => RacerId): MoveCues {
   };
 
   const stepCue = (racer: Racer, tick: number): MoveSfxKey | null => {
-    const running = runMotion(racer.motion).grounded && Math.abs(racer.body.vx) >= RUN_STEP_MIN_SPEED;
+    // A runner standing on a floor has a vertical speed of exactly 0; in the air gravity moves it every tick.
+    const running = racer.body.vy === 0 && Math.abs(racer.body.vx) >= RUN_STEP_MIN_SPEED;
     if (!running || tick - lastStep < STEP_GAP_TICKS) return null;
     lastStep = tick;
     return 'step';
@@ -110,8 +112,9 @@ export function createMoveCues(localRacer: () => RacerId): MoveCues {
         thrustTicks = 0;
         return null;
       }
-      if (world.medium === 'run') return stepCue(racer, world.tick);
-      if (world.medium === 'drift') return burnCue(racer, world.tick);
+      const sound = skinFor(courseOf(world)).moveSound;
+      if (sound === 'steps') return stepCue(racer, world.tick);
+      if (sound === 'burns') return burnCue(racer, world.tick);
       return null;
     },
   };

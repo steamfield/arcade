@@ -11,6 +11,7 @@ export const THORNWOOD_SKIN: WorldSkin = {
   id: 'thornwood',
   cast: THORNWOOD_CAST,
   objects: THORNWOOD_OBJECTS,
+  moveSound: 'steps',
   registerTextures(scene) {
     registerThornwoodCast(scene);
     registerThornwoodObjects(scene);

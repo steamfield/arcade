@@ -14,8 +14,8 @@ type RecipeFor = (materials: Materials) => Recipe;
 
 /** A part with the defaults most parts share: drawn above the racers, coasting. */
 const part = (
-  fields: Pick<RecipePart, 'pattern' | 'look' | 'count' | 'radius' | 'speed' | 'life'> & Partial<RecipePart>,
-): RecipePart => ({ motion: 'coast', layer: 'front', ...fields });
+  spec: Pick<RecipePart, 'pattern' | 'look' | 'count' | 'radius' | 'speed' | 'life'> & Partial<RecipePart>,
+): RecipePart => ({ motion: 'coast', layer: 'front', ...spec });
 
 /** Each power-up's fire, played at the racer that used it, pointing the way it is going. */
 const FIRE: Readonly<Record<PowerUpKind, RecipeFor>> = {
