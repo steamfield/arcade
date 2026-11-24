@@ -372,7 +372,7 @@ Depends on: phase 6, phase 8
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | AGENTS.md, README.md, docs/, .claude/skills/, .claude/rules/, .claude/agents/, plans/ | | | opus | running | deliver/refactor-audit-9a | |
+| a | M | AGENTS.md, README.md, docs/, .claude/skills/, .claude/rules/, .claude/agents/, plans/ | | | opus | merged | deliver/refactor-audit-9a | |
 | b | M | games/rush-racers/DESIGN.md, games/rush-racers/COURSES.md, games/rush-racers/UI.md, games/rush-racers/MAP.md, games/rush-racers/src/map.test.ts, games/rush-racers/package.json | | | opus | running | deliver/refactor-audit-9b | |
 
 Scaffold: 4a7c03c36b4a (no contract commit)
@@ -421,3 +421,4 @@ Scaffold: 4a7c03c36b4a (no contract commit)
 - 3a accepted: widened owns for review fixes (boot.ts, enemy-look/hud tests, theme tests, skins.test, types.ts, cloudreach.ts, DESIGN.md, UI.md). Phase 3 demo: race-to-finish frames at 200/400/600 identical to the pre-3a capture.
 - 7a accepted: see-images.ts split, see.ts at 381 lines (summary formatting and run-folder handling left), @arcade/save and fake-indexeddb devDependencies of @arcade/testing, see validates --viewport before creating the run folder.
 - phase 7 landed: check --all green, smoke all games green (phaser-2d 11, rush-racers 100, three-3d 8).
+- Lane 9a check-lane: its only hits are the `Suppressions:` header lines of plans moved to `plans/done/`, which the checker reads as added text after a move. Accepted.
