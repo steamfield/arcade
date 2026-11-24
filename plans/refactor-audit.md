@@ -201,6 +201,7 @@ Depends on: phase 3
 | b | M | games/rush-racers/src/engine/worlds/skins.test.ts, games/rush-racers/src/engine/worlds/thornwood/cast.test.ts, games/rush-racers/src/engine/worlds/thornwood/objects.test.ts, games/rush-racers/src/engine/worlds/farside/cast.test.ts, games/rush-racers/src/engine/worlds/farside/objects.test.ts, games/rush-racers/src/engine/worlds/cloudreach/cast.test.ts, games/rush-racers/src/engine/worlds/cloudreach/objects.test.ts, games/rush-racers/src/engine/worlds/thornwood.test.ts, games/rush-racers/src/engine/worlds/reef/cast.test.ts, games/rush-racers/src/engine/worlds/reef/objects.test.ts, games/rush-racers/src/engine/worlds/reef/skin.test.ts, games/rush-racers/src/engine/worlds/skin-conformance.ts, games/rush-racers/src/engine/worlds/cast-conformance.ts, games/rush-racers/src/engine/worlds/object-conformance.ts, games/rush-racers/src/engine/worlds/drawn-skin.ts, games/rush-racers/src/engine/worlds/recording-scene.ts | | | sonnet | merged | deliver/refactor-audit-4b | |
 
 Scaffold: eb621d6527d9 (shared `mirroredRows`, `transposeRows` in `art/rows.ts`; `castFrames` in `art/sprites/sheet.ts`; `bySlot`/`byItem` in `art/keys.ts`; owner names folded into keys by lane 3a)
+Tag: refactor-audit/phase-4
 
 #### Lane 4a brief
 
