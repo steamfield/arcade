@@ -8,7 +8,8 @@ import type Phaser from 'phaser';
 import { JELLY } from '../../logic/hazards/tuning.ts';
 import { type Level, RACER_IDS, TILE, type World } from '../../logic/types.ts';
 import { Frame } from '../art/keys.ts';
-import type { HazardSkin, WorldSkin } from '../worlds/types.ts';
+import type { HazardSkin } from '../worlds/object-skin.ts';
+import type { WorldSkin } from '../worlds/types.ts';
 import { Layer } from './layers.ts';
 
 /** The course's hazards; `sync` redraws them from the world. */

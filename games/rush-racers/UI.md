@@ -22,7 +22,7 @@ Ramps, not new hues: `indigoLight`/`indigoDark` bevels, `well` inset fill, `sunD
 
 Each theme lists its `contrastBands` (`engine/themes/types.ts`): every colour that can sit behind a racer or off-panel text in play, which for the ocean is each water band and each painted backdrop layer colour. The rules hold against every theme's bands, so a new theme that breaks them fails the build:
 
-- Each racer's main colour and the Homing Squid's hold 3:1 off every band, and at least a quarter of each racer frame's pixels do, spread over most of its height (`art/sprites/sprites.test.ts`). The theme's own hazards hold 3:1 off its bands (the ocean urchin: `themes/ocean.test.ts`).
+- Each racer's main colour and the Homing Squid's hold 3:1 off every band, and at least a quarter of each racer frame's pixels do, spread over most of its height (`art/sprites/sprites.test.ts`). Both hazard bodies of every world hold 3:1 off the bands of every listed course's theme (`view/hazard-view.test.ts`).
 - Off-panel text (foam or sun, outlined) holds 4.5:1, or its ink outline 3:1, off every band and off the theme's brightest backdrop: its top band under its caustics (22%) and a ray (5%), when it has them (`art/ui/ui.test.ts`).
 - Panels, the HUD and every UI colour are global, never part of a theme.
 

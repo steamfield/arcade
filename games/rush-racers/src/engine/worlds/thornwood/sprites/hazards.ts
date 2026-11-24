@@ -2,7 +2,7 @@
  * Thornwood's hazards: a thorn bush (the urchin's slot) and a buzzing wasp (the jelly's slot), with
  * their texture and loop keys. Both are dark-outlined with sharp, stinging shapes, so they read as
  * dangerous by silhouette and not by colour alone. The keys keep the `forest-` prefix they were
- * first drawn under, so captures and saves stay the same.
+ * first drawn under, so existing captures and baselines don't change.
  */
 import type { AnimLoop } from '../../../art/index.ts';
 import { Frame } from '../../../art/keys.ts';

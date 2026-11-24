@@ -2,7 +2,8 @@
  * Cloudreach's hazards: a spark cloud (the urchin's slot) and a static wisp (the jelly's slot), with
  * their texture and loop keys. Both are dark-outlined with a bright body and a crackle that moves
  * between their two frames, so they read as dangerous by shape and motion, not by colour alone. The
- * keys keep the `sky-theme-` prefix they were first drawn under, so captures and saves stay the same.
+ * keys keep the `sky-theme-` prefix they were first drawn under, so existing captures and baselines
+ * don't change.
  */
 import type { AnimLoop } from '../../../art/index.ts';
 import { Frame } from '../../../art/keys.ts';

@@ -2,8 +2,8 @@
  * The global texture keys and the shared frame names, as typed consts. Global textures are the HUD
  * kick pip and the guide arrow, which look the same in every world. Views and the art builder both
  * import from here, so a typo fails typecheck. A world's cast and objects key their textures in
- * `worlds/<id>/keys.ts`, and a course's own look (terrain, hazards, backdrop) in its theme under
- * `themes/`, never here.
+ * `worlds/<id>/keys.ts` (its hazards in `worlds/<id>/sprites/hazards.ts`), and a course's own look
+ * (terrain, backdrop) in its theme under `themes/`, never here.
  */
 
 import { CHARACTER_IDS, type CharacterId, POWER_UP_KINDS, type PowerUpKind } from '../../logic/types.ts';

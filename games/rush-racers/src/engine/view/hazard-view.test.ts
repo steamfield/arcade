@@ -1,40 +1,73 @@
 /**
- * The hazard art the hazard view draws, which each world's object skin owns: every urchin and jelly
- * slot names a texture and frame its world's hazard sheets build, a looping hazard's loop runs over
- * that texture's `a` and `b` frames, each hazard's body reads 3:1 off every contrast band of the
- * course theme it is raced in, and no world draws another world's hazard.
+ * The hazard art the hazard view draws, which each world's object skin owns: every hazard sheet is
+ * well-formed, every urchin and jelly slot names a texture and frame its world builds, a looping
+ * hazard's loop runs over that texture's `a` and `b` frames and is registered with it, each hazard's
+ * body reads 3:1 off every contrast band of the course theme it is raced in, and no world draws
+ * another world's hazard.
  */
+import type Phaser from 'phaser';
 import { describe, expect, it } from 'vitest';
 import { LISTED_COURSES } from '../../logic/courses/index.ts';
 import type { AnimLoop } from '../art/index.ts';
+import { measureFrames } from '../art/pixel.ts';
 import type { ArtSheet } from '../art/sprites/sheet.ts';
+import { buildUiTextures } from '../art/ui/index.ts';
 import { themeFor } from '../themes/index.ts';
-import { SKY_HAZARD_LOOPS, SKY_HAZARD_SHEETS } from '../worlds/cloudreach/sprites/hazards.ts';
+import { SKY_HAZARD_LOOPS, SKY_HAZARD_SHEETS, SkyHazardPalette } from '../worlds/cloudreach/sprites/hazards.ts';
 import { CLOUDREACH_SKIN } from '../worlds/cloudreach.ts';
-import { FAR_HAZARD_LOOPS, FAR_HAZARD_SHEETS } from '../worlds/farside/sprites/hazards.ts';
+import { FAR_HAZARD_LOOPS, FAR_HAZARD_SHEETS, FarHazardPalette } from '../worlds/farside/sprites/hazards.ts';
 import { FARSIDE_SKIN } from '../worlds/farside.ts';
-import { skinFor } from '../worlds/index.ts';
-import { REEF_HAZARD_LOOPS, REEF_HAZARD_SHEETS } from '../worlds/reef/sprites/hazards.ts';
+import { assertSkinTextures, skinFor } from '../worlds/index.ts';
+import type { HazardSkin } from '../worlds/object-skin.ts';
+import { REEF_HAZARD_LOOPS, REEF_HAZARD_SHEETS, ReefHazardPalette } from '../worlds/reef/sprites/hazards.ts';
+import { REEF_ITEM_ICON_FRAMES } from '../worlds/reef/sprites/icons.ts';
 import { REEF_SKIN } from '../worlds/reef.ts';
-import { THORN_HAZARD_LOOPS, THORN_HAZARD_SHEETS } from '../worlds/thornwood/sprites/hazards.ts';
+import { THORN_HAZARD_LOOPS, THORN_HAZARD_SHEETS, ThornHazardPalette } from '../worlds/thornwood/sprites/hazards.ts';
 import { THORNWOOD_SKIN } from '../worlds/thornwood.ts';
-import type { HazardSkin, WorldSkin } from '../worlds/types.ts';
+import type { WorldSkin } from '../worlds/types.ts';
 
-/** A world's skin with the hazard sheets and loops its `registerTextures` builds. */
+const HAZARD_SLOTS = ['urchin', 'jelly'] as const;
+type HazardSlot = (typeof HAZARD_SLOTS)[number];
+
+/** A world's skin with its hazard sheets and loops, which slots stand still, and each hazard's body colour. */
 interface WorldHazardArt {
   skin: WorldSkin;
   sheets: readonly ArtSheet<string>[];
   loops: readonly AnimLoop[];
+  still: readonly HazardSlot[];
+  bodies: Readonly<Record<HazardSlot, number>>;
 }
 
 const WORLD_HAZARD_ART: readonly WorldHazardArt[] = [
-  { skin: REEF_SKIN, sheets: REEF_HAZARD_SHEETS, loops: REEF_HAZARD_LOOPS },
-  { skin: THORNWOOD_SKIN, sheets: THORN_HAZARD_SHEETS, loops: THORN_HAZARD_LOOPS },
-  { skin: CLOUDREACH_SKIN, sheets: SKY_HAZARD_SHEETS, loops: SKY_HAZARD_LOOPS },
-  { skin: FARSIDE_SKIN, sheets: FAR_HAZARD_SHEETS, loops: FAR_HAZARD_LOOPS },
+  {
+    skin: REEF_SKIN,
+    sheets: REEF_HAZARD_SHEETS,
+    loops: REEF_HAZARD_LOOPS,
+    still: ['urchin'],
+    bodies: { urchin: ReefHazardPalette.urchin[1], jelly: ReefHazardPalette.jelly[1] },
+  },
+  {
+    skin: THORNWOOD_SKIN,
+    sheets: THORN_HAZARD_SHEETS,
+    loops: THORN_HAZARD_LOOPS,
+    still: ['urchin'],
+    bodies: { urchin: ThornHazardPalette.thornBush[1], jelly: ThornHazardPalette.wasp[1] },
+  },
+  {
+    skin: CLOUDREACH_SKIN,
+    sheets: SKY_HAZARD_SHEETS,
+    loops: SKY_HAZARD_LOOPS,
+    still: [],
+    bodies: { urchin: SkyHazardPalette.sparkCloud[1], jelly: SkyHazardPalette.staticWisp[1] },
+  },
+  {
+    skin: FARSIDE_SKIN,
+    sheets: FAR_HAZARD_SHEETS,
+    loops: FAR_HAZARD_LOOPS,
+    still: ['urchin'],
+    bodies: { urchin: FarHazardPalette.mine[1], jelly: FarHazardPalette.orb[1] },
+  },
 ];
-
-const HAZARD_SLOTS = ['urchin', 'jelly'] as const;
 
 /** WCAG contrast ratio of two 0xRRGGBB colours. */
 function contrast(a: number, b: number): number {
@@ -54,11 +87,6 @@ function sheetOf(art: WorldHazardArt, hazard: HazardSkin): ArtSheet<string> | un
   return art.sheets.find((sheet) => sheet.key === hazard.texture);
 }
 
-/** A hazard's body colour: the second entry of its palette, after the outline. */
-function bodyOf(art: WorldHazardArt, hazard: HazardSkin): number | undefined {
-  return sheetOf(art, hazard)?.frames[0]?.palette[1];
-}
-
 /** The hazard art for `skin`, failing the test when the table above leaves a world out. */
 function artFor(skin: WorldSkin): WorldHazardArt {
   const art = WORLD_HAZARD_ART.find((entry) => entry.skin === skin);
@@ -66,22 +94,74 @@ function artFor(skin: WorldSkin): WorldHazardArt {
   return art;
 }
 
+/**
+ * The parts of a Phaser scene boot's art builders touch, recording each texture's frames and each
+ * animation made. Only Phaser is faked; the builders and the skins are the real ones.
+ */
+function recordingScene() {
+  const built = new Map<string, string[]>();
+  const anims = new Set<string>();
+  const fonts = new Set<string>();
+  const graphics = {
+    fillStyle: () => graphics,
+    fillRect: () => graphics,
+    generateTexture: (key: string) => built.set(key, []),
+    destroy: () => {},
+  };
+  const textures = {
+    exists: (key: string) => built.has(key),
+    get: (key: string) => ({
+      add: (frame: string) => built.get(key)?.push(frame),
+      has: (frame: string) => built.get(key)?.includes(frame) ?? false,
+    }),
+  };
+  const scene = {
+    textures,
+    make: { graphics: () => graphics },
+    anims: { exists: (key: string) => anims.has(key), create: ({ key }: { key: string }) => anims.add(key) },
+    cache: { bitmapFont: { exists: (key: string) => fonts.has(key), add: (key: string) => fonts.add(key) } },
+  } as unknown as Phaser.Scene;
+  return { scene, textures, anims };
+}
+
 describe.each(WORLD_HAZARD_ART.map((art) => [art.skin.id, art] as const))('%s hazard art', (_, art) => {
+  const { hazards } = art.skin.objects;
+  const looping = HAZARD_SLOTS.filter((slot) => !art.still.includes(slot));
+
+  it.each(art.sheets.map((sheet) => [sheet.key, sheet] as const))(
+    '%s is well-formed pixel text of at most four colours',
+    (key, sheet) => {
+      expect(() => measureFrames(key, sheet.frames)).not.toThrow();
+      for (const frame of sheet.frames) expect(frame.palette.length, frame.name).toBeLessThanOrEqual(4);
+    },
+  );
+
   it.each(HAZARD_SLOTS)('builds the texture and frame the %s slot names', (slot) => {
-    const hazard = art.skin.objects.hazards[slot];
-    expect(sheetOf(art, hazard)?.frames.map((frame) => frame.name)).toContain(hazard.frame);
+    expect(sheetOf(art, hazards[slot])?.frames.map((frame) => frame.name)).toContain(hazards[slot].frame);
   });
 
-  it.each(HAZARD_SLOTS)('loops the %s over frames a and b of its own texture, when it loops', (slot) => {
-    const hazard = art.skin.objects.hazards[slot];
-    if (hazard.anim === null) return;
+  it('leaves its still hazards unanimated', () => {
+    expect(HAZARD_SLOTS.filter((slot) => hazards[slot].anim === null)).toEqual(art.still);
+  });
+
+  it.each(looping)('loops the %s over frames a and b of its own texture', (slot) => {
+    const hazard = hazards[slot];
     expect(art.loops.find((loop) => loop.key === hazard.anim)?.texture).toBe(hazard.texture);
     expect(sheetOf(art, hazard)?.frames.map((frame) => frame.name)).toEqual(['a', 'b']);
   });
 
   it('builds no loop that neither hazard plays', () => {
-    const played = HAZARD_SLOTS.map((slot) => art.skin.objects.hazards[slot].anim);
+    const played = HAZARD_SLOTS.map((slot) => hazards[slot].anim);
     expect(art.loops.map((loop) => loop.key).filter((key) => !played.includes(key))).toEqual([]);
+  });
+
+  it('registers every hazard texture, frame and loop with the skin, passing the boot texture check', () => {
+    const { scene, textures, anims } = recordingScene();
+    buildUiTextures(scene, REEF_ITEM_ICON_FRAMES);
+    art.skin.registerTextures(scene);
+    expect(() => assertSkinTextures(textures, art.skin)).not.toThrow();
+    const missingLoops = looping.map((slot) => hazards[slot].anim).filter((anim) => anim !== null && !anims.has(anim));
+    expect(missingLoops).toEqual([]);
   });
 });
 
@@ -92,9 +172,7 @@ describe('hazards on every listed course', () => {
       const art = artFor(skinFor(course));
       const { contrastBands } = themeFor(course);
       for (const slot of HAZARD_SLOTS) {
-        const body = bodyOf(art, art.skin.objects.hazards[slot]);
-        if (body === undefined) throw new Error(`World '${art.skin.id}' builds no sheet for its ${slot}`);
-        const weakest = Math.min(...contrastBands.map((band) => contrast(body, band.colour)));
+        const weakest = Math.min(...contrastBands.map((band) => contrast(art.bodies[slot], band.colour)));
         expect(weakest, slot).toBeGreaterThanOrEqual(3);
       }
     },

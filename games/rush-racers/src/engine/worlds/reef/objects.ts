@@ -10,8 +10,7 @@ import { Frame } from '../../art/keys.ts';
 import type { ArtSheet } from '../../art/sprites/sheet.ts';
 import { IconFrame, UiTex } from '../../art/ui/keys.ts';
 import type { ArtRef } from '../art-ref.ts';
-import { GLINT_ALPHA } from '../object-skin.ts';
-import type { WorldObjects } from '../types.ts';
+import { GLINT_ALPHA, type ObjectSkin } from '../object-skin.ts';
 import { REEF_ART_OWNER, ReefItemTex, ReefTex } from './keys.ts';
 import { REEF_ATTACK_SHEETS } from './sprites/attack.ts';
 import { REEF_ENEMY_SHEETS } from './sprites/enemies.ts';
@@ -22,8 +21,8 @@ import { REEF_PICKUP_SHEETS } from './sprites/pickups.ts';
 
 const icon = (kind: PowerUpKind): ArtRef => ({ texture: UiTex.icons, frame: IconFrame[kind] });
 
-/** Reef's objects. */
-export const REEF_OBJECTS: WorldObjects = {
+/** Reef's objects: its item, attack, pickup, enemy and hazard art and words. */
+export const REEF_OBJECTS: ObjectSkin = {
   itemIcons: {
     jetFin: icon('jetFin'),
     bubbleShield: icon('bubbleShield'),

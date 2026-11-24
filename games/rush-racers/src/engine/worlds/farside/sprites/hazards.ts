@@ -2,7 +2,7 @@
  * Farside's hazards: a space mine (the urchin's slot) and a plasma orb (the jelly's slot), with their
  * texture and loop keys. Both are dark-outlined, so they read as dangerous by silhouette and not by
  * colour alone: the mine by its eight spikes, the orb by the sparks it throws. The keys keep the
- * `space-` prefix they were first drawn under, so captures and saves stay the same.
+ * `space-` prefix they were first drawn under, so existing captures and baselines don't change.
  */
 import type { AnimLoop } from '../../../art/index.ts';
 import { Frame } from '../../../art/keys.ts';

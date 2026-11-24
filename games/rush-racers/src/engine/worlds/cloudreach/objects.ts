@@ -10,8 +10,7 @@ import type { PowerUpKind } from '../../../logic/types.ts';
 import { drawSheets, registerLoops } from '../../art/index.ts';
 import { Frame } from '../../art/keys.ts';
 import type { ArtRef } from '../art-ref.ts';
-import { GLINT_ALPHA } from '../object-skin.ts';
-import type { WorldObjects } from '../types.ts';
+import { GLINT_ALPHA, type ObjectSkin } from '../object-skin.ts';
 import { CLOUDREACH_ART_OWNER, SkyIconFrame, SkyItemTex, SkyTex } from './keys.ts';
 import { SKY_ATTACK_SHEETS } from './sprites/attack.ts';
 import { SKY_ENEMY_SHEETS } from './sprites/enemies.ts';
@@ -34,8 +33,8 @@ const SPARK_GLINT_COLOUR = SkyHazardPalette.sparkCloud[2];
 /** The static wisp's ice-blue body, so its glint in a storm cell matches the hazard. */
 const WISP_GLINT_COLOUR = SkyHazardPalette.staticWisp[1];
 
-/** Cloudreach's objects: its own item, attack, pickup and enemy art and words. Glints have their own keys, because the dark view bakes a glint's colour into the texture under its key. */
-export const CLOUDREACH_OBJECTS: WorldObjects = {
+/** Cloudreach's objects: its own item, attack, pickup, enemy and hazard art and words. Glints have their own keys, because the dark view bakes a glint's colour into the texture under its key. */
+export const CLOUDREACH_OBJECTS: ObjectSkin = {
   itemIcons: {
     jetFin: icon('jetFin'),
     bubbleShield: icon('bubbleShield'),

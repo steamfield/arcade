@@ -13,7 +13,8 @@ import { TILE, type Vec } from '../../logic/types.ts';
 import { Frame, type FrameKey } from '../art/keys.ts';
 import type { RuntimeEvent } from '../runtime.ts';
 import type { TerrainArt, Theme } from '../themes/types.ts';
-import type { HazardSkin, WorldObjects, WorldSkin } from '../worlds/types.ts';
+import type { HazardSkin, ObjectSkin } from '../worlds/object-skin.ts';
+import type { WorldSkin } from '../worlds/types.ts';
 import { addHazardSprite } from './hazard-view.ts';
 import { Layer } from './layers.ts';
 import { type Legend, tileAt } from './terrain-tile.ts';
@@ -139,7 +140,7 @@ function addFinishGate(scene: Phaser.Scene, level: Level, terrain: TerrainArt): 
 function addPlaceholders(
   scene: Phaser.Scene,
   level: Level,
-  { hazards, pickups }: Pick<WorldObjects, 'hazards' | 'pickups'>,
+  { hazards, pickups }: Pick<ObjectSkin, 'hazards' | 'pickups'>,
 ): LevelPlaceholders {
   const imagesAt = (tiles: Vec[], texture: string, frame?: FrameKey) =>
     tiles.map((tile) => scene.add.image(centre(tile.x), centre(tile.y), texture, frame).setDepth(Layer.objects));
