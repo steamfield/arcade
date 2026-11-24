@@ -37,6 +37,7 @@ Phase 2 contracts are committed in its scaffold: per-course set piece modules un
 ### Phase 1: feel and framing (MVP)
 
 Scaffold: e044492af045b439ce1c3f338a9299448cb6fea1
+Tag: polish-phase-1
 Demo: `pnpm arcade see rush-racers --scene race --query course=<id> --input "right*900" --at 200,500,900` on each listed course; a section callout shows on entering each zone after the first, items and movement leave distinct particles and sounds.
 Checkpoint: 81 min after start (epoch 1795497854).
 Test cases: listed per lane below.
@@ -174,3 +175,5 @@ Depends on: phase 2
 - Plan critique (sonnet), 5 findings, all applied: spec reworded to "course data only" for phase 1; demo wording fixed; race.ts wiring conflict between 1a and 1b resolved by telling 1b to keep factory signatures and report any race.ts lines for the orchestrator to apply at landing; extra reads sent to 1b and 1c; online HUD clearance and a sections-shape test sent to 1a, voice and rival-silence tests to 1c.
 - 1/c merged. Accepted: raceWorld hook on AdapterOptions (orchestrator wired it in runtime.ts, 51baf4f); flat sfx keys; burn = 2 ticks of 3-8 px/s/tick velocity change; short burns over a hum; sfx pin `item.use` replaced by `fire.<kind>` keys. adapter.ts (283) and sfx.ts (278) over 250 lines: left for the final review.
 - 1/a merged. Accepted: callout slides without fading (Label has no alpha; not worth a shared-font change); accent-coloured course name off-panel with a contrast test; callout top-left at (6,44); section names as reported. Looked at Bramble intro (tick 60) and Sunlit CURRENT HIGHWAY callout: clear of numeral, banner and HUD.
+- 1/b merged. Accepted: movement read from body velocity between ticks (media internals are off limits to the engine); movement particles for all racers; ink cloud plays at the user; reduced motion halves and stills particles. Gate found the 1/c seam break (move-cues imported `media/run/data.ts` and branched on medium id) and a `fields` parameter tripping the nav-read guard in 1/b's recipe files; fixed in c329890 (world skin `moveSound`).
+- Phase 1 tagged polish-phase-1 (`phase-N` tags belong to earlier sprints): check passed (20 s), smoke 100 passed. Captures: Bramble intro card, Sunlit callout, Thornwood boulder dust/leaves and Farside flame/ice shards from the cannonball stage.
