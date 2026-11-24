@@ -111,6 +111,10 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `packages/testing/src/scenario.ts` | `scenarioKit<Action>()` (`scenario`, `hold`, `tap`, `wait`), `parseInput("right*30 jump")`, `totalTicks`, `Scenario` and result types; `start` takes `save`, `scene`, `seed` and `query`. |
 | `packages/testing/src/driver.ts` | `GameDriver`: `open`, `advance`, `play`, `loadState`, `summary`, `state`, `events`, `screenshot`, `runScenario`, `problems`. Shared by Playwright and `arcade see`. |
 | `packages/testing/src/playwright.ts` | The `test` fixture (`game`, fails on console errors, failed requests, game errors, dropped events), `defineScenarioTests(dir)`, `gamePlaywrightConfig(url)` (desktop, phone, WebKit projects). |
+| `packages/testing/src/ports.ts` | `freePort()`: an unused local port for test and tool servers. |
+| `packages/testing/src/chromium-args.ts` | `CHROMIUM_ARGS`: the Chromium flags shared by Playwright projects, `see` and `attract`. |
+| `packages/testing/src/game-session.ts` | `openGameSession`: Vite test server, Chromium and an open `GameDriver` page for `see` and `attract`; `close()` stops all of it. |
+| `packages/testing/src/save-fixtures.ts` | `checkSaveFixtures`: every committed `save-v<N>.json` is present and loads at the current version. Games' `save.test.ts` call it. |
 
 ### `@arcade/config`
 
@@ -147,6 +151,7 @@ Each exports from `src/index.ts` unless noted. Changing one affects every game: 
 | `tools/arcade/src/attract.test.ts` | Which ticks `attract` records. |
 | `tools/arcade/src/new-game.ts` | `newGame`: copies a template, renames, registers it in `.claude/launch.json`, installs. |
 | `tools/arcade/src/repo-map.test.ts` | Keeps this map in sync with the files on disk. |
+| `tools/arcade/src/see-images.ts` | Image work for `arcade see`: the contact sheet of captured frames and pixel diffs against a baseline run. |
 | `tools/biome/no-nondeterminism.grit` | Biome plugin banning `Math.random`, `Date.now`, `new Date` in logic folders. |
 | `tools/biome/no-inexact-math.grit` | Biome plugin banning `**`, `**=` and `Math.pow` in rush-racers logic and allowing only the exactly specified `Math` members it lists, so lockstep races match bit for bit. |
 

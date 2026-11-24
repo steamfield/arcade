@@ -253,7 +253,7 @@ Depends on: phase 2
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | packages/testing/src/, tools/arcade/src/see.ts, tools/arcade/src/attract.ts, tools/arcade/src/smoke.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/hints.spec.ts, games/rush-racers/tests/save.test.ts, games/rush-racers/playwright.config.ts | | | opus | running | deliver/refactor-audit-7a | |
+| a | M | packages/testing/src/, tools/arcade/src/see.ts, tools/arcade/src/attract.ts, tools/arcade/src/smoke.ts, games/rush-racers/tests/smoke.spec.ts, games/rush-racers/tests/hints.spec.ts, games/rush-racers/tests/save.test.ts, games/rush-racers/playwright.config.ts | | | opus | merged | deliver/refactor-audit-7a | |
 | b | M | packages/config/src/, tools/arcade/src/games.ts, apps/site/vite.config.ts, games/rush-racers/vite.config.ts | | | sonnet | merged | deliver/refactor-audit-7b | |
 | c | S | packages/core/src/, games/rush-racers/src/logic/hash.ts | | | sonnet | merged | deliver/refactor-audit-7c | |
 
@@ -330,3 +330,4 @@ Depends on: phase 6, phase 8
 - landing fix: race camera eased per frame, so `see --compare` differed 30% between identical runs; it now eases per logic tick (HUD tweens still use real time, allowed for visuals).
 - 7b accepted: package.json/lockfile edit (vitest devDependency for config tests); build id keeps codec, messages, race-world, race, session, hash-ledger, lobby.
 - 3a accepted: widened owns for review fixes (boot.ts, enemy-look/hud tests, theme tests, skins.test, types.ts, cloudreach.ts, DESIGN.md, UI.md). Phase 3 demo: race-to-finish frames at 200/400/600 identical to the pre-3a capture.
+- 7a accepted: see-images.ts split, see.ts at 381 lines (summary formatting and run-folder handling left), @arcade/save and fake-indexeddb devDependencies of @arcade/testing, see validates --viewport before creating the run folder.
