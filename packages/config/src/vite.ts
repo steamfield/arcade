@@ -29,7 +29,8 @@ export interface GameConfigOptions {
  * folder served as immutable), pre-bundles engines so the first dev run in a
  * fresh worktree doesn't reload mid-test, and injects title and share tags.
  * Every key of `overrides` reaches the result; `plugins`, `build`, `optimizeDeps`, `server` and
- * `test` merge with the defaults, and the rest (`define`, for one) pass straight through.
+ * `test` merge with the defaults, and the rest (`define`, for one) pass straight through. `root` and
+ * `base` always come from `game.json`, whatever `overrides` says.
  *
  * @throws {Error} When `game.json` is missing or invalid, or its slug differs from the game's folder name.
  */

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { configDefaults } from 'vitest/config';
 import { defineGameConfig } from './vite.ts';
 
 const MANIFEST = {
@@ -68,10 +69,23 @@ describe('defineGameConfig', () => {
       {
         name: 'unit',
         include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
-        exclude: ['**/node_modules/**', '**/dist/**', 'src/bars/*.test.ts'],
+        exclude: [...configDefaults.exclude, 'src/bars/*.test.ts'],
       },
       { name: 'slow', include: ['src/bars/*.test.ts'], testTimeout: 5_000 },
     ]);
+  });
+
+  it("keeps the game's own include and exclude in the unit project", () => {
+    const config = defineGameConfig(
+      makeGame(),
+      { test: { include: ['lib/**/*.test.ts'], exclude: ['lib/skip/**'] } },
+      { slowTests: { project: 'slow', include: ['lib/bars/*.test.ts'] } },
+    );
+    const [unit] = (config.test?.projects ?? []) as { test: Record<string, unknown> }[];
+    expect(unit?.test).toMatchObject({
+      include: ['lib/**/*.test.ts'],
+      exclude: [...configDefaults.exclude, 'lib/skip/**', 'lib/bars/*.test.ts'],
+    });
   });
 
   it('refuses a game.json whose slug differs from the folder', () => {

@@ -2,15 +2,12 @@
  * The Vitest half of a game's Vite config: the shared defaults, and the optional split into a fast
  * `unit` project and a slow one.
  */
-import type { TestUserConfig } from 'vitest/config';
+import { configDefaults, type TestUserConfig } from 'vitest/config';
 
 type TestConfig = TestUserConfig;
 
-/** Where a game's tests live. */
+/** Where a game's tests live unless its `test.include` says otherwise. */
 const TEST_FILES = ['src/**/*.test.ts', 'tests/**/*.test.ts'];
-
-/** What Vitest skips by default; a project's own `exclude` replaces Vitest's list, so it is repeated. */
-const ALWAYS_EXCLUDED = ['**/node_modules/**', '**/dist/**'];
 
 /** A group of slow test files that runs as its own Vitest project, apart from the fast `unit` one. */
 export interface SlowTests {
@@ -25,7 +22,8 @@ export interface SlowTests {
 /**
  * The `test` section of a game's config: shared defaults under the game's own `test` overrides.
  * With `slowTests`, the root includes nothing and two projects share the settings: `unit` runs every
- * test file except the slow ones, and `slowTests.project` runs only the slow ones.
+ * test file except the slow ones (honouring the game's own `include` and `exclude`), and
+ * `slowTests.project` runs only the slow ones.
  */
 export function buildTestConfig(overrides: TestConfig | undefined, slowTests?: SlowTests): TestConfig {
   const shared: TestConfig = {
@@ -44,7 +42,12 @@ export function buildTestConfig(overrides: TestConfig | undefined, slowTests?: S
     projects: [
       {
         extends: true,
-        test: { name: 'unit', include: TEST_FILES, exclude: [...ALWAYS_EXCLUDED, ...slowTests.include] },
+        test: {
+          name: 'unit',
+          include: overrides?.include ?? TEST_FILES,
+          // A project's `exclude` replaces Vitest's default list, so the defaults are repeated here.
+          exclude: [...configDefaults.exclude, ...(overrides?.exclude ?? []), ...slowTests.include],
+        },
       },
       {
         extends: true,

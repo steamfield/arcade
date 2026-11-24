@@ -43,6 +43,17 @@ describe('readManifest', () => {
     expect(() => readManifest(dir)).toThrow(join(dir, 'game.json'));
   });
 
+  it('names the file and keeps the parse error as the cause when the JSON is broken', () => {
+    const dir = addGame('game-a');
+    writeFileSync(join(dir, 'game.json'), '{ "id": ');
+    expect(() => readManifest(dir)).toThrow(`${join(dir, 'game.json')} is not valid JSON`);
+    try {
+      readManifest(dir);
+    } catch (error) {
+      expect((error as Error).cause).toBeInstanceOf(SyntaxError);
+    }
+  });
+
   it('fails when the folder has no game.json', () => {
     expect(() => readManifest(addGame('game-a'))).toThrow('game.json');
   });
