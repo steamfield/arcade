@@ -200,4 +200,5 @@ Depends on: phase 2
 - Lane 1b review: fixed the one-shot tail (a crash on the last beat was cut). Rejected: validating `sampleRate` in the dev-only render, since the browser's own error is enough there.
 - Lane 1d review: fixed inline after merge by announcing `<song>:end` from the music cues and clearing the sound test's playing mark on it. Rejected: reordering the jukebox's state change after `audition`, since the section names it passes come from the song itself and cannot be unknown. Deferred to phase 2's scaffold: `runtime.test.ts` mocks the rotation with three made-up tracks per set; replace the mock with the real rotation once the sets hold three tracks.
 - Known gap: the sound test prints a 6/8 song's meter as 3/4 because `Song` carries no denominator; fix at the phase 1 landing.
-
+- Phase 1 tagged `chip-music-phase-1`: check and smoke green. Lane 1a review: all five findings fixed. Lane 1e review: both bass-root findings fixed; rejected making `chordFit` return an empty fit for noise (the stub's doc says it throws).
+- Found with the offline render: the existing songs peaked at 1.6 to 1.9 times full scale and clipped at the output. The synth's master gain is now 0.5 with a limiter after it; rendered peaks are 0.89 to 0.97.

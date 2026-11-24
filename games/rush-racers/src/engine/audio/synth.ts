@@ -77,6 +77,11 @@ const VIBRATO_DEPTH = 0.01;
 const VIBRATO_DELAY = 0.12;
 /** A mute fades over this many seconds so it doesn't click. */
 const MUTE_FADE = 0.02;
+/**
+ * The master gain when unmuted. Four voices at their song levels sum to nearly twice full scale
+ * at their loudest instants, and the output clips anything past it, so the mix is halved here.
+ */
+const MASTER_LEVEL = 0.5;
 /** Fixed seed for the noise buffer: the hiss is the same every run, like the hardware's LFSR. */
 const NOISE_SEED = 0x6e6f6973;
 
@@ -101,8 +106,8 @@ export const DRUM_RING_OUT = Math.max(...Object.values(DRUMS).map((d) => d.lengt
  */
 export function createSynth(context: BaseAudioContext, muted: boolean): Synth {
   const master = context.createGain();
-  master.gain.value = muted ? 0 : 1;
-  master.connect(context.destination);
+  master.gain.value = muted ? 0 : MASTER_LEVEL;
+  master.connect(createLimiter(context)).connect(context.destination);
   const pulses = new Map(DUTIES.map((duty) => [duty, pulseWave(context, duty)]));
   const noiseBuffer = whiteNoise(context);
 
@@ -142,10 +147,24 @@ export function createSynth(context: BaseAudioContext, muted: boolean): Synth {
       const now = context.currentTime;
       master.gain.cancelScheduledValues(now);
       master.gain.setValueAtTime(master.gain.value, now);
-      master.gain.linearRampToValueAtTime(isMuted ? 0 : 1, now + MUTE_FADE);
+      master.gain.linearRampToValueAtTime(isMuted ? 0 : MASTER_LEVEL, now + MUTE_FADE);
     },
   };
   return synth;
+}
+
+/**
+ * A limiter between the master gain and the output: it only acts on the rare peaks left after
+ * `MASTER_LEVEL`, such as several effects landing on a loud bar, which would otherwise clip.
+ */
+function createLimiter(context: BaseAudioContext): DynamicsCompressorNode {
+  const limiter = context.createDynamicsCompressor();
+  limiter.threshold.value = -2;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.002;
+  limiter.release.value = 0.08;
+  return limiter;
 }
 
 /** Converts a MIDI note number to Hz (A4 = 69 = 440 Hz). */

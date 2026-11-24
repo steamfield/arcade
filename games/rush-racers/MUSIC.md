@@ -68,6 +68,8 @@ To read a track's report, run the conformance test for it; a failing rule prints
 
 To hear it: `pnpm arcade dev rush-racers`, then `/games/rush-racers/?scene=jukebox`.
 
+To check its mix without speakers, render it: `node games/rush-racers/scripts/render-songs.ts <track name>` writes a WAV under `games/rush-racers/.arcade/songs/` and prints its peak and RMS. The synth halves the mix at its master gain and limits what is left, so a peak near 1 or an RMS far from the other tracks' (about 0.25) means the voice levels need another look.
+
 ## Research notes
 
 Research notes for hand-written, original, looping themes in the NES (2A03) and Atari (POKEY/TIA) idiom. Numbers are tagged: **[S]** comes from a cited source, **[D]** is derived arithmetic from a sourced figure, **[J]** is my judgement where the sources were thin. Source numbers refer to the list at the end. No melodies from existing games are reproduced here; game titles appear only as pointers to where a technique was documented.

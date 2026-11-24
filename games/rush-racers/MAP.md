@@ -49,4 +49,4 @@ Three rules hold the layout together. Logic (`src/logic/`) compiles without DOM 
 | `scenarios/` | One Playwright scenario per file, plus `kit.ts` (saves, menu walks, `TOP_ROUTE`). | Add a scenario (`DESIGN.md` "Scenarios"). |
 | `tests/` | Browser specs (`smoke.spec.ts`, course, hints, online, boot art and more), `save.test.ts` and the save fixtures. | Add a cross-browser check or a save version. |
 | `tests/fixtures/` | One captured save per old save version. | Add the old version's fixture when bumping `SAVE_VERSION`. |
-| `scripts/` | `measure.ts`: par and bar margins from the command line. | Measure a course (`COURSES.md` "parTicks"). |
+| `scripts/` | `measure.ts`: par and bar margins from the command line. `render-songs.ts`: songs rendered to WAV with their peak and RMS. | Measure a course (`COURSES.md` "parTicks"); check a song's mix (`MUSIC.md`). |
