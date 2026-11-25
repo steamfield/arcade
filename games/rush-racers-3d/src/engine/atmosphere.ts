@@ -49,12 +49,45 @@ function skyDome(sky: Theme['sky']): THREE.Mesh {
   return dome;
 }
 
-/** Adds the sky, sun and hemisphere light (`small` halves the shadow map for phones); call `follow` before each render to keep both on the camera. */
-export function createAtmosphere(scene: THREE.Scene, theme: Theme, small: boolean) {
+/**
+ * A prefiltered environment map from a sky-to-ground gradient, so standard materials pick up the
+ * blue sky from above and warm bounce light from the ground below.
+ */
+function environment(renderer: THREE.WebGLRenderer, sky: Theme['sky'], ground: number): THREE.Texture {
+  const sphere = new THREE.SphereGeometry(1, 32, 16);
+  const position = sphere.getAttribute('position');
+  const colors = new Float32Array(position.count * 3);
+  const zenith = new THREE.Color(sky.zenith);
+  const horizon = new THREE.Color(sky.color);
+  const floor = new THREE.Color(ground);
+  const color = new THREE.Color();
+  for (let i = 0; i < position.count; i++) {
+    const up = position.getY(i);
+    if (up >= 0) color.lerpColors(horizon, zenith, Math.min(1, up / 0.5));
+    else color.lerpColors(horizon, floor, Math.min(1, -up / 0.25));
+    color.toArray(colors, i * 3);
+  }
+  sphere.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const room = new THREE.Scene();
+  room.add(new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const texture = pmrem.fromScene(room, 0.02).texture;
+  pmrem.dispose();
+  sphere.dispose();
+  return texture;
+}
+
+/**
+ * Adds the sky, environment light, sun and hemisphere light (`small` halves the shadow map for
+ * phones); call `follow` before each render to keep the dome and shadows on the camera.
+ */
+export function createAtmosphere(renderer: THREE.WebGLRenderer, scene: THREE.Scene, theme: Theme, small: boolean) {
   const { sky, light } = theme;
   const horizon = new THREE.Color(sky.color);
   scene.background = horizon;
   scene.fog = new THREE.Fog(horizon, sky.fogNear, sky.fogFar);
+  scene.environment = environment(renderer, sky, theme.ground.grass);
+  scene.environmentIntensity = light.environment;
   const dome = skyDome(sky);
 
   const sun = new THREE.DirectionalLight(light.sun.color, light.sun.intensity);

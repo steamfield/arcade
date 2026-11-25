@@ -44,7 +44,11 @@ Title, then character select (a 4x2 grid of Thornwood's cast; the pick is saved)
 
 ## Code layout
 
-`src/logic/` holds the rules: movement (`racer.ts`, `logs.ts`, `bump.ts`), read-only item status (`status.ts`), items (`items/`, used from outside only through `items/index.ts`), rivals (`ai.ts`), courses (`courses/`) and the tick (`world.ts`). `src/logic/architecture.test.ts` guards those boundaries. `src/engine/` renders it: `atmosphere.ts` (ACES tone mapping, the gradient sky dome, and the sun's shadow map, which follows the camera and drops to 1024 px on touch devices), `themes/` (each course theme's sky, light and palettes), `track/` (the trail and scenery), `racers/`, `items/`, `ui/` (HUD and screens), with `game.ts` wiring them and `runtime.ts` running scene flow and saves.
+`src/logic/` holds the rules: movement (`racer.ts`, `logs.ts`, `bump.ts`), read-only item status (`status.ts`), items (`items/`, used from outside only through `items/index.ts`), rivals (`ai.ts`), courses (`courses/`) and the tick (`world.ts`). `src/logic/architecture.test.ts` guards those boundaries. `src/engine/` renders it: `atmosphere.ts` (ACES tone mapping, the gradient sky dome, a sky-gradient environment map, and the sun's shadow map, which follows the camera), `post.ts` (multisampled HDR render, bloom and a colour grade), `themes/` (each course theme's sky, light and palettes), `track/` (the trail and scenery), `racers/`, `items/`, `ui/` (HUD and screens), with `game.ts` wiring them and `runtime.ts` running scene flow and saves.
+
+## Look and quality tiers
+
+Scenery comes from a CC0 nature kit (`src/engine/assets/nature.glb`, credits and rebuild steps in `src/engine/assets/CREDITS.md`), loaded once at start by `track/nature-kit.ts`, which bakes each model into parts for instancing, recolours the kit's mask-textured leaves with a height gradient and sways foliage with a tick-driven wind (still under reduced motion). `track/forest.ts` plants trees, undergrowth and ground cover per 96 m chunk from per-layer seeded rngs, with soft dark discs under casters as cheap ambient occlusion. Touch devices (`pointer: coarse`) and software WebGL (SwiftShader, llvmpipe; headless test browsers included) get the low tier: no post-processing, a 1024 px shadow map and half the grass.
 
 ## Course
 

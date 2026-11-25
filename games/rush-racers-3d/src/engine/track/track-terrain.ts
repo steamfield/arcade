@@ -121,6 +121,8 @@ export function buildTerrainGrid(course: Course, track: TrackFrames): TerrainGri
   for (let s = -SCENERY_RUNOUT.start; s <= track.length + SCENERY_RUNOUT.finish; s++) distances.push(s);
   for (const knot of course.hills) distances.push(knot.s);
   const sides = [-halfWidth - 27, -halfWidth - 12, -halfWidth - 3, halfWidth + 3, halfWidth + 12, halfWidth + 27];
+  // Extra columns either side of the trail's edge so the dirt-to-grass blend has vertices to fade across.
+  for (const edge of [-0.9, 0.6, 1.5, 2.2, 5, 8]) sides.push(-halfWidth - edge, halfWidth + edge);
   for (let lane = -4; lane <= 4; lane++) sides.push((lane * halfWidth) / 4);
   for (const span of course.features) {
     if (span.kind !== 'pit' && span.kind !== 'mud') continue;
@@ -194,6 +196,7 @@ class TerrainChunk {
   private readonly positions: number[] = [];
   private readonly colors: number[] = [];
   private readonly uvs: number[] = [];
+  private readonly mix = new THREE.Color();
   private readonly halfWidth: number;
   private readonly ground: GroundColors;
 
@@ -202,9 +205,29 @@ class TerrainChunk {
     this.ground = ground;
   }
 
-  private vertex(row: TrackRow, d: number, offset: number, color: THREE.Color): void {
+  /**
+   * The open ground's colour at a point: dirt down the trail, fading through a worn shoulder to
+   * grass along an edge that wanders with `s`, with darker grass patches further out.
+   */
+  private groundAt(s: number, d: number): THREE.Color {
+    const { dirt, shoulder, grass } = this.ground;
+    const edge = this.halfWidth + 0.35 * Math.sin(s * 0.7) + 0.25 * Math.sin(s * 1.9 + 1);
+    const out = Math.abs(d) - edge;
+    const smooth = (t: number) => {
+      const c = Math.max(0, Math.min(1, t));
+      return c * c * (3 - 2 * c);
+    };
+    const worn = smooth((out + 0.7) / 1.1);
+    const grown = smooth((out - 0.6 - 0.5 * Math.sin(s * 0.43 + d)) / 2.2);
+    this.mix.copy(dirt).lerp(shoulder, worn).lerp(grass, grown);
+    const patch = 0.5 + 0.5 * Math.sin(s * 0.11 + d * 0.23) * Math.sin(s * 0.07 - d * 0.31);
+    return this.mix.multiplyScalar(1 - 0.22 * grown * patch);
+  }
+
+  private vertex(row: TrackRow, d: number, offset: number, fixed: THREE.Color | null): void {
     const { x, y, z } = vertexAt(row, d, this.halfWidth);
     const { s } = row;
+    const color = fixed ?? this.groundAt(s, d);
     const mottling = 0.05 * Math.sin(s * 2.2 + d * 4.9) + 0.07 * Math.sin(s * 0.29 + Math.sin(d) * 2.3);
     const shade = 1 + mottling - 0.11 * Math.min(1, Math.abs(d) / this.halfWidth);
     this.positions.push(x, y + offset, z);
@@ -212,7 +235,8 @@ class TerrainChunk {
     this.colors.push(color.r * shade, color.g * shade, color.b * shade);
   }
 
-  surface({ a, b, d0, d1 }: Cell, offset: number, color: THREE.Color): void {
+  /** Adds a flat cell; a null colour shades it as open ground by position. */
+  surface({ a, b, d0, d1 }: Cell, offset: number, color: THREE.Color | null): void {
     this.vertex(a, d0, offset, color);
     this.vertex(a, d1, offset, color);
     this.vertex(b, d1, offset, color);
@@ -245,7 +269,7 @@ class TerrainChunk {
     if (!holes[i]?.[j + 1]) this.pitEdge(a, d1, b, d1);
   }
 
-  mesh(material: THREE.MeshLambertMaterial): THREE.Mesh {
+  mesh(material: THREE.Material): THREE.Mesh {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
@@ -257,9 +281,8 @@ class TerrainChunk {
   }
 }
 
-function surfaceColor(d: number, halfWidth: number, acrossLine: boolean, ground: GroundColors): THREE.Color {
-  if (Math.abs(d) > halfWidth) return Math.abs(d) < halfWidth + 3 ? ground.shoulder : ground.grass;
-  if (!acrossLine) return ground.dirt;
+function surfaceColor(d: number, halfWidth: number, acrossLine: boolean, ground: GroundColors): THREE.Color | null {
+  if (!acrossLine || Math.abs(d) > halfWidth) return null;
   return Math.floor((d / halfWidth + 1) * 4) % 2 ? ground.darkMark : ground.chalk;
 }
 
@@ -310,7 +333,12 @@ export function trackTerrain(root: THREE.Group, course: Course, grid: TerrainGri
   const pits = course.features.filter((feature) => feature.kind === 'pit');
   const mud = course.features.filter((feature) => feature.kind === 'mud');
   const holes = classifyHoles(pits, strips, widths);
-  const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, map: groundGrain() });
+  const material = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    side: THREE.DoubleSide,
+    map: groundGrain(),
+    roughness: 0.95,
+  });
   for (let first = 0; first < strips.length; first += TERRAIN_CHUNK) {
     root.add(buildChunk(course, strips, widths, holes, mud, first, ground).mesh(material));
   }

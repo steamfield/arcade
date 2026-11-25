@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 
 /** Paints the shared wooden crate face with a question mark readable from the chase camera. */
-export function crateMaterial(): THREE.MeshLambertMaterial {
+export function crateMaterial(): THREE.MeshStandardMaterial {
   const canvas = document.createElement('canvas');
   canvas.width = 128;
   canvas.height = 128;
   const face = canvas.getContext('2d');
-  if (!face) return new THREE.MeshLambertMaterial({ color: 0xe9af54 });
+  if (!face) return new THREE.MeshStandardMaterial({ color: 0xe9af54 });
   face.fillStyle = '#753e26';
   face.fillRect(0, 0, 128, 128);
   face.fillStyle = '#f3ad52';
@@ -34,7 +34,7 @@ export function crateMaterial(): THREE.MeshLambertMaterial {
   }
   const map = new THREE.CanvasTexture(canvas);
   map.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.MeshLambertMaterial({ map, emissiveMap: map, emissive: 0x888888 });
+  return new THREE.MeshStandardMaterial({ map, emissiveMap: map, emissive: 0x555555, roughness: 0.8 });
 }
 
 /** Builds a centered, solid five-point star for the orbit above a stunned racer. */

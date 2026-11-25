@@ -16,14 +16,24 @@ import { CameraRig } from './camera-rig.ts';
 import { characterFor, courseFor, stageFor } from './capture-stages.ts';
 import { input } from './input.ts';
 import { createItemView } from './items/item-view.ts';
+import { createPost } from './post.ts';
 import { createPedestal } from './racers/pedestal.ts';
 import { RacerViews } from './racers/racer-view.ts';
 import { Runtime, type Scene } from './runtime.ts';
 import { themeFor } from './themes/index.ts';
+import { loadNatureKit } from './track/nature-kit.ts';
 import { buildTrackFrames } from './track/track-geometry.ts';
 import { createTrackView } from './track/track-view.ts';
 import { Hud } from './ui/hud.ts';
 import { createScreens } from './ui/screens.ts';
+
+/** True when WebGL runs on a software rasterizer (SwiftShader, llvmpipe), which gets the low tier. */
+function softwareRenderer(renderer: THREE.WebGLRenderer): boolean {
+  const gl = renderer.getContext();
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
+  return /swiftshader|llvmpipe|software/i.test(name);
+}
 
 /** Starts the game in `ctx.container` and returns the handle the shell drives. */
 export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): Promise<GameHandle> {
@@ -70,19 +80,26 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const pixelRatio = renderPixelRatio();
   const renderer = new THREE.WebGLRenderer({ antialias: pixelRatio < 2 });
   renderer.setPixelRatio(pixelRatio);
+  // Count draw calls across every post pass of a frame, not just the last one.
+  renderer.info.autoReset = false;
   ctx.container.append(renderer.domElement);
   renderer.domElement.addEventListener('webglcontextlost', () => ctx.reportError('webgl', 'WebGL context lost'));
 
   const { course, seed } = runtime.world;
   const theme = themeFor(course);
-  const small = window.matchMedia('(pointer: coarse)').matches;
+  const small = window.matchMedia('(pointer: coarse)').matches || softwareRenderer(renderer);
   configureRenderer(renderer, theme);
   const scene = new THREE.Scene();
-  const atmosphere = createAtmosphere(scene, theme, small);
+  const atmosphere = createAtmosphere(renderer, scene, theme, small);
 
+  const kit = await loadNatureKit().catch((error: unknown) => {
+    ctx.reportError('gltf', error);
+    throw error;
+  });
   const frames = buildTrackFrames(course);
-  const trail = createTrackView(course, frames, seed, theme);
+  const trail = createTrackView(course, frames, seed, theme, kit, small);
   const rig = new CameraRig(frames);
+  const post = createPost(renderer, scene, rig.camera, !small);
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const hud = new Hud(ctx.container);
   const screens = createScreens(ctx.container);
@@ -115,7 +132,9 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
 
   let drawnScreen: Scene | undefined;
   let screenTicks = 0;
+  let windTicks = 0;
   syncViews = () => {
+    kit.setWind(motion.matches ? 0 : ++windTicks * TICK_DT);
     const { world, scene: screen } = runtime;
     const screenChanged = screen !== drawnScreen;
     screenTicks = screenChanged ? 0 : screenTicks + 1;
@@ -146,12 +165,14 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     hud.sync(world, screen, bests);
     screens.sync({ scene: screen, cursor: runtime.cursor, character: runtime.character });
     atmosphere.follow(rig.camera);
-    renderer.render(scene, rig.camera);
+    renderer.info.reset();
+    post.render();
   };
   const resize = () => {
     const { width, height } = ctx.container.getBoundingClientRect();
     if (width === 0 || height === 0) return;
     renderer.setSize(width, height);
+    post.setSize(width, height);
     rig.resize(width, height);
     if (runtime.scene === 'select') rig.select(pedestal.top);
     render();

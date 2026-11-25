@@ -113,7 +113,10 @@ export function trackLandmarks(root: THREE.Group, course: Course, track: TrackFr
     pieces.push(...arch.pieces);
     if (arch.sign) root.add(arch.sign);
   }
-  const props = new THREE.Mesh(mergeGeometries(pieces), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  const props = new THREE.Mesh(
+    mergeGeometries(pieces),
+    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }),
+  );
   props.castShadow = true;
   props.receiveShadow = true;
   root.add(props);

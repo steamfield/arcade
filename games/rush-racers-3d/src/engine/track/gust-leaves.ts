@@ -26,7 +26,7 @@ function buildBatches(
 ): GustBatch[] {
   const rng = createRng(seed ^ 0xa91e3493);
   const leaf = new THREE.PlaneGeometry(0.42, 0.17).rotateZ(Math.PI / 4);
-  const material = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
+  const material = new THREE.MeshStandardMaterial({ side: THREE.DoubleSide });
   return course.features
     .filter((feature) => feature.kind === 'gust')
     .map((gust) => {

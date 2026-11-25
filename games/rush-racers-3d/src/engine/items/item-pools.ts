@@ -85,7 +85,7 @@ export function createItemPools(course: Course, track: TrackFrames) {
   const pie = new Instances(
     root,
     new THREE.IcosahedronGeometry(1, 1),
-    new THREE.MeshLambertMaterial({ color: 0x854b38 }),
+    new THREE.MeshStandardMaterial({ color: 0x854b38 }),
     throwCapacity(pieFlight),
   );
   const sapMaterial = new THREE.MeshPhongMaterial({
@@ -110,14 +110,14 @@ export function createItemPools(course: Course, track: TrackFrames) {
   const burr = new Instances(
     root,
     cone,
-    new THREE.MeshLambertMaterial({ color: 0xb65dd0, emissive: 0x381441 }),
+    new THREE.MeshStandardMaterial({ color: 0xb65dd0, emissive: 0x381441 }),
     RACER_COUNT * SPIKE_COUNT,
   );
   const trap = new Instances(root, ball, sapMaterial, RACER_COUNT * 3);
   const stun = new Instances(
     root,
     starGeometry(),
-    new THREE.MeshLambertMaterial({ color: 0xffe063, emissive: 0x8a6512 }),
+    new THREE.MeshStandardMaterial({ color: 0xffe063, emissive: 0x8a6512 }),
     RACER_COUNT * STAR_COUNT,
   );
   const shield = new Instances(
