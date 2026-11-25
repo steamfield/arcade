@@ -86,7 +86,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers-3d/src/logic/, games/rush-racers-3d/src/engine/item-view.ts, games/rush-racers-3d/src/engine/inventory-hud.ts, games/rush-racers-3d/src/engine/item-pools.ts | contracts | games/rush-racers-3d/tests/golden-race.test.ts | gpt-6.2-sol | running | foreman/rr3d-s1a | phase 1 test cases pass; check --skip-tests passes |
+| a | L | games/rush-racers-3d/src/logic/, games/rush-racers-3d/src/engine/item-view.ts, games/rush-racers-3d/src/engine/inventory-hud.ts, games/rush-racers-3d/src/engine/item-pools.ts | contracts | games/rush-racers-3d/tests/golden-race.test.ts | gpt-6.2-sol | merged | foreman/rr3d-s1a | phase 1 test cases pass; check --skip-tests passes |
 
 #### Lane a brief
 

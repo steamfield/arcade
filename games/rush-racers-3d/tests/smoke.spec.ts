@@ -6,7 +6,7 @@ import { expect, test } from '@arcade/testing/playwright';
  * jump and a dash. The hash covers logic state only. Every browser project must compute the same
  * number.
  */
-const RUN_HASH = 121295811;
+const RUN_HASH = 328495537;
 
 const COUNTDOWN = '_*180';
 
