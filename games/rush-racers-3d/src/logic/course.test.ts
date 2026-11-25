@@ -97,7 +97,7 @@ it('throws a course error naming the course and the bad feature when building a 
 
 it('rejects an unknown theme and names the course and theme', () => {
   const course = { ...straight, theme: 'unknown-theme' as Course['theme'] };
-  const problem = 'course validation-straight has unknown theme unknown-theme';
+  const problem = 'theme unknown-theme is not one of forest';
   const assert = () => assertCourse(course);
   expect(validateCourse(course)).toEqual([problem]);
   expect(assert).toThrow(CourseError);

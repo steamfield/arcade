@@ -92,7 +92,7 @@ export function validateCourse(course: Course): string[] {
   const length = courseLength(course);
   const problems: string[] = [];
   if (!THEME_IDS.includes(course.theme)) {
-    problems.push(`course ${course.id} has unknown theme ${course.theme}`);
+    problems.push(`theme ${course.theme} is not one of ${THEME_IDS.join(', ')}`);
   }
   if (!(startS < finishS && finishS <= length)) {
     problems.push(`startS ${startS}, finishS ${finishS} must satisfy startS < finishS <= course length ${length}`);

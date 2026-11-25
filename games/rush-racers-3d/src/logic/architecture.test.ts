@@ -7,6 +7,7 @@ import { expect, it } from 'vitest';
 const SRC = fileURLToPath(new URL('..', import.meta.url));
 const ITEMS = 'logic/items';
 const COURSES = 'logic/courses';
+const COURSE_REGISTRY = `${COURSES}/index.ts`;
 const MOVEMENT = new Set(['logic/racer.ts', 'logic/logs.ts', 'logic/bump.ts', 'logic/status.ts']);
 const RELATIVE_IMPORT = /(?:\bfrom\s*|\bimport\s*(?:\(\s*)?)['"](\.{1,2}\/[^'"]+)['"]/g;
 
@@ -34,17 +35,31 @@ it('keeps movement independent of items and routes other callers through the ite
   expect(violations).toEqual([]);
 });
 
-it('lets only the course registry import course files in game source', () => {
-  const registry = `${COURSES}/index.ts`;
-  const violations = sourceFiles(SRC).flatMap((path) => {
-    const importer = relative(SRC, path);
-    if (importer === registry || /\.(?:test|spec)\.ts$/.test(importer)) return [];
-    const imports = readFileSync(path, 'utf8').matchAll(RELATIVE_IMPORT);
-    return [...imports].flatMap(([_, specifier]) => {
-      if (!specifier) return [];
-      const target = relative(SRC, join(path, '..', specifier));
-      return target.startsWith(`${COURSES}/`) && target !== registry ? [`${importer} → ${specifier}`] : [];
-    });
+const COURSE_FILES = new Set(
+  readdirSync(join(SRC, COURSES), { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts'))
+    .filter(({ name }) => name !== 'index.ts' && name !== 'types.ts')
+    .map(({ name }) => join(COURSES, name)),
+);
+
+const COURSE_IMPORTS = sourceFiles(SRC).flatMap((path) => {
+  const importer = relative(SRC, path);
+  if (/\.(?:test|spec)\.ts$/.test(importer)) return [];
+  const imports = readFileSync(path, 'utf8').matchAll(RELATIVE_IMPORT);
+  return [...imports].flatMap(([_, specifier]) => {
+    if (!specifier) return [];
+    const target = relative(SRC, join(path, '..', specifier));
+    return COURSE_FILES.has(target) ? [{ importer, specifier }] : [];
   });
+});
+
+it('finds the registry importing a course file', () => {
+  expect(COURSE_IMPORTS).toContainEqual({ importer: COURSE_REGISTRY, specifier: './thornwood-trail.ts' });
+});
+
+it('lets only the course registry import course files in game source', () => {
+  const violations = COURSE_IMPORTS.filter(({ importer }) => importer !== COURSE_REGISTRY).map(
+    ({ importer, specifier }) => `${importer} → ${specifier}`,
+  );
   expect(violations).toEqual([]);
 });

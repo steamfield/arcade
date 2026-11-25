@@ -16,6 +16,7 @@ it.each(COURSES)('$id lets all rivals finish within 125% of par and two falls', 
   for (const seed of [1, 2, 3, 4, 5]) {
     const events = new EventLog<GameEvent>(8192);
     const world = createWorld(events, { course, seed, character: 'grit', rivals: true });
+    expect(world.racers.length).toBeGreaterThan(1);
     for (let tick = 0; tick < RACE.countdownTicks + deadline && world.phase !== 'finished'; tick++) {
       events.tick = world.tick;
       stepWorld(world, {}, TICK_DT);
