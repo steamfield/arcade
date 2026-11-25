@@ -32,8 +32,6 @@ function buildBatches(
     .map((gust) => {
       const count = Math.ceil((gust.s1 - gust.s0) * 1.35);
       const mesh = new THREE.InstancedMesh(leaf, material, count);
-      // Leaves wrap across the full span. Render the small batch without cached instance bounds.
-      mesh.frustumCulled = false;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       const leaves = Array.from({ length: count }, (_, i) => {
         mesh.setColorAt(i, new THREE.Color(rng.pick(palette)));
@@ -43,6 +41,15 @@ function buildBatches(
           height: 0.55 + rng.next() * 2.15,
         };
       });
+      // A fixed bound covers every leaf through its whole sweep, including flutter and rotation.
+      const bounds = new THREE.Box3();
+      const corner = new THREE.Vector3();
+      for (const { frame, height } of leaves) {
+        for (const d of [gust.d0, gust.d1]) {
+          bounds.expandByPoint(corner.set(frame.x + d * frame.rx, frame.y + height, frame.z + d * frame.rz));
+        }
+      }
+      mesh.boundingSphere = bounds.expandByScalar(0.55).getBoundingSphere(new THREE.Sphere());
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       root.add(mesh);
       return { gust, mesh, leaves };

@@ -8,36 +8,54 @@ export const SCREENS_CSS = `
   font: 600 16px/1.25 system-ui, sans-serif;
 }
 .rr3d-menus [hidden] { display: none; }
+.arcade-container:has(.rr3d-title:not([hidden])) .arcade-touch :is(.dpad, button:not([data-action="fire"])),
+.arcade-container:has(.rr3d-select:not([hidden])) .arcade-touch .actions button:not([data-action="fire"], [data-action="dash"]) {
+  visibility: hidden;
+}
 .rr3d-title, .rr3d-select { position: absolute; inset: 0; }
 .rr3d-title {
   display: grid;
-  place-items: end center;
-  text-align: center;
-  background: linear-gradient(180deg, #161c1690, transparent 18%, transparent 38%, #171711de 90%);
+  align-items: center;
+  background: linear-gradient(90deg, #102f2bf0, #15382edb 29%, #17382d75 46%, transparent 69%);
 }
 .rr3d-title-copy {
-  margin: 0 max(16px, env(safe-area-inset-right)) max(40px, calc(18px + env(safe-area-inset-bottom)))
-    max(16px, env(safe-area-inset-left));
+  margin-left: calc(clamp(16px, 6vw, 100px) + env(safe-area-inset-left));
+  padding-bottom: 3vh;
 }
 .rr3d-title h1 {
+  position: relative;
+  width: max-content;
   margin: 0;
-  color: #ffe1a0;
-  font: italic 950 clamp(36px, 8.5vw, 104px)/0.95 system-ui, sans-serif;
+  color: #fff4cc;
+  font: italic 900 clamp(48px, 8.4vw, 132px)/0.82 Georgia, serif;
   letter-spacing: -0.065em;
-  text-shadow: 0 4px #35241a, 0 7px 22px #170e08;
+  text-transform: uppercase;
+  text-shadow: 1px 3px #8f542d, 2px 6px #392e1e;
+}
+.rr3d-title h1 span { display: block; margin-left: 0.14em; }
+.rr3d-title h1 sup {
+  position: absolute;
+  right: 0.12em;
+  top: 0.06em;
+  border-block: 0.09em solid currentColor;
+  padding: 0.13em 0.08em;
+  color: #ffd176;
+  font: italic 900 0.34em/1 system-ui, sans-serif;
+  letter-spacing: -0.055em;
 }
 .rr3d-title p {
   display: inline-block;
-  margin: 20px 0 0;
-  padding: 8px 14px;
-  border: 1px solid #f7dcad75;
-  border-radius: 6px;
-  background: #231d17f5;
+  margin: 26px 0 0 0.8em;
+  padding: 9px 16px;
+  color: #fff9e4;
+  border-left: 5px solid #edb858;
+  background: #163d34;
+  box-shadow: 0 2px #102920;
 }
 .rr3d-select {
   display: grid;
   align-items: center;
-  background: linear-gradient(90deg, #231d17f8 8%, #231d17e8 39%, #231d1700 73%);
+  background: linear-gradient(90deg, #132e27fa 8%, #15382fed 38%, #16382b00 72%);
 }
 .rr3d-select-copy {
   margin-left: calc(clamp(14px, 3.8vw, 58px) + env(safe-area-inset-left));
@@ -47,6 +65,8 @@ export const SCREENS_CSS = `
   margin: 0 0 12px;
   color: #ffe1a0;
   font-size: clamp(22px, 3.6vw, 42px);
+  font-family: Georgia, serif;
+  font-style: italic;
   font-weight: 850;
   letter-spacing: -0.04em;
 }
@@ -64,13 +84,14 @@ export const SCREENS_CSS = `
   align-content: start;
   gap: 3px;
   padding: 8px;
-  border: 2px solid #7e6950;
-  border-radius: 7px;
-  background: #32281f;
+  border: 2px solid #69765c;
+  border-radius: 2px 9px 2px 2px;
+  background: #1c382e;
 }
 .rr3d-cards li[aria-current="true"] {
   border-color: #ffe1a0;
-  background: #55402a;
+  background: #395642;
+  box-shadow: inset 0 -3px #f0bf67;
 }
 .rr3d-cards li[aria-current="true"]::after {
   position: absolute;
@@ -97,10 +118,9 @@ export const SCREENS_CSS = `
   text-shadow: 0 1px #231d17;
 }
 @media (max-height: 430px) {
-  .rr3d-title-copy { margin-bottom: max(32px, calc(16px + env(safe-area-inset-bottom))); }
-  .rr3d-title h1 {
-    font-size: min(8.5vw, calc((100vw - 444px - env(safe-area-inset-left) - env(safe-area-inset-right)) / 7.1));
-  }
+  .rr3d-title-copy { margin: 12px 0 0 calc(9vw + env(safe-area-inset-left)); }
+  .rr3d-title h1 { font-size: clamp(34px, min(8vw, 19vh), 70px); }
+  .rr3d-title p { margin-top: 14px; }
   .rr3d-select { align-items: start; }
   .rr3d-select-copy {
     /* Keep menu text above the controls and leave room for the shell's back link. */
@@ -141,14 +161,5 @@ export const SCREENS_CSS = `
 }
 @media (max-width: 700px) and (max-height: 430px) {
   .rr3d-card-species { font-size: 13px; }
-}
-@media (max-width: 760px) and (max-height: 430px) {
-  .rr3d-title {
-    place-items: start center;
-    background: linear-gradient(180deg, #171711e8, transparent 60%);
-  }
-  .rr3d-title-copy { margin-top: calc(24px + env(safe-area-inset-top)); }
-  .rr3d-title h1 { font-size: clamp(36px, 8.5vw, 104px); }
-  .rr3d-title p { margin-top: 10px; }
 }
 `;

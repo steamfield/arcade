@@ -50,6 +50,10 @@ Title, then character select (a 4x2 grid of Thornwood's cast; the pick is saved)
 
 Scenery comes from a CC0 nature kit (`src/engine/assets/nature.glb`, credits and rebuild steps in `src/engine/assets/CREDITS.md`), loaded once at start by `track/nature-kit.ts`, which bakes each model into parts for instancing, recolours the kit's mask-textured leaves with a height gradient and sways foliage with a tick-driven wind (still under reduced motion). `track/forest.ts` plants trees, undergrowth and ground cover per 96 m chunk from per-layer seeded rngs, with soft dark discs under casters as cheap ambient occlusion. Touch devices (`pointer: coarse`) and software WebGL (SwiftShader, llvmpipe; headless test browsers included) get the low tier: no post-processing, a 1024 px shadow map and half the grass.
 
+The trail has two winding bands of packed dirt, damp clay, shale chips and scattered leaves toward the shoulders. Its surface tile comes from a seeded generator. Pit walls expose a broken clay lip above dark subsoil. The tapered fallen trunks, snapped branches and menu stump share one painted bark and end-grain atlas. Pale wooded ridges recede into the sunlit haze behind the forest. The title and racer select show the chosen runner on the stump. The brass-and-enamel pickups match the green race panels and gold place marker.
+
+Both tiers use the same silhouettes, sun and colour palette. The low tier samples a single 128 px ground tile. Hardware desktop WebGL uses a 256 px tile for colour, bump and roughness, bevelled crates with pools of light, and a single batch of dust for dashes and landings. Reduced motion suppresses the dust. The high tier also uses a 2048 px shadow map and the multisampled HDR bloom and colour grade.
+
 ## Course
 
 Thornwood Trail (`src/logic/courses/thornwood-trail.ts`), about 1.1 km in six sections: Forest Floor, Millstream Flats, The Ravine, Windy Ridge, Rotten Bridges, The Clearing. The file documents each section.

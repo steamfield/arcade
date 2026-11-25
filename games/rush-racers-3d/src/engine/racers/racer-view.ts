@@ -144,7 +144,7 @@ export class RacerView {
   /** Poses a dedicated select-screen model on the pedestal, breathing and swishing as it turns. */
   preview(x: number, y: number, z: number, turn: number): void {
     this.runner.position.set(x, y, z);
-    this.runner.rotation.y = this.motion.matches ? 0.45 : turn;
+    this.runner.rotation.y = this.motion.matches ? 1.18 : turn;
     this.shadow.position.set(x, y + 0.012, z);
     this.shadow.material.opacity = 0.32;
     this.pose.rotation.z = 0;

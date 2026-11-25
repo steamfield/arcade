@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { CharacterId } from '../../logic/types.ts';
 
 /**
@@ -25,9 +25,9 @@ const WHITE = 0xfff8ec;
 
 const spheres = new Map<string, THREE.BufferGeometry>();
 
-/** Sphere detail grows with part size (28x18 for big masses), so a racer stays under 15k triangles. */
+/** Sphere detail grows with part size (26x16 for big masses), so a racer stays under 15k triangles. */
 function sphereFor(radius: number, glossy: boolean): THREE.BufferGeometry {
-  const [w, h] = radius > 0.3 ? [28, 18] : radius > 0.12 || glossy ? [20, 13] : [14, 10];
+  const [w, h] = radius > 0.3 ? [26, 16] : radius > 0.12 || glossy ? [20, 13] : [14, 10];
   const key = `${w}x${h}`;
   let geometry = spheres.get(key);
   if (!geometry) {
@@ -45,7 +45,9 @@ const cone = new THREE.LatheGeometry(
   }),
   20,
 );
-const box = new RoundedBoxGeometry(2, 2, 2, 3, 0.55);
+const rounded = new RoundedBoxGeometry(2, 2, 2, 2, 0.55);
+const box = mergeVertices(rounded);
+rounded.dispose();
 
 /**
  * `round` is a smooth blob, `point` a rounded cone, `box` a rounded box. `gloss` is a shiny blob
@@ -100,7 +102,14 @@ const geometries = new Map<CharacterId, RacerGeometry>();
 function paint(geometry: THREE.BufferGeometry, hex: number): THREE.BufferGeometry {
   const color = new THREE.Color(hex);
   const rgb = new Float32Array(geometry.getAttribute('position').count * 3);
-  for (let i = 0; i < rgb.length; i += 3) color.toArray(rgb, i);
+  const normal = geometry.getAttribute('normal');
+  for (let i = 0; i < normal.count; i++) {
+    // Warm the upward planes and tuck the underside into contact shadow, including between limbs.
+    const up = (normal.getY(i) + 1) / 2;
+    rgb[i * 3] = color.r * (0.62 + 0.48 * up);
+    rgb[i * 3 + 1] = color.g * (0.66 + 0.39 * up);
+    rgb[i * 3 + 2] = color.b * (0.72 + 0.29 * up);
+  }
   geometry.setAttribute('color', new THREE.BufferAttribute(rgb, 3));
   return geometry;
 }
@@ -118,18 +127,23 @@ function bigEye(part: Part, x: number, y: number, z: number, size: number): void
 }
 
 function badger(part: Part, blue: number): void {
-  part(0x596275, 0, 0.83, 0.12, 0.66, 0.58, 0.64);
+  part(0x636979, 0, 0.79, 0.12, 0.65, 0.55, 0.7);
   part(0xe1ddd2, 0, 1.04, -0.48, 0.49, 0.39, 0.51);
   part(0xf7eddb, 0, 1.31, 0.02, 0.16, 0.18, 0.61, -0.08);
   for (const side of [-1, 1]) {
     part(INK, side * 0.25, 1.12, -0.68, 0.19, 0.28, 0.35, 0.24, side * -0.19);
     part(0x4b5265, side * 0.35, 1.44, -0.37, 0.14, 0.15, 0.12);
-    bigEye(part, side * 0.19, 1.1, -0.93, 0.1);
+    bigEye(part, side * 0.245, 1.14, -1.005, 0.114);
   }
   part(NOSE, 0, 0.98, -0.97, 0.14, 0.105, 0.12, 0, 0, 'gloss');
   part(blue, 0, 1.41, -0.55, 0.48, 0.11, 0.43);
   part(INK, 0, 1.43, -0.93, 0.19, 0.16, 0.115);
   part(0xffd768, 0, 1.45, -1.02, 0.125, 0.11, 0.045);
+  // A canvas trail pack gives Grit a recognizable back as well as the blue lamp band up front.
+  for (const side of [-1, 1]) part(blue, side * 0.25, 1.13, 0.21, 0.055, 0.19, 0.41, 0.16);
+  part(0x9f623a, 0, 1.09, 0.61, 0.3, 0.235, 0.17, 0.38, 0, 'box');
+  part(0xc18a51, 0, 1.2, 0.64, 0.31, 0.13, 0.175, 0.46, 0, 'box');
+  part(0xf4c474, 0, 1.12, 0.8, 0.06, 0.065, 0.028, 0.32, 0, 'box');
   part.group('tail', () => part(0x8993a0, 0, 0.68, 0.76, 0.18, 0.155, 0.23));
 }
 

@@ -20,11 +20,9 @@ export interface ItemView {
 const UP = new THREE.Vector3(0, 1, 0);
 
 /** Builds the trail's crate meshes and fixed pools for every racing item and effect. */
-export function createItemView(course: Course, track: TrackFrames): ItemView {
-  const { root, cratePositions, crates, pie, glob, splats, flame, burr, trap, stun, shield, dynamic } = createItemPools(
-    course,
-    track,
-  );
+export function createItemView(course: Course, track: TrackFrames, small: boolean): ItemView {
+  const { root, cratePositions, glows, crates, pie, glob, splats, flame, burr, trap, stun, shield, dynamic } =
+    createItemPools(course, track, small);
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const point = new THREE.Object3D();
   const direction = new THREE.Vector3();
@@ -58,6 +56,8 @@ export function createItemView(course: Course, track: TrackFrames): ItemView {
       point.rotation.set(0, 0.24 + 1.3 * time + i * 0.47, 0);
       point.scale.setScalar(shut ? 0.88 : 1);
       crates.draw(point);
+      const glow = glows[i];
+      if (glow) glow.visible = !shut;
       i++;
     }
   }

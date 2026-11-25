@@ -16,34 +16,64 @@ export function configureRenderer(renderer: THREE.WebGLRenderer, theme: Theme): 
   renderer.shadowMap.type = THREE.PCFShadowMap;
 }
 
-/** A sky dome that fades from the fog colour at the horizon to `zenith` overhead, centred on the camera. */
-function skyDome(sky: Theme['sky']): THREE.Mesh {
-  const material = new THREE.ShaderMaterial({
-    uniforms: {
-      horizon: { value: new THREE.Color(sky.color) },
-      zenith: { value: new THREE.Color(sky.zenith) },
-    },
-    vertexShader: /* glsl */ `
-      varying vec3 vDir;
-      void main() {
-        vDir = normalize(position);
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-      }`,
-    fragmentShader: /* glsl */ `
-      uniform vec3 horizon;
-      uniform vec3 zenith;
-      varying vec3 vDir;
-      void main() {
-        float up = pow(smoothstep(-0.02, 0.32, vDir.y), 0.8);
-        gl_FragColor = vec4(mix(horizon, zenith, up), 1.0);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-      }`,
+/** Two wooded ridges and sunlit air, painted into the horizon bands of the camera-centred sky dome. */
+function skyDome(sky: Theme['sky'], sun: Theme['light']['sun']): THREE.Mesh {
+  const slices = 112;
+  const geometry = new THREE.SphereGeometry(100, slices, 12);
+  const position = geometry.getAttribute('position');
+  const colors = new Float32Array(position.count * 3);
+  const sunDirection = new THREE.Vector3(...sun.position).normalize();
+  const direction = new THREE.Vector3();
+  const color = new THREE.Color();
+  const horizon = new THREE.Color(sky.color);
+  const zenith = new THREE.Color(sky.zenith);
+  const farRidge = horizon.clone().lerp(new THREE.Color(0x729caa), 0.34);
+  const nearRidge = horizon.clone().lerp(new THREE.Color(0x678f8b), 0.49);
+  const air = horizon.clone().lerp(new THREE.Color(0xffe8bf), 0.23);
+  const bandColors = [
+    zenith,
+    zenith,
+    zenith,
+    horizon,
+    air,
+    air,
+    farRidge,
+    farRidge,
+    nearRidge,
+    horizon,
+    horizon,
+    horizon,
+    horizon,
+  ];
+  for (let col = 0; col <= slices; col++) {
+    const a = (2 * Math.PI * col) / slices;
+    const crest = 0.167 + 0.026 * Math.sin(3 * a + 1) + 0.014 * Math.cos(9 * a) + 0.012 * Math.sin(22 * a);
+    const near = 0.112 + 0.012 * Math.sin(4 * a) + 0.009 * Math.cos(13 * a) + 0.006 * Math.cos(48 * a);
+    const far = Math.max(crest, near + 0.014);
+    const heights = [1, 0.86, 0.44, 0.29, 0.24, far + 0.004, far, near + 0.003, near, 0.08, -0.3, -0.7, -1];
+    for (const [row, y] of heights.entries()) {
+      const i = row * (slices + 1) + col;
+      const radius = Math.sqrt(1 - y * y);
+      direction.set(-radius * Math.cos(a), y, radius * Math.sin(a));
+      position.setXYZ(i, direction.x * 100, y * 100, direction.z * 100);
+      const aboveTrees = THREE.MathUtils.smoothstep(y, 0.08, 0.18);
+      const glow = aboveTrees * Math.max(0, direction.dot(sunDirection)) ** 5;
+      color.lerpColors(horizon, bandColors[row] ?? horizon, aboveTrees);
+      color.r += 0.33 * glow;
+      color.g += 0.17 * glow;
+      color.b += 0.045 * glow;
+      color.toArray(colors, i * 3);
+    }
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const material = new THREE.MeshBasicMaterial({
+    vertexColors: true,
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
+    toneMapped: false,
   });
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(100, 24, 12), material);
+  const dome = new THREE.Mesh(geometry, material);
   dome.renderOrder = -1;
   dome.frustumCulled = false;
   return dome;
@@ -88,7 +118,7 @@ export function createAtmosphere(renderer: THREE.WebGLRenderer, scene: THREE.Sce
   scene.fog = new THREE.Fog(horizon, sky.fogNear, sky.fogFar);
   scene.environment = environment(renderer, sky, theme.ground.grass);
   scene.environmentIntensity = light.environment;
-  const dome = skyDome(sky);
+  const dome = skyDome(sky, light.sun);
 
   const sun = new THREE.DirectionalLight(light.sun.color, light.sun.intensity);
   const offset = new THREE.Vector3(...light.sun.position);
@@ -107,7 +137,7 @@ export function createAtmosphere(renderer: THREE.WebGLRenderer, scene: THREE.Sce
   shadow.camera.updateProjectionMatrix();
   shadow.bias = -0.0004;
   shadow.normalBias = 0.04;
-  shadow.radius = 3;
+  shadow.radius = small ? 1.35 : 2.25;
   const hemisphere = new THREE.HemisphereLight(
     light.hemisphere.sky,
     light.hemisphere.ground,

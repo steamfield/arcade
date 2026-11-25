@@ -1,8 +1,8 @@
-import { createRng } from '@arcade/core';
 import * as THREE from 'three';
 import type { Course, Span } from '../../logic/types.ts';
 import type { Theme } from '../themes/types.ts';
 import type { TrackFrame, TrackFrames } from './track-geometry.ts';
+import { trailTile } from './trail-tile.ts';
 
 /** Chunk size in terrain strips and approximate meters of scenery. */
 export const TERRAIN_CHUNK = 96;
@@ -10,52 +10,11 @@ export const TERRAIN_CHUNK = 96;
 export const SCENERY_RUNOUT = { start: 24, finish: 120 };
 
 const PIT_DEPTH = 8;
-/** Meters of ground one repeat of the grain texture covers. */
-const GRAIN_TILE = 3.5;
-
-/**
- * A tiling greyscale grain (soft blotches plus pebbly speckle) multiplied over the vertex colours,
- * so the trail and verges read as ground up close. Seeded so captures stay identical.
- */
-function groundGrain(): THREE.DataTexture {
-  const size = 128;
-  const rng = createRng(0x9a17);
-  const lattice = (cells: number) => Array.from({ length: cells * cells }, () => rng.next());
-  const smooth = (t: number) => t * t * (3 - 2 * t);
-  const noise = (grid: number[], cells: number, x: number, y: number) => {
-    const gx = (x / size) * cells;
-    const gy = (y / size) * cells;
-    const x0 = Math.floor(gx);
-    const y0 = Math.floor(gy);
-    const at = (i: number, j: number) => grid[((j % cells) * cells + (i % cells)) % grid.length] ?? 0;
-    const tx = smooth(gx - x0);
-    const ty = smooth(gy - y0);
-    const top = at(x0, y0) * (1 - tx) + at(x0 + 1, y0) * tx;
-    const bottom = at(x0, y0 + 1) * (1 - tx) + at(x0 + 1, y0 + 1) * tx;
-    return top * (1 - ty) + bottom * ty;
-  };
-  const octaves = [
-    { cells: 4, weight: 0.5, grid: lattice(16) },
-    { cells: 16, weight: 0.3, grid: lattice(256) },
-    { cells: 64, weight: 0.2, grid: lattice(4096) },
-  ];
-  const pixels = new Uint8Array(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      let value = 0;
-      for (const { cells, weight, grid } of octaves) value += noise(grid, cells, x, y) * weight;
-      const speck = rng.next();
-      const shade = 0.8 + (value - 0.5) * 0.32 + (speck > 0.97 ? 0.12 : speck < 0.04 ? -0.14 : 0);
-      const byte = Math.round(255 * Math.max(0, Math.min(1, shade)));
-      const i = (y * size + x) * 4;
-      pixels[i] = byte;
-      pixels[i + 1] = byte;
-      pixels[i + 2] = byte;
-      pixels[i + 3] = 255;
-    }
-  }
-  const texture = new THREE.DataTexture(pixels, size, size);
-  texture.wrapS = THREE.RepeatWrapping;
+/** Footpath and verge share one mirrored strip, from the middle of the trail to the forest floor. */
+function groundGrain(small: boolean): THREE.DataTexture {
+  const size = small ? 128 : 256;
+  const texture = new THREE.DataTexture(trailTile(size, 0x9a17), size, size);
+  texture.wrapS = THREE.MirroredRepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.magFilter = THREE.LinearFilter;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -186,9 +145,11 @@ export function terrainPointAt(grid: TerrainGrid, s: number, d: number) {
   };
 }
 
-function classifyHoles(pits: Span[], strips: Interval<TrackRow>[], widths: Interval<number>[]): boolean[][] {
+type Holes = (Span | undefined)[][];
+
+function classifyHoles(pits: Span[], strips: Interval<TrackRow>[], widths: Interval<number>[]): Holes {
   return strips.map(({ a, b }) =>
-    widths.map((width) => pits.some((pit) => contains(pit, (a.s + b.s) / 2, (width.a + width.b) / 2))),
+    widths.map((width) => pits.find((pit) => contains(pit, (a.s + b.s) / 2, (width.a + width.b) / 2))),
   );
 }
 
@@ -209,7 +170,7 @@ class TerrainChunk {
    * The open ground's colour at a point: dirt down the trail, fading through a worn shoulder to
    * grass along an edge that wanders with `s`, with darker grass patches further out.
    */
-  private groundAt(s: number, d: number): THREE.Color {
+  private groundAt(s: number, d: number, mud: Span | null): THREE.Color {
     const { dirt, shoulder, grass } = this.ground;
     const edge = this.halfWidth + 0.35 * Math.sin(s * 0.7) + 0.25 * Math.sin(s * 1.9 + 1);
     const out = Math.abs(d) - edge;
@@ -221,22 +182,34 @@ class TerrainChunk {
     const grown = smooth((out - 0.6 - 0.5 * Math.sin(s * 0.43 + d)) / 2.2);
     this.mix.copy(dirt).lerp(shoulder, worn).lerp(grass, grown);
     const patch = 0.5 + 0.5 * Math.sin(s * 0.11 + d * 0.23) * Math.sin(s * 0.07 - d * 0.31);
-    return this.mix.multiplyScalar(1 - 0.22 * grown * patch);
+    // Two overlapping packed footpaths drift through the gravel as the trail bends.
+    const line = Math.abs(d - 0.55 * Math.sin(s * 0.09)) / this.halfWidth;
+    const packed = 1 - smooth(Math.abs(line - 0.36) / 0.37);
+    const loam = 0.12 * Math.sin(d * 1.65 + s * 0.11) + 0.08 * Math.cos(d * 0.8 - s * 0.19);
+    this.mix.multiplyScalar(0.77 + 0.31 * packed + loam * (1 - grown) - 0.23 * grown * patch);
+    if (mud) {
+      const bank = Math.min(d - mud.d0, mud.d1 - d, s - mud.s0, mud.s1 - s);
+      const pools = 0.5 + 0.5 * Math.sin(0.47 * s + d) * Math.cos(s * 0.29 - 2.5 * d);
+      this.mix.lerp(this.ground.mud, (0.18 + 0.81 * smooth(bank / (0.9 + 1.4 * pools))) * (0.72 + 0.28 * pools));
+    }
+    return this.mix;
   }
 
-  private vertex(row: TrackRow, d: number, offset: number, fixed: THREE.Color | null): void {
+  private vertex(row: TrackRow, d: number, offset: number, fixed: THREE.Color | Span | null, dx = 0, dz = 0): void {
     const { x, y, z } = vertexAt(row, d, this.halfWidth);
     const { s } = row;
-    const color = fixed ?? this.groundAt(s, d);
+    const color = fixed instanceof THREE.Color ? fixed : this.groundAt(s, d, fixed);
     const mottling = 0.05 * Math.sin(s * 2.2 + d * 4.9) + 0.07 * Math.sin(s * 0.29 + Math.sin(d) * 2.3);
-    const shade = 1 + mottling - 0.11 * Math.min(1, Math.abs(d) / this.halfWidth);
-    this.positions.push(x, y + offset, z);
-    this.uvs.push(x / GRAIN_TILE, (z + y + offset) / GRAIN_TILE);
+    const shade =
+      (1 + mottling - 0.11 * Math.min(1, Math.abs(d) / this.halfWidth)) *
+      (1 - 0.82 * Math.min(1, -Math.min(0, offset) / 3));
+    this.positions.push(x + dx, y + offset, z + dz);
+    this.uvs.push((d + 0.23 * Math.sin(s * 0.47)) / this.halfWidth, (s + offset + d * 0.16) / 4.7);
     this.colors.push(color.r * shade, color.g * shade, color.b * shade);
   }
 
   /** Adds a flat cell; a null colour shades it as open ground by position. */
-  surface({ a, b, d0, d1 }: Cell, offset: number, color: THREE.Color | null): void {
+  surface({ a, b, d0, d1 }: Cell, offset: number, color: THREE.Color | Span | null): void {
     this.vertex(a, d0, offset, color);
     this.vertex(a, d1, offset, color);
     this.vertex(b, d1, offset, color);
@@ -245,28 +218,39 @@ class TerrainChunk {
     this.vertex(b, d0, offset, color);
   }
 
-  private wall({ a, b, d0, d1 }: Cell, from: number, to: number, color: THREE.Color): void {
-    this.vertex(a, d0, from, color);
-    this.vertex(b, d1, from, color);
-    this.vertex(b, d1, to, color);
-    this.vertex(a, d0, from, color);
-    this.vertex(b, d1, to, color);
-    this.vertex(a, d0, to, color);
+  private pitEdge(a: TrackRow, d0: number, b: TrackRow, d1: number, pit: Span): void {
+    // Uneven exposed clay over a darker seam. Both endpoints use track coordinates so the
+    // strata join across cells and chunks, including at the corners of a hole.
+    const seam = (s: number, d: number) => -0.43 - 0.19 * Math.sin(3.4 * d + s) - 0.12 * Math.cos(1.7 * d - s);
+    const clayA = seam(a.s, d0);
+    const clayB = seam(b.s, d1);
+    const wallVertex = (row: TrackRow, d: number, depth: number, color: THREE.Color) => {
+      // Broken banks slope into the hole below its lip. Adjacent faces meet at the same inset.
+      const inset = Math.min(0.72, -depth * 0.82) * (0.9 + 0.19 * Math.cos(row.s * 1.3 + d * 2.1));
+      const ds = row.s === pit.s0 ? inset : row.s === pit.s1 ? -inset : 0;
+      const dd = d === pit.d0 ? inset : d === pit.d1 ? -inset : 0;
+      this.vertex(row, d, depth, color, row.frame.tx * ds + row.frame.rx * dd, row.frame.tz * ds + row.frame.rz * dd);
+    };
+    const band = (topA: number, topB: number, baseA: number, baseB: number, color: THREE.Color) => {
+      wallVertex(a, d0, topA, color);
+      wallVertex(b, d1, topB, color);
+      wallVertex(b, d1, baseB, color);
+      wallVertex(a, d0, topA, color);
+      wallVertex(b, d1, baseB, color);
+      wallVertex(a, d0, baseA, color);
+    };
+    band(0, 0, clayA, clayB, this.ground.pitRim);
+    band(clayA, clayB, clayA - 0.15, clayB - 0.15, this.ground.pitFloor);
+    band(clayA - 0.15, clayB - 0.15, -PIT_DEPTH, -PIT_DEPTH, this.ground.pitWall);
   }
 
-  private pitEdge(a: TrackRow, d0: number, b: TrackRow, d1: number): void {
-    const edge = { a, b, d0, d1 };
-    this.wall(edge, 0, -0.45, this.ground.pitRim);
-    this.wall(edge, -0.45, -PIT_DEPTH, this.ground.pitWall);
-  }
-
-  pit(cell: Cell, holes: boolean[][], i: number, j: number): void {
+  pit(cell: Cell, pit: Span, holes: Holes, i: number, j: number): void {
     const { a, b, d0, d1 } = cell;
     this.surface(cell, -PIT_DEPTH, this.ground.pitFloor);
-    if (!holes[i - 1]?.[j]) this.pitEdge(a, d0, a, d1);
-    if (!holes[i + 1]?.[j]) this.pitEdge(b, d1, b, d0);
-    if (!holes[i]?.[j - 1]) this.pitEdge(b, d0, a, d0);
-    if (!holes[i]?.[j + 1]) this.pitEdge(a, d1, b, d1);
+    if (!holes[i - 1]?.[j]) this.pitEdge(a, d0, a, d1, pit);
+    if (!holes[i + 1]?.[j]) this.pitEdge(b, d1, b, d0, pit);
+    if (!holes[i]?.[j - 1]) this.pitEdge(b, d0, a, d0, pit);
+    if (!holes[i]?.[j + 1]) this.pitEdge(a, d1, b, d1, pit);
   }
 
   mesh(material: THREE.Material): THREE.Mesh {
@@ -290,7 +274,7 @@ function buildChunk(
   course: Course,
   strips: Interval<TrackRow>[],
   widths: Interval<number>[],
-  holes: boolean[][],
+  holes: Holes,
   mud: Span[],
   first: number,
   ground: GroundColors,
@@ -303,20 +287,28 @@ function buildChunk(
       (s > course.startS && s < course.startS + 0.65) || (s > course.finishS - 0.9 && s < course.finishS);
     for (const [j, { a: d0, b: d1 }] of widths.entries()) {
       const cell = { a, b, d0, d1 };
-      if (holes[i]?.[j]) {
-        chunk.pit(cell, holes, i, j);
+      const pit = holes[i]?.[j];
+      if (pit) {
+        chunk.pit(cell, pit, holes, i, j);
         continue;
       }
       const d = (d0 + d1) / 2;
-      chunk.surface(cell, 0, surfaceColor(d, course.halfWidth, acrossLine, ground));
-      if (!acrossLine && mud.some((patch) => contains(patch, s, d))) chunk.surface(cell, 0.025, ground.mud);
+      const mark = surfaceColor(d, course.halfWidth, acrossLine, ground);
+      const wet = mud.find((patch) => contains(patch, s, d));
+      chunk.surface(cell, 0, mark ?? wet ?? null);
     }
   }
   return chunk;
 }
 
 /** Adds the chunked trail and verges, including mud surfaces and pit walls. */
-export function trackTerrain(root: THREE.Group, course: Course, grid: TerrainGrid, palette: Theme['ground']): void {
+export function trackTerrain(
+  root: THREE.Group,
+  course: Course,
+  grid: TerrainGrid,
+  palette: Theme['ground'],
+  small: boolean,
+): void {
   const ground: GroundColors = {
     dirt: new THREE.Color(palette.dirt),
     shoulder: new THREE.Color(palette.shoulder),
@@ -333,10 +325,14 @@ export function trackTerrain(root: THREE.Group, course: Course, grid: TerrainGri
   const pits = course.features.filter((feature) => feature.kind === 'pit');
   const mud = course.features.filter((feature) => feature.kind === 'mud');
   const holes = classifyHoles(pits, strips, widths);
+  const grain = groundGrain(small);
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,
     side: THREE.DoubleSide,
-    map: groundGrain(),
+    map: grain,
+    bumpMap: small ? null : grain,
+    bumpScale: 0.045,
+    roughnessMap: small ? null : grain,
     roughness: 0.95,
   });
   for (let first = 0; first < strips.length; first += TERRAIN_CHUNK) {

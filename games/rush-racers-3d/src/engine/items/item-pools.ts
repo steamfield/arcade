@@ -1,9 +1,10 @@
 import { TICK_HZ } from '@arcade/core';
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { CRATE, ITEMS, RUN } from '../../logic/tuning.ts';
 import type { Course } from '../../logic/types.ts';
 import type { TrackFrames } from '../track/track-geometry.ts';
-import { crateMaterial, flameGeometry, starGeometry } from './item-geometry.ts';
+import { crateGlowGeometry, crateMaterial, flameGeometry, starGeometry } from './item-geometry.ts';
 import { createSplatView } from './splat-view.ts';
 
 const RACER_COUNT = 4;
@@ -66,17 +67,62 @@ class Instances extends THREE.InstancedMesh {
   }
 }
 
+/** Painted pool of light under open pickups, with a soft falloff and a fine ring in the dust. */
+function glowMaterial(): THREE.MeshBasicMaterial {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    const glow = ctx.createRadialGradient(32, 32, 0, 32, 32, 31);
+    glow.addColorStop(0, '#fff1aaaf');
+    glow.addColorStop(0.51, '#ffe9a067');
+    glow.addColorStop(0.65, '#ffe9a036');
+    glow.addColorStop(0.69, '#ffdf8b89');
+    glow.addColorStop(0.75, '#ffd69022');
+    glow.addColorStop(1, '#ffd69000');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, 64, 64);
+  }
+  const map = new THREE.CanvasTexture(canvas);
+  map.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.MeshBasicMaterial({
+    map,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    opacity: 0.44,
+  });
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <fog_fragment>',
+      `#include <fog_fragment>
+      #ifdef USE_FOG
+        gl_FragColor.a *= 1.0 - fogFactor;
+      #endif`,
+    );
+  };
+  return material;
+}
+
 /** Builds fixed-capacity pools with shared geometry and materials. */
-export function createItemPools(course: Course, track: TrackFrames) {
+export function createItemPools(course: Course, track: TrackFrames, small: boolean) {
   const root = new THREE.Group();
-  const cratePositions = course.features
-    .filter((feature) => feature.kind === 'crate')
-    .map(({ s, d }) => {
-      const { x, y, z, rx, rz } = track.frameAt(s);
-      return new THREE.Vector3(x + d * rx, y + CRATE.height, z + d * rz);
-    });
+  const features = course.features.filter((feature) => feature.kind === 'crate');
+  const cratePositions = features.map(({ s, d }) => {
+    const { x, y, z, rx, rz } = track.frameAt(s);
+    return new THREE.Vector3(x + d * rx, y + CRATE.height, z + d * rz);
+  });
   // The crate pool is capped at one box per crate feature, in feature order.
-  const crates = new Instances(root, new THREE.BoxGeometry(1.58, 1.58, 1.58), crateMaterial(), cratePositions.length);
+  const shape = small ? new THREE.BoxGeometry(1.58, 1.58, 1.58) : new RoundedBoxGeometry(1.58, 1.58, 1.58, 1, 0.085);
+  const crates = new Instances(root, shape, crateMaterial(), cratePositions.length);
+  const glow = small ? null : glowMaterial();
+  const glows = glow
+    ? features.map(({ s, d }) => {
+        const mesh = new THREE.Mesh(crateGlowGeometry(course, track, s, d), glow);
+        root.add(mesh);
+        return mesh;
+      })
+    : [];
   crates.castShadow = true;
   const ball = new THREE.SphereGeometry(1, 12, 8);
   const cone = new THREE.ConeGeometry(1, 2, 6);
@@ -134,5 +180,19 @@ export function createItemPools(course: Course, track: TrackFrames) {
     RACER_COUNT,
   );
   const dynamic = [crates, pie, glob, flame, burr, trap, stun, shield];
-  return { root, cratePositions, crates, pie, glob, splats, flame, burr, trap, stun, shield, dynamic };
+  return {
+    root,
+    cratePositions,
+    glows,
+    crates,
+    pie,
+    glob,
+    splats,
+    flame,
+    burr,
+    trap,
+    stun,
+    shield,
+    dynamic,
+  };
 }

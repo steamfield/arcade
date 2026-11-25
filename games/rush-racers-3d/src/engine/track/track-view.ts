@@ -16,11 +16,12 @@ export function createTrackView(
   theme: Theme,
   kit: NatureKit,
   light: boolean,
+  timber: THREE.Material,
 ) {
   const root = new THREE.Group();
   const grid = buildTerrainGrid(course, track);
-  trackTerrain(root, course, grid, theme.ground);
+  trackTerrain(root, course, grid, theme.ground, light);
   plantForest(root, grid, track.length, seed, theme.scenery, kit, light);
-  trackLandmarks(root, course, track, theme.props);
+  trackLandmarks(root, course, track, theme.props, timber);
   return { root, tick: windLeaves(root, course, track, seed, theme.gustLeaves) };
 }

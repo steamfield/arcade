@@ -5,6 +5,7 @@ import { groundY, type LogFeature } from '../../logic/course.ts';
 import { RUN } from '../../logic/tuning.ts';
 import type { Course } from '../../logic/types.ts';
 import type { Theme } from '../themes/types.ts';
+import { timberUVs } from './timber.ts';
 import type { TrackFrames } from './track-geometry.ts';
 
 type ArchTitle = 'START' | 'FINISH';
@@ -18,27 +19,39 @@ function paint(geometry: THREE.BufferGeometry, getColor: (i: number) => THREE.Co
   return geometry;
 }
 
-function logGeometry(
-  feature: LogFeature,
-  course: Course,
-  track: TrackFrames,
-  cutWood: THREE.Color,
-  bark: readonly THREE.Color[],
-): THREE.BufferGeometry {
+function logGeometry(feature: LogFeature, course: Course, track: TrackFrames): THREE.BufferGeometry {
   const s = feature.s + RUN.logDepth / 2;
   const f = track.frameAt(s);
-  const y = groundY(course, feature.s) + feature.height / 2;
+  const y = groundY(course, feature.s) + feature.height * 0.48;
   const point = track.toWorld(s, (feature.d0 + feature.d1) / 2, y);
-  const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 16, 1);
-  const normals = geometry.getAttribute('normal');
-  return paint(geometry, (i) => {
-    if (Math.abs(normals.getY(i)) > 0.5) return cutWood;
-    return bark[Math.floor((normals.getZ(i) + 1) * 3 + normals.getX(i) * 2 + 4) % bark.length] ?? cutWood;
-  })
+  const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 16, 4);
+  timberUVs(geometry);
+  const position = geometry.getAttribute('position');
+  const color = new THREE.Color();
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i);
+    const h = position.getY(i);
+    const z = position.getZ(i);
+    const radius = 0.97 - h * 0.07 + 0.042 * Math.sin(h * 13 + s + x * 4 + z);
+    position.setXYZ(i, x * radius + 0.024 * Math.sin(h * 7 + s), h, z * radius);
+  }
+  geometry.computeVertexNormals();
+  const width = feature.d1 - feature.d0;
+  const trunk = paint(geometry, (i) => color.setScalar(0.89 - 0.27 * position.getX(i)))
     .rotateZ(-Math.PI / 2)
-    .scale(feature.d1 - feature.d0, feature.height, RUN.logDepth)
-    .rotateY(-Math.atan2(f.tx, -f.tz))
-    .translate(point.x, point.y, point.z);
+    .scale(width, feature.height, RUN.logDepth);
+  // A snapped-off limb shows the pale heartwood to runners approaching a full-width log.
+  const limb = new THREE.CylinderGeometry(feature.height * 0.16, feature.height * 0.24, 0.43, 11);
+  timberUVs(limb, 0.15);
+  paint(limb, () => color.setScalar(0.94));
+  limb
+    .rotateX(1.04)
+    .rotateZ(-0.37)
+    .translate(width * 0.31, feature.height * 0.17, RUN.logDepth * 0.39);
+  const logGeometry = mergeGeometries([trunk, limb]);
+  trunk.dispose();
+  limb.dispose();
+  return logGeometry.rotateY(-Math.atan2(f.tx, -f.tz)).translate(point.x, point.y, point.z);
 }
 
 function signTexture(title: ArchTitle, palette: Theme['props']['sign']): THREE.CanvasTexture | undefined {
@@ -55,8 +68,14 @@ function signTexture(title: ArchTitle, palette: Theme['props']['sign']): THREE.C
   context.strokeStyle = `#${new THREE.Color(palette.border).getHexString()}`;
   context.lineWidth = 4;
   context.strokeRect(7, 7, 626, 98);
+  for (const x of [31, 545]) {
+    for (let i = 0; i < 6; i++) {
+      context.fillStyle = i % 2 ? '#e3bc78' : '#486957';
+      context.fillRect(x + (i % 3) * 18, 40 + Math.floor(i / 3) * 18, 16, 16);
+    }
+  }
   context.fillStyle = `#${new THREE.Color(palette.text).getHexString()}`;
-  context.font = '900 72px system-ui';
+  context.font = 'italic 900 70px Georgia, serif';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillText(title, 320, 57);
@@ -81,42 +100,47 @@ function archAt(s: number, title: ArchTitle, halfWidth: number, track: TrackFram
   };
   for (const side of [-1, 1]) {
     const post = side * (halfWidth + 0.45);
-    box(0.61, 6, 0.65, post, 2.875, wood);
+    box(0.46, 6.51, 0.5, post, 3.2, wood);
     box(0.82, 0.58, 0.81, post, 0.28, trim);
-    box(0.77, 0.23, 0.77, post, 5.9, trim);
+    box(0.65, 0.23, 0.64, post, 6.43, trim);
   }
-  box(halfWidth * 2 + 1.6, 0.63, 0.74, 0, 5.51, wood);
-  box(halfWidth * 2 + 1.84, 0.13, 0.88, 0, 5.86, trim);
+  box(halfWidth * 2 + 1.6, 0.24, 0.37, 0, 6.24, wood);
+  box(halfWidth * 2 + 1.84, 0.1, 0.44, 0, 6.41, trim);
 
   const map = signTexture(title, palette.sign);
   if (!map) return { pieces };
-  const signHeight = 5.18;
-  box(6.36, 1.08, 0.38, 0, signHeight, trim);
+  const signHeight = 5.91;
+  box(6.36, 1.08, 0.14, 0, signHeight, trim);
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(6.18, 0.97), new THREE.MeshBasicMaterial({ map }));
   sign.rotation.y = yaw;
-  sign.position.set(f.x - f.tx * 0.39, f.y + signHeight, f.z - f.tz * 0.39);
+  sign.position.set(f.x - f.tx * 0.235, f.y + signHeight, f.z - f.tz * 0.235);
   return { pieces, sign };
 }
 
 /** Adds the merged log and arch geometry, plus the signs when a 2D canvas is available. */
-export function trackLandmarks(root: THREE.Group, course: Course, track: TrackFrames, palette: Theme['props']): void {
-  const cutWood = new THREE.Color(palette.cutWood);
-  const bark = palette.bark.map((color) => new THREE.Color(color));
+export function trackLandmarks(
+  root: THREE.Group,
+  course: Course,
+  track: TrackFrames,
+  palette: Theme['props'],
+  timber: THREE.Material,
+): void {
   const pieces = course.features
     .filter((feature) => feature.kind === 'log')
-    .map((feature) => logGeometry(feature, course, track, cutWood, bark));
+    .map((feature) => logGeometry(feature, course, track));
   for (const [s, title] of [
     [course.startS, 'START'],
     [course.finishS, 'FINISH'],
   ] as const) {
     const arch = archAt(s, title, course.halfWidth, track, palette);
-    pieces.push(...arch.pieces);
+    for (const piece of arch.pieces) {
+      const uv = piece.getAttribute('uv');
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.29, 0.14);
+      pieces.push(piece);
+    }
     if (arch.sign) root.add(arch.sign);
   }
-  const props = new THREE.Mesh(
-    mergeGeometries(pieces),
-    new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85 }),
-  );
+  const props = new THREE.Mesh(mergeGeometries(pieces), timber);
   props.castShadow = true;
   props.receiveShadow = true;
   root.add(props);

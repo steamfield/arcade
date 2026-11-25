@@ -15,7 +15,7 @@ export const HUD_CSS = `
   background: radial-gradient(ellipse 75% 70% at 50% 55%, transparent 60%, #1d140c4d 100%);
 }
 .rr3d-race-info, .rr3d-dash, .rr3d-race-hint, .rr3d-results {
-  background: #231d17f5;
+  background: #19392ff5;
   border: 1px solid #f7dcad5c;
   box-shadow: 0 3px 10px #19130f44;
 }
@@ -26,13 +26,22 @@ export const HUD_CSS = `
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 12px;
-  border-radius: 8px;
+  padding: 0 12px 0 0;
+  border-radius: 3px 12px 3px 3px;
   font-size: 23px;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
 }
-.rr3d-place { min-width: 2.4ch; color: #ffda8f; }
+.rr3d-place {
+  order: -1;
+  min-width: 2.4ch;
+  padding: 5px 13px 6px 9px;
+  background: #ffce78;
+  color: #25372a;
+  clip-path: polygon(0 0,100% 0,88% 100%,0 100%);
+  font: italic 900 1.25em/1 Georgia, serif;
+  text-align: center;
+}
 .rr3d-progress { width: clamp(66px, 20vw, 180px); padding-inline: 5px; }
 .rr3d-lane {
   position: relative;
@@ -54,7 +63,7 @@ export const HUD_CSS = `
   width: 8px;
   height: 8px;
   border-radius: 1px;
-  border-color: #ffda8f;
+  border-color: #ffce78;
   background: #fff6df;
   transform: translateX(-50%) rotate(45deg);
 }
@@ -94,9 +103,9 @@ export const HUD_CSS = `
   box-sizing: border-box;
   width: 52px;
   height: 48px;
-  border: 1px solid #9e8566;
-  border-radius: 8px;
-  background: #231d17f5;
+  border: 1px solid #abac89;
+  border-radius: 3px 10px 3px 3px;
+  background: #19392ff5;
   box-shadow: 0 3px 10px #19130f44;
 }
 .rr3d-item-slot:not([data-held])::before {
@@ -107,7 +116,7 @@ export const HUD_CSS = `
   background: #99866d;
 }
 .rr3d-item-slot[data-selected] {
-  border: 2px solid #ffda8f;
+  border: 2px solid #ffce78;
   box-shadow: 0 0 0 1px #1b1410, 0 3px 10px #19130f44;
 }
 .rr3d-item-slot[data-selected]::after {
@@ -117,7 +126,7 @@ export const HUD_CSS = `
   width: 15px;
   height: 4px;
   border-radius: 0 0 2px 2px;
-  background: #ffda8f;
+  background: #ffce78;
 }
 .rr3d-item-slot[data-pickup] {
   background: #734921;
@@ -210,7 +219,7 @@ export const HUD_CSS = `
   background: #ffffff0c;
 }
 .rr3d-results li[data-player] { background: #72532e; }
-.rr3d-results .rr3d-best { color: #ffda8f; }
+.rr3d-results .rr3d-best { color: #ffce78; }
 .rr3d-results .rr3d-badge { margin-left: 8px; font-weight: 850; }
 .arcade-container:has(.rr3d-results:not([hidden])) .arcade-touch :is(.dpad, button[data-action="jump"]) {
   visibility: hidden;

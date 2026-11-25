@@ -1,44 +1,41 @@
 import { TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
 import type { CharacterId, Course } from '../../logic/types.ts';
-import type { Theme } from '../themes/types.ts';
+import { timberUVs } from '../track/timber.ts';
 import type { TrackFrames } from '../track/track-geometry.ts';
 import { RacerView } from './racer-view.ts';
 
-/** Growth rings for the stump's cut face: light and dark bands, slightly wobbly, darker at the rim. */
-function ringTexture(): THREE.DataTexture {
-  const size = 128;
-  const pixels = new Uint8Array(size * size * 4);
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const dx = (x + 0.5) / size - 0.5;
-      const dy = (y + 0.5) / size - 0.5;
-      const r = Math.hypot(dx, dy) * 2;
-      const wobble = 0.015 * Math.sin(Math.atan2(dy, dx) * 5);
-      const ring = 0.5 + 0.5 * Math.cos((r + wobble) * 58);
-      const shade = Math.round(255 * (0.62 + 0.22 * ring) * (r > 0.92 ? 0.55 : 1));
-      const i = (y * size + x) * 4;
-      pixels.set([shade, shade, shade, 255], i);
-    }
-  }
-  const texture = new THREE.DataTexture(pixels, size, size);
-  texture.magFilter = THREE.LinearFilter;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.generateMipmaps = true;
-  texture.needsUpdate = true;
-  return texture;
-}
-
 /** Creates the select-screen pedestal and owns its rotating racer preview. */
-export function createPedestal(scene: THREE.Scene, frames: TrackFrames, course: Course, theme: Theme) {
-  const stand = frames.frameAt(course.startS + 31);
+export function createPedestal(scene: THREE.Scene, frames: TrackFrames, course: Course, timber: THREE.Material) {
+  const stand = frames.frameAt(course.startS + 33);
   const height = 0.55;
-  const top = new THREE.Vector3(stand.x, stand.y + height, stand.z);
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.6, height, 40, 1), [
-    new THREE.MeshStandardMaterial({ color: theme.props.pedestal, roughness: 0.95 }),
-    new THREE.MeshStandardMaterial({ color: theme.props.cutWood, map: ringTexture(), roughness: 0.8 }),
-    new THREE.MeshStandardMaterial({ color: theme.props.pedestal, roughness: 0.95 }),
-  ]);
+  const top = new THREE.Vector3(stand.x + stand.rx * 3.7, stand.y + height, stand.z + stand.rz * 3.7);
+  const geometry = new THREE.CylinderGeometry(1.35, 1.6, height, 96, 1);
+  timberUVs(geometry, 'stump');
+  const vertices = geometry.getAttribute('position');
+  const normals = geometry.getAttribute('normal');
+  const colors = new Float32Array(vertices.count * 3).fill(1);
+  const normal = new THREE.Vector3();
+  for (let i = 0; i < vertices.count; i++) {
+    const x = vertices.getX(i);
+    const z = vertices.getZ(i);
+    const angle = Math.atan2(z, x);
+    const flute = 1 + 0.026 * Math.sin(5 * angle) + 0.015 * Math.cos(9 * angle + 1);
+    vertices.setXYZ(i, x * flute, vertices.getY(i), z * flute);
+    if (Math.abs(normals.getY(i)) > 0.8) continue;
+    // Normal of the tapered, fluted side. Both copies of the UV seam get the same normal.
+    const slope = (5 * 0.026 * Math.cos(5 * angle) - 9 * 0.015 * Math.sin(9 * angle + 1)) / flute;
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    normal.set(c + s * slope, (0.25 / height) * flute, s - c * slope).normalize();
+    normals.setXYZ(i, normal.x, normal.y, normal.z);
+    const tone = (vertices.getY(i) > 0 ? 1 : 0.82) + 0.045 * Math.sin(3 * angle - 0.4);
+    colors.fill(tone, i * 3, i * 3 + 3);
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const underside = geometry.groups[2];
+  if (underside) geometry.setDrawRange(0, underside.start);
+  const mesh = new THREE.Mesh(geometry, timber);
   mesh.position.copy(top);
   mesh.position.y -= height / 2 + 0.01;
   mesh.visible = false;
@@ -63,7 +60,8 @@ export function createPedestal(scene: THREE.Scene, frames: TrackFrames, course: 
         scene.add(preview.root);
         started = ticks;
       }
-      preview.preview(top.x, top.y, top.z, 0.45 + (ticks - started) * TICK_DT * 0.85);
+      if (ticks === 0) started = 0;
+      preview.preview(top.x, top.y, top.z, 1.18 + (ticks - started) * TICK_DT * 0.85);
     },
   };
 }

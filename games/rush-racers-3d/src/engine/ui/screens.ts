@@ -36,7 +36,12 @@ export function createScreens(container: HTMLElement): Screens {
   const titleCopy = document.createElement('div');
   titleCopy.className = 'rr3d-title-copy';
   const heading = document.createElement('h1');
-  heading.textContent = 'Rush Racers 3D';
+  heading.append('Rush ');
+  const racers = document.createElement('span');
+  racers.textContent = 'Racers';
+  const format = document.createElement('sup');
+  format.textContent = '3D';
+  heading.append(racers, ' ', format);
   const start = document.createElement('p');
   start.textContent = 'Press Enter or ★ to start';
   titleCopy.append(heading, start);

@@ -26,9 +26,9 @@ const GRADE = {
     void main() {
       vec4 color = texture2D(tDiffuse, vUv);
       float luma = dot(color.rgb, vec3(0.2126, 0.7152, 0.0722));
-      vec3 graded = mix(vec3(luma), color.rgb, 1.12);
-      graded = pow(max(graded, 0.0), vec3(1.06));
-      graded *= mix(vec3(0.97, 0.99, 1.04), vec3(1.05, 1.0, 0.93), smoothstep(0.1, 0.9, luma));
+      vec3 graded = mix(vec3(luma), color.rgb, 1.07);
+      graded = pow(max(graded, 0.0), vec3(1.035));
+      graded *= mix(vec3(0.97, 0.99, 1.04), vec3(1.035, 1.0, 0.97), smoothstep(0.1, 0.9, luma));
       gl_FragColor = vec4(graded, color.a);
     }`,
 };
@@ -52,7 +52,7 @@ export function createPost(
   }
   const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
   const composer = new EffectComposer(renderer, target);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.28, 0.55, 0.92);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.48, 1.05);
   composer.addPass(new RenderPass(scene, camera));
   composer.addPass(bloom);
   composer.addPass(new ShaderPass(GRADE));

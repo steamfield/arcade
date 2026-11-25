@@ -19,9 +19,11 @@ import { createItemView } from './items/item-view.ts';
 import { createPost } from './post.ts';
 import { createPedestal } from './racers/pedestal.ts';
 import { RacerViews } from './racers/racer-view.ts';
+import { TrailDust } from './racers/trail-dust.ts';
 import { Runtime, type Scene } from './runtime.ts';
 import { themeFor } from './themes/index.ts';
 import { loadNatureKit } from './track/nature-kit.ts';
+import { timberMaterial } from './track/timber.ts';
 import { buildTrackFrames } from './track/track-geometry.ts';
 import { createTrackView } from './track/track-view.ts';
 import { Hud } from './ui/hud.ts';
@@ -97,16 +99,20 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     throw error;
   });
   const frames = buildTrackFrames(course);
-  const trail = createTrackView(course, frames, seed, theme, kit, small);
+  const timber = timberMaterial(theme.props);
+  const trail = createTrackView(course, frames, seed, theme, kit, small, timber);
   const rig = new CameraRig(frames);
   const post = createPost(renderer, scene, rig.camera, !small);
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const hud = new Hud(ctx.container);
   const screens = createScreens(ctx.container);
   scene.add(trail.root);
-  const items = createItemView(course, frames);
+  const items = createItemView(course, frames, small);
   scene.add(items.root);
-  const pedestal = createPedestal(scene, frames, course, theme);
+  const pedestal = createPedestal(scene, frames, course, timber);
+
+  const dust = small ? null : new TrailDust(seed);
+  if (dust) scene.add(dust.points);
 
   let drawnWorld: World | undefined;
   const racers = new RacerViews(scene);
@@ -118,11 +124,17 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
       racers.sync(world.racers);
       drawnWorld = world;
     }
+    if (newWorld || screenChanged) dust?.clear();
+    const leaveDust = dust && screen === 'race' && world.phase === 'racing' && !motion.matches;
     let snap = newWorld || (screenChanged && screen === 'race');
     const batch = runtime.events.drain(cursor);
     cursor = batch.cursor;
     for (const event of batch.events) {
       if (event.type === 'racer.respawned' && event.id === 'player') snap = true;
+      if (leaveDust && (event.type === 'racer.landed' || event.type === 'racer.dashed')) {
+        const racer = world.racers.find((runner) => runner.id === event.id);
+        if (racer) dust.emit(racer, frames, world.tick, event.type === 'racer.landed' ? 6 : 4);
+      }
       hud.onEvent(event, world);
     }
     if (racing) racers.tick(world, frames, course);
@@ -140,13 +152,12 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     screenTicks = screenChanged ? 0 : screenTicks + 1;
     drawnScreen = screen;
 
-    const selected = screen === 'select' ? (CHARACTER_IDS[runtime.cursor] ?? runtime.character) : null;
-    pedestal.sync(selected, screenTicks);
+    const selected = screen === 'select' ? CHARACTER_IDS[runtime.cursor] : undefined;
+    const preview = screen === 'title' || screen === 'select';
+    pedestal.sync(preview ? (selected ?? runtime.character) : null, screenTicks);
     const snap = syncRaceViews(world, screen, screenChanged);
     switch (screen) {
       case 'title':
-        rig.title(motion.matches ? 0 : screenTicks * TICK_DT);
-        break;
       case 'select':
         if (screenChanged) rig.select(pedestal.top);
         break;
@@ -161,7 +172,12 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const render = () => {
     const { world, scene: screen, bests } = runtime;
     trail.tick(world.tick);
-    items.sync(world);
+    items.root.visible = screen === 'race' || screen === 'results';
+    if (items.root.visible) items.sync(world);
+    if (dust) {
+      if (screen === 'race' && !motion.matches) dust.draw(world.tick);
+      else dust.points.visible = false;
+    }
     hud.sync(world, screen, bests);
     screens.sync({ scene: screen, cursor: runtime.cursor, character: runtime.character });
     atmosphere.follow(rig.camera);
@@ -174,7 +190,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     renderer.setSize(width, height);
     post.setSize(width, height);
     rig.resize(width, height);
-    if (runtime.scene === 'select') rig.select(pedestal.top);
+    if (runtime.scene === 'title' || runtime.scene === 'select') rig.select(pedestal.top);
     render();
   };
   resize();
