@@ -50,13 +50,12 @@ function signTexture(title: ArchTitle, palette: Theme['props']['sign']): THREE.C
     log.warn(`2D canvas context unavailable; drawing the ${title} arch without its sign`);
     return undefined;
   }
-  const cssHex = (color: number) => `#${color.toString(16).padStart(6, '0')}`;
-  context.fillStyle = cssHex(title === 'START' ? palette.start : palette.finish);
+  context.fillStyle = `#${new THREE.Color(title === 'START' ? palette.start : palette.finish).getHexString()}`;
   context.fillRect(0, 0, canvas.width, canvas.height);
-  context.strokeStyle = cssHex(palette.border);
+  context.strokeStyle = `#${new THREE.Color(palette.border).getHexString()}`;
   context.lineWidth = 4;
   context.strokeRect(7, 7, 626, 98);
-  context.fillStyle = cssHex(palette.text);
+  context.fillStyle = `#${new THREE.Color(palette.text).getHexString()}`;
   context.font = '900 72px system-ui';
   context.textAlign = 'center';
   context.textBaseline = 'middle';

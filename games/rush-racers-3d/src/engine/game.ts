@@ -7,7 +7,7 @@ import { createLogger, TICK_DT } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import { type GameContext, type GameHandle, renderPixelRatio } from '@arcade/shell';
 import * as THREE from 'three';
-import { COURSES } from '../logic/courses/index.ts';
+import { COURSES, DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { SaveData } from '../logic/save.ts';
 import { CHARACTER_IDS, type World } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
@@ -31,7 +31,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const stage = stageFor(ctx.params, window.location.search, log);
   const runtime = await Runtime.start({
     saves,
-    course: courseFor(window.location.search, COURSES, log),
+    course: courseFor(window.location.search, COURSES, DEFAULT_COURSE, log),
     seed: ctx.params.seed,
     character: characterFor(window.location.search, log),
     notice: ctx.notice,
@@ -92,7 +92,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   scene.add(trail.root);
   const items = createItemView(course, frames);
   scene.add(items.root);
-  const pedestal = createPedestal(scene, frames, course);
+  const pedestal = createPedestal(scene, frames, course, theme);
 
   let drawnWorld: World | undefined;
   const racers = new RacerViews(scene);

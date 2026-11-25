@@ -27,12 +27,12 @@ beforeEach(() => {
 afterEach(() => configureLogging(() => {}));
 
 it('selects the course named in the launch URL', () => {
-  expect(courseFor('?course=wide-straight', courses, log)).toBe(second);
+  expect(courseFor('?course=short-straight', courses, second, log)).toBe(first);
   expect(entries).toEqual([]);
 });
 
-it('warns once with the available ids and falls back to the first course for an unknown id', () => {
-  expect(courseFor('?course=missing', courses, log)).toBe(first);
+it('warns once with the available ids and returns the fallback course for an unknown id', () => {
+  expect(courseFor('?course=missing', courses, second, log)).toBe(second);
   expect(entries).toEqual([
     {
       level: 'warn',
@@ -42,11 +42,7 @@ it('warns once with the available ids and falls back to the first course for an 
   ]);
 });
 
-it('uses the first course without a warning when the launch URL has no course param', () => {
-  expect(courseFor('?scene=race', courses, log)).toBe(first);
+it('uses the fallback course without a warning when the launch URL has no course param', () => {
+  expect(courseFor('?scene=race', courses, second, log)).toBe(second);
   expect(entries).toEqual([]);
-});
-
-it('rejects a launch with no courses to choose from', () => {
-  expect(() => courseFor('', [], log)).toThrow('at least one course is required');
 });

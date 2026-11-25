@@ -49,15 +49,13 @@ export function characterFor(search: string, log: Logger): CharacterId | null {
   return character ?? null;
 }
 
-/** The course named by `?course=`, or the first in the list. Unknown ids log a warning. */
-export function courseFor(search: string, courses: readonly Course[], log: Logger): Course {
-  const first = courses[0];
-  if (!first) throw new Error('at least one course is required');
+/** The course named by `?course=`, or `fallback` for a missing or unknown id. Unknown ids log a warning. */
+export function courseFor(search: string, courses: readonly Course[], fallback: Course, log: Logger): Course {
   const name = new URLSearchParams(search).get('course');
-  if (name === null) return first;
+  if (name === null) return fallback;
   const course = courses.find((candidate) => candidate.id === name);
   if (!course) log.warn(`unknown ?course=${name}; valid courses: ${courses.map(({ id }) => id).join(', ')}`);
-  return course ?? first;
+  return course ?? fallback;
 }
 
 /** Where `stage` puts the player along `s` on `course`. */

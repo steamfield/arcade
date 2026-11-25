@@ -3,7 +3,7 @@ import type { Course, Span } from '../../logic/types.ts';
 import type { Theme } from '../themes/types.ts';
 import type { TrackFrame, TrackFrames } from './track-geometry.ts';
 
-/** Chunk size in terrain strips and approximate meters of forest. */
+/** Chunk size in terrain strips and approximate meters of scenery. */
 export const TERRAIN_CHUNK = 96;
 /** Meters of visual terrain beyond the two ends of the course path. */
 export const SCENERY_RUNOUT = { start: 24, finish: 120 };
