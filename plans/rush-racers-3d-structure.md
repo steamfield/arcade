@@ -108,6 +108,7 @@ Test cases:
 
 ### Phase 2: engine folders
 
+Scaffold: b6a496110be017082a06c553ef4756866c0823f8
 Demo: `pnpm arcade see rush-racers-3d --query scene=race --at 0,300,600 --compare <baseline>` shows no difference, against a baseline captured with `--out` at the phase 1 tag.
 Depends on: phase 1
 Test cases:
@@ -116,7 +117,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | S | games/rush-racers-3d/src/engine/ | contracts | | gpt-6.2-sol | pending | | phase 2 test cases pass |
+| a | S | games/rush-racers-3d/src/engine/ | contracts | | gpt-6.2-sol | running | foreman/rr3d-s2a | phase 2 test cases pass |
 
 #### Lane a brief
 
