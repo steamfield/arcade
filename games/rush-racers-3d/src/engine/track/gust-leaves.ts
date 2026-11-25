@@ -17,7 +17,13 @@ interface GustBatch {
   leaves: Leaf[];
 }
 
-function buildBatches(root: THREE.Group, course: Course, track: TrackFrames, seed: number): GustBatch[] {
+function buildBatches(
+  root: THREE.Group,
+  course: Course,
+  track: TrackFrames,
+  seed: number,
+  palette: readonly number[],
+): GustBatch[] {
   const rng = createRng(seed ^ 0xa91e3493);
   const leaf = new THREE.PlaneGeometry(0.42, 0.17).rotateZ(Math.PI / 4);
   const material = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide });
@@ -30,7 +36,7 @@ function buildBatches(root: THREE.Group, course: Course, track: TrackFrames, see
       mesh.frustumCulled = false;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       const leaves = Array.from({ length: count }, (_, i) => {
-        mesh.setColorAt(i, new THREE.Color(rng.pick([0xffd483, 0xc8803a, 0xf1ae51])));
+        mesh.setColorAt(i, new THREE.Color(rng.pick(palette)));
         return {
           frame: track.frameAt(gust.s0 + rng.next() * (gust.s1 - gust.s0)),
           across: rng.next(),
@@ -63,9 +69,15 @@ function drawGust({ gust, mesh, leaves }: GustBatch, point: THREE.Object3D, time
 }
 
 /** Adds seeded gust leaves and returns a function that animates them at a given race tick. */
-export function windLeaves(root: THREE.Group, course: Course, track: TrackFrames, seed: number) {
+export function windLeaves(
+  root: THREE.Group,
+  course: Course,
+  track: TrackFrames,
+  seed: number,
+  palette: readonly number[],
+) {
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  const batches = buildBatches(root, course, track, seed);
+  const batches = buildBatches(root, course, track, seed, palette);
   const point = new THREE.Object3D();
   let drawnTick = -1;
   return (tick: number) => {

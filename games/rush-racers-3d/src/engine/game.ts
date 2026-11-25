@@ -7,17 +7,18 @@ import { createLogger, TICK_DT } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import { type GameContext, type GameHandle, renderPixelRatio } from '@arcade/shell';
 import * as THREE from 'three';
-import { DEFAULT_COURSE } from '../logic/courses/index.ts';
+import { COURSES } from '../logic/courses/index.ts';
 import type { SaveData } from '../logic/save.ts';
 import { CHARACTER_IDS, type World } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
 import { CameraRig } from './camera-rig.ts';
-import { characterFor, stageFor } from './capture-stages.ts';
+import { characterFor, courseFor, stageFor } from './capture-stages.ts';
 import { input } from './input.ts';
 import { createItemView } from './items/item-view.ts';
 import { createPedestal } from './racers/pedestal.ts';
 import { RacerViews } from './racers/racer-view.ts';
 import { Runtime, type Scene } from './runtime.ts';
+import { themeFor } from './themes/index.ts';
 import { buildTrackFrames } from './track/track-geometry.ts';
 import { createTrackView } from './track/track-view.ts';
 import { Hud } from './ui/hud.ts';
@@ -30,7 +31,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const stage = stageFor(ctx.params, window.location.search, log);
   const runtime = await Runtime.start({
     saves,
-    course: DEFAULT_COURSE,
+    course: courseFor(window.location.search, COURSES, log),
     seed: ctx.params.seed,
     character: characterFor(window.location.search, log),
     notice: ctx.notice,
@@ -71,16 +72,19 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   ctx.container.append(renderer.domElement);
   renderer.domElement.addEventListener('webglcontextlost', () => ctx.reportError('webgl', 'WebGL context lost'));
 
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xcec6a8);
-  scene.fog = new THREE.Fog(scene.background, 28, 115);
-  const sun = new THREE.DirectionalLight(0xffe1ae, 2.05);
-  sun.position.set(-15, 25, 8);
-  scene.add(sun, new THREE.HemisphereLight(0xfff0cf, 0x73605a, 1.55));
-
   const { course, seed } = runtime.world;
+  const theme = themeFor(course);
+  const { sky, light } = theme;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(sky.color);
+  scene.fog = new THREE.Fog(scene.background, sky.fogNear, sky.fogFar);
+  const sun = new THREE.DirectionalLight(light.sun.color, light.sun.intensity);
+  sun.position.set(...light.sun.position);
+  const hemisphere = light.hemisphere;
+  scene.add(sun, new THREE.HemisphereLight(hemisphere.sky, hemisphere.ground, hemisphere.intensity));
+
   const frames = buildTrackFrames(course);
-  const trail = createTrackView(course, frames, seed);
+  const trail = createTrackView(course, frames, seed, theme);
   const rig = new CameraRig(frames);
   const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const hud = new Hud(ctx.container);

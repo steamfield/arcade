@@ -23,8 +23,14 @@ export interface Theme {
     chalk: number;
     darkMark: number;
   };
-  /** Logs, arches and other built props. */
-  props: { cutWood: number; bark: readonly number[]; wood: number; trim: number };
+  /** Logs, arches and their signs. */
+  props: {
+    cutWood: number;
+    bark: readonly number[];
+    wood: number;
+    trim: number;
+    sign: { start: number; finish: number; border: number; text: number };
+  };
   /** Trees, rocks and shrubs planted beside the trail. */
   scenery: {
     bark: readonly number[];

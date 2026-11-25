@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Course, Span } from '../../logic/types.ts';
+import type { Theme } from '../themes/types.ts';
 import type { TrackFrame, TrackFrames } from './track-geometry.ts';
 
 /** Chunk size in terrain strips and approximate meters of forest. */
@@ -8,15 +9,6 @@ export const TERRAIN_CHUNK = 96;
 export const SCENERY_RUNOUT = { start: 24, finish: 120 };
 
 const PIT_DEPTH = 8;
-const DIRT = new THREE.Color(0xb68a59);
-const SHOULDER = new THREE.Color(0x9f8751);
-const GRASS = new THREE.Color(0x6b7945);
-const MUD = new THREE.Color(0x553526);
-const RIM = new THREE.Color(0x805639);
-const WALL = new THREE.Color(0x432f25);
-const PIT_FLOOR = new THREE.Color(0x231e1c);
-const CHALK = new THREE.Color(0xffecc5);
-const DARK_MARK = new THREE.Color(0x694833);
 
 interface TrackRow {
   s: number;
@@ -36,6 +28,7 @@ interface Interval<T> {
 }
 
 type Cell = Interval<TrackRow> & { d0: number; d1: number };
+type GroundColors = { [Surface in keyof Theme['ground']]: THREE.Color };
 
 const uniqueSorted = (values: number[]) => [...new Set(values)].sort((a, b) => a - b);
 
@@ -146,9 +139,11 @@ class TerrainChunk {
   private readonly positions: number[] = [];
   private readonly colors: number[] = [];
   private readonly halfWidth: number;
+  private readonly ground: GroundColors;
 
-  constructor(halfWidth: number) {
+  constructor(halfWidth: number, ground: GroundColors) {
     this.halfWidth = halfWidth;
+    this.ground = ground;
   }
 
   private vertex(row: TrackRow, d: number, offset: number, color: THREE.Color): void {
@@ -180,13 +175,13 @@ class TerrainChunk {
 
   private pitEdge(a: TrackRow, d0: number, b: TrackRow, d1: number): void {
     const edge = { a, b, d0, d1 };
-    this.wall(edge, 0, -0.45, RIM);
-    this.wall(edge, -0.45, -PIT_DEPTH, WALL);
+    this.wall(edge, 0, -0.45, this.ground.pitRim);
+    this.wall(edge, -0.45, -PIT_DEPTH, this.ground.pitWall);
   }
 
   pit(cell: Cell, holes: boolean[][], i: number, j: number): void {
     const { a, b, d0, d1 } = cell;
-    this.surface(cell, -PIT_DEPTH, PIT_FLOOR);
+    this.surface(cell, -PIT_DEPTH, this.ground.pitFloor);
     if (!holes[i - 1]?.[j]) this.pitEdge(a, d0, a, d1);
     if (!holes[i + 1]?.[j]) this.pitEdge(b, d1, b, d0);
     if (!holes[i]?.[j - 1]) this.pitEdge(b, d0, a, d0);
@@ -202,10 +197,10 @@ class TerrainChunk {
   }
 }
 
-function surfaceColor(d: number, halfWidth: number, acrossLine: boolean): THREE.Color {
-  if (Math.abs(d) > halfWidth) return Math.abs(d) < halfWidth + 3 ? SHOULDER : GRASS;
-  if (!acrossLine) return DIRT;
-  return Math.floor((d / halfWidth + 1) * 4) % 2 ? DARK_MARK : CHALK;
+function surfaceColor(d: number, halfWidth: number, acrossLine: boolean, ground: GroundColors): THREE.Color {
+  if (Math.abs(d) > halfWidth) return Math.abs(d) < halfWidth + 3 ? ground.shoulder : ground.grass;
+  if (!acrossLine) return ground.dirt;
+  return Math.floor((d / halfWidth + 1) * 4) % 2 ? ground.darkMark : ground.chalk;
 }
 
 function buildChunk(
@@ -215,8 +210,9 @@ function buildChunk(
   holes: boolean[][],
   mud: Span[],
   first: number,
+  ground: GroundColors,
 ): TerrainChunk {
-  const chunk = new TerrainChunk(course.halfWidth);
+  const chunk = new TerrainChunk(course.halfWidth, ground);
   for (const [index, { a, b }] of strips.slice(first, first + TERRAIN_CHUNK).entries()) {
     const i = first + index;
     const s = (a.s + b.s) / 2;
@@ -229,15 +225,26 @@ function buildChunk(
         continue;
       }
       const d = (d0 + d1) / 2;
-      chunk.surface(cell, 0, surfaceColor(d, course.halfWidth, acrossLine));
-      if (!acrossLine && mud.some((patch) => contains(patch, s, d))) chunk.surface(cell, 0.025, MUD);
+      chunk.surface(cell, 0, surfaceColor(d, course.halfWidth, acrossLine, ground));
+      if (!acrossLine && mud.some((patch) => contains(patch, s, d))) chunk.surface(cell, 0.025, ground.mud);
     }
   }
   return chunk;
 }
 
 /** Adds the chunked trail and verges, including mud surfaces and pit walls. */
-export function trackTerrain(root: THREE.Group, course: Course, grid: TerrainGrid): void {
+export function trackTerrain(root: THREE.Group, course: Course, grid: TerrainGrid, palette: Theme['ground']): void {
+  const ground: GroundColors = {
+    dirt: new THREE.Color(palette.dirt),
+    shoulder: new THREE.Color(palette.shoulder),
+    grass: new THREE.Color(palette.grass),
+    mud: new THREE.Color(palette.mud),
+    pitRim: new THREE.Color(palette.pitRim),
+    pitWall: new THREE.Color(palette.pitWall),
+    pitFloor: new THREE.Color(palette.pitFloor),
+    chalk: new THREE.Color(palette.chalk),
+    darkMark: new THREE.Color(palette.darkMark),
+  };
   const strips = adjacent(grid.rows);
   const widths = adjacent(grid.sides);
   const pits = course.features.filter((feature) => feature.kind === 'pit');
@@ -245,6 +252,6 @@ export function trackTerrain(root: THREE.Group, course: Course, grid: TerrainGri
   const holes = classifyHoles(pits, strips, widths);
   const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
   for (let first = 0; first < strips.length; first += TERRAIN_CHUNK) {
-    root.add(buildChunk(course, strips, widths, holes, mud, first).mesh(material));
+    root.add(buildChunk(course, strips, widths, holes, mud, first, ground).mesh(material));
   }
 }
