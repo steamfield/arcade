@@ -1,7 +1,7 @@
 /** Colours and lighting for wooded courses. */
 import type { Theme } from './types.ts';
 
-/** The theme used by Thornwood Trail. */
+/** The forest look: warm haze, low sun, bark-brown props and green verges. */
 export const FOREST: Theme = {
   sky: { color: 0xcec6a8, fogNear: 28, fogFar: 115 },
   light: {

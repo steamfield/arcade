@@ -50,7 +50,7 @@ Title, then character select (a 4x2 grid of Thornwood's cast; the pick is saved)
 
 Thornwood Trail (`src/logic/courses/thornwood-trail.ts`), about 1.1 km in six sections: Forest Floor, Millstream Flats, The Ravine, Windy Ridge, Rotten Bridges, The Clearing. The file documents each section.
 
-To add a course, write `src/logic/courses/<id>.ts` and add it to `COURSES` in `src/logic/courses/index.ts`, the only file allowed to import course files. `courses/conformance.test.ts` then checks it: it must validate, rivals must finish within 1.25 times its `parTicks` with at most two falls, and on a course with crates they must open crates and fire items. Its `theme` picks a `Theme` from `src/engine/themes/`. A recoloured forest is a new theme file. A different kind of place (beach, cave) also needs its own scenery planter, since `track/forest.ts` and `track/gust-leaves.ts` still plant forest shapes.
+To add a course, write `src/logic/courses/<id>.ts` and add it to `COURSES` in `src/logic/courses/index.ts`, the only file allowed to import course files. `courses/conformance.test.ts` then checks it: it must validate, rivals must finish within 1.25 times its `parTicks` with at most two falls, and on a course with crates they must open crates and fire items. Its `theme` picks a `Theme` from `src/engine/themes/`. A recoloured forest is a new `src/engine/themes/<id>.ts`, its id added to `ThemeId` and `THEME_IDS` in `src/logic/types.ts`, and an entry in `THEMES`. A different kind of place (beach, cave) also needs its own scenery planter, since `track/forest.ts` and `track/gust-leaves.ts` still plant forest shapes.
 
 ## Launch parameters
 

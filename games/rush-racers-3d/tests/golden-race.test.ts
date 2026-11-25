@@ -11,28 +11,12 @@ import { expect, it } from 'vitest';
 import { rivalInput } from '../src/logic/ai.ts';
 import { THORNWOOD_TRAIL } from '../src/logic/courses/thornwood-trail.ts';
 import type { GameEvent } from '../src/logic/events.ts';
-import type { Racer } from '../src/logic/types.ts';
 import { createWorld, playerOf, stepWorld } from '../src/logic/world.ts';
 
 const FIXTURE = new URL('./golden/race.json', import.meta.url);
 /** Seeds whose races include sap traps, mud splats and item hits. */
 const SEEDS = [3, 11, 12];
 const MAX_TICKS = 20_000;
-
-/** A racer's item state, read from either the flat fields or a `racer.items` sub-object. */
-function itemsOf(racer: Racer) {
-  const flat = racer as unknown as Record<string, unknown>;
-  const items = (flat.items ?? flat) as Record<string, unknown>;
-  return {
-    slots: items.slots,
-    selected: items.selected,
-    cooldown: items.cooldown ?? items.itemCooldown,
-    stunTicks: items.stunTicks,
-    trappedTicks: items.trappedTicks,
-    burrTicks: items.burrTicks,
-    bootsTicks: items.bootsTicks,
-  };
-}
 
 function runRace(seed: number) {
   const events = new EventLog<GameEvent>(1_000_000);
@@ -55,7 +39,7 @@ function runRace(seed: number) {
       vs: racer.vs,
       state: racer.state,
       finishTicks: racer.finishTicks,
-      ...itemsOf(racer),
+      ...racer.items,
     })),
   };
 }

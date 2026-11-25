@@ -14,9 +14,8 @@ import { firePie, stepPie } from './pie.ts';
 import { fireShield, stepSap } from './shield.ts';
 import type { RacerItems } from './types.ts';
 
-export { hitRacer } from './hits.ts';
-export { type HeldItem, ITEM_KINDS, type ItemKind, type RacerItems, type Shot, type Splat } from './types.ts';
-export { heldSlot, rollItem };
+export type { HeldItem, ItemKind, RacerItems, Shot, Splat } from './types.ts';
+export { heldSlot };
 
 /** Starts a racer with empty slots and no item effects. */
 export function createRacerItems(): RacerItems {

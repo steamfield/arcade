@@ -1,7 +1,7 @@
 /**
  * The scenario kit for this game: typed input helpers plus the named sequences that scenarios share,
  * so each scenario reads as what it checks rather than how it gets there. Stages (`start.query.stage`)
- * put the player at a spot on Thornwood Trail with the race already running.
+ * put the player at a spot on the launched course (the default unless `?course=` says otherwise) with the race already running.
  */
 import { scenarioKit } from '@arcade/testing';
 import type { Action } from '../src/engine/input.ts';

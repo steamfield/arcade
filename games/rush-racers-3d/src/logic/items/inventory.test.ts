@@ -2,7 +2,7 @@
 import { createRng } from '@arcade/core';
 import { expect, it } from 'vitest';
 import { CRATE, ITEMS, RACE, RUN } from '../tuning.ts';
-import { rollItem } from './index.ts';
+import { rollItem } from './crates.ts';
 import { start, startPair } from './item-test-kit.ts';
 import { ITEM_KINDS } from './types.ts';
 
