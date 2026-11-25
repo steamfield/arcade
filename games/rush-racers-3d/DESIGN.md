@@ -20,6 +20,8 @@ Title, then character select (a 4x2 grid of Thornwood's cast; the pick is saved)
 | move the select cursor | arrows, WASD | d-pad |
 | previous / next item | Q / E, Tab | ⇄ (next) |
 
+Steering is all or nothing and the same with or without run held. The touch d-pad is one surface read by thumb position: a corner holds two directions, so up-right runs and steers at once, and sliding changes direction without lifting.
+
 ## Rules worth knowing
 
 - Track space: logic places racers by `s` (meters along the course), `d` (meters sideways, + right) and `y` (meters up). `src/engine/track/track-geometry.ts` maps that onto the world; logic never sees world x/z.
@@ -53,6 +55,8 @@ Both tiers plant the same CC0 nature kit along the trail from per-layer seeds, w
 Touch devices and software WebGL load a 1024 px cutout atlas baked from the same models and forest lighting. Each plant takes two triangles. Casters and ground cover share separate batches per chunk. The cutouts face the camera in the colour pass and the sun in the shadow pass, and sway on game ticks. This tier also uses half the grass density and a 1024 px shadow map. Reduced motion holds the wind still on both tiers. Asset credits and rebuild commands are in `src/engine/assets/CREDITS.md`.
 
 The trail has two winding bands of packed dirt, damp clay, shale chips and scattered leaves toward the shoulders. Its surface tile comes from a seeded generator. Pit walls expose a broken clay lip above dark subsoil. The tapered fallen trunks, snapped branches and menu stump share one painted bark and end-grain atlas. Pale wooded ridges recede into the sunlit haze behind the forest. The title and racer select show the chosen runner on the stump. The brass-and-enamel pickups match the green race panels and gold place marker.
+
+The cast are upright animals built to read as their species: each has its own skull shape, painted markings (Grit's face stripes, Cheeks' back stripes, Duke's scutes, Dusk's facial disc and barring), paws or talons, and a tail. A scarf, headband or shell stripe in a contrasting colour shows from behind. `racers/racer-geometry.ts` sculpts each one as separately posed pieces (trunk, head, ears, arms, legs, tail): overlapping lumps are melted into one skin and markings are painted per vertex, under 18k triangles a racer. `node games/rush-racers-3d/scripts/model-sheet.mjs cast` (or a character id for every pose from six angles) renders a turnaround sheet to `.arcade/model-sheets/` with the game's own lighting; use it when changing a model. `racers/racer-view.ts` poses them from logic state: arms swing against legs, the head stays level and looks into a turn, a jump splits the legs and throws the arms up, a dash sweeps the arms back.
 
 The terrain, racers and obstacles use the same silhouettes and palette on both tiers. The low tier samples a single 128 px ground tile. Hardware desktop WebGL uses a 256 px tile for colour, bump and roughness, bevelled crates with pools of light, and a single batch of dust for dashes and landings. Reduced motion suppresses the dust. The high tier also uses a 2048 px shadow map and the multisampled HDR bloom and colour grade.
 

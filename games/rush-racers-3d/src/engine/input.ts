@@ -3,7 +3,7 @@ import { createInput } from '@arcade/input';
 /** Every action the game understands. Scenarios are typed against this. `fire` also confirms on screens. */
 export type Action = 'left' | 'right' | 'forward' | 'back' | 'jump' | 'dash' | 'fire' | 'prev' | 'next';
 
-export const input = createInput<Action, 'move'>({
+export const input = createInput<Action>({
   actions: {
     left: ['ArrowLeft', 'KeyA'],
     right: ['ArrowRight', 'KeyD'],
@@ -15,7 +15,6 @@ export const input = createInput<Action, 'move'>({
     prev: ['KeyQ'],
     next: ['KeyE', 'Tab'],
   },
-  vectors: { move: { left: 'left', right: 'right', up: 'forward', down: 'back' } },
   touch: {
     dpad: { left: 'left', right: 'right', up: 'forward', down: 'back' },
     buttons: [

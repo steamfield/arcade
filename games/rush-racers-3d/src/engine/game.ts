@@ -53,12 +53,12 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     gameId: ctx.manifest.id,
     readInput: () => {
       input.update();
-      const move = input.vector('move');
       return {
         race: {
           forward: input.isDown('forward'),
           brake: input.isDown('back'),
-          steer: move.x,
+          // Full steer with forward held: a runner turns as hard at speed as it does standing.
+          steer: (input.isDown('right') ? 1 : 0) - (input.isDown('left') ? 1 : 0),
           jumpPressed: input.justPressed('jump'),
           jumpHeld: input.isDown('jump'),
           dashPressed: input.justPressed('dash'),
