@@ -130,6 +130,7 @@ Test cases:
 
 ### Phase 3: courses and themes
 
+Scaffold: 677569b5367d5ba46566c401e93dab5a2a9f2167
 Demo: `pnpm arcade see rush-racers-3d --query scene=race --query course=thornwood-trail --compare <phase 2 baseline>` matches; `--query course=nope` logs one warning naming `thornwood-trail` and races Thornwood.
 Depends on: phase 2
 Test cases:
@@ -143,8 +144,8 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | M | games/rush-racers-3d/src/logic/courses/, games/rush-racers-3d/src/logic/course.ts, games/rush-racers-3d/src/logic/course.test.ts, games/rush-racers-3d/src/logic/ai.test.ts, games/rush-racers-3d/src/logic/architecture.test.ts | contracts | | gpt-6.2-sol | pending | | registry, conformance and guard tests pass |
-| b | M | games/rush-racers-3d/src/engine/themes/, games/rush-racers-3d/src/engine/track/, games/rush-racers-3d/src/engine/game.ts, games/rush-racers-3d/src/engine/capture-stages.ts, games/rush-racers-3d/src/engine/capture-stages.test.ts, games/rush-racers-3d/src/engine/runtime.test.ts | contracts | | gpt-6.2-sol | pending | | forest theme renders identically; courseFor tests pass |
+| a | M | games/rush-racers-3d/src/logic/courses/, games/rush-racers-3d/src/logic/course.ts, games/rush-racers-3d/src/logic/course.test.ts, games/rush-racers-3d/src/logic/ai.test.ts, games/rush-racers-3d/src/logic/architecture.test.ts | contracts | | gpt-6.2-sol | running | foreman/rr3d-s3a | registry, conformance and guard tests pass |
+| b | M | games/rush-racers-3d/src/engine/themes/, games/rush-racers-3d/src/engine/track/, games/rush-racers-3d/src/engine/game.ts, games/rush-racers-3d/src/engine/capture-stages.ts, games/rush-racers-3d/src/engine/capture-stages.test.ts, games/rush-racers-3d/src/engine/runtime.test.ts | contracts | | gpt-6.2-sol | running | foreman/rr3d-s3b | forest theme renders identically; courseFor tests pass |
 
 Lanes a and b run in parallel. The scaffold makes `COURSES` and `DEFAULT_COURSE` real data (only `courseById` is a stub) and points `game.ts` at `DEFAULT_COURSE`, so lane a's guard passes on its own branch and lane b's `courseFor` can take `COURSES`. DESIGN.md's "Add a course" section and the `?course=` launch param line belong to the orchestrator at landing.
 
