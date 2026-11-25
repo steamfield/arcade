@@ -3,9 +3,9 @@
  * point, and whether its data is valid. Pure functions of the `Course`; no racer state.
  */
 import { RUN } from './tuning.ts';
-import type { Course, Feature, Span } from './types.ts';
+import { type Course, type Feature, type Span, THEME_IDS } from './types.ts';
 
-/** A course whose data breaks a rule. The message names the course id and the bad feature's index. */
+/** A course whose data breaks a rule. The message names the course id and each problem. */
 export class CourseError extends Error {
   constructor(message: string) {
     super(message);
@@ -85,12 +85,15 @@ function contains(span: Span, s: number, d: number): boolean {
  * Every rule `course` breaks, one message per problem, empty when valid. Rules: features lie inside
  * `[startS, finishS]` and inside the track width; spans have `s0 < s1` and `d0 < d1`; no pit starts
  * within 20 m of `startS`; hills are sorted by `s`; `startS < finishS <= courseLength`;
- * turn radii exceed `halfWidth + 1` and logs do not overlap pits.
+ * turn radii exceed `halfWidth + 1`; logs do not overlap pits; the theme is registered.
  */
 export function validateCourse(course: Course): string[] {
   const { startS, finishS, halfWidth } = course;
   const length = courseLength(course);
   const problems: string[] = [];
+  if (!THEME_IDS.includes(course.theme)) {
+    problems.push(`theme ${course.theme} is not one of ${THEME_IDS.join(', ')}`);
+  }
   if (!(startS < finishS && finishS <= length)) {
     problems.push(`startS ${startS}, finishS ${finishS} must satisfy startS < finishS <= course length ${length}`);
   }

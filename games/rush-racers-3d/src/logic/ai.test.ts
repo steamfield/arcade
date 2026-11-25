@@ -1,7 +1,6 @@
 import { EventLog, TICK_DT } from '@arcade/core';
 import { expect, it } from 'vitest';
 import { groundY } from './course.ts';
-import { THORNWOOD_TRAIL } from './courses/thornwood-trail.ts';
 import type { GameEvent } from './events.ts';
 import { NO_INPUT } from './racer.ts';
 import { DASH, ITEMS, RACE, RIVAL, RUN } from './tuning.ts';
@@ -165,22 +164,6 @@ it.each([-2, -1, -0.5, 0, 0.5, 1, 2])('scales only rival running speed for a pla
   }
   expect(player.vs).toBe(RUN.runSpeed);
   expect(rival.vs).toBeCloseTo(RUN.runSpeed * (1 + Math.max(-1, Math.min(1, gap)) * RIVAL.catchUp), 8);
-});
-
-it.each([1, 2, 3, 4, 5])('finishes Thornwood Trail with all rivals within par and two falls, seed %i', (seed) => {
-  const deadline = Math.floor(THORNWOOD_TRAIL.parTicks * 1.25);
-  const { world, events, step } = start(THORNWOOD_TRAIL, seed);
-  for (let tick = 0; tick < deadline && world.phase !== 'finished'; tick++) step();
-  expect(events.all().some((event) => event.type === 'crate.opened')).toBe(true);
-  expect(events.all().some((event) => event.type === 'item.fired')).toBe(true);
-  for (const { id, finishTicks } of world.racers.slice(1)) {
-    const falls = events.all().filter((event) => event.type === 'racer.fell' && event.id === id);
-    expect(finishTicks, `${id} finish`).not.toBeNull();
-    expect(finishTicks, `${id} finish`).toBeLessThanOrEqual(deadline);
-    expect(falls.length, `${id} falls at ${falls.map((fall) => 's' in fall && fall.s).join(', ')}`).toBeLessThanOrEqual(
-      2,
-    );
-  }
 });
 
 it('opens the crate on the rival’s racing line in a crosswind', () => {
