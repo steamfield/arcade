@@ -1,10 +1,13 @@
 import { createRng, type Rng } from '@arcade/core';
 import * as THREE from 'three';
 import type { Theme } from '../themes/types.ts';
+import type { loadForestCards } from './forest-cards.ts';
 import type { ModelName, NatureKit } from './nature-kit.ts';
 import { SCENERY_RUNOUT, TERRAIN_CHUNK, type TerrainGrid, terrainPointAt } from './track-terrain.ts';
 
-interface Prop {
+export type ForestScenery = NatureKit | Awaited<ReturnType<typeof loadForestCards>>;
+
+export interface Prop {
   model: ModelName;
   x: number;
   y: number;
@@ -217,9 +220,8 @@ function writeBatch(root: THREE.Group, kit: NatureKit, props: Prop[]): void {
 
 /**
  * Plants seeded batches of trees, undergrowth and ground cover from the nature kit on both sides
- * of the trail, one instanced mesh per model part per chunk so whole chunks frustum-cull. Each
- * layer has its own rng, so changing one layer's density doesn't move the others. `light` halves
- * the grass for phones.
+ * of the trail. Each layer has its own rng. Both renderers share placement and contact shadows;
+ * the low tier halves grass density and batches its cutouts by shadow state.
  */
 export function plantForest(
   root: THREE.Group,
@@ -227,7 +229,7 @@ export function plantForest(
   trackLength: number,
   seed: number,
   palette: Theme['scenery'],
-  kit: NatureKit,
+  kit: ForestScenery,
   light: boolean,
 ): void {
   const layers: [Rng, Planter][] = [
@@ -247,21 +249,15 @@ export function plantForest(
     const end = Math.min(first + TERRAIN_CHUNK, last);
     const props: Prop[] = [];
     for (const [rng, planter] of layers) planter(props, rng, grid, first, end);
-    writeOcclusion(
-      root,
-      occlusion,
-      props.filter((p) => p.casts),
-    );
-    // Casters and receivers-only go in separate meshes, so ground cover never costs a shadow pass.
-    writeBatch(
-      root,
-      kit,
-      props.filter((p) => p.casts),
-    );
-    writeBatch(
-      root,
-      kit,
-      props.filter((p) => !p.casts),
-    );
+    const casters = props.filter((p) => p.casts);
+    const cover = props.filter((p) => !p.casts);
+    writeOcclusion(root, occlusion, casters);
+    if ('parts' in kit) {
+      writeBatch(root, kit, casters);
+      writeBatch(root, kit, cover);
+    } else {
+      kit.add(root, casters, true);
+      kit.add(root, cover, false);
+    }
   }
 }

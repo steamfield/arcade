@@ -1,10 +1,9 @@
 import * as THREE from 'three';
 import type { Course } from '../../logic/types.ts';
 import type { Theme } from '../themes/types.ts';
-import { plantForest } from './forest.ts';
+import { type ForestScenery, plantForest } from './forest.ts';
 import { windLeaves } from './gust-leaves.ts';
 import { trackLandmarks } from './landmarks.ts';
-import type { NatureKit } from './nature-kit.ts';
 import type { TrackFrames } from './track-geometry.ts';
 import { buildTerrainGrid, trackTerrain } from './track-terrain.ts';
 
@@ -14,7 +13,7 @@ export function createTrackView(
   track: TrackFrames,
   seed: number,
   theme: Theme,
-  kit: NatureKit,
+  kit: ForestScenery,
   light: boolean,
   timber: THREE.Material,
 ) {

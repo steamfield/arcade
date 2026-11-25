@@ -22,7 +22,7 @@ import { RacerViews } from './racers/racer-view.ts';
 import { TrailDust } from './racers/trail-dust.ts';
 import { Runtime, type Scene } from './runtime.ts';
 import { themeFor } from './themes/index.ts';
-import { loadNatureKit } from './track/nature-kit.ts';
+import { loadForestCards } from './track/forest-cards.ts';
 import { timberMaterial } from './track/timber.ts';
 import { buildTrackFrames } from './track/track-geometry.ts';
 import { createTrackView } from './track/track-view.ts';
@@ -94,8 +94,11 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const scene = new THREE.Scene();
   const atmosphere = createAtmosphere(renderer, scene, theme, small);
 
-  const kit = await loadNatureKit().catch((error: unknown) => {
-    ctx.reportError('gltf', error);
+  const scenery = small
+    ? loadForestCards()
+    : import('./track/nature-kit.ts').then(({ loadNatureKit }) => loadNatureKit());
+  const kit = await scenery.catch((error: unknown) => {
+    ctx.reportError(small ? 'forest atlas' : 'gltf', error);
     throw error;
   });
   const frames = buildTrackFrames(course);

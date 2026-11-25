@@ -35,6 +35,7 @@ export type ModelName =
   | `Pebble_Square_${1 | 2}`;
 
 export interface NatureKit {
+  readonly names: Iterable<string>;
   parts(name: ModelName): readonly ModelPart[];
   /** Sets the wind phase, in seconds of game time. Visual only. */
   setWind(seconds: number): void;
@@ -158,6 +159,9 @@ export async function loadNatureKit(): Promise<NatureKit> {
     models.set(node.name, parts);
   }
   return {
+    get names() {
+      return models.keys();
+    },
     parts(name) {
       const parts = models.get(name);
       if (!parts) throw new RangeError(`nature.glb has no model "${name}"`);

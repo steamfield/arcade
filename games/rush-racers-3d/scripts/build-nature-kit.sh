@@ -4,6 +4,7 @@
 # Download: https://opengameart.org/content/stylized-nature-megakit (Standard zip, glTF folder).
 # Every model lands as a root node named after its file in one scene; textures are capped at
 # 512 px (1024 for leaf cards) and WebP-encoded, geometry is meshopt-compressed.
+# The final bake uses Playwright Chromium to make the low-tier cutout atlas from that exact glb.
 set -euo pipefail
 kit="${1:?path to the kit glTF folder}"
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -32,5 +33,6 @@ gt resize "$work/pruned.glb" "$work/small.glb" --width 512 --height 512 --patter
 gt resize "$work/small.glb" "$work/smaller.glb" --width 1024 --height 1024
 gt webp "$work/smaller.glb" "$work/webp.glb" --quality 82
 gt meshopt "$work/webp.glb" "$out"
+node "$here/scripts/bake-forest.mjs"
 pnpm dlx @gltf-transform/cli@4.5.1 inspect "$out" | grep -A40 TEXTURES | head -40
 ls -l "$out"
