@@ -77,6 +77,7 @@ export function createItemPools(course: Course, track: TrackFrames) {
     });
   // The crate pool is capped at one box per crate feature, in feature order.
   const crates = new Instances(root, new THREE.BoxGeometry(1.58, 1.58, 1.58), crateMaterial(), cratePositions.length);
+  crates.castShadow = true;
   const ball = new THREE.SphereGeometry(1, 12, 8);
   const cone = new THREE.ConeGeometry(1, 2, 6);
   const pieFlight = maxPieFlight(course);

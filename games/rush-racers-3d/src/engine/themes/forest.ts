@@ -3,10 +3,11 @@ import type { Theme } from './types.ts';
 
 /** The forest look: warm haze, low sun, bark-brown props and green verges. */
 export const FOREST: Theme = {
-  sky: { color: 0xcec6a8, fogNear: 28, fogFar: 115 },
+  sky: { color: 0xd3c9a6, zenith: 0x8fb0c2, fogNear: 30, fogFar: 118 },
   light: {
-    sun: { color: 0xffe1ae, intensity: 2.05, position: [-15, 25, 8] },
-    hemisphere: { sky: 0xfff0cf, ground: 0x73605a, intensity: 1.55 },
+    exposure: 1.05,
+    sun: { color: 0xffdca0, intensity: 3.1, position: [-18, 24, 10] },
+    hemisphere: { sky: 0xe4ecf0, ground: 0x6a5a48, intensity: 1.35 },
   },
   ground: {
     dirt: 0xb68a59,
@@ -33,6 +34,7 @@ export const FOREST: Theme = {
     leaves: [0x889546, 0x9d9343, 0xa08640, 0x809151, 0x6c844b],
     rock: 0x797464,
     shrub: 0x9d994d,
+    grass: [0x6f8240, 0x7e8a45, 0x5f7339, 0x8f9049],
   },
   gustLeaves: [0xffd483, 0xc8803a, 0xf1ae51],
 };

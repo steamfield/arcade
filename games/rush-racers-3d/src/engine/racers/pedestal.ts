@@ -17,6 +17,7 @@ export function createPedestal(scene: THREE.Scene, frames: TrackFrames, course: 
   mesh.position.copy(top);
   mesh.position.y -= height / 2 + 0.01;
   mesh.visible = false;
+  mesh.receiveShadow = true;
   scene.add(mesh);
 
   let preview: RacerView | undefined;

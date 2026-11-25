@@ -8,6 +8,12 @@ export const HUD_CSS = `
   font: 600 16px/1.2 system-ui, sans-serif;
 }
 .rr3d-hud [hidden] { display: none; }
+.rr3d-hud::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 75% 70% at 50% 55%, transparent 60%, #1d140c4d 100%);
+}
 .rr3d-race-info, .rr3d-dash, .rr3d-race-hint, .rr3d-results {
   background: #231d17f5;
   border: 1px solid #f7dcad5c;

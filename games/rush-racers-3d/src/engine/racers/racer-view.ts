@@ -27,7 +27,7 @@ const SHADOW_GEOMETRY = new THREE.PlaneGeometry(2, 1.65).rotateX(-Math.PI / 2);
 const FUR = new THREE.MeshLambertMaterial({ vertexColors: true });
 const FADING_FUR = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: true, opacity: 0.58 });
 
-/** A posed runner and blob shadow with shared character geometry and fur materials. */
+/** A posed runner, casting a sun shadow, plus a soft contact blob with shared character geometry and fur materials. */
 export class RacerView {
   readonly root = new THREE.Group();
   readonly character: CharacterId;
@@ -50,11 +50,14 @@ export class RacerView {
     for (const side of [-1, 1]) {
       for (const z of back === undefined ? [front] : [front, back]) {
         const foot = new THREE.Mesh(leg, FUR);
+        foot.castShadow = true;
         foot.position.set(side * x, y, z);
         this.legs.push(foot);
       }
     }
     this.body = new THREE.Mesh(body, FUR);
+    this.body.castShadow = true;
+    this.body.receiveShadow = true;
     this.pose.add(this.body, ...this.legs);
     this.runner.add(this.pose);
 
@@ -72,7 +75,7 @@ export class RacerView {
     this.runner.position.set(x, y, z);
     this.runner.rotation.y = this.motion.matches ? 0.45 : turn;
     this.shadow.position.set(x, y + 0.012, z);
-    this.shadow.material.opacity = 0.45;
+    this.shadow.material.opacity = 0.32;
   }
 
   /** Updates the visual pose and shadow from the racer's current logic state. */
@@ -123,7 +126,7 @@ export class RacerView {
     const rise = Math.max(0, racer.y - y);
     this.shadow.position.set(this.runner.position.x, y + 0.035, this.runner.position.z);
     this.shadow.rotation.set(Math.atan(groundY(course, racer.s + 1) - y), -heading, 0);
-    this.shadow.material.opacity = 0.5 / (1 + rise * 0.65);
+    this.shadow.material.opacity = 0.34 / (1 + rise * 0.65);
   }
 
   /** Removes this view and disposes its blob shadow material. */

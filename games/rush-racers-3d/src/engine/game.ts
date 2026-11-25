@@ -11,6 +11,7 @@ import { COURSES, DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { SaveData } from '../logic/save.ts';
 import { CHARACTER_IDS, type World } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
+import { configureRenderer, createAtmosphere } from './atmosphere.ts';
 import { CameraRig } from './camera-rig.ts';
 import { characterFor, courseFor, stageFor } from './capture-stages.ts';
 import { input } from './input.ts';
@@ -74,14 +75,10 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
 
   const { course, seed } = runtime.world;
   const theme = themeFor(course);
-  const { sky, light } = theme;
+  const small = window.matchMedia('(pointer: coarse)').matches;
+  configureRenderer(renderer, theme);
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(sky.color);
-  scene.fog = new THREE.Fog(scene.background, sky.fogNear, sky.fogFar);
-  const sun = new THREE.DirectionalLight(light.sun.color, light.sun.intensity);
-  sun.position.set(...light.sun.position);
-  const hemisphere = light.hemisphere;
-  scene.add(sun, new THREE.HemisphereLight(hemisphere.sky, hemisphere.ground, hemisphere.intensity));
+  const atmosphere = createAtmosphere(scene, theme, small);
 
   const frames = buildTrackFrames(course);
   const trail = createTrackView(course, frames, seed, theme);
@@ -148,6 +145,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
     items.sync(world);
     hud.sync(world, screen, bests);
     screens.sync({ scene: screen, cursor: runtime.cursor, character: runtime.character });
+    atmosphere.follow(rig.camera);
     renderer.render(scene, rig.camera);
   };
   const resize = () => {

@@ -44,7 +44,7 @@ Title, then character select (a 4x2 grid of Thornwood's cast; the pick is saved)
 
 ## Code layout
 
-`src/logic/` holds the rules: movement (`racer.ts`, `logs.ts`, `bump.ts`), read-only item status (`status.ts`), items (`items/`, used from outside only through `items/index.ts`), rivals (`ai.ts`), courses (`courses/`) and the tick (`world.ts`). `src/logic/architecture.test.ts` guards those boundaries. `src/engine/` renders it: `themes/` (each course theme's sky, light and palettes), `track/` (the trail and scenery), `racers/`, `items/`, `ui/` (HUD and screens), with `game.ts` wiring them and `runtime.ts` running scene flow and saves.
+`src/logic/` holds the rules: movement (`racer.ts`, `logs.ts`, `bump.ts`), read-only item status (`status.ts`), items (`items/`, used from outside only through `items/index.ts`), rivals (`ai.ts`), courses (`courses/`) and the tick (`world.ts`). `src/logic/architecture.test.ts` guards those boundaries. `src/engine/` renders it: `atmosphere.ts` (ACES tone mapping, the gradient sky dome, and the sun's shadow map, which follows the camera and drops to 1024 px on touch devices), `themes/` (each course theme's sky, light and palettes), `track/` (the trail and scenery), `racers/`, `items/`, `ui/` (HUD and screens), with `game.ts` wiring them and `runtime.ts` running scene flow and saves.
 
 ## Course
 

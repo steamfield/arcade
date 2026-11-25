@@ -1,3 +1,4 @@
+import { createRng } from '@arcade/core';
 import * as THREE from 'three';
 import type { Course, Span } from '../../logic/types.ts';
 import type { Theme } from '../themes/types.ts';
@@ -9,6 +10,60 @@ export const TERRAIN_CHUNK = 96;
 export const SCENERY_RUNOUT = { start: 24, finish: 120 };
 
 const PIT_DEPTH = 8;
+/** Meters of ground one repeat of the grain texture covers. */
+const GRAIN_TILE = 3.5;
+
+/**
+ * A tiling greyscale grain (soft blotches plus pebbly speckle) multiplied over the vertex colours,
+ * so the trail and verges read as ground up close. Seeded so captures stay identical.
+ */
+function groundGrain(): THREE.DataTexture {
+  const size = 128;
+  const rng = createRng(0x9a17);
+  const lattice = (cells: number) => Array.from({ length: cells * cells }, () => rng.next());
+  const smooth = (t: number) => t * t * (3 - 2 * t);
+  const noise = (grid: number[], cells: number, x: number, y: number) => {
+    const gx = (x / size) * cells;
+    const gy = (y / size) * cells;
+    const x0 = Math.floor(gx);
+    const y0 = Math.floor(gy);
+    const at = (i: number, j: number) => grid[((j % cells) * cells + (i % cells)) % grid.length] ?? 0;
+    const tx = smooth(gx - x0);
+    const ty = smooth(gy - y0);
+    const top = at(x0, y0) * (1 - tx) + at(x0 + 1, y0) * tx;
+    const bottom = at(x0, y0 + 1) * (1 - tx) + at(x0 + 1, y0 + 1) * tx;
+    return top * (1 - ty) + bottom * ty;
+  };
+  const octaves = [
+    { cells: 4, weight: 0.5, grid: lattice(16) },
+    { cells: 16, weight: 0.3, grid: lattice(256) },
+    { cells: 64, weight: 0.2, grid: lattice(4096) },
+  ];
+  const pixels = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let value = 0;
+      for (const { cells, weight, grid } of octaves) value += noise(grid, cells, x, y) * weight;
+      const speck = rng.next();
+      const shade = 0.8 + (value - 0.5) * 0.32 + (speck > 0.97 ? 0.12 : speck < 0.04 ? -0.14 : 0);
+      const byte = Math.round(255 * Math.max(0, Math.min(1, shade)));
+      const i = (y * size + x) * 4;
+      pixels[i] = byte;
+      pixels[i + 1] = byte;
+      pixels[i + 2] = byte;
+      pixels[i + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(pixels, size, size);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
+}
 
 interface TrackRow {
   s: number;
@@ -138,6 +193,7 @@ function classifyHoles(pits: Span[], strips: Interval<TrackRow>[], widths: Inter
 class TerrainChunk {
   private readonly positions: number[] = [];
   private readonly colors: number[] = [];
+  private readonly uvs: number[] = [];
   private readonly halfWidth: number;
   private readonly ground: GroundColors;
 
@@ -152,6 +208,7 @@ class TerrainChunk {
     const mottling = 0.05 * Math.sin(s * 2.2 + d * 4.9) + 0.07 * Math.sin(s * 0.29 + Math.sin(d) * 2.3);
     const shade = 1 + mottling - 0.11 * Math.min(1, Math.abs(d) / this.halfWidth);
     this.positions.push(x, y + offset, z);
+    this.uvs.push(x / GRAIN_TILE, (z + y + offset) / GRAIN_TILE);
     this.colors.push(color.r * shade, color.g * shade, color.b * shade);
   }
 
@@ -192,8 +249,11 @@ class TerrainChunk {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(this.positions, 3));
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(this.colors, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(this.uvs, 2));
     geometry.computeVertexNormals();
-    return new THREE.Mesh(geometry, material);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.receiveShadow = true;
+    return mesh;
   }
 }
 
@@ -250,7 +310,7 @@ export function trackTerrain(root: THREE.Group, course: Course, grid: TerrainGri
   const pits = course.features.filter((feature) => feature.kind === 'pit');
   const mud = course.features.filter((feature) => feature.kind === 'mud');
   const holes = classifyHoles(pits, strips, widths);
-  const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+  const material = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, map: groundGrain() });
   for (let first = 0; first < strips.length; first += TERRAIN_CHUNK) {
     root.add(buildChunk(course, strips, widths, holes, mud, first, ground).mesh(material));
   }
