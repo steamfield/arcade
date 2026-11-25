@@ -1,0 +1,312 @@
+{
+  "3": {
+    "ticks": 4361,
+    "events": {
+      "count": 1243,
+      "byType": {
+        "race.countdown": 3,
+        "race.started": 1,
+        "racer.dashed": 131,
+        "racer.dashRecharged": 123,
+        "crate.opened": 6,
+        "racer.jumped": 31,
+        "racer.landed": 31,
+        "racer.bumped": 892,
+        "item.selected": 4,
+        "item.fired": 11,
+        "pie.splatted": 5,
+        "racer.trapped": 2,
+        "racer.finished": 2,
+        "race.ended": 1
+      },
+      "hash": 4155801402
+    },
+    "racers": [
+      {
+        "id": "player",
+        "s": 1140,
+        "d": -1.1065432914587776,
+        "y": 0,
+        "vs": 0,
+        "state": "finished",
+        "finishTicks": 4181,
+        "slots": [
+          {
+            "kind": "shield",
+            "charges": 1
+          },
+          null,
+          null
+        ],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      },
+      {
+        "id": "r1",
+        "s": 1130.939687666741,
+        "d": 1.1116119069127166,
+        "y": 0,
+        "vs": 18.333333333333293,
+        "state": "racing",
+        "finishTicks": null,
+        "slots": [null, null, null],
+        "selected": 1,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      },
+      {
+        "id": "r2",
+        "s": 1140,
+        "d": -3.854677527386689,
+        "y": 0,
+        "vs": 0,
+        "state": "finished",
+        "finishTicks": 4174,
+        "slots": [null, null, null],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      },
+      {
+        "id": "r3",
+        "s": 1117.996400034583,
+        "d": 3.4586446885919213,
+        "y": 0,
+        "vs": 14.517857610486605,
+        "state": "racing",
+        "finishTicks": null,
+        "slots": [null, null, null],
+        "selected": 1,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      }
+    ]
+  },
+  "11": {
+    "ticks": 4348,
+    "events": {
+      "count": 822,
+      "byType": {
+        "race.countdown": 3,
+        "race.started": 1,
+        "racer.dashed": 129,
+        "racer.dashRecharged": 121,
+        "crate.opened": 6,
+        "item.fired": 10,
+        "racer.jumped": 29,
+        "racer.landed": 29,
+        "racer.bumped": 490,
+        "racer.hit": 1,
+        "racer.finished": 2,
+        "race.ended": 1
+      },
+      "hash": 2806922976
+    },
+    "racers": [
+      {
+        "id": "player",
+        "s": 1140,
+        "d": -1.0934689334390535,
+        "y": 0,
+        "vs": 0,
+        "state": "finished",
+        "finishTicks": 4168,
+        "slots": [
+          {
+            "kind": "shield",
+            "charges": 1
+          },
+          null,
+          null
+        ],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      },
+      {
+        "id": "r1",
+        "s": 1139.078929900676,
+        "d": 0.9427012466315746,
+        "y": 0,
+        "vs": 14.025779438766541,
+        "state": "racing",
+        "finishTicks": null,
+        "slots": [null, null, null],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      },
+      {
+        "id": "r2",
+        "s": 1138.752214895075,
+        "d": -3.5435972935241105,
+        "y": 0,
+        "vs": 14.033405754686758,
+        "state": "racing",
+        "finishTicks": null,
+        "slots": [null, null, null],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      },
+      {
+        "id": "r3",
+        "s": 1140,
+        "d": 3.604358325900271,
+        "y": 0,
+        "vs": 0,
+        "state": "finished",
+        "finishTicks": 4142,
+        "slots": [
+          {
+            "kind": "pie",
+            "charges": 3
+          },
+          null,
+          null
+        ],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      }
+    ]
+  },
+  "12": {
+    "ticks": 4348,
+    "events": {
+      "count": 1076,
+      "byType": {
+        "race.countdown": 3,
+        "race.started": 1,
+        "racer.dashed": 132,
+        "racer.dashRecharged": 124,
+        "crate.opened": 6,
+        "racer.jumped": 30,
+        "racer.landed": 30,
+        "racer.bumped": 740,
+        "item.fired": 3,
+        "racer.trapped": 2,
+        "item.selected": 2,
+        "racer.hit": 1,
+        "racer.finished": 1,
+        "race.ended": 1
+      },
+      "hash": 1938199554
+    },
+    "racers": [
+      {
+        "id": "player",
+        "s": 1140,
+        "d": -1.101958037605445,
+        "y": 0,
+        "vs": 0,
+        "state": "finished",
+        "finishTicks": 4168,
+        "slots": [
+          {
+            "kind": "pie",
+            "charges": 3
+          },
+          {
+            "kind": "shield",
+            "charges": 1
+          },
+          null
+        ],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      },
+      {
+        "id": "r1",
+        "s": 1132.8987347041189,
+        "d": 0.9978976043572666,
+        "y": 0,
+        "vs": 17.166666666666618,
+        "state": "racing",
+        "finishTicks": null,
+        "slots": [
+          {
+            "kind": "burr",
+            "charges": 1
+          },
+          null,
+          null
+        ],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      },
+      {
+        "id": "r2",
+        "s": 1138.431261502818,
+        "d": -3.8608374635548164,
+        "y": 0,
+        "vs": 14.040897580660635,
+        "state": "racing",
+        "finishTicks": null,
+        "slots": [
+          {
+            "kind": "shield",
+            "charges": 1
+          },
+          null,
+          null
+        ],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      },
+      {
+        "id": "r3",
+        "s": 1113.206706647008,
+        "d": 3.9462993417931393,
+        "y": 0,
+        "vs": 14.629699505822646,
+        "state": "racing",
+        "finishTicks": null,
+        "slots": [null, null, null],
+        "selected": 0,
+        "cooldown": 0,
+        "stunTicks": 0,
+        "trappedTicks": 0,
+        "burrTicks": 0,
+        "bootsTicks": 0
+      }
+    ]
+  }
+}
