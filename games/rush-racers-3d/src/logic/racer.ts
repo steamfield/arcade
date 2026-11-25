@@ -7,10 +7,8 @@
 import type { EventSink } from '@arcade/core';
 import { groundY, logAt, pitAt, surfaceAt } from './course.ts';
 import type { GameEvent } from './events.ts';
-import { bootsSpeedFloor } from './items/boots.ts';
-import { isImmobilized, stopRacer } from './items/hits.ts';
-import { hasSplatMud } from './items/pie.ts';
 import { resolveLogs, topOf } from './logs.ts';
+import { bootsSpeedFloor, isImmobilized, onSplatMud } from './status.ts';
 import { DASH, RUN } from './tuning.ts';
 import type { Course, Racer, Splat, TickInput } from './types.ts';
 
@@ -38,6 +36,13 @@ export interface RacerContext {
   speedMul: number;
   /** Active Mud Pie patches to check alongside course mud. */
   splats: readonly Splat[];
+}
+
+/** Stops horizontal motion and cancels the dash and buffered jump. Gravity still acts. */
+export function stopRacer(racer: Racer): void {
+  racer.vs = 0;
+  racer.vd = 0;
+  racer.bufferTicks = 0;
 }
 
 /** Advances `racer` by one tick of `input` while the race is running. A finished racer is left alone. */
@@ -90,11 +95,6 @@ export function stepRacer(racer: Racer, input: TickInput, ctx: RacerContext, dt:
     racer.vs = 0;
     racer.vd = 0;
     racer.vy = 0;
-    racer.stunTicks = 0;
-    racer.trappedTicks = 0;
-    racer.bootsTicks = 0;
-    racer.burrTicks = 0;
-    racer.itemCooldown = 0;
   }
 }
 
@@ -106,7 +106,7 @@ function onMud(
 ): boolean {
   return (
     isOnGround(racer, groundY(course, racer.s)) &&
-    (surface === 'mud' || (surface === 'ground' && hasSplatMud(splats, racer)))
+    (surface === 'mud' || (surface === 'ground' && onSplatMud(splats, racer)))
   );
 }
 

@@ -1,8 +1,10 @@
 /** Sap Shield's fired glob, its flight, and traps on contact. */
 import { groundY } from '../course.ts';
+import { stopRacer } from '../racer.ts';
+import { canBeHit } from '../status.ts';
 import { ITEMS, RUN } from '../tuning.ts';
-import type { Racer, Shot, World } from '../types.ts';
-import { canBeHit, stopRacer } from './hits.ts';
+import type { Racer, World } from '../types.ts';
+import type { Shot } from './types.ts';
 
 type Sap = Extract<Shot, { kind: 'sap' }>;
 
@@ -33,7 +35,7 @@ export function stepSap(world: World, shot: Sap, dt: number): boolean {
   }
 
   if (target) {
-    target.trappedTicks = ITEMS.sapTrapTicks;
+    target.items.trappedTicks = ITEMS.sapTrapTicks;
     stopRacer(target);
     world.events.emit({ type: 'racer.trapped', id: target.id, by: shot.owner });
     return false;

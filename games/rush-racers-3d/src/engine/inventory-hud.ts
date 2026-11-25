@@ -72,10 +72,10 @@ export class InventoryHud {
     for (let index = 0; index < this.slots.length; index++) {
       const slot = this.slots[index];
       if (!slot) continue;
-      const item = player.slots[index];
+      const item = player.items.slots[index];
       const kind = item?.kind ?? null;
       const uses = item?.charges ?? 0;
-      const selected = player.selected === index;
+      const selected = player.items.selected === index;
       const flash = tick < slot.flashUntil;
       held ||= kind !== null;
       if (slot.node.hasAttribute('data-pickup') !== flash) slot.node.toggleAttribute('data-pickup', flash);

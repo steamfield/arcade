@@ -207,12 +207,12 @@ it('opens a crate on the rival’s line, selects useful boots past its guard, an
     { id: 'r1', crate: 0, tick: RACE.countdownTicks },
   ]);
   expect(world.crates[0]?.shutTicks).toBe(ITEMS.crateShutTicks);
-  rival.slots = [{ kind: 'shield', charges: 1 }, null, { kind: 'boots', charges: 3 }];
-  rival.selected = 0;
+  rival.items.slots = [{ kind: 'shield', charges: 1 }, null, { kind: 'boots', charges: 3 }];
+  rival.items.selected = 0;
   step();
   step();
   step();
-  expect(rival.slots).toEqual([{ kind: 'shield', charges: 1 }, null, { kind: 'boots', charges: 2 }]);
+  expect(rival.items.slots).toEqual([{ kind: 'shield', charges: 1 }, null, { kind: 'boots', charges: 2 }]);
   expect(events.all().filter((event) => event.type === 'item.selected' || event.type === 'item.fired')).toMatchObject([
     { type: 'item.selected', id: 'r1', slot: 2, tick: RACE.countdownTicks + 1 },
     { type: 'item.fired', id: 'r1', kind: 'boots', tick: RACE.countdownTicks + 2 },
@@ -264,7 +264,7 @@ it.each([
       player.grounded = false;
       player.y = 2;
     }
-    rival.slots[0] = { kind, charges: ITEMS.charges[kind] };
+    rival.items.slots[0] = { kind, charges: ITEMS.charges[kind] };
     step();
     expect(events.all().filter((event) => event.type === 'item.fired')).toMatchObject(
       fires ? [{ id: 'r1', kind, tick: RACE.countdownTicks }] : [],
@@ -284,7 +284,7 @@ it.each([
   player.d = rival.d;
   player.vs = rival.vs = RUN.runSpeed;
   rival.dashCharges = 0;
-  rival.slots[0] = { kind, charges: ITEMS.charges[kind] };
+  rival.items.slots[0] = { kind, charges: ITEMS.charges[kind] };
   step({ player: { ...NO_INPUT, forward: true } });
   expect(events.all().filter((event) => event.type === 'item.fired')).toMatchObject(
     fires ? [{ id: 'r1', kind, tick: RACE.countdownTicks }] : [],
@@ -306,7 +306,7 @@ it('fires sap at a racer 10 m uphill', () => {
   player.d = rival.d;
   rival.y = groundY(course, rival.s);
   player.y = groundY(course, player.s);
-  rival.slots[0] = { kind: 'shield', charges: 1 };
+  rival.items.slots[0] = { kind: 'shield', charges: 1 };
 
   step();
 
@@ -319,7 +319,7 @@ it('uses Rocket Boots on a clear straight without spending a dash on the same ti
   const { rival, events, step } = start(straight);
   rival.s = 20;
   rival.vs = RUN.runSpeed;
-  rival.slots[0] = { kind: 'boots', charges: ITEMS.charges.boots };
+  rival.items.slots[0] = { kind: 'boots', charges: ITEMS.charges.boots };
   step();
   expect(events.all().filter((event) => 'id' in event && event.id === rival.id)).toMatchObject([
     { type: 'item.fired', kind: 'boots', tick: RACE.countdownTicks },
