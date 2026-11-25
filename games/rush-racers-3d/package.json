@@ -27,5 +27,14 @@
     "vitest": "catalog:",
     "fake-indexeddb": "catalog:",
     "@types/three": "0.187.0"
+  },
+  "arcade": {
+    "attract": {
+      "scenario": "rivals-race",
+      "from": 200,
+      "to": 780,
+      "every": 3,
+      "cover": 240
+    }
   }
 }
