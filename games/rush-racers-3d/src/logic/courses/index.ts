@@ -12,6 +12,6 @@ export const COURSES: readonly Course[] = [THORNWOOD_TRAIL];
 export const DEFAULT_COURSE: Course = THORNWOOD_TRAIL;
 
 /** The course with this id, or null when none has it. */
-export function courseById(_id: string): Course | null {
-  throw new Error('not implemented');
+export function courseById(id: string): Course | null {
+  return COURSES.find((course) => course.id === id) ?? null;
 }

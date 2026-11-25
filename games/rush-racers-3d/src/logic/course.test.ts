@@ -1,6 +1,6 @@
 import { EventLog } from '@arcade/core';
 import { expect, it } from 'vitest';
-import { CourseError, logAt, pitAt, surfaceAt, validateCourse } from './course.ts';
+import { assertCourse, CourseError, logAt, pitAt, surfaceAt, validateCourse } from './course.ts';
 import { RUN } from './tuning.ts';
 import type { Course } from './types.ts';
 import { createWorld } from './world.ts';
@@ -93,6 +93,15 @@ it('throws a course error naming the course and the bad feature when building a 
   const build = () => createWorld(new EventLog(), { course, seed: 1, character: 'grit', rivals: false });
   expect(build).toThrow(CourseError);
   expect(build).toThrow('course validation-straight is invalid:\nfeature 0 (crate) is at s 210, outside [5, 190]');
+});
+
+it('rejects an unknown theme and names the course and theme', () => {
+  const course = { ...straight, theme: 'unknown-theme' as Course['theme'] };
+  const problem = 'course validation-straight has unknown theme unknown-theme';
+  const assert = () => assertCourse(course);
+  expect(validateCourse(course)).toEqual([problem]);
+  expect(assert).toThrow(CourseError);
+  expect(assert).toThrow(`course validation-straight is invalid:\n${problem}`);
 });
 
 it('queries pits, mud, gusts and log footprints at their boundaries', () => {
