@@ -216,12 +216,37 @@ const OVERLAY_CSS = `
 }
 .arcade-touch button[data-pressed] { background: rgba(255,255,255,.4); }
 .arcade-touch .dpad { position: absolute; width: 180px; height: 180px;
+  pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
   /* 32px from the left edge keeps thumbs out of Safari's swipe-back zone. */
   left: calc(32px + env(safe-area-inset-left)); bottom: calc(24px + env(safe-area-inset-bottom)); }
 .arcade-touch .dpad button { border-radius: 12px; width: 60px; height: 60px; }
 .arcade-touch .actions { position: absolute; width: 170px; height: 170px;
   right: calc(24px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom)); }
 `;
+
+/** Which d-pad arrows are held. */
+export interface DpadDirections {
+  left: boolean;
+  right: boolean;
+  up: boolean;
+  down: boolean;
+}
+
+/** The dead zone at the d-pad's centre, as a fraction of the pad's width. */
+const DPAD_DEAD_ZONE = 0.1;
+/** sin(22.5°): an arrow is held while the thumb is within 67.5° of it, which gives eight equal sectors. */
+const DPAD_SECTOR = 0.3827;
+
+/**
+ * The arrows a thumb holds at `dx`, `dy` pixels from the d-pad's centre (+x right, +y down): none
+ * within `deadZone` pixels, otherwise one arrow, or two neighbours on a diagonal.
+ */
+export function dpadDirections(dx: number, dy: number, deadZone: number): DpadDirections {
+  const reach = Math.hypot(dx, dy);
+  const edge = reach * DPAD_SECTOR;
+  const out = reach > deadZone;
+  return { left: out && dx < -edge, right: out && dx > edge, up: out && dy < -edge, down: out && dy > edge };
+}
 
 function renderTouchOverlay<A extends string>(
   layout: TouchLayout<A>,
@@ -261,12 +286,64 @@ function renderTouchOverlay<A extends string>(
     const pad = document.createElement('div');
     pad.className = 'dpad';
     const { left, right, up, down } = layout.dpad;
-    pad.append(
-      makeButton(up, '▲', { left: '60px', top: '0' }),
-      makeButton(left, '◀', { left: '0', top: '60px' }),
-      makeButton(right, '▶', { left: '120px', top: '60px' }),
-      makeButton(down, '▼', { left: '60px', top: '120px' }),
-    );
+    const arrow = (action: A, label: string, css: Partial<CSSStyleDeclaration>) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.dataset.action = action;
+      b.setAttribute('aria-label', action);
+      Object.assign(b.style, css);
+      return b;
+    };
+    const arrows = {
+      up: arrow(up, '▲', { left: '60px', top: '0' }),
+      left: arrow(left, '◀', { left: '0', top: '60px' }),
+      right: arrow(right, '▶', { left: '120px', top: '60px' }),
+      down: arrow(down, '▼', { left: '60px', top: '120px' }),
+    };
+    const directions = Object.keys(arrows) as (keyof typeof arrows)[];
+    // One thumb works the whole pad: where it rests decides which arrows are held, so a corner holds
+    // two and a slide changes direction without lifting.
+    let thumb: number | null = null;
+    const hold = (pointerId: number, held: Partial<DpadDirections>) => {
+      for (const direction of directions) {
+        const button = arrows[direction];
+        const isHeld = held[direction] === true;
+        if (isHeld === 'pressed' in button.dataset) continue;
+        if (isHeld) button.dataset.pressed = '';
+        else delete button.dataset.pressed;
+        onChange(button.dataset.action as A, pointerId, isHeld);
+      }
+    };
+    const heldAt = (e: PointerEvent): DpadDirections => {
+      const box = pad.getBoundingClientRect();
+      return dpadDirections(
+        e.clientX - (box.left + box.width / 2),
+        e.clientY - (box.top + box.height / 2),
+        box.width * DPAD_DEAD_ZONE,
+      );
+    };
+    const release = (e: PointerEvent) => {
+      if (e.pointerId !== thumb) return;
+      thumb = null;
+      hold(e.pointerId, {});
+    };
+    pad.addEventListener('pointerdown', (e) => {
+      if (thumb !== null) return;
+      e.preventDefault();
+      thumb = e.pointerId;
+      pad.setPointerCapture(e.pointerId);
+      // A press on an arrow holds that arrow; anywhere else on the pad, the position decides.
+      const pressed = directions.find((direction) => arrows[direction] === e.target);
+      hold(e.pointerId, pressed ? { [pressed]: true } : heldAt(e));
+    });
+    pad.addEventListener('pointermove', (e) => {
+      if (e.pointerId === thumb) hold(e.pointerId, heldAt(e));
+    });
+    pad.addEventListener('pointerup', release);
+    pad.addEventListener('pointercancel', release);
+    pad.addEventListener('contextmenu', (e) => e.preventDefault());
+    pad.append(...Object.values(arrows));
     root.append(pad);
   }
   if (layout.buttons?.length) {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createInput } from './index.ts';
+import { createInput, dpadDirections } from './index.ts';
 
 const make = () =>
   createInput<'left' | 'right' | 'jump', 'move'>({
@@ -118,5 +118,33 @@ describe('text entry', () => {
     input.injectText('EF');
     input.setTextEntry(true);
     expect(input.takeText()).toEqual([]);
+  });
+});
+
+describe('dpadDirections', () => {
+  const held = (dx: number, dy: number) => {
+    const directions = dpadDirections(dx, dy, 18);
+    return (['up', 'down', 'left', 'right'] as const).filter((direction) => directions[direction]).join('+');
+  };
+
+  it('holds one arrow when the thumb is on it', () => {
+    expect([held(0, -60), held(0, 60), held(-60, 0), held(60, 0)]).toEqual(['up', 'down', 'left', 'right']);
+  });
+
+  it('holds two arrows in a corner, so a thumb can run and steer at once', () => {
+    expect([held(50, -50), held(-50, -50), held(50, 50), held(-50, 50)]).toEqual([
+      'up+right',
+      'up+left',
+      'down+right',
+      'down+left',
+    ]);
+  });
+
+  it('holds nothing at the centre', () => {
+    expect(held(5, -8)).toBe('');
+  });
+
+  it('keeps holding by angle once the thumb slides past the edge of the pad', () => {
+    expect([held(20, -300), held(260, -240)]).toEqual(['up', 'up+right']);
   });
 });
