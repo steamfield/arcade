@@ -2,6 +2,7 @@
 
 Skill: deliver. Profile: deliver. On resume, re-read shared/lane-dag.md before anything else.
 plan_graph: /Users/riley/.claude/plugins/cache/claude-essentials/ce/6.0.4/shared/scripts/plan_graph.py
+Status: done, merged to main 2026-11-24.
 Started: 2026-11-24. Timebox: none. Landing branch: deliver/rush-racers-3d.
 Gate: `pnpm arcade check rush-racers-3d && pnpm arcade smoke rush-racers-3d` (60s). Filtered tests: `pnpm arcade test rush-racers-3d <paths>`. Typecheck: `pnpm arcade check rush-racers-3d --skip-tests`.
 Runner: plain commands.
