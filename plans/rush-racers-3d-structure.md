@@ -73,6 +73,7 @@ Contracts the scaffold commits per phase (stubs throw "not implemented"):
 
 ### Phase 1: logic boundaries
 
+Scaffold: 98508ff95f858ec73ffd217fb870efa7262ae9a8
 Demo: `pnpm arcade test rush-racers-3d tests/golden-race.test.ts src/logic/architecture.test.ts` passes, and `pnpm arcade see rush-racers-3d --scenario crate-and-fire` passes.
 Test cases:
 - The golden race trace matches exactly: same events in the same order, same final racer states.
@@ -85,7 +86,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | L | games/rush-racers-3d/src/logic/, games/rush-racers-3d/src/engine/item-view.ts, games/rush-racers-3d/src/engine/inventory-hud.ts, games/rush-racers-3d/src/engine/item-pools.ts | contracts | games/rush-racers-3d/tests/golden-race.test.ts | gpt-6.2-sol | pending | | phase 1 test cases pass; check --skip-tests passes |
+| a | L | games/rush-racers-3d/src/logic/, games/rush-racers-3d/src/engine/item-view.ts, games/rush-racers-3d/src/engine/inventory-hud.ts, games/rush-racers-3d/src/engine/item-pools.ts | contracts | games/rush-racers-3d/tests/golden-race.test.ts | gpt-6.2-sol | running | foreman/rr3d-s1a | phase 1 test cases pass; check --skip-tests passes |
 
 #### Lane a brief
 
