@@ -1,7 +1,8 @@
-/** Mud Pie flight, ground impacts, and splat coverage. */
+/** Mud Pie flight and ground impacts. */
 import { groundY, pitAt } from '../course.ts';
 import { ITEMS, RUN } from '../tuning.ts';
-import type { Racer, Shot, Splat, World } from '../types.ts';
+import type { Racer, World } from '../types.ts';
+import type { Shot } from './types.ts';
 
 type Pie = Extract<Shot, { kind: 'pie' }>;
 
@@ -50,9 +51,4 @@ export function stepPie(world: World, shot: Pie, dt: number): boolean {
     world.events.emit({ type: 'pie.splatted', owner: shot.owner, s: impactS, d: impactD });
   }
   return false;
-}
-
-/** Whether another racer's splat covers this racer's track position. */
-export function hasSplatMud(splats: readonly Splat[], { id, s, d }: Racer): boolean {
-  return splats.some((patch) => patch.owner !== id && patch.s0 <= s && s < patch.s1 && patch.d0 <= d && d < patch.d1);
 }

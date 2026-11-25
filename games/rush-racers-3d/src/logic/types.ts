@@ -6,6 +6,9 @@
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from './events.ts';
+import type { RacerItems, Shot, Splat } from './items/index.ts';
+
+export type { HeldItem, ItemKind, RacerItems, Shot, Splat } from './items/index.ts';
 
 /** One piece of the course centreline. A `turn` with positive `angleDeg` turns right along an arc of `radius` meters. */
 export type PathSegment = { kind: 'straight'; length: number } | { kind: 'turn'; angleDeg: number; radius: number };
@@ -83,33 +86,6 @@ export const CHARACTER_IDS: readonly CharacterId[] = [
   'fang',
 ];
 
-/** The four items a crate can give. */
-export type ItemKind = 'boots' | 'shield' | 'burr' | 'pie';
-
-/** All item kinds available from crates. */
-export const ITEM_KINDS: readonly ItemKind[] = ['boots', 'shield', 'burr', 'pie'];
-
-/** An item in an inventory slot, with the uses it has left. */
-export interface HeldItem {
-  kind: ItemKind;
-  charges: number;
-}
-
-/**
- * Something fired and still flying, in track space. A `pie` flies in an arc and splats where it
- * lands. A `sap` glob keeps its `height` above the ground as it travels along `s` and traps the
- * first other racer it touches. `travelled` counts its meters up to `ITEMS.sapRange`.
- */
-export type Shot =
-  | { kind: 'pie'; owner: RacerId; s: number; d: number; y: number; vs: number; vd: number; vy: number }
-  | { kind: 'sap'; owner: RacerId; s: number; d: number; height: number; vs: number; travelled: number };
-
-/** A mud patch left by a Mud Pie: mud for every racer but `owner` until `ticksLeft` runs out. */
-export interface Splat extends Span {
-  owner: RacerId;
-  ticksLeft: number;
-}
-
 /** A competitor's movement, inventory and race status. */
 export interface Racer {
   id: RacerId;
@@ -141,20 +117,8 @@ export interface Racer {
   safeD: number;
   /** Race ticks at the finish line, null until then. */
   finishTicks: number | null;
-  /** The inventory: `ITEMS.slots` places, null when empty. Never two of a kind. */
-  slots: (HeldItem | null)[];
-  /** The index in `slots` that fire uses. */
-  selected: number;
-  /** Ticks until this racer can fire again. */
-  itemCooldown: number;
-  /** Ticks left stunned by a hit with nothing held: no moving, dashing or firing. */
-  stunTicks: number;
-  /** Ticks left stuck in sap: no moving, dashing or firing. */
-  trappedTicks: number;
-  /** Ticks left puffed up by a Burr Ball: bumping another racer hits them. */
-  burrTicks: number;
-  /** Ticks left of a Rocket Boots boost. */
-  bootsTicks: number;
+  /** Inventory and item timers. Only `logic/items/` writes it. */
+  items: RacerItems;
 }
 
 /** The state of one race from the starting grid through the finish. */

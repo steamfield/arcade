@@ -1,7 +1,6 @@
 /** Racers bumping into each other: run once per tick after every racer has moved. */
 import { groundY, logAt, pitAt } from './course.ts';
-import { burrContact } from './items/burr.ts';
-import { isImmobilized } from './items/hits.ts';
+import { isImmobilized } from './status.ts';
 import { RUN } from './tuning.ts';
 import type { Course, Racer, World } from './types.ts';
 
@@ -28,8 +27,14 @@ interface Pair {
  *
  * @param startD The pre-move `d` by racer slot, used to preserve side order when racers cross.
  * @param lockedAtStart Racers held still during movement, including those whose timer has just expired.
+ * @param onContact Called once per pair, after its bump events and before resolving the next pair.
  */
-export function bumpRacers(world: World, startD: readonly number[], lockedAtStart: ReadonlySet<Racer>): void {
+export function bumpRacers(
+  world: World,
+  startD: readonly number[],
+  lockedAtStart: ReadonlySet<Racer>,
+  onContact: (a: Racer, b: Racer) => void,
+): void {
   const pairs: Pair[] = [];
   for (const [i, a] of world.racers.entries()) {
     const aStart = startD[i];
@@ -74,8 +79,7 @@ export function bumpRacers(world: World, startD: readonly number[], lockedAtStar
       if (!rightLocked) right.vd += transfer;
       world.events.emit({ type: 'racer.bumped', id: a.id, s: a.s, by: b.id });
       world.events.emit({ type: 'racer.bumped', id: b.id, s: b.s, by: a.id });
-      burrContact(world, a, b);
-      burrContact(world, b, a);
+      onContact(a, b);
     }
     if (!moved) break;
   }

@@ -13,12 +13,12 @@ import { drawRivals } from './characters.ts';
 import { assertCourse, groundY } from './course.ts';
 import type { GameEvent } from './events.ts';
 import { gridD } from './grid.ts';
-import { isImmobilized } from './items/hits.ts';
-import { stepItems } from './items/index.ts';
+import { burrContacts, createRacerItems, stepItems } from './items/index.ts';
 import { NO_INPUT, stepRacer } from './racer.ts';
 import type { SaveData } from './save.ts';
 import { placeOf } from './standings.ts';
-import { DASH, ITEMS, RACE, RIVAL } from './tuning.ts';
+import { isImmobilized } from './status.ts';
+import { DASH, RACE, RIVAL } from './tuning.ts';
 import type { CharacterId, Racer, RacerId, TickInputs, World, WorldOptions } from './types.ts';
 
 /**
@@ -50,13 +50,7 @@ export function createWorld(events: EventSink<GameEvent>, options: WorldOptions)
     safeS: course.startS,
     safeD: d,
     finishTicks: null,
-    slots: Array.from({ length: ITEMS.slots }, () => null),
-    selected: 0,
-    itemCooldown: 0,
-    stunTicks: 0,
-    trappedTicks: 0,
-    burrTicks: 0,
-    bootsTicks: 0,
+    items: createRacerItems(),
   });
   const draw = options.rivals ? drawRivals(options.seed, options.character) : null;
   const racers = [racer('player', options.character, draw ? gridD(course, 'player') : 0)];
@@ -119,7 +113,7 @@ export function stepWorld(world: World, inputs: TickInputs, dt: number): void {
   if (hasRivals) {
     // A respawned racer has no pre-move pose, so use its respawn position.
     const startD = world.racers.map((racer, index) => from[index]?.d ?? racer.d);
-    bumpRacers(world, startD, lockedAtStart);
+    bumpRacers(world, startD, lockedAtStart, (a, b) => burrContacts(world, a, b));
   }
   for (const racer of world.racers) {
     if (racer.finishTicks === raceTicks) {

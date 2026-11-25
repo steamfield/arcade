@@ -134,7 +134,7 @@ export function createItemView(course: Course, track: TrackFrames): ItemView {
   }
 
   function drawShield(racer: Racer, tall: boolean): void {
-    for (const item of racer.slots) {
+    for (const item of racer.items.slots) {
       if (item?.kind !== 'shield') continue;
       const { x, y, z } = racerPosition;
       point.position.set(x, y + (tall ? 1.41 : 1.06), z);
@@ -151,10 +151,10 @@ export function createItemView(course: Course, track: TrackFrames): ItemView {
       place(racer.s, racer.d, racer.y);
       racerPosition.copy(point.position);
       const tall = racer.character === 'skip';
-      if (racer.bootsTicks > 0) drawBoots(time);
-      if (racer.burrTicks > 0) drawBurr();
-      if (racer.trappedTicks > 0) drawTrap();
-      if (racer.stunTicks > 0) drawStun(time, tall);
+      if (racer.items.bootsTicks > 0) drawBoots(time);
+      if (racer.items.burrTicks > 0) drawBurr();
+      if (racer.items.trappedTicks > 0) drawTrap();
+      if (racer.items.stunTicks > 0) drawStun(time, tall);
       drawShield(racer, tall);
     }
   }

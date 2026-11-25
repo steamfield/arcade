@@ -2,7 +2,7 @@ import { EventLog, TICK_DT } from '@arcade/core';
 import { expect, it } from 'vitest';
 import type { GameEvent } from './events.ts';
 import { NO_INPUT } from './racer.ts';
-import { RACE, RUN } from './tuning.ts';
+import { ITEMS, RACE, RUN } from './tuning.ts';
 import type { Course } from './types.ts';
 import { createWorld, stepWorld } from './world.ts';
 
@@ -87,6 +87,31 @@ it('separates a three-racer squeeze and emits each pair contact once', () => {
     ['r1', 'player'],
     ['r1', 'r2'],
     ['r2', 'r1'],
+  ]);
+});
+
+it('applies a burr hit after its bump pair and locks the stunned racer for the next pair', () => {
+  const { world, events, player, r1, r2 } = start();
+  r2.s = player.s;
+  r1.d = -0.75;
+  player.d = 0;
+  r2.d = 0.75;
+  r1.items.burrTicks = 2;
+  r1.items.trappedTicks = 2;
+
+  stepWorld(world, {}, TICK_DT);
+
+  // The trapped rival stays at -0.75. Its push to 0.25 is the player's last move this tick.
+  expect(player.d).toBe(0.25);
+  expect(player.vd).toBe(0);
+  expect(player.items.stunTicks).toBe(ITEMS.stunTicks);
+  expect(r2.d).toBe(1.25);
+  expect(events.all().filter((event) => event.type === 'racer.bumped' || event.type === 'racer.hit')).toMatchObject([
+    { type: 'racer.bumped', id: 'player', by: 'r1' },
+    { type: 'racer.bumped', id: 'r1', by: 'player' },
+    { type: 'racer.hit', id: 'player', by: 'r1', kind: 'burr', outcome: 'stunned' },
+    { type: 'racer.bumped', id: 'player', by: 'r2' },
+    { type: 'racer.bumped', id: 'r2', by: 'player' },
   ]);
 });
 

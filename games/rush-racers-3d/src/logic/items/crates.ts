@@ -3,8 +3,9 @@ import { createRng, type Rng } from '@arcade/core';
 import { groundY } from '../course.ts';
 import { placeOf } from '../standings.ts';
 import { CRATE, ITEMS, RUN } from '../tuning.ts';
-import type { ItemKind, Racer, World } from '../types.ts';
+import type { Racer, World } from '../types.ts';
 import { giveItem } from './inventory.ts';
+import type { ItemKind } from './types.ts';
 
 const ODDS = [
   { boots: 18, shield: 32, burr: 12 },
@@ -45,7 +46,7 @@ export function stepCrates(world: World, from: readonly (Point | null)[]): void 
       const triedThisPass = !!start && prior >= 0 && distanceSq(centre, start) <= TOUCH_SQ;
       if (prior >= 0 && (!stillTouching || !triedThisPass)) crate.touching.splice(prior, 1);
       if (!start || crate.shutTicks > 0 || triedThisPass) continue;
-      const slot = racer.slots.indexOf(null);
+      const slot = racer.items.slots.indexOf(null);
       if (slot < 0) continue;
       if (!stillTouching && !touchesBetween(start, racer, centre)) continue;
 
@@ -53,7 +54,7 @@ export function stepCrates(world: World, from: readonly (Point | null)[]): void 
       const kind = rollItem(rng, placeOf(world, racer.id));
       world.rngState = rng.state();
       if (stillTouching) crate.touching.push(racer.id);
-      if (racer.slots.some((item) => item?.kind === kind)) continue;
+      if (racer.items.slots.some((item) => item?.kind === kind)) continue;
 
       crate.shutTicks = ITEMS.crateShutTicks;
       giveItem(world, racer, slot, kind);
