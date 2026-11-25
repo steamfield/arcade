@@ -2,7 +2,7 @@
  * The shapes every logic module and the engine share. Positions are in track space: `s` is meters
  * along the course centreline from its first segment, `d` is meters sideways (+ is right of the
  * direction of travel, 0 is the centreline) and `y` is meters up. Logic never sees world x/z; the
- * engine maps track space to the world with `engine/track-geometry.ts`.
+ * engine maps track space to the world with `engine/track/track-geometry.ts`.
  */
 import type { EventSink } from '@arcade/core';
 import type { GameEvent } from './events.ts';

@@ -22,7 +22,7 @@ Title, then character select (a 4x2 grid of Thornwood's cast; the pick is saved)
 
 ## Rules worth knowing
 
-- Track space: logic places racers by `s` (meters along the course), `d` (meters sideways, + right) and `y` (meters up). `src/engine/track-geometry.ts` maps that onto the world; logic never sees world x/z.
+- Track space: logic places racers by `s` (meters along the course), `d` (meters sideways, + right) and `y` (meters up). `src/engine/track/track-geometry.ts` maps that onto the world; logic never sees world x/z.
 - Logic uses no trig, `**` or `Math.pow`, so the world hash smoke pins is the same in every browser.
 - Running: forward accelerates to run speed, release slows, brake slows faster. Steering moves sideways up to a cap and stops at the trail's edges.
 - Jumping: a fresh press on the ground; holding rises higher; a press just after running off an edge or just before landing still jumps.
@@ -41,6 +41,10 @@ Title, then character select (a 4x2 grid of Thornwood's cast; the pick is saved)
 - Rivals open crates on their line and fire one item at a time when it pays: boots on a clear stretch, a pie or sap at someone ahead, a burr beside someone. They keep a shield for its guard.
 - Places: finished racers by time, then the rest by distance, ties by grid slot.
 - The race ends when you cross the finish, 10 s after the third rival finishes if you haven't, or at 4 minutes.
+
+## Code layout
+
+`src/logic/` holds the rules: movement (`racer.ts`, `logs.ts`, `bump.ts`), read-only item status (`status.ts`), items (`items/`, used from outside only through `items/index.ts`), rivals (`ai.ts`), courses (`courses/`) and the tick (`world.ts`). `src/logic/architecture.test.ts` guards those boundaries. `src/engine/` renders it: `track/` (the trail and scenery), `racers/`, `items/`, `ui/` (HUD and screens), with `game.ts` wiring them and `runtime.ts` running scene flow and saves.
 
 ## Course
 

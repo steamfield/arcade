@@ -117,7 +117,7 @@ Test cases:
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| a | S | games/rush-racers-3d/src/engine/ | contracts | | gpt-6.2-sol | running | foreman/rr3d-s2a | phase 2 test cases pass |
+| a | S | games/rush-racers-3d/src/engine/ | contracts | | gpt-6.2-sol | merged | foreman/rr3d-s2a | phase 2 test cases pass |
 
 #### Lane a brief
 
@@ -143,12 +143,40 @@ Test cases:
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | a | M | games/rush-racers-3d/src/logic/courses/, games/rush-racers-3d/src/logic/course.ts, games/rush-racers-3d/src/logic/course.test.ts, games/rush-racers-3d/src/logic/ai.test.ts, games/rush-racers-3d/src/logic/architecture.test.ts | contracts | | gpt-6.2-sol | pending | | registry, conformance and guard tests pass |
-| b | M | games/rush-racers-3d/src/engine/themes/, games/rush-racers-3d/src/engine/track/, games/rush-racers-3d/src/engine/game.ts, games/rush-racers-3d/src/engine/capture-stages.ts, games/rush-racers-3d/src/engine/runtime.test.ts | contracts | | gpt-6.2-sol | pending | | forest theme renders identically; courseFor tests pass |
+| b | M | games/rush-racers-3d/src/engine/themes/, games/rush-racers-3d/src/engine/track/, games/rush-racers-3d/src/engine/game.ts, games/rush-racers-3d/src/engine/capture-stages.ts, games/rush-racers-3d/src/engine/capture-stages.test.ts, games/rush-racers-3d/src/engine/runtime.test.ts | contracts | | gpt-6.2-sol | pending | | forest theme renders identically; courseFor tests pass |
 
-Lanes a and b run in parallel: lane b's `courseFor` takes the course list as an argument and tests with fixtures, and `game.ts` passes `COURSES` once lane a lands. Lane briefs are written when phase 2 lands. DESIGN.md's "Add a course" section and the `?course=` launch param line belong to the orchestrator at landing.
+Lanes a and b run in parallel. The scaffold makes `COURSES` and `DEFAULT_COURSE` real data (only `courseById` is a stub) and points `game.ts` at `DEFAULT_COURSE`, so lane a's guard passes on its own branch and lane b's `courseFor` can take `COURSES`. DESIGN.md's "Add a course" section and the `?course=` launch param line belong to the orchestrator at landing.
+
+#### Lane a brief
+
+- Goal: a course registry and checks that every registered course must pass.
+- Interface:
+  - Implement `courseById` in `logic/courses/index.ts`.
+  - In `course.ts`, `validateCourse` reports a problem for a `theme` outside `THEME_IDS`, naming the course and the theme.
+  - Add `logic/courses/conformance.test.ts`, run with `it.each(COURSES)`: `assertCourse` passes, and every rival finishes within `Math.floor(parTicks * 1.25)` with at most two falls for seeds 1..5. Move that rivals check out of `ai.test.ts:169` (delete it there) and keep its assertions.
+  - Add a guard to `logic/architecture.test.ts`: in non-test source files under `src/`, only `logic/courses/index.ts` imports a course file from `logic/courses/`. Watch it fail once by importing `THORNWOOD_TRAIL` from a temporary non-test file.
+- Behavior: none changes for Thornwood. `thornwood-trail.test.ts` keeps its par band and clean-run checks.
+- Decisions already made: `courseById` returns `null` for an unknown id. No `registerCourse`. Conformance checks stay generic: no fixed lanes, par bands or Thornwood numbers.
+- Out of scope: engine, themes, `?course=`, a second course.
+- Done when: `pnpm arcade test rush-racers-3d src/logic tests/golden-race.test.ts` and `pnpm arcade check rush-racers-3d --skip-tests` pass.
+
+#### Lane b brief
+
+- Goal: the forest look lives in one theme object, and `?course=` picks the course.
+- Interface:
+  - Fill `engine/themes/forest.ts` with `FOREST: Theme`, holding every colour and lighting constant now in `game.ts` (background, fog 28..115, sun colour, intensity and position, hemisphere light), `track/track-terrain.ts` (ground colours), `track/landmarks.ts` (wood colours), `track/forest.ts` (bark, needles, leaves, rock and shrub colours) and `track/gust-leaves.ts` (leaf colours).
+  - Implement `themeFor` in `engine/themes/index.ts`.
+  - `createTrackView(course, frames, seed, theme)` passes the theme's palettes down; those files keep no colour constants of their own. `game.ts` builds the sky, fog and lights from `themeFor(course)`.
+  - Add `courseFor(search: string, courses: readonly Course[], log: Logger): Course` to `capture-stages.ts`, beside `characterFor`. Unit-test it in a new `engine/capture-stages.test.ts` with fixture course lists.
+  - `game.ts` passes `courseFor(window.location.search, COURSES, log)` to `Runtime`.
+- Behavior: the forest looks exactly as before. The three `see --compare` runs against the phase 2 baseline print "all frames identical". Seeded rng streams in `forest.ts` and `gust-leaves.ts` must draw in the same order.
+- Decisions already made: an unknown `?course=` warns once, listing valid ids, and returns `courses[0]`; no param returns `courses[0]`. `Theme` fields are the ones in `engine/themes/types.ts`; extend it only with fields the moved constants need.
+- Out of scope: a second theme, logic, a course select screen.
+- Done when: `pnpm arcade test rush-racers-3d src/engine`, `pnpm arcade check rush-racers-3d --skip-tests` and the three `see --compare` runs pass.
 
 ## Log
 
+- 2026-11-24: phase 2 landed. Lane 2/a moved 19 files into `track/`, `racers/`, `items/` and `ui/` with only import lines changed (53/53), and every `see --compare` against the phase 1 baselines was identical. Its review was the orchestrator's: cross-folder imports point one way (`racers/` and `items/` → `track/track-geometry.ts`, `ui/` → `racers/` colours and runtime types; `track/` imports no other folder). DESIGN.md gained a code layout section; stale `track-geometry.ts` paths fixed.
 - 2026-11-24: lane 1/a review (opus): behavior preserved and item state written only in `logic/items/`. Fixing: `types.ts` value re-export of `ITEM_KINDS` (would cycle with phase 3's `THEME_IDS`), `status.ts` added to the movement guard, a test that pinned which function resets timers removed, doc blocks. Plan corrected: the golden trace doesn't cover the same-tick stun lock or the finish-tick reset; the inline tests do, and the reviewer's mutations showed they fail when those break.
 - 2026-11-24: plan critique (opus devils-advocate) applied:
   - `stopRacer` moves to `racer.ts`, and the finish-time item timer reset moves to `stepItems`, so movement has no item imports.
