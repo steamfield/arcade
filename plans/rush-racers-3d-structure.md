@@ -80,8 +80,8 @@ Test cases:
 - Every existing logic, runtime and scenario test passes with only mechanical edits (field paths under `racer.items`, `itemCooldown` renamed to `items.cooldown`).
 - Architecture guard: `racer.ts`, `logs.ts` and `bump.ts` import nothing under `items/`; every other file outside `items/` imports items only through `items/index.ts`. Watch it fail on today's code (`racer.ts`, `bump.ts`, `ai.ts`, `world.ts` all import item internals) before the lane fixes them.
 - Status checks give the same answers as the helpers they replace for stunned, trapped, invulnerable, boosted, puffed and splatted racers, one case each.
-- A racer that finishes while stunned, trapped, boosted, puffed or on cooldown has every item timer at 0 by the end of its finishing tick. Ownership moves from `racer.ts` to `stepItems`; the observable result is unchanged.
-- Burr contact still hits a racer bumped by a puffed racer exactly once per bump, right after that pair's two `racer.bumped` events. With three racers touching in one tick, a stun from the first pair still locks that racer for the next pair's push, as it does today. The golden trace covers it, plus one inline test.
+- A racer that finishes while boosted, puffed or on cooldown has every item timer at 0 by the end of its finishing tick (stun and sap block movement, so they can't be live on a finishing tick), tested through `stepWorld`; no golden seed finishes with a live timer. Ownership moves from `racer.ts` to `stepItems`; the observable result is unchanged.
+- Burr contact still hits a racer bumped by a puffed racer exactly once per bump, right after that pair's two `racer.bumped` events. With three racers touching in one tick, a stun from the first pair still locks that racer for the next pair's push, as it does today. An inline test in `bump.test.ts` covers it; the golden seeds include no burr hit inside a three-racer bump (checked by mutation in the lane review).
 - Smoke `RUN_HASH` re-pinned at landing (orchestrator), same value in every browser.
 
 | Lane | Size | Owns files | Reads | Tests | Model | Status | Branch | Done when |
@@ -147,6 +147,7 @@ Lanes a and b run in parallel: lane b's `courseFor` takes the course list as an 
 
 ## Log
 
+- 2026-11-24: lane 1/a review (opus): behavior preserved and item state written only in `logic/items/`. Fixing: `types.ts` value re-export of `ITEM_KINDS` (would cycle with phase 3's `THEME_IDS`), `status.ts` added to the movement guard, a test that pinned which function resets timers removed, doc blocks. Plan corrected: the golden trace doesn't cover the same-tick stun lock or the finish-tick reset; the inline tests do, and the reviewer's mutations showed they fail when those break.
 - 2026-11-24: plan critique (opus devils-advocate) applied:
   - `stopRacer` moves to `racer.ts`, and the finish-time item timer reset moves to `stepItems`, so movement has no item imports.
   - Dropped `gridD` into `world.ts`, which would make `world.ts` and `ai.ts` import each other.
