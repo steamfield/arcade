@@ -1,0 +1,40 @@
+{
+  "name": "game-rush-racers-3d",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.logic.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@arcade/core": "workspace:*",
+    "@arcade/input": "workspace:*",
+    "@arcade/save": "workspace:*",
+    "@arcade/shell": "workspace:*",
+    "zod": "catalog:",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@arcade/config": "workspace:*",
+    "@arcade/testing": "workspace:*",
+    "@playwright/test": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "fake-indexeddb": "catalog:",
+    "@types/three": "0.187.0"
+  },
+  "arcade": {
+    "attract": {
+      "scenario": "rivals-race",
+      "from": 200,
+      "to": 780,
+      "every": 3,
+      "cover": 240
+    }
+  }
+}

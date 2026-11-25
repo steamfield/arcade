@@ -1,0 +1,41 @@
+/** A course's sky, lighting and palettes. Colours are 0xRRGGBB numbers. */
+export interface Theme {
+  /** Background and fog colour, and the fog's near and far distances, m. */
+  sky: { color: number; fogNear: number; fogFar: number };
+  /** The directional sun and the sky/ground hemisphere light. */
+  light: {
+    sun: { color: number; intensity: number; position: readonly [number, number, number] };
+    hemisphere: { sky: number; ground: number; intensity: number };
+  };
+  /** Trail and terrain surfaces. */
+  ground: {
+    dirt: number;
+    shoulder: number;
+    grass: number;
+    mud: number;
+    pitRim: number;
+    pitWall: number;
+    pitFloor: number;
+    chalk: number;
+    darkMark: number;
+  };
+  /** Logs, arches, signs and the character select pedestal. */
+  props: {
+    cutWood: number;
+    bark: readonly number[];
+    wood: number;
+    trim: number;
+    pedestal: number;
+    sign: { start: number; finish: number; border: number; text: number };
+  };
+  /** Trees, rocks and shrubs planted beside the trail. */
+  scenery: {
+    bark: readonly number[];
+    needles: readonly number[];
+    leaves: readonly number[];
+    rock: number;
+    shrub: number;
+  };
+  /** Leaves blown across gusts. */
+  gustLeaves: readonly number[];
+}

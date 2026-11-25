@@ -24,6 +24,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["arcade", "dev", "rush-racers", "--port", "5183"],
       "port": 5183
+    },
+    {
+      "name": "rush-racers-3d",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["arcade", "dev", "rush-racers-3d", "--port", "5184"],
+      "port": 5184
     }
   ]
 }
