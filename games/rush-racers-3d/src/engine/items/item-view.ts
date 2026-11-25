@@ -4,10 +4,10 @@
  */
 import { TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
-import { groundY } from '../logic/course.ts';
-import type { Course, Racer, World } from '../logic/types.ts';
+import { groundY } from '../../logic/course.ts';
+import type { Course, Racer, World } from '../../logic/types.ts';
+import type { TrackFrame, TrackFrames } from '../track/track-geometry.ts';
 import { createItemPools, SPIKE_COUNT, STAR_COUNT } from './item-pools.ts';
-import type { TrackFrame, TrackFrames } from './track-geometry.ts';
 
 /** Scene meshes for crates, projectiles and active item effects. */
 export interface ItemView {

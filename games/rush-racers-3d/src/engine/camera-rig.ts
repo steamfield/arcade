@@ -1,7 +1,7 @@
 import { TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
 import type { Racer } from '../logic/types.ts';
-import type { TrackFrame, TrackFrames } from './track-geometry.ts';
+import type { TrackFrame, TrackFrames } from './track/track-geometry.ts';
 
 const FOLLOW = 1 - Math.exp(-10 * TICK_DT);
 

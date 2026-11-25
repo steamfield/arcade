@@ -1,6 +1,6 @@
 import { createRng, TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
-import type { Course, Feature } from '../logic/types.ts';
+import type { Course, Feature } from '../../logic/types.ts';
 import type { TrackFrame, TrackFrames } from './track-geometry.ts';
 
 type Gust = Extract<Feature, { kind: 'gust' }>;

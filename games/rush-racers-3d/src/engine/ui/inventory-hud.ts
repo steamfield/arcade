@@ -1,5 +1,5 @@
-import { ITEMS } from '../logic/tuning.ts';
-import type { ItemKind, Racer } from '../logic/types.ts';
+import { ITEMS } from '../../logic/tuning.ts';
+import type { ItemKind, Racer } from '../../logic/types.ts';
 
 const PICKUP_TICKS = 15;
 const ITEM_ICONS: Record<ItemKind, { name: string; art: string }> = {

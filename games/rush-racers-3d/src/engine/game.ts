@@ -13,15 +13,15 @@ import { CHARACTER_IDS, type World } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
 import { CameraRig } from './camera-rig.ts';
 import { characterFor, stageFor } from './capture-stages.ts';
-import { Hud } from './hud.ts';
 import { input } from './input.ts';
-import { createItemView } from './item-view.ts';
-import { createPedestal } from './pedestal.ts';
-import { RacerViews } from './racer-view.ts';
+import { createItemView } from './items/item-view.ts';
+import { createPedestal } from './racers/pedestal.ts';
+import { RacerViews } from './racers/racer-view.ts';
 import { Runtime, type Scene } from './runtime.ts';
-import { createScreens } from './screens.ts';
-import { buildTrackFrames } from './track-geometry.ts';
-import { createTrackView } from './track-view.ts';
+import { buildTrackFrames } from './track/track-geometry.ts';
+import { createTrackView } from './track/track-view.ts';
+import { Hud } from './ui/hud.ts';
+import { createScreens } from './ui/screens.ts';
 
 /** Starts the game in `ctx.container` and returns the handle the shell drives. */
 export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): Promise<GameHandle> {

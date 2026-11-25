@@ -1,8 +1,8 @@
 import { TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
-import type { CharacterId, Course } from '../logic/types.ts';
+import type { CharacterId, Course } from '../../logic/types.ts';
+import type { TrackFrames } from '../track/track-geometry.ts';
 import { RacerView } from './racer-view.ts';
-import type { TrackFrames } from './track-geometry.ts';
 
 /** Creates the select-screen pedestal and owns its rotating racer preview. */
 export function createPedestal(scene: THREE.Scene, frames: TrackFrames, course: Course) {

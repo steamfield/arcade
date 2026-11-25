@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Course, Span } from '../logic/types.ts';
+import type { Course, Span } from '../../logic/types.ts';
 import type { TrackFrame, TrackFrames } from './track-geometry.ts';
 
 /** Chunk size in terrain strips and approximate meters of forest. */

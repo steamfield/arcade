@@ -1,10 +1,10 @@
 import { TICK_DT } from '@arcade/core';
 import * as THREE from 'three';
-import { groundY } from '../logic/course.ts';
-import { RUN } from '../logic/tuning.ts';
-import type { CharacterId, Course, Racer, RacerId, World } from '../logic/types.ts';
+import { groundY } from '../../logic/course.ts';
+import { RUN } from '../../logic/tuning.ts';
+import type { CharacterId, Course, Racer, RacerId, World } from '../../logic/types.ts';
+import type { TrackFrame, TrackFrames } from '../track/track-geometry.ts';
 import { geometryFor } from './racer-geometry.ts';
-import type { TrackFrame, TrackFrames } from './track-geometry.ts';
 
 function shadowTexture(): THREE.DataTexture {
   const size = 32;

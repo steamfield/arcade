@@ -5,8 +5,8 @@
  * sideways offset `d` and a height. Pure math with no three.js, so Vitest covers it; engine only,
  * since logic never needs world x/z.
  */
-import { groundY } from '../logic/course.ts';
-import type { Course } from '../logic/types.ts';
+import { groundY } from '../../logic/course.ts';
+import type { Course } from '../../logic/types.ts';
 
 /** The centreline at one `s`: position (y from `groundY`), tangent (tx, tz) and right (rx, rz), both unit length. */
 export interface TrackFrame {
