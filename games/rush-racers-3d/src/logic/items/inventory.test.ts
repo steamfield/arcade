@@ -2,9 +2,9 @@
 import { createRng } from '@arcade/core';
 import { expect, it } from 'vitest';
 import { CRATE, ITEMS, RACE, RUN } from '../tuning.ts';
-import { ITEM_KINDS } from '../types.ts';
 import { rollItem } from './index.ts';
 import { start, startPair } from './item-test-kit.ts';
+import { ITEM_KINDS } from './types.ts';
 
 const crate = { kind: 'crate', s: 30, d: 0 } as const;
 

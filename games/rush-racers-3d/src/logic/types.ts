@@ -9,7 +9,6 @@ import type { GameEvent } from './events.ts';
 import type { RacerItems, Shot, Splat } from './items/index.ts';
 
 export type { HeldItem, ItemKind, RacerItems, Shot, Splat } from './items/index.ts';
-export { ITEM_KINDS } from './items/index.ts';
 
 /** One piece of the course centreline. A `turn` with positive `angleDeg` turns right along an arc of `radius` meters. */
 export type PathSegment = { kind: 'straight'; length: number } | { kind: 'turn'; angleDeg: number; radius: number };
@@ -118,6 +117,7 @@ export interface Racer {
   safeD: number;
   /** Race ticks at the finish line, null until then. */
   finishTicks: number | null;
+  /** Inventory and item timers. Only `logic/items/` writes it. */
   items: RacerItems;
 }
 

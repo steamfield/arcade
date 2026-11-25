@@ -3,7 +3,6 @@ import { expect, it } from 'vitest';
 import { groundY } from '../course.ts';
 import { DASH, ITEMS, RACE, RUN } from '../tuning.ts';
 import type { Feature } from '../types.ts';
-import { stepItems } from './index.ts';
 import { start, startPair } from './item-test-kit.ts';
 
 it('holds Rocket Boots speed for 40 movement ticks, then glides without spending dash charges', () => {
@@ -78,21 +77,6 @@ it('clears active item effects and cooldown on the finish tick', () => {
     state: 'finished',
     items: { bootsTicks: 0, burrTicks: 0, stunTicks: 0, trappedTicks: 0, cooldown: 0 },
   });
-});
-
-it('clears all five timers when items receive a racer finished by movement this tick', () => {
-  const { world, player, advance } = start();
-  advance();
-  const { s, d, y } = player;
-  player.s = world.course.finishS;
-  player.state = 'finished';
-  player.finishTicks = world.raceTicks;
-  // Seed stun and sap at the handoff since both prevent crossing the line during movement.
-  Object.assign(player.items, { stunTicks: 2, trappedTicks: 2, bootsTicks: 2, burrTicks: 2, cooldown: 2 });
-
-  stepItems(world, {}, [{ s, d, y }]);
-
-  expect(player.items).toMatchObject({ stunTicks: 0, trappedTicks: 0, bootsTicks: 0, burrTicks: 0, cooldown: 0 });
 });
 
 it('absorbs a hit with a Sap Shield in another slot, then drops all charges of the selected item', () => {

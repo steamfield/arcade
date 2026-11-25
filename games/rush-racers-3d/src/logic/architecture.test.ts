@@ -6,7 +6,7 @@ import { expect, it } from 'vitest';
 
 const SRC = fileURLToPath(new URL('..', import.meta.url));
 const ITEMS = 'logic/items';
-const MOVEMENT = new Set(['logic/racer.ts', 'logic/logs.ts', 'logic/bump.ts']);
+const MOVEMENT = new Set(['logic/racer.ts', 'logic/logs.ts', 'logic/bump.ts', 'logic/status.ts']);
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

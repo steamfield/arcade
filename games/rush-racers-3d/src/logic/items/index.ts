@@ -1,4 +1,7 @@
-/** Crates, selection, firing, and the tick order of item effects. */
+/**
+ * The only import point for code outside `logic/items/`. Handles crate pickups, selection and
+ * firing, and defines the tick order for item effects.
+ */
 import { TICK_DT } from '@arcade/core';
 import { isImmobilized } from '../status.ts';
 import { ITEMS } from '../tuning.ts';
