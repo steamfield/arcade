@@ -44,11 +44,13 @@ Title, then character select (a 4x2 grid of Thornwood's cast; the pick is saved)
 
 ## Code layout
 
-`src/logic/` holds the rules: movement (`racer.ts`, `logs.ts`, `bump.ts`), read-only item status (`status.ts`), items (`items/`, used from outside only through `items/index.ts`), rivals (`ai.ts`), courses (`courses/`) and the tick (`world.ts`). `src/logic/architecture.test.ts` guards those boundaries. `src/engine/` renders it: `track/` (the trail and scenery), `racers/`, `items/`, `ui/` (HUD and screens), with `game.ts` wiring them and `runtime.ts` running scene flow and saves.
+`src/logic/` holds the rules: movement (`racer.ts`, `logs.ts`, `bump.ts`), read-only item status (`status.ts`), items (`items/`, used from outside only through `items/index.ts`), rivals (`ai.ts`), courses (`courses/`) and the tick (`world.ts`). `src/logic/architecture.test.ts` guards those boundaries. `src/engine/` renders it: `themes/` (each course theme's sky, light and palettes), `track/` (the trail and scenery), `racers/`, `items/`, `ui/` (HUD and screens), with `game.ts` wiring them and `runtime.ts` running scene flow and saves.
 
 ## Course
 
 Thornwood Trail (`src/logic/courses/thornwood-trail.ts`), about 1.1 km in six sections: Forest Floor, Millstream Flats, The Ravine, Windy Ridge, Rotten Bridges, The Clearing. The file documents each section.
+
+To add a course, write `src/logic/courses/<id>.ts` and add it to `COURSES` in `src/logic/courses/index.ts`, the only file allowed to import course files. `courses/conformance.test.ts` then checks it: it must validate, rivals must finish within 1.25 times its `parTicks` with at most two falls, and on a course with crates they must open crates and fire items. Its `theme` picks a `Theme` from `src/engine/themes/`. A recoloured forest is a new theme file. A different kind of place (beach, cave) also needs its own scenery planter, since `track/forest.ts` and `track/gust-leaves.ts` still plant forest shapes.
 
 ## Launch parameters
 
@@ -56,6 +58,7 @@ Thornwood Trail (`src/logic/courses/thornwood-trail.ts`), about 1.1 km in six se
 - `?stage=mid-course|near-finish|before-pit|before-log`: start the race already running at that spot (only with `?debug=1` or in test mode; a staged session never saves). Positions derive from the course in `src/engine/capture-stages.ts`.
 - `?scene=race`: skip the title and select screens and open on the race (any `?stage=` does too).
 - `?character=grit|skip|blaze|shade|cheeks|duke|dusk|fang`: race as that character instead of the saved one; an unknown id logs a warning listing the valid ones.
+- `?course=<id>`: race that course; an unknown id logs a warning listing the valid ones and races the default (`DEFAULT_COURSE`).
 - `?debug=1`: allows stages.
 
 ## Scenarios
