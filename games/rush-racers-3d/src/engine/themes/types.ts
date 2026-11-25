@@ -1,9 +1,5 @@
-/** What a theme gives the engine: how a course's sky, light, ground and scenery look. */
-import type { ThemeId } from '../../logic/types.ts';
-
-/** Colours are 0xRRGGBB numbers. */
+/** A course's sky, lighting and palettes. Colours are 0xRRGGBB numbers. */
 export interface Theme {
-  id: ThemeId;
   /** Background and fog colour, and the fog's near and far distances, m. */
   sky: { color: number; fogNear: number; fogFar: number };
   /** The directional sun and the sky/ground hemisphere light. */
@@ -23,8 +19,15 @@ export interface Theme {
     chalk: number;
     darkMark: number;
   };
-  /** Logs, arches and other built props. */
-  props: { cutWood: number; bark: readonly number[]; wood: number; trim: number };
+  /** Logs, arches, signs and the character select pedestal. */
+  props: {
+    cutWood: number;
+    bark: readonly number[];
+    wood: number;
+    trim: number;
+    pedestal: number;
+    sign: { start: number; finish: number; border: number; text: number };
+  };
   /** Trees, rocks and shrubs planted beside the trail. */
   scenery: {
     bark: readonly number[];

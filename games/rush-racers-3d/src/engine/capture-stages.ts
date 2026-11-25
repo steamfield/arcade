@@ -8,7 +8,7 @@
  * before the first full-width pit; `before-log` 20 m before the first log. Every stage skips the
  * countdown.
  *
- * Also parses `?character=`, the other launch param that changes how the race starts.
+ * Also parses the `?character=` and `?course=` launch params.
  */
 import type { Logger } from '@arcade/core';
 import { groundY } from '../logic/course.ts';
@@ -47,6 +47,15 @@ export function characterFor(search: string, log: Logger): CharacterId | null {
   const character = CHARACTER_IDS.find((id) => id === name);
   if (!character) log.warn(`unknown ?character=${name}; valid characters: ${CHARACTER_IDS.join(', ')}`);
   return character ?? null;
+}
+
+/** The course named by `?course=`, or `fallback` for a missing or unknown id. Unknown ids log a warning. */
+export function courseFor(search: string, courses: readonly Course[], fallback: Course, log: Logger): Course {
+  const name = new URLSearchParams(search).get('course');
+  if (name === null) return fallback;
+  const course = courses.find((candidate) => candidate.id === name);
+  if (!course) log.warn(`unknown ?course=${name}; valid courses: ${courses.map(({ id }) => id).join(', ')}`);
+  return course ?? fallback;
 }
 
 /** Where `stage` puts the player along `s` on `course`. */
