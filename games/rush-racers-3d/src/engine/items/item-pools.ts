@@ -1,10 +1,10 @@
 import { TICK_HZ } from '@arcade/core';
 import * as THREE from 'three';
-import { CRATE, ITEMS, RUN } from '../logic/tuning.ts';
-import type { Course } from '../logic/types.ts';
+import { CRATE, ITEMS, RUN } from '../../logic/tuning.ts';
+import type { Course } from '../../logic/types.ts';
+import type { TrackFrames } from '../track/track-geometry.ts';
 import { crateMaterial, flameGeometry, starGeometry } from './item-geometry.ts';
 import { createSplatView } from './splat-view.ts';
-import type { TrackFrames } from './track-geometry.ts';
 
 const RACER_COUNT = 4;
 /** Spikes drawn around each racer using a Burr Ball. */

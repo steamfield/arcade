@@ -1,9 +1,9 @@
 import { createLogger } from '@arcade/core';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { groundY, type LogFeature } from '../logic/course.ts';
-import { RUN } from '../logic/tuning.ts';
-import type { Course } from '../logic/types.ts';
+import { groundY, type LogFeature } from '../../logic/course.ts';
+import { RUN } from '../../logic/tuning.ts';
+import type { Course } from '../../logic/types.ts';
 import type { TrackFrames } from './track-geometry.ts';
 
 type ArchTitle = 'START' | 'FINISH';

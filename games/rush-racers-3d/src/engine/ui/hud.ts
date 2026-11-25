@@ -1,15 +1,15 @@
 import { TICK_HZ } from '@arcade/core';
-import { CAST } from '../logic/characters.ts';
-import type { GameEvent } from '../logic/events.ts';
-import type { SaveData } from '../logic/save.ts';
-import { placeOf, places } from '../logic/standings.ts';
-import { DASH, RACE } from '../logic/tuning.ts';
-import type { World } from '../logic/types.ts';
-import { playerOf } from '../logic/world.ts';
+import { CAST } from '../../logic/characters.ts';
+import type { GameEvent } from '../../logic/events.ts';
+import type { SaveData } from '../../logic/save.ts';
+import { placeOf, places } from '../../logic/standings.ts';
+import { DASH, RACE } from '../../logic/tuning.ts';
+import type { World } from '../../logic/types.ts';
+import { playerOf } from '../../logic/world.ts';
+import { RACER_COLORS } from '../racers/racer-geometry.ts';
+import type { EngineEvent, Scene } from '../runtime.ts';
 import { HUD_CSS } from './hud-style.ts';
 import { InventoryHud } from './inventory-hud.ts';
-import { RACER_COLORS } from './racer-geometry.ts';
-import type { EngineEvent, Scene } from './runtime.ts';
 
 const ORDINAL = ['1st', '2nd', '3rd', '4th'];
 type Hint = 'countdown' | 'items' | null;

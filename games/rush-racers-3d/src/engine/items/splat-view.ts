@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import { pitAt } from '../logic/course.ts';
-import { ITEMS } from '../logic/tuning.ts';
-import type { Course, Splat } from '../logic/types.ts';
-import type { TrackFrame, TrackFrames } from './track-geometry.ts';
+import { pitAt } from '../../logic/course.ts';
+import { ITEMS } from '../../logic/tuning.ts';
+import type { Course, Splat } from '../../logic/types.ts';
+import type { TrackFrame, TrackFrames } from '../track/track-geometry.ts';
 
 const NO_SPLATS: readonly Splat[] = [];
 const GROUND_LIFT = 0.05;

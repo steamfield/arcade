@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Course } from '../logic/types.ts';
+import type { Course } from '../../logic/types.ts';
 import { plantForest } from './forest.ts';
 import { windLeaves } from './gust-leaves.ts';
 import { trackLandmarks } from './landmarks.ts';

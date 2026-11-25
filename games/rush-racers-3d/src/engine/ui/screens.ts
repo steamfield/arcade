@@ -2,10 +2,10 @@
  * The title and character select screens: DOM over the 3D scene, shown while `runtime.scene` is
  * `title` or `select` and hidden otherwise. Reads runtime state; never changes it.
  */
-import { CAST } from '../logic/characters.ts';
-import { CHARACTER_IDS, type CharacterId } from '../logic/types.ts';
-import { RACER_COLORS } from './racer-geometry.ts';
-import type { Scene } from './runtime.ts';
+import { CAST } from '../../logic/characters.ts';
+import { CHARACTER_IDS, type CharacterId } from '../../logic/types.ts';
+import { RACER_COLORS } from '../racers/racer-geometry.ts';
+import type { Scene } from '../runtime.ts';
 import { SCREENS_CSS } from './screens-style.ts';
 
 /** What the screens draw from, read from the `Runtime` each frame. */

@@ -1,10 +1,10 @@
 import { EventLog } from '@arcade/core';
 import { describe, expect, it } from 'vitest';
-import { courseLength, groundY } from '../logic/course.ts';
-import { THORNWOOD_TRAIL } from '../logic/courses/thornwood-trail.ts';
-import type { Course } from '../logic/types.ts';
-import { createWorld, playerOf } from '../logic/world.ts';
-import { CameraRig } from './camera-rig.ts';
+import { courseLength, groundY } from '../../logic/course.ts';
+import { THORNWOOD_TRAIL } from '../../logic/courses/thornwood-trail.ts';
+import type { Course } from '../../logic/types.ts';
+import { createWorld, playerOf } from '../../logic/world.ts';
+import { CameraRig } from '../camera-rig.ts';
 import { buildTrackFrames } from './track-geometry.ts';
 import { buildTerrainGrid, terrainPointAt } from './track-terrain.ts';
 

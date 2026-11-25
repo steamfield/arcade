@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import type { CharacterId } from '../logic/types.ts';
+import type { CharacterId } from '../../logic/types.ts';
 
 /**
  * Each character's card swatch, progress marker and 3D accent color.
