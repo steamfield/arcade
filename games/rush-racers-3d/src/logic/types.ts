@@ -35,10 +35,18 @@ export type Feature =
   | { kind: 'log'; s: number; d0: number; d1: number; height: number }
   | { kind: 'crate'; s: number; d: number };
 
+/** How a course looks: the engine's theme for its sky, light, ground and scenery. */
+export type ThemeId = 'forest';
+
+/** Every theme a course may name. */
+export const THEME_IDS: readonly ThemeId[] = ['forest'];
+
 /** A course as data. `hills` give the ground height at points along `s`, sorted by `s`, linear between them. */
 export interface Course {
   id: string;
   name: string;
+  /** The look the engine draws this course with. */
+  theme: ThemeId;
   path: PathSegment[];
   /** Half the track's width, meters: `d` runs from `-halfWidth` to `halfWidth`. */
   halfWidth: number;

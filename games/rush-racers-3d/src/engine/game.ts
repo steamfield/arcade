@@ -7,7 +7,7 @@ import { createLogger, TICK_DT } from '@arcade/core';
 import type { SaveStore } from '@arcade/save';
 import { type GameContext, type GameHandle, renderPixelRatio } from '@arcade/shell';
 import * as THREE from 'three';
-import { THORNWOOD_TRAIL } from '../logic/courses/thornwood-trail.ts';
+import { DEFAULT_COURSE } from '../logic/courses/index.ts';
 import type { SaveData } from '../logic/save.ts';
 import { CHARACTER_IDS, type World } from '../logic/types.ts';
 import { playerOf } from '../logic/world.ts';
@@ -30,7 +30,7 @@ export async function startThree(ctx: GameContext, saves: SaveStore<SaveData>): 
   const stage = stageFor(ctx.params, window.location.search, log);
   const runtime = await Runtime.start({
     saves,
-    course: THORNWOOD_TRAIL,
+    course: DEFAULT_COURSE,
     seed: ctx.params.seed,
     character: characterFor(window.location.search, log),
     notice: ctx.notice,

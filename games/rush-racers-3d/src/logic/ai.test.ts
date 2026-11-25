@@ -16,6 +16,7 @@ const straight: Course = {
   hills: [],
   startS: 0,
   finishS: 260,
+  theme: 'forest',
   parTicks: 1200,
   features: [],
 };

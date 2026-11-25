@@ -13,6 +13,7 @@ const straight: Course = {
   hills: [],
   startS: 5,
   finishS: 190,
+  theme: 'forest',
   parTicks: 900,
   features: [],
 };

@@ -14,6 +14,7 @@ const course: Course = {
   hills: [],
   startS: 0,
   finishS: 200,
+  theme: 'forest',
   parTicks: 900,
   features: [],
 };

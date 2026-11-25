@@ -22,6 +22,7 @@ export function start(
     hills,
     startS: 0,
     finishS,
+    theme: 'forest',
     parTicks: 900,
     features,
   };

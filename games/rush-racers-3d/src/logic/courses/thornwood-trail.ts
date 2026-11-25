@@ -23,6 +23,7 @@ export const THORNWOOD_TRAIL: Course = {
   halfWidth: 6,
   startS: 5,
   finishS: 1140,
+  theme: 'forest',
   parTicks: 4900,
   path: [
     { kind: 'straight', length: 120 },
